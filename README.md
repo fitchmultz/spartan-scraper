@@ -52,6 +52,9 @@ make build
   --urls https://example.com,https://example.com/docs \
   --out ./out/research.jsonl
 
+# MCP server (stdio)
+./bin/spartan mcp
+
 # Run API server + background worker
 ./bin/spartan server
 
@@ -77,6 +80,7 @@ Open `http://localhost:5173` for the UI (the API is proxied to `PORT` from `.env
 - `internal/api`: HTTP API + OpenAPI contract.
 - `web`: Vite + React UI; generated API client under `web/src/api`.
 - `internal/research`: multi-source workflow (scrape/crawl → evidence → summary).
+- `internal/mcp`: MCP stdio server for agent orchestration.
 
 ## Notes
 

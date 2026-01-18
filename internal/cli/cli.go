@@ -16,6 +16,7 @@ import (
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/mcp"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/ui/tui"
@@ -35,6 +36,8 @@ func Run(ctx context.Context) int {
 		return runCrawl(cfg)
 	case "research":
 		return runResearch(cfg)
+	case "mcp":
+		return runMCP(cfg)
 	case "server":
 		return runServer(ctx, cfg)
 	case "tui":
@@ -359,6 +362,35 @@ func runServer(ctx context.Context, cfg config.Config) int {
 	return httpListenAndServe("0.0.0.0:"+cfg.Port, server.Routes())
 }
 
+func runMCP(cfg config.Config) int {
+	fs := flag.NewFlagSet("mcp", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan mcp
+
+Examples:
+  spartan mcp
+
+Notes:
+  MCP uses stdio. One JSON-RPC request per line.
+`)
+	}
+	_ = fs.Parse(os.Args[2:])
+
+	server, err := mcp.NewServer(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer server.Close()
+
+	if err := server.Serve(os.Stdin, os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func runTUI(cfg config.Config) int {
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
@@ -379,6 +411,7 @@ Commands:
   scrape   Scrape a single page
   crawl    Crawl a website
   research Deep research across multiple sources
+  mcp      Run MCP server over stdio
   server   Run API server + workers
   tui      Launch terminal UI
 
@@ -386,6 +419,7 @@ Examples:
   spartan scrape --url https://example.com --out ./out/example.json
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
+  spartan mcp
   spartan server
   spartan tui
 
