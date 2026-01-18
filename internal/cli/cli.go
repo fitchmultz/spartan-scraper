@@ -448,8 +448,25 @@ Options:
 }
 
 func runAuth(cfg config.Config) int {
-	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "auth subcommand required: list|set|delete")
+	if len(os.Args) < 3 || os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan auth <subcommand> [options]
+
+Subcommands:
+  list
+  set
+  delete
+
+Examples:
+  spartan auth list
+  spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
+  spartan auth set --name acme --login-url https://example.com/login \
+    --login-user-selector '#email' --login-pass-selector '#password' --login-submit-selector 'button[type=submit]' \
+    --login-user you@example.com --login-pass '***'
+  spartan auth delete --name acme
+
+Use "spartan auth set --help" for full flags.
+`)
 		return 1
 	}
 
@@ -592,8 +609,22 @@ Options:
 }
 
 func runSchedule(cfg config.Config) int {
-	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "schedule subcommand required: list|add|delete")
+	if len(os.Args) < 3 || os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan schedule <subcommand> [options]
+
+Subcommands:
+  list
+  add
+  delete
+
+Examples:
+  spartan schedule add --kind scrape --interval 3600 --url https://example.com
+  spartan schedule add --kind crawl --interval 7200 --url https://example.com --max-depth 2 --max-pages 200
+  spartan schedule add --kind research --interval 86400 --query "pricing" --urls https://example.com,https://example.com/docs
+  spartan schedule list
+  spartan schedule delete --id <schedule-id>
+`)
 		return 1
 	}
 

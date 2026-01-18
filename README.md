@@ -19,6 +19,11 @@ make build
 ./bin/spartan --help
 ```
 
+## Documentation
+
+- `docs/usage.md`: CLI/API/Web/MCP entry points and flags.
+- `docs/architecture.md`: system structure and flow.
+
 ### CLI examples
 
 ```bash

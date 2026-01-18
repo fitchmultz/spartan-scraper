@@ -3,3 +3,4 @@
 .data/
 /web/node_modules/
 /web/dist/
+out/stress/
