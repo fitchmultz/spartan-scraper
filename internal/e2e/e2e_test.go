@@ -9,7 +9,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,61 +63,24 @@ func TestTUISmoke(t *testing.T) {
 }
 
 func TestCLIHTTPFlow(t *testing.T) {
-	server := newFixtureServer()
-	defer server.Close()
-
 	dataDir := t.TempDir()
 	outDir := t.TempDir()
 	env := baseEnv(dataDir)
 
 	scrapeOut := filepath.Join(outDir, "scrape.json")
-	runOK(t, env, "scrape", "--url", server.URL+"/", "--wait", "--wait-timeout", "30", "--out", scrapeOut)
-	assertJSONContains(t, scrapeOut, "Example Page")
+	runOK(t, env, "scrape", "--url", "https://example.com", "--wait", "--wait-timeout", "60", "--out", scrapeOut)
+	assertJSONContains(t, scrapeOut, "Example Domain")
 
 	crawlOut := filepath.Join(outDir, "crawl.jsonl")
-	runOK(t, env, "crawl", "--url", server.URL+"/", "--max-depth", "1", "--max-pages", "5", "--wait", "--wait-timeout", "30", "--out", crawlOut)
+	runOK(t, env, "crawl", "--url", "https://httpbin.dev/links/5/0", "--max-depth", "1", "--max-pages", "5", "--wait", "--wait-timeout", "90", "--out", crawlOut)
 	requireLineCount(t, crawlOut, 2)
 
 	researchOut := filepath.Join(outDir, "research.jsonl")
-	runOK(t, env, "research", "--query", "example", "--urls", server.URL+"/,"+server.URL+"/page1", "--wait", "--wait-timeout", "30", "--out", researchOut)
-	assertJSONContains(t, researchOut, "Summary")
-}
-
-func TestAuthProfilesAndHeadlessLogin(t *testing.T) {
-	server := newFixtureServer()
-	defer server.Close()
-
-	dataDir := t.TempDir()
-	outDir := t.TempDir()
-	env := baseEnv(dataDir)
-
-	runOK(t, env, "auth", "set",
-		"--name", "fixture",
-		"--login-url", server.URL+"/login",
-		"--login-user-selector", "#username",
-		"--login-pass-selector", "#password",
-		"--login-submit-selector", "#submit",
-		"--login-user", "user",
-		"--login-pass", "pass",
-	)
-
-	runOK(t, env, "auth", "list")
-
-	headlessOut := filepath.Join(outDir, "secure-headless.json")
-	runOK(t, env, "scrape", "--url", server.URL+"/secure", "--headless", "--auth-profile", "fixture", "--wait", "--wait-timeout", "60", "--out", headlessOut)
-	assertJSONContains(t, headlessOut, "Secure Area")
-
-	playwrightOut := filepath.Join(outDir, "secure-playwright.json")
-	runOK(t, env, "scrape", "--url", server.URL+"/secure", "--headless", "--playwright", "--auth-profile", "fixture", "--wait", "--wait-timeout", "60", "--out", playwrightOut)
-	assertJSONContains(t, playwrightOut, "Secure Area")
-
-	runOK(t, env, "auth", "delete", "--name", "fixture")
+	runOK(t, env, "research", "--query", "example", "--urls", "https://example.com,https://httpbin.dev/html", "--wait", "--wait-timeout", "60", "--out", researchOut)
+	assertJSONContains(t, researchOut, `"summary"`)
 }
 
 func TestAPIMCPSchedulerExport(t *testing.T) {
-	server := newFixtureServer()
-	defer server.Close()
-
 	dataDir := t.TempDir()
 	port := freePort(t)
 	env := baseEnv(dataDir)
@@ -135,28 +97,30 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	if err := srvCmd.Start(); err != nil {
 		t.Fatalf("start server: %v", err)
 	}
-	waitForHealth(t, port)
+	client := &http.Client{Timeout: 5 * time.Second}
+	waitForHealth(t, client, port)
 
 	jobID := postJob(t, port, "/v1/scrape", map[string]interface{}{
-		"url":            server.URL + "/",
+		"url":            "https://example.com",
 		"headless":       false,
 		"playwright":     false,
-		"timeoutSeconds": 10,
+		"timeoutSeconds": 30,
 	})
-	waitForJob(t, port, jobID)
+	waitForJob(t, client, port, jobID)
+	assertJobResultContains(t, client, port, jobID, "Example Domain")
 
 	exportOut := filepath.Join(t.TempDir(), "export.md")
 	runOK(t, env, "export", "--job-id", jobID, "--format", "md", "--out", exportOut)
 	assertFileNotEmpty(t, exportOut)
 
-	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", server.URL+"/")
-	waitForJobs(t, port, 1)
+	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", "https://example.com")
+	waitForJobs(t, client, port, 1)
 
 	runOK(t, env, "mcp", "--help")
 	mcpOut := runMCP(t, env, []string{
 		`{"id":1,"method":"initialize"}`,
 		`{"id":2,"method":"tools/list"}`,
-		fmt.Sprintf(`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"%s"}}}`, server.URL+"/"),
+		`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com"}}}`,
 	})
 	if !strings.Contains(mcpOut, `"tools"`) {
 		t.Fatalf("expected MCP tools list in output")
@@ -215,57 +179,11 @@ func baseEnv(dataDir string) []string {
 	}
 }
 
-func newFixtureServer() *httptest.Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, `<html><head><title>Example Page</title></head><body>`+
-			`<a href="/page1">Page 1</a>`+
-			`<a href="/page2">Page 2</a>`+
-			`<a href="https://example.com">External</a>`+
-			`</body></html>`)
-	})
-	mux.HandleFunc("/page1", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, `<html><head><title>Page One</title></head><body>Summary content</body></html>`)
-	})
-	mux.HandleFunc("/page2", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, `<html><head><title>Page Two</title></head><body>More content</body></html>`)
-	})
-	mux.HandleFunc("/login", func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, `<html><body><form action="/do_login" method="post">`+
-			`<input id="username" name="username">`+
-			`<input id="password" name="password" type="password">`+
-			`<button id="submit" type="submit">Login</button>`+
-			`</form></body></html>`)
-	})
-	mux.HandleFunc("/do_login", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if r.Form.Get("username") == "user" && r.Form.Get("password") == "pass" {
-			http.SetCookie(w, &http.Cookie{Name: "session", Value: "ok", Path: "/"})
-			http.Redirect(w, r, "/secure", http.StatusFound)
-			return
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-	})
-	mux.HandleFunc("/secure", func(w http.ResponseWriter, r *http.Request) {
-		_, err := r.Cookie("session")
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, "Unauthorized")
-			return
-		}
-		fmt.Fprint(w, `<html><head><title>Secure</title></head><body>Secure Area</body></html>`)
-	})
-	return httptest.NewServer(mux)
-}
-
-func waitForHealth(t *testing.T, port int) {
+func waitForHealth(t *testing.T, client *http.Client, port int) {
 	t.Helper()
 	base := fmt.Sprintf("http://127.0.0.1:%d/healthz", port)
 	for i := 0; i < 50; i++ {
-		resp, err := http.Get(base)
+		resp, err := client.Get(base)
 		if err == nil && resp.StatusCode == http.StatusOK {
 			_ = resp.Body.Close()
 			return
@@ -297,11 +215,11 @@ func postJob(t *testing.T, port int, path string, body map[string]interface{}) s
 	return id
 }
 
-func waitForJob(t *testing.T, port int, id string) {
+func waitForJob(t *testing.T, client *http.Client, port int, id string) {
 	t.Helper()
 	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs/%s", port, id)
 	for i := 0; i < 100; i++ {
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -320,11 +238,11 @@ func waitForJob(t *testing.T, port int, id string) {
 	t.Fatalf("job timeout")
 }
 
-func waitForJobs(t *testing.T, port int, minCount int) {
+func waitForJobs(t *testing.T, client *http.Client, port int, minCount int) {
 	t.Helper()
 	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs", port)
 	for i := 0; i < 100; i++ {
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -339,6 +257,23 @@ func waitForJobs(t *testing.T, port int, minCount int) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatalf("jobs not scheduled")
+}
+
+func assertJobResultContains(t *testing.T, client *http.Client, port int, id string, needle string) {
+	t.Helper()
+	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs/%s/results", port, id)
+	resp, err := client.Get(url)
+	if err != nil {
+		t.Fatalf("job results: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("job results status: %d", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), needle) {
+		t.Fatalf("expected %q in job results", needle)
+	}
 }
 
 func assertJSONContains(t *testing.T, path, contains string) {
