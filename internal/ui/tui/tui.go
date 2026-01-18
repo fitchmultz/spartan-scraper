@@ -23,12 +23,27 @@ type jobsMsg struct {
 	err  error
 }
 
+type Options struct {
+	Smoke bool
+}
+
 var (
 	headerStyle = lipgloss.NewStyle().Bold(true)
 	errorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 )
 
 func Run(store *store.Store) int {
+	return RunWithOptions(store, Options{})
+}
+
+func RunWithOptions(store *store.Store, opts Options) int {
+	if opts.Smoke {
+		if err := Smoke(store); err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		return 0
+	}
 	m := model{store: store}
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
@@ -36,6 +51,17 @@ func Run(store *store.Store) int {
 		return 1
 	}
 	return 0
+}
+
+func Smoke(store *store.Store) error {
+	m := model{store: store}
+	msg := fetchJobs(store)()
+	if jobMsg, ok := msg.(jobsMsg); ok {
+		m.jobs = jobMsg.jobs
+		m.err = jobMsg.err
+	}
+	_ = m.View()
+	return m.err
 }
 
 func (m model) Init() tea.Cmd {

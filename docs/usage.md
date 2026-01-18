@@ -102,8 +102,10 @@ spartan server
 Terminal UI (job list + status):
 
 ```
-spartan tui
+spartan tui [--smoke]
 ```
+
+`--smoke` renders a single frame and exits (CI smoke test).
 
 ### mcp
 
@@ -119,6 +121,11 @@ Tools:
 - `research`
 - `job_status`
 - `job_results`
+
+Example:
+```
+printf '{"id":1,"method":"tools/list"}\n' | spartan mcp
+```
 
 ## API
 
@@ -151,6 +158,11 @@ make web-dev
 ```
 
 The UI connects to the API server (same `PORT`).
+
+Preview the production build (after `make build`):
+```
+cd web && pnpm exec vite preview --host 127.0.0.1 --port 4173
+```
 
 ## Scripts
 
@@ -196,5 +208,5 @@ Jobs stored under `DATA_DIR/jobs/<id>/results.jsonl`.
 - API (scrape/crawl/research/jobs/results)
 - MCP (tools list + scrape_page)
 - Scheduler (job creation via interval)
-- Web (TypeScript build)
+- Web (TypeScript build + preview smoke test)
 - External auth targets (public demo sites + httpbin basic auth)

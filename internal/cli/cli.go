@@ -838,20 +838,28 @@ Notes:
 func runTUI(cfg config.Config) int {
 	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
 		fmt.Fprint(os.Stderr, `Usage:
+  spartan tui [--smoke]
+
+Examples:
   spartan tui
+  spartan tui --smoke
 
 Notes:
   Terminal UI for browsing jobs and statuses.
+  --smoke renders a single frame and exits (CI smoke test).
 `)
 		return 0
 	}
+	fs := flag.NewFlagSet("tui", flag.ExitOnError)
+	smoke := fs.Bool("smoke", false, "Render a single frame and exit (CI smoke test)")
+	_ = fs.Parse(os.Args[2:])
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	defer store.Close()
-	return tui.Run(store)
+	return tui.RunWithOptions(store, tui.Options{Smoke: *smoke})
 }
 
 func printHelp() {

@@ -58,6 +58,11 @@ func TestCLIHelp(t *testing.T) {
 	runOK(t, nil, "tui", "--help")
 }
 
+func TestTUISmoke(t *testing.T) {
+	dataDir := t.TempDir()
+	runOK(t, baseEnv(dataDir), "tui", "--smoke")
+}
+
 func TestCLIHTTPFlow(t *testing.T) {
 	server := newFixtureServer()
 	defer server.Close()
