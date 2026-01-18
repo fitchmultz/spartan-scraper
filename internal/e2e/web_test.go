@@ -8,8 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -29,12 +31,41 @@ func TestWebPreview(t *testing.T) {
 	cmd.Env = append(os.Environ(), "BROWSER=none")
 	cmd.Stdout = io.Discard
 	cmd.Stderr = os.Stderr
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
+
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start web preview: %v", err)
 	}
 	defer func() {
 		cancel()
-		_ = cmd.Wait()
+
+		waitDone := make(chan error, 1)
+		go func() {
+			waitDone <- cmd.Wait()
+		}()
+
+		select {
+		case <-waitDone:
+			return
+		case <-time.After(3 * time.Second):
+			if cmd.Process == nil {
+				return
+			}
+			if runtime.GOOS != "windows" {
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			} else {
+				_ = cmd.Process.Kill()
+			}
+		}
+
+		select {
+		case <-waitDone:
+			return
+		case <-time.After(3 * time.Second):
+			return
+		}
 	}()
 
 	client := &http.Client{Timeout: 2 * time.Second}

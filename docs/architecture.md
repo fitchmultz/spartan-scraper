@@ -23,6 +23,18 @@
 - Exporter can emit markdown or csv from stored job artifacts.
 - Scheduler runs interval-based jobs and persists schedules in `DATA_DIR/schedules.json`.
 
+## Adaptive Render Pipeline
+
+The fetcher uses an adaptive strategy to optimize for performance and reliability:
+
+1. **Profile Check**: Checks `DATA_DIR/render_profiles.json` for per-host rules (forced engine, timeouts, blocking).
+2. **HTTP Probe**: By default, attempts a fast HTTP GET.
+3. **Detection**: Analyzes the HTML for "JS-heavy" signals (SPA roots, noscript warnings, high script/text ratio).
+4. **Escalation**: If the page is detected as dynamic (or returns 403/401 bots blocks), it escalates to a headless browser (Chromedp or Playwright).
+5. **Optimization**:
+   - Blocks wasteful resources (images, fonts, media, stylesheets) by default or policy.
+   - Uses adaptive wait strategies (DOM ready, network idle, selector visible, content stability).
+
 ## Execution flow
 
 1. CLI/API create a job and persist it.

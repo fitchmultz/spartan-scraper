@@ -12,7 +12,7 @@ import (
 
 type PlaywrightFetcher struct{}
 
-func (f *PlaywrightFetcher) Fetch(req Request) (Result, error) {
+func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, error) {
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
 	}
@@ -23,12 +23,20 @@ func (f *PlaywrightFetcher) Fetch(req Request) (Result, error) {
 		baseDelay = 800 * time.Millisecond
 	}
 
+	navTimeout := req.Timeout
+	if prof.Timeouts.NavigationMs > 0 {
+		navLimit := time.Duration(prof.Timeouts.NavigationMs) * time.Millisecond
+		if navLimit < navTimeout {
+			navTimeout = navLimit
+		}
+	}
+
 	for attempt := 0; attempt <= retries; attempt++ {
 		if req.Limiter != nil {
 			_ = req.Limiter.Wait(context.Background(), req.URL)
 		}
 
-		result, err := f.fetchOnce(req)
+		result, err := f.fetchOnce(req, prof, navTimeout)
 		if err == nil {
 			return result, nil
 		}
@@ -41,7 +49,7 @@ func (f *PlaywrightFetcher) Fetch(req Request) (Result, error) {
 	return Result{}, errors.New("max retries exceeded")
 }
 
-func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
+func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeout time.Duration) (Result, error) {
 	pw, err := playwright.Run()
 	if err != nil {
 		return Result{}, err
@@ -85,6 +93,27 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 		_ = ctx.Close()
 	}()
 
+	if len(prof.Block.URLPatterns) > 0 || len(prof.Block.ResourceTypes) > 0 {
+		for _, pattern := range prof.Block.URLPatterns {
+			_ = ctx.Route(pattern, func(route playwright.Route) {
+				_ = route.Abort("blockedbyclient")
+			})
+		}
+		if len(prof.Block.ResourceTypes) > 0 {
+			_ = ctx.Route("**/*", func(route playwright.Route) {
+				req := route.Request()
+				resType := req.ResourceType()
+				for _, blockType := range prof.Block.ResourceTypes {
+					if isBlockedType(resType, blockType) {
+						_ = route.Abort("blockedbyclient")
+						return
+					}
+				}
+				_ = route.Continue()
+			})
+		}
+	}
+
 	if len(req.Auth.Cookies) > 0 {
 		u, parseErr := url.Parse(req.URL)
 		if parseErr == nil {
@@ -115,12 +144,14 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 		_ = page.Close()
 	}()
 
-	timeoutMs := float64(req.Timeout.Milliseconds())
-	if timeoutMs <= 0 {
-		timeoutMs = 30000
+	timeoutFloat := float64(req.Timeout.Milliseconds())
+	navTimeoutFloat := float64(navTimeout.Milliseconds())
+	if timeoutFloat <= 0 {
+		timeoutFloat = 30000
+		navTimeoutFloat = 30000
 	}
-	page.SetDefaultTimeout(timeoutMs)
-	page.SetDefaultNavigationTimeout(timeoutMs)
+	page.SetDefaultTimeout(timeoutFloat)
+	page.SetDefaultNavigationTimeout(navTimeoutFloat)
 
 	waitUntil := playwright.WaitUntilStateCommit
 
@@ -128,7 +159,7 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 		if req.Auth.LoginUserSelector == "" || req.Auth.LoginPassSelector == "" || req.Auth.LoginSubmitSelector == "" {
 			return Result{}, errors.New("login selectors are required for headless login")
 		}
-		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: waitUntil}); err != nil {
+		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
 			return Result{}, err
 		}
 		if err = page.Fill(req.Auth.LoginUserSelector, req.Auth.LoginUser); err != nil {
@@ -140,16 +171,29 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 		if err = page.Click(req.Auth.LoginSubmitSelector); err != nil {
 			return Result{}, err
 		}
-		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutMs}); err != nil {
+		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutFloat}); err != nil {
 			return Result{}, err
 		}
 	}
 
-	if _, err = page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: waitUntil}); err != nil {
+	resp, err := page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &navTimeoutFloat, WaitUntil: waitUntil})
+	if err != nil {
 		return Result{}, err
 	}
-	_ = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutMs})
-	time.Sleep(5 * time.Second)
+
+	statusCode := 200
+	if resp != nil {
+		statusCode = resp.Status()
+	}
+
+	if err := f.performWait(page, prof.Wait, timeoutFloat); err != nil {
+		return Result{}, err
+	}
+
+	if prof.Wait.ExtraSleepMs > 0 {
+		time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)
+	}
+
 	content, err := page.Content()
 	if err != nil {
 		return Result{}, err
@@ -157,8 +201,76 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 
 	return Result{
 		URL:       req.URL,
-		Status:    200,
+		Status:    statusCode,
 		HTML:      content,
 		FetchedAt: time.Now(),
+		Engine:    RenderEnginePlaywright,
 	}, nil
+}
+
+func (f *PlaywrightFetcher) performWait(page playwright.Page, policy RenderWaitPolicy, timeout float64) error {
+	if err := page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded}); err != nil {
+		return err
+	}
+
+	switch policy.Mode {
+	case RenderWaitModeNetworkIdle:
+		return page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateNetworkidle, Timeout: &timeout})
+	case RenderWaitModeSelector:
+		if policy.Selector != "" {
+			_, err := page.WaitForSelector(policy.Selector, playwright.PageWaitForSelectorOptions{State: playwright.WaitForSelectorStateVisible, Timeout: &timeout})
+			return err
+		}
+	case RenderWaitModeStability:
+		return f.waitForStability(page, policy)
+	}
+	return nil
+}
+
+func (f *PlaywrightFetcher) waitForStability(page playwright.Page, policy RenderWaitPolicy) error {
+	pollMs := policy.StabilityPollMs
+	if pollMs <= 0 {
+		pollMs = 200
+	}
+	minLen := policy.MinTextLength
+	target := policy.StabilityIterations
+	if target <= 0 {
+		target = 3
+	}
+
+	lastLen := 0
+	stable := 0
+
+	for i := 0; i < 20; i++ {
+		s, err := page.InnerText("body")
+		if err != nil {
+			return err
+		}
+		curLen := len(s)
+		if curLen >= minLen && curLen == lastLen {
+			stable++
+		} else {
+			stable = 0
+		}
+		if stable >= target {
+			return nil
+		}
+		lastLen = curLen
+		time.Sleep(time.Duration(pollMs) * time.Millisecond)
+	}
+	return nil
+}
+
+func isBlockedType(resType string, blockType BlockedResourceType) bool {
+	switch blockType {
+	case BlockedResourceImage:
+		return resType == "image"
+	case BlockedResourceMedia:
+		return resType == "media"
+	case BlockedResourceFont:
+		return resType == "font"
+	case BlockedResourceStylesheet:
+		return resType == "stylesheet"
+	}
+	return false
 }

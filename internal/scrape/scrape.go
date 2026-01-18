@@ -17,6 +17,7 @@ type Request struct {
 	Limiter       *fetch.HostLimiter
 	MaxRetries    int
 	RetryBase     time.Duration
+	DataDir       string
 }
 
 type Result struct {
@@ -29,7 +30,7 @@ type Result struct {
 }
 
 func Run(req Request) (Result, error) {
-	fetcher := fetch.NewFetcher(req.Headless, req.UsePlaywright)
+	fetcher := fetch.NewFetcher()
 
 	res, err := fetcher.Fetch(fetch.Request{
 		URL:            req.URL,
@@ -41,6 +42,7 @@ func Run(req Request) (Result, error) {
 		Limiter:        req.Limiter,
 		MaxRetries:     req.MaxRetries,
 		RetryBaseDelay: req.RetryBase,
+		DataDir:        req.DataDir,
 	})
 	if err != nil {
 		return Result{}, err

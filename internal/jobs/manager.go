@@ -182,6 +182,7 @@ func (m *Manager) run(job model.Job) error {
 			Limiter:       m.limiter,
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
+			DataDir:       m.dataDir,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -210,6 +211,7 @@ func (m *Manager) run(job model.Job) error {
 			Limiter:       m.limiter,
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
+			DataDir:       m.dataDir,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -242,6 +244,7 @@ func (m *Manager) run(job model.Job) error {
 			Limiter:       m.limiter,
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
+			DataDir:       m.dataDir,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())

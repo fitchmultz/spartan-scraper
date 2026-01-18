@@ -132,20 +132,29 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 
 func runOK(t *testing.T, env []string, args ...string) {
 	t.Helper()
-	cmd := exec.Command(spartanPath, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, spartanPath, args...)
 	cmd.Dir = projectRoot
 	cmd.Env = append(os.Environ(), env...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			t.Fatalf("command timed out after 120s: %v\n%s", err, out.String())
+		}
 		t.Fatalf("command failed: %v\n%s", err, out.String())
 	}
 }
 
 func runMCP(t *testing.T, env []string, lines []string) string {
 	t.Helper()
-	cmd := exec.Command(spartanPath, "mcp")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, spartanPath, "mcp")
 	cmd.Dir = projectRoot
 	cmd.Env = append(os.Environ(), env...)
 	stdin, err := cmd.StdinPipe()
@@ -160,12 +169,26 @@ func runMCP(t *testing.T, env []string, lines []string) string {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start mcp: %v", err)
 	}
-	for _, line := range lines {
-		_, _ = io.WriteString(stdin, line+"\n")
+
+	go func() {
+		defer stdin.Close()
+		for _, line := range lines {
+			if _, err := io.WriteString(stdin, line+"\n"); err != nil {
+				return
+			}
+		}
+	}()
+
+	out, err := io.ReadAll(stdout)
+	if err != nil {
+		t.Fatalf("read stdout: %v", err)
 	}
-	_ = stdin.Close()
-	out, _ := io.ReadAll(stdout)
-	_ = cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			t.Fatalf("mcp timed out: %v", err)
+		}
+		t.Fatalf("mcp failed: %v", err)
+	}
 	return string(out)
 }
 

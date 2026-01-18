@@ -91,6 +91,7 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 			Status:    resp.StatusCode,
 			HTML:      string(body),
 			FetchedAt: time.Now(),
+			Engine:    RenderEngineHTTP,
 		}, nil
 	}
 

@@ -25,6 +25,7 @@ type Request struct {
 	Limiter       *fetch.HostLimiter
 	MaxRetries    int
 	RetryBase     time.Duration
+	DataDir       string
 }
 
 type Evidence struct {
@@ -62,6 +63,7 @@ func Run(req Request) (Result, error) {
 				Limiter:       req.Limiter,
 				MaxRetries:    req.MaxRetries,
 				RetryBase:     req.RetryBase,
+				DataDir:       req.DataDir,
 			})
 			if err != nil {
 				continue
@@ -88,6 +90,7 @@ func Run(req Request) (Result, error) {
 			Limiter:       req.Limiter,
 			MaxRetries:    req.MaxRetries,
 			RetryBase:     req.RetryBase,
+			DataDir:       req.DataDir,
 		})
 		if err != nil {
 			continue

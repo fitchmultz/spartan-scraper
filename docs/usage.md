@@ -65,10 +65,41 @@ Auth flags match `scrape`.
 
 Persist auth profiles (stored at `DATA_DIR/profiles.json`).
 
-```
-spartan auth list
-spartan auth set --name <profile> [auth flags...]
-spartan auth delete --name <profile>
+  - `spartan auth list`
+  - `spartan auth set --name <profile> [auth flags...]`
+  - `spartan auth delete --name <profile>`
+
+### Render Profiles
+
+To customize rendering behavior per site (e.g., forcing headless, increasing timeouts, blocking resources), create a `render_profiles.json` in your `DATA_DIR` (default `.data`).
+
+**Schema example (`.data/render_profiles.json`):**
+
+```json
+{
+  "profiles": [
+    {
+      "name": "complex-spa",
+      "hostPatterns": ["*.example-spa.com", "app.example.com"],
+      "forceEngine": "chromedp",
+      "wait": {
+        "mode": "network_idle",
+        "networkIdleQuietMs": 500
+      },
+      "block": {
+        "resourceTypes": ["image", "font", "media"]
+      }
+    },
+    {
+      "name": "slow-loader",
+      "hostPatterns": ["slow.com"],
+      "timeouts": {
+        "maxRenderMs": 60000
+      },
+      "preferHeadless": true
+    }
+  ]
+}
 ```
 
 ### export
