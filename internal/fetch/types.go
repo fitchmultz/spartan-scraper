@@ -112,22 +112,26 @@ type AuthOptions struct {
 }
 
 type Request struct {
-	URL            string
-	Timeout        time.Duration
-	UserAgent      string
-	Headless       bool
-	UsePlaywright  bool
-	Auth           AuthOptions
-	Limiter        *HostLimiter
-	MaxRetries     int
-	RetryBaseDelay time.Duration
-	DataDir        string `json:"-"` // New field for profiles
+	URL             string
+	Timeout         time.Duration
+	UserAgent       string
+	Headless        bool
+	UsePlaywright   bool
+	Auth            AuthOptions
+	Limiter         *HostLimiter
+	MaxRetries      int
+	RetryBaseDelay  time.Duration
+	IfNoneMatch     string `json:"-"`
+	IfModifiedSince string `json:"-"`
+	DataDir         string `json:"-"` // New field for profiles
 }
 
 type Result struct {
-	URL       string
-	Status    int
-	HTML      string
-	FetchedAt time.Time
-	Engine    RenderEngine `json:"-"` // New field
+	URL          string
+	Status       int
+	HTML         string
+	FetchedAt    time.Time
+	ETag         string       `json:"-"`
+	LastModified string       `json:"-"`
+	Engine       RenderEngine `json:"-"` // New field
 }

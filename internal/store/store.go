@@ -49,6 +49,13 @@ func (s *Store) init() error {
 			result_path text,
 			error text
 		);
+		create table if not exists crawl_states (
+			url text primary key,
+			etag text,
+			last_modified text,
+			content_hash text,
+			last_scraped text
+		);
 	`)
 	return err
 }
@@ -57,7 +64,7 @@ func (s *Store) Create(job model.Job) error {
 	params, _ := json.Marshal(job.Params)
 	_, err := s.db.Exec(
 		`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
-		 values (?, ?, ?, ?, ?, ?, ?, ?)`,
+			values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.ID,
 		job.Kind,
 		job.Status,
@@ -120,6 +127,38 @@ func (s *Store) List() ([]model.Job, error) {
 		results = append(results, job)
 	}
 	return results, nil
+}
+
+func (s *Store) GetCrawlState(url string) (model.CrawlState, error) {
+	row := s.db.QueryRow(`select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`, url)
+	var state model.CrawlState
+	var lastScraped string
+	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped); err != nil {
+		if err == sql.ErrNoRows {
+			return model.CrawlState{}, nil
+		}
+		return model.CrawlState{}, err
+	}
+	state.LastScraped, _ = time.Parse(time.RFC3339Nano, lastScraped)
+	return state, nil
+}
+
+func (s *Store) UpsertCrawlState(state model.CrawlState) error {
+	_, err := s.db.Exec(
+		`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped)
+		values (?, ?, ?, ?, ?)
+		on conflict(url) do update set
+			etag = excluded.etag,
+			last_modified = excluded.last_modified,
+			content_hash = excluded.content_hash,
+			last_scraped = excluded.last_scraped`,
+		state.URL,
+		state.ETag,
+		state.LastModified,
+		state.ContentHash,
+		state.LastScraped.Format(time.RFC3339Nano),
+	)
+	return err
 }
 
 func (s *Store) Close() error {

@@ -72,6 +72,7 @@ func runScrape(cfg config.Config) int {
 	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
+	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
 
 	extractTemplate := fs.String("extract-template", "", "Extraction template name")
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
@@ -155,7 +156,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts)
+	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -265,6 +266,7 @@ func runCrawl(cfg config.Config) int {
 	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
+	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
 
 	extractTemplate := fs.String("extract-template", "", "Extraction template name")
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
@@ -330,7 +332,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts)
+	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -378,6 +380,7 @@ func runResearch(cfg config.Config) int {
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
+	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
 
 	extractTemplate := fs.String("extract-template", "", "Extraction template name")
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
@@ -445,7 +448,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts)
+	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

@@ -159,6 +159,9 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+        incremental:
+          type: boolean
+          default: false
     CrawlRequest:
       type: object
       required: [url]
@@ -184,6 +187,9 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+        incremental:
+          type: boolean
+          default: false
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -213,6 +219,9 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+        incremental:
+          type: boolean
+          default: false
     Job:
       type: object
       properties:

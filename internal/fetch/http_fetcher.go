@@ -42,6 +42,12 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 		if req.UserAgent != "" {
 			httpReq.Header.Set("User-Agent", req.UserAgent)
 		}
+		if req.IfNoneMatch != "" {
+			httpReq.Header.Set("If-None-Match", req.IfNoneMatch)
+		}
+		if req.IfModifiedSince != "" {
+			httpReq.Header.Set("If-Modified-Since", req.IfModifiedSince)
+		}
 		for k, v := range req.Auth.Headers {
 			httpReq.Header.Set(k, v)
 		}
@@ -65,6 +71,19 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 			}
 			time.Sleep(backoff(baseDelay, attempt))
 			continue
+		}
+
+		if resp.StatusCode == http.StatusNotModified {
+			_ = resp.Body.Close()
+			return Result{
+				URL:          req.URL,
+				Status:       resp.StatusCode,
+				HTML:         "",
+				FetchedAt:    time.Now(),
+				Engine:       RenderEngineHTTP,
+				ETag:         resp.Header.Get("ETag"),
+				LastModified: resp.Header.Get("Last-Modified"),
+			}, nil
 		}
 
 		body, readErr := io.ReadAll(resp.Body)

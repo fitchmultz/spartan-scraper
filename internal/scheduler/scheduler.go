@@ -70,7 +70,8 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		headless := boolParam(schedule.Params, "headless")
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
+		incremental := boolParam(schedule.Params, "incremental")
+		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -82,7 +83,8 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
+		incremental := boolParam(schedule.Params, "incremental")
+		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -95,7 +97,8 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
+		incremental := boolParam(schedule.Params, "incremental")
+		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
 			return err
 		}

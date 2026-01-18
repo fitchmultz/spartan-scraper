@@ -200,7 +200,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
+		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}
@@ -225,7 +225,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
+		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}
@@ -251,7 +251,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
+		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}

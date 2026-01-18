@@ -79,7 +79,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
-func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -87,12 +87,13 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"url":        url,
-			"headless":   headless,
-			"playwright": usePlaywright,
-			"auth":       auth,
-			"extract":    extractOpts,
-			"timeout":    timeoutSeconds,
+			"url":         url,
+			"headless":    headless,
+			"playwright":  usePlaywright,
+			"auth":        auth,
+			"extract":     extractOpts,
+			"timeout":     timeoutSeconds,
+			"incremental": incremental,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -102,7 +103,7 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 	return job, nil
 }
 
-func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -110,14 +111,15 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"url":        url,
-			"maxDepth":   maxDepth,
-			"maxPages":   maxPages,
-			"headless":   headless,
-			"playwright": usePlaywright,
-			"auth":       auth,
-			"extract":    extractOpts,
-			"timeout":    timeoutSeconds,
+			"url":         url,
+			"maxDepth":    maxDepth,
+			"maxPages":    maxPages,
+			"headless":    headless,
+			"playwright":  usePlaywright,
+			"auth":        auth,
+			"extract":     extractOpts,
+			"timeout":     timeoutSeconds,
+			"incremental": incremental,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -127,7 +129,7 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 	return job, nil
 }
 
-func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
+func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -135,15 +137,16 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"query":      query,
-			"urls":       urls,
-			"maxDepth":   maxDepth,
-			"maxPages":   maxPages,
-			"headless":   headless,
-			"playwright": usePlaywright,
-			"auth":       auth,
-			"extract":    extractOpts,
-			"timeout":    timeoutSeconds,
+			"query":       query,
+			"urls":        urls,
+			"maxDepth":    maxDepth,
+			"maxPages":    maxPages,
+			"headless":    headless,
+			"playwright":  usePlaywright,
+			"auth":        auth,
+			"extract":     extractOpts,
+			"timeout":     timeoutSeconds,
+			"incremental": incremental,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -177,6 +180,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		incremental := toBool(job.Params["incremental"], false)
 		result, err := scrape.Run(scrape.Request{
 			URL:           url,
 			Headless:      headless,
@@ -189,6 +193,8 @@ func (m *Manager) run(job model.Job) error {
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
 			DataDir:       m.dataDir,
+			Incremental:   incremental,
+			Store:         m.store,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -205,6 +211,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		incremental := toBool(job.Params["incremental"], false)
 		results, err := crawl.Run(crawl.Request{
 			URL:           url,
 			MaxDepth:      maxDepth,
@@ -220,6 +227,8 @@ func (m *Manager) run(job model.Job) error {
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
 			DataDir:       m.dataDir,
+			Incremental:   incremental,
+			Store:         m.store,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -239,6 +248,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(research.Request{
 			Query:         query,
 			URLs:          urls,
@@ -255,6 +265,8 @@ func (m *Manager) run(job model.Job) error {
 			MaxRetries:    m.maxRetries,
 			RetryBase:     m.retryBase,
 			DataDir:       m.dataDir,
+			Incremental:   incremental,
+			Store:         m.store,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())

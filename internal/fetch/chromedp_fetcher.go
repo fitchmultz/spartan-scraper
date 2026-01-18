@@ -154,11 +154,13 @@ func (f *ChromedpFetcher) doFetch(req Request, prof RenderProfile, timeout time.
 	}
 
 	return Result{
-		URL:       req.URL,
-		Status:    200, // Chromedp doesn't easily give status on navigation without ListenTarget
-		HTML:      html,
-		FetchedAt: time.Now(),
-		Engine:    RenderEngineChromedp,
+		URL:          req.URL,
+		Status:       200, // Chromedp doesn't easily give status on navigation without ListenTarget
+		HTML:         html,
+		FetchedAt:    time.Now(),
+		Engine:       RenderEngineChromedp,
+		ETag:         "", // Headless browsers don't easily expose response headers without complex interception
+		LastModified: "",
 	}, nil
 }
 

@@ -200,11 +200,13 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 	}
 
 	return Result{
-		URL:       req.URL,
-		Status:    statusCode,
-		HTML:      content,
-		FetchedAt: time.Now(),
-		Engine:    RenderEnginePlaywright,
+		URL:          req.URL,
+		Status:       statusCode,
+		HTML:         content,
+		FetchedAt:    time.Now(),
+		Engine:       RenderEnginePlaywright,
+		ETag:         "", // Headless browsers don't easily expose response headers without complex interception.
+		LastModified: "",
 	}, nil
 }
 

@@ -24,6 +24,7 @@ type ScrapeRequest struct {
 	TimeoutSeconds int                     `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Incremental    *bool                   `json:"incremental"`
 }
 
 type CrawlRequest struct {
@@ -35,6 +36,7 @@ type CrawlRequest struct {
 	TimeoutSeconds int                     `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Incremental    *bool                   `json:"incremental"`
 }
 
 type ResearchRequest struct {
@@ -47,6 +49,7 @@ type ResearchRequest struct {
 	TimeoutSeconds int                     `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Incremental    *bool                   `json:"incremental"`
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store) *Server {
@@ -84,6 +87,11 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	incremental := false
+	if req.Incremental != nil {
+		incremental = *req.Incremental
+	}
+
 	auth := fetch.AuthOptions{}
 	if req.Auth != nil {
 		auth = *req.Auth
@@ -102,7 +110,7 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, auth, timeout, extractOpts)
+	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, auth, timeout, extractOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -127,6 +135,11 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	incremental := false
+	if req.Incremental != nil {
+		incremental = *req.Incremental
+	}
+
 	auth := fetch.AuthOptions{}
 	if req.Auth != nil {
 		auth = *req.Auth
@@ -145,7 +158,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts)
+	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -170,6 +183,11 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	incremental := false
+	if req.Incremental != nil {
+		incremental = *req.Incremental
+	}
+
 	auth := fetch.AuthOptions{}
 	if req.Auth != nil {
 		auth = *req.Auth
@@ -188,7 +206,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts)
+	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

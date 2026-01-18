@@ -2,6 +2,8 @@ package crawl
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/url"
 	"strings"
 	"sync"
@@ -10,6 +12,7 @@ import (
 
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/model"
 )
 
 type Request struct {
@@ -27,6 +30,13 @@ type Request struct {
 	MaxRetries    int
 	RetryBase     time.Duration
 	DataDir       string
+	Incremental   bool
+	Store         CrawlStateStore
+}
+
+type CrawlStateStore interface {
+	GetCrawlState(url string) (model.CrawlState, error)
+	UpsertCrawlState(state model.CrawlState) error
 }
 
 type PageResult struct {
@@ -61,6 +71,107 @@ func Run(req Request) ([]PageResult, error) {
 	type task struct {
 		URL   string
 		Depth int
+	}
+
+	processPage := func(item task) (PageResult, bool, bool) {
+		// Check state if incremental
+		var state model.CrawlState
+		var ifNoneMatch, ifModifiedSince string
+
+		if req.Incremental && req.Store != nil {
+			existingState, err := req.Store.GetCrawlState(item.URL)
+			if err == nil {
+				state = existingState
+				ifNoneMatch = state.ETag
+				ifModifiedSince = state.LastModified
+			}
+		}
+
+		fetchReq := fetch.Request{
+			URL:             item.URL,
+			Timeout:         req.Timeout,
+			UserAgent:       req.UserAgent,
+			Headless:        req.Headless,
+			UsePlaywright:   req.UsePlaywright,
+			Auth:            req.Auth,
+			Limiter:         req.Limiter,
+			MaxRetries:      req.MaxRetries,
+			RetryBaseDelay:  req.RetryBase,
+			DataDir:         req.DataDir,
+			IfNoneMatch:     ifNoneMatch,
+			IfModifiedSince: ifModifiedSince,
+		}
+
+		res, err := fetcher.Fetch(fetchReq)
+		if err != nil {
+			return PageResult{}, false, false // Don't enqueue children if fetch failed
+		}
+		if res.Status >= 400 {
+			return PageResult{}, false, false
+		}
+
+		// Check 304 or Hash Match
+		isUnchanged := res.Status == 304
+		var currentHash string
+		if !isUnchanged {
+			sum := sha256.Sum256([]byte(res.HTML))
+			currentHash = hex.EncodeToString(sum[:])
+			if req.Incremental && state.ContentHash == currentHash && state.ContentHash != "" {
+				isUnchanged = true
+			}
+		}
+
+		if isUnchanged {
+			// Update LastScraped timestamp
+			if req.Incremental && req.Store != nil {
+				state.LastScraped = time.Now()
+				_ = req.Store.UpsertCrawlState(state)
+			}
+			// Return a page result indicating it was skipped
+			return PageResult{
+				URL:    item.URL,
+				Status: 304,
+			}, false, true // skip processing/extracting
+		}
+
+		// If changed (or first run), extract and save state
+		output, extractErr := extract.Execute(extract.ExecuteInput{
+			URL:     item.URL,
+			HTML:    res.HTML,
+			Options: req.Extract,
+			DataDir: req.DataDir,
+		})
+		if extractErr != nil {
+			return PageResult{}, false, false
+		}
+
+		// Update state
+		if req.Incremental && req.Store != nil {
+			newState := model.CrawlState{
+				URL:          item.URL,
+				ETag:         res.ETag,
+				LastModified: res.LastModified,
+				ContentHash:  currentHash,
+				LastScraped:  time.Now(),
+			}
+			_ = req.Store.UpsertCrawlState(newState)
+		}
+
+		return PageResult{
+			URL:    item.URL,
+			Status: res.Status,
+			Title:  output.Normalized.Title,
+			Text:   output.Normalized.Text,
+			Links:  output.Normalized.Links,
+			Metadata: extract.Result{
+				Title:       output.Normalized.Title,
+				Description: output.Normalized.Description,
+				Text:        output.Normalized.Text,
+				Links:       output.Normalized.Links,
+			},
+			Extracted:  output.Extracted,
+			Normalized: output.Normalized,
+		}, true, false
 	}
 
 	tasks := make(chan task, req.MaxPages)
@@ -106,60 +217,29 @@ func Run(req Request) ([]PageResult, error) {
 					continue
 				}
 
-				res, err := fetcher.Fetch(fetch.Request{
-					URL:            item.URL,
-					Timeout:        req.Timeout,
-					UserAgent:      req.UserAgent,
-					Headless:       req.Headless,
-					UsePlaywright:  req.UsePlaywright,
-					Auth:           req.Auth,
-					Limiter:        req.Limiter,
-					MaxRetries:     req.MaxRetries,
-					RetryBaseDelay: req.RetryBase,
-					DataDir:        req.DataDir,
-				})
-				if err == nil {
-					if res.Status >= 400 {
-						wg.Done()
-						continue
-					}
-					output, extractErr := extract.Execute(extract.ExecuteInput{
-						URL:     res.URL,
-						HTML:    res.HTML,
-						Options: req.Extract,
-						DataDir: req.DataDir,
-					})
-					if extractErr == nil {
-						if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
-							results <- PageResult{
-								URL:    item.URL,
-								Status: res.Status,
-								Title:  output.Normalized.Title,
-								Text:   output.Normalized.Text,
-								Links:  output.Normalized.Links,
-								Metadata: extract.Result{
-									Title:       output.Normalized.Title,
-									Description: output.Normalized.Description,
-									Text:        output.Normalized.Text,
-									Links:       output.Normalized.Links,
-								},
-								Extracted:  output.Extracted,
-								Normalized: output.Normalized,
-							}
-						}
+				res, enqueueChildren, skipped := processPage(item)
+				if skipped || res.URL == "" {
+					wg.Done()
+					continue
+				}
 
-						if item.Depth < req.MaxDepth {
-							for _, href := range output.Normalized.Links {
-								resolved := resolveURL(startURL, href)
-								if resolved == "" {
-									continue
-								}
-								if !sameHost(startURL, resolved) {
-									continue
-								}
-								enqueue(resolved, item.Depth+1)
-							}
+				if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
+					results <- res
+				} else {
+					wg.Done()
+					continue
+				}
+
+				if enqueueChildren && item.Depth < req.MaxDepth {
+					for _, href := range res.Links {
+						resolved := resolveURL(startURL, href)
+						if resolved == "" {
+							continue
 						}
+						if !sameHost(startURL, resolved) {
+							continue
+						}
+						enqueue(resolved, item.Depth+1)
 					}
 				}
 

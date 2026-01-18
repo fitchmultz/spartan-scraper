@@ -42,6 +42,7 @@ export type ScrapeRequest = {
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
+    incremental?: boolean;
 };
 
 export type CrawlRequest = {
@@ -53,6 +54,7 @@ export type CrawlRequest = {
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
+    incremental?: boolean;
 };
 
 export type ResearchRequest = {
@@ -65,6 +67,7 @@ export type ResearchRequest = {
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
+    incremental?: boolean;
 };
 
 export type Job = {

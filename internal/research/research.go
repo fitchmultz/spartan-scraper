@@ -28,6 +28,8 @@ type Request struct {
 	MaxRetries    int
 	RetryBase     time.Duration
 	DataDir       string
+	Incremental   bool
+	Store         scrape.CrawlStateStore
 }
 
 type Evidence struct {
@@ -51,6 +53,7 @@ func Run(req Request) (Result, error) {
 		if strings.TrimSpace(target) == "" {
 			continue
 		}
+
 		if req.MaxDepth > 0 {
 			pages, err := crawl.Run(crawl.Request{
 				URL:           target,
@@ -67,46 +70,51 @@ func Run(req Request) (Result, error) {
 				MaxRetries:    req.MaxRetries,
 				RetryBase:     req.RetryBase,
 				DataDir:       req.DataDir,
+				Incremental:   req.Incremental,
+				Store:         req.Store,
 			})
 			if err != nil {
 				continue
 			}
 			for _, page := range pages {
-				// Use Normalized.Text for snippets if available (it is in PageResult)
-				// PageResult Text is populated from Normalized.Text.
-				snippet := makeSnippet(page.Text)
+				if page.Status == 304 {
+					continue
+				}
 				items = append(items, Evidence{
 					URL:     page.URL,
 					Title:   page.Title,
-					Snippet: snippet,
+					Snippet: makeSnippet(page.Text),
 					Score:   scoreText(queryTokens, page.Text),
 				})
 			}
-			continue
+		} else {
+			res, err := scrape.Run(scrape.Request{
+				URL:           target,
+				Headless:      req.Headless,
+				UsePlaywright: req.UsePlaywright,
+				Auth:          req.Auth,
+				Extract:       req.Extract,
+				Timeout:       req.Timeout,
+				UserAgent:     req.UserAgent,
+				Limiter:       req.Limiter,
+				MaxRetries:    req.MaxRetries,
+				RetryBase:     req.RetryBase,
+				DataDir:       req.DataDir,
+				Incremental:   req.Incremental,
+				Store:         req.Store,
+			})
+			if err != nil {
+				continue
+			}
+			if res.Status != 304 {
+				items = append(items, Evidence{
+					URL:     res.URL,
+					Title:   res.Title,
+					Snippet: makeSnippet(res.Text),
+					Score:   scoreText(queryTokens, res.Text),
+				})
+			}
 		}
-
-		page, err := scrape.Run(scrape.Request{
-			URL:           target,
-			Headless:      req.Headless,
-			UsePlaywright: req.UsePlaywright,
-			Auth:          req.Auth,
-			Extract:       req.Extract,
-			Timeout:       req.Timeout,
-			UserAgent:     req.UserAgent,
-			Limiter:       req.Limiter,
-			MaxRetries:    req.MaxRetries,
-			RetryBase:     req.RetryBase,
-			DataDir:       req.DataDir,
-		})
-		if err != nil {
-			continue
-		}
-		items = append(items, Evidence{
-			URL:     page.URL,
-			Title:   page.Title,
-			Snippet: makeSnippet(page.Text),
-			Score:   scoreText(queryTokens, page.Text),
-		})
 	}
 
 	sort.Slice(items, func(i, j int) bool {
@@ -161,7 +169,7 @@ func summarize(tokens []string, items []Evidence) string {
 		max = len(items)
 	}
 
-	sentences := make([]string, 0)
+	sentences := make([]string, 0, len(items))
 	for _, item := range items {
 		sentences = append(sentences, splitSentences(item.Snippet)...)
 		if len(sentences) > 40 {
