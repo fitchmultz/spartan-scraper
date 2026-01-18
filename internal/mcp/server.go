@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"spartan-scraper/internal/config"
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/store"
@@ -136,17 +137,17 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless)",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "crawl_site",
 			Description: "Crawl a site with depth and page limits",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "research",
 			Description: "Deep research across multiple sources",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "job_status",
@@ -195,7 +196,11 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		headless := getBool(params.Arguments, "headless")
 		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout)
+		extractOpts := extract.ExtractOptions{
+			Template: getString(params.Arguments, "extractTemplate"),
+			Validate: getBool(params.Arguments, "extractValidate"),
+		}
+		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +221,11 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		headless := getBool(params.Arguments, "headless")
 		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout)
+		extractOpts := extract.ExtractOptions{
+			Template: getString(params.Arguments, "extractTemplate"),
+			Validate: getBool(params.Arguments, "extractValidate"),
+		}
+		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +247,11 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		headless := getBool(params.Arguments, "headless")
 		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout)
+		extractOpts := extract.ExtractOptions{
+			Template: getString(params.Arguments, "extractTemplate"),
+			Validate: getBool(params.Arguments, "extractValidate"),
+		}
+		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts)
 		if err != nil {
 			return nil, err
 		}

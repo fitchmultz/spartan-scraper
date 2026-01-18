@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"spartan-scraper/internal/crawl"
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/research"
@@ -78,7 +79,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
-func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -90,6 +91,7 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 			"headless":   headless,
 			"playwright": usePlaywright,
 			"auth":       auth,
+			"extract":    extractOpts,
 			"timeout":    timeoutSeconds,
 		},
 	}
@@ -100,7 +102,7 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 	return job, nil
 }
 
-func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -114,6 +116,7 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 			"headless":   headless,
 			"playwright": usePlaywright,
 			"auth":       auth,
+			"extract":    extractOpts,
 			"timeout":    timeoutSeconds,
 		},
 	}
@@ -124,7 +127,7 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 	return job, nil
 }
 
-func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -139,6 +142,7 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 			"headless":   headless,
 			"playwright": usePlaywright,
 			"auth":       auth,
+			"extract":    extractOpts,
 			"timeout":    timeoutSeconds,
 		},
 	}
@@ -172,11 +176,13 @@ func (m *Manager) run(job model.Job) error {
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
+		extractOpts := decodeExtract(job.Params["extract"])
 		result, err := scrape.Run(scrape.Request{
 			URL:           url,
 			Headless:      headless,
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
+			Extract:       extractOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -198,6 +204,7 @@ func (m *Manager) run(job model.Job) error {
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
+		extractOpts := decodeExtract(job.Params["extract"])
 		results, err := crawl.Run(crawl.Request{
 			URL:           url,
 			MaxDepth:      maxDepth,
@@ -206,6 +213,7 @@ func (m *Manager) run(job model.Job) error {
 			Headless:      headless,
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
+			Extract:       extractOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -230,6 +238,7 @@ func (m *Manager) run(job model.Job) error {
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
+		extractOpts := decodeExtract(job.Params["extract"])
 		result, err := research.Run(research.Request{
 			Query:         query,
 			URLs:          urls,
@@ -239,6 +248,7 @@ func (m *Manager) run(job model.Job) error {
 			Headless:      headless,
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
+			Extract:       extractOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -313,6 +323,24 @@ func decodeAuth(value interface{}) fetch.AuthOptions {
 		auth.Cookies = values
 	}
 	return auth
+}
+
+func decodeExtract(value interface{}) extract.ExtractOptions {
+	if value == nil {
+		return extract.ExtractOptions{}
+	}
+	if opts, ok := value.(extract.ExtractOptions); ok {
+		return opts
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return extract.ExtractOptions{}
+	}
+	var opts extract.ExtractOptions
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return extract.ExtractOptions{}
+	}
+	return opts
 }
 
 func toInt(value interface{}, fallback int) int {

@@ -1,11 +1,6 @@
 package extract
 
-import (
-	"strings"
-
-	"github.com/PuerkitoBio/goquery"
-)
-
+// Result is the legacy extraction result.
 type Result struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
@@ -13,28 +8,52 @@ type Result struct {
 	Links       []string `json:"links"`
 }
 
+// Execute runs the extraction pipeline.
+func Execute(input ExecuteInput) (ExecuteOutput, error) {
+	registry, err := LoadTemplateRegistry(input.DataDir)
+	if registry == nil {
+		// Fallback to built-ins if loading fails or returns nil
+		registry = &TemplateRegistry{Templates: make(map[string]Template)}
+	}
+	// Note: err from LoadTemplateRegistry is mostly for file read errors, we proceed with defaults/nil registry.
+
+	tmpl, err := ResolveTemplate(input.Options, registry)
+	if err != nil {
+		return ExecuteOutput{}, err
+	}
+
+	extracted, err := ApplyTemplate(input.URL, input.HTML, tmpl)
+	if err != nil {
+		return ExecuteOutput{}, err
+	}
+
+	normalized := Normalize(extracted, tmpl)
+
+	if input.Options.Validate && tmpl.Schema != nil {
+		validation := ValidateDocument(normalized, tmpl.Schema)
+		normalized.Validation = validation
+	}
+
+	return ExecuteOutput{
+		Extracted:  extracted,
+		Normalized: normalized,
+	}, nil
+}
+
+// FromHTML is a legacy helper that uses the default extraction template.
 func FromHTML(html string) (Result, error) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	output, err := Execute(ExecuteInput{
+		HTML:    html,
+		Options: ExtractOptions{Template: "default"},
+	})
 	if err != nil {
 		return Result{}, err
 	}
 
-	doc.Find("script,style,noscript").Remove()
-	text := strings.TrimSpace(doc.Find("body").Text())
-	text = strings.Join(strings.Fields(text), " ")
-
-	title := strings.TrimSpace(doc.Find("title").First().Text())
-	description := ""
-	if content, ok := doc.Find("meta[name=description]").Attr("content"); ok {
-		description = strings.TrimSpace(content)
-	}
-
-	links := make([]string, 0)
-	doc.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
-		if href, ok := s.Attr("href"); ok {
-			links = append(links, href)
-		}
-	})
-
-	return Result{Title: title, Description: description, Text: text, Links: links}, nil
+	return Result{
+		Title:       output.Normalized.Title,
+		Description: output.Normalized.Description,
+		Text:        output.Normalized.Text,
+		Links:       output.Normalized.Links,
+	}, nil
 }

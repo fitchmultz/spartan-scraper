@@ -16,6 +16,7 @@ import (
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/exporter"
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/mcp"
@@ -72,6 +73,10 @@ func runScrape(cfg config.Config) int {
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
 
+	extractTemplate := fs.String("extract-template", "", "Extraction template name")
+	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
+	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
+
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	loginURL := fs.String("login-url", "", "Login URL for headless auth")
 	loginUserSelector := fs.String("login-user-selector", "", "CSS selector for username input")
@@ -103,6 +108,12 @@ Options:
 	_ = fs.Parse(os.Args[2:])
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "--url is required")
+		return 1
+	}
+
+	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
@@ -144,7 +155,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout)
+	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -254,6 +265,11 @@ func runCrawl(cfg config.Config) int {
 	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
+
+	extractTemplate := fs.String("extract-template", "", "Extraction template name")
+	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
+	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
+
 	headers := stringSliceFlag{}
 	cookies := stringSliceFlag{}
 	fs.Var(&headers, "header", "Extra header (repeatable, Key: Value)")
@@ -274,6 +290,12 @@ Options:
 	_ = fs.Parse(os.Args[2:])
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "--url is required")
+		return 1
+	}
+
+	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
@@ -308,7 +330,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout)
+	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -356,6 +378,11 @@ func runResearch(cfg config.Config) int {
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
+
+	extractTemplate := fs.String("extract-template", "", "Extraction template name")
+	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
+	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
+
 	headerList := stringSliceFlag{}
 	cookieList := stringSliceFlag{}
 	fs.Var(&headerList, "header", "Extra header (repeatable, Key: Value)")
@@ -376,6 +403,12 @@ Options:
 	_ = fs.Parse(os.Args[2:])
 	if *query == "" || *urls == "" {
 		fmt.Fprintln(os.Stderr, "--query and --urls are required")
+		return 1
+	}
+
+	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
@@ -412,7 +445,7 @@ Options:
 		authOptions = merged
 	}
 
-	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout)
+	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -995,4 +1028,23 @@ func mergeAuthProfile(cfg config.Config, profileName string, override fetch.Auth
 		merged.LoginPass = override.LoginPass
 	}
 	return merged, nil
+}
+
+func loadExtractOptions(template, configPath string, validate bool) (extract.ExtractOptions, error) {
+	opts := extract.ExtractOptions{
+		Template: template,
+		Validate: validate,
+	}
+	if configPath != "" {
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			return extract.ExtractOptions{}, err
+		}
+		var tmpl extract.Template
+		if err := json.Unmarshal(data, &tmpl); err != nil {
+			return extract.ExtractOptions{}, fmt.Errorf("invalid template JSON: %w", err)
+		}
+		opts.Inline = &tmpl
+	}
+	return opts, nil
 }

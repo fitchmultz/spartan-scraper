@@ -103,6 +103,16 @@ paths:
                 type: string
 components:
   schemas:
+    ExtractOptions:
+      type: object
+      properties:
+        template:
+          type: string
+          description: Template name (e.g. "article", "product")
+        validate:
+          type: boolean
+          default: false
+          description: Validate extraction against schema if present
     AuthOptions:
       type: object
       properties:
@@ -144,6 +154,8 @@ components:
           default: false
         auth:
           $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
         timeoutSeconds:
           type: integer
           default: 30
@@ -167,6 +179,8 @@ components:
           default: false
         auth:
           $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
         timeoutSeconds:
           type: integer
           default: 30
@@ -194,6 +208,8 @@ components:
           default: false
         auth:
           $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
         timeoutSeconds:
           type: integer
           default: 30

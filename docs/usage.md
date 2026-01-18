@@ -69,6 +69,40 @@ Persist auth profiles (stored at `DATA_DIR/profiles.json`).
   - `spartan auth set --name <profile> [auth flags...]`
   - `spartan auth delete --name <profile>`
 
+### Extraction Templates
+
+Spartan supports structured extraction using templates. Templates define CSS selectors, JSON-LD extraction, Regex rules, and schema validation.
+
+**Built-in templates:**
+- `default`: Title, description, H1, meta tags.
+- `article`: Title, author, date, content, JSON-LD Article.
+- `product`: Name, price, currency, JSON-LD Product.
+
+**Usage:**
+```bash
+spartan scrape --url ... --extract-template product
+spartan scrape --url ... --extract-validate
+```
+
+**Custom Templates:**
+Create `DATA_DIR/extract_templates.json`:
+```json
+{
+  "templates": [
+    {
+      "name": "custom-blog",
+      "selectors": [
+        {"name": "title", "selector": "h1.entry-title", "attr": "text", "trim": true},
+        {"name": "author", "selector": ".author-name", "attr": "text"}
+      ],
+      "normalize": {
+        "titleField": "title"
+      }
+    }
+  ]
+}
+```
+
 ### Render Profiles
 
 To customize rendering behavior per site (e.g., forcing headless, increasing timeouts, blocking resources), create a `render_profiles.json` in your `DATA_DIR` (default `.data`).

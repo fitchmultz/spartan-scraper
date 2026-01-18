@@ -21,6 +21,8 @@ export function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(30);
   const [authBasic, setAuthBasic] = useState("");
   const [headersRaw, setHeadersRaw] = useState(defaultHeaders);
+  const [extractTemplate, setExtractTemplate] = useState("");
+  const [extractValidate, setExtractValidate] = useState(false);
   const [researchQuery, setResearchQuery] = useState("");
   const [researchUrls, setResearchUrls] = useState("");
   const [jobs, setJobs] = useState<JobEntry[]>([]);
@@ -79,6 +81,10 @@ export function App() {
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
+          extract: {
+            template: extractTemplate || undefined,
+            validate: extractValidate,
+          },
         },
       });
       if (apiError) {
@@ -111,6 +117,10 @@ export function App() {
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
+          extract: {
+            template: extractTemplate || undefined,
+            validate: extractValidate,
+          },
         },
       });
       if (apiError) {
@@ -144,6 +154,10 @@ export function App() {
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
+          extract: {
+            template: extractTemplate || undefined,
+            validate: extractValidate,
+          },
         },
       });
       if (apiError) {
@@ -260,6 +274,24 @@ export function App() {
             value={headersRaw}
             onChange={(event) => setHeadersRaw(event.target.value)}
           />
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Extract Template
+              <input
+                value={extractTemplate}
+                onChange={(e) => setExtractTemplate(e.target.value)}
+                placeholder="default, article, product..."
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={extractValidate}
+                onChange={(e) => setExtractValidate(e.target.checked)}
+              />{" "}
+              Validate Schema
+            </label>
+          </div>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
             <button type="button" onClick={() => void submitScrape()}>
               Deploy Scrape
@@ -496,10 +528,16 @@ export function App() {
               </div>
             ) : null}
             {rawResult ? (
-              <details style={{ marginTop: 12 }}>
-                <summary>Raw output</summary>
-                <pre>{rawResult}</pre>
-              </details>
+              <div style={{ marginTop: 12 }}>
+                <details>
+                  <summary>Normalized Data (First Item)</summary>
+                  <NormalizedView raw={rawResult} />
+                </details>
+                <details style={{ marginTop: 8 }}>
+                  <summary>Raw output</summary>
+                  <pre>{rawResult}</pre>
+                </details>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -510,6 +548,22 @@ export function App() {
       </div>
     </div>
   );
+}
+
+function NormalizedView({ raw }: { raw: string }) {
+  try {
+    const firstLine = raw.split("\n").find((line) => line.trim());
+    if (!firstLine) return null;
+    const data = JSON.parse(firstLine);
+    if (!data.normalized) return <div>No normalized data found.</div>;
+    return (
+      <pre style={{ background: "rgba(0, 50, 50, 0.3)" }}>
+        {JSON.stringify(data.normalized, null, 2)}
+      </pre>
+    );
+  } catch {
+    return <div>Failed to parse result.</div>;
+  }
 }
 
 function statusClass(status: string) {

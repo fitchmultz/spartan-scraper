@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/store"
@@ -17,32 +18,35 @@ type Server struct {
 }
 
 type ScrapeRequest struct {
-	URL            string             `json:"url"`
-	Headless       bool               `json:"headless"`
-	Playwright     *bool              `json:"playwright"`
-	TimeoutSeconds int                `json:"timeoutSeconds"`
-	Auth           *fetch.AuthOptions `json:"auth"`
+	URL            string                  `json:"url"`
+	Headless       bool                    `json:"headless"`
+	Playwright     *bool                   `json:"playwright"`
+	TimeoutSeconds int                     `json:"timeoutSeconds"`
+	Auth           *fetch.AuthOptions      `json:"auth"`
+	Extract        *extract.ExtractOptions `json:"extract"`
 }
 
 type CrawlRequest struct {
-	URL            string             `json:"url"`
-	MaxDepth       int                `json:"maxDepth"`
-	MaxPages       int                `json:"maxPages"`
-	Headless       bool               `json:"headless"`
-	Playwright     *bool              `json:"playwright"`
-	TimeoutSeconds int                `json:"timeoutSeconds"`
-	Auth           *fetch.AuthOptions `json:"auth"`
+	URL            string                  `json:"url"`
+	MaxDepth       int                     `json:"maxDepth"`
+	MaxPages       int                     `json:"maxPages"`
+	Headless       bool                    `json:"headless"`
+	Playwright     *bool                   `json:"playwright"`
+	TimeoutSeconds int                     `json:"timeoutSeconds"`
+	Auth           *fetch.AuthOptions      `json:"auth"`
+	Extract        *extract.ExtractOptions `json:"extract"`
 }
 
 type ResearchRequest struct {
-	Query          string             `json:"query"`
-	URLs           []string           `json:"urls"`
-	MaxDepth       int                `json:"maxDepth"`
-	MaxPages       int                `json:"maxPages"`
-	Headless       bool               `json:"headless"`
-	Playwright     *bool              `json:"playwright"`
-	TimeoutSeconds int                `json:"timeoutSeconds"`
-	Auth           *fetch.AuthOptions `json:"auth"`
+	Query          string                  `json:"query"`
+	URLs           []string                `json:"urls"`
+	MaxDepth       int                     `json:"maxDepth"`
+	MaxPages       int                     `json:"maxPages"`
+	Headless       bool                    `json:"headless"`
+	Playwright     *bool                   `json:"playwright"`
+	TimeoutSeconds int                     `json:"timeoutSeconds"`
+	Auth           *fetch.AuthOptions      `json:"auth"`
+	Extract        *extract.ExtractOptions `json:"extract"`
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store) *Server {
@@ -85,6 +89,11 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
+	extractOpts := extract.ExtractOptions{}
+	if req.Extract != nil {
+		extractOpts = *req.Extract
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -93,7 +102,7 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, auth, timeout)
+	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, auth, timeout, extractOpts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -123,6 +132,11 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
+	extractOpts := extract.ExtractOptions{}
+	if req.Extract != nil {
+		extractOpts = *req.Extract
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -131,7 +145,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout)
+	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,6 +175,11 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
+	extractOpts := extract.ExtractOptions{}
+	if req.Extract != nil {
+		extractOpts = *req.Extract
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -169,7 +188,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	if req.Playwright != nil {
 		usePlaywright = *req.Playwright
 	}
-	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout)
+	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout, extractOpts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

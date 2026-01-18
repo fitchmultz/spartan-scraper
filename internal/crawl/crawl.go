@@ -20,6 +20,7 @@ type Request struct {
 	Headless      bool
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
+	Extract       extract.ExtractOptions
 	Timeout       time.Duration
 	UserAgent     string
 	Limiter       *fetch.HostLimiter
@@ -29,12 +30,14 @@ type Request struct {
 }
 
 type PageResult struct {
-	URL      string         `json:"url"`
-	Status   int            `json:"status"`
-	Title    string         `json:"title"`
-	Text     string         `json:"text"`
-	Links    []string       `json:"links"`
-	Metadata extract.Result `json:"metadata"`
+	URL        string                     `json:"url"`
+	Status     int                        `json:"status"`
+	Title      string                     `json:"title"`
+	Text       string                     `json:"text"`
+	Links      []string                   `json:"links"`
+	Metadata   extract.Result             `json:"metadata"` // Legacy
+	Extracted  extract.Extracted          `json:"extracted"`
+	Normalized extract.NormalizedDocument `json:"normalized"`
 }
 
 func Run(req Request) ([]PageResult, error) {
@@ -120,21 +123,33 @@ func Run(req Request) ([]PageResult, error) {
 						wg.Done()
 						continue
 					}
-					extracted, extractErr := extract.FromHTML(res.HTML)
+					output, extractErr := extract.Execute(extract.ExecuteInput{
+						URL:     res.URL,
+						HTML:    res.HTML,
+						Options: req.Extract,
+						DataDir: req.DataDir,
+					})
 					if extractErr == nil {
 						if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
 							results <- PageResult{
-								URL:      item.URL,
-								Status:   res.Status,
-								Title:    extracted.Title,
-								Text:     extracted.Text,
-								Links:    extracted.Links,
-								Metadata: extracted,
+								URL:    item.URL,
+								Status: res.Status,
+								Title:  output.Normalized.Title,
+								Text:   output.Normalized.Text,
+								Links:  output.Normalized.Links,
+								Metadata: extract.Result{
+									Title:       output.Normalized.Title,
+									Description: output.Normalized.Description,
+									Text:        output.Normalized.Text,
+									Links:       output.Normalized.Links,
+								},
+								Extracted:  output.Extracted,
+								Normalized: output.Normalized,
 							}
 						}
 
 						if item.Depth < req.MaxDepth {
-							for _, href := range extracted.Links {
+							for _, href := range output.Normalized.Links {
 								resolved := resolveURL(startURL, href)
 								if resolved == "" {
 									continue

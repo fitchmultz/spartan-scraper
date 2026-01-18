@@ -12,6 +12,7 @@ type Request struct {
 	Headless      bool
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
+	Extract       extract.ExtractOptions
 	Timeout       time.Duration
 	UserAgent     string
 	Limiter       *fetch.HostLimiter
@@ -21,12 +22,14 @@ type Request struct {
 }
 
 type Result struct {
-	URL      string         `json:"url"`
-	Status   int            `json:"status"`
-	Title    string         `json:"title"`
-	Text     string         `json:"text"`
-	Links    []string       `json:"links"`
-	Metadata extract.Result `json:"metadata"`
+	URL        string                     `json:"url"`
+	Status     int                        `json:"status"`
+	Title      string                     `json:"title"`
+	Text       string                     `json:"text"`
+	Links      []string                   `json:"links"`
+	Metadata   extract.Result             `json:"metadata"` // Legacy
+	Extracted  extract.Extracted          `json:"extracted"`
+	Normalized extract.NormalizedDocument `json:"normalized"`
 }
 
 func Run(req Request) (Result, error) {
@@ -48,17 +51,29 @@ func Run(req Request) (Result, error) {
 		return Result{}, err
 	}
 
-	extracted, err := extract.FromHTML(res.HTML)
+	output, err := extract.Execute(extract.ExecuteInput{
+		URL:     res.URL,
+		HTML:    res.HTML,
+		Options: req.Extract,
+		DataDir: req.DataDir,
+	})
 	if err != nil {
 		return Result{}, err
 	}
 
 	return Result{
-		URL:      res.URL,
-		Status:   res.Status,
-		Title:    extracted.Title,
-		Text:     extracted.Text,
-		Links:    extracted.Links,
-		Metadata: extracted,
+		URL:    res.URL,
+		Status: res.Status,
+		Title:  output.Normalized.Title,
+		Text:   output.Normalized.Text,
+		Links:  output.Normalized.Links,
+		Metadata: extract.Result{
+			Title:       output.Normalized.Title,
+			Description: output.Normalized.Description,
+			Text:        output.Normalized.Text,
+			Links:       output.Normalized.Links,
+		},
+		Extracted:  output.Extracted,
+		Normalized: output.Normalized,
 	}, nil
 }

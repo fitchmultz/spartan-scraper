@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"spartan-scraper/internal/auth"
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/model"
@@ -62,13 +63,14 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 }
 
 func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
+	extractOpts := loadExtract(schedule.Params)
 	switch schedule.Kind {
 	case model.KindScrape:
 		url := stringParam(schedule.Params, "url")
 		headless := boolParam(schedule.Params, "headless")
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()))
+		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
 		if err != nil {
 			return err
 		}
@@ -80,7 +82,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()))
+		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
 		if err != nil {
 			return err
 		}
@@ -93,13 +95,23 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir)
-		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()))
+		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts)
 		if err != nil {
 			return err
 		}
 		return manager.Enqueue(job)
 	default:
 		return errors.New("unknown schedule kind")
+	}
+}
+
+func loadExtract(params map[string]interface{}) extract.ExtractOptions {
+	if params == nil {
+		return extract.ExtractOptions{}
+	}
+	return extract.ExtractOptions{
+		Template: stringParam(params, "extractTemplate"),
+		Validate: boolParam(params, "extractValidate"),
 	}
 }
 

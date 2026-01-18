@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"spartan-scraper/internal/crawl"
+	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/scrape"
 )
@@ -20,6 +21,7 @@ type Request struct {
 	Headless      bool
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
+	Extract       extract.ExtractOptions
 	Timeout       time.Duration
 	UserAgent     string
 	Limiter       *fetch.HostLimiter
@@ -58,6 +60,7 @@ func Run(req Request) (Result, error) {
 				Headless:      req.Headless,
 				UsePlaywright: req.UsePlaywright,
 				Auth:          req.Auth,
+				Extract:       req.Extract,
 				Timeout:       req.Timeout,
 				UserAgent:     req.UserAgent,
 				Limiter:       req.Limiter,
@@ -69,6 +72,8 @@ func Run(req Request) (Result, error) {
 				continue
 			}
 			for _, page := range pages {
+				// Use Normalized.Text for snippets if available (it is in PageResult)
+				// PageResult Text is populated from Normalized.Text.
 				snippet := makeSnippet(page.Text)
 				items = append(items, Evidence{
 					URL:     page.URL,
@@ -85,6 +90,7 @@ func Run(req Request) (Result, error) {
 			Headless:      req.Headless,
 			UsePlaywright: req.UsePlaywright,
 			Auth:          req.Auth,
+			Extract:       req.Extract,
 			Timeout:       req.Timeout,
 			UserAgent:     req.UserAgent,
 			Limiter:       req.Limiter,

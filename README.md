@@ -65,6 +65,10 @@ make build
 ./bin/spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
 ./bin/spartan scrape --url https://example.com --auth-profile acme
 
+# Extraction Templates
+./bin/spartan scrape --url https://example.com/product/123 --extract-template product
+./bin/spartan scrape --url https://example.com --extract-config my-template.json
+
 # Export results
 ./bin/spartan export --job-id <id> --format md --out ./out/report.md
 

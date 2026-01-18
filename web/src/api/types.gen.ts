@@ -4,6 +4,17 @@ export type ClientOptions = {
     baseUrl: 'http://localhost:8741' | (string & {});
 };
 
+export type ExtractOptions = {
+    /**
+     * Template name (e.g. "article", "product")
+     */
+    template?: string;
+    /**
+     * Validate extraction against schema if present
+     */
+    validate?: boolean;
+};
+
 export type AuthOptions = {
     /**
      * Basic auth in user:pass form
@@ -29,6 +40,7 @@ export type ScrapeRequest = {
     headless?: boolean;
     playwright?: boolean;
     auth?: AuthOptions;
+    extract?: ExtractOptions;
     timeoutSeconds?: number;
 };
 
@@ -39,6 +51,7 @@ export type CrawlRequest = {
     headless?: boolean;
     playwright?: boolean;
     auth?: AuthOptions;
+    extract?: ExtractOptions;
     timeoutSeconds?: number;
 };
 
@@ -50,6 +63,7 @@ export type ResearchRequest = {
     headless?: boolean;
     playwright?: boolean;
     auth?: AuthOptions;
+    extract?: ExtractOptions;
     timeoutSeconds?: number;
 };
 

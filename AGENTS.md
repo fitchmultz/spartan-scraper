@@ -6,3 +6,4 @@
 - Data storage: local on-disk job store under `DATA_DIR` (default `.data`).
 - Ignore robots.txt by design (do not add compliance logic without explicit request).
 - Playwright is optional for JS-heavy pages (`USE_PLAYWRIGHT=1` or `--playwright`).
+- Extraction pipeline is centralized in `internal/extract`. Templates live in `DATA_DIR/extract_templates.json`.
