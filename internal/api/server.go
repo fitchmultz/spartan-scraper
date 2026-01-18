@@ -32,6 +32,16 @@ type CrawlRequest struct {
 	Auth           *fetch.AuthOptions `json:"auth"`
 }
 
+type ResearchRequest struct {
+	Query          string             `json:"query"`
+	URLs           []string           `json:"urls"`
+	MaxDepth       int                `json:"maxDepth"`
+	MaxPages       int                `json:"maxPages"`
+	Headless       bool               `json:"headless"`
+	TimeoutSeconds int                `json:"timeoutSeconds"`
+	Auth           *fetch.AuthOptions `json:"auth"`
+}
+
 func NewServer(manager *jobs.Manager, store *store.Store) *Server {
 	return &Server{manager: manager, store: store}
 }
@@ -41,6 +51,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/v1/scrape", s.handleScrape)
 	mux.HandleFunc("/v1/crawl", s.handleCrawl)
+	mux.HandleFunc("/v1/research", s.handleResearch)
 	mux.HandleFunc("/v1/jobs", s.handleJobs)
 	mux.HandleFunc("/v1/jobs/", s.handleJob)
 	return mux
@@ -102,6 +113,36 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, auth, req.TimeoutSeconds)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = s.manager.Enqueue(job)
+
+	writeJSON(w, job)
+}
+
+func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req ResearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.Query == "" || len(req.URLs) == 0 {
+		http.Error(w, "query and urls are required", http.StatusBadRequest)
+		return
+	}
+
+	auth := fetch.AuthOptions{}
+	if req.Auth != nil {
+		auth = *req.Auth
+	}
+
+	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, auth, req.TimeoutSeconds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -36,9 +36,19 @@ export type CrawlRequest = {
     timeoutSeconds?: number;
 };
 
+export type ResearchRequest = {
+    query: string;
+    urls: Array<(string)>;
+    maxDepth?: number;
+    maxPages?: number;
+    headless?: boolean;
+    auth?: AuthOptions;
+    timeoutSeconds?: number;
+};
+
 export type Job = {
     id?: string;
-    kind?: 'scrape' | 'crawl';
+    kind?: 'scrape' | 'crawl' | 'research';
     status?: 'queued' | 'running' | 'succeeded' | 'failed';
     createdAt?: string;
     updatedAt?: string;
@@ -49,7 +59,7 @@ export type Job = {
     error?: string;
 };
 
-export type kind = 'scrape' | 'crawl';
+export type kind = 'scrape' | 'crawl' | 'research';
 
 export type status = 'queued' | 'running' | 'succeeded' | 'failed';
 
@@ -70,6 +80,12 @@ export type PostV1CrawlData = {
 };
 
 export type PostV1CrawlResponse = Job;
+
+export type PostV1ResearchData = {
+    requestBody: ResearchRequest;
+};
+
+export type PostV1ResearchResponse = Job;
 
 export type GetV1JobsResponse = JobList;
 
@@ -110,6 +126,17 @@ export type $OpenApiTs = {
     '/v1/crawl': {
         post: {
             req: PostV1CrawlData;
+            res: {
+                /**
+                 * Job created
+                 */
+                200: Job;
+            };
+        };
+    };
+    '/v1/research': {
+        post: {
+            req: PostV1ResearchData;
             res: {
                 /**
                  * Job created

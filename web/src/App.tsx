@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { OpenAPI, getV1Jobs, postV1Crawl, postV1Scrape, type Job } from "./api";
+import {
+  OpenAPI,
+  getV1Jobs,
+  postV1Crawl,
+  postV1Research,
+  postV1Scrape,
+  type Job,
+} from "./api";
 
 type JobEntry = Job;
 
@@ -14,9 +21,17 @@ export function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(30);
   const [authBasic, setAuthBasic] = useState("");
   const [headersRaw, setHeadersRaw] = useState(defaultHeaders);
+  const [researchQuery, setResearchQuery] = useState("");
+  const [researchUrls, setResearchUrls] = useState("");
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [resultSummary, setResultSummary] = useState<string | null>(null);
+  const [resultEvidence, setResultEvidence] = useState<
+    { url: string; title: string; snippet: string; score: number }[]
+  >([]);
+  const [rawResult, setRawResult] = useState<string | null>(null);
 
   useEffect(() => {
     OpenAPI.BASE = "";
@@ -90,6 +105,57 @@ export function App() {
       setError(String(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitResearch() {
+    if (!researchQuery || !researchUrls) {
+      setError("Research query and URLs are required.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await postV1Research({
+        requestBody: {
+          query: researchQuery,
+          urls: parseUrlList(researchUrls),
+          maxDepth,
+          maxPages,
+          headless,
+          timeoutSeconds,
+          auth: buildAuth(authBasic, headerMap),
+        },
+      });
+      setError(null);
+      await refreshJobs();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadResults(jobId: string) {
+    setSelectedJobId(jobId);
+    setResultSummary(null);
+    setResultEvidence([]);
+    setRawResult(null);
+    try {
+      const response = await fetch(`/v1/jobs/${jobId}/results`);
+      const text = await response.text();
+      const firstLine = text.split("\n").find((line) => line.trim());
+      if (firstLine) {
+        const parsed = JSON.parse(firstLine);
+        if (parsed?.summary) {
+          setResultSummary(parsed.summary);
+        }
+        if (Array.isArray(parsed?.evidence)) {
+          setResultEvidence(parsed.evidence);
+        }
+      }
+      setRawResult(text);
+    } catch (err) {
+      setError(String(err));
     }
   }
 
@@ -237,6 +303,83 @@ export function App() {
             </button>
           </div>
         </div>
+
+        <div className="panel">
+          <h2>Deep Research</h2>
+          <label htmlFor="research-query">Research query</label>
+          <input
+            id="research-query"
+            value={researchQuery}
+            onChange={(event) => setResearchQuery(event.target.value)}
+            placeholder="pricing model, security posture, roadmap..."
+          />
+          <label htmlFor="research-urls" style={{ marginTop: 12 }}>
+            Source URLs (comma-separated)
+          </label>
+          <textarea
+            id="research-urls"
+            rows={3}
+            value={researchUrls}
+            onChange={(event) => setResearchUrls(event.target.value)}
+            placeholder="https://example.com, https://example.com/docs"
+          />
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Max depth
+              <input
+                type="number"
+                min={0}
+                value={maxDepth}
+                onChange={(event) => setMaxDepth(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Max pages
+              <input
+                type="number"
+                min={1}
+                value={maxPages}
+                onChange={(event) => setMaxPages(Number(event.target.value))}
+              />
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={headless}
+                onChange={(event) => setHeadless(event.target.checked)}
+              />{" "}
+              Headless
+            </label>
+            <label>
+              Timeout (s)
+              <input
+                type="number"
+                min={5}
+                value={timeoutSeconds}
+                onChange={(event) =>
+                  setTimeoutSeconds(Number(event.target.value))
+                }
+              />
+            </label>
+          </div>
+          <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+            <button type="button" onClick={() => void submitResearch()}>
+              Run Research
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setResearchQuery("");
+                setResearchUrls("");
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="panel">
@@ -272,10 +415,42 @@ export function App() {
                 </div>
                 <div>Updated: {job.updatedAt}</div>
                 {job.error ? <div>Error: {job.error}</div> : null}
+                {job.status === "succeeded" ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void loadResults(job.id ?? "")}
+                  >
+                    View Results
+                  </button>
+                ) : null}
               </div>
             ))
           )}
         </div>
+        {selectedJobId ? (
+          <div className="panel" style={{ marginTop: 16 }}>
+            <h3>Results: {selectedJobId}</h3>
+            {resultSummary ? <p>{resultSummary}</p> : null}
+            {resultEvidence.length > 0 ? (
+              <div className="job-list">
+                {resultEvidence.slice(0, 10).map((item) => (
+                  <div key={`${item.url}-${item.score}`} className="job-item">
+                    <div>{item.title || item.url}</div>
+                    <div className="badge running">Score {item.score}</div>
+                    <div>{item.snippet}</div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {rawResult ? (
+              <details style={{ marginTop: 12 }}>
+                <summary>Raw output</summary>
+                <pre>{rawResult}</pre>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <div className="footer">
@@ -328,4 +503,11 @@ function buildAuth(basic: string, headers?: Record<string, string>) {
     basic: basic || undefined,
     headers,
   };
+}
+
+function parseUrlList(raw: string) {
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

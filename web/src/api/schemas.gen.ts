@@ -91,6 +91,41 @@ export const $CrawlRequest = {
     }
 } as const;
 
+export const $ResearchRequest = {
+    type: 'object',
+    required: ['query', 'urls'],
+    properties: {
+        query: {
+            type: 'string'
+        },
+        urls: {
+            type: 'array',
+            items: {
+                type: 'string'
+            }
+        },
+        maxDepth: {
+            type: 'integer',
+            default: 2
+        },
+        maxPages: {
+            type: 'integer',
+            default: 200
+        },
+        headless: {
+            type: 'boolean',
+            default: false
+        },
+        auth: {
+            '$ref': '#/components/schemas/AuthOptions'
+        },
+        timeoutSeconds: {
+            type: 'integer',
+            default: 30
+        }
+    }
+} as const;
+
 export const $Job = {
     type: 'object',
     properties: {
@@ -99,7 +134,7 @@ export const $Job = {
         },
         kind: {
             type: 'string',
-            enum: ['scrape', 'crawl']
+            enum: ['scrape', 'crawl', 'research']
         },
         status: {
             type: 'string',

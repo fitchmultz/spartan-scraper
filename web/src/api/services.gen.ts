@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { GetHealthzResponse, PostV1ScrapeData, PostV1ScrapeResponse, PostV1CrawlData, PostV1CrawlResponse, GetV1JobsResponse, GetV1JobsByIdData, GetV1JobsByIdResponse, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponse } from './types.gen';
+import type { GetHealthzResponse, PostV1ScrapeData, PostV1ScrapeResponse, PostV1CrawlData, PostV1CrawlResponse, PostV1ResearchData, PostV1ResearchResponse, GetV1JobsResponse, GetV1JobsByIdData, GetV1JobsByIdResponse, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponse } from './types.gen';
 
 /**
  * Health check
@@ -39,6 +39,20 @@ export const postV1Scrape = (data: PostV1ScrapeData): CancelablePromise<PostV1Sc
 export const postV1Crawl = (data: PostV1CrawlData): CancelablePromise<PostV1CrawlResponse> => { return __request(OpenAPI, {
     method: 'POST',
     url: '/v1/crawl',
+    body: data.requestBody,
+    mediaType: 'application/json'
+}); };
+
+/**
+ * Deep research across multiple sources
+ * @param data The data for the request.
+ * @param data.requestBody
+ * @returns Job Job created
+ * @throws ApiError
+ */
+export const postV1Research = (data: PostV1ResearchData): CancelablePromise<PostV1ResearchResponse> => { return __request(OpenAPI, {
+    method: 'POST',
+    url: '/v1/research',
     body: data.requestBody,
     mediaType: 'application/json'
 }); };

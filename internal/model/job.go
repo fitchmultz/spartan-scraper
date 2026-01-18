@@ -7,8 +7,9 @@ type Kind string
 type Status string
 
 const (
-	KindScrape Kind = "scrape"
-	KindCrawl  Kind = "crawl"
+	KindScrape   Kind = "scrape"
+	KindCrawl    Kind = "crawl"
+	KindResearch Kind = "research"
 
 	StatusQueued    Status = "queued"
 	StatusRunning   Status = "running"

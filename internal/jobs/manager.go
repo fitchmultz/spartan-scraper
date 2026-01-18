@@ -13,6 +13,7 @@ import (
 	"spartan-scraper/internal/crawl"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/research"
 	"spartan-scraper/internal/scrape"
 	"spartan-scraper/internal/store"
 )
@@ -105,6 +106,30 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 	return job, nil
 }
 
+func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+	job := model.Job{
+		ID:        uuid.NewString(),
+		Kind:      model.KindResearch,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params: map[string]interface{}{
+			"query":    query,
+			"urls":     urls,
+			"maxDepth": maxDepth,
+			"maxPages": maxPages,
+			"headless": headless,
+			"auth":     auth,
+			"timeout":  timeoutSeconds,
+		},
+	}
+	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
+	if err := m.store.Create(job); err != nil {
+		return model.Job{}, err
+	}
+	return job, nil
+}
+
 func (m *Manager) run(job model.Job) error {
 	_ = m.store.UpdateStatus(job.ID, model.StatusRunning, "")
 
@@ -164,6 +189,30 @@ func (m *Manager) run(job model.Job) error {
 			payload, _ := json.Marshal(item)
 			_, _ = file.Write(append(payload, '\n'))
 		}
+	case model.KindResearch:
+		query, _ := job.Params["query"].(string)
+		urls := toStringSlice(job.Params["urls"])
+		maxDepth := toInt(job.Params["maxDepth"], 2)
+		maxPages := toInt(job.Params["maxPages"], 200)
+		headless, _ := job.Params["headless"].(bool)
+		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
+		auth := decodeAuth(job.Params["auth"])
+		result, err := research.Run(research.Request{
+			Query:     query,
+			URLs:      urls,
+			MaxDepth:  maxDepth,
+			MaxPages:  maxPages,
+			Headless:  headless,
+			Auth:      auth,
+			Timeout:   time.Duration(timeoutSecs) * time.Second,
+			UserAgent: m.userAgent,
+		})
+		if err != nil {
+			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+			return err
+		}
+		payload, _ := json.Marshal(result)
+		_, _ = file.Write(append(payload, '\n'))
 	default:
 		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, "unknown job kind")
 		return errors.New("unknown job kind")
@@ -241,5 +290,22 @@ func toInt(value interface{}, fallback int) int {
 		return int(v)
 	default:
 		return fallback
+	}
+}
+
+func toStringSlice(value interface{}) []string {
+	switch v := value.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		items := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				items = append(items, s)
+			}
+		}
+		return items
+	default:
+		return nil
 	}
 }

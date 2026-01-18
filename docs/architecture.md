@@ -17,6 +17,7 @@
 - `api`: REST API aligned to `api/openapi.yaml`.
 - `ui/tui`: job list + status dashboard.
 - `web`: Web UI consuming generated API client.
+- `research`: multi-source workflow (scrape/crawl → evidence → summary).
 
 ## Execution flow
 

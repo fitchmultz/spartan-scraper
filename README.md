@@ -46,6 +46,12 @@ make build
   --max-pages 200 \
   --out ./out/site.jsonl
 
+# Deep research
+./bin/spartan research \
+  --query "pricing model" \
+  --urls https://example.com,https://example.com/docs \
+  --out ./out/research.jsonl
+
 # Run API server + background worker
 ./bin/spartan server
 
@@ -70,6 +76,7 @@ Open `http://localhost:5173` for the UI (the API is proxied to `PORT` from `.env
 - `internal/jobs`: persistent job store + queue runner.
 - `internal/api`: HTTP API + OpenAPI contract.
 - `web`: Vite + React UI; generated API client under `web/src/api`.
+- `internal/research`: multi-source workflow (scrape/crawl → evidence → summary).
 
 ## Notes
 

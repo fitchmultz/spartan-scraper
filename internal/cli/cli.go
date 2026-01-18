@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"spartan-scraper/internal/api"
@@ -32,6 +33,8 @@ func Run(ctx context.Context) int {
 		return runScrape(cfg)
 	case "crawl":
 		return runCrawl(cfg)
+	case "research":
+		return runResearch(cfg)
 	case "server":
 		return runServer(ctx, cfg)
 	case "tui":
@@ -264,6 +267,85 @@ Options:
 	return 0
 }
 
+func runResearch(cfg config.Config) int {
+	fs := flag.NewFlagSet("research", flag.ExitOnError)
+	query := fs.String("query", "", "Research query")
+	urls := fs.String("urls", "", "Comma-separated list of URLs to research")
+	maxDepth := fs.Int("max-depth", 2, "Max crawl depth per URL (0 for single-page scrape)")
+	maxPages := fs.Int("max-pages", 200, "Max pages to crawl per URL")
+	headless := fs.Bool("headless", false, "Use headless browser")
+	out := fs.String("out", "", "Output file (JSONL)")
+	wait := fs.Bool("wait", false, "Wait for completion and write output")
+	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
+	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
+	headerList := stringSliceFlag{}
+	fs.Var(&headerList, "header", "Extra header (repeatable, Key: Value)")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan research --query <query> --urls <url1,url2,...> [options]
+
+Examples:
+  spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
+  spartan research --query "login flow" --urls https://example.com --headless --wait --out ./out/research.jsonl
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	_ = fs.Parse(os.Args[2:])
+	if *query == "" || *urls == "" {
+		fmt.Fprintln(os.Stderr, "--query and --urls are required")
+		return 1
+	}
+
+	store, err := store.Open(cfg.DataDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer store.Close()
+
+	manager := jobs.NewManager(store, cfg.DataDir, cfg.UserAgent, time.Duration(cfg.RequestTimeoutSecs)*time.Second, cfg.MaxConcurrency)
+	manager.Start(context.Background())
+
+	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, fetch.AuthOptions{
+		Basic:   *authBasic,
+		Headers: headerList.ToMap(),
+	}, *timeout)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := manager.Enqueue(job); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	if *wait || *out != "" {
+		if err := waitForJob(store, job.ID); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if *out != "" {
+			if err := copyResults(store, job.ID, *out); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			fmt.Println(job.ID)
+			return 0
+		}
+		if err := printResults(store, job.ID); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
+	}
+
+	payload, _ := json.MarshalIndent(job, "", "  ")
+	fmt.Println(string(payload))
+	return 0
+}
+
 func runServer(ctx context.Context, cfg config.Config) int {
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
@@ -296,12 +378,14 @@ Usage:
 Commands:
   scrape   Scrape a single page
   crawl    Crawl a website
+  research Deep research across multiple sources
   server   Run API server + workers
   tui      Launch terminal UI
 
 Examples:
   spartan scrape --url https://example.com --out ./out/example.json
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
+  spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
   spartan server
   spartan tui
 
@@ -315,4 +399,47 @@ func httpListenAndServe(addr string, handler http.Handler) int {
 		return 1
 	}
 	return 0
+}
+
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringSliceFlag) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
+func (s *stringSliceFlag) ToMap() map[string]string {
+	if len(*s) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	for _, item := range *s {
+		parts := strings.SplitN(item, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		if key == "" || val == "" {
+			continue
+		}
+		out[key] = val
+	}
+	return out
+}
+
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trim := strings.TrimSpace(part)
+		if trim != "" {
+			out = append(out, trim)
+		}
+	}
+	return out
 }

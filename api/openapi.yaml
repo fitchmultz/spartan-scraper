@@ -43,6 +43,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+  /v1/research:
+    post:
+      summary: Deep research across multiple sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchRequest'
+      responses:
+        '200':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
   /v1/jobs:
     get:
       summary: List jobs
@@ -148,6 +164,30 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+    ResearchRequest:
+      type: object
+      required: [query, urls]
+      properties:
+        query:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+        maxDepth:
+          type: integer
+          default: 2
+        maxPages:
+          type: integer
+          default: 200
+        headless:
+          type: boolean
+          default: false
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        timeoutSeconds:
+          type: integer
+          default: 30
     Job:
       type: object
       properties:
@@ -155,7 +195,7 @@ components:
           type: string
         kind:
           type: string
-          enum: [scrape, crawl]
+          enum: [scrape, crawl, research]
         status:
           type: string
           enum: [queued, running, succeeded, failed]
