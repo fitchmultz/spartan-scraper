@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Spartan Scraper API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8741
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /v1/scrape:
+    post:
+      summary: Scrape a single page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScrapeRequest'
+      responses:
+        '200':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /v1/crawl:
+    post:
+      summary: Crawl a site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrawlRequest'
+      responses:
+        '200':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /v1/jobs:
+    get:
+      summary: List jobs
+      responses:
+        '200':
+          description: Job list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+  /v1/jobs/{id}:
+    get:
+      summary: Get a job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /v1/jobs/{id}/results:
+    get:
+      summary: Get job results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Results (JSONL)
+          content:
+            application/json:
+              schema:
+                type: string
+components:
+  schemas:
+    AuthOptions:
+      type: object
+      properties:
+        basic:
+          type: string
+          description: Basic auth in user:pass form
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        cookies:
+          type: array
+          items:
+            type: string
+          description: Cookie strings like "name=value"
+        loginUrl:
+          type: string
+        loginUserSelector:
+          type: string
+        loginPassSelector:
+          type: string
+        loginSubmitSelector:
+          type: string
+        loginUser:
+          type: string
+        loginPass:
+          type: string
+    ScrapeRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        headless:
+          type: boolean
+          default: false
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        timeoutSeconds:
+          type: integer
+          default: 30
+    CrawlRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        maxDepth:
+          type: integer
+          default: 2
+        maxPages:
+          type: integer
+          default: 200
+        headless:
+          type: boolean
+          default: false
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        timeoutSeconds:
+          type: integer
+          default: 30
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [scrape, crawl]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        params:
+          type: object
+        resultPath:
+          type: string
+        error:
+          type: string
+    JobList:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
