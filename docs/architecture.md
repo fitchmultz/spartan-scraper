@@ -19,7 +19,7 @@
 - `web`: Web UI consuming generated API client.
 - `research`: multi-source workflow (scrape/crawl → evidence → summary).
 - `mcp`: stdio server exposing tools for agent orchestration.
-- Auth profiles live in `DATA_DIR/profiles.json` and can be referenced by CLI.
+- Auth vault lives in `DATA_DIR/auth_vault.json` (profiles, inheritance, presets).
 - Exporter can emit markdown or csv from stored job artifacts.
 - Scheduler runs interval-based jobs and persists schedules in `DATA_DIR/schedules.json`.
 
@@ -45,9 +45,10 @@ The fetcher uses an adaptive strategy to optimize for performance and reliabilit
 
 ## Auth model
 
-- Header + cookie injection at the HTTP layer.
-- Basic auth for direct endpoints.
-- Form login via headless Chromium or Playwright (selectors provided).
+- Unified auth vault with profile inheritance and per-target presets.
+- Headers, cookies, basic auth, bearer/api_key tokens, and headless login flows.
+- Env overrides supported via `AUTH_*` variables and applied during resolution.
+- Query tokens are appended to request URLs where supported.
 
 ## Interfaces
 

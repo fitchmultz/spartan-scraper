@@ -6,7 +6,11 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"spartan-scraper/internal/auth"
 )
+
+// EnvOverrides is an alias for auth.EnvOverrides
+type EnvOverrides = auth.EnvOverrides
 
 type Config struct {
 	Port               string
@@ -19,6 +23,7 @@ type Config struct {
 	MaxRetries         int
 	RetryBaseMs        int
 	UsePlaywright      bool
+	AuthOverrides      EnvOverrides
 }
 
 func Load() Config {
@@ -34,7 +39,64 @@ func Load() Config {
 		MaxRetries:         getenvInt("MAX_RETRIES", 2),
 		RetryBaseMs:        getenvInt("RETRY_BASE_MS", 400),
 		UsePlaywright:      getenvBool("USE_PLAYWRIGHT", false),
+		AuthOverrides:      loadAuthOverrides(),
 	}
+}
+
+func loadAuthOverrides() EnvOverrides {
+	overrides := EnvOverrides{
+		Basic:        os.Getenv("AUTH_BASIC"),
+		Bearer:       os.Getenv("AUTH_BEARER"),
+		APIKey:       os.Getenv("AUTH_API_KEY"),
+		APIKeyHeader: getenv("AUTH_API_KEY_HEADER", getenv("AUTH_TOKEN_API_KEY_HEADER", "")),
+		APIKeyQuery:  os.Getenv("AUTH_API_KEY_QUERY"),
+		APIKeyCookie: os.Getenv("AUTH_API_KEY_COOKIE"),
+		Headers:      map[string]string{},
+		Cookies:      map[string]string{},
+	}
+
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := parts[0]
+		value := parts[1]
+		if value == "" {
+			continue
+		}
+
+		if strings.HasPrefix(key, "AUTH_HEADER_") {
+			name := normalizeAuthKeySuffix(strings.TrimPrefix(key, "AUTH_HEADER_"))
+			if name != "" {
+				overrides.Headers[name] = value
+			}
+		}
+		if strings.HasPrefix(key, "AUTH_COOKIE_") {
+			name := normalizeAuthKeySuffix(strings.TrimPrefix(key, "AUTH_COOKIE_"))
+			if name != "" {
+				overrides.Cookies[name] = value
+			}
+		}
+	}
+
+	if len(overrides.Headers) == 0 {
+		overrides.Headers = nil
+	}
+	if len(overrides.Cookies) == 0 {
+		overrides.Cookies = nil
+	}
+	return overrides
+}
+
+func normalizeAuthKeySuffix(raw string) string {
+	name := strings.TrimSpace(raw)
+	if name == "" {
+		return ""
+	}
+	name = strings.ReplaceAll(name, "__", "-")
+	name = strings.ReplaceAll(name, "_", "-")
+	return name
 }
 
 func getenv(key, fallback string) string {

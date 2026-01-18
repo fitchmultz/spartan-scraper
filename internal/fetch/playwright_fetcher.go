@@ -13,6 +13,7 @@ import (
 type PlaywrightFetcher struct{}
 
 func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, error) {
+	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
 	}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
@@ -137,17 +138,17 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless)",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "crawl_site",
 			Description: "Crawl a site with depth and page limits",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "research",
 			Description: "Deep research across multiple sources",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
 		},
 		{
 			Name:        "job_status",
@@ -193,6 +194,11 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		if url == "" {
 			return nil, errors.New("url is required")
 		}
+		authProfile := getString(params.Arguments, "authProfile")
+		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
+		if err != nil {
+			return nil, err
+		}
 		headless := getBool(params.Arguments, "headless")
 		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
@@ -200,7 +206,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
+		job, err := s.manager.CreateScrapeJob(url, headless, playwright, resolvedAuth, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}
@@ -216,6 +222,11 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		if url == "" {
 			return nil, errors.New("url is required")
 		}
+		authProfile := getString(params.Arguments, "authProfile")
+		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
+		if err != nil {
+			return nil, err
+		}
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
@@ -225,7 +236,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
+		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}
@@ -242,6 +253,15 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		if query == "" || len(urls) == 0 {
 			return nil, errors.New("query and urls are required")
 		}
+		authProfile := getString(params.Arguments, "authProfile")
+		targetURL := ""
+		if len(urls) > 0 {
+			targetURL = urls[0]
+		}
+		resolvedAuth, err := resolveAuthForTool(s.cfg, targetURL, authProfile)
+		if err != nil {
+			return nil, err
+		}
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
@@ -251,7 +271,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout, extractOpts, false)
+		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, false)
 		if err != nil {
 			return nil, err
 		}
@@ -388,4 +408,17 @@ func getStringSlice(args map[string]interface{}, key string) []string {
 	default:
 		return nil
 	}
+}
+
+func resolveAuthForTool(cfg config.Config, url string, profile string) (fetch.AuthOptions, error) {
+	input := auth.ResolveInput{
+		ProfileName: profile,
+		URL:         url,
+		Env:         &cfg.AuthOverrides,
+	}
+	resolved, err := auth.Resolve(cfg.DataDir, input)
+	if err != nil {
+		return fetch.AuthOptions{}, err
+	}
+	return auth.ToFetchOptions(resolved), nil
 }

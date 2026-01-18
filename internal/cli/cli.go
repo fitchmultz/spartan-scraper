@@ -79,6 +79,12 @@ func runScrape(cfg config.Config) int {
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
+	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
+	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
+	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
+	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
+	tokenValues := stringSliceFlag{}
+	fs.Var(&tokenValues, "token", "Token value (repeatable)")
 	loginURL := fs.String("login-url", "", "Login URL for headless auth")
 	loginUserSelector := fs.String("login-user-selector", "", "CSS selector for username input")
 	loginPassSelector := fs.String("login-pass-selector", "", "CSS selector for password input")
@@ -138,22 +144,23 @@ Options:
 		cfg.UsePlaywright,
 	)
 	manager.Start(context.Background())
-	authOptions := fetch.AuthOptions{
-		Basic:               *authBasic,
-		Headers:             headers.ToMap(),
-		Cookies:             []string(cookies),
-		LoginURL:            *loginURL,
-		LoginUserSelector:   *loginUserSelector,
-		LoginPassSelector:   *loginPassSelector,
-		LoginSubmitSelector: *loginSubmitSelector,
-		LoginUser:           *loginUser,
-		LoginPass:           *loginPass,
+	authOverrides := auth.ResolveInput{
+		Headers: toHeaderKVs(headers.ToMap()),
+		Cookies: toCookies([]string(cookies)),
+		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
+		Login: buildLoginFlow(loginFlowInput{
+			URL:            *loginURL,
+			UserSelector:   *loginUserSelector,
+			PassSelector:   *loginPassSelector,
+			SubmitSelector: *loginSubmitSelector,
+			Username:       *loginUser,
+			Password:       *loginPass,
+		}),
 	}
-	if merged, err := mergeAuthProfile(cfg, *profileName, authOptions); err != nil {
+	authOptions, err := resolveAuthForRequest(cfg, *url, *profileName, authOverrides)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
-	} else {
-		authOptions = merged
 	}
 
 	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
@@ -272,8 +279,15 @@ func runCrawl(cfg config.Config) int {
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
+	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
+	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
+	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
+	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
+	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
+	tokenValues := stringSliceFlag{}
 	headers := stringSliceFlag{}
 	cookies := stringSliceFlag{}
+	fs.Var(&tokenValues, "token", "Token value (repeatable)")
 	fs.Var(&headers, "header", "Extra header (repeatable, Key: Value)")
 	fs.Var(&cookies, "cookie", "Cookie value (repeatable, name=value)")
 	fs.Usage = func() {
@@ -321,15 +335,15 @@ Options:
 		cfg.UsePlaywright,
 	)
 	manager.Start(context.Background())
-	authOptions := fetch.AuthOptions{
-		Headers: headers.ToMap(),
-		Cookies: []string(cookies),
+	authOverrides := auth.ResolveInput{
+		Headers: toHeaderKVs(headers.ToMap()),
+		Cookies: toCookies([]string(cookies)),
+		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
 	}
-	if merged, err := mergeAuthProfile(cfg, *profileName, authOptions); err != nil {
+	authOptions, err := resolveAuthForRequest(cfg, *url, *profileName, authOverrides)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
-	} else {
-		authOptions = merged
 	}
 
 	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
@@ -386,8 +400,14 @@ func runResearch(cfg config.Config) int {
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
+	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
+	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
+	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
+	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
+	tokenValues := stringSliceFlag{}
 	headerList := stringSliceFlag{}
 	cookieList := stringSliceFlag{}
+	fs.Var(&tokenValues, "token", "Token value (repeatable)")
 	fs.Var(&headerList, "header", "Extra header (repeatable, Key: Value)")
 	fs.Var(&cookieList, "cookie", "Cookie value (repeatable, name=value)")
 	fs.Usage = func() {
@@ -436,16 +456,15 @@ Options:
 	)
 	manager.Start(context.Background())
 
-	authOptions := fetch.AuthOptions{
-		Basic:   *authBasic,
-		Headers: headerList.ToMap(),
-		Cookies: []string(cookieList),
+	authOverrides := auth.ResolveInput{
+		Headers: toHeaderKVs(headerList.ToMap()),
+		Cookies: toCookies([]string(cookieList)),
+		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
 	}
-	if merged, err := mergeAuthProfile(cfg, *profileName, authOptions); err != nil {
+	authOptions, err := resolveAuthForRequest(cfg, splitCSV(*urls)[0], *profileName, authOverrides)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
-	} else {
-		authOptions = merged
 	}
 
 	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
@@ -492,14 +511,17 @@ Subcommands:
   list
   set
   delete
+	resolve
+	vault
 
 Examples:
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
-  spartan auth set --name acme --login-url https://example.com/login \
-    --login-user-selector '#email' --login-pass-selector '#password' --login-submit-selector 'button[type=submit]' \
-    --login-user you@example.com --login-pass '***'
-  spartan auth delete --name acme
+	spartan auth set --name acme --parent base --token "token" --token-kind bearer
+	spartan auth set --name acme --preset-name acme-site --preset-host "*.acme.com"
+	spartan auth resolve --url https://example.com --profile acme
+	spartan auth vault export --out ./out/auth_vault.json
+	spartan auth vault import --path ./out/auth_vault.json
 
 Use "spartan auth set --help" for full flags.
 `)
@@ -507,29 +529,31 @@ Use "spartan auth set --help" for full flags.
 	}
 	if os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
 		fmt.Fprint(os.Stderr, `Usage:
-  spartan auth <subcommand> [options]
+	spartan auth <subcommand> [options]
 
 Subcommands:
-  list
-  set
-  delete
+	list
+	set
+	delete
+	resolve
+	vault
 
 Examples:
-  spartan auth list
-  spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
-  spartan auth set --name acme --login-url https://example.com/login \
-    --login-user-selector '#email' --login-pass-selector '#password' --login-submit-selector 'button[type=submit]' \
-    --login-user you@example.com --login-pass '***'
-  spartan auth delete --name acme
+	spartan auth list
+	spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
+	spartan auth set --name acme --parent base --token "token" --token-kind bearer
+	spartan auth set --name acme --preset-name acme-site --preset-host "*.acme.com"
+	spartan auth resolve --url https://example.com --profile acme
+	spartan auth vault export --out ./out/auth_vault.json
+	spartan auth vault import --path ./out/auth_vault.json
 
 Use "spartan auth set --help" for full flags.
 `)
 		return 0
 	}
-
 	switch os.Args[2] {
 	case "list":
-		names, err := auth.ListNames(cfg.DataDir)
+		names, err := auth.ListProfileNames(cfg.DataDir)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -541,7 +565,18 @@ Use "spartan auth set --help" for full flags.
 	case "set":
 		fs := flag.NewFlagSet("auth set", flag.ExitOnError)
 		name := fs.String("name", "", "Profile name")
+		parentList := stringSliceFlag{}
+		fs.Var(&parentList, "parent", "Parent profile name (repeatable)")
 		authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
+		tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
+		tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
+		tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
+		tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
+		tokenValues := stringSliceFlag{}
+		fs.Var(&tokenValues, "token", "Token value (repeatable)")
+		presetName := fs.String("preset-name", "", "Create/update a target preset name")
+		presetHosts := stringSliceFlag{}
+		fs.Var(&presetHosts, "preset-host", "Preset host pattern (repeatable)")
 		loginURL := fs.String("login-url", "", "Login URL for headless auth")
 		loginUserSelector := fs.String("login-user-selector", "", "CSS selector for username input")
 		loginPassSelector := fs.String("login-pass-selector", "", "CSS selector for password input")
@@ -559,22 +594,34 @@ Use "spartan auth set --help" for full flags.
 		}
 
 		profile := auth.Profile{
-			Name: *name,
-			Auth: fetch.AuthOptions{
-				Basic:               *authBasic,
-				Headers:             headers.ToMap(),
-				Cookies:             []string(cookies),
-				LoginURL:            *loginURL,
-				LoginUserSelector:   *loginUserSelector,
-				LoginPassSelector:   *loginPassSelector,
-				LoginSubmitSelector: *loginSubmitSelector,
-				LoginUser:           *loginUser,
-				LoginPass:           *loginPass,
-			},
+			Name:    *name,
+			Parents: []string(parentList),
+			Headers: toHeaderKVs(headers.ToMap()),
+			Cookies: toCookies([]string(cookies)),
+			Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
+			Login: buildLoginFlow(loginFlowInput{
+				URL:            *loginURL,
+				UserSelector:   *loginUserSelector,
+				PassSelector:   *loginPassSelector,
+				SubmitSelector: *loginSubmitSelector,
+				Username:       *loginUser,
+				Password:       *loginPass,
+			}),
 		}
-		if err := auth.Upsert(cfg.DataDir, profile); err != nil {
+		if err := auth.UpsertProfile(cfg.DataDir, profile); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
+		}
+		if *presetName != "" {
+			preset := auth.TargetPreset{
+				Name:         *presetName,
+				HostPatterns: []string(presetHosts),
+				Profile:      *name,
+			}
+			if err := auth.UpsertPreset(cfg.DataDir, preset); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
 		}
 		fmt.Println("saved", *name)
 		return 0
@@ -586,12 +633,93 @@ Use "spartan auth set --help" for full flags.
 			fmt.Fprintln(os.Stderr, "--name is required")
 			return 1
 		}
-		if err := auth.Delete(cfg.DataDir, *name); err != nil {
+		if err := auth.DeleteProfile(cfg.DataDir, *name); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		fmt.Println("deleted", *name)
 		return 0
+	case "resolve":
+		fs := flag.NewFlagSet("auth resolve", flag.ExitOnError)
+		url := fs.String("url", "", "Target URL")
+		profile := fs.String("profile", "", "Profile name")
+		authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
+		tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
+		tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
+		tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
+		tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
+		tokenValues := stringSliceFlag{}
+		headers := stringSliceFlag{}
+		cookies := stringSliceFlag{}
+		fs.Var(&tokenValues, "token", "Token value (repeatable)")
+		fs.Var(&headers, "header", "Extra header (repeatable, Key: Value)")
+		fs.Var(&cookies, "cookie", "Cookie value (repeatable, name=value)")
+		_ = fs.Parse(os.Args[3:])
+		if *url == "" {
+			fmt.Fprintln(os.Stderr, "--url is required")
+			return 1
+		}
+		overrides := auth.ResolveInput{
+			Headers: toHeaderKVs(headers.ToMap()),
+			Cookies: toCookies([]string(cookies)),
+			Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
+		}
+		resolved, err := auth.Resolve(cfg.DataDir, resolveInput(cfg, *url, *profile, overrides))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		payload, _ := json.MarshalIndent(resolved, "", "  ")
+		fmt.Println(string(payload))
+		return 0
+	case "vault":
+		if len(os.Args) < 4 {
+			fmt.Fprint(os.Stderr, `Usage:
+	spartan auth vault <subcommand> [options]
+
+Subcommands:
+	import
+	export
+
+Examples:
+	spartan auth vault export --out ./out/auth_vault.json
+	spartan auth vault import --path ./out/auth_vault.json
+`)
+			return 1
+		}
+		switch os.Args[3] {
+		case "export":
+			fs := flag.NewFlagSet("auth vault export", flag.ExitOnError)
+			out := fs.String("out", "", "Output path")
+			_ = fs.Parse(os.Args[4:])
+			if *out == "" {
+				fmt.Fprintln(os.Stderr, "--out is required")
+				return 1
+			}
+			if err := auth.ExportVault(cfg.DataDir, *out); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			fmt.Println(*out)
+			return 0
+		case "import":
+			fs := flag.NewFlagSet("auth vault import", flag.ExitOnError)
+			path := fs.String("path", "", "Input path")
+			_ = fs.Parse(os.Args[4:])
+			if *path == "" {
+				fmt.Fprintln(os.Stderr, "--path is required")
+				return 1
+			}
+			if err := auth.ImportVault(cfg.DataDir, *path); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			fmt.Println("imported", *path)
+			return 0
+		default:
+			fmt.Fprintln(os.Stderr, "unknown vault subcommand:", os.Args[3])
+			return 1
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "unknown auth subcommand:", os.Args[2])
 		return 1
@@ -833,7 +961,7 @@ Notes:
 	go func() {
 		_ = scheduler.Run(ctx, cfg.DataDir, manager)
 	}()
-	server := api.NewServer(manager, store)
+	server := api.NewServer(manager, store, cfg)
 	fmt.Printf("Spartan server listening on :%s\n", cfg.Port)
 	return httpListenAndServe("0.0.0.0:"+cfg.Port, server.Routes())
 }
@@ -908,7 +1036,7 @@ Commands:
   scrape   Scrape a single page
   crawl    Crawl a website
   research Deep research across multiple sources
-  auth     Manage auth profiles
+	auth     Manage auth vault and profiles
   export   Export job results (jsonl, json, md, csv)
   schedule Manage scheduled jobs
   mcp      Run MCP server over stdio
@@ -921,7 +1049,11 @@ Examples:
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
-  spartan auth delete --name acme
+	spartan auth set --name acme --parent base --token "token" --token-kind bearer
+	spartan auth set --name acme --preset-name acme-site --preset-host "*.acme.com"
+	spartan auth resolve --url https://example.com --profile acme
+	spartan auth vault export --out ./out/auth_vault.json
+	spartan auth vault import --path ./out/auth_vault.json
   spartan export --job-id <id> --format md --out ./out/report.md
   spartan schedule add --kind scrape --interval 3600 --url https://example.com
   spartan schedule list
@@ -985,52 +1117,109 @@ func splitCSV(value string) []string {
 	return out
 }
 
-func mergeAuthProfile(cfg config.Config, profileName string, override fetch.AuthOptions) (fetch.AuthOptions, error) {
-	if profileName == "" {
-		return override, nil
+type loginFlowInput struct {
+	URL            string
+	UserSelector   string
+	PassSelector   string
+	SubmitSelector string
+	Username       string
+	Password       string
+}
+
+func buildLoginFlow(input loginFlowInput) *auth.LoginFlow {
+	if input.URL == "" && input.UserSelector == "" && input.PassSelector == "" && input.SubmitSelector == "" && input.Username == "" && input.Password == "" {
+		return nil
 	}
-	profile, found, err := auth.Get(cfg.DataDir, profileName)
+	return &auth.LoginFlow{
+		URL:            input.URL,
+		UserSelector:   input.UserSelector,
+		PassSelector:   input.PassSelector,
+		SubmitSelector: input.SubmitSelector,
+		Username:       input.Username,
+		Password:       input.Password,
+	}
+}
+
+func buildTokens(basic string, tokens []string, kind string, header string, query string, cookie string) []auth.Token {
+	out := make([]auth.Token, 0, len(tokens)+1)
+	if strings.TrimSpace(basic) != "" {
+		out = append(out, auth.Token{Kind: auth.TokenBasic, Value: basic})
+	}
+	tokenKind := parseTokenKind(kind)
+	for _, value := range tokens {
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		out = append(out, auth.Token{
+			Kind:   tokenKind,
+			Value:  value,
+			Header: header,
+			Query:  query,
+			Cookie: cookie,
+		})
+	}
+	return out
+}
+
+func parseTokenKind(kind string) auth.TokenKind {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "basic":
+		return auth.TokenBasic
+	case "api_key", "api-key", "apikey":
+		return auth.TokenApiKey
+	default:
+		return auth.TokenBearer
+	}
+}
+
+func toHeaderKVs(headers map[string]string) []auth.HeaderKV {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make([]auth.HeaderKV, 0, len(headers))
+	for key, value := range headers {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		out = append(out, auth.HeaderKV{Key: key, Value: value})
+	}
+	return out
+}
+
+func toCookies(cookies []string) []auth.Cookie {
+	if len(cookies) == 0 {
+		return nil
+	}
+	out := make([]auth.Cookie, 0, len(cookies))
+	for _, raw := range cookies {
+		parts := strings.SplitN(strings.TrimSpace(raw), "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		name := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if name == "" {
+			continue
+		}
+		out = append(out, auth.Cookie{Name: name, Value: value})
+	}
+	return out
+}
+
+func resolveInput(cfg config.Config, url string, profile string, overrides auth.ResolveInput) auth.ResolveInput {
+	overrides.ProfileName = profile
+	overrides.URL = url
+	overrides.Env = &cfg.AuthOverrides
+	return overrides
+}
+
+func resolveAuthForRequest(cfg config.Config, url string, profile string, overrides auth.ResolveInput) (fetch.AuthOptions, error) {
+	input := resolveInput(cfg, url, profile, overrides)
+	resolved, err := auth.Resolve(cfg.DataDir, input)
 	if err != nil {
 		return fetch.AuthOptions{}, err
 	}
-	if !found {
-		return fetch.AuthOptions{}, fmt.Errorf("auth profile not found: %s", profileName)
-	}
-
-	merged := profile.Auth
-	if override.Basic != "" {
-		merged.Basic = override.Basic
-	}
-	if override.Headers != nil {
-		if merged.Headers == nil {
-			merged.Headers = map[string]string{}
-		}
-		for k, v := range override.Headers {
-			merged.Headers[k] = v
-		}
-	}
-	if len(override.Cookies) > 0 {
-		merged.Cookies = override.Cookies
-	}
-	if override.LoginURL != "" {
-		merged.LoginURL = override.LoginURL
-	}
-	if override.LoginUserSelector != "" {
-		merged.LoginUserSelector = override.LoginUserSelector
-	}
-	if override.LoginPassSelector != "" {
-		merged.LoginPassSelector = override.LoginPassSelector
-	}
-	if override.LoginSubmitSelector != "" {
-		merged.LoginSubmitSelector = override.LoginSubmitSelector
-	}
-	if override.LoginUser != "" {
-		merged.LoginUser = override.LoginUser
-	}
-	if override.LoginPass != "" {
-		merged.LoginPass = override.LoginPass
-	}
-	return merged, nil
+	return auth.ToFetchOptions(resolved), nil
 }
 
 func loadExtractOptions(template, configPath string, validate bool) (extract.ExtractOptions, error) {

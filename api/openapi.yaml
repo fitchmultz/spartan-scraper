@@ -11,6 +11,85 @@ paths:
       responses:
         '200':
           description: OK
+  /v1/auth/profiles:
+    get:
+      summary: List auth profiles
+      responses:
+        '200':
+          description: Auth profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProfilesResponse'
+  /v1/auth/profiles/{name}:
+    put:
+      summary: Upsert auth profile
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthProfile'
+      responses:
+        '200':
+          description: Auth profile saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProfile'
+    delete:
+      summary: Delete auth profile
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /v1/auth/import:
+    post:
+      summary: Import auth vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthVaultImport'
+      responses:
+        '200':
+          description: Imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /v1/auth/export:
+    post:
+      summary: Export auth vault
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthVaultExport'
+      responses:
+        '200':
+          description: Exported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
   /v1/scrape:
     post:
       summary: Scrape a single page
@@ -113,6 +192,140 @@ components:
           type: boolean
           default: false
           description: Validate extraction against schema if present
+    HeaderKV:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    Cookie:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        domain:
+          type: string
+        path:
+          type: string
+    Token:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [bearer, basic, api_key]
+        value:
+          type: string
+        header:
+          type: string
+        query:
+          type: string
+        cookie:
+          type: string
+    LoginFlow:
+      type: object
+      properties:
+        url:
+          type: string
+        userSelector:
+          type: string
+        passSelector:
+          type: string
+        submitSelector:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+    TargetPreset:
+      type: object
+      properties:
+        name:
+          type: string
+        hostPatterns:
+          type: array
+          items:
+            type: string
+        profile:
+          type: string
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeaderKV'
+        cookies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cookie'
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+    AuthProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        parents:
+          type: array
+          items:
+            type: string
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeaderKV'
+        cookies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cookie'
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+        login:
+          $ref: '#/components/schemas/LoginFlow'
+        presets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetPreset'
+    AuthVault:
+      type: object
+      properties:
+        version:
+          type: string
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthProfile'
+        presets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetPreset'
+    AuthProfilesResponse:
+      type: object
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthProfile'
+    AuthVaultImport:
+      type: object
+      properties:
+        path:
+          type: string
+      required: [path]
+    AuthVaultExport:
+      type: object
+      properties:
+        path:
+          type: string
+      required: [path]
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
     AuthOptions:
       type: object
       properties:
@@ -128,6 +341,11 @@ components:
           items:
             type: string
           description: Cookie strings like "name=value"
+        query:
+          type: object
+          additionalProperties:
+            type: string
+          description: Query params applied to the request URL
         loginUrl:
           type: string
         loginUserSelector:
@@ -152,6 +370,8 @@ components:
         playwright:
           type: boolean
           default: false
+        authProfile:
+          type: string
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:
@@ -180,6 +400,8 @@ components:
         playwright:
           type: boolean
           default: false
+        authProfile:
+          type: string
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:
@@ -212,6 +434,8 @@ components:
         playwright:
           type: boolean
           default: false
+        authProfile:
+          type: string
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:

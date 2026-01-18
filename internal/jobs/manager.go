@@ -334,6 +334,15 @@ func decodeAuth(value interface{}) fetch.AuthOptions {
 		}
 		auth.Cookies = values
 	}
+	if query, ok := data["query"].(map[string]interface{}); ok {
+		m := map[string]string{}
+		for k, v := range query {
+			if sv, ok := v.(string); ok {
+				m[k] = sv
+			}
+		}
+		auth.Query = m
+	}
 	return auth
 }
 

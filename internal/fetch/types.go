@@ -1,6 +1,9 @@
 package fetch
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 type RenderEngine string
 
@@ -100,15 +103,16 @@ type JSHeaviness struct {
 }
 
 type AuthOptions struct {
-	Basic               string            `json:"basic"`
-	Headers             map[string]string `json:"headers"`
-	Cookies             []string          `json:"cookies"`
-	LoginURL            string            `json:"loginUrl"`
-	LoginUserSelector   string            `json:"loginUserSelector"`
-	LoginPassSelector   string            `json:"loginPassSelector"`
-	LoginSubmitSelector string            `json:"loginSubmitSelector"`
-	LoginUser           string            `json:"loginUser"`
-	LoginPass           string            `json:"loginPass"`
+	Basic               string            `json:"basic,omitempty"`
+	Headers             map[string]string `json:"headers,omitempty"`
+	Cookies             []string          `json:"cookies,omitempty"`
+	Query               map[string]string `json:"query,omitempty"`
+	LoginURL            string            `json:"loginUrl,omitempty"`
+	LoginUserSelector   string            `json:"loginUserSelector,omitempty"`
+	LoginPassSelector   string            `json:"loginPassSelector,omitempty"`
+	LoginSubmitSelector string            `json:"loginSubmitSelector,omitempty"`
+	LoginUser           string            `json:"loginUser,omitempty"`
+	LoginPass           string            `json:"loginPass,omitempty"`
 }
 
 type Request struct {
@@ -134,4 +138,25 @@ type Result struct {
 	ETag         string       `json:"-"`
 	LastModified string       `json:"-"`
 	Engine       RenderEngine `json:"-"` // New field
+}
+
+// ApplyAuthQuery applies authentication query parameters to a URL.
+// If the query map is empty, the original URL is returned unchanged.
+func ApplyAuthQuery(rawURL string, query map[string]string) string {
+	if len(query) == 0 {
+		return rawURL
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	values := parsed.Query()
+	for key, value := range query {
+		if key == "" {
+			continue
+		}
+		values.Set(key, value)
+	}
+	parsed.RawQuery = values.Encode()
+	return parsed.String()
 }

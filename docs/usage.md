@@ -25,7 +25,7 @@ Scrape a single URL.
 spartan scrape --url <url> [--headless] [--playwright] [--timeout <sec>] [--wait] [--wait-timeout <sec>] [--out <path>]
 ```
 
-Auth options (inline or profile):
+Auth options (inline, profile, or preset via `spartan auth resolve`):
 - `--auth-profile <name>`
 - `--auth-basic user:pass`
 - `--header "Key: Value"` (repeatable)
@@ -63,11 +63,35 @@ Auth flags match `scrape`.
 
 ### auth
 
-Persist auth profiles (stored at `DATA_DIR/profiles.json`).
+Persist auth profiles (stored at `DATA_DIR/auth_vault.json`).
 
   - `spartan auth list`
   - `spartan auth set --name <profile> [auth flags...]`
   - `spartan auth delete --name <profile>`
+  - `spartan auth resolve --url <url> [--profile <name>]`
+  - `spartan auth vault export --out <path>`
+  - `spartan auth vault import --path <path>`
+
+Auth flags:
+- `--parent <name>` (repeatable)
+- `--auth-basic user:pass`
+- `--token <value>` (repeatable)
+- `--token-kind bearer|basic|api_key`
+- `--token-header <Header-Name>`
+- `--token-query <param>`
+- `--token-cookie <name>`
+- `--header "Key: Value"` (repeatable)
+- `--cookie "name=value"` (repeatable)
+- Login flow (headless):
+  - `--login-url <url>`
+  - `--login-user-selector <css>`
+  - `--login-pass-selector <css>`
+  - `--login-submit-selector <css>`
+  - `--login-user <user>`
+  - `--login-pass <pass>`
+
+Presets:
+- `--preset-name <name>` + `--preset-host <pattern>` (repeatable) to map host patterns to a profile.
 
 ### Extraction Templates
 
@@ -198,6 +222,11 @@ Base URL: `http://localhost:${PORT}` (default 8741).
 
 Endpoints:
 - `GET /healthz`
+- `GET /v1/auth/profiles`
+- `PUT /v1/auth/profiles/{name}`
+- `DELETE /v1/auth/profiles/{name}`
+- `POST /v1/auth/import`
+- `POST /v1/auth/export`
 - `POST /v1/scrape`
 - `POST /v1/crawl`
 - `POST /v1/research`
@@ -258,6 +287,15 @@ Outputs: `out/stress/`
 - `MAX_RETRIES`
 - `RETRY_BASE_MS`
 - `USE_PLAYWRIGHT`
+- Auth overrides:
+  - `AUTH_BASIC`
+  - `AUTH_BEARER`
+  - `AUTH_API_KEY`
+  - `AUTH_API_KEY_HEADER`
+  - `AUTH_API_KEY_QUERY`
+  - `AUTH_API_KEY_COOKIE`
+  - `AUTH_HEADER_*`
+  - `AUTH_COOKIE_*`
 
 ## Outputs
 

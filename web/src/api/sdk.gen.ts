@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetHealthzData, GetHealthzResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, GetHealthzData, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -22,6 +22,52 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Health check
  */
 export const getHealthz = <ThrowOnError extends boolean = false>(options?: Options<GetHealthzData, ThrowOnError>) => (options?.client ?? client).get<GetHealthzResponses, unknown, ThrowOnError>({ url: '/healthz', ...options });
+
+/**
+ * List auth profiles
+ */
+export const getV1AuthProfiles = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuthProfilesData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuthProfilesResponses, unknown, ThrowOnError>({ url: '/v1/auth/profiles', ...options });
+
+/**
+ * Delete auth profile
+ */
+export const deleteV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthProfilesByNameResponses, unknown, ThrowOnError>({ url: '/v1/auth/profiles/{name}', ...options });
+
+/**
+ * Upsert auth profile
+ */
+export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<PutV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).put<PutV1AuthProfilesByNameResponses, unknown, ThrowOnError>({
+    url: '/v1/auth/profiles/{name}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Import auth vault
+ */
+export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthImportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthImportResponses, unknown, ThrowOnError>({
+    url: '/v1/auth/import',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Export auth vault
+ */
+export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthExportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthExportResponses, unknown, ThrowOnError>({
+    url: '/v1/auth/export',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Scrape a single page

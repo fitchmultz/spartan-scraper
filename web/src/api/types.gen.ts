@@ -15,6 +15,76 @@ export type ExtractOptions = {
     validate?: boolean;
 };
 
+export type HeaderKv = {
+    key?: string;
+    value?: string;
+};
+
+export type Cookie = {
+    name?: string;
+    value?: string;
+    domain?: string;
+    path?: string;
+};
+
+export type Token = {
+    kind?: 'bearer' | 'basic' | 'api_key';
+    value?: string;
+    header?: string;
+    query?: string;
+    cookie?: string;
+};
+
+export type LoginFlow = {
+    url?: string;
+    userSelector?: string;
+    passSelector?: string;
+    submitSelector?: string;
+    username?: string;
+    password?: string;
+};
+
+export type TargetPreset = {
+    name?: string;
+    hostPatterns?: Array<string>;
+    profile?: string;
+    headers?: Array<HeaderKv>;
+    cookies?: Array<Cookie>;
+    tokens?: Array<Token>;
+};
+
+export type AuthProfile = {
+    name?: string;
+    parents?: Array<string>;
+    headers?: Array<HeaderKv>;
+    cookies?: Array<Cookie>;
+    tokens?: Array<Token>;
+    login?: LoginFlow;
+    presets?: Array<TargetPreset>;
+};
+
+export type AuthVault = {
+    version?: string;
+    profiles?: Array<AuthProfile>;
+    presets?: Array<TargetPreset>;
+};
+
+export type AuthProfilesResponse = {
+    profiles?: Array<AuthProfile>;
+};
+
+export type AuthVaultImport = {
+    path: string;
+};
+
+export type AuthVaultExport = {
+    path: string;
+};
+
+export type StatusResponse = {
+    status?: string;
+};
+
 export type AuthOptions = {
     /**
      * Basic auth in user:pass form
@@ -27,6 +97,12 @@ export type AuthOptions = {
      * Cookie strings like "name=value"
      */
     cookies?: Array<string>;
+    /**
+     * Query params applied to the request URL
+     */
+    query?: {
+        [key: string]: string;
+    };
     loginUrl?: string;
     loginUserSelector?: string;
     loginPassSelector?: string;
@@ -39,6 +115,7 @@ export type ScrapeRequest = {
     url: string;
     headless?: boolean;
     playwright?: boolean;
+    authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
@@ -51,6 +128,7 @@ export type CrawlRequest = {
     maxPages?: number;
     headless?: boolean;
     playwright?: boolean;
+    authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
@@ -64,6 +142,7 @@ export type ResearchRequest = {
     maxPages?: number;
     headless?: boolean;
     playwright?: boolean;
+    authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
     timeoutSeconds?: number;
@@ -100,6 +179,90 @@ export type GetHealthzResponses = {
      */
     200: unknown;
 };
+
+export type GetV1AuthProfilesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/profiles';
+};
+
+export type GetV1AuthProfilesResponses = {
+    /**
+     * Auth profiles
+     */
+    200: AuthProfilesResponse;
+};
+
+export type GetV1AuthProfilesResponse = GetV1AuthProfilesResponses[keyof GetV1AuthProfilesResponses];
+
+export type DeleteV1AuthProfilesByNameData = {
+    body?: never;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/v1/auth/profiles/{name}';
+};
+
+export type DeleteV1AuthProfilesByNameResponses = {
+    /**
+     * Deleted
+     */
+    200: StatusResponse;
+};
+
+export type DeleteV1AuthProfilesByNameResponse = DeleteV1AuthProfilesByNameResponses[keyof DeleteV1AuthProfilesByNameResponses];
+
+export type PutV1AuthProfilesByNameData = {
+    body: AuthProfile;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/v1/auth/profiles/{name}';
+};
+
+export type PutV1AuthProfilesByNameResponses = {
+    /**
+     * Auth profile saved
+     */
+    200: AuthProfile;
+};
+
+export type PutV1AuthProfilesByNameResponse = PutV1AuthProfilesByNameResponses[keyof PutV1AuthProfilesByNameResponses];
+
+export type PostV1AuthImportData = {
+    body: AuthVaultImport;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/import';
+};
+
+export type PostV1AuthImportResponses = {
+    /**
+     * Imported
+     */
+    200: StatusResponse;
+};
+
+export type PostV1AuthImportResponse = PostV1AuthImportResponses[keyof PostV1AuthImportResponses];
+
+export type PostV1AuthExportData = {
+    body: AuthVaultExport;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/export';
+};
+
+export type PostV1AuthExportResponses = {
+    /**
+     * Exported
+     */
+    200: StatusResponse;
+};
+
+export type PostV1AuthExportResponse = PostV1AuthExportResponses[keyof PostV1AuthExportResponses];
 
 export type PostV1ScrapeData = {
     body: ScrapeRequest;

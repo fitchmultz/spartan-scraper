@@ -17,6 +17,9 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 		return Result{}, errors.New("url is required")
 	}
 
+	// Apply auth query parameters before making the request
+	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
+
 	retries := clampRetry(req.MaxRetries)
 	baseDelay := req.RetryBaseDelay
 	if baseDelay <= 0 {

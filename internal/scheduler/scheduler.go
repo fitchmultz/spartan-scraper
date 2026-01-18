@@ -69,7 +69,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		url := stringParam(schedule.Params, "url")
 		headless := boolParam(schedule.Params, "headless")
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
-		authOptions, _ := loadAuth(schedule.Params, dataDir)
+		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
@@ -82,7 +82,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, _ := loadAuth(schedule.Params, dataDir)
+		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
@@ -92,11 +92,15 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 	case model.KindResearch:
 		query := stringParam(schedule.Params, "query")
 		urls := stringSliceParam(schedule.Params, "urls")
+		targetURL := ""
+		if len(urls) > 0 {
+			targetURL = urls[0]
+		}
 		headless := boolParam(schedule.Params, "headless")
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, _ := loadAuth(schedule.Params, dataDir)
+		authOptions, _ := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
 		if err != nil {
@@ -118,20 +122,21 @@ func loadExtract(params map[string]interface{}) extract.ExtractOptions {
 	}
 }
 
-func loadAuth(params map[string]interface{}, dataDir string) (fetch.AuthOptions, error) {
+func loadAuth(params map[string]interface{}, dataDir string, targetURL string, env auth.EnvOverrides) (fetch.AuthOptions, error) {
 	if params == nil {
 		return fetch.AuthOptions{}, nil
 	}
-	if profileName, ok := params["authProfile"].(string); ok && profileName != "" {
-		profile, found, err := auth.Get(dataDir, profileName)
-		if err != nil {
-			return fetch.AuthOptions{}, err
-		}
-		if found {
-			return profile.Auth, nil
-		}
+	profileName, _ := params["authProfile"].(string)
+	input := auth.ResolveInput{
+		ProfileName: profileName,
+		URL:         targetURL,
+		Env:         &env,
 	}
-	return fetch.AuthOptions{}, nil
+	resolved, err := auth.Resolve(dataDir, input)
+	if err != nil {
+		return fetch.AuthOptions{}, err
+	}
+	return auth.ToFetchOptions(resolved), nil
 }
 
 func LoadAll(dataDir string) ([]Schedule, error) {

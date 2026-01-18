@@ -108,8 +108,8 @@ Open `http://localhost:5173` for the UI (the API is proxied to `PORT` from `.env
 ## Notes
 
 - Robots.txt is intentionally ignored by design.
-- Auth support: headers, cookies, basic auth, and form login (headless).
-- Auth profiles are stored in `.data/profiles.json`.
+- Auth support: headers, cookies, basic auth, tokens, query params, and form login (headless).
+- Auth vault is stored in `.data/auth_vault.json` (profiles + presets + inheritance).
 - Render profiles (adaptive rules) are stored in `.data/render_profiles.json`.
 - Rate limiting + retries are configurable via `.env`.
 - Playwright can be enabled with `USE_PLAYWRIGHT=1` or `--playwright` (CLI/API). Install browsers with:
