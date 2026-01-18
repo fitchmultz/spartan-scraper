@@ -139,6 +139,9 @@ components:
         headless:
           type: boolean
           default: false
+        playwright:
+          type: boolean
+          default: false
         auth:
           $ref: '#/components/schemas/AuthOptions'
         timeoutSeconds:
@@ -157,6 +160,9 @@ components:
           type: integer
           default: 200
         headless:
+          type: boolean
+          default: false
+        playwright:
           type: boolean
           default: false
         auth:
@@ -181,6 +187,9 @@ components:
           type: integer
           default: 200
         headless:
+          type: boolean
+          default: false
+        playwright:
           type: boolean
           default: false
         auth:

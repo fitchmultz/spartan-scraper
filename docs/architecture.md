@@ -10,7 +10,7 @@
 
 ## Core modules
 
-- `fetch`: HTTP fetcher + headless Chromium fetcher.
+- `fetch`: HTTP fetcher + headless Chromium/Playwright fetchers.
 - `extract`: HTML → text/metadata/links.
 - `crawl`: BFS crawler with host scoping and depth/limit controls.
 - `jobs`: persistent store + queue + runner.
@@ -19,6 +19,9 @@
 - `web`: Web UI consuming generated API client.
 - `research`: multi-source workflow (scrape/crawl → evidence → summary).
 - `mcp`: stdio server exposing tools for agent orchestration.
+- Auth profiles live in `DATA_DIR/profiles.json` and can be referenced by CLI.
+- Exporter can emit markdown or csv from stored job artifacts.
+- Scheduler runs interval-based jobs and persists schedules in `DATA_DIR/schedules.json`.
 
 ## Execution flow
 
@@ -32,7 +35,7 @@
 
 - Header + cookie injection at the HTTP layer.
 - Basic auth for direct endpoints.
-- Form login via headless Chromium (selectors provided).
+- Form login via headless Chromium or Playwright (selectors provided).
 
 ## Interfaces
 

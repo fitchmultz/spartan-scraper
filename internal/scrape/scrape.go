@@ -8,11 +8,15 @@ import (
 )
 
 type Request struct {
-	URL       string
-	Headless  bool
-	Auth      fetch.AuthOptions
-	Timeout   time.Duration
-	UserAgent string
+	URL           string
+	Headless      bool
+	UsePlaywright bool
+	Auth          fetch.AuthOptions
+	Timeout       time.Duration
+	UserAgent     string
+	Limiter       *fetch.HostLimiter
+	MaxRetries    int
+	RetryBase     time.Duration
 }
 
 type Result struct {
@@ -25,14 +29,18 @@ type Result struct {
 }
 
 func Run(req Request) (Result, error) {
-	fetcher := fetch.NewFetcher(req.Headless)
+	fetcher := fetch.NewFetcher(req.Headless, req.UsePlaywright)
 
 	res, err := fetcher.Fetch(fetch.Request{
-		URL:       req.URL,
-		Timeout:   req.Timeout,
-		UserAgent: req.UserAgent,
-		Headless:  req.Headless,
-		Auth:      req.Auth,
+		URL:            req.URL,
+		Timeout:        req.Timeout,
+		UserAgent:      req.UserAgent,
+		Headless:       req.Headless,
+		UsePlaywright:  req.UsePlaywright,
+		Auth:           req.Auth,
+		Limiter:        req.Limiter,
+		MaxRetries:     req.MaxRetries,
+		RetryBaseDelay: req.RetryBase,
 	})
 	if err != nil {
 		return Result{}, err

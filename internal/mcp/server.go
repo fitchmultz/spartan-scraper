@@ -55,7 +55,18 @@ func NewServer(cfg config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	mgr := jobs.NewManager(st, cfg.DataDir, cfg.UserAgent, time.Duration(cfg.RequestTimeoutSecs)*time.Second, cfg.MaxConcurrency)
+	mgr := jobs.NewManager(
+		st,
+		cfg.DataDir,
+		cfg.UserAgent,
+		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
+		cfg.MaxConcurrency,
+		cfg.RateLimitQPS,
+		cfg.RateLimitBurst,
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.UsePlaywright,
+	)
 	mgr.Start(context.Background())
 	return &Server{store: st, manager: mgr, cfg: cfg}, nil
 }
@@ -125,17 +136,17 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless)",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"headless": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
 		},
 		{
 			Name:        "crawl_site",
 			Description: "Crawl a site with depth and page limits",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
 		},
 		{
 			Name:        "research",
 			Description: "Deep research across multiple sources",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "timeoutSeconds": "number"}),
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number"}),
 		},
 		{
 			Name:        "job_status",
@@ -182,8 +193,9 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			return nil, errors.New("url is required")
 		}
 		headless := getBool(params.Arguments, "headless")
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateScrapeJob(url, headless, fetch.AuthOptions{}, timeout)
+		job, err := s.manager.CreateScrapeJob(url, headless, playwright, fetch.AuthOptions{}, timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -202,8 +214,9 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, fetch.AuthOptions{}, timeout)
+		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -223,8 +236,9 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, fetch.AuthOptions{}, timeout)
+		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, fetch.AuthOptions{}, timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -304,6 +318,19 @@ func getBool(args map[string]interface{}, key string) bool {
 		return value
 	}
 	return false
+}
+
+func getBoolDefault(args map[string]interface{}, key string, fallback bool) bool {
+	if args == nil {
+		return fallback
+	}
+	if _, ok := args[key]; !ok {
+		return fallback
+	}
+	if value, ok := args[key].(bool); ok {
+		return value
+	}
+	return fallback
 }
 
 func getInt(args map[string]interface{}, key string, fallback int) int {

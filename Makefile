@@ -33,7 +33,7 @@ test:
 	go test ./...
 
 generate:
-	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api -c fetch
+	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
 
 build:
 	mkdir -p $(BIN_DIR)

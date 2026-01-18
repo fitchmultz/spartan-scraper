@@ -12,14 +12,19 @@ import (
 )
 
 type Request struct {
-	Query     string
-	URLs      []string
-	MaxDepth  int
-	MaxPages  int
-	Headless  bool
-	Auth      fetch.AuthOptions
-	Timeout   time.Duration
-	UserAgent string
+	Query         string
+	URLs          []string
+	MaxDepth      int
+	MaxPages      int
+	Concurrency   int
+	Headless      bool
+	UsePlaywright bool
+	Auth          fetch.AuthOptions
+	Timeout       time.Duration
+	UserAgent     string
+	Limiter       *fetch.HostLimiter
+	MaxRetries    int
+	RetryBase     time.Duration
 }
 
 type Evidence struct {
@@ -45,13 +50,18 @@ func Run(req Request) (Result, error) {
 		}
 		if req.MaxDepth > 0 {
 			pages, err := crawl.Run(crawl.Request{
-				URL:       target,
-				MaxDepth:  req.MaxDepth,
-				MaxPages:  req.MaxPages,
-				Headless:  req.Headless,
-				Auth:      req.Auth,
-				Timeout:   req.Timeout,
-				UserAgent: req.UserAgent,
+				URL:           target,
+				MaxDepth:      req.MaxDepth,
+				MaxPages:      req.MaxPages,
+				Concurrency:   req.Concurrency,
+				Headless:      req.Headless,
+				UsePlaywright: req.UsePlaywright,
+				Auth:          req.Auth,
+				Timeout:       req.Timeout,
+				UserAgent:     req.UserAgent,
+				Limiter:       req.Limiter,
+				MaxRetries:    req.MaxRetries,
+				RetryBase:     req.RetryBase,
 			})
 			if err != nil {
 				continue
@@ -69,11 +79,15 @@ func Run(req Request) (Result, error) {
 		}
 
 		page, err := scrape.Run(scrape.Request{
-			URL:       target,
-			Headless:  req.Headless,
-			Auth:      req.Auth,
-			Timeout:   req.Timeout,
-			UserAgent: req.UserAgent,
+			URL:           target,
+			Headless:      req.Headless,
+			UsePlaywright: req.UsePlaywright,
+			Auth:          req.Auth,
+			Timeout:       req.Timeout,
+			UserAgent:     req.UserAgent,
+			Limiter:       req.Limiter,
+			MaxRetries:    req.MaxRetries,
+			RetryBase:     req.RetryBase,
 		})
 		if err != nil {
 			continue

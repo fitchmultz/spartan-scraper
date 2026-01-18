@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  OpenAPI,
   getV1Jobs,
   postV1Crawl,
   postV1Research,
@@ -16,6 +15,7 @@ export function App() {
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [crawlUrl, setCrawlUrl] = useState("");
   const [headless, setHeadless] = useState(false);
+  const [usePlaywright, setUsePlaywright] = useState(false);
   const [maxDepth, setMaxDepth] = useState(2);
   const [maxPages, setMaxPages] = useState(200);
   const [timeoutSeconds, setTimeoutSeconds] = useState(30);
@@ -33,17 +33,17 @@ export function App() {
   >([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    OpenAPI.BASE = "";
-  }, []);
-
   const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
 
   const refreshJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getV1Jobs();
-      setJobs(response.jobs ?? []);
+      const { data, error: apiError } = await getV1Jobs({ baseUrl: "" });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
+      setJobs(data?.jobs ?? []);
       setError(null);
     } catch (err) {
       setError(String(err));
@@ -58,6 +58,12 @@ export function App() {
     return () => window.clearInterval(handle);
   }, [refreshJobs]);
 
+  useEffect(() => {
+    if (!headless && usePlaywright) {
+      setUsePlaywright(false);
+    }
+  }, [headless, usePlaywright]);
+
   async function submitScrape() {
     if (!scrapeUrl) {
       setError("Scrape URL is required.");
@@ -65,14 +71,20 @@ export function App() {
     }
     setLoading(true);
     try {
-      await postV1Scrape({
-        requestBody: {
+      const { error: apiError } = await postV1Scrape({
+        baseUrl: "",
+        body: {
           url: scrapeUrl,
           headless,
+          playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
         },
       });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
       setError(null);
       await refreshJobs();
     } catch (err) {
@@ -89,16 +101,22 @@ export function App() {
     }
     setLoading(true);
     try {
-      await postV1Crawl({
-        requestBody: {
+      const { error: apiError } = await postV1Crawl({
+        baseUrl: "",
+        body: {
           url: crawlUrl,
           maxDepth,
           maxPages,
           headless,
+          playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
         },
       });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
       setError(null);
       await refreshJobs();
     } catch (err) {
@@ -115,17 +133,23 @@ export function App() {
     }
     setLoading(true);
     try {
-      await postV1Research({
-        requestBody: {
+      const { error: apiError } = await postV1Research({
+        baseUrl: "",
+        body: {
           query: researchQuery,
           urls: parseUrlList(researchUrls),
           maxDepth,
           maxPages,
           headless,
+          playwright: headless ? usePlaywright : false,
           timeoutSeconds,
           auth: buildAuth(authBasic, headerMap),
         },
       });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
       setError(null);
       await refreshJobs();
     } catch (err) {
@@ -175,6 +199,7 @@ export function App() {
           <div>{loading ? "Refreshing…" : "Standing by"}</div>
           <div>Total jobs: {jobs.length}</div>
           <div>Headless mode: {headless ? "Enabled" : "Disabled"}</div>
+          <div>Playwright: {usePlaywright ? "Enabled" : "Disabled"}</div>
         </div>
       </section>
 
@@ -196,6 +221,15 @@ export function App() {
                 onChange={(event) => setHeadless(event.target.checked)}
               />{" "}
               Headless
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
             </label>
             <label>
               Timeout (s)
@@ -279,6 +313,15 @@ export function App() {
               Headless
             </label>
             <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
+            </label>
+            <label>
               Timeout (s)
               <input
                 type="number"
@@ -351,6 +394,15 @@ export function App() {
                 onChange={(event) => setHeadless(event.target.checked)}
               />{" "}
               Headless
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
             </label>
             <label>
               Timeout (s)

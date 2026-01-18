@@ -24,16 +24,24 @@ type Manager struct {
 	userAgent      string
 	requestTimeout time.Duration
 	maxConcurrency int
+	limiter        *fetch.HostLimiter
+	maxRetries     int
+	retryBase      time.Duration
+	usePlaywright  bool
 	queue          chan model.Job
 }
 
-func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int) *Manager {
+func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
 	return &Manager{
 		store:          store,
 		dataDir:        dataDir,
 		userAgent:      userAgent,
 		requestTimeout: requestTimeout,
 		maxConcurrency: maxConcurrency,
+		limiter:        fetch.NewHostLimiter(rateLimitQPS, rateLimitBurst),
+		maxRetries:     maxRetries,
+		retryBase:      retryBase,
+		usePlaywright:  usePlaywright,
 		queue:          make(chan model.Job, 128),
 	}
 }
@@ -53,6 +61,14 @@ func (m *Manager) Start(ctx context.Context) {
 	}
 }
 
+func (m *Manager) DefaultTimeoutSeconds() int {
+	return int(m.requestTimeout.Seconds())
+}
+
+func (m *Manager) DefaultUsePlaywright() bool {
+	return m.usePlaywright
+}
+
 func (m *Manager) Enqueue(job model.Job) error {
 	select {
 	case m.queue <- job:
@@ -62,7 +78,10 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
-func (m *Manager) CreateScrapeJob(url string, headless bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+	if usePlaywright {
+		headless = true
+	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -70,10 +89,11 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, auth fetch.AuthOpti
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"url":      url,
-			"headless": headless,
-			"auth":     auth,
-			"timeout":  timeoutSeconds,
+			"url":        url,
+			"headless":   headless,
+			"playwright": usePlaywright,
+			"auth":       auth,
+			"timeout":    timeoutSeconds,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -83,7 +103,10 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, auth fetch.AuthOpti
 	return job, nil
 }
 
-func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+	if usePlaywright {
+		headless = true
+	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -91,12 +114,13 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"url":      url,
-			"maxDepth": maxDepth,
-			"maxPages": maxPages,
-			"headless": headless,
-			"auth":     auth,
-			"timeout":  timeoutSeconds,
+			"url":        url,
+			"maxDepth":   maxDepth,
+			"maxPages":   maxPages,
+			"headless":   headless,
+			"playwright": usePlaywright,
+			"auth":       auth,
+			"timeout":    timeoutSeconds,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -106,7 +130,10 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 	return job, nil
 }
 
-func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
+	if usePlaywright {
+		headless = true
+	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -114,13 +141,14 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"query":    query,
-			"urls":     urls,
-			"maxDepth": maxDepth,
-			"maxPages": maxPages,
-			"headless": headless,
-			"auth":     auth,
-			"timeout":  timeoutSeconds,
+			"query":      query,
+			"urls":       urls,
+			"maxDepth":   maxDepth,
+			"maxPages":   maxPages,
+			"headless":   headless,
+			"playwright": usePlaywright,
+			"auth":       auth,
+			"timeout":    timeoutSeconds,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -150,14 +178,19 @@ func (m *Manager) run(job model.Job) error {
 	case model.KindScrape:
 		url, _ := job.Params["url"].(string)
 		headless, _ := job.Params["headless"].(bool)
+		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		result, err := scrape.Run(scrape.Request{
-			URL:       url,
-			Headless:  headless,
-			Auth:      auth,
-			Timeout:   time.Duration(timeoutSecs) * time.Second,
-			UserAgent: m.userAgent,
+			URL:           url,
+			Headless:      headless,
+			UsePlaywright: usePlaywright,
+			Auth:          auth,
+			Timeout:       time.Duration(timeoutSecs) * time.Second,
+			UserAgent:     m.userAgent,
+			Limiter:       m.limiter,
+			MaxRetries:    m.maxRetries,
+			RetryBase:     m.retryBase,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -170,16 +203,22 @@ func (m *Manager) run(job model.Job) error {
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
 		headless, _ := job.Params["headless"].(bool)
+		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		results, err := crawl.Run(crawl.Request{
-			URL:       url,
-			MaxDepth:  maxDepth,
-			MaxPages:  maxPages,
-			Headless:  headless,
-			Auth:      auth,
-			Timeout:   time.Duration(timeoutSecs) * time.Second,
-			UserAgent: m.userAgent,
+			URL:           url,
+			MaxDepth:      maxDepth,
+			MaxPages:      maxPages,
+			Concurrency:   m.maxConcurrency,
+			Headless:      headless,
+			UsePlaywright: usePlaywright,
+			Auth:          auth,
+			Timeout:       time.Duration(timeoutSecs) * time.Second,
+			UserAgent:     m.userAgent,
+			Limiter:       m.limiter,
+			MaxRetries:    m.maxRetries,
+			RetryBase:     m.retryBase,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -195,17 +234,23 @@ func (m *Manager) run(job model.Job) error {
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
 		headless, _ := job.Params["headless"].(bool)
+		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		result, err := research.Run(research.Request{
-			Query:     query,
-			URLs:      urls,
-			MaxDepth:  maxDepth,
-			MaxPages:  maxPages,
-			Headless:  headless,
-			Auth:      auth,
-			Timeout:   time.Duration(timeoutSecs) * time.Second,
-			UserAgent: m.userAgent,
+			Query:         query,
+			URLs:          urls,
+			MaxDepth:      maxDepth,
+			MaxPages:      maxPages,
+			Concurrency:   m.maxConcurrency,
+			Headless:      headless,
+			UsePlaywright: usePlaywright,
+			Auth:          auth,
+			Timeout:       time.Duration(timeoutSecs) * time.Second,
+			UserAgent:     m.userAgent,
+			Limiter:       m.limiter,
+			MaxRetries:    m.maxRetries,
+			RetryBase:     m.retryBase,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -307,5 +352,14 @@ func toStringSlice(value interface{}) []string {
 		return items
 	default:
 		return nil
+	}
+}
+
+func toBool(value interface{}, fallback bool) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	default:
+		return fallback
 	}
 }

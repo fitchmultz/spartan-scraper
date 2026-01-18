@@ -15,11 +15,15 @@ type AuthOptions struct {
 }
 
 type Request struct {
-	URL       string
-	Timeout   time.Duration
-	UserAgent string
-	Headless  bool
-	Auth      AuthOptions
+	URL            string
+	Timeout        time.Duration
+	UserAgent      string
+	Headless       bool
+	UsePlaywright  bool
+	Auth           AuthOptions
+	Limiter        *HostLimiter
+	MaxRetries     int
+	RetryBaseDelay time.Duration
 }
 
 type Result struct {

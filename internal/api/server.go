@@ -19,6 +19,7 @@ type Server struct {
 type ScrapeRequest struct {
 	URL            string             `json:"url"`
 	Headless       bool               `json:"headless"`
+	Playwright     *bool              `json:"playwright"`
 	TimeoutSeconds int                `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions `json:"auth"`
 }
@@ -28,6 +29,7 @@ type CrawlRequest struct {
 	MaxDepth       int                `json:"maxDepth"`
 	MaxPages       int                `json:"maxPages"`
 	Headless       bool               `json:"headless"`
+	Playwright     *bool              `json:"playwright"`
 	TimeoutSeconds int                `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions `json:"auth"`
 }
@@ -38,6 +40,7 @@ type ResearchRequest struct {
 	MaxDepth       int                `json:"maxDepth"`
 	MaxPages       int                `json:"maxPages"`
 	Headless       bool               `json:"headless"`
+	Playwright     *bool              `json:"playwright"`
 	TimeoutSeconds int                `json:"timeoutSeconds"`
 	Auth           *fetch.AuthOptions `json:"auth"`
 }
@@ -82,7 +85,15 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
-	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, auth, req.TimeoutSeconds)
+	timeout := req.TimeoutSeconds
+	if timeout <= 0 {
+		timeout = s.manager.DefaultTimeoutSeconds()
+	}
+	usePlaywright := s.manager.DefaultUsePlaywright()
+	if req.Playwright != nil {
+		usePlaywright = *req.Playwright
+	}
+	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, auth, timeout)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -112,7 +123,15 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
-	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, auth, req.TimeoutSeconds)
+	timeout := req.TimeoutSeconds
+	if timeout <= 0 {
+		timeout = s.manager.DefaultTimeoutSeconds()
+	}
+	usePlaywright := s.manager.DefaultUsePlaywright()
+	if req.Playwright != nil {
+		usePlaywright = *req.Playwright
+	}
+	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -142,7 +161,15 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		auth = *req.Auth
 	}
 
-	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, auth, req.TimeoutSeconds)
+	timeout := req.TimeoutSeconds
+	if timeout <= 0 {
+		timeout = s.manager.DefaultTimeoutSeconds()
+	}
+	usePlaywright := s.manager.DefaultUsePlaywright()
+	if req.Playwright != nil {
+		usePlaywright = *req.Playwright
+	}
+	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, auth, timeout)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
