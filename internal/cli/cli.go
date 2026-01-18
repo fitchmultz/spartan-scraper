@@ -448,7 +448,7 @@ Options:
 }
 
 func runAuth(cfg config.Config) int {
-	if len(os.Args) < 3 || os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+	if len(os.Args) < 3 {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan auth <subcommand> [options]
 
@@ -468,6 +468,27 @@ Examples:
 Use "spartan auth set --help" for full flags.
 `)
 		return 1
+	}
+	if os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan auth <subcommand> [options]
+
+Subcommands:
+  list
+  set
+  delete
+
+Examples:
+  spartan auth list
+  spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
+  spartan auth set --name acme --login-url https://example.com/login \
+    --login-user-selector '#email' --login-pass-selector '#password' --login-submit-selector 'button[type=submit]' \
+    --login-user you@example.com --login-pass '***'
+  spartan auth delete --name acme
+
+Use "spartan auth set --help" for full flags.
+`)
+		return 0
 	}
 
 	switch os.Args[2] {
@@ -609,7 +630,7 @@ Options:
 }
 
 func runSchedule(cfg config.Config) int {
-	if len(os.Args) < 3 || os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+	if len(os.Args) < 3 {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan schedule <subcommand> [options]
 
@@ -626,6 +647,24 @@ Examples:
   spartan schedule delete --id <schedule-id>
 `)
 		return 1
+	}
+	if os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan schedule <subcommand> [options]
+
+Subcommands:
+  list
+  add
+  delete
+
+Examples:
+  spartan schedule add --kind scrape --interval 3600 --url https://example.com
+  spartan schedule add --kind crawl --interval 7200 --url https://example.com --max-depth 2 --max-pages 200
+  spartan schedule add --kind research --interval 86400 --query "pricing" --urls https://example.com,https://example.com/docs
+  spartan schedule list
+  spartan schedule delete --id <schedule-id>
+`)
+		return 0
 	}
 
 	switch os.Args[2] {
@@ -728,6 +767,15 @@ Examples:
 }
 
 func runServer(ctx context.Context, cfg config.Config) int {
+	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan server
+
+Notes:
+  Starts the API server, job workers, and scheduler.
+`)
+		return 0
+	}
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -768,6 +816,10 @@ Notes:
 `)
 	}
 	_ = fs.Parse(os.Args[2:])
+	if fs.NArg() > 0 && (fs.Arg(0) == "--help" || fs.Arg(0) == "-h" || fs.Arg(0) == "help") {
+		fs.Usage()
+		return 0
+	}
 
 	server, err := mcp.NewServer(cfg)
 	if err != nil {
@@ -784,6 +836,15 @@ Notes:
 }
 
 func runTUI(cfg config.Config) int {
+	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan tui
+
+Notes:
+  Terminal UI for browsing jobs and statuses.
+`)
+		return 0
+	}
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -188,3 +188,13 @@ Jobs stored under `DATA_DIR/jobs/<id>/results.jsonl`.
 - Scrape: single JSON object.
 - Crawl: JSONL, one page per line.
 - Research: single JSON object (summary + evidence).
+
+## CI Coverage
+
+`make ci` runs unit + end-to-end coverage across:
+- CLI (all subcommands, help, auth profiles, export)
+- API (scrape/crawl/research/jobs/results)
+- MCP (tools list + scrape_page)
+- Scheduler (job creation via interval)
+- Web (TypeScript build)
+- External auth targets (public demo sites + httpbin basic auth)
