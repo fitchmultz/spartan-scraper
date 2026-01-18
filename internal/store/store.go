@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,10 +23,13 @@ func Open(dataDir string) (*Store, error) {
 		return nil, err
 	}
 	path := filepath.Join(dataDir, "jobs.db")
-	db, err := sql.Open("sqlite", path)
+	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", url.PathEscape(path))
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 	store := &Store{db: db}
 	if err := store.init(); err != nil {
 		return nil, err

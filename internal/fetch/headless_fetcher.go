@@ -52,6 +52,7 @@ func (f *HeadlessFetcher) Fetch(req Request) (Result, error) {
 		}
 
 		err := chromedp.Run(ctx, actions...)
+		currentURL := ""
 		if err == nil && req.Auth.LoginURL != "" {
 			if req.Auth.LoginUserSelector == "" || req.Auth.LoginPassSelector == "" || req.Auth.LoginSubmitSelector == "" {
 				cancelTimeout()
@@ -65,20 +66,38 @@ func (f *HeadlessFetcher) Fetch(req Request) (Result, error) {
 				chromedp.SendKeys(req.Auth.LoginUserSelector, req.Auth.LoginUser),
 				chromedp.SendKeys(req.Auth.LoginPassSelector, req.Auth.LoginPass),
 				chromedp.Click(req.Auth.LoginSubmitSelector),
+				chromedp.WaitReady("body", chromedp.ByQuery),
+				chromedp.Sleep(500*time.Millisecond),
+				chromedp.Location(&currentURL),
 			)
+			if err != nil && isAbortErr(err) {
+				err = nil
+			}
 		}
 
 		var html string
 		if err == nil {
-			err = chromedp.Run(ctx,
-				chromedp.Navigate(req.URL),
+			actions := []chromedp.Action{}
+			if currentURL == "" || currentURL == req.Auth.LoginURL {
+				actions = append(actions, chromedp.Navigate(req.URL))
+			}
+			actions = append(actions,
+				chromedp.WaitReady("body", chromedp.ByQuery),
 				chromedp.OuterHTML("html", &html, chromedp.ByQuery),
 			)
+			err = chromedp.Run(ctx, actions...)
+			if err != nil && isAbortErr(err) {
+				err = nil
+			}
 		}
 
 		cancelTimeout()
 		cancelCtx()
 		cancel()
+
+		if err != nil && isAbortErr(err) {
+			err = nil
+		}
 
 		if err != nil {
 			if attempt >= retries || !shouldRetry(err, 0) {
@@ -97,4 +116,11 @@ func (f *HeadlessFetcher) Fetch(req Request) (Result, error) {
 	}
 
 	return Result{}, errors.New("max retries exceeded")
+}
+
+func isAbortErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "net::ERR_ABORTED")
 }

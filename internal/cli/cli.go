@@ -68,6 +68,7 @@ func runScrape(cfg config.Config) int {
 	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
 	out := fs.String("out", "", "Output file (JSON)")
 	wait := fs.Bool("wait", false, "Wait for completion and write output")
+	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
 
@@ -154,7 +155,7 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID); err != nil {
+		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -177,8 +178,12 @@ Options:
 	return 0
 }
 
-func waitForJob(store *store.Store, id string) error {
+func waitForJob(store *store.Store, id string, timeout time.Duration) error {
+	start := time.Now()
 	for {
+		if timeout > 0 && time.Since(start) > timeout {
+			return fmt.Errorf("wait timeout after %s", timeout)
+		}
 		job, err := store.Get(id)
 		if err != nil {
 			return err
@@ -246,6 +251,7 @@ func runCrawl(cfg config.Config) int {
 	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
 	out := fs.String("out", "", "Output file (JSONL)")
 	wait := fs.Bool("wait", false, "Wait for completion and write output")
+	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
 	headers := stringSliceFlag{}
@@ -313,7 +319,7 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID); err != nil {
+		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -346,6 +352,7 @@ func runResearch(cfg config.Config) int {
 	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
 	out := fs.String("out", "", "Output file (JSONL)")
 	wait := fs.Bool("wait", false, "Wait for completion and write output")
+	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
 	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	profileName := fs.String("auth-profile", "", "Auth profile name")
@@ -416,7 +423,7 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID); err != nil {
+		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}

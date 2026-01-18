@@ -79,9 +79,6 @@ func (m *Manager) Enqueue(job model.Job) error {
 }
 
 func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
-	if usePlaywright {
-		headless = true
-	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -104,9 +101,6 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 }
 
 func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
-	if usePlaywright {
-		headless = true
-	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -131,9 +125,6 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 }
 
 func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int) (model.Job, error) {
-	if usePlaywright {
-		headless = true
-	}
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,

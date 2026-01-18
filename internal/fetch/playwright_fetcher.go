@@ -51,7 +51,7 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 	}()
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(true),
+		Headless: playwright.Bool(req.Headless),
 	})
 	if err != nil {
 		return Result{}, err
@@ -122,11 +122,13 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 	page.SetDefaultTimeout(timeoutMs)
 	page.SetDefaultNavigationTimeout(timeoutMs)
 
+	waitUntil := playwright.WaitUntilStateCommit
+
 	if req.Auth.LoginURL != "" {
 		if req.Auth.LoginUserSelector == "" || req.Auth.LoginPassSelector == "" || req.Auth.LoginSubmitSelector == "" {
 			return Result{}, errors.New("login selectors are required for headless login")
 		}
-		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: playwright.WaitUntilStateNetworkidle}); err != nil {
+		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: waitUntil}); err != nil {
 			return Result{}, err
 		}
 		if err = page.Fill(req.Auth.LoginUserSelector, req.Auth.LoginUser); err != nil {
@@ -138,14 +140,16 @@ func (f *PlaywrightFetcher) fetchOnce(req Request) (Result, error) {
 		if err = page.Click(req.Auth.LoginSubmitSelector); err != nil {
 			return Result{}, err
 		}
-		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateNetworkidle, Timeout: &timeoutMs}); err != nil {
+		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutMs}); err != nil {
 			return Result{}, err
 		}
 	}
 
-	if _, err = page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: playwright.WaitUntilStateNetworkidle}); err != nil {
+	if _, err = page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &timeoutMs, WaitUntil: waitUntil}); err != nil {
 		return Result{}, err
 	}
+	_ = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutMs})
+	time.Sleep(5 * time.Second)
 	content, err := page.Content()
 	if err != nil {
 		return Result{}, err

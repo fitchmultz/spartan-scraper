@@ -114,6 +114,10 @@ func Run(req Request) ([]PageResult, error) {
 					RetryBaseDelay: req.RetryBase,
 				})
 				if err == nil {
+					if res.Status >= 400 {
+						wg.Done()
+						continue
+					}
 					extracted, extractErr := extract.FromHTML(res.HTML)
 					if extractErr == nil {
 						if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
