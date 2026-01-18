@@ -125,9 +125,12 @@ type Request struct {
 	Limiter         *HostLimiter
 	MaxRetries      int
 	RetryBaseDelay  time.Duration
-	IfNoneMatch     string `json:"-"`
-	IfModifiedSince string `json:"-"`
-	DataDir         string `json:"-"` // New field for profiles
+	IfNoneMatch     string   `json:"-"`
+	IfModifiedSince string   `json:"-"`
+	DataDir         string   `json:"-"`
+	PreNavJS        []string `json:"-"`
+	PostNavJS       []string `json:"-"`
+	WaitSelectors   []string `json:"-"`
 }
 
 type Result struct {

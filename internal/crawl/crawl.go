@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -13,6 +15,7 @@ import (
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/pipeline"
 )
 
 type Request struct {
@@ -24,6 +27,7 @@ type Request struct {
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
 	Extract       extract.ExtractOptions
+	Pipeline      pipeline.Options
 	Timeout       time.Duration
 	UserAgent     string
 	Limiter       *fetch.HostLimiter
@@ -32,6 +36,8 @@ type Request struct {
 	DataDir       string
 	Incremental   bool
 	Store         CrawlStateStore
+	Registry      *pipeline.Registry
+	JSRegistry    *pipeline.JSRegistry
 }
 
 type CrawlStateStore interface {
@@ -59,6 +65,19 @@ func Run(req Request) ([]PageResult, error) {
 	}
 	if req.Concurrency <= 0 {
 		req.Concurrency = 4
+	}
+
+	registry := req.Registry
+	if registry == nil {
+		registry = pipeline.NewRegistry()
+	}
+	jsRegistry := req.JSRegistry
+	if jsRegistry == nil {
+		loaded, err := pipeline.LoadJSRegistry(req.DataDir)
+		if err != nil {
+			return nil, err
+		}
+		jsRegistry = loaded
 	}
 
 	startURL, err := url.Parse(req.URL)
@@ -102,6 +121,53 @@ func Run(req Request) ([]PageResult, error) {
 			IfModifiedSince: ifModifiedSince,
 		}
 
+		target := pipeline.NewTarget(fetchReq.URL, string(model.KindCrawl))
+		baseCtx := pipeline.HookContext{
+			Context:     context.Background(),
+			Target:      target,
+			Now:         time.Now(),
+			DataDir:     req.DataDir,
+			Options:     req.Pipeline,
+			Attributes:  map[string]string{},
+			Diagnostics: map[string]any{},
+		}
+
+		preFetchCtx := baseCtx
+		preFetchCtx.Stage = pipeline.StagePreFetch
+		fetchInput, err := registry.RunPreFetch(preFetchCtx, pipeline.FetchInput{
+			Target:     target,
+			Request:    fetchReq,
+			Auth:       req.Auth,
+			Timeout:    req.Timeout,
+			UserAgent:  req.UserAgent,
+			Headless:   req.Headless,
+			Playwright: req.UsePlaywright,
+			DataDir:    req.DataDir,
+		})
+		if err != nil {
+			return PageResult{}, false, false
+		}
+		fetchReq = fetchInput.Request
+		target = pipeline.NewTarget(fetchReq.URL, string(model.KindCrawl))
+		baseCtx.Target = target
+
+		if fetchReq.Headless && jsRegistry != nil {
+			engine := pipeline.EngineChromedp
+			if fetchReq.UsePlaywright {
+				engine = pipeline.EnginePlaywright
+			}
+			preScripts, postScripts, selectors := pipeline.SelectScripts(jsRegistry.Match(fetchReq.URL), engine)
+			if len(preScripts) > 0 {
+				fetchReq.PreNavJS = preScripts
+			}
+			if len(postScripts) > 0 {
+				fetchReq.PostNavJS = postScripts
+			}
+			if len(selectors) > 0 {
+				fetchReq.WaitSelectors = selectors
+			}
+		}
+
 		res, err := fetcher.Fetch(fetchReq)
 		if err != nil {
 			return PageResult{}, false, false // Don't enqueue children if fetch failed
@@ -109,6 +175,14 @@ func Run(req Request) ([]PageResult, error) {
 		if res.Status >= 400 {
 			return PageResult{}, false, false
 		}
+
+		postFetchCtx := baseCtx
+		postFetchCtx.Stage = pipeline.StagePostFetch
+		fetchOut, err := registry.RunPostFetch(postFetchCtx, fetchInput, pipeline.FetchOutput{Result: res})
+		if err != nil {
+			return PageResult{}, false, false
+		}
+		res = fetchOut.Result
 
 		// Check 304 or Hash Match
 		isUnchanged := res.Status == 304
@@ -134,16 +208,40 @@ func Run(req Request) ([]PageResult, error) {
 			}, false, true // skip processing/extracting
 		}
 
-		// If changed (or first run), extract and save state
-		output, extractErr := extract.Execute(extract.ExecuteInput{
-			URL:     item.URL,
+		preExtractCtx := baseCtx
+		preExtractCtx.Stage = pipeline.StagePreExtract
+		extractInput, err := registry.RunPreExtract(preExtractCtx, pipeline.ExtractInput{
+			Target:  target,
 			HTML:    res.HTML,
 			Options: req.Extract,
 			DataDir: req.DataDir,
 		})
+		if err != nil {
+			return PageResult{}, false, false
+		}
+
+		// If changed (or first run), extract and save state
+		output, extractErr := extract.Execute(extract.ExecuteInput{
+			URL:     item.URL,
+			HTML:    extractInput.HTML,
+			Options: extractInput.Options,
+			DataDir: extractInput.DataDir,
+		})
 		if extractErr != nil {
 			return PageResult{}, false, false
 		}
+
+		postExtractCtx := baseCtx
+		postExtractCtx.Stage = pipeline.StagePostExtract
+		extractOut, err := registry.RunPostExtract(postExtractCtx, extractInput, pipeline.ExtractOutput{
+			Extracted:  output.Extracted,
+			Normalized: output.Normalized,
+		})
+		if err != nil {
+			return PageResult{}, false, false
+		}
+		output.Extracted = extractOut.Extracted
+		output.Normalized = extractOut.Normalized
 
 		// Update state
 		if req.Incremental && req.Store != nil {
@@ -157,7 +255,7 @@ func Run(req Request) ([]PageResult, error) {
 			_ = req.Store.UpsertCrawlState(newState)
 		}
 
-		return PageResult{
+		result := PageResult{
 			URL:    item.URL,
 			Status: res.Status,
 			Title:  output.Normalized.Title,
@@ -171,7 +269,14 @@ func Run(req Request) ([]PageResult, error) {
 			},
 			Extracted:  output.Extracted,
 			Normalized: output.Normalized,
-		}, true, false
+		}
+
+		finalResult, err := applyCrawlOutputPipeline(registry, baseCtx, result)
+		if err != nil {
+			return PageResult{}, false, false
+		}
+
+		return finalResult, true, false
 	}
 
 	tasks := make(chan task, req.MaxPages)
@@ -289,4 +394,48 @@ func sameHost(base *url.URL, raw string) bool {
 		return false
 	}
 	return u.Host == base.Host
+}
+
+func applyCrawlOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result PageResult) (PageResult, error) {
+	raw, _ := json.Marshal(result)
+	input := pipeline.OutputInput{
+		Target:     baseCtx.Target,
+		Kind:       string(model.KindCrawl),
+		Raw:        raw,
+		Structured: result,
+	}
+
+	preCtx := baseCtx
+	preCtx.Stage = pipeline.StagePreOutput
+	outInput, err := registry.RunPreOutput(preCtx, input)
+	if err != nil {
+		return PageResult{}, err
+	}
+	if typed, ok := outInput.Structured.(PageResult); ok {
+		result = typed
+		outInput.Structured = result
+	}
+
+	transformCtx := baseCtx
+	transformCtx.Stage = pipeline.StagePreOutput
+	out, err := registry.RunTransformers(transformCtx, outInput)
+	if err != nil {
+		return PageResult{}, err
+	}
+
+	postCtx := baseCtx
+	postCtx.Stage = pipeline.StagePostOutput
+	out, err = registry.RunPostOutput(postCtx, outInput, out)
+	if err != nil {
+		return PageResult{}, err
+	}
+
+	if out.Structured == nil {
+		return result, nil
+	}
+	typed, ok := out.Structured.(PageResult)
+	if !ok {
+		return PageResult{}, fmt.Errorf("pipeline output type mismatch for crawl")
+	}
+	return typed, nil
 }

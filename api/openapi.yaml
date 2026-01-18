@@ -192,6 +192,21 @@ components:
           type: boolean
           default: false
           description: Validate extraction against schema if present
+    PipelineOptions:
+      type: object
+      properties:
+        preProcessors:
+          type: array
+          items:
+            type: string
+        postProcessors:
+          type: array
+          items:
+            type: string
+        transformers:
+          type: array
+          items:
+            type: string
     ResearchEvidence:
       type: object
       properties:
@@ -439,6 +454,8 @@ components:
           $ref: '#/components/schemas/AuthOptions'
         extract:
           $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
         timeoutSeconds:
           type: integer
           default: 30
@@ -469,6 +486,8 @@ components:
           $ref: '#/components/schemas/AuthOptions'
         extract:
           $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
         timeoutSeconds:
           type: integer
           default: 30
@@ -503,6 +522,8 @@ components:
           $ref: '#/components/schemas/AuthOptions'
         extract:
           $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
         timeoutSeconds:
           type: integer
           default: 30

@@ -16,6 +16,7 @@ import (
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/pipeline"
 )
 
 type Schedule struct {
@@ -64,6 +65,7 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 
 func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 	extractOpts := loadExtract(schedule.Params)
+	pipelineOpts := loadPipeline(schedule.Params)
 	switch schedule.Kind {
 	case model.KindScrape:
 		url := stringParam(schedule.Params, "url")
@@ -71,7 +73,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
+		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -84,7 +86,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
+		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -102,7 +104,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, incremental)
+		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -120,6 +122,28 @@ func loadExtract(params map[string]interface{}) extract.ExtractOptions {
 		Template: stringParam(params, "extractTemplate"),
 		Validate: boolParam(params, "extractValidate"),
 	}
+}
+
+func loadPipeline(params map[string]interface{}) pipeline.Options {
+	if params == nil {
+		return pipeline.Options{}
+	}
+	raw, ok := params["pipeline"]
+	if !ok || raw == nil {
+		return pipeline.Options{}
+	}
+	if opts, ok := raw.(pipeline.Options); ok {
+		return opts
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return pipeline.Options{}
+	}
+	var opts pipeline.Options
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return pipeline.Options{}
+	}
+	return opts
 }
 
 func loadAuth(params map[string]interface{}, dataDir string, targetURL string, env auth.EnvOverrides) (fetch.AuthOptions, error) {

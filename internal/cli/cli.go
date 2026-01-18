@@ -21,6 +21,7 @@ import (
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/mcp"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/scheduler"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/ui/tui"
@@ -78,6 +79,13 @@ func runScrape(cfg config.Config) int {
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
+	preProcessors := stringSliceFlag{}
+	postProcessors := stringSliceFlag{}
+	transformers := stringSliceFlag{}
+	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
+
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
 	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
@@ -123,6 +131,11 @@ Options:
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	pipelineOpts := pipeline.Options{
+		PreProcessors:  []string(preProcessors),
+		PostProcessors: []string(postProcessors),
+		Transformers:   []string(transformers),
+	}
 
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
@@ -163,7 +176,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
+	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -279,6 +292,13 @@ func runCrawl(cfg config.Config) int {
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
+	preProcessors := stringSliceFlag{}
+	postProcessors := stringSliceFlag{}
+	transformers := stringSliceFlag{}
+	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
+
 	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
 	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
 	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
@@ -297,7 +317,7 @@ func runCrawl(cfg config.Config) int {
 Examples:
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan crawl --url https://example.com --headless --wait --out ./out/site.jsonl
-  spartan crawl --url https://example.com --headless --playwright --wait --out ./out/site.jsonl
+	spartan crawl --url https://example.com --pre-processor redact --transformer json-clean
 
 Options:
 `)
@@ -313,6 +333,11 @@ Options:
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+	pipelineOpts := pipeline.Options{
+		PreProcessors:  []string(preProcessors),
+		PostProcessors: []string(postProcessors),
+		Transformers:   []string(transformers),
 	}
 
 	store, err := store.Open(cfg.DataDir)
@@ -346,7 +371,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
+	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -400,6 +425,13 @@ func runResearch(cfg config.Config) int {
 	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
 	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
 
+	preProcessors := stringSliceFlag{}
+	postProcessors := stringSliceFlag{}
+	transformers := stringSliceFlag{}
+	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
+
 	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
 	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
 	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
@@ -417,7 +449,7 @@ func runResearch(cfg config.Config) int {
 Examples:
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
   spartan research --query "login flow" --urls https://example.com --headless --wait --out ./out/research.jsonl
-  spartan research --query "login flow" --urls https://example.com --headless --playwright --wait --out ./out/research.jsonl
+	spartan research --query "pricing model" --urls https://example.com --transformer json-clean
 
 Options:
 `)
@@ -433,6 +465,11 @@ Options:
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+	pipelineOpts := pipeline.Options{
+		PreProcessors:  []string(preProcessors),
+		PostProcessors: []string(postProcessors),
+		Transformers:   []string(transformers),
 	}
 
 	store, err := store.Open(cfg.DataDir)
@@ -467,7 +504,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, *incremental)
+	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -855,6 +892,14 @@ Examples:
 		playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
 		timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 		authProfile := fs.String("auth-profile", "", "Auth profile name")
+
+		preProcessors := stringSliceFlag{}
+		postProcessors := stringSliceFlag{}
+		transformers := stringSliceFlag{}
+		fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+		fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+		fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
+
 		_ = fs.Parse(os.Args[3:])
 
 		if *kind == "" {
@@ -866,6 +911,11 @@ Examples:
 			"headless":   *headless,
 			"playwright": *playwright,
 			"timeout":    *timeout,
+			"pipeline": pipeline.Options{
+				PreProcessors:  []string(preProcessors),
+				PostProcessors: []string(postProcessors),
+				Transformers:   []string(transformers),
+			},
 		}
 		if *authProfile != "" {
 			params["authProfile"] = *authProfile

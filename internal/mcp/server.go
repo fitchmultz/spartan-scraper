@@ -15,6 +15,7 @@ import (
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
 )
 
@@ -206,7 +207,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateScrapeJob(url, headless, playwright, resolvedAuth, timeout, extractOpts, false)
+		job, err := s.manager.CreateScrapeJob(url, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +237,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, false)
+		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}
@@ -271,7 +272,7 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, false)
+		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}

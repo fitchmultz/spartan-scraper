@@ -14,36 +14,42 @@ import (
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/research"
 	"spartan-scraper/internal/scrape"
 	"spartan-scraper/internal/store"
 )
 
 type Manager struct {
-	store          *store.Store
-	dataDir        string
-	userAgent      string
-	requestTimeout time.Duration
-	maxConcurrency int
-	limiter        *fetch.HostLimiter
-	maxRetries     int
-	retryBase      time.Duration
-	usePlaywright  bool
-	queue          chan model.Job
+	store            *store.Store
+	dataDir          string
+	userAgent        string
+	requestTimeout   time.Duration
+	maxConcurrency   int
+	limiter          *fetch.HostLimiter
+	maxRetries       int
+	retryBase        time.Duration
+	usePlaywright    bool
+	queue            chan model.Job
+	pipelineRegistry *pipeline.Registry
+	jsRegistry       *pipeline.JSRegistry
 }
 
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
+	jsRegistry, _ := pipeline.LoadJSRegistry(dataDir)
 	return &Manager{
-		store:          store,
-		dataDir:        dataDir,
-		userAgent:      userAgent,
-		requestTimeout: requestTimeout,
-		maxConcurrency: maxConcurrency,
-		limiter:        fetch.NewHostLimiter(rateLimitQPS, rateLimitBurst),
-		maxRetries:     maxRetries,
-		retryBase:      retryBase,
-		usePlaywright:  usePlaywright,
-		queue:          make(chan model.Job, 128),
+		store:            store,
+		dataDir:          dataDir,
+		userAgent:        userAgent,
+		requestTimeout:   requestTimeout,
+		maxConcurrency:   maxConcurrency,
+		limiter:          fetch.NewHostLimiter(rateLimitQPS, rateLimitBurst),
+		maxRetries:       maxRetries,
+		retryBase:        retryBase,
+		usePlaywright:    usePlaywright,
+		queue:            make(chan model.Job, 128),
+		pipelineRegistry: pipeline.NewRegistry(),
+		jsRegistry:       jsRegistry,
 	}
 }
 
@@ -79,7 +85,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
-func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -92,6 +98,7 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 			"playwright":  usePlaywright,
 			"auth":        auth,
 			"extract":     extractOpts,
+			"pipeline":    pipelineOpts,
 			"timeout":     timeoutSeconds,
 			"incremental": incremental,
 		},
@@ -103,7 +110,7 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 	return job, nil
 }
 
-func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -118,6 +125,7 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 			"playwright":  usePlaywright,
 			"auth":        auth,
 			"extract":     extractOpts,
+			"pipeline":    pipelineOpts,
 			"timeout":     timeoutSeconds,
 			"incremental": incremental,
 		},
@@ -129,7 +137,7 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 	return job, nil
 }
 
-func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, incremental bool) (model.Job, error) {
+func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -145,6 +153,7 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 			"playwright":  usePlaywright,
 			"auth":        auth,
 			"extract":     extractOpts,
+			"pipeline":    pipelineOpts,
 			"timeout":     timeoutSeconds,
 			"incremental": incremental,
 		},
@@ -180,6 +189,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := scrape.Run(scrape.Request{
 			URL:           url,
@@ -187,6 +197,7 @@ func (m *Manager) run(job model.Job) error {
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
 			Extract:       extractOpts,
+			Pipeline:      pipelineOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -195,6 +206,8 @@ func (m *Manager) run(job model.Job) error {
 			DataDir:       m.dataDir,
 			Incremental:   incremental,
 			Store:         m.store,
+			Registry:      m.pipelineRegistry,
+			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -211,6 +224,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		results, err := crawl.Run(crawl.Request{
 			URL:           url,
@@ -221,6 +235,7 @@ func (m *Manager) run(job model.Job) error {
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
 			Extract:       extractOpts,
+			Pipeline:      pipelineOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -229,6 +244,8 @@ func (m *Manager) run(job model.Job) error {
 			DataDir:       m.dataDir,
 			Incremental:   incremental,
 			Store:         m.store,
+			Registry:      m.pipelineRegistry,
+			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -248,6 +265,7 @@ func (m *Manager) run(job model.Job) error {
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
 		auth := decodeAuth(job.Params["auth"])
 		extractOpts := decodeExtract(job.Params["extract"])
+		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(research.Request{
 			Query:         query,
@@ -259,6 +277,7 @@ func (m *Manager) run(job model.Job) error {
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
 			Extract:       extractOpts,
+			Pipeline:      pipelineOpts,
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
@@ -267,6 +286,8 @@ func (m *Manager) run(job model.Job) error {
 			DataDir:       m.dataDir,
 			Incremental:   incremental,
 			Store:         m.store,
+			Registry:      m.pipelineRegistry,
+			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
@@ -405,4 +426,22 @@ func toBool(value interface{}, fallback bool) bool {
 	default:
 		return fallback
 	}
+}
+
+func decodePipeline(value interface{}) pipeline.Options {
+	if value == nil {
+		return pipeline.Options{}
+	}
+	if opts, ok := value.(pipeline.Options); ok {
+		return opts
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return pipeline.Options{}
+	}
+	var opts pipeline.Options
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return pipeline.Options{}
+	}
+	return opts
 }

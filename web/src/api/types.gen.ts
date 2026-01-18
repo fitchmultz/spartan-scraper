@@ -15,6 +15,12 @@ export type ExtractOptions = {
     validate?: boolean;
 };
 
+export type PipelineOptions = {
+    preProcessors?: Array<string>;
+    postProcessors?: Array<string>;
+    transformers?: Array<string>;
+};
+
 export type ResearchEvidence = {
     url?: string;
     title?: string;
@@ -151,6 +157,7 @@ export type ScrapeRequest = {
     authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     incremental?: boolean;
 };
@@ -164,6 +171,7 @@ export type CrawlRequest = {
     authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     incremental?: boolean;
 };
@@ -178,6 +186,7 @@ export type ResearchRequest = {
     authProfile?: string;
     auth?: AuthOptions;
     extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     incremental?: boolean;
 };

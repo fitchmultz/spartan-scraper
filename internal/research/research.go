@@ -1,6 +1,9 @@
 package research
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"hash/fnv"
 	"math"
 	"math/bits"
@@ -14,6 +17,8 @@ import (
 	"spartan-scraper/internal/crawl"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/scrape"
 )
 
@@ -27,6 +32,7 @@ type Request struct {
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
 	Extract       extract.ExtractOptions
+	Pipeline      pipeline.Options
 	Timeout       time.Duration
 	UserAgent     string
 	Limiter       *fetch.HostLimiter
@@ -35,6 +41,8 @@ type Request struct {
 	DataDir       string
 	Incremental   bool
 	Store         scrape.CrawlStateStore
+	Registry      *pipeline.Registry
+	JSRegistry    *pipeline.JSRegistry
 }
 
 type Evidence struct {
@@ -89,6 +97,7 @@ func Run(req Request) (Result, error) {
 				UsePlaywright: req.UsePlaywright,
 				Auth:          req.Auth,
 				Extract:       req.Extract,
+				Pipeline:      req.Pipeline,
 				Timeout:       req.Timeout,
 				UserAgent:     req.UserAgent,
 				Limiter:       req.Limiter,
@@ -97,6 +106,8 @@ func Run(req Request) (Result, error) {
 				DataDir:       req.DataDir,
 				Incremental:   req.Incremental,
 				Store:         req.Store,
+				Registry:      req.Registry,
+				JSRegistry:    req.JSRegistry,
 			})
 			if err != nil {
 				continue
@@ -119,6 +130,7 @@ func Run(req Request) (Result, error) {
 				UsePlaywright: req.UsePlaywright,
 				Auth:          req.Auth,
 				Extract:       req.Extract,
+				Pipeline:      req.Pipeline,
 				Timeout:       req.Timeout,
 				UserAgent:     req.UserAgent,
 				Limiter:       req.Limiter,
@@ -127,6 +139,8 @@ func Run(req Request) (Result, error) {
 				DataDir:       req.DataDir,
 				Incremental:   req.Incremental,
 				Store:         req.Store,
+				Registry:      req.Registry,
+				JSRegistry:    req.JSRegistry,
 			})
 			if err != nil {
 				continue
@@ -153,14 +167,30 @@ func Run(req Request) (Result, error) {
 	confidence := overallConfidence(items, clusters)
 
 	summary := summarize(queryTokens, items)
-	return Result{
+	result := Result{
 		Query:      req.Query,
 		Summary:    summary,
 		Evidence:   items,
 		Clusters:   clusters,
 		Citations:  citations,
 		Confidence: confidence,
-	}, nil
+	}
+
+	registry := req.Registry
+	if registry == nil {
+		registry = pipeline.NewRegistry()
+	}
+	target := pipeline.NewTarget("", string(model.KindResearch))
+	baseCtx := pipeline.HookContext{
+		Context:     context.Background(),
+		Target:      target,
+		Now:         time.Now(),
+		DataDir:     req.DataDir,
+		Options:     req.Pipeline,
+		Attributes:  map[string]string{},
+		Diagnostics: map[string]any{},
+	}
+	return applyResearchOutputPipeline(registry, baseCtx, result)
 }
 
 func tokenize(query string) []string {
@@ -528,4 +558,48 @@ func clamp01(value float64) float64 {
 		return 1
 	}
 	return value
+}
+
+func applyResearchOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
+	raw, _ := json.Marshal(result)
+	input := pipeline.OutputInput{
+		Target:     baseCtx.Target,
+		Kind:       string(model.KindResearch),
+		Raw:        raw,
+		Structured: result,
+	}
+
+	preCtx := baseCtx
+	preCtx.Stage = pipeline.StagePreOutput
+	outInput, err := registry.RunPreOutput(preCtx, input)
+	if err != nil {
+		return Result{}, err
+	}
+	if typed, ok := outInput.Structured.(Result); ok {
+		result = typed
+		outInput.Structured = result
+	}
+
+	transformCtx := baseCtx
+	transformCtx.Stage = pipeline.StagePreOutput
+	out, err := registry.RunTransformers(transformCtx, outInput)
+	if err != nil {
+		return Result{}, err
+	}
+
+	postCtx := baseCtx
+	postCtx.Stage = pipeline.StagePostOutput
+	out, err = registry.RunPostOutput(postCtx, outInput, out)
+	if err != nil {
+		return Result{}, err
+	}
+
+	if out.Structured == nil {
+		return result, nil
+	}
+	typed, ok := out.Structured.(Result)
+	if !ok {
+		return Result{}, fmt.Errorf("pipeline output type mismatch for research")
+	}
+	return typed, nil
 }

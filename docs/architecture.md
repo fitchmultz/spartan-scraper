@@ -35,6 +35,30 @@ The fetcher uses an adaptive strategy to optimize for performance and reliabilit
    - Blocks wasteful resources (images, fonts, media, stylesheets) by default or policy.
    - Uses adaptive wait strategies (DOM ready, network idle, selector visible, content stability).
 
+## Pipeline hooks + plugins
+
+- `internal/pipeline` defines the standardized plugin interface and hook registry.
+- Hooks are executed at pre/post fetch, pre/post extract, and pre/post output.
+- Output transformers run after pre-output hooks and before post-output hooks.
+- JS per-target scripts are loaded from `DATA_DIR/pipeline_js.json` and applied during headless fetch.
+
+### JS registry example
+
+```json
+{
+  "scripts": [
+    {
+      "name": "app-login",
+      "hostPatterns": ["app.example.com"],
+      "engine": "playwright",
+      "preNav": "localStorage.setItem('consent','true')",
+      "postNav": "window.scrollTo(0, document.body.scrollHeight)",
+      "selectors": ["#app", "main"]
+    }
+  ]
+}
+```
+
 ## Execution flow
 
 1. CLI/API create a job and persist it.

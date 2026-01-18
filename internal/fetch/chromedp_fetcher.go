@@ -126,6 +126,20 @@ func (f *ChromedpFetcher) doFetch(req Request, prof RenderProfile, timeout time.
 		}
 	}
 
+	if len(req.PreNavJS) > 0 {
+		if err := chromedp.Run(ctx, chromedp.Navigate("about:blank")); err != nil {
+			return Result{}, err
+		}
+		for _, script := range req.PreNavJS {
+			if strings.TrimSpace(script) == "" {
+				continue
+			}
+			if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
+				return Result{}, err
+			}
+		}
+	}
+
 	// Navigate to target
 	if currentURL == "" || currentURL == req.Auth.LoginURL {
 		if err := chromedp.Run(ctx, chromedp.Navigate(req.URL)); err != nil {
@@ -147,6 +161,26 @@ func (f *ChromedpFetcher) doFetch(req Request, prof RenderProfile, timeout time.
 	// Extra sleep if requested
 	if prof.Wait.ExtraSleepMs > 0 {
 		_ = chromedp.Run(ctx, chromedp.Sleep(time.Duration(prof.Wait.ExtraSleepMs)*time.Millisecond))
+	}
+
+	for _, selector := range req.WaitSelectors {
+		if strings.TrimSpace(selector) == "" {
+			continue
+		}
+		if err := chromedp.Run(ctx, chromedp.WaitVisible(selector, chromedp.ByQuery)); err != nil {
+			return Result{}, err
+		}
+	}
+
+	if len(req.PostNavJS) > 0 {
+		for _, script := range req.PostNavJS {
+			if strings.TrimSpace(script) == "" {
+				continue
+			}
+			if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
+				return Result{}, err
+			}
+		}
 	}
 
 	var html string

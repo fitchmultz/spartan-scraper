@@ -160,6 +160,34 @@ To customize rendering behavior per site (e.g., forcing headless, increasing tim
 }
 ```
 
+### Pipeline hooks
+
+Optional pipeline flags (repeatable):
+- `--pre-processor <name>`
+- `--post-processor <name>`
+- `--transformer <name>`
+
+These map to the standardized plugin interface in `internal/pipeline`.
+
+### JS per-target scripts (headless)
+
+Place `pipeline_js.json` in your `DATA_DIR` (default `.data`):
+
+```json
+{
+  "scripts": [
+    {
+      "name": "spa-boost",
+      "hostPatterns": ["*.example.com"],
+      "engine": "chromedp",
+      "preNav": "window.localStorage.setItem('exp','1')",
+      "postNav": "document.body.click()",
+      "selectors": ["#root"]
+    }
+  ]
+}
+```
+
 ### export
 
 Export stored job results.

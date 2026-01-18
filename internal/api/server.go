@@ -11,6 +11,7 @@ import (
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
 )
 
@@ -28,6 +29,7 @@ type ScrapeRequest struct {
 	AuthProfile    string                  `json:"authProfile,omitempty"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
 }
 
@@ -41,6 +43,7 @@ type CrawlRequest struct {
 	AuthProfile    string                  `json:"authProfile,omitempty"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
 }
 
@@ -55,6 +58,7 @@ type ResearchRequest struct {
 	AuthProfile    string                  `json:"authProfile,omitempty"`
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
+	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
 }
 
@@ -107,6 +111,11 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		extractOpts = *req.Extract
 	}
 
+	pipelineOpts := pipeline.Options{}
+	if req.Pipeline != nil {
+		pipelineOpts = *req.Pipeline
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -121,7 +130,7 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, authOptions, timeout, extractOpts, incremental)
+	job, err := s.manager.CreateScrapeJob(req.URL, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -156,6 +165,11 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		extractOpts = *req.Extract
 	}
 
+	pipelineOpts := pipeline.Options{}
+	if req.Pipeline != nil {
+		pipelineOpts = *req.Pipeline
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -170,7 +184,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, incremental)
+	job, err := s.manager.CreateCrawlJob(req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -205,6 +219,11 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		extractOpts = *req.Extract
 	}
 
+	pipelineOpts := pipeline.Options{}
+	if req.Pipeline != nil {
+		pipelineOpts = *req.Pipeline
+	}
+
 	timeout := req.TimeoutSeconds
 	if timeout <= 0 {
 		timeout = s.manager.DefaultTimeoutSeconds()
@@ -223,7 +242,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, incremental)
+	job, err := s.manager.CreateResearchJob(req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

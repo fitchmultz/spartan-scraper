@@ -177,6 +177,20 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 		}
 	}
 
+	if len(req.PreNavJS) > 0 {
+		if _, err = page.Goto("about:blank", playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
+			return Result{}, err
+		}
+		for _, script := range req.PreNavJS {
+			if strings.TrimSpace(script) == "" {
+				continue
+			}
+			if _, err := page.Evaluate(script); err != nil {
+				return Result{}, err
+			}
+		}
+	}
+
 	resp, err := page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &navTimeoutFloat, WaitUntil: waitUntil})
 	if err != nil {
 		return Result{}, err
@@ -193,6 +207,26 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 
 	if prof.Wait.ExtraSleepMs > 0 {
 		time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)
+	}
+
+	for _, selector := range req.WaitSelectors {
+		if strings.TrimSpace(selector) == "" {
+			continue
+		}
+		if _, err := page.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{State: playwright.WaitForSelectorStateVisible, Timeout: &timeoutFloat}); err != nil {
+			return Result{}, err
+		}
+	}
+
+	if len(req.PostNavJS) > 0 {
+		for _, script := range req.PostNavJS {
+			if strings.TrimSpace(script) == "" {
+				continue
+			}
+			if _, err := page.Evaluate(script); err != nil {
+				return Result{}, err
+			}
+		}
 	}
 
 	content, err := page.Content()
