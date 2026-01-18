@@ -1,8 +1,13 @@
 package research
 
 import (
+	"hash/fnv"
+	"math"
+	"math/bits"
+	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,16 +38,36 @@ type Request struct {
 }
 
 type Evidence struct {
-	URL     string  `json:"url"`
-	Title   string  `json:"title"`
-	Snippet string  `json:"snippet"`
-	Score   float64 `json:"score"`
+	URL         string  `json:"url"`
+	Title       string  `json:"title"`
+	Snippet     string  `json:"snippet"`
+	Score       float64 `json:"score"`
+	SimHash     uint64  `json:"simhash"`
+	ClusterID   string  `json:"clusterId"`
+	Confidence  float64 `json:"confidence"`
+	CitationURL string  `json:"citationUrl"`
 }
 
 type Result struct {
-	Query    string     `json:"query"`
-	Summary  string     `json:"summary"`
-	Evidence []Evidence `json:"evidence"`
+	Query      string            `json:"query"`
+	Summary    string            `json:"summary"`
+	Evidence   []Evidence        `json:"evidence"`
+	Clusters   []EvidenceCluster `json:"clusters"`
+	Citations  []Citation        `json:"citations"`
+	Confidence float64           `json:"confidence"`
+}
+
+type EvidenceCluster struct {
+	ID         string     `json:"id"`
+	Label      string     `json:"label"`
+	Evidence   []Evidence `json:"evidence"`
+	Confidence float64    `json:"confidence"`
+}
+
+type Citation struct {
+	URL       string `json:"url"`
+	Anchor    string `json:"anchor,omitempty"`
+	Canonical string `json:"canonical"`
 }
 
 func Run(req Request) (Result, error) {
@@ -121,8 +146,21 @@ func Run(req Request) (Result, error) {
 		return items[i].Score > items[j].Score
 	})
 
+	items = enrichEvidence(items)
+	items = dedupEvidence(items, 3)
+	clusters, items := clusterEvidence(items, 8, 1)
+	citations := buildCitations(items)
+	confidence := overallConfidence(items, clusters)
+
 	summary := summarize(queryTokens, items)
-	return Result{Query: req.Query, Summary: summary, Evidence: items}, nil
+	return Result{
+		Query:      req.Query,
+		Summary:    summary,
+		Evidence:   items,
+		Clusters:   clusters,
+		Citations:  citations,
+		Confidence: confidence,
+	}, nil
 }
 
 func tokenize(query string) []string {
@@ -218,4 +256,276 @@ func splitSentences(text string) []string {
 		}
 	}
 	return out
+}
+
+func enrichEvidence(items []Evidence) []Evidence {
+	if len(items) == 0 {
+		return items
+	}
+	maxScore := 0.0
+	for _, item := range items {
+		if item.Score > maxScore {
+			maxScore = item.Score
+		}
+	}
+
+	out := make([]Evidence, 0, len(items))
+	for _, item := range items {
+		text := strings.TrimSpace(item.Title + " " + item.Snippet)
+		item.SimHash = computeSimHash(text)
+		citation := normalizeCitation(item.URL, item.Snippet, item.Title)
+		item.CitationURL = buildCitationURL(citation.Canonical, citation.Anchor)
+		item.Confidence = evidenceConfidence(item, maxScore)
+		out = append(out, item)
+	}
+	return out
+}
+
+func computeSimHash(text string) uint64 {
+	tokens := tokenize(text)
+	if len(tokens) == 0 {
+		return 0
+	}
+	var weights [64]int
+	for _, token := range tokens {
+		h := fnv.New64a()
+		_, _ = h.Write([]byte(token))
+		hash := h.Sum64()
+		for i := 0; i < 64; i++ {
+			if hash&(1<<i) != 0 {
+				weights[i]++
+			} else {
+				weights[i]--
+			}
+		}
+	}
+	var out uint64
+	for i := 0; i < 64; i++ {
+		if weights[i] >= 0 {
+			out |= 1 << i
+		}
+	}
+	return out
+}
+
+func hammingDistance(a uint64, b uint64) int {
+	return bits.OnesCount64(a ^ b)
+}
+
+func dedupEvidence(items []Evidence, maxDistance int) []Evidence {
+	if len(items) == 0 {
+		return items
+	}
+	out := make([]Evidence, 0, len(items))
+	for _, item := range items {
+		duplicate := false
+		for _, existing := range out {
+			if hammingDistance(item.SimHash, existing.SimHash) <= maxDistance {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+func clusterEvidence(items []Evidence, maxDistance int, minSize int) ([]EvidenceCluster, []Evidence) {
+	if len(items) == 0 {
+		return []EvidenceCluster{}, items
+	}
+	type cluster struct {
+		id       string
+		evidence []Evidence
+	}
+	clusters := make([]cluster, 0)
+
+	for _, item := range items {
+		placed := false
+		for i := range clusters {
+			for _, member := range clusters[i].evidence {
+				if hammingDistance(item.SimHash, member.SimHash) <= maxDistance {
+					clusters[i].evidence = append(clusters[i].evidence, item)
+					placed = true
+					break
+				}
+			}
+			if placed {
+				break
+			}
+		}
+		if !placed {
+			clusters = append(clusters, cluster{
+				id:       fmtClusterID(len(clusters) + 1),
+				evidence: []Evidence{item},
+			})
+		}
+	}
+
+	enriched := make([]Evidence, 0, len(items))
+	finalClusters := make([]EvidenceCluster, 0, len(clusters))
+	for _, c := range clusters {
+		for i := range c.evidence {
+			c.evidence[i].ClusterID = c.id
+			enriched = append(enriched, c.evidence[i])
+		}
+		label := clusterLabel(c.evidence)
+		conf := clusterConfidence(c.evidence)
+		if minSize <= 1 || len(c.evidence) >= minSize {
+			finalClusters = append(finalClusters, EvidenceCluster{
+				ID:         c.id,
+				Label:      label,
+				Evidence:   c.evidence,
+				Confidence: conf,
+			})
+		}
+	}
+
+	sort.Slice(finalClusters, func(i, j int) bool {
+		return finalClusters[i].Confidence > finalClusters[j].Confidence
+	})
+
+	return finalClusters, enriched
+}
+
+func fmtClusterID(index int) string {
+	return "cluster-" + strconv.Itoa(index)
+}
+
+func clusterLabel(items []Evidence) string {
+	if len(items) == 0 {
+		return ""
+	}
+	if strings.TrimSpace(items[0].Title) != "" {
+		return items[0].Title
+	}
+	return hostFromURL(items[0].URL)
+}
+
+func hostFromURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return raw
+	}
+	return parsed.Host
+}
+
+func buildCitations(items []Evidence) []Citation {
+	seen := map[string]bool{}
+	out := make([]Citation, 0, len(items))
+	for _, item := range items {
+		citation := normalizeCitation(item.URL, item.Snippet, item.Title)
+		key := citation.Canonical + "#" + citation.Anchor
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, citation)
+	}
+	return out
+}
+
+func normalizeCitation(rawURL string, snippet string, title string) Citation {
+	canonical := canonicalizeURL(rawURL)
+	anchor := citationAnchor(snippet, title)
+	return Citation{
+		URL:       rawURL,
+		Anchor:    anchor,
+		Canonical: canonical,
+	}
+}
+
+func buildCitationURL(canonical string, anchor string) string {
+	if canonical == "" {
+		return ""
+	}
+	if anchor == "" {
+		return canonical
+	}
+	return canonical + "#" + anchor
+}
+
+func canonicalizeURL(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return raw
+	}
+	parsed.Fragment = ""
+	return parsed.String()
+}
+
+func citationAnchor(snippet string, title string) string {
+	base := strings.TrimSpace(snippet)
+	if base == "" {
+		base = strings.TrimSpace(title)
+	}
+	if base == "" {
+		return ""
+	}
+	re := regexp.MustCompile(`[^a-z0-9\s]+`)
+	clean := re.ReplaceAllString(strings.ToLower(base), " ")
+	words := strings.Fields(clean)
+	if len(words) == 0 {
+		return ""
+	}
+	if len(words) > 8 {
+		words = words[:8]
+	}
+	return strings.Join(words, "-")
+}
+
+func evidenceConfidence(item Evidence, maxScore float64) float64 {
+	if maxScore <= 0 {
+		return 0
+	}
+	scoreFactor := math.Log1p(item.Score) / math.Log1p(maxScore)
+	lengthFactor := 0.0
+	if len(item.Snippet) > 0 {
+		lengthFactor = math.Min(float64(len(item.Snippet))/300.0, 1.0)
+	}
+	return clamp01(0.7*scoreFactor + 0.3*lengthFactor)
+}
+
+func clusterConfidence(items []Evidence) float64 {
+	if len(items) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, item := range items {
+		sum += item.Confidence
+	}
+	return clamp01(sum / float64(len(items)))
+}
+
+func overallConfidence(items []Evidence, clusters []EvidenceCluster) float64 {
+	if len(items) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, item := range items {
+		sum += item.Confidence
+	}
+	evidenceScore := sum / float64(len(items))
+
+	clusterScore := 0.0
+	if len(clusters) > 0 {
+		for _, cluster := range clusters {
+			clusterScore += cluster.Confidence
+		}
+		clusterScore /= float64(len(clusters))
+	}
+
+	return clamp01(0.6*evidenceScore + 0.4*clusterScore)
+}
+
+func clamp01(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
 }

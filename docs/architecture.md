@@ -17,7 +17,7 @@
 - `api`: REST API aligned to `api/openapi.yaml`.
 - `ui/tui`: job list + status dashboard.
 - `web`: Web UI consuming generated API client.
-- `research`: multi-source workflow (scrape/crawl → evidence → summary).
+- `research`: multi-source workflow (scrape/crawl → evidence → summary → simhash dedup → clustering → citations + confidence).
 - `mcp`: stdio server exposing tools for agent orchestration.
 - Auth vault lives in `DATA_DIR/auth_vault.json` (profiles, inheritance, presets).
 - Exporter can emit markdown or csv from stored job artifacts.

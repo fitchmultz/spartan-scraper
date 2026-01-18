@@ -33,14 +33,39 @@ type CrawlResult struct {
 }
 
 type ResearchResult struct {
-	Query    string `json:"query"`
-	Summary  string `json:"summary"`
-	Evidence []struct {
-		URL     string  `json:"url"`
-		Title   string  `json:"title"`
-		Snippet string  `json:"snippet"`
-		Score   float64 `json:"score"`
+	Query      string  `json:"query"`
+	Summary    string  `json:"summary"`
+	Confidence float64 `json:"confidence"`
+	Evidence   []struct {
+		URL         string  `json:"url"`
+		Title       string  `json:"title"`
+		Snippet     string  `json:"snippet"`
+		Score       float64 `json:"score"`
+		SimHash     uint64  `json:"simhash"`
+		ClusterID   string  `json:"clusterId"`
+		Confidence  float64 `json:"confidence"`
+		CitationURL string  `json:"citationUrl"`
 	} `json:"evidence"`
+	Clusters []struct {
+		ID         string  `json:"id"`
+		Label      string  `json:"label"`
+		Confidence float64 `json:"confidence"`
+		Evidence   []struct {
+			URL         string  `json:"url"`
+			Title       string  `json:"title"`
+			Snippet     string  `json:"snippet"`
+			Score       float64 `json:"score"`
+			SimHash     uint64  `json:"simhash"`
+			ClusterID   string  `json:"clusterId"`
+			Confidence  float64 `json:"confidence"`
+			CitationURL string  `json:"citationUrl"`
+		} `json:"evidence"`
+	} `json:"clusters"`
+	Citations []struct {
+		URL       string `json:"url"`
+		Anchor    string `json:"anchor"`
+		Canonical string `json:"canonical"`
+	} `json:"citations"`
 }
 
 func Export(job model.Job, raw []byte, format string) (string, error) {
@@ -119,12 +144,31 @@ func exportMarkdown(job model.Job, raw []byte) (string, error) {
 		}
 		var b strings.Builder
 		b.WriteString("# Research Report\n\n")
-		b.WriteString(fmt.Sprintf("**Query:** %s\n\n", item.Query))
+		b.WriteString(fmt.Sprintf("**Query:** %s\n", item.Query))
+		b.WriteString(fmt.Sprintf("**Confidence:** %.2f\n\n", item.Confidence))
 		b.WriteString("## Summary\n\n")
 		b.WriteString(item.Summary + "\n\n")
+		if len(item.Clusters) > 0 {
+			b.WriteString("## Evidence Clusters\n\n")
+			for _, cluster := range item.Clusters {
+				b.WriteString(fmt.Sprintf("- **%s** (confidence %.2f, %d items)\n", safe(cluster.Label, cluster.ID), cluster.Confidence, len(cluster.Evidence)))
+			}
+			b.WriteString("\n")
+		}
+		if len(item.Citations) > 0 {
+			b.WriteString("## Citations\n\n")
+			for _, citation := range item.Citations {
+				target := citation.Canonical
+				if citation.Anchor != "" {
+					target = citation.Canonical + "#" + citation.Anchor
+				}
+				b.WriteString(fmt.Sprintf("- %s\n", target))
+			}
+			b.WriteString("\n")
+		}
 		b.WriteString("## Evidence\n\n")
 		for _, ev := range item.Evidence {
-			b.WriteString(fmt.Sprintf("- **%s** (%s) — score %.2f\n  \n  %s\n", safe(ev.Title, ev.URL), ev.URL, ev.Score, ev.Snippet))
+			b.WriteString(fmt.Sprintf("- **%s** (%s) — score %.2f, confidence %.2f\n  \n  %s\n", safe(ev.Title, ev.URL), ev.URL, ev.Score, ev.Confidence, ev.Snippet))
 		}
 		return b.String(), nil
 	default:
@@ -210,12 +254,20 @@ func exportCSV(job model.Job, raw []byte) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		_ = writer.Write([]string{"query", "summary"})
-		_ = writer.Write([]string{item.Query, item.Summary})
+		_ = writer.Write([]string{"query", "summary", "confidence"})
+		_ = writer.Write([]string{item.Query, item.Summary, fmt.Sprintf("%.2f", item.Confidence)})
 		_ = writer.Write([]string{})
-		_ = writer.Write([]string{"url", "title", "score", "snippet"})
+		_ = writer.Write([]string{"url", "title", "score", "confidence", "cluster_id", "citation_url", "snippet"})
 		for _, ev := range item.Evidence {
-			_ = writer.Write([]string{ev.URL, ev.Title, fmt.Sprintf("%.2f", ev.Score), ev.Snippet})
+			_ = writer.Write([]string{
+				ev.URL,
+				ev.Title,
+				fmt.Sprintf("%.2f", ev.Score),
+				fmt.Sprintf("%.2f", ev.Confidence),
+				ev.ClusterID,
+				ev.CitationURL,
+				ev.Snippet,
+			})
 		}
 	default:
 		return "", errors.New("unknown job kind")

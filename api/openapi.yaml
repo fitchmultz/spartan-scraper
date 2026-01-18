@@ -192,6 +192,69 @@ components:
           type: boolean
           default: false
           description: Validate extraction against schema if present
+    ResearchEvidence:
+      type: object
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        snippet:
+          type: string
+        score:
+          type: number
+        simhash:
+          type: integer
+          format: uint64
+        clusterId:
+          type: string
+        confidence:
+          type: number
+        citationUrl:
+          type: string
+    ResearchEvidenceCluster:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        confidence:
+          type: number
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchEvidence'
+    ResearchCitation:
+      type: object
+      properties:
+        url:
+          type: string
+        anchor:
+          type: string
+        canonical:
+          type: string
+    ResearchResult:
+      type: object
+      properties:
+        query:
+          type: string
+        summary:
+          type: string
+        confidence:
+          type: number
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchEvidence'
+        clusters:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchEvidenceCluster'
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchCitation'
     HeaderKV:
       type: object
       properties:

@@ -100,7 +100,7 @@ Open `http://localhost:5173` for the UI (the API is proxied to `PORT` from `.env
 - `internal/jobs`: persistent job store + queue runner.
 - `internal/api`: HTTP API + OpenAPI contract.
 - `web`: Vite + React UI; generated API client under `web/src/api`.
-- `internal/research`: multi-source workflow (scrape/crawl → evidence → summary).
+- `internal/research`: multi-source workflow (scrape/crawl → evidence → simhash dedup → clustering → citations + confidence → summary).
 - `internal/mcp`: MCP stdio server for agent orchestration.
 - `internal/exporter`: exports results to markdown/csv/json.
 - `internal/scheduler`: recurring job runner with interval schedules.

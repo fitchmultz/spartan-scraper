@@ -30,8 +30,34 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [resultSummary, setResultSummary] = useState<string | null>(null);
+  const [resultConfidence, setResultConfidence] = useState<number | null>(null);
   const [resultEvidence, setResultEvidence] = useState<
-    { url: string; title: string; snippet: string; score: number }[]
+    {
+      url: string;
+      title: string;
+      snippet: string;
+      score: number;
+      confidence?: number;
+      citationUrl?: string;
+      clusterId?: string;
+    }[]
+  >([]);
+  const [resultClusters, setResultClusters] = useState<
+    {
+      id: string;
+      label: string;
+      confidence: number;
+      evidence: {
+        url: string;
+        title: string;
+        score: number;
+        confidence?: number;
+        citationUrl?: string;
+      }[];
+    }[]
+  >([]);
+  const [resultCitations, setResultCitations] = useState<
+    { canonical: string; anchor?: string; url?: string }[]
   >([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
 
@@ -176,7 +202,10 @@ export function App() {
   async function loadResults(jobId: string) {
     setSelectedJobId(jobId);
     setResultSummary(null);
+    setResultConfidence(null);
     setResultEvidence([]);
+    setResultClusters([]);
+    setResultCitations([]);
     setRawResult(null);
     try {
       const response = await fetch(`/v1/jobs/${jobId}/results`);
@@ -187,8 +216,17 @@ export function App() {
         if (parsed?.summary) {
           setResultSummary(parsed.summary);
         }
+        if (typeof parsed?.confidence === "number") {
+          setResultConfidence(parsed.confidence);
+        }
         if (Array.isArray(parsed?.evidence)) {
           setResultEvidence(parsed.evidence);
+        }
+        if (Array.isArray(parsed?.clusters)) {
+          setResultClusters(parsed.clusters);
+        }
+        if (Array.isArray(parsed?.citations)) {
+          setResultCitations(parsed.citations);
         }
       }
       setRawResult(text);
@@ -515,13 +553,78 @@ export function App() {
         {selectedJobId ? (
           <div className="panel" style={{ marginTop: 16 }}>
             <h3>Results: {selectedJobId}</h3>
+            {typeof resultConfidence === "number" ? (
+              <div className="badge running" style={{ marginBottom: 8 }}>
+                Confidence {resultConfidence.toFixed(2)}
+              </div>
+            ) : null}
             {resultSummary ? <p>{resultSummary}</p> : null}
+            {resultClusters.length > 0 ? (
+              <div style={{ marginTop: 12 }}>
+                <h4>Evidence Clusters</h4>
+                <div className="job-list">
+                  {resultClusters.map((cluster) => (
+                    <div key={cluster.id} className="job-item">
+                      <div>{cluster.label || cluster.id}</div>
+                      <div className="badge running">
+                        Confidence {cluster.confidence.toFixed(2)}
+                      </div>
+                      <div>{cluster.evidence.length} sources</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {resultCitations.length > 0 ? (
+              <div style={{ marginTop: 12 }}>
+                <h4>Citations</h4>
+                <div className="job-list">
+                  {resultCitations.map((citation) => {
+                    const target =
+                      citation.anchor && citation.canonical
+                        ? `${citation.canonical}#${citation.anchor}`
+                        : citation.canonical || citation.url || "";
+                    return (
+                      <div key={target} className="job-item">
+                        <a href={target} target="_blank" rel="noreferrer">
+                          {target}
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {resultEvidence.length > 0 ? (
-              <div className="job-list">
+              <div className="job-list" style={{ marginTop: 12 }}>
                 {resultEvidence.slice(0, 10).map((item) => (
-                  <div key={`${item.url}-${item.score}`} className="job-item">
+                  <div
+                    key={`${item.url}-${item.score}-${item.clusterId ?? ""}`}
+                    className="job-item"
+                  >
                     <div>{item.title || item.url}</div>
-                    <div className="badge running">Score {item.score}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div className="badge running">
+                        Score {item.score.toFixed(2)}
+                      </div>
+                      {typeof item.confidence === "number" ? (
+                        <div className="badge running">
+                          Confidence {item.confidence.toFixed(2)}
+                        </div>
+                      ) : null}
+                      {item.clusterId ? (
+                        <div className="badge running">{item.clusterId}</div>
+                      ) : null}
+                    </div>
+                    {item.citationUrl ? (
+                      <a
+                        href={item.citationUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {item.citationUrl}
+                      </a>
+                    ) : null}
                     <div>{item.snippet}</div>
                   </div>
                 ))}

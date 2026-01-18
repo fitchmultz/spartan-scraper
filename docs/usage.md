@@ -302,7 +302,7 @@ Outputs: `out/stress/`
 Jobs stored under `DATA_DIR/jobs/<id>/results.jsonl`.
 - Scrape: single JSON object.
 - Crawl: JSONL, one page per line.
-- Research: single JSON object (summary + evidence).
+- Research: single JSON object (summary + evidence + simhash dedup + clusters + citations + confidence).
 
 ## CI Coverage
 

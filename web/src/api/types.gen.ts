@@ -15,6 +15,39 @@ export type ExtractOptions = {
     validate?: boolean;
 };
 
+export type ResearchEvidence = {
+    url?: string;
+    title?: string;
+    snippet?: string;
+    score?: number;
+    simhash?: number;
+    clusterId?: string;
+    confidence?: number;
+    citationUrl?: string;
+};
+
+export type ResearchEvidenceCluster = {
+    id?: string;
+    label?: string;
+    confidence?: number;
+    evidence?: Array<ResearchEvidence>;
+};
+
+export type ResearchCitation = {
+    url?: string;
+    anchor?: string;
+    canonical?: string;
+};
+
+export type ResearchResult = {
+    query?: string;
+    summary?: string;
+    confidence?: number;
+    evidence?: Array<ResearchEvidence>;
+    clusters?: Array<ResearchEvidenceCluster>;
+    citations?: Array<ResearchCitation>;
+};
+
 export type HeaderKv = {
     key?: string;
     value?: string;
