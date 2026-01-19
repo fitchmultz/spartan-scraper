@@ -100,3 +100,34 @@ tasks:
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T10:00:00Z
   completed_at: 2026-01-18T10:30:00Z
+- id: RQ-0009
+  status: done
+  title: Fix SQL injection and add connection pooling
+  tags:
+  - security
+  - database
+  - performance
+  scope:
+  - internal/store/store.go
+  evidence:
+  - |-
+    store/store.go uses modernc.org/sqlite with SetMaxOpenConns(1) and
+    SetMaxIdleConns(1), severely limiting concurrency. No prepared statements visible
+    for user-controlled inputs.
+  plan:
+  - Increase SQLite connection limits (e.g., 25 max open, 5 idle)
+  - Add prepared statements for all queries with user input
+  - Add database connection health checks
+  - Add connection timeout configuration
+  - Consider adding connection pooling with sql.DB metrics
+  - Add database WAL checkpointing logic for long-running processes
+  notes:
+  - Increased SQLite connection limits to 25 max open and 5 idle.
+  - Added explicit prepared statements for all main database operations.
+  - Added Ping() method for database health checks.
+  - Added explicit WAL checkpointing on Close() and manual Checkpoint() method.
+  - Configured connection max lifetime and idle time.
+  request: scan finding
+  created_at: 2025-01-18T21:30:00Z
+  updated_at: 2026-01-18T21:30:00Z
+  completed_at: 2026-01-18T21:30:00Z

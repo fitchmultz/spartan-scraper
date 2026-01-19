@@ -17,6 +17,13 @@ import (
 
 type Store struct {
 	db *sql.DB
+
+	// Prepared statements
+	insertJobStmt        *sql.Stmt
+	updateJobStatusStmt  *sql.Stmt
+	getJobStmt           *sql.Stmt
+	getCrawlStateStmt    *sql.Stmt
+	upsertCrawlStateStmt *sql.Stmt
 }
 
 func Open(dataDir string) (*Store, error) {
@@ -29,13 +36,64 @@ func Open(dataDir string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+
+	// Connection pooling configuration
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(1 * time.Hour)
+	db.SetConnMaxIdleTime(30 * time.Minute)
+
 	store := &Store{db: db}
 	if err := store.init(); err != nil {
 		return nil, err
 	}
+
+	if err := store.prepareStatements(); err != nil {
+		return nil, err
+	}
+
 	return store, nil
+}
+
+func (s *Store) prepareStatements() error {
+	var err error
+	s.insertJobStmt, err = s.db.Prepare(`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
+			values (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insertJobStmt: %w", err)
+	}
+
+	s.updateJobStatusStmt, err = s.db.Prepare(`update jobs set status = ?, updated_at = ?, error = ? where id = ?`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare updateJobStatusStmt: %w", err)
+	}
+
+	s.getJobStmt, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare getJobStmt: %w", err)
+	}
+
+	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare getCrawlStateStmt: %w", err)
+	}
+
+	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped)
+		values (?, ?, ?, ?, ?)
+		on conflict(url) do update set
+			etag = excluded.etag,
+			last_modified = excluded.last_modified,
+			content_hash = excluded.content_hash,
+			last_scraped = excluded.last_scraped`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare upsertCrawlStateStmt: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 func (s *Store) init() error {
@@ -66,10 +124,8 @@ func (s *Store) Create(ctx context.Context, job model.Job) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal job params: %w", err)
 	}
-	_, err = s.db.ExecContext(
+	_, err = s.insertJobStmt.ExecContext(
 		ctx,
-		`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
-			values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.ID,
 		job.Kind,
 		job.Status,
@@ -83,9 +139,8 @@ func (s *Store) Create(ctx context.Context, job model.Job) error {
 }
 
 func (s *Store) UpdateStatus(ctx context.Context, id string, status model.Status, errMsg string) error {
-	_, err := s.db.ExecContext(
+	_, err := s.updateJobStatusStmt.ExecContext(
 		ctx,
-		`update jobs set status = ?, updated_at = ?, error = ? where id = ?`,
 		status,
 		time.Now().Format(time.RFC3339Nano),
 		errMsg,
@@ -95,7 +150,7 @@ func (s *Store) UpdateStatus(ctx context.Context, id string, status model.Status
 }
 
 func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
-	row := s.db.QueryRowContext(ctx, `select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`, id)
+	row := s.getJobStmt.QueryRowContext(ctx, id)
 	var job model.Job
 	var createdAt, updatedAt string
 	var params string
@@ -154,7 +209,7 @@ func (s *Store) List(ctx context.Context) ([]model.Job, error) {
 }
 
 func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState, error) {
-	row := s.db.QueryRowContext(ctx, `select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`, url)
+	row := s.getCrawlStateStmt.QueryRowContext(ctx, url)
 	var state model.CrawlState
 	var lastScraped string
 	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped); err != nil {
@@ -174,15 +229,8 @@ func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState
 }
 
 func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) error {
-	_, err := s.db.ExecContext(
+	_, err := s.upsertCrawlStateStmt.ExecContext(
 		ctx,
-		`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped)
-		values (?, ?, ?, ?, ?)
-		on conflict(url) do update set
-			etag = excluded.etag,
-			last_modified = excluded.last_modified,
-			content_hash = excluded.content_hash,
-			last_scraped = excluded.last_scraped`,
 		state.URL,
 		state.ETag,
 		state.LastModified,
@@ -193,5 +241,30 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 }
 
 func (s *Store) Close() error {
+	// Try to checkpoint WAL before closing
+	_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+
+	// Close prepared statements
+	if s.insertJobStmt != nil {
+		s.insertJobStmt.Close()
+	}
+	if s.updateJobStatusStmt != nil {
+		s.updateJobStatusStmt.Close()
+	}
+	if s.getJobStmt != nil {
+		s.getJobStmt.Close()
+	}
+	if s.getCrawlStateStmt != nil {
+		s.getCrawlStateStmt.Close()
+	}
+	if s.upsertCrawlStateStmt != nil {
+		s.upsertCrawlStateStmt.Close()
+	}
+
 	return s.db.Close()
+}
+
+func (s *Store) Checkpoint(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, "PRAGMA wal_checkpoint(PASSIVE)")
+	return err
 }
