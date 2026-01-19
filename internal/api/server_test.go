@@ -45,11 +45,14 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		false,
 	)
-	manager.Start(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	manager.Start(ctx)
 
 	srv := NewServer(manager, st, cfg)
 
 	cleanup := func() {
+		cancel()
+		manager.Wait()
 		st.Close()
 	}
 

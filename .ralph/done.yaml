@@ -1,79 +1,35 @@
 version: 1
 tasks:
-- id: RQ-0001
+- id: RQ-0003
   status: done
-  title: Add comprehensive test coverage for core packages
+  title: Add graceful shutdown for server and workers
   tags:
-  - testing
-  - coverage
   - reliability
+  - infrastructure
+  - shutdown
   scope:
   - internal/cli
-  - internal/api
-  - internal/auth
-  - internal/config
-  - internal/crawl
   - internal/jobs
-  - internal/mcp
-  - internal/model
-  - internal/pipeline
-  - internal/research
-  - internal/scheduler
-  - internal/scrape
-  - internal/store
+  - internal/api
   evidence:
   - |-
-    Only 3 out of 19 internal packages have tests (e2e, extract, fetch).
-    Running `go test ./...` shows "[no test files]" for most packages. This represents
-    a significant test coverage gap for critical functionality.
+    internal/cli/cli.go runServer() starts HTTP server and scheduler goroutines
+    but has no signal handling. internal/jobs/manager.go starts worker goroutines with no
+    shutdown mechanism. This will cause abrupt termination on SIGTERM/SIGINT.
   plan:
-  - Add table-driven unit tests for cli.go command parsing and validation
-  - Add HTTP handler tests for api/server.go endpoints
-  - Add tests for auth/merge.go profile merging and resolution logic
-  - Add tests for crawl.go concurrency and URL processing
-  - Add tests for jobs/manager.go job lifecycle and queue management
-  - Add tests for scrape/scrape.go pipeline execution
-  - Add tests for store/store.go database operations
-  - Target 80%+ code coverage across all internal packages
+  - Add context cancellation to jobs/manager.go Start() method
+  - Add signal handling (SIGTERM, SIGINT) to runServer() in cli.go
+  - Wait for in-flight jobs to complete before shutdown
+  - Add graceful timeout for shutdown (e.g., 30 seconds)
+  - Update manager to drain job queue before stopping workers
+  - Add shutdown logging and status reporting
   notes:
-  - Added unit tests for cli, api, auth, crawl, jobs, scrape, store, config, pipeline, scheduler, and research packages.
-  - Verified all tests pass with 'make ci'.
-  - Improved overall codebase reliability and coverage.
+  - Added sync.WaitGroup to Job Manager to track worker lifecycles.
+  - Implemented signal handling (SIGINT, SIGTERM) in the server entry point.
+  - Added HTTP server Shutdown with 30-second timeout.
+  - Workers now drain the job queue after context cancellation.
+  - Updated CLI commands to propagate signal context to job manager.
   request: scan finding
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T21:30:00Z
-- id: RQ-0002
-  status: done
-  title: Add structured logging throughout Go codebase
-  tags:
-  - logging
-  - observability
-  - debugging
-  scope:
-  - internal/cli
-  - internal/scrape
-  - internal/crawl
-  - internal/jobs
-  - internal/fetch
-  evidence:
-  - |-
-    No structured logging found in scrape.go, crawl.go, or jobs/manager.go.
-    Errors are only returned or written to stderr. This makes debugging production issues
-    very difficult.
-  plan:
-  - Add slog or similar structured logger package to Go modules
-  - Add log fields for job ID, URL, status at key points in jobs/manager.go
-  - Add logging for scrape and crawl operations with progress indicators
-  - Add request ID generation and propagation through the pipeline
-  - Configure log levels and format via environment variables
-  - Add logging for fetch operations for debugging network issues
-  notes:
-  - Integrated log/slog throughout the Go codebase for structured logging.
-  - Added LOG_LEVEL and LOG_FORMAT configuration via environment variables.
-  - Implemented RequestID propagation through the pipeline (using Job ID).
-  - Added comprehensive logging to jobs manager, scrape, crawl, and fetchers.
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T22:30:00Z
-  completed_at: 2026-01-18T22:30:00Z
+  completed_at: 2026-01-18T21:40:00Z

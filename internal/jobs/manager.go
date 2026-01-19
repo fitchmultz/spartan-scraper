@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,6 +35,7 @@ type Manager struct {
 	queue            chan model.Job
 	pipelineRegistry *pipeline.Registry
 	jsRegistry       *pipeline.JSRegistry
+	wg               sync.WaitGroup
 }
 
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
@@ -57,20 +59,42 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 func (m *Manager) Start(ctx context.Context) {
 	slog.Info("starting job manager", "concurrency", m.maxConcurrency)
 	for i := 0; i < m.maxConcurrency; i++ {
+		m.wg.Add(1)
 		go func(workerID int) {
+			defer m.wg.Done()
 			slog.Debug("starting worker", "workerID", workerID)
 			for {
 				select {
 				case <-ctx.Done():
-					slog.Debug("stopping worker", "workerID", workerID)
-					return
-				case job := <-m.queue:
+					slog.Debug("stopping worker, draining queue", "workerID", workerID)
+					// Drain the queue before returning
+					for {
+						select {
+						case job, ok := <-m.queue:
+							if !ok {
+								return
+							}
+							slog.Info("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
+							_ = m.run(job)
+						default:
+							return
+						}
+					}
+				case job, ok := <-m.queue:
+					if !ok {
+						slog.Debug("job queue closed, stopping worker", "workerID", workerID)
+						return
+					}
 					slog.Info("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
 					_ = m.run(job)
 				}
 			}
 		}(i)
 	}
+}
+
+func (m *Manager) Wait() {
+	m.wg.Wait()
 }
 
 func (m *Manager) DefaultTimeoutSeconds() int {

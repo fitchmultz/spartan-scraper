@@ -6,10 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"spartan-scraper/internal/api"
@@ -35,13 +38,16 @@ func Run(ctx context.Context) int {
 		return 1
 	}
 
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	switch os.Args[1] {
 	case "scrape":
-		return runScrape(cfg)
+		return runScrape(ctx, cfg)
 	case "crawl":
-		return runCrawl(cfg)
+		return runCrawl(ctx, cfg)
 	case "research":
-		return runResearch(cfg)
+		return runResearch(ctx, cfg)
 	case "auth":
 		return runAuth(cfg)
 	case "export":
@@ -64,7 +70,7 @@ func Run(ctx context.Context) int {
 	}
 }
 
-func runScrape(cfg config.Config) int {
+func runScrape(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("scrape", flag.ExitOnError)
 	url := fs.String("url", "", "URL to scrape")
 	headless := fs.Bool("headless", false, "Use headless browser")
@@ -157,7 +163,7 @@ Options:
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.UsePlaywright,
 	)
-	manager.Start(context.Background())
+	manager.Start(ctx)
 	authOverrides := auth.ResolveInput{
 		Headers: toHeaderKVs(headers.ToMap()),
 		Cookies: toCookies([]string(cookies)),
@@ -275,7 +281,7 @@ func printResults(store *store.Store, id string) error {
 	return nil
 }
 
-func runCrawl(cfg config.Config) int {
+func runCrawl(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("crawl", flag.ExitOnError)
 	url := fs.String("url", "", "Root URL to crawl")
 	maxDepth := fs.Int("max-depth", 2, "Max crawl depth")
@@ -360,7 +366,7 @@ Options:
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.UsePlaywright,
 	)
-	manager.Start(context.Background())
+	manager.Start(ctx)
 	authOverrides := auth.ResolveInput{
 		Headers: toHeaderKVs(headers.ToMap()),
 		Cookies: toCookies([]string(cookies)),
@@ -406,7 +412,7 @@ Options:
 	return 0
 }
 
-func runResearch(cfg config.Config) int {
+func runResearch(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("research", flag.ExitOnError)
 	query := fs.String("query", "", "Research query")
 	urls := fs.String("urls", "", "Comma-separated list of URLs to research")
@@ -492,7 +498,7 @@ Options:
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.UsePlaywright,
 	)
-	manager.Start(context.Background())
+	manager.Start(ctx)
 
 	authOverrides := auth.ResolveInput{
 		Headers: toHeaderKVs(headerList.ToMap()),
@@ -991,11 +997,17 @@ Notes:
 `)
 		return 0
 	}
+
+	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	store, err := store.Open(cfg.DataDir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		slog.Error("failed to open store", "error", err)
 		return 1
 	}
+	defer store.Close()
+
 	manager := jobs.NewManager(
 		store,
 		cfg.DataDir,
@@ -1008,13 +1020,54 @@ Notes:
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.UsePlaywright,
 	)
-	manager.Start(ctx)
+
+	manager.Start(serverCtx)
 	go func() {
-		_ = scheduler.Run(ctx, cfg.DataDir, manager)
+		if err := scheduler.Run(serverCtx, cfg.DataDir, manager); err != nil {
+			slog.Error("scheduler error", "error", err)
+		}
 	}()
-	server := api.NewServer(manager, store, cfg)
-	fmt.Printf("Spartan server listening on :%s\n", cfg.Port)
-	return httpListenAndServe("0.0.0.0:"+cfg.Port, server.Routes())
+
+	apiServer := api.NewServer(manager, store, cfg)
+	httpServer := &http.Server{
+		Addr:    "0.0.0.0:" + cfg.Port,
+		Handler: apiServer.Routes(),
+	}
+
+	go func() {
+		slog.Info("Spartan server listening", "addr", httpServer.Addr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("HTTP server error", "error", err)
+			stop()
+		}
+	}()
+
+	<-serverCtx.Done()
+	slog.Info("shutting down gracefully...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		slog.Error("HTTP server shutdown error", "error", err)
+	}
+
+	slog.Info("waiting for job workers to finish...")
+	waitCh := make(chan struct{})
+	go func() {
+		manager.Wait()
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+		slog.Info("all workers finished")
+	case <-shutdownCtx.Done():
+		slog.Warn("timed out waiting for workers to finish")
+	}
+	slog.Info("shutdown complete")
+
+	return 0
 }
 
 func runMCP(cfg config.Config) int {
