@@ -39,7 +39,10 @@ type Manager struct {
 }
 
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
-	jsRegistry, _ := pipeline.LoadJSRegistry(dataDir)
+	jsRegistry, err := pipeline.LoadJSRegistry(dataDir)
+	if err != nil {
+		slog.Warn("failed to load JS registry", "error", err)
+	}
 	return &Manager{
 		store:            store,
 		dataDir:          dataDir,
@@ -75,7 +78,9 @@ func (m *Manager) Start(ctx context.Context) {
 								return
 							}
 							slog.Info("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
-							_ = m.run(job)
+							if err := m.run(job); err != nil {
+								slog.Error("job failed during drain", "jobID", job.ID, "error", err)
+							}
 						default:
 							return
 						}
@@ -86,7 +91,9 @@ func (m *Manager) Start(ctx context.Context) {
 						return
 					}
 					slog.Info("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
-					_ = m.run(job)
+					if err := m.run(job); err != nil {
+						slog.Error("job failed", "jobID", job.ID, "error", err)
+					}
 				}
 			}
 		}(i)
@@ -198,19 +205,25 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 
 func (m *Manager) run(job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
-	_ = m.store.UpdateStatus(job.ID, model.StatusRunning, "")
+	if err := m.store.UpdateStatus(job.ID, model.StatusRunning, ""); err != nil {
+		slog.Error("failed to update job status to running", "jobID", job.ID, "error", err)
+	}
 
 	resultDir := filepath.Dir(job.ResultPath)
 	if err := os.MkdirAll(resultDir, 0o755); err != nil {
 		slog.Error("failed to create result directory", "jobID", job.ID, "error", err)
-		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+		}
 		return err
 	}
 
 	file, err := os.Create(job.ResultPath)
 	if err != nil {
 		slog.Error("failed to create result file", "jobID", job.ID, "error", err)
-		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+		}
 		return err
 	}
 	defer file.Close()
@@ -247,11 +260,20 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
-			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+			}
 			return err
 		}
-		payload, _ := json.Marshal(result)
-		_, _ = file.Write(append(payload, '\n'))
+		payload, err := json.Marshal(result)
+		if err != nil {
+			slog.Error("failed to marshal scrape result", "jobID", job.ID, "error", err)
+			return err
+		}
+		if _, err := file.Write(append(payload, '\n')); err != nil {
+			slog.Error("failed to write scrape result", "jobID", job.ID, "error", err)
+			return err
+		}
 	case model.KindCrawl:
 		url, _ := job.Params["url"].(string)
 		slog.Info("processing crawl job", "jobID", job.ID, "url", url)
@@ -288,12 +310,21 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
-			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+			}
 			return err
 		}
 		for _, item := range results {
-			payload, _ := json.Marshal(item)
-			_, _ = file.Write(append(payload, '\n'))
+			payload, err := json.Marshal(item)
+			if err != nil {
+				slog.Error("failed to marshal crawl result item", "jobID", job.ID, "error", err)
+				continue
+			}
+			if _, err := file.Write(append(payload, '\n')); err != nil {
+				slog.Error("failed to write crawl result item", "jobID", job.ID, "error", err)
+				return err
+			}
 		}
 	case model.KindResearch:
 		query, _ := job.Params["query"].(string)
@@ -333,19 +364,32 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
-			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
+			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+			}
 			return err
 		}
-		payload, _ := json.Marshal(result)
-		_, _ = file.Write(append(payload, '\n'))
+		payload, err := json.Marshal(result)
+		if err != nil {
+			slog.Error("failed to marshal research result", "jobID", job.ID, "error", err)
+			return err
+		}
+		if _, err := file.Write(append(payload, '\n')); err != nil {
+			slog.Error("failed to write research result", "jobID", job.ID, "error", err)
+			return err
+		}
 	default:
 		slog.Error("unknown job kind", "jobID", job.ID, "kind", job.Kind)
-		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, "unknown job kind")
+		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, "unknown job kind"); err != nil {
+			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
+		}
 		return errors.New("unknown job kind")
 	}
 
 	slog.Info("job succeeded", "jobID", job.ID)
-	_ = m.store.UpdateStatus(job.ID, model.StatusSucceeded, "")
+	if err := m.store.UpdateStatus(job.ID, model.StatusSucceeded, ""); err != nil {
+		slog.Error("failed to update job status to succeeded", "jobID", job.ID, "error", err)
+	}
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -57,7 +58,9 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 				}
 			}
 			if changed {
-				_ = SaveAll(dataDir, schedules)
+				if err := SaveAll(dataDir, schedules); err != nil {
+					slog.Error("failed to save schedules", "error", err)
+				}
 			}
 		}
 	}

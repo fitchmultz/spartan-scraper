@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -135,7 +136,10 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_ = s.manager.Enqueue(job)
+	if err := s.manager.Enqueue(job); err != nil {
+		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 
 	writeJSON(w, job)
 }
@@ -189,7 +193,10 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_ = s.manager.Enqueue(job)
+	if err := s.manager.Enqueue(job); err != nil {
+		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 
 	writeJSON(w, job)
 }
@@ -247,7 +254,10 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_ = s.manager.Enqueue(job)
+	if err := s.manager.Enqueue(job); err != nil {
+		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 
 	writeJSON(w, job)
 }
@@ -407,7 +417,9 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(payload)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		slog.Error("failed to encode json response", "error", err)
+	}
 }
 
 func resolveAuthForRequest(cfg config.Config, url string, profile string, override *fetch.AuthOptions) (fetch.AuthOptions, error) {

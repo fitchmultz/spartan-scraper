@@ -167,7 +167,9 @@ func Run(req Request) (Result, error) {
 		slog.Info("content not modified (304)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
-			_ = req.Store.UpsertCrawlState(state)
+			if err := req.Store.UpsertCrawlState(state); err != nil {
+				slog.Error("failed to update crawl state", "url", req.URL, "error", err)
+			}
 		}
 		return applyScrapeOutputPipeline(registry, baseCtx, Result{
 			URL:    res.URL,
@@ -182,7 +184,9 @@ func Run(req Request) (Result, error) {
 		slog.Info("content not modified (hash match)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
-			_ = req.Store.UpsertCrawlState(state)
+			if err := req.Store.UpsertCrawlState(state); err != nil {
+				slog.Error("failed to update crawl state", "url", req.URL, "error", err)
+			}
 		}
 		return applyScrapeOutputPipeline(registry, baseCtx, Result{
 			URL:    res.URL,
@@ -236,7 +240,9 @@ func Run(req Request) (Result, error) {
 			ContentHash:  currentHashStr,
 			LastScraped:  time.Now(),
 		}
-		_ = req.Store.UpsertCrawlState(newState)
+		if err := req.Store.UpsertCrawlState(newState); err != nil {
+			slog.Error("failed to update crawl state", "url", req.URL, "error", err)
+		}
 	}
 
 	result := Result{
@@ -259,7 +265,10 @@ func Run(req Request) (Result, error) {
 }
 
 func applyScrapeOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
-	raw, _ := json.Marshal(result)
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return Result{}, fmt.Errorf("failed to marshal result: %w", err)
+	}
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,
 		Kind:       string(model.KindScrape),

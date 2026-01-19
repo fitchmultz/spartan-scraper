@@ -214,7 +214,9 @@ func Run(req Request) ([]PageResult, error) {
 			// Update LastScraped timestamp
 			if req.Incremental && req.Store != nil {
 				state.LastScraped = time.Now()
-				_ = req.Store.UpsertCrawlState(state)
+				if err := req.Store.UpsertCrawlState(state); err != nil {
+					slog.Error("failed to update crawl state", "url", item.URL, "error", err)
+				}
 			}
 			// Return a page result indicating it was skipped
 			return PageResult{
@@ -271,7 +273,9 @@ func Run(req Request) ([]PageResult, error) {
 				ContentHash:  currentHash,
 				LastScraped:  time.Now(),
 			}
-			_ = req.Store.UpsertCrawlState(newState)
+			if err := req.Store.UpsertCrawlState(newState); err != nil {
+				slog.Error("failed to update crawl state", "url", item.URL, "error", err)
+			}
 		}
 
 		result := PageResult{
@@ -423,7 +427,10 @@ func sameHost(base *url.URL, raw string) bool {
 }
 
 func applyCrawlOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result PageResult) (PageResult, error) {
-	raw, _ := json.Marshal(result)
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return PageResult{}, fmt.Errorf("failed to marshal result: %w", err)
+	}
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,
 		Kind:       string(model.KindCrawl),

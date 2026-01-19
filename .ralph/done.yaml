@@ -1,35 +1,38 @@
 version: 1
 tasks:
-- id: RQ-0003
+- id: RQ-0004
   status: done
-  title: Add graceful shutdown for server and workers
+  title: Fix silent error handling throughout codebase
   tags:
+  - error-handling
   - reliability
-  - infrastructure
-  - shutdown
+  - bug
   scope:
-  - internal/cli
-  - internal/jobs
-  - internal/api
+  - internal/scrape/scrape.go
+  - internal/crawl/crawl.go
+  - internal/jobs/manager.go
+  - internal/store/store.go
   evidence:
   - |-
-    internal/cli/cli.go runServer() starts HTTP server and scheduler goroutines
-    but has no signal handling. internal/jobs/manager.go starts worker goroutines with no
-    shutdown mechanism. This will cause abrupt termination on SIGTERM/SIGINT.
+    Multiple instances of errors being swallowed with `_`:
+    scrape.go:158, 172, 202, 222, 257
+    crawl.go:202, 255
+    jobs/manager.go:213, 214, 217, 251, 252, 253, 254, 293, 294, 296, 297, 303
+    store/store.go:64, 76, 99, 102, 122, 125, 142, 159
+    This masks failures and makes debugging impossible.
   plan:
-  - Add context cancellation to jobs/manager.go Start() method
-  - Add signal handling (SIGTERM, SIGINT) to runServer() in cli.go
-  - Wait for in-flight jobs to complete before shutdown
-  - Add graceful timeout for shutdown (e.g., 30 seconds)
-  - Update manager to drain job queue before stopping workers
-  - Add shutdown logging and status reporting
+  - Review all instances of `_ =` assignments in error-returning functions
+  - Replace with proper error handling and logging
+  - Determine which errors are recoverable vs fatal
+  - Log errors at appropriate severity levels (error for failures, warn for recoverable)
+  - Add metrics for error rates and types
   notes:
-  - Added sync.WaitGroup to Job Manager to track worker lifecycles.
-  - Implemented signal handling (SIGINT, SIGTERM) in the server entry point.
-  - Added HTTP server Shutdown with 30-second timeout.
-  - Workers now drain the job queue after context cancellation.
-  - Updated CLI commands to propagate signal context to job manager.
+  - Fixed multiple instances of swallowed errors in internal/scrape, internal/crawl, internal/jobs, internal/store, internal/api, and internal/scheduler.
+  - Replaced silent ignores with proper error logging using slog.
+  - Improved error reporting in API handlers by returning 503 Service Unavailable when job enqueuing fails.
+  - Added missing slog imports to affected files.
+  - Verified changes with make ci.
   request: scan finding
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T21:40:00Z
+  completed_at: 2026-01-18T22:30:00Z

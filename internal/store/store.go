@@ -61,8 +61,11 @@ func (s *Store) init() error {
 }
 
 func (s *Store) Create(job model.Job) error {
-	params, _ := json.Marshal(job.Params)
-	_, err := s.db.Exec(
+	params, err := json.Marshal(job.Params)
+	if err != nil {
+		return fmt.Errorf("failed to marshal job params: %w", err)
+	}
+	_, err = s.db.Exec(
 		`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
 			values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.ID,
@@ -96,10 +99,19 @@ func (s *Store) Get(id string) (model.Job, error) {
 	if err := row.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
 		return model.Job{}, err
 	}
-	job.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	job.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	var err error
+	job.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)
+	if err != nil {
+		return model.Job{}, fmt.Errorf("failed to parse created_at: %w", err)
+	}
+	job.UpdatedAt, err = time.Parse(time.RFC3339Nano, updatedAt)
+	if err != nil {
+		return model.Job{}, fmt.Errorf("failed to parse updated_at: %w", err)
+	}
 	if params != "" {
-		_ = json.Unmarshal([]byte(params), &job.Params)
+		if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
+			return model.Job{}, fmt.Errorf("failed to unmarshal params: %w", err)
+		}
 	}
 	return job, nil
 }
@@ -119,10 +131,19 @@ func (s *Store) List() ([]model.Job, error) {
 		if err := rows.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
 			return nil, err
 		}
-		job.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-		job.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+		var parseErr error
+		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse created_at for job %s: %w", job.ID, parseErr)
+		}
+		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse updated_at for job %s: %w", job.ID, parseErr)
+		}
 		if params != "" {
-			_ = json.Unmarshal([]byte(params), &job.Params)
+			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal params for job %s: %w", job.ID, err)
+			}
 		}
 		results = append(results, job)
 	}
@@ -139,7 +160,13 @@ func (s *Store) GetCrawlState(url string) (model.CrawlState, error) {
 		}
 		return model.CrawlState{}, err
 	}
-	state.LastScraped, _ = time.Parse(time.RFC3339Nano, lastScraped)
+	if lastScraped != "" {
+		var err error
+		state.LastScraped, err = time.Parse(time.RFC3339Nano, lastScraped)
+		if err != nil {
+			return model.CrawlState{}, fmt.Errorf("failed to parse last_scraped: %w", err)
+		}
+	}
 	return state, nil
 }
 
