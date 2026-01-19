@@ -35,3 +35,35 @@ tasks:
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T16:00:00Z
   completed_at: 2026-01-18T16:30:00Z
+- id: RQ-0006
+  status: done
+  title: Add comprehensive input validation to API handlers
+  tags:
+  - security
+  - validation
+  - api
+  scope:
+  - internal/api/server.go
+  - api/openapi.yaml
+  evidence:
+  - |-
+    api/server.go handlers have minimal validation beyond required fields. No URL
+    validation, no timeout bounds checking, no depth/page limits enforcement. This could
+    lead to abuse or crashes.
+  plan:
+  - Add URL validation (scheme, valid format) in handleScrape/handleCrawl/handleResearch
+  - Add bounds checking for maxDepth (1-10), maxPages (1-10000), timeoutSeconds (5-300)
+  - Add content-type validation for request bodies
+  - Add request body size limits (e.g., 1MB max)
+  - Validate auth profile names (alphanumeric, hyphens, underscores)
+  - Update OpenAPI spec to reflect validation rules
+  notes:
+  - Added URL validation (http/https scheme + host check)
+  - Added Auth Profile name validation (alphanumeric, -, _)
+  - Added bounds checking for maxDepth (1-10), maxPages (1-10000), timeoutSeconds (5-300)
+  - Added 1MB request body size limit and application/json Content-Type check
+  - Updated OpenAPI spec and tests to reflect validation rules
+  request: scan finding
+  created_at: 2025-01-18T21:30:00Z
+  updated_at: 2026-01-18T21:30:00Z
+  completed_at: 2026-01-18T21:30:00Z

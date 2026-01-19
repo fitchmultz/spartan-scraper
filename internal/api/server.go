@@ -2,9 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"spartan-scraper/internal/auth"
@@ -15,6 +18,8 @@ import (
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
 )
+
+const maxRequestBodySize = 1024 * 1024 // 1MB
 
 type Server struct {
 	manager *jobs.Manager
@@ -92,13 +97,30 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ScrapeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.URL == "" {
 		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+	if !isValidURL(req.URL) {
+		http.Error(w, "invalid url: must be http or https and have a host", http.StatusBadRequest)
+		return
+	}
+	if !isValidProfileName(req.AuthProfile) {
+		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		return
+	}
+	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
+		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
 		return
 	}
 
@@ -149,13 +171,38 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req CrawlRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.URL == "" {
 		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+	if !isValidURL(req.URL) {
+		http.Error(w, "invalid url: must be http or https and have a host", http.StatusBadRequest)
+		return
+	}
+	if !isValidProfileName(req.AuthProfile) {
+		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		return
+	}
+	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
+		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
+		return
+	}
+	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
+		http.Error(w, "maxDepth must be between 1 and 10", http.StatusBadRequest)
+		return
+	}
+	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
+		http.Error(w, "maxPages must be between 1 and 10000", http.StatusBadRequest)
 		return
 	}
 
@@ -206,13 +253,40 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ResearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.Query == "" || len(req.URLs) == 0 {
 		http.Error(w, "query and urls are required", http.StatusBadRequest)
+		return
+	}
+	for _, u := range req.URLs {
+		if !isValidURL(u) {
+			http.Error(w, fmt.Sprintf("invalid url in list: %s (must be http or https and have a host)", u), http.StatusBadRequest)
+			return
+		}
+	}
+	if !isValidProfileName(req.AuthProfile) {
+		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		return
+	}
+	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
+		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
+		return
+	}
+	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
+		http.Error(w, "maxDepth must be between 1 and 10", http.StatusBadRequest)
+		return
+	}
+	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
+		http.Error(w, "maxPages must be between 1 and 10000", http.StatusBadRequest)
 		return
 	}
 
@@ -341,9 +415,14 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPut:
+		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+			http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var profile auth.Profile
 		if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
+			http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		if profile.Name == "" {
@@ -351,6 +430,10 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 		}
 		if profile.Name != name {
 			http.Error(w, "profile name mismatch", http.StatusBadRequest)
+			return
+		}
+		if !isValidProfileName(profile.Name) {
+			http.Error(w, "invalid profile name: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
 			return
 		}
 		if err := auth.UpsertProfile(s.cfg.DataDir, profile); err != nil {
@@ -374,11 +457,16 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var payload struct {
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if payload.Path == "" {
@@ -397,11 +485,16 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var payload struct {
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if payload.Path == "" {
@@ -500,4 +593,27 @@ func loginFromOverride(override fetch.AuthOptions) *auth.LoginFlow {
 		Username:       override.LoginUser,
 		Password:       override.LoginPass,
 	}
+}
+
+var profileNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+func isValidURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if u.Host == "" {
+		return false
+	}
+	return true
+}
+
+func isValidProfileName(name string) bool {
+	if name == "" {
+		return true
+	}
+	return profileNameRegex.MatchString(name)
 }

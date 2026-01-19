@@ -345,6 +345,7 @@ components:
       properties:
         name:
           type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
         parents:
           type: array
           items:
@@ -442,6 +443,7 @@ components:
       properties:
         url:
           type: string
+          format: uri
         headless:
           type: boolean
           default: false
@@ -450,6 +452,7 @@ components:
           default: false
         authProfile:
           type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:
@@ -459,6 +462,8 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+          minimum: 5
+          maximum: 300
         incremental:
           type: boolean
           default: false
@@ -468,12 +473,17 @@ components:
       properties:
         url:
           type: string
+          format: uri
         maxDepth:
           type: integer
           default: 2
+          minimum: 1
+          maximum: 10
         maxPages:
           type: integer
           default: 200
+          minimum: 1
+          maximum: 10000
         headless:
           type: boolean
           default: false
@@ -482,6 +492,7 @@ components:
           default: false
         authProfile:
           type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:
@@ -491,6 +502,8 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+          minimum: 5
+          maximum: 300
         incremental:
           type: boolean
           default: false
@@ -504,12 +517,17 @@ components:
           type: array
           items:
             type: string
+            format: uri
         maxDepth:
           type: integer
           default: 2
+          minimum: 1
+          maximum: 10
         maxPages:
           type: integer
           default: 200
+          minimum: 1
+          maximum: 10000
         headless:
           type: boolean
           default: false
@@ -518,6 +536,7 @@ components:
           default: false
         authProfile:
           type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
         auth:
           $ref: '#/components/schemas/AuthOptions'
         extract:
@@ -527,6 +546,8 @@ components:
         timeoutSeconds:
           type: integer
           default: 30
+          minimum: 5
+          maximum: 300
         incremental:
           type: boolean
           default: false
