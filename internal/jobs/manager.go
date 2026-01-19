@@ -44,6 +44,23 @@ type Manager struct {
 	mu               sync.Mutex
 }
 
+// ManagerStatus represents the current state of the job manager.
+type ManagerStatus struct {
+	QueuedJobs int `json:"queuedJobs"`
+	ActiveJobs int `json:"activeJobs"`
+}
+
+// Status returns the current status of the job manager.
+func (m *Manager) Status() ManagerStatus {
+	m.mu.Lock()
+	active := len(m.activeJobs)
+	m.mu.Unlock()
+	return ManagerStatus{
+		QueuedJobs: len(m.queue),
+		ActiveJobs: active,
+	}
+}
+
 // NewManager creates a new job manager with the specified configuration.
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
 	jsRegistry, err := pipeline.LoadJSRegistry(dataDir)

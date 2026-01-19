@@ -208,6 +208,21 @@ export type JobList = {
     jobs?: Array<Job>;
 };
 
+export type HealthResponse = {
+    status?: string;
+    components?: {
+        [key: string]: ComponentStatus;
+    };
+};
+
+export type ComponentStatus = {
+    status?: string;
+    message?: string;
+    details?: {
+        [key: string]: unknown;
+    };
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -215,12 +230,23 @@ export type GetHealthzData = {
     url: '/healthz';
 };
 
+export type GetHealthzErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: HealthResponse;
+};
+
+export type GetHealthzError = GetHealthzErrors[keyof GetHealthzErrors];
+
 export type GetHealthzResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: HealthResponse;
 };
+
+export type GetHealthzResponse = GetHealthzResponses[keyof GetHealthzResponses];
 
 export type GetV1AuthProfilesData = {
     body?: never;

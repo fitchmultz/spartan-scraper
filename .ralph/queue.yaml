@@ -1,29 +1,5 @@
 version: 1
 tasks:
-- id: RQ-0012
-  status: todo
-  title: Enhance health check endpoint
-  tags:
-  - monitoring
-  - api
-  - reliability
-  scope:
-  - internal/api/server.go
-  evidence:
-  - |-
-    api/server.go handleHealth() only returns "ok" with no status information.
-    Cannot detect partial failures (e.g., DB OK but queue full).
-  plan:
-  - Add database connectivity check to health endpoint
-  - Add job queue status (depth, worker health)
-  - Check headless browser availability (if configured)
-  - Return detailed status with component health
-  - Return 503 if any critical component is unhealthy
-  - Add health check to CLI (spartan health)
-  notes: []
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2025-01-18T21:30:00Z
 - id: RQ-0013
   status: todo
   title: Fix deadlock risk in crawl concurrency

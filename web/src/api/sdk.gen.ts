@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * Health check
  */
-export const getHealthz = <ThrowOnError extends boolean = false>(options?: Options<GetHealthzData, ThrowOnError>) => (options?.client ?? client).get<GetHealthzResponses, unknown, ThrowOnError>({ url: '/healthz', ...options });
+export const getHealthz = <ThrowOnError extends boolean = false>(options?: Options<GetHealthzData, ThrowOnError>) => (options?.client ?? client).get<GetHealthzResponses, GetHealthzErrors, ThrowOnError>({ url: '/healthz', ...options });
 
 /**
  * List auth profiles

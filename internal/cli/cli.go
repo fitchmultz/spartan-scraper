@@ -65,6 +65,8 @@ func Run(ctx context.Context) int {
 		return runServer(ctx, cfg)
 	case "jobs":
 		return runJobs(ctx, cfg)
+	case "health":
+		return runHealth(ctx, cfg)
 	case "tui":
 		return runTUI(ctx, cfg)
 	case "help", "--help", "-h":
@@ -1258,6 +1260,7 @@ Commands:
   mcp      Run MCP server over stdio
   server   Run API server + workers
   jobs     Manage jobs (list, get, cancel)
+  health   Check system health
   tui      Launch terminal UI
 
 Examples:
@@ -1277,6 +1280,7 @@ Examples:
   spartan schedule delete --id <id>
   spartan jobs list
   spartan jobs cancel <id>
+  spartan health
   spartan mcp
   spartan server
   spartan tui
@@ -1439,6 +1443,47 @@ func resolveAuthForRequest(cfg config.Config, url string, profile string, overri
 		return fetch.AuthOptions{}, err
 	}
 	return auth.ToFetchOptions(resolved), nil
+}
+
+func runHealth(ctx context.Context, cfg config.Config) int {
+	// 1. Try to ping the local server
+	url := fmt.Sprintf("http://localhost:%s/healthz", cfg.Port)
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err == nil {
+		defer resp.Body.Close()
+		var health api.HealthResponse
+		if err := json.NewDecoder(resp.Body).Decode(&health); err == nil {
+			payload, _ := json.MarshalIndent(health, "", "  ")
+			fmt.Println(string(payload))
+			if health.Status != "ok" {
+				return 1
+			}
+			return 0
+		}
+	}
+
+	// 2. Fallback: Local check
+	fmt.Println("Local health check (server not responding):")
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		fmt.Printf("Database: ERROR (%v)\n", err)
+		return 1
+	}
+	defer st.Close()
+	if err := st.Ping(ctx); err != nil {
+		fmt.Printf("Database: ERROR (%v)\n", err)
+	} else {
+		fmt.Println("Database: OK")
+	}
+
+	if err := fetch.CheckBrowserAvailability(cfg.UsePlaywright); err != nil {
+		fmt.Printf("Browser: ERROR (%v)\n", err)
+	} else {
+		fmt.Println("Browser: OK")
+	}
+	return 0
 }
 
 func loadExtractOptions(template, configPath string, validate bool) (extract.ExtractOptions, error) {

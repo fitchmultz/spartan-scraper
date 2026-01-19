@@ -11,6 +11,16 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
   /v1/auth/profiles:
     get:
       summary: List auth profiles
@@ -594,3 +604,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Job'
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        components:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ComponentStatus'
+    ComponentStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

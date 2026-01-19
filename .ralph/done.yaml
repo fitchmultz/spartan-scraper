@@ -1,166 +1,32 @@
 version: 1
 tasks:
-- id: RQ-0005
+- id: RQ-0012
   status: done
-  title: Add context propagation throughout pipeline
+  title: Enhance health check endpoint
   tags:
-  - correctness
-  - cancellation
-  - timeout
-  scope:
-  - internal/scrape/scrape.go
-  - internal/crawl/crawl.go
-  - internal/pipeline
-  - internal/jobs/manager.go
-  evidence:
-  - |-
-    Multiple uses of context.Background() instead of propagating request context:
-    scrape.go:97, 106
-    crawl.go:126
-    jobs/manager.go:159 (passed as context.Background() to manager.Start())
-    This prevents proper timeout and cancellation handling.
-  plan:
-  - Pass context from jobs/manager.go through scrape.Run() and crawl.Run()
-  - Replace context.Background() with propagated context in pipeline hooks
-  - Add context timeout checks in long-running operations (fetch, extraction)
-  - Ensure fetch operations respect context cancellation
-  - Add context to database queries in store/store.go
-  notes:
-  - Added context.Context to all major pipeline entry points (Run, Fetch, Execute)
-  - Updated store methods to use Context variants (ExecContext, QueryContext, etc.)
-  - Propagated context from API handlers and CLI through the job manager to workers
-  - Updated TUI and MCP server to respect context
-  - All tests updated and passing with context propagation
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T16:00:00Z
-  completed_at: 2026-01-18T16:30:00Z
-- id: RQ-0006
-  status: done
-  title: Add comprehensive input validation to API handlers
-  tags:
-  - security
-  - validation
+  - monitoring
   - api
+  - reliability
   scope:
   - internal/api/server.go
-  - api/openapi.yaml
   evidence:
   - |-
-    api/server.go handlers have minimal validation beyond required fields. No URL
-    validation, no timeout bounds checking, no depth/page limits enforcement. This could
-    lead to abuse or crashes.
+    api/server.go handleHealth() only returns "ok" with no status information.
+    Cannot detect partial failures (e.g., DB OK but queue full).
   plan:
-  - Add URL validation (scheme, valid format) in handleScrape/handleCrawl/handleResearch
-  - Add bounds checking for maxDepth (1-10), maxPages (1-10000), timeoutSeconds (5-300)
-  - Add content-type validation for request bodies
-  - Add request body size limits (e.g., 1MB max)
-  - Validate auth profile names (alphanumeric, hyphens, underscores)
-  - Update OpenAPI spec to reflect validation rules
+  - Add database connectivity check to health endpoint
+  - Add job queue status (depth, worker health)
+  - Check headless browser availability (if configured)
+  - Return detailed status with component health
+  - Return 503 if any critical component is unhealthy
+  - Add health check to CLI (spartan health)
   notes:
-  - Added URL validation (http/https scheme + host check)
-  - Added Auth Profile name validation (alphanumeric, -, _)
-  - Added bounds checking for maxDepth (1-10), maxPages (1-10000), timeoutSeconds (5-300)
-  - Added 1MB request body size limit and application/json Content-Type check
-  - Updated OpenAPI spec and tests to reflect validation rules
+  - Added Status() method to jobs.Manager to retrieve queue and active job counts.
+  - Added fetch.CheckBrowserAvailability helper.
+  - Enhanced handleHealth to return JSON with component-level statuses.
+  - Added 'health' command to CLI with server probe and local fallback.
+  - Updated OpenAPI specification and generated TS client.
   request: scan finding
   created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T21:30:00Z
-- id: RQ-0008
-  status: done
-  title: Add job cancellation support
-  tags:
-  - ux
-  - control
-  - api
-  scope:
-  - internal/jobs/manager.go
-  - internal/store/store.go
-  - internal/api/server.go
-  - api/openapi.yaml
-  evidence:
-  - |-
-    No mechanism to cancel running jobs. jobs/manager.go workers check context.Done()
-    but job cancellation API does not exist. Users must wait for completion or kill
-    the process.
-  plan:
-  - Add CancelJob method to jobs/manager.go
-  - Add job cancellation to database (canceled status)
-  - Add DELETE /v1/jobs/{id} endpoint to api/server.go
-  - Propagate cancellation to in-flight scrape/crawl operations
-  - Update CLI to support job cancellation (spartan jobs cancel <id>)
-  notes:
-  - Added CancelJob to jobs/manager.go with context cancellation tracking
-  - Added DELETE /v1/jobs/{id} endpoint to API
-  - Updated scrape, crawl, and research operations to respect job context
-  - Added 'jobs list', 'jobs get', and 'jobs cancel' to CLI
-  - Added unit test for job cancellation
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T10:00:00Z
-  completed_at: 2026-01-18T10:30:00Z
-- id: RQ-0009
-  status: done
-  title: Fix SQL injection and add connection pooling
-  tags:
-  - security
-  - database
-  - performance
-  scope:
-  - internal/store/store.go
-  evidence:
-  - |-
-    store/store.go uses modernc.org/sqlite with SetMaxOpenConns(1) and
-    SetMaxIdleConns(1), severely limiting concurrency. No prepared statements visible
-    for user-controlled inputs.
-  plan:
-  - Increase SQLite connection limits (e.g., 25 max open, 5 idle)
-  - Add prepared statements for all queries with user input
-  - Add database connection health checks
-  - Add connection timeout configuration
-  - Consider adding connection pooling with sql.DB metrics
-  - Add database WAL checkpointing logic for long-running processes
-  notes:
-  - Increased SQLite connection limits to 25 max open and 5 idle.
-  - Added explicit prepared statements for all main database operations.
-  - Added Ping() method for database health checks.
-  - Added explicit WAL checkpointing on Close() and manual Checkpoint() method.
-  - Configured connection max lifetime and idle time.
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T21:30:00Z
-- id: RQ-0011
-  status: done
-  title: Add package documentation to Go files
-  tags:
-  - documentation
-  - maintainability
-  scope:
-  - internal/cli/cli.go
-  - internal/scrape/scrape.go
-  - internal/crawl/crawl.go
-  - internal/fetch/http_fetcher.go
-  - internal/jobs/manager.go
-  - internal/api/server.go
-  evidence:
-  - |-
-    Most Go packages lack package-level documentation. cli.go (1293 lines),
-    jobs/manager.go (448 lines), api/server.go (492 lines) all missing package
-    comments explaining purpose and usage.
-  plan:
-  - Add godoc comments to all packages explaining purpose
-  - Document public functions and exported types
-  - Add usage examples for complex functions
-  - Run godoc to verify documentation builds correctly
-  - Add documentation to AGENTS.md about package structure
-  notes:
-  - Added package-level documentation to all requested packages and internal/extract.
-  - Documented major public functions and exported types across the codebase.
-  - Added a Package Structure section to AGENTS.md.
-  - Verified changes with 'make ci'.
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T21:30:00Z
+  updated_at: 2026-01-18T21:07:00Z
+  completed_at: 2026-01-18T21:07:00Z

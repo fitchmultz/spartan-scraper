@@ -71,9 +71,14 @@ func TestHealth(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
 
-	expected := "ok"
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
+	if !strings.Contains(rr.Body.String(), `"status":"ok"`) {
+		t.Errorf("handler returned unexpected body: got %v", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"database"`) {
+		t.Errorf("handler missing database status: got %v", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"queue"`) {
+		t.Errorf("handler missing queue status: got %v", rr.Body.String())
 	}
 }
 

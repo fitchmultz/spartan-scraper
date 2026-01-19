@@ -31,6 +31,19 @@ type Server struct {
 	cfg     config.Config
 }
 
+// ComponentStatus represents the health of a single system component.
+type ComponentStatus struct {
+	Status  string      `json:"status"`
+	Message string      `json:"message,omitempty"`
+	Details interface{} `json:"details,omitempty"`
+}
+
+// HealthResponse represents the overall health of the system.
+type HealthResponse struct {
+	Status     string                     `json:"status"`
+	Components map[string]ComponentStatus `json:"components"`
+}
+
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`
@@ -96,9 +109,51 @@ func (s *Server) Routes() http.Handler {
 	return mux
 }
 
-func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	res := HealthResponse{
+		Status:     "ok",
+		Components: make(map[string]ComponentStatus),
+	}
+	healthy := true
+
+	// Check Database
+	dbStatus := ComponentStatus{Status: "ok"}
+	if err := s.store.Ping(ctx); err != nil {
+		dbStatus.Status = "error"
+		dbStatus.Message = err.Error()
+		healthy = false
+	}
+	res.Components["database"] = dbStatus
+
+	// Check Queue
+	qStatus := s.manager.Status()
+	res.Components["queue"] = ComponentStatus{
+		Status: "ok",
+		Details: map[string]int{
+			"queued": qStatus.QueuedJobs,
+			"active": qStatus.ActiveJobs,
+		},
+	}
+
+	// Check Browser
+	browserStatus := ComponentStatus{Status: "ok"}
+	usePlaywright := s.cfg.UsePlaywright
+	if err := fetch.CheckBrowserAvailability(usePlaywright); err != nil {
+		browserStatus.Status = "error"
+		browserStatus.Message = err.Error()
+		// Only fail health check if browser is critical and failing
+		// healthy = false
+	}
+	res.Components["browser"] = browserStatus
+
+	if !healthy {
+		res.Status = "error"
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+	writeJSON(w, res)
 }
 
 func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
