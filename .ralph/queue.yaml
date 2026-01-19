@@ -169,27 +169,6 @@ tasks:
     request: scan finding
     created_at: 2025-01-18T21:30:00Z
     updated_at: 2025-01-18T21:30:00Z
-  - id: 7
-    status: todo
-    title: Add rate limiting to API endpoints
-    tags:
-      - security
-      - performance
-      - api
-    scope:
-      - internal/api/server.go
-    evidence:
-      No rate limiting on any API endpoints in api/server.go. Malicious or
-      misconfigured clients could overwhelm the server with requests.
-    plan:
-      - Add rate limiting middleware (e.g., golang.org/x/time/rate)
-      - Configure limits by endpoint (higher for GET, lower for POST)
-      - Add per-IP and per-API-key rate limits
-      - Return 429 status with Retry-After header when rate limited
-      - Log rate limit violations
-    request: scan finding
-    created_at: 2025-01-18T21:30:00Z
-    updated_at: 2025-01-18T21:30:00Z
   - id: 8
     status: todo
     title: Add job cancellation support
@@ -234,30 +213,6 @@ tasks:
       - Add connection timeout configuration
       - Consider adding connection pooling with sql.DB metrics
       - Add database WAL checkpointing logic for long-running processes
-    request: scan finding
-    created_at: 2025-01-18T21:30:00Z
-    updated_at: 2025-01-18T21:30:00Z
-  - id: 10
-    status: todo
-    title: Add metrics and observability
-    tags:
-      - observability
-      - monitoring
-      - operations
-    scope:
-      - internal/jobs/manager.go
-      - internal/fetch
-      - internal/api/server.go
-    evidence:
-      No metrics collection for job rates, success/failure rates, latency, queue
-      depth, fetch performance. Makes it impossible to monitor production health.
-    plan:
-      - Add Prometheus metrics package (prometheus/client_golang)
-      - Export metrics for: jobs queued/running/completed/failed, queue depth, fetch duration, error rates
-      - Add /metrics endpoint to api/server.go
-      - Add histogram for job duration and fetch latency
-      - Add gauges for worker pool utilization
-      - Document metrics in observability guide
     request: scan finding
     created_at: 2025-01-18T21:30:00Z
     updated_at: 2025-01-18T21:30:00Z
