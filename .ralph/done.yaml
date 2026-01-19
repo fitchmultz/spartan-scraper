@@ -67,3 +67,36 @@ tasks:
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T21:30:00Z
   completed_at: 2026-01-18T21:30:00Z
+- id: RQ-0008
+  status: done
+  title: Add job cancellation support
+  tags:
+  - ux
+  - control
+  - api
+  scope:
+  - internal/jobs/manager.go
+  - internal/store/store.go
+  - internal/api/server.go
+  - api/openapi.yaml
+  evidence:
+  - |-
+    No mechanism to cancel running jobs. jobs/manager.go workers check context.Done()
+    but job cancellation API does not exist. Users must wait for completion or kill
+    the process.
+  plan:
+  - Add CancelJob method to jobs/manager.go
+  - Add job cancellation to database (canceled status)
+  - Add DELETE /v1/jobs/{id} endpoint to api/server.go
+  - Propagate cancellation to in-flight scrape/crawl operations
+  - Update CLI to support job cancellation (spartan jobs cancel <id>)
+  notes:
+  - Added CancelJob to jobs/manager.go with context cancellation tracking
+  - Added DELETE /v1/jobs/{id} endpoint to API
+  - Updated scrape, crawl, and research operations to respect job context
+  - Added 'jobs list', 'jobs get', and 'jobs cancel' to CLI
+  - Added unit test for job cancellation
+  request: scan finding
+  created_at: 2025-01-18T21:30:00Z
+  updated_at: 2026-01-18T10:00:00Z
+  completed_at: 2026-01-18T10:30:00Z

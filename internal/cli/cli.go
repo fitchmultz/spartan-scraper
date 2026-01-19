@@ -58,6 +58,8 @@ func Run(ctx context.Context) int {
 		return runMCP(ctx, cfg)
 	case "server":
 		return runServer(ctx, cfg)
+	case "jobs":
+		return runJobs(ctx, cfg)
 	case "tui":
 		return runTUI(ctx, cfg)
 	case "help", "--help", "-h":
@@ -1107,6 +1109,107 @@ Notes:
 	return 0
 }
 
+func runJobs(ctx context.Context, cfg config.Config) int {
+	if len(os.Args) < 3 {
+		printJobsHelp()
+		return 1
+	}
+
+	switch os.Args[2] {
+	case "list":
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+		jobsList, err := st.List(ctx)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		for _, job := range jobsList {
+			fmt.Printf("%s\t%s\t%s\t%s\n", job.ID, job.Kind, job.Status, job.CreatedAt.Format(time.RFC3339))
+		}
+		return 0
+	case "get":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "job id is required")
+			return 1
+		}
+		id := os.Args[3]
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+		job, err := st.Get(ctx, id)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "job not found")
+			return 1
+		}
+		payload, _ := json.MarshalIndent(job, "", "  ")
+		fmt.Println(string(payload))
+		return 0
+	case "cancel":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "job id is required")
+			return 1
+		}
+		id := os.Args[3]
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+
+		manager := jobs.NewManager(
+			st,
+			cfg.DataDir,
+			cfg.UserAgent,
+			time.Duration(cfg.RequestTimeoutSecs)*time.Second,
+			cfg.MaxConcurrency,
+			cfg.RateLimitQPS,
+			cfg.RateLimitBurst,
+			cfg.MaxRetries,
+			time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+			cfg.UsePlaywright,
+		)
+
+		if err := manager.CancelJob(ctx, id); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fmt.Println("canceled", id)
+		return 0
+	case "help", "--help", "-h":
+		printJobsHelp()
+		return 0
+	default:
+		fmt.Fprintf(os.Stderr, "unknown jobs subcommand: %s\n", os.Args[2])
+		printJobsHelp()
+		return 1
+	}
+}
+
+func printJobsHelp() {
+	fmt.Print(`Usage:
+  spartan jobs <subcommand> [options]
+
+Subcommands:
+  list    List all jobs
+  get     Get job details
+  cancel  Cancel a running or queued job
+
+Examples:
+  spartan jobs list
+  spartan jobs get <job-id>
+  spartan jobs cancel <job-id>
+`)
+}
+
 func runTUI(ctx context.Context, cfg config.Config) int {
 	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -1149,6 +1252,7 @@ Commands:
   schedule Manage scheduled jobs
   mcp      Run MCP server over stdio
   server   Run API server + workers
+  jobs     Manage jobs (list, get, cancel)
   tui      Launch terminal UI
 
 Examples:
@@ -1166,6 +1270,8 @@ Examples:
   spartan schedule add --kind scrape --interval 3600 --url https://example.com
   spartan schedule list
   spartan schedule delete --id <id>
+  spartan jobs list
+  spartan jobs cancel <id>
   spartan mcp
   spartan server
   spartan tui

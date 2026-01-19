@@ -360,16 +360,23 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id required", http.StatusBadRequest)
 		return
 	}
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		job, err := s.store.Get(r.Context(), id)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		writeJSON(w, job)
+	case http.MethodDelete:
+		if err := s.manager.CancelJob(r.Context(), id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]string{"status": "canceled"})
+	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
-	job, err := s.store.Get(r.Context(), id)
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	writeJSON(w, job)
 }
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {

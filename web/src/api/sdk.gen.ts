@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, GetHealthzData, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -109,6 +109,11 @@ export const postV1Research = <ThrowOnError extends boolean = false>(options: Op
  * List jobs
  */
 export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, unknown, ThrowOnError>({ url: '/v1/jobs', ...options });
+
+/**
+ * Cancel a job
+ */
+export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, unknown, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
 
 /**
  * Get a job

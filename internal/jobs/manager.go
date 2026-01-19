@@ -36,6 +36,8 @@ type Manager struct {
 	pipelineRegistry *pipeline.Registry
 	jsRegistry       *pipeline.JSRegistry
 	wg               sync.WaitGroup
+	activeJobs       map[string]context.CancelFunc
+	mu               sync.Mutex
 }
 
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
@@ -56,6 +58,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		queue:            make(chan model.Job, 128),
 		pipelineRegistry: pipeline.NewRegistry(),
 		jsRegistry:       jsRegistry,
+		activeJobs:       make(map[string]context.CancelFunc),
 	}
 }
 
@@ -121,6 +124,21 @@ func (m *Manager) Enqueue(job model.Job) error {
 		slog.Warn("job queue full", "jobID", job.ID)
 		return errors.New("job queue full")
 	}
+}
+
+func (m *Manager) CancelJob(ctx context.Context, id string) error {
+	m.mu.Lock()
+	cancel, ok := m.activeJobs[id]
+	m.mu.Unlock()
+
+	if ok {
+		slog.Info("canceling active job", "jobID", id)
+		cancel()
+	} else {
+		slog.Info("job not active, marking as canceled in store", "jobID", id)
+	}
+
+	return m.store.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user")
 }
 
 func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
@@ -205,9 +223,28 @@ func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []st
 
 func (m *Manager) run(ctx context.Context, job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
+
+	// Check if already canceled
+	latest, err := m.store.Get(ctx, job.ID)
+	if err == nil && latest.Status == model.StatusCanceled {
+		slog.Info("job was canceled before starting", "jobID", job.ID)
+		return nil
+	}
+
 	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusRunning, ""); err != nil {
 		slog.Error("failed to update job status to running", "jobID", job.ID, "error", err)
 	}
+
+	jobCtx, cancel := context.WithCancel(ctx)
+	m.mu.Lock()
+	m.activeJobs[job.ID] = cancel
+	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		delete(m.activeJobs, job.ID)
+		m.mu.Unlock()
+		cancel()
+	}()
 
 	resultDir := filepath.Dir(job.ResultPath)
 	if err := os.MkdirAll(resultDir, 0o755); err != nil {
@@ -239,7 +276,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		result, err := scrape.Run(ctx, scrape.Request{
+		result, err := scrape.Run(jobCtx, scrape.Request{
 			URL:           url,
 			RequestID:     job.ID,
 			Headless:      headless,
@@ -259,6 +296,10 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			if jobCtx.Err() != nil {
+				slog.Info("job canceled during scrape", "jobID", job.ID)
+				return nil
+			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
 			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
@@ -286,7 +327,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		results, err := crawl.Run(ctx, crawl.Request{
+		results, err := crawl.Run(jobCtx, crawl.Request{
 			URL:           url,
 			RequestID:     job.ID,
 			MaxDepth:      maxDepth,
@@ -309,6 +350,10 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			if jobCtx.Err() != nil {
+				slog.Info("job canceled during crawl", "jobID", job.ID)
+				return nil
+			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
 			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
@@ -339,7 +384,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		result, err := research.Run(ctx, research.Request{
+		result, err := research.Run(jobCtx, research.Request{
 			Query:         query,
 			RequestID:     job.ID,
 			URLs:          urls,
@@ -363,6 +408,10 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			if jobCtx.Err() != nil {
+				slog.Info("job canceled during research", "jobID", job.ID)
+				return nil
+			}
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
 			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
@@ -384,6 +433,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 		}
 		return errors.New("unknown job kind")
+	}
+
+	if jobCtx.Err() != nil {
+		slog.Info("job completed but was canceled", "jobID", job.ID)
+		return nil
 	}
 
 	slog.Info("job succeeded", "jobID", job.ID)

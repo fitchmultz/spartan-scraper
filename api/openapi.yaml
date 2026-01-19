@@ -164,6 +164,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+    delete:
+      summary: Cancel a job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job canceled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
   /v1/jobs/{id}/results:
     get:
       summary: Get job results
@@ -561,7 +576,7 @@ components:
           enum: [scrape, crawl, research]
         status:
           type: string
-          enum: [queued, running, succeeded, failed]
+          enum: [queued, running, succeeded, failed, canceled]
         createdAt:
           type: string
         updatedAt:

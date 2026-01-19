@@ -134,3 +134,27 @@ func TestManagerStartStop(t *testing.T) {
 	cancel()
 	// Should return quickly
 }
+
+func TestManagerCancelJob(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	// Cancel before it starts
+	if err := m.CancelJob(ctx, job.ID); err != nil {
+		t.Errorf("CancelJob failed: %v", err)
+	}
+
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.Status != model.StatusCanceled {
+		t.Errorf("expected status canceled, got %v", persisted.Status)
+	}
+}

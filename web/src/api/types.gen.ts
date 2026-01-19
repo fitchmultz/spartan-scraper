@@ -194,7 +194,7 @@ export type ResearchRequest = {
 export type Job = {
     id?: string;
     kind?: 'scrape' | 'crawl' | 'research';
-    status?: 'queued' | 'running' | 'succeeded' | 'failed';
+    status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
     createdAt?: string;
     updatedAt?: string;
     params?: {
@@ -369,6 +369,24 @@ export type GetV1JobsResponses = {
 };
 
 export type GetV1JobsResponse = GetV1JobsResponses[keyof GetV1JobsResponses];
+
+export type DeleteV1JobsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/jobs/{id}';
+};
+
+export type DeleteV1JobsByIdResponses = {
+    /**
+     * Job canceled
+     */
+    200: StatusResponse;
+};
+
+export type DeleteV1JobsByIdResponse = DeleteV1JobsByIdResponses[keyof DeleteV1JobsByIdResponses];
 
 export type GetV1JobsByIdData = {
     body?: never;
