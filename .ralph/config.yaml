@@ -1,0 +1,11 @@
+version: 1
+project_type: code
+queue:
+  file: .ralph/queue.yaml
+  done_file: .ralph/done.yaml
+  id_prefix: RQ
+  id_width: 4
+agent:
+  runner: opencode
+  codex_bin: codex
+  opencode_bin: opencode
