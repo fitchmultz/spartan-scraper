@@ -49,17 +49,17 @@ func Run(ctx context.Context) int {
 	case "research":
 		return runResearch(ctx, cfg)
 	case "auth":
-		return runAuth(cfg)
+		return runAuth(ctx, cfg)
 	case "export":
-		return runExport(cfg)
+		return runExport(ctx, cfg)
 	case "schedule":
-		return runSchedule(cfg)
+		return runSchedule(ctx, cfg)
 	case "mcp":
-		return runMCP(cfg)
+		return runMCP(ctx, cfg)
 	case "server":
 		return runServer(ctx, cfg)
 	case "tui":
-		return runTUI(cfg)
+		return runTUI(ctx, cfg)
 	case "help", "--help", "-h":
 		printHelp()
 		return 0
@@ -183,7 +183,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateScrapeJob(*url, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateScrapeJob(ctx, *url, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -194,19 +194,19 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
+		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		if *out != "" {
-			if err := copyResults(store, job.ID, *out); err != nil {
+			if err := copyResults(ctx, store, job.ID, *out); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
 			fmt.Println(job.ID)
 			return 0
 		}
-		if err := printResults(store, job.ID); err != nil {
+		if err := printResults(ctx, store, job.ID); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -217,13 +217,13 @@ Options:
 	return 0
 }
 
-func waitForJob(store *store.Store, id string, timeout time.Duration) error {
+func waitForJob(ctx context.Context, store *store.Store, id string, timeout time.Duration) error {
 	start := time.Now()
 	for {
 		if timeout > 0 && time.Since(start) > timeout {
 			return fmt.Errorf("wait timeout after %s", timeout)
 		}
-		job, err := store.Get(id)
+		job, err := store.Get(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -236,12 +236,16 @@ func waitForJob(store *store.Store, id string, timeout time.Duration) error {
 			}
 			return fmt.Errorf("job failed")
 		}
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 	}
 }
 
-func copyResults(store *store.Store, id, outPath string) error {
-	job, err := store.Get(id)
+func copyResults(ctx context.Context, store *store.Store, id, outPath string) error {
+	job, err := store.Get(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -265,8 +269,8 @@ func copyResults(store *store.Store, id, outPath string) error {
 	return err
 }
 
-func printResults(store *store.Store, id string) error {
-	job, err := store.Get(id)
+func printResults(ctx context.Context, store *store.Store, id string) error {
+	job, err := store.Get(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -378,7 +382,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateCrawlJob(*url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateCrawlJob(ctx, *url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -389,19 +393,19 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
+		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		if *out != "" {
-			if err := copyResults(store, job.ID, *out); err != nil {
+			if err := copyResults(ctx, store, job.ID, *out); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
 			fmt.Println(job.ID)
 			return 0
 		}
-		if err := printResults(store, job.ID); err != nil {
+		if err := printResults(ctx, store, job.ID); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -511,7 +515,7 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateResearchJob(*query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateResearchJob(ctx, *query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -522,19 +526,19 @@ Options:
 	}
 
 	if *wait || *out != "" {
-		if err := waitForJob(store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
+		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		if *out != "" {
-			if err := copyResults(store, job.ID, *out); err != nil {
+			if err := copyResults(ctx, store, job.ID, *out); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
 			fmt.Println(job.ID)
 			return 0
 		}
-		if err := printResults(store, job.ID); err != nil {
+		if err := printResults(ctx, store, job.ID); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -546,7 +550,7 @@ Options:
 	return 0
 }
 
-func runAuth(cfg config.Config) int {
+func runAuth(ctx context.Context, cfg config.Config) int {
 	if len(os.Args) < 3 {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan auth <subcommand> [options]
@@ -770,7 +774,7 @@ Examples:
 	}
 }
 
-func runExport(cfg config.Config) int {
+func runExport(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
 	jobID := fs.String("job-id", "", "Job id to export")
 	format := fs.String("format", "jsonl", "Output format: jsonl|json|md|csv")
@@ -800,7 +804,7 @@ Options:
 	}
 	defer st.Close()
 
-	job, err := st.Get(*jobID)
+	job, err := st.Get(ctx, *jobID)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -837,7 +841,7 @@ Options:
 	return 0
 }
 
-func runSchedule(cfg config.Config) int {
+func runSchedule(ctx context.Context, cfg config.Config) int {
 	if len(os.Args) < 3 {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan schedule <subcommand> [options]
@@ -1070,7 +1074,7 @@ Notes:
 	return 0
 }
 
-func runMCP(cfg config.Config) int {
+func runMCP(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("mcp", flag.ExitOnError)
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -1096,14 +1100,14 @@ Notes:
 	}
 	defer server.Close()
 
-	if err := server.Serve(os.Stdin, os.Stdout); err != nil {
+	if err := server.Serve(ctx, os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return 0
 }
 
-func runTUI(cfg config.Config) int {
+func runTUI(ctx context.Context, cfg config.Config) int {
 	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan tui [--smoke]
@@ -1127,7 +1131,7 @@ Notes:
 		return 1
 	}
 	defer store.Close()
-	return tui.RunWithOptions(store, tui.Options{Smoke: *smoke})
+	return tui.RunWithOptions(ctx, store, tui.Options{Smoke: *smoke})
 }
 
 func printHelp() {

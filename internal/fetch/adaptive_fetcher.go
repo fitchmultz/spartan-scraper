@@ -1,6 +1,9 @@
 package fetch
 
-import "log/slog"
+import (
+	"context"
+	"log/slog"
+)
 
 type AdaptiveFetcher struct {
 	store *RenderProfileStore
@@ -29,7 +32,7 @@ func NewAdaptiveFetcher() *AdaptiveFetcher {
 	}
 }
 
-func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
+func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	slog.Debug("adaptive fetch start", "url", req.URL)
 	// 1. Load Profile
 	store := NewRenderProfileStore(req.DataDir)
@@ -47,11 +50,11 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 	// 2. Decision: Forced Headless?
 	if prof.NeverHeadless {
 		slog.Debug("profile forces HTTP (NeverHeadless)", "url", req.URL)
-		return f.http.Fetch(req)
+		return f.http.Fetch(ctx, req)
 	}
 	if req.Headless || prof.PreferHeadless || prof.AssumeJSHeavy || prof.ForceEngine != "" {
 		slog.Debug("profile or request forces headless", "url", req.URL, "headless", req.Headless, "preferHeadless", prof.PreferHeadless, "assumeJSHeavy", prof.AssumeJSHeavy, "forceEngine", prof.ForceEngine)
-		return f.fetchHeadless(req, prof)
+		return f.fetchHeadless(ctx, req, prof)
 	}
 
 	// 3. HTTP Probe
@@ -59,7 +62,7 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 	probeReq := req
 	// Reduce timeout for probe if not specified, to save time on failure?
 	// Actually, stick to configured timeout to avoid premature giving up.
-	res, err := f.http.Fetch(probeReq)
+	res, err := f.http.Fetch(ctx, probeReq)
 	if err != nil {
 		slog.Warn("HTTP probe failed", "url", req.URL, "error", err)
 		// If HTTP failed, depends on error.
@@ -77,7 +80,7 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 		// But 429 is rate limit.
 		if res.Status != 429 {
 			slog.Info("retrying with headless due to HTTP status", "url", req.URL, "status", res.Status)
-			return f.fetchHeadless(req, prof)
+			return f.fetchHeadless(ctx, req, prof)
 		}
 	}
 
@@ -89,7 +92,7 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 
 	if IsJSHeavy(js, threshold) {
 		slog.Info("retrying with headless due to JS heaviness", "url", req.URL, "jsScore", js, "threshold", threshold)
-		return f.fetchHeadless(req, prof)
+		return f.fetchHeadless(ctx, req, prof)
 	}
 
 	// 5. Return HTTP result if satisfied
@@ -97,7 +100,7 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 	return res, nil
 }
 
-func (f *AdaptiveFetcher) fetchHeadless(req Request, prof RenderProfile) (Result, error) {
+func (f *AdaptiveFetcher) fetchHeadless(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	// Engine selection
 	engine := RenderEngineChromedp
 	if req.UsePlaywright {
@@ -116,9 +119,9 @@ func (f *AdaptiveFetcher) fetchHeadless(req Request, prof RenderProfile) (Result
 	var err error
 
 	if engine == RenderEnginePlaywright {
-		res, err = f.pw.Fetch(req, prof)
+		res, err = f.pw.Fetch(ctx, req, prof)
 	} else {
-		res, err = f.cdp.Fetch(req, prof)
+		res, err = f.cdp.Fetch(ctx, req, prof)
 	}
 
 	if err == nil {

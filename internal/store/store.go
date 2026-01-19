@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -60,12 +61,13 @@ func (s *Store) init() error {
 	return err
 }
 
-func (s *Store) Create(job model.Job) error {
+func (s *Store) Create(ctx context.Context, job model.Job) error {
 	params, err := json.Marshal(job.Params)
 	if err != nil {
 		return fmt.Errorf("failed to marshal job params: %w", err)
 	}
-	_, err = s.db.Exec(
+	_, err = s.db.ExecContext(
+		ctx,
 		`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
 			values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.ID,
@@ -80,8 +82,9 @@ func (s *Store) Create(job model.Job) error {
 	return err
 }
 
-func (s *Store) UpdateStatus(id string, status model.Status, errMsg string) error {
-	_, err := s.db.Exec(
+func (s *Store) UpdateStatus(ctx context.Context, id string, status model.Status, errMsg string) error {
+	_, err := s.db.ExecContext(
+		ctx,
 		`update jobs set status = ?, updated_at = ?, error = ? where id = ?`,
 		status,
 		time.Now().Format(time.RFC3339Nano),
@@ -91,8 +94,8 @@ func (s *Store) UpdateStatus(id string, status model.Status, errMsg string) erro
 	return err
 }
 
-func (s *Store) Get(id string) (model.Job, error) {
-	row := s.db.QueryRow(`select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`, id)
+func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
+	row := s.db.QueryRowContext(ctx, `select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`, id)
 	var job model.Job
 	var createdAt, updatedAt string
 	var params string
@@ -116,8 +119,8 @@ func (s *Store) Get(id string) (model.Job, error) {
 	return job, nil
 }
 
-func (s *Store) List() ([]model.Job, error) {
-	rows, err := s.db.Query(`select id, kind, status, created_at, updated_at, params, result_path, error from jobs order by created_at desc`)
+func (s *Store) List(ctx context.Context) ([]model.Job, error) {
+	rows, err := s.db.QueryContext(ctx, `select id, kind, status, created_at, updated_at, params, result_path, error from jobs order by created_at desc`)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +153,8 @@ func (s *Store) List() ([]model.Job, error) {
 	return results, nil
 }
 
-func (s *Store) GetCrawlState(url string) (model.CrawlState, error) {
-	row := s.db.QueryRow(`select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`, url)
+func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState, error) {
+	row := s.db.QueryRowContext(ctx, `select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`, url)
 	var state model.CrawlState
 	var lastScraped string
 	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped); err != nil {
@@ -170,8 +173,9 @@ func (s *Store) GetCrawlState(url string) (model.CrawlState, error) {
 	return state, nil
 }
 
-func (s *Store) UpsertCrawlState(state model.CrawlState) error {
-	_, err := s.db.Exec(
+func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) error {
+	_, err := s.db.ExecContext(
+		ctx,
 		`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped)
 		values (?, ?, ?, ?, ?)
 		on conflict(url) do update set

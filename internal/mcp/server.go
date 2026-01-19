@@ -81,7 +81,7 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func (s *Server) Serve(in io.Reader, out io.Writer) error {
+func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	encoder := json.NewEncoder(out)
@@ -117,7 +117,7 @@ func (s *Server) Serve(in io.Reader, out io.Writer) error {
 		case "tools/list":
 			_ = encoder.Encode(response{ID: id, Result: map[string]interface{}{"tools": s.toolsList()}})
 		case "tools/call":
-			result, err := s.handleToolCall(base)
+			result, err := s.handleToolCall(ctx, base)
 			if err != nil {
 				_ = encoder.Encode(response{ID: id, Error: &rpcError{Code: -32000, Message: err.Error()}})
 				continue
@@ -125,6 +125,11 @@ func (s *Server) Serve(in io.Reader, out io.Writer) error {
 			_ = encoder.Encode(response{ID: id, Result: result})
 		default:
 			_ = encoder.Encode(response{ID: id, Error: &rpcError{Code: -32601, Message: "method not found"}})
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 	}
 
@@ -181,7 +186,7 @@ func schema(required map[string]string, optional map[string]string) map[string]i
 	}
 }
 
-func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, error) {
+func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMessage) (interface{}, error) {
 	var params callParams
 	if raw, ok := base["params"]; ok {
 		if err := json.Unmarshal(raw, &params); err != nil {
@@ -207,17 +212,17 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateScrapeJob(url, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		job, err := s.manager.CreateScrapeJob(ctx, url, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID); err != nil {
 			return nil, err
 		}
-		return loadResult(s.store, job.ID)
+		return loadResult(ctx, s.store, job.ID)
 	case "crawl_site":
 		url := getString(params.Arguments, "url")
 		if url == "" {
@@ -237,17 +242,17 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		job, err := s.manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID); err != nil {
 			return nil, err
 		}
-		return loadResult(s.store, job.ID)
+		return loadResult(ctx, s.store, job.ID)
 	case "research":
 		query := getString(params.Arguments, "query")
 		urls := getStringSlice(params.Arguments, "urls")
@@ -272,37 +277,37 @@ func (s *Server) handleToolCall(base map[string]json.RawMessage) (interface{}, e
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		job, err := s.manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
 		if err != nil {
 			return nil, err
 		}
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID); err != nil {
 			return nil, err
 		}
-		return loadResult(s.store, job.ID)
+		return loadResult(ctx, s.store, job.ID)
 	case "job_status":
 		id := getString(params.Arguments, "id")
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
-		return s.store.Get(id)
+		return s.store.Get(ctx, id)
 	case "job_results":
 		id := getString(params.Arguments, "id")
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
-		return loadResult(s.store, id)
+		return loadResult(ctx, s.store, id)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", params.Name)
 	}
 }
 
-func waitForJob(store *store.Store, id string) error {
+func waitForJob(ctx context.Context, store *store.Store, id string) error {
 	for {
-		job, err := store.Get(id)
+		job, err := store.Get(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -315,12 +320,16 @@ func waitForJob(store *store.Store, id string) error {
 			}
 			return errors.New("job failed")
 		}
-		time.Sleep(200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
 	}
 }
 
-func loadResult(store *store.Store, id string) (string, error) {
-	job, err := store.Get(id)
+func loadResult(ctx context.Context, store *store.Store, id string) (string, error) {
+	job, err := store.Get(ctx, id)
 	if err != nil {
 		return "", err
 	}

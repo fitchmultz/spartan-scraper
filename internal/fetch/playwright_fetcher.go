@@ -13,7 +13,7 @@ import (
 
 type PlaywrightFetcher struct{}
 
-func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, error) {
+func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
@@ -42,7 +42,7 @@ func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, erro
 
 		if req.Limiter != nil {
 			slog.Debug("waiting for rate limiter", "url", req.URL)
-			_ = req.Limiter.Wait(context.Background(), req.URL)
+			_ = req.Limiter.Wait(ctx, req.URL)
 		}
 
 		result, err := f.fetchOnce(req, prof, navTimeout)

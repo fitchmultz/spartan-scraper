@@ -43,8 +43,8 @@ type Request struct {
 }
 
 type CrawlStateStore interface {
-	GetCrawlState(url string) (model.CrawlState, error)
-	UpsertCrawlState(state model.CrawlState) error
+	GetCrawlState(ctx context.Context, url string) (model.CrawlState, error)
+	UpsertCrawlState(ctx context.Context, state model.CrawlState) error
 }
 
 type PageResult struct {
@@ -58,7 +58,7 @@ type PageResult struct {
 	Normalized extract.NormalizedDocument `json:"normalized"`
 }
 
-func Run(req Request) ([]PageResult, error) {
+func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	slog.Info("crawl.Run start", "url", req.URL, "maxDepth", req.MaxDepth, "maxPages", req.MaxPages)
 	if req.MaxDepth <= 0 {
 		req.MaxDepth = 1
@@ -104,7 +104,7 @@ func Run(req Request) ([]PageResult, error) {
 		var ifNoneMatch, ifModifiedSince string
 
 		if req.Incremental && req.Store != nil {
-			existingState, err := req.Store.GetCrawlState(item.URL)
+			existingState, err := req.Store.GetCrawlState(ctx, item.URL)
 			if err == nil {
 				state = existingState
 				ifNoneMatch = state.ETag
@@ -130,7 +130,7 @@ func Run(req Request) ([]PageResult, error) {
 
 		target := pipeline.NewTarget(fetchReq.URL, string(model.KindCrawl))
 		baseCtx := pipeline.HookContext{
-			Context:     context.Background(),
+			Context:     ctx,
 			RequestID:   req.RequestID,
 			Target:      target,
 			Now:         time.Now(),
@@ -178,7 +178,7 @@ func Run(req Request) ([]PageResult, error) {
 		}
 
 		slog.Debug("fetching crawl page", "url", fetchReq.URL)
-		res, err := fetcher.Fetch(fetchReq)
+		res, err := fetcher.Fetch(ctx, fetchReq)
 		if err != nil {
 			slog.Error("fetch failed", "url", item.URL, "error", err)
 			return PageResult{}, false, false // Don't enqueue children if fetch failed
@@ -214,7 +214,7 @@ func Run(req Request) ([]PageResult, error) {
 			// Update LastScraped timestamp
 			if req.Incremental && req.Store != nil {
 				state.LastScraped = time.Now()
-				if err := req.Store.UpsertCrawlState(state); err != nil {
+				if err := req.Store.UpsertCrawlState(ctx, state); err != nil {
 					slog.Error("failed to update crawl state", "url", item.URL, "error", err)
 				}
 			}
@@ -273,7 +273,7 @@ func Run(req Request) ([]PageResult, error) {
 				ContentHash:  currentHash,
 				LastScraped:  time.Now(),
 			}
-			if err := req.Store.UpsertCrawlState(newState); err != nil {
+			if err := req.Store.UpsertCrawlState(ctx, newState); err != nil {
 				slog.Error("failed to update crawl state", "url", item.URL, "error", err)
 			}
 		}
@@ -294,7 +294,7 @@ func Run(req Request) ([]PageResult, error) {
 			Normalized: output.Normalized,
 		}
 
-		finalResult, err := applyCrawlOutputPipeline(registry, baseCtx, result)
+		finalResult, err := applyCrawlOutputPipeline(ctx, registry, baseCtx, result)
 		if err != nil {
 			slog.Error("crawl output pipeline failed", "url", item.URL, "error", err)
 			return PageResult{}, false, false
@@ -311,7 +311,7 @@ func Run(req Request) ([]PageResult, error) {
 	visited := map[string]bool{}
 	var processed int32
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	enqueue := func(url string, depth int) {
@@ -344,39 +344,47 @@ func Run(req Request) ([]PageResult, error) {
 	for i := 0; i < req.Concurrency; i++ {
 		go func(workerID int) {
 			slog.Debug("starting crawl worker", "workerID", workerID)
-			for item := range tasks {
-				if atomic.LoadInt32(&processed) >= int32(req.MaxPages) {
-					wg.Done()
-					continue
-				}
-
-				res, enqueueChildren, skipped := processPage(item)
-				if skipped || res.URL == "" {
-					wg.Done()
-					continue
-				}
-
-				if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
-					results <- res
-				} else {
-					wg.Done()
-					continue
-				}
-
-				if enqueueChildren && item.Depth < req.MaxDepth {
-					for _, href := range res.Links {
-						resolved := resolveURL(startURL, href)
-						if resolved == "" {
-							continue
-						}
-						if !sameHost(startURL, resolved) {
-							continue
-						}
-						enqueue(resolved, item.Depth+1)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-tasks:
+					if !ok {
+						return
 					}
-				}
+					if atomic.LoadInt32(&processed) >= int32(req.MaxPages) {
+						wg.Done()
+						continue
+					}
 
-				wg.Done()
+					res, enqueueChildren, skipped := processPage(item)
+					if skipped || res.URL == "" {
+						wg.Done()
+						continue
+					}
+
+					if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
+						results <- res
+					} else {
+						wg.Done()
+						continue
+					}
+
+					if enqueueChildren && item.Depth < req.MaxDepth {
+						for _, href := range res.Links {
+							resolved := resolveURL(startURL, href)
+							if resolved == "" {
+								continue
+							}
+							if !sameHost(startURL, resolved) {
+								continue
+							}
+							enqueue(resolved, item.Depth+1)
+						}
+					}
+
+					wg.Done()
+				}
 			}
 		}(i)
 	}
@@ -426,7 +434,7 @@ func sameHost(base *url.URL, raw string) bool {
 	return u.Host == base.Host
 }
 
-func applyCrawlOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result PageResult) (PageResult, error) {
+func applyCrawlOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result PageResult) (PageResult, error) {
 	raw, err := json.Marshal(result)
 	if err != nil {
 		return PageResult{}, fmt.Errorf("failed to marshal result: %w", err)

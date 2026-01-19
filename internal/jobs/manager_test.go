@@ -64,7 +64,8 @@ func TestManagerCreateScrapeJob(t *testing.T) {
 	m, st, cleanup := setupTestManager(t)
 	defer cleanup()
 
-	job, err := m.CreateScrapeJob("http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	ctx := context.Background()
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestManagerCreateScrapeJob(t *testing.T) {
 	}
 
 	// Verify persistence
-	persisted, err := st.Get(job.ID)
+	persisted, err := st.Get(ctx, job.ID)
 	if err != nil {
 		t.Fatalf("failed to get job from store: %v", err)
 	}

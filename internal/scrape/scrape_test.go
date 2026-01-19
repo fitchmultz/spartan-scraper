@@ -1,6 +1,7 @@
 package scrape
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,7 @@ func TestRun(t *testing.T) {
 		DataDir:   t.TempDir(),
 	}
 
-	result, err := Run(req)
+	result, err := Run(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}

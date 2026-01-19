@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ func TestStoreJobs(t *testing.T) {
 	}
 	defer s.Close()
 
+	ctx := context.Background()
 	job := model.Job{
 		ID:        "j1",
 		Kind:      model.KindScrape,
@@ -24,11 +26,11 @@ func TestStoreJobs(t *testing.T) {
 		Params:    map[string]interface{}{"url": "http://example.com"},
 	}
 
-	if err := s.Create(job); err != nil {
+	if err := s.Create(ctx, job); err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	got, err := s.Get("j1")
+	got, err := s.Get(ctx, "j1")
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -36,16 +38,16 @@ func TestStoreJobs(t *testing.T) {
 		t.Errorf("Get returned unexpected job: %+v", got)
 	}
 
-	if err := s.UpdateStatus("j1", model.StatusRunning, "error message"); err != nil {
+	if err := s.UpdateStatus(ctx, "j1", model.StatusRunning, "error message"); err != nil {
 		t.Fatalf("UpdateStatus failed: %v", err)
 	}
 
-	got, _ = s.Get("j1")
+	got, _ = s.Get(ctx, "j1")
 	if got.Status != model.StatusRunning || got.Error != "error message" {
 		t.Errorf("UpdateStatus did not work as expected: %+v", got)
 	}
 
-	jobs, err := s.List()
+	jobs, err := s.List(ctx)
 	if err != nil {
 		t.Fatalf("List failed: %v", err)
 	}
@@ -62,17 +64,18 @@ func TestStoreCrawlState(t *testing.T) {
 	}
 	defer s.Close()
 
+	ctx := context.Background()
 	state := model.CrawlState{
 		URL:         "http://example.com",
 		ETag:        "tag",
 		LastScraped: time.Now(),
 	}
 
-	if err := s.UpsertCrawlState(state); err != nil {
+	if err := s.UpsertCrawlState(ctx, state); err != nil {
 		t.Fatalf("UpsertCrawlState failed: %v", err)
 	}
 
-	got, err := s.GetCrawlState("http://example.com")
+	got, err := s.GetCrawlState(ctx, "http://example.com")
 	if err != nil {
 		t.Fatalf("GetCrawlState failed: %v", err)
 	}
@@ -82,11 +85,11 @@ func TestStoreCrawlState(t *testing.T) {
 
 	// Update
 	state.ETag = "new-tag"
-	if err := s.UpsertCrawlState(state); err != nil {
+	if err := s.UpsertCrawlState(ctx, state); err != nil {
 		t.Fatalf("UpsertCrawlState (update) failed: %v", err)
 	}
 
-	got, _ = s.GetCrawlState("http://example.com")
+	got, _ = s.GetCrawlState(ctx, "http://example.com")
 	if got.ETag != "new-tag" {
 		t.Errorf("expected etag new-tag, got %s", got.ETag)
 	}

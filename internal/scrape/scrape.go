@@ -47,11 +47,11 @@ type Result struct {
 }
 
 type CrawlStateStore interface {
-	GetCrawlState(url string) (model.CrawlState, error)
-	UpsertCrawlState(state model.CrawlState) error
+	GetCrawlState(ctx context.Context, url string) (model.CrawlState, error)
+	UpsertCrawlState(ctx context.Context, state model.CrawlState) error
 }
 
-func Run(req Request) (Result, error) {
+func Run(ctx context.Context, req Request) (Result, error) {
 	slog.Debug("scrape.Run start", "url", req.URL)
 	registry := req.Registry
 	if registry == nil {
@@ -71,7 +71,7 @@ func Run(req Request) (Result, error) {
 	var ifNoneMatch, ifModifiedSince string
 
 	if req.Incremental && req.Store != nil {
-		existingState, err := req.Store.GetCrawlState(req.URL)
+		existingState, err := req.Store.GetCrawlState(ctx, req.URL)
 		if err == nil {
 			state = existingState
 			ifNoneMatch = state.ETag
@@ -99,7 +99,7 @@ func Run(req Request) (Result, error) {
 
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindScrape))
 	baseCtx := pipeline.HookContext{
-		Context:     context.Background(),
+		Context:     ctx,
 		RequestID:   req.RequestID,
 		Target:      target,
 		Now:         time.Now(),
@@ -147,7 +147,7 @@ func Run(req Request) (Result, error) {
 	}
 
 	slog.Debug("fetching", "url", fetchReq.URL)
-	res, err := fetcher.Fetch(fetchReq)
+	res, err := fetcher.Fetch(ctx, fetchReq)
 	if err != nil {
 		slog.Error("fetch failed", "url", req.URL, "error", err)
 		return Result{}, err
@@ -167,11 +167,11 @@ func Run(req Request) (Result, error) {
 		slog.Info("content not modified (304)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
-			if err := req.Store.UpsertCrawlState(state); err != nil {
+			if err := req.Store.UpsertCrawlState(ctx, state); err != nil {
 				slog.Error("failed to update crawl state", "url", req.URL, "error", err)
 			}
 		}
-		return applyScrapeOutputPipeline(registry, baseCtx, Result{
+		return applyScrapeOutputPipeline(ctx, registry, baseCtx, Result{
 			URL:    res.URL,
 			Status: 304,
 		})
@@ -184,11 +184,11 @@ func Run(req Request) (Result, error) {
 		slog.Info("content not modified (hash match)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
-			if err := req.Store.UpsertCrawlState(state); err != nil {
+			if err := req.Store.UpsertCrawlState(ctx, state); err != nil {
 				slog.Error("failed to update crawl state", "url", req.URL, "error", err)
 			}
 		}
-		return applyScrapeOutputPipeline(registry, baseCtx, Result{
+		return applyScrapeOutputPipeline(ctx, registry, baseCtx, Result{
 			URL:    res.URL,
 			Status: 200,
 		})
@@ -240,7 +240,7 @@ func Run(req Request) (Result, error) {
 			ContentHash:  currentHashStr,
 			LastScraped:  time.Now(),
 		}
-		if err := req.Store.UpsertCrawlState(newState); err != nil {
+		if err := req.Store.UpsertCrawlState(ctx, newState); err != nil {
 			slog.Error("failed to update crawl state", "url", req.URL, "error", err)
 		}
 	}
@@ -261,10 +261,10 @@ func Run(req Request) (Result, error) {
 		Normalized: output.Normalized,
 	}
 	slog.Info("scrape complete", "url", res.URL, "status", res.Status, "title", result.Title)
-	return applyScrapeOutputPipeline(registry, baseCtx, result)
+	return applyScrapeOutputPipeline(ctx, registry, baseCtx, result)
 }
 
-func applyScrapeOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
+func applyScrapeOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
 	raw, err := json.Marshal(result)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to marshal result: %w", err)

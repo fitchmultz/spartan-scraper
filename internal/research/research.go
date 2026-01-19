@@ -80,7 +80,7 @@ type Citation struct {
 	Canonical string `json:"canonical"`
 }
 
-func Run(req Request) (Result, error) {
+func Run(ctx context.Context, req Request) (Result, error) {
 	slog.Info("research.Run start", "query", req.Query, "urls", req.URLs)
 	items := make([]Evidence, 0)
 	queryTokens := tokenize(req.Query)
@@ -92,7 +92,7 @@ func Run(req Request) (Result, error) {
 
 		if req.MaxDepth > 0 {
 			slog.Debug("research crawling target", "url", target, "maxDepth", req.MaxDepth)
-			pages, err := crawl.Run(crawl.Request{
+			pages, err := crawl.Run(ctx, crawl.Request{
 				URL:           target,
 				RequestID:     req.RequestID,
 				MaxDepth:      req.MaxDepth,
@@ -131,7 +131,7 @@ func Run(req Request) (Result, error) {
 			}
 		} else {
 			slog.Debug("research scraping target", "url", target)
-			res, err := scrape.Run(scrape.Request{
+			res, err := scrape.Run(ctx, scrape.Request{
 				URL:           target,
 				RequestID:     req.RequestID,
 				Headless:      req.Headless,
@@ -192,7 +192,7 @@ func Run(req Request) (Result, error) {
 	}
 	target := pipeline.NewTarget("", string(model.KindResearch))
 	baseCtx := pipeline.HookContext{
-		Context:     context.Background(),
+		Context:     ctx,
 		RequestID:   req.RequestID,
 		Target:      target,
 		Now:         time.Now(),
@@ -202,7 +202,7 @@ func Run(req Request) (Result, error) {
 		Diagnostics: map[string]any{},
 	}
 	slog.Info("research complete", "confidence", result.Confidence)
-	return applyResearchOutputPipeline(registry, baseCtx, result)
+	return applyResearchOutputPipeline(ctx, registry, baseCtx, result)
 }
 
 func tokenize(query string) []string {
@@ -572,7 +572,7 @@ func clamp01(value float64) float64 {
 	return value
 }
 
-func applyResearchOutputPipeline(registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
+func applyResearchOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
 	raw, _ := json.Marshal(result)
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 )
 
 type model struct {
+	ctx   context.Context
 	store *store.Store
 	jobs  []string
 	err   error
@@ -32,19 +34,19 @@ var (
 	errorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 )
 
-func Run(store *store.Store) int {
-	return RunWithOptions(store, Options{})
+func Run(ctx context.Context, store *store.Store) int {
+	return RunWithOptions(ctx, store, Options{})
 }
 
-func RunWithOptions(store *store.Store, opts Options) int {
+func RunWithOptions(ctx context.Context, store *store.Store, opts Options) int {
 	if opts.Smoke {
-		if err := Smoke(store); err != nil {
+		if err := Smoke(ctx, store); err != nil {
 			fmt.Println(err)
 			return 1
 		}
 		return 0
 	}
-	m := model{store: store}
+	m := model{ctx: ctx, store: store}
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
@@ -53,9 +55,9 @@ func RunWithOptions(store *store.Store, opts Options) int {
 	return 0
 }
 
-func Smoke(store *store.Store) error {
-	m := model{store: store}
-	msg := fetchJobs(store)()
+func Smoke(ctx context.Context, store *store.Store) error {
+	m := model{ctx: ctx, store: store}
+	msg := fetchJobs(ctx, store)()
 	if jobMsg, ok := msg.(jobsMsg); ok {
 		m.jobs = jobMsg.jobs
 		m.err = jobMsg.err
@@ -65,7 +67,7 @@ func Smoke(store *store.Store) error {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(fetchJobs(m.store), tick())
+	return tea.Batch(fetchJobs(m.ctx, m.store), tick())
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -75,10 +77,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "r":
-			return m, fetchJobs(m.store)
+			return m, fetchJobs(m.ctx, m.store)
 		}
 	case tickMsg:
-		return m, tea.Batch(fetchJobs(m.store), tick())
+		return m, tea.Batch(fetchJobs(m.ctx, m.store), tick())
 	case jobsMsg:
 		m.jobs = msg.jobs
 		m.err = msg.err
@@ -102,9 +104,9 @@ func (m model) View() string {
 	return out
 }
 
-func fetchJobs(store *store.Store) tea.Cmd {
+func fetchJobs(ctx context.Context, store *store.Store) tea.Cmd {
 	return func() tea.Msg {
-		jobs, err := store.List()
+		jobs, err := store.List(ctx)
 		if err != nil {
 			return jobsMsg{err: err}
 		}

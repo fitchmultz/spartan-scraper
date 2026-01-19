@@ -1,38 +1,37 @@
 version: 1
 tasks:
-- id: RQ-0004
+- id: RQ-0005
   status: done
-  title: Fix silent error handling throughout codebase
+  title: Add context propagation throughout pipeline
   tags:
-  - error-handling
-  - reliability
-  - bug
+  - correctness
+  - cancellation
+  - timeout
   scope:
   - internal/scrape/scrape.go
   - internal/crawl/crawl.go
+  - internal/pipeline
   - internal/jobs/manager.go
-  - internal/store/store.go
   evidence:
   - |-
-    Multiple instances of errors being swallowed with `_`:
-    scrape.go:158, 172, 202, 222, 257
-    crawl.go:202, 255
-    jobs/manager.go:213, 214, 217, 251, 252, 253, 254, 293, 294, 296, 297, 303
-    store/store.go:64, 76, 99, 102, 122, 125, 142, 159
-    This masks failures and makes debugging impossible.
+    Multiple uses of context.Background() instead of propagating request context:
+    scrape.go:97, 106
+    crawl.go:126
+    jobs/manager.go:159 (passed as context.Background() to manager.Start())
+    This prevents proper timeout and cancellation handling.
   plan:
-  - Review all instances of `_ =` assignments in error-returning functions
-  - Replace with proper error handling and logging
-  - Determine which errors are recoverable vs fatal
-  - Log errors at appropriate severity levels (error for failures, warn for recoverable)
-  - Add metrics for error rates and types
+  - Pass context from jobs/manager.go through scrape.Run() and crawl.Run()
+  - Replace context.Background() with propagated context in pipeline hooks
+  - Add context timeout checks in long-running operations (fetch, extraction)
+  - Ensure fetch operations respect context cancellation
+  - Add context to database queries in store/store.go
   notes:
-  - Fixed multiple instances of swallowed errors in internal/scrape, internal/crawl, internal/jobs, internal/store, internal/api, and internal/scheduler.
-  - Replaced silent ignores with proper error logging using slog.
-  - Improved error reporting in API handlers by returning 503 Service Unavailable when job enqueuing fails.
-  - Added missing slog imports to affected files.
-  - Verified changes with make ci.
+  - Added context.Context to all major pipeline entry points (Run, Fetch, Execute)
+  - Updated store methods to use Context variants (ExecContext, QueryContext, etc.)
+  - Propagated context from API handlers and CLI through the job manager to workers
+  - Updated TUI and MCP server to respect context
+  - All tests updated and passing with context propagation
   request: scan finding
   created_at: 2025-01-18T21:30:00Z
-  updated_at: 2026-01-18T21:30:00Z
-  completed_at: 2026-01-18T22:30:00Z
+  updated_at: 2026-01-18T16:00:00Z
+  completed_at: 2026-01-18T16:30:00Z

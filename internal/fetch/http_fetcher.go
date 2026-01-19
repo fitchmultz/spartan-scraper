@@ -13,7 +13,7 @@ import (
 
 type HTTPFetcher struct{}
 
-func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
+func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
 	}
@@ -36,7 +36,7 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 
 		if req.Limiter != nil {
 			slog.Debug("waiting for rate limiter", "url", req.URL)
-			_ = req.Limiter.Wait(context.Background(), req.URL)
+			_ = req.Limiter.Wait(ctx, req.URL)
 		}
 
 		jar, _ := cookiejar.New(nil)
@@ -45,7 +45,7 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 			Jar:     jar,
 		}
 
-		httpReq, err := http.NewRequest(http.MethodGet, req.URL, nil)
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
 		if err != nil {
 			slog.Error("failed to create HTTP request", "url", req.URL, "error", err)
 			return Result{}, err

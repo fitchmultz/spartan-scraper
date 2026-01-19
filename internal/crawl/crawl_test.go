@@ -1,6 +1,7 @@
 package crawl
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -96,7 +97,7 @@ func TestRun(t *testing.T) {
 		DataDir:     t.TempDir(),
 	}
 
-	results, err := Run(req)
+	results, err := Run(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}

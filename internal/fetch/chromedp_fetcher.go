@@ -13,7 +13,7 @@ import (
 
 type ChromedpFetcher struct{}
 
-func (f *ChromedpFetcher) Fetch(req Request, prof RenderProfile) (Result, error) {
+func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
@@ -43,10 +43,10 @@ func (f *ChromedpFetcher) Fetch(req Request, prof RenderProfile) (Result, error)
 
 		if req.Limiter != nil {
 			slog.Debug("waiting for rate limiter", "url", req.URL)
-			_ = req.Limiter.Wait(context.Background(), req.URL)
+			_ = req.Limiter.Wait(ctx, req.URL)
 		}
 
-		res, err := f.doFetch(req, prof, renderTimeout)
+		res, err := f.doFetch(ctx, req, prof, renderTimeout)
 		if err == nil {
 			slog.Debug("Chromedp fetch success", "url", req.URL)
 			return res, nil
@@ -66,13 +66,13 @@ func (f *ChromedpFetcher) Fetch(req Request, prof RenderProfile) (Result, error)
 	return Result{}, errors.New("max retries exceeded")
 }
 
-func (f *ChromedpFetcher) doFetch(req Request, prof RenderProfile, timeout time.Duration) (Result, error) {
+func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof RenderProfile, timeout time.Duration) (Result, error) {
 	slog.Debug("starting Chromedp allocator", "url", req.URL, "timeout", timeout)
 	allocatorOpts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	if req.UserAgent != "" {
 		allocatorOpts = append(allocatorOpts, chromedp.UserAgent(req.UserAgent))
 	}
-	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), allocatorOpts...)
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(parentCtx, allocatorOpts...)
 	defer cancelAlloc()
 
 	ctx, cancelCtx := chromedp.NewContext(allocCtx)

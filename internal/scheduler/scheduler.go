@@ -51,7 +51,7 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 				if schedules[i].NextRun.After(now) {
 					continue
 				}
-				err := enqueue(manager, dataDir, schedules[i])
+				err := enqueue(ctx, manager, dataDir, schedules[i])
 				if err == nil {
 					schedules[i].NextRun = now.Add(time.Duration(schedules[i].IntervalSeconds) * time.Second)
 					changed = true
@@ -66,7 +66,7 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 	}
 }
 
-func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
+func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedule Schedule) error {
 	extractOpts := loadExtract(schedule.Params)
 	pipelineOpts := loadPipeline(schedule.Params)
 	switch schedule.Kind {
@@ -76,7 +76,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateScrapeJob(url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
+		job, err := manager.CreateScrapeJob(ctx, url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateCrawlJob(url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
+		job, err := manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}
@@ -107,7 +107,7 @@ func enqueue(manager *jobs.Manager, dataDir string, schedule Schedule) error {
 		maxPages := intParam(schedule.Params, "maxPages", 200)
 		authOptions, _ := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
 		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateResearchJob(query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
+		job, err := manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return err
 		}

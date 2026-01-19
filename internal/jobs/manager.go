@@ -78,7 +78,7 @@ func (m *Manager) Start(ctx context.Context) {
 								return
 							}
 							slog.Info("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
-							if err := m.run(job); err != nil {
+							if err := m.run(ctx, job); err != nil {
 								slog.Error("job failed during drain", "jobID", job.ID, "error", err)
 							}
 						default:
@@ -91,7 +91,7 @@ func (m *Manager) Start(ctx context.Context) {
 						return
 					}
 					slog.Info("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
-					if err := m.run(job); err != nil {
+					if err := m.run(ctx, job); err != nil {
 						slog.Error("job failed", "jobID", job.ID, "error", err)
 					}
 				}
@@ -123,7 +123,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
-func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -142,13 +142,13 @@ func (m *Manager) CreateScrapeJob(url string, headless bool, usePlaywright bool,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
-	if err := m.store.Create(job); err != nil {
+	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
 	return job, nil
 }
 
-func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -169,13 +169,13 @@ func (m *Manager) CreateCrawlJob(url string, maxDepth, maxPages int, headless bo
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
-	if err := m.store.Create(job); err != nil {
+	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
 	return job, nil
 }
 
-func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
+func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -197,22 +197,22 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
-	if err := m.store.Create(job); err != nil {
+	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
 	return job, nil
 }
 
-func (m *Manager) run(job model.Job) error {
+func (m *Manager) run(ctx context.Context, job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
-	if err := m.store.UpdateStatus(job.ID, model.StatusRunning, ""); err != nil {
+	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusRunning, ""); err != nil {
 		slog.Error("failed to update job status to running", "jobID", job.ID, "error", err)
 	}
 
 	resultDir := filepath.Dir(job.ResultPath)
 	if err := os.MkdirAll(resultDir, 0o755); err != nil {
 		slog.Error("failed to create result directory", "jobID", job.ID, "error", err)
-		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 		}
 		return err
@@ -221,7 +221,7 @@ func (m *Manager) run(job model.Job) error {
 	file, err := os.Create(job.ResultPath)
 	if err != nil {
 		slog.Error("failed to create result file", "jobID", job.ID, "error", err)
-		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 		}
 		return err
@@ -239,7 +239,7 @@ func (m *Manager) run(job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		result, err := scrape.Run(scrape.Request{
+		result, err := scrape.Run(ctx, scrape.Request{
 			URL:           url,
 			RequestID:     job.ID,
 			Headless:      headless,
@@ -260,7 +260,7 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
-			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 			}
 			return err
@@ -286,7 +286,7 @@ func (m *Manager) run(job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		results, err := crawl.Run(crawl.Request{
+		results, err := crawl.Run(ctx, crawl.Request{
 			URL:           url,
 			RequestID:     job.ID,
 			MaxDepth:      maxDepth,
@@ -300,7 +300,7 @@ func (m *Manager) run(job model.Job) error {
 			Timeout:       time.Duration(timeoutSecs) * time.Second,
 			UserAgent:     m.userAgent,
 			Limiter:       m.limiter,
-			MaxRetries:    m.maxRetries,
+			MaxRetries:    reqRetries(m.maxRetries),
 			RetryBase:     m.retryBase,
 			DataDir:       m.dataDir,
 			Incremental:   incremental,
@@ -310,7 +310,7 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
-			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 			}
 			return err
@@ -339,7 +339,7 @@ func (m *Manager) run(job model.Job) error {
 		extractOpts := decodeExtract(job.Params["extract"])
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
-		result, err := research.Run(research.Request{
+		result, err := research.Run(ctx, research.Request{
 			Query:         query,
 			RequestID:     job.ID,
 			URLs:          urls,
@@ -364,7 +364,7 @@ func (m *Manager) run(job model.Job) error {
 		})
 		if err != nil {
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
-			if err := m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error()); err != nil {
+			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 			}
 			return err
@@ -380,17 +380,21 @@ func (m *Manager) run(job model.Job) error {
 		}
 	default:
 		slog.Error("unknown job kind", "jobID", job.ID, "kind", job.Kind)
-		if err := m.store.UpdateStatus(job.ID, model.StatusFailed, "unknown job kind"); err != nil {
+		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, "unknown job kind"); err != nil {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 		}
 		return errors.New("unknown job kind")
 	}
 
 	slog.Info("job succeeded", "jobID", job.ID)
-	if err := m.store.UpdateStatus(job.ID, model.StatusSucceeded, ""); err != nil {
+	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusSucceeded, ""); err != nil {
 		slog.Error("failed to update job status to succeeded", "jobID", job.ID, "error", err)
 	}
 	return nil
+}
+
+func reqRetries(v int) int {
+	return v
 }
 
 func decodeAuth(value interface{}) fetch.AuthOptions {

@@ -1,7 +1,9 @@
 package fetch
 
+import "context"
+
 type Fetcher interface {
-	Fetch(req Request) (Result, error)
+	Fetch(ctx context.Context, req Request) (Result, error)
 }
 
 func NewFetcher() Fetcher {
