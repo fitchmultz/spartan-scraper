@@ -131,3 +131,36 @@ tasks:
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T21:30:00Z
   completed_at: 2026-01-18T21:30:00Z
+- id: RQ-0011
+  status: done
+  title: Add package documentation to Go files
+  tags:
+  - documentation
+  - maintainability
+  scope:
+  - internal/cli/cli.go
+  - internal/scrape/scrape.go
+  - internal/crawl/crawl.go
+  - internal/fetch/http_fetcher.go
+  - internal/jobs/manager.go
+  - internal/api/server.go
+  evidence:
+  - |-
+    Most Go packages lack package-level documentation. cli.go (1293 lines),
+    jobs/manager.go (448 lines), api/server.go (492 lines) all missing package
+    comments explaining purpose and usage.
+  plan:
+  - Add godoc comments to all packages explaining purpose
+  - Document public functions and exported types
+  - Add usage examples for complex functions
+  - Run godoc to verify documentation builds correctly
+  - Add documentation to AGENTS.md about package structure
+  notes:
+  - Added package-level documentation to all requested packages and internal/extract.
+  - Documented major public functions and exported types across the codebase.
+  - Added a Package Structure section to AGENTS.md.
+  - Verified changes with 'make ci'.
+  request: scan finding
+  created_at: 2025-01-18T21:30:00Z
+  updated_at: 2026-01-18T21:30:00Z
+  completed_at: 2026-01-18T21:30:00Z

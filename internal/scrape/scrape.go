@@ -1,3 +1,7 @@
+// Package scrape provides functionality for scraping a single web page.
+// It handles fetching the page content (optionally using a headless browser),
+// running it through a pipeline of pre-processors, extracting metadata and content
+// based on templates, and running post-processors and transformers on the output.
 package scrape
 
 import (
@@ -15,6 +19,7 @@ import (
 	"spartan-scraper/internal/pipeline"
 )
 
+// Request represents a single page scrape request.
 type Request struct {
 	URL           string
 	RequestID     string
@@ -35,6 +40,7 @@ type Request struct {
 	JSRegistry    *pipeline.JSRegistry
 }
 
+// Result contains the outcome of a scrape operation.
 type Result struct {
 	URL        string                     `json:"url"`
 	Status     int                        `json:"status"`
@@ -46,11 +52,14 @@ type Result struct {
 	Normalized extract.NormalizedDocument `json:"normalized"`
 }
 
+// CrawlStateStore defines the interface for persisting and retrieving crawl states.
 type CrawlStateStore interface {
 	GetCrawlState(ctx context.Context, url string) (model.CrawlState, error)
 	UpsertCrawlState(ctx context.Context, state model.CrawlState) error
 }
 
+// Run executes a scrape request. It fetches the page, runs it through the pipeline,
+// extracts data, and returns the result.
 func Run(ctx context.Context, req Request) (Result, error) {
 	slog.Debug("scrape.Run start", "url", req.URL)
 	registry := req.Registry

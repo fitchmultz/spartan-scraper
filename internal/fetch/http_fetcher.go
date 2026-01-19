@@ -11,8 +11,11 @@ import (
 	"time"
 )
 
+// HTTPFetcher implements content fetching using the standard Go http.Client.
 type HTTPFetcher struct{}
 
+// Fetch performs a standard HTTP GET request to retrieve the content of a URL.
+// It supports retries, rate limiting, and basic/token authentication.
 func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")

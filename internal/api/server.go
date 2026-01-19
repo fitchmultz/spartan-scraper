@@ -1,3 +1,6 @@
+// Package api implements the REST API server for Spartan Scraper.
+// It provides endpoints for enqueuing jobs, managing auth profiles,
+// and retrieving job status and results.
 package api
 
 import (
@@ -21,12 +24,14 @@ import (
 
 const maxRequestBodySize = 1024 * 1024 // 1MB
 
+// Server implements the HTTP API for Spartan Scraper.
 type Server struct {
 	manager *jobs.Manager
 	store   *store.Store
 	cfg     config.Config
 }
 
+// ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`
 	Headless       bool                    `json:"headless"`
@@ -39,6 +44,7 @@ type ScrapeRequest struct {
 	Incremental    *bool                   `json:"incremental"`
 }
 
+// CrawlRequest represents a request to crawl a website.
 type CrawlRequest struct {
 	URL            string                  `json:"url"`
 	MaxDepth       int                     `json:"maxDepth"`
@@ -53,6 +59,7 @@ type CrawlRequest struct {
 	Incremental    *bool                   `json:"incremental"`
 }
 
+// ResearchRequest represents a request to perform deep research across multiple URLs.
 type ResearchRequest struct {
 	Query          string                  `json:"query"`
 	URLs           []string                `json:"urls"`
@@ -68,10 +75,12 @@ type ResearchRequest struct {
 	Incremental    *bool                   `json:"incremental"`
 }
 
+// NewServer creates a new API server.
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
 	return &Server{manager: manager, store: store, cfg: cfg}
 }
 
+// Routes returns the HTTP handler with all API routes configured.
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)

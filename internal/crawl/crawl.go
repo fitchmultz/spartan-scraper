@@ -1,3 +1,7 @@
+// Package crawl provides functionality for crawling multiple pages of a website.
+// It implements a concurrent crawler that respects depth and page limits,
+// avoids cycles by tracking visited URLs, and supports incremental crawling
+// using ETags and content hashes.
 package crawl
 
 import (
@@ -19,6 +23,7 @@ import (
 	"spartan-scraper/internal/pipeline"
 )
 
+// Request represents a website crawl request.
 type Request struct {
 	URL           string
 	RequestID     string
@@ -42,11 +47,13 @@ type Request struct {
 	JSRegistry    *pipeline.JSRegistry
 }
 
+// CrawlStateStore defines the interface for persisting and retrieving crawl states.
 type CrawlStateStore interface {
 	GetCrawlState(ctx context.Context, url string) (model.CrawlState, error)
 	UpsertCrawlState(ctx context.Context, state model.CrawlState) error
 }
 
+// PageResult represents the scraping result for a single page during a crawl.
 type PageResult struct {
 	URL        string                     `json:"url"`
 	Status     int                        `json:"status"`
@@ -58,6 +65,8 @@ type PageResult struct {
 	Normalized extract.NormalizedDocument `json:"normalized"`
 }
 
+// Run executes a crawl request. It concurrently fetches and processes pages
+// starting from a root URL, following links up to a maximum depth and page count.
 func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	slog.Info("crawl.Run start", "url", req.URL, "maxDepth", req.MaxDepth, "maxPages", req.MaxPages)
 	if req.MaxDepth <= 0 {

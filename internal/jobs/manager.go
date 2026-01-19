@@ -1,3 +1,6 @@
+// Package jobs provides a job manager for coordinating scraping, crawling, and research tasks.
+// It handles job queuing, worker management, concurrency control, and status tracking
+// using an underlying persistent store.
 package jobs
 
 import (
@@ -22,6 +25,7 @@ import (
 	"spartan-scraper/internal/store"
 )
 
+// Manager coordinates the execution of scraping, crawling, and research jobs.
 type Manager struct {
 	store            *store.Store
 	dataDir          string
@@ -40,6 +44,7 @@ type Manager struct {
 	mu               sync.Mutex
 }
 
+// NewManager creates a new job manager with the specified configuration.
 func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
 	jsRegistry, err := pipeline.LoadJSRegistry(dataDir)
 	if err != nil {
@@ -62,6 +67,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 	}
 }
 
+// Start launches the worker pool to process enqueued jobs.
 func (m *Manager) Start(ctx context.Context) {
 	slog.Info("starting job manager", "concurrency", m.maxConcurrency)
 	for i := 0; i < m.maxConcurrency; i++ {
@@ -103,6 +109,7 @@ func (m *Manager) Start(ctx context.Context) {
 	}
 }
 
+// Wait blocks until all active workers have finished processing.
 func (m *Manager) Wait() {
 	m.wg.Wait()
 }
@@ -115,6 +122,7 @@ func (m *Manager) DefaultUsePlaywright() bool {
 	return m.usePlaywright
 }
 
+// Enqueue adds a job to the processing queue. It returns an error if the queue is full.
 func (m *Manager) Enqueue(job model.Job) error {
 	slog.Debug("enqueuing job", "jobID", job.ID, "kind", job.Kind)
 	select {
@@ -126,6 +134,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 	}
 }
 
+// CancelJob attempts to cancel a running or queued job.
 func (m *Manager) CancelJob(ctx context.Context, id string) error {
 	m.mu.Lock()
 	cancel, ok := m.activeJobs[id]
@@ -141,6 +150,7 @@ func (m *Manager) CancelJob(ctx context.Context, id string) error {
 	return m.store.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user")
 }
 
+// CreateScrapeJob creates and persists a new scrape job.
 func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
@@ -166,6 +176,7 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool
 	return job, nil
 }
 
+// CreateCrawlJob creates and persists a new crawl job.
 func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
@@ -193,6 +204,7 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 	return job, nil
 }
 
+// CreateResearchJob creates and persists a new research job.
 func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),

@@ -1,3 +1,6 @@
+// Package cli provides the command-line interface for Spartan Scraper.
+// It handles command routing, flag parsing, and execution of various subcommands
+// such as scrape, crawl, research, auth, export, schedule, mcp, server, and jobs.
 package cli
 
 import (
@@ -30,6 +33,8 @@ import (
 	"spartan-scraper/internal/ui/tui"
 )
 
+// Run executes the CLI application. It parses command-line arguments and
+// routes to the appropriate subcommand. It returns an exit code.
 func Run(ctx context.Context) int {
 	cfg := config.Load()
 	config.InitLogger(cfg)

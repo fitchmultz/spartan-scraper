@@ -9,3 +9,18 @@
 - Extraction pipeline is centralized in `internal/extract`. Templates live in `DATA_DIR/extract_templates.json`.
 - Pipeline hooks and plugin contracts live in `internal/pipeline` (pre/post fetch/extract/output + transformers).
 - Headless per-target JS is configured in `DATA_DIR/pipeline_js.json`.
+
+## Package Structure
+- `cmd/spartan`: Main entry point for the CLI.
+- `internal/api`: REST API server and route handlers.
+- `internal/auth`: Auth profile management and vault.
+- `internal/cli`: CLI subcommand implementations.
+- `internal/config`: Global configuration and logging.
+- `internal/crawl`: Concurrent website crawling logic.
+- `internal/extract`: HTML content extraction and normalization.
+- `internal/fetch`: Content fetching (HTTP, Chromedp, Playwright).
+- `internal/jobs`: Job manager and worker pool.
+- `internal/model`: Shared domain models and constants.
+- `internal/pipeline`: Pipeline hooks, processors, and transformers.
+- `internal/store`: Persistent storage for jobs and crawl states.
+- `internal/ui/tui`: Terminal User Interface.

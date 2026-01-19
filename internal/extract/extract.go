@@ -1,3 +1,6 @@
+// Package extract provides functionality for extracting structured data from HTML.
+// It uses templates to define how data should be extracted and supports
+// normalization and schema validation of the extracted results.
 package extract
 
 // Result is the legacy extraction result.
