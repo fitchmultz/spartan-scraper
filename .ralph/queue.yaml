@@ -1,34 +1,5 @@
 version: 1
 tasks:
-- id: RQ-0002
-  status: todo
-  title: Add structured logging throughout Go codebase
-  tags:
-  - logging
-  - observability
-  - debugging
-  scope:
-  - internal/cli
-  - internal/scrape
-  - internal/crawl
-  - internal/jobs
-  - internal/fetch
-  evidence:
-  - |-
-    No structured logging found in scrape.go, crawl.go, or jobs/manager.go.
-    Errors are only returned or written to stderr. This makes debugging production issues
-    very difficult.
-  plan:
-  - Add slog or similar structured logger package to Go modules
-  - Add log fields for job ID, URL, status at key points in jobs/manager.go
-  - Add logging for scrape and crawl operations with progress indicators
-  - Add request ID generation and propagation through the pipeline
-  - Configure log levels and output format via environment variables
-  - Add logging to fetch operations for debugging network issues
-  notes: []
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2025-01-18T21:30:00Z
 - id: RQ-0003
   status: todo
   title: Add graceful shutdown for server and workers

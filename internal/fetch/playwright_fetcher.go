@@ -3,6 +3,7 @@ package fetch
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -17,6 +18,8 @@ func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, erro
 	if req.URL == "" {
 		return Result{}, errors.New("url is required")
 	}
+
+	slog.Debug("Playwright fetch start", "url", req.URL)
 
 	retries := clampRetry(req.MaxRetries)
 	baseDelay := req.RetryBaseDelay
@@ -33,36 +36,52 @@ func (f *PlaywrightFetcher) Fetch(req Request, prof RenderProfile) (Result, erro
 	}
 
 	for attempt := 0; attempt <= retries; attempt++ {
+		if attempt > 0 {
+			slog.Debug("retrying Playwright fetch", "url", req.URL, "attempt", attempt)
+		}
+
 		if req.Limiter != nil {
+			slog.Debug("waiting for rate limiter", "url", req.URL)
 			_ = req.Limiter.Wait(context.Background(), req.URL)
 		}
 
 		result, err := f.fetchOnce(req, prof, navTimeout)
 		if err == nil {
+			slog.Debug("Playwright fetch success", "url", req.URL)
 			return result, nil
 		}
+
+		slog.Warn("Playwright fetch failed", "url", req.URL, "error", err, "attempt", attempt)
+
 		if attempt >= retries || !shouldRetry(err, 0) {
 			return Result{}, err
 		}
-		time.Sleep(backoff(baseDelay, attempt))
+		delay := backoff(baseDelay, attempt)
+		slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+		time.Sleep(delay)
 	}
 
+	slog.Error("Playwright fetch max retries exceeded", "url", req.URL)
 	return Result{}, errors.New("max retries exceeded")
 }
 
 func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeout time.Duration) (Result, error) {
+	slog.Debug("starting Playwright engine", "url", req.URL)
 	pw, err := playwright.Run()
 	if err != nil {
+		slog.Error("failed to run Playwright", "error", err)
 		return Result{}, err
 	}
 	defer func() {
 		_ = pw.Stop()
 	}()
 
+	slog.Debug("launching Chromium browser", "url", req.URL)
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(req.Headless),
 	})
 	if err != nil {
+		slog.Error("failed to launch browser", "error", err)
 		return Result{}, err
 	}
 	defer func() {
@@ -86,8 +105,10 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 		}
 	}
 
+	slog.Debug("creating browser context", "url", req.URL)
 	ctx, err := browser.NewContext(ctxOptions)
 	if err != nil {
+		slog.Error("failed to create browser context", "error", err)
 		return Result{}, err
 	}
 	defer func() {
@@ -95,6 +116,7 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 	}()
 
 	if len(prof.Block.URLPatterns) > 0 || len(prof.Block.ResourceTypes) > 0 {
+		slog.Debug("setting up resource blocking", "url", req.URL, "patterns", prof.Block.URLPatterns, "types", prof.Block.ResourceTypes)
 		for _, pattern := range prof.Block.URLPatterns {
 			_ = ctx.Route(pattern, func(route playwright.Route) {
 				_ = route.Abort("blockedbyclient")
@@ -132,6 +154,7 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 				})
 			}
 			if len(cookies) > 0 {
+				slog.Debug("adding cookies to context", "url", req.URL, "count", len(cookies))
 				_ = ctx.AddCookies(cookies)
 			}
 		}
@@ -139,6 +162,7 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 
 	page, err := ctx.NewPage()
 	if err != nil {
+		slog.Error("failed to create new page", "error", err)
 		return Result{}, err
 	}
 	defer func() {
@@ -157,10 +181,9 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 	waitUntil := playwright.WaitUntilStateCommit
 
 	if req.Auth.LoginURL != "" {
-		if req.Auth.LoginUserSelector == "" || req.Auth.LoginPassSelector == "" || req.Auth.LoginSubmitSelector == "" {
-			return Result{}, errors.New("login selectors are required for headless login")
-		}
+		slog.Info("performing headless login", "url", req.URL, "loginURL", req.Auth.LoginURL)
 		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
+			slog.Error("login page navigation failed", "url", req.URL, "loginURL", req.Auth.LoginURL, "error", err)
 			return Result{}, err
 		}
 		if err = page.Fill(req.Auth.LoginUserSelector, req.Auth.LoginUser); err != nil {
@@ -173,11 +196,13 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 			return Result{}, err
 		}
 		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutFloat}); err != nil {
-			return Result{}, err
+			slog.Warn("wait for load state after login timed out", "url", req.URL)
 		}
+		slog.Info("login complete", "url", req.URL)
 	}
 
 	if len(req.PreNavJS) > 0 {
+		slog.Debug("running pre-navigation JS", "url", req.URL, "count", len(req.PreNavJS))
 		if _, err = page.Goto("about:blank", playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
 			return Result{}, err
 		}
@@ -186,13 +211,16 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 				continue
 			}
 			if _, err := page.Evaluate(script); err != nil {
+				slog.Error("pre-navigation JS failed", "url", req.URL, "error", err)
 				return Result{}, err
 			}
 		}
 	}
 
+	slog.Debug("navigating to target", "url", req.URL)
 	resp, err := page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &navTimeoutFloat, WaitUntil: waitUntil})
 	if err != nil {
+		slog.Error("navigation failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 
@@ -200,12 +228,16 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 	if resp != nil {
 		statusCode = resp.Status()
 	}
+	slog.Debug("navigation complete", "url", req.URL, "status", statusCode)
 
+	slog.Debug("waiting for page to be ready", "url", req.URL, "mode", prof.Wait.Mode)
 	if err := f.performWait(page, prof.Wait, timeoutFloat); err != nil {
-		return Result{}, err
+		slog.Warn("wait strategy failed or timed out", "url", req.URL, "mode", prof.Wait.Mode, "error", err)
+		// Fall through to capture whatever we have
 	}
 
 	if prof.Wait.ExtraSleepMs > 0 {
+		slog.Debug("extra sleep", "url", req.URL, "ms", prof.Wait.ExtraSleepMs)
 		time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)
 	}
 
@@ -213,24 +245,30 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 		if strings.TrimSpace(selector) == "" {
 			continue
 		}
+		slog.Debug("waiting for selector", "url", req.URL, "selector", selector)
 		if _, err := page.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{State: playwright.WaitForSelectorStateVisible, Timeout: &timeoutFloat}); err != nil {
+			slog.Error("wait for selector failed", "url", req.URL, "selector", selector, "error", err)
 			return Result{}, err
 		}
 	}
 
 	if len(req.PostNavJS) > 0 {
+		slog.Debug("running post-navigation JS", "url", req.URL, "count", len(req.PostNavJS))
 		for _, script := range req.PostNavJS {
 			if strings.TrimSpace(script) == "" {
 				continue
 			}
 			if _, err := page.Evaluate(script); err != nil {
+				slog.Error("post-navigation JS failed", "url", req.URL, "error", err)
 				return Result{}, err
 			}
 		}
 	}
 
+	slog.Debug("capturing page content", "url", req.URL)
 	content, err := page.Content()
 	if err != nil {
+		slog.Error("failed to capture content", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 

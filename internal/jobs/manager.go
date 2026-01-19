@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -54,17 +55,21 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 }
 
 func (m *Manager) Start(ctx context.Context) {
+	slog.Info("starting job manager", "concurrency", m.maxConcurrency)
 	for i := 0; i < m.maxConcurrency; i++ {
-		go func() {
+		go func(workerID int) {
+			slog.Debug("starting worker", "workerID", workerID)
 			for {
 				select {
 				case <-ctx.Done():
+					slog.Debug("stopping worker", "workerID", workerID)
 					return
 				case job := <-m.queue:
+					slog.Info("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
 					_ = m.run(job)
 				}
 			}
-		}()
+		}(i)
 	}
 }
 
@@ -77,10 +82,12 @@ func (m *Manager) DefaultUsePlaywright() bool {
 }
 
 func (m *Manager) Enqueue(job model.Job) error {
+	slog.Debug("enqueuing job", "jobID", job.ID, "kind", job.Kind)
 	select {
 	case m.queue <- job:
 		return nil
 	default:
+		slog.Warn("job queue full", "jobID", job.ID)
 		return errors.New("job queue full")
 	}
 }
@@ -166,16 +173,19 @@ func (m *Manager) CreateResearchJob(query string, urls []string, maxDepth, maxPa
 }
 
 func (m *Manager) run(job model.Job) error {
+	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
 	_ = m.store.UpdateStatus(job.ID, model.StatusRunning, "")
 
 	resultDir := filepath.Dir(job.ResultPath)
 	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		slog.Error("failed to create result directory", "jobID", job.ID, "error", err)
 		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
 		return err
 	}
 
 	file, err := os.Create(job.ResultPath)
 	if err != nil {
+		slog.Error("failed to create result file", "jobID", job.ID, "error", err)
 		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
 		return err
 	}
@@ -184,6 +194,7 @@ func (m *Manager) run(job model.Job) error {
 	switch job.Kind {
 	case model.KindScrape:
 		url, _ := job.Params["url"].(string)
+		slog.Info("processing scrape job", "jobID", job.ID, "url", url)
 		headless, _ := job.Params["headless"].(bool)
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
@@ -193,6 +204,7 @@ func (m *Manager) run(job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := scrape.Run(scrape.Request{
 			URL:           url,
+			RequestID:     job.ID,
 			Headless:      headless,
 			UsePlaywright: usePlaywright,
 			Auth:          auth,
@@ -210,6 +222,7 @@ func (m *Manager) run(job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
 			return err
 		}
@@ -217,6 +230,7 @@ func (m *Manager) run(job model.Job) error {
 		_, _ = file.Write(append(payload, '\n'))
 	case model.KindCrawl:
 		url, _ := job.Params["url"].(string)
+		slog.Info("processing crawl job", "jobID", job.ID, "url", url)
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
 		headless, _ := job.Params["headless"].(bool)
@@ -228,6 +242,7 @@ func (m *Manager) run(job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		results, err := crawl.Run(crawl.Request{
 			URL:           url,
+			RequestID:     job.ID,
 			MaxDepth:      maxDepth,
 			MaxPages:      maxPages,
 			Concurrency:   m.maxConcurrency,
@@ -248,6 +263,7 @@ func (m *Manager) run(job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
 			return err
 		}
@@ -257,6 +273,7 @@ func (m *Manager) run(job model.Job) error {
 		}
 	case model.KindResearch:
 		query, _ := job.Params["query"].(string)
+		slog.Info("processing research job", "jobID", job.ID, "query", query)
 		urls := toStringSlice(job.Params["urls"])
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
@@ -269,6 +286,7 @@ func (m *Manager) run(job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(research.Request{
 			Query:         query,
+			RequestID:     job.ID,
 			URLs:          urls,
 			MaxDepth:      maxDepth,
 			MaxPages:      maxPages,
@@ -290,16 +308,19 @@ func (m *Manager) run(job model.Job) error {
 			JSRegistry:    m.jsRegistry,
 		})
 		if err != nil {
+			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
 			_ = m.store.UpdateStatus(job.ID, model.StatusFailed, err.Error())
 			return err
 		}
 		payload, _ := json.Marshal(result)
 		_, _ = file.Write(append(payload, '\n'))
 	default:
+		slog.Error("unknown job kind", "jobID", job.ID, "kind", job.Kind)
 		_ = m.store.UpdateStatus(job.ID, model.StatusFailed, "unknown job kind")
 		return errors.New("unknown job kind")
 	}
 
+	slog.Info("job succeeded", "jobID", job.ID)
 	_ = m.store.UpdateStatus(job.ID, model.StatusSucceeded, "")
 	return nil
 }

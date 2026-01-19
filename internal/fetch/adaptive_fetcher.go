@@ -1,5 +1,7 @@
 package fetch
 
+import "log/slog"
+
 type AdaptiveFetcher struct {
 	store *RenderProfileStore
 	http  *HTTPFetcher
@@ -28,31 +30,38 @@ func NewAdaptiveFetcher() *AdaptiveFetcher {
 }
 
 func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
+	slog.Debug("adaptive fetch start", "url", req.URL)
 	// 1. Load Profile
 	store := NewRenderProfileStore(req.DataDir)
 	profPtr, found, err := store.MatchURL(req.URL)
 	if err != nil {
+		slog.Error("failed to match URL in render profile store", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 	prof := defaultRenderProfile()
 	if found {
+		slog.Debug("matched render profile", "url", req.URL, "profile", profPtr.Name)
 		prof = mergeRenderProfile(prof, profPtr)
 	}
 
 	// 2. Decision: Forced Headless?
 	if prof.NeverHeadless {
+		slog.Debug("profile forces HTTP (NeverHeadless)", "url", req.URL)
 		return f.http.Fetch(req)
 	}
 	if req.Headless || prof.PreferHeadless || prof.AssumeJSHeavy || prof.ForceEngine != "" {
+		slog.Debug("profile or request forces headless", "url", req.URL, "headless", req.Headless, "preferHeadless", prof.PreferHeadless, "assumeJSHeavy", prof.AssumeJSHeavy, "forceEngine", prof.ForceEngine)
 		return f.fetchHeadless(req, prof)
 	}
 
 	// 3. HTTP Probe
+	slog.Debug("probing with HTTP", "url", req.URL)
 	probeReq := req
 	// Reduce timeout for probe if not specified, to save time on failure?
 	// Actually, stick to configured timeout to avoid premature giving up.
 	res, err := f.http.Fetch(probeReq)
 	if err != nil {
+		slog.Warn("HTTP probe failed", "url", req.URL, "error", err)
 		// If HTTP failed, depends on error.
 		// If timeout, maybe headless won't help?
 		// If network error, headless might not help.
@@ -62,10 +71,12 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 	// 4. Analyze
 	// Check status codes that suggest blocking or JS requirement
 	if res.Status == 403 || res.Status == 401 || res.Status == 429 {
+		slog.Debug("HTTP probe returned status suggesting bot detection or JS challenge", "url", req.URL, "status", res.Status)
 		// Potential bot detection. Headless might help if it's JS challenge?
 		// Or maybe it won't. But worth a try if we are adaptive.
 		// But 429 is rate limit.
 		if res.Status != 429 {
+			slog.Info("retrying with headless due to HTTP status", "url", req.URL, "status", res.Status)
 			return f.fetchHeadless(req, prof)
 		}
 	}
@@ -77,10 +88,12 @@ func (f *AdaptiveFetcher) Fetch(req Request) (Result, error) {
 	}
 
 	if IsJSHeavy(js, threshold) {
+		slog.Info("retrying with headless due to JS heaviness", "url", req.URL, "jsScore", js, "threshold", threshold)
 		return f.fetchHeadless(req, prof)
 	}
 
 	// 5. Return HTTP result if satisfied
+	slog.Debug("satisfied with HTTP result", "url", req.URL)
 	return res, nil
 }
 
@@ -96,6 +109,8 @@ func (f *AdaptiveFetcher) fetchHeadless(req Request, prof RenderProfile) (Result
 		engine = RenderEnginePlaywright
 	}
 
+	slog.Debug("fetching headless", "url", req.URL, "engine", engine)
+
 	// Primary attempt
 	var res Result
 	var err error
@@ -107,8 +122,11 @@ func (f *AdaptiveFetcher) fetchHeadless(req Request, prof RenderProfile) (Result
 	}
 
 	if err == nil {
+		slog.Debug("headless fetch success", "url", req.URL, "engine", engine)
 		return res, nil
 	}
+
+	slog.Error("headless fetch failed", "url", req.URL, "engine", engine, "error", err)
 
 	// Fallback logic?
 	// If Chromedp failed and UsePlaywright is explicitly allowed but not forced?

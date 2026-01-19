@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"spartan-scraper/internal/extract"
@@ -16,6 +17,7 @@ import (
 
 type Request struct {
 	URL           string
+	RequestID     string
 	Headless      bool
 	UsePlaywright bool
 	Auth          fetch.AuthOptions
@@ -50,6 +52,7 @@ type CrawlStateStore interface {
 }
 
 func Run(req Request) (Result, error) {
+	slog.Debug("scrape.Run start", "url", req.URL)
 	registry := req.Registry
 	if registry == nil {
 		registry = pipeline.NewRegistry()
@@ -58,6 +61,7 @@ func Run(req Request) (Result, error) {
 	if jsRegistry == nil {
 		loaded, err := pipeline.LoadJSRegistry(req.DataDir)
 		if err != nil {
+			slog.Error("failed to load JS registry", "error", err)
 			return Result{}, err
 		}
 		jsRegistry = loaded
@@ -72,6 +76,7 @@ func Run(req Request) (Result, error) {
 			state = existingState
 			ifNoneMatch = state.ETag
 			ifModifiedSince = state.LastModified
+			slog.Debug("incremental scrape", "url", req.URL, "etag", ifNoneMatch, "lastModified", ifModifiedSince)
 		}
 	}
 
@@ -95,6 +100,7 @@ func Run(req Request) (Result, error) {
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindScrape))
 	baseCtx := pipeline.HookContext{
 		Context:     context.Background(),
+		RequestID:   req.RequestID,
 		Target:      target,
 		Now:         time.Now(),
 		DataDir:     req.DataDir,
@@ -116,6 +122,7 @@ func Run(req Request) (Result, error) {
 		DataDir:    req.DataDir,
 	})
 	if err != nil {
+		slog.Error("pre-fetch pipeline failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 	fetchReq = fetchInput.Request
@@ -139,20 +146,25 @@ func Run(req Request) (Result, error) {
 		}
 	}
 
+	slog.Debug("fetching", "url", fetchReq.URL)
 	res, err := fetcher.Fetch(fetchReq)
 	if err != nil {
+		slog.Error("fetch failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
+	slog.Debug("fetch complete", "url", res.URL, "status", res.Status)
 
 	postFetchCtx := baseCtx
 	postFetchCtx.Stage = pipeline.StagePostFetch
 	fetchOut, err := registry.RunPostFetch(postFetchCtx, fetchInput, pipeline.FetchOutput{Result: res})
 	if err != nil {
+		slog.Error("post-fetch pipeline failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 	res = fetchOut.Result
 
 	if res.Status == 304 {
+		slog.Info("content not modified (304)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
 			_ = req.Store.UpsertCrawlState(state)
@@ -167,6 +179,7 @@ func Run(req Request) (Result, error) {
 	currentHashStr := hex.EncodeToString(currentHash[:])
 
 	if req.Incremental && state.ContentHash == currentHashStr && state.ContentHash != "" {
+		slog.Info("content not modified (hash match)", "url", res.URL)
 		if req.Incremental && req.Store != nil {
 			state.LastScraped = time.Now()
 			_ = req.Store.UpsertCrawlState(state)
@@ -177,6 +190,7 @@ func Run(req Request) (Result, error) {
 		})
 	}
 
+	slog.Debug("extracting", "url", res.URL)
 	preExtractCtx := baseCtx
 	preExtractCtx.Stage = pipeline.StagePreExtract
 	extractInput, err := registry.RunPreExtract(preExtractCtx, pipeline.ExtractInput{
@@ -186,6 +200,7 @@ func Run(req Request) (Result, error) {
 		DataDir: req.DataDir,
 	})
 	if err != nil {
+		slog.Error("pre-extract pipeline failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 
@@ -196,6 +211,7 @@ func Run(req Request) (Result, error) {
 		DataDir: extractInput.DataDir,
 	})
 	if err != nil {
+		slog.Error("extraction failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 
@@ -206,6 +222,7 @@ func Run(req Request) (Result, error) {
 		Normalized: output.Normalized,
 	})
 	if err != nil {
+		slog.Error("post-extract pipeline failed", "url", req.URL, "error", err)
 		return Result{}, err
 	}
 	output.Extracted = extractOut.Extracted
@@ -237,6 +254,7 @@ func Run(req Request) (Result, error) {
 		Extracted:  output.Extracted,
 		Normalized: output.Normalized,
 	}
+	slog.Info("scrape complete", "url", res.URL, "status", res.Status, "title", result.Title)
 	return applyScrapeOutputPipeline(registry, baseCtx, result)
 }
 

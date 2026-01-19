@@ -43,3 +43,37 @@ tasks:
   created_at: 2025-01-18T21:30:00Z
   updated_at: 2026-01-18T21:30:00Z
   completed_at: 2026-01-18T21:30:00Z
+- id: RQ-0002
+  status: done
+  title: Add structured logging throughout Go codebase
+  tags:
+  - logging
+  - observability
+  - debugging
+  scope:
+  - internal/cli
+  - internal/scrape
+  - internal/crawl
+  - internal/jobs
+  - internal/fetch
+  evidence:
+  - |-
+    No structured logging found in scrape.go, crawl.go, or jobs/manager.go.
+    Errors are only returned or written to stderr. This makes debugging production issues
+    very difficult.
+  plan:
+  - Add slog or similar structured logger package to Go modules
+  - Add log fields for job ID, URL, status at key points in jobs/manager.go
+  - Add logging for scrape and crawl operations with progress indicators
+  - Add request ID generation and propagation through the pipeline
+  - Configure log levels and format via environment variables
+  - Add logging for fetch operations for debugging network issues
+  notes:
+  - Integrated log/slog throughout the Go codebase for structured logging.
+  - Added LOG_LEVEL and LOG_FORMAT configuration via environment variables.
+  - Implemented RequestID propagation through the pipeline (using Job ID).
+  - Added comprehensive logging to jobs manager, scrape, crawl, and fetchers.
+  request: scan finding
+  created_at: 2025-01-18T21:30:00Z
+  updated_at: 2026-01-18T22:30:00Z
+  completed_at: 2026-01-18T22:30:00Z

@@ -113,6 +113,7 @@ type OutputOutput struct {
 
 type HookContext struct {
 	Context     context.Context
+	RequestID   string
 	Stage       Stage
 	Target      Target
 	Now         time.Time

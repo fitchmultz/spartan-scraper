@@ -29,6 +29,7 @@ import (
 
 func Run(ctx context.Context) int {
 	cfg := config.Load()
+	config.InitLogger(cfg)
 	if len(os.Args) < 2 {
 		printHelp()
 		return 1

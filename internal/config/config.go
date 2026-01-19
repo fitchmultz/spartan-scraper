@@ -24,6 +24,8 @@ type Config struct {
 	RetryBaseMs        int
 	UsePlaywright      bool
 	AuthOverrides      EnvOverrides
+	LogLevel           string
+	LogFormat          string
 }
 
 func Load() Config {
@@ -40,6 +42,8 @@ func Load() Config {
 		RetryBaseMs:        getenvInt("RETRY_BASE_MS", 400),
 		UsePlaywright:      getenvBool("USE_PLAYWRIGHT", false),
 		AuthOverrides:      loadAuthOverrides(),
+		LogLevel:           getenv("LOG_LEVEL", "info"),
+		LogFormat:          getenv("LOG_FORMAT", "text"),
 	}
 }
 

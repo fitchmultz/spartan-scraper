@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -17,6 +18,8 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 		return Result{}, errors.New("url is required")
 	}
 
+	slog.Debug("HTTP fetch start", "url", req.URL)
+
 	// Apply auth query parameters before making the request
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
 
@@ -27,7 +30,12 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 	}
 
 	for attempt := 0; attempt <= retries; attempt++ {
+		if attempt > 0 {
+			slog.Debug("retrying HTTP fetch", "url", req.URL, "attempt", attempt)
+		}
+
 		if req.Limiter != nil {
+			slog.Debug("waiting for rate limiter", "url", req.URL)
 			_ = req.Limiter.Wait(context.Background(), req.URL)
 		}
 
@@ -39,6 +47,7 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 
 		httpReq, err := http.NewRequest(http.MethodGet, req.URL, nil)
 		if err != nil {
+			slog.Error("failed to create HTTP request", "url", req.URL, "error", err)
 			return Result{}, err
 		}
 
@@ -69,14 +78,18 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 
 		resp, err := client.Do(httpReq)
 		if err != nil || resp == nil {
+			slog.Warn("HTTP request failed", "url", req.URL, "error", err, "attempt", attempt)
 			if attempt >= retries || !shouldRetry(err, 0) {
 				return Result{}, err
 			}
-			time.Sleep(backoff(baseDelay, attempt))
+			delay := backoff(baseDelay, attempt)
+			slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+			time.Sleep(delay)
 			continue
 		}
 
 		if resp.StatusCode == http.StatusNotModified {
+			slog.Debug("HTTP 304 Not Modified", "url", req.URL)
 			_ = resp.Body.Close()
 			return Result{
 				URL:          req.URL,
@@ -92,10 +105,13 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 		body, readErr := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		if readErr != nil {
+			slog.Warn("failed to read HTTP response body", "url", req.URL, "error", readErr, "attempt", attempt)
 			if attempt >= retries || !shouldRetry(readErr, resp.StatusCode) {
 				return Result{}, readErr
 			}
-			time.Sleep(backoff(baseDelay, attempt))
+			delay := backoff(baseDelay, attempt)
+			slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+			time.Sleep(delay)
 			continue
 		}
 
@@ -104,10 +120,12 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 			if delay <= 0 {
 				delay = backoff(baseDelay, attempt)
 			}
+			slog.Info("retrying HTTP request based on status code", "url", req.URL, "status", resp.StatusCode, "attempt", attempt, "delay", delay)
 			time.Sleep(delay)
 			continue
 		}
 
+		slog.Debug("HTTP fetch success", "url", req.URL, "status", resp.StatusCode)
 		return Result{
 			URL:       req.URL,
 			Status:    resp.StatusCode,
@@ -117,5 +135,6 @@ func (f *HTTPFetcher) Fetch(req Request) (Result, error) {
 		}, nil
 	}
 
+	slog.Error("HTTP fetch max retries exceeded", "url", req.URL)
 	return Result{}, errors.New("max retries exceeded")
 }

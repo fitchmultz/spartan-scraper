@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"log/slog"
 	"math"
 	"math/bits"
 	"net/url"
@@ -24,6 +25,7 @@ import (
 
 type Request struct {
 	Query         string
+	RequestID     string
 	URLs          []string
 	MaxDepth      int
 	MaxPages      int
@@ -79,6 +81,7 @@ type Citation struct {
 }
 
 func Run(req Request) (Result, error) {
+	slog.Info("research.Run start", "query", req.Query, "urls", req.URLs)
 	items := make([]Evidence, 0)
 	queryTokens := tokenize(req.Query)
 
@@ -88,8 +91,10 @@ func Run(req Request) (Result, error) {
 		}
 
 		if req.MaxDepth > 0 {
+			slog.Debug("research crawling target", "url", target, "maxDepth", req.MaxDepth)
 			pages, err := crawl.Run(crawl.Request{
 				URL:           target,
+				RequestID:     req.RequestID,
 				MaxDepth:      req.MaxDepth,
 				MaxPages:      req.MaxPages,
 				Concurrency:   req.Concurrency,
@@ -110,6 +115,7 @@ func Run(req Request) (Result, error) {
 				JSRegistry:    req.JSRegistry,
 			})
 			if err != nil {
+				slog.Error("research crawl failed", "url", target, "error", err)
 				continue
 			}
 			for _, page := range pages {
@@ -124,8 +130,10 @@ func Run(req Request) (Result, error) {
 				})
 			}
 		} else {
+			slog.Debug("research scraping target", "url", target)
 			res, err := scrape.Run(scrape.Request{
 				URL:           target,
+				RequestID:     req.RequestID,
 				Headless:      req.Headless,
 				UsePlaywright: req.UsePlaywright,
 				Auth:          req.Auth,
@@ -143,6 +151,7 @@ func Run(req Request) (Result, error) {
 				JSRegistry:    req.JSRegistry,
 			})
 			if err != nil {
+				slog.Error("research scrape failed", "url", target, "error", err)
 				continue
 			}
 			if res.Status != 304 {
@@ -156,6 +165,7 @@ func Run(req Request) (Result, error) {
 		}
 	}
 
+	slog.Info("research gathering complete", "evidenceCount", len(items))
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Score > items[j].Score
 	})
@@ -183,6 +193,7 @@ func Run(req Request) (Result, error) {
 	target := pipeline.NewTarget("", string(model.KindResearch))
 	baseCtx := pipeline.HookContext{
 		Context:     context.Background(),
+		RequestID:   req.RequestID,
 		Target:      target,
 		Now:         time.Now(),
 		DataDir:     req.DataDir,
@@ -190,6 +201,7 @@ func Run(req Request) (Result, error) {
 		Attributes:  map[string]string{},
 		Diagnostics: map[string]any{},
 	}
+	slog.Info("research complete", "confidence", result.Confidence)
 	return applyResearchOutputPipeline(registry, baseCtx, result)
 }
 
