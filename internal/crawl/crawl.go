@@ -376,6 +376,7 @@ func normalizeURL(raw string) string {
 	if err != nil {
 		return raw
 	}
+	u.Host = strings.ToLower(u.Host)
 	u.Fragment = ""
 	return u.String()
 }

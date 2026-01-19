@@ -1,44 +1,5 @@
 version: 1
 tasks:
-- id: RQ-0001
-  status: todo
-  title: Add comprehensive test coverage for core packages
-  tags:
-  - testing
-  - coverage
-  - reliability
-  scope:
-  - internal/cli
-  - internal/api
-  - internal/auth
-  - internal/config
-  - internal/crawl
-  - internal/jobs
-  - internal/mcp
-  - internal/model
-  - internal/pipeline
-  - internal/research
-  - internal/scheduler
-  - internal/scrape
-  - internal/store
-  evidence:
-  - |-
-    Only 3 out of 19 internal packages have tests (e2e, extract, fetch).
-    Running `go test ./...` shows "[no test files]" for most packages. This represents
-    a significant test coverage gap for critical functionality.
-  plan:
-  - Add table-driven unit tests for cli.go command parsing and validation
-  - Add HTTP handler tests for api/server.go endpoints
-  - Add tests for auth/merge.go profile merging and resolution logic
-  - Add tests for crawl.go concurrency and URL processing
-  - Add tests for jobs/manager.go job lifecycle and queue management
-  - Add tests for scrape/scrape.go pipeline execution
-  - Add tests for store/store.go database operations
-  - Target 80%+ code coverage across all internal packages
-  notes: []
-  request: scan finding
-  created_at: 2025-01-18T21:30:00Z
-  updated_at: 2025-01-18T21:30:00Z
 - id: RQ-0002
   status: todo
   title: Add structured logging throughout Go codebase
