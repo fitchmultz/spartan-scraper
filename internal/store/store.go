@@ -360,3 +360,9 @@ func (s *Store) Checkpoint(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, "PRAGMA wal_checkpoint(PASSIVE)")
 	return err
 }
+
+// UpdateResultPath updates the result_path field for a job.
+func (s *Store) UpdateResultPath(ctx context.Context, id string, resultPath string) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE jobs SET result_path = ? WHERE id = ?", resultPath, id)
+	return err
+}

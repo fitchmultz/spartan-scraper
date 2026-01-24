@@ -955,6 +955,40 @@
       "completed_at": "2026-01-24T19:48:38.043880000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0028",
+      "status": "done",
+      "title": "Return correct Content-Type for job results",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/server_test.go"
+      ],
+      "evidence": [
+        "internal/api/server.go handleJobResults uses http.ServeFile without setting Content-Type, so .jsonl results may be served as application/octet-stream."
+      ],
+      "plan": [
+        "Set Content-Type based on result file extension (e.g., application/x-ndjson for .jsonl).",
+        "Add API tests asserting Content-Type for job results responses."
+      ],
+      "notes": [
+        "Added Content-Type header support based on file extension",
+        "Implemented contentTypeForExtension helper for .jsonl/.json/.csv/.xml/.txt",
+        "Added comprehensive API tests for all file types and edge cases",
+        "Store UpdateResultPath helper added for test setup",
+        "All CI checks pass"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T20:06:41.615418000Z",
+      "completed_at": "2026-01-24T20:06:41.615418000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

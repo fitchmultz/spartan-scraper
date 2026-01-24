@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -94,6 +97,199 @@ func TestHandleJobs(t *testing.T) {
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %v", ct)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Errorf("failed to parse JSON response: %v", err)
+	}
+	if _, ok := resp["jobs"]; !ok {
+		t.Errorf("expected 'jobs' field in response, got: %v", resp)
+	}
+}
+
+func TestHandleJobResultsNotFound(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/v1/jobs/nonexistent-id/results", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status %v, got %v", http.StatusNotFound, status)
+	}
+
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %v", ct)
+	}
+}
+
+func TestHandleJobResultsNoResults(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{"url": "https://example.com"}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("failed to create job: got status %v", status)
+	}
+
+	var job map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to parse job response: %v", err)
+	}
+
+	jobID, ok := job["id"].(string)
+	if !ok {
+		t.Fatalf("job response missing id field")
+	}
+
+	req = httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status %v for job with no results, got %v", http.StatusNotFound, status)
+	}
+}
+
+func TestHandleJobResultsMultipleTypes(t *testing.T) {
+	tests := []struct {
+		name          string
+		ext           string
+		expectedCT    string
+		resultContent string
+	}{
+		{
+			name:       "jsonl",
+			ext:        ".jsonl",
+			expectedCT: "application/x-ndjson",
+			resultContent: `{"field":"value1"}
+{"field":"value2"}
+`,
+		},
+		{
+			name:          "json",
+			ext:           ".json",
+			expectedCT:    "application/json",
+			resultContent: `{"field":"value"}`,
+		},
+		{
+			name:          "csv",
+			ext:           ".csv",
+			expectedCT:    "text/csv",
+			resultContent: "field1,field2\nvalue1,value2\n",
+		},
+		{
+			name:          "xml",
+			ext:           ".xml",
+			expectedCT:    "application/xml",
+			resultContent: `<?xml version="1.0"?><root><field>value</field></root>`,
+		},
+		{
+			name:          "txt",
+			ext:           ".txt",
+			expectedCT:    "text/plain; charset=utf-8",
+			resultContent: "plain text content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, cleanup := setupTestServer(t)
+			defer cleanup()
+
+			body := `{"url": "https://example.com"}`
+			req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Fatalf("failed to create job: got status %v, body: %s", status, rr.Body.String())
+			}
+
+			var job map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+				t.Fatalf("failed to parse job response: %v", err)
+			}
+
+			jobID, ok := job["id"].(string)
+			if !ok {
+				t.Fatalf("job response missing id field: %v", job)
+			}
+
+			dataDir := t.TempDir()
+			resultDir := filepath.Join(dataDir, "jobs", jobID)
+			if err := os.MkdirAll(resultDir, 0o755); err != nil {
+				t.Fatalf("failed to create result directory: %v", err)
+			}
+
+			resultPath := filepath.Join(resultDir, "results"+tt.ext)
+			if err := os.WriteFile(resultPath, []byte(tt.resultContent), 0o644); err != nil {
+				t.Fatalf("failed to write result file: %v", err)
+			}
+
+			st := srv.store
+			ctx := context.Background()
+
+			if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+				t.Fatalf("failed to update job result_path: %v", err)
+			}
+
+			req = httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
+			rr = httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Fatalf("handler returned wrong status code: got %v want %v, body: %s", status, http.StatusOK, rr.Body.String())
+			}
+
+			contentType := rr.Header().Get("Content-Type")
+			if contentType != tt.expectedCT {
+				t.Errorf("expected Content-Type %q, got %q", tt.expectedCT, contentType)
+			}
+
+			if rr.Body.String() != tt.resultContent {
+				t.Errorf("expected body %q, got %q", tt.resultContent, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestContentTypeForExtension(t *testing.T) {
+	tests := []struct {
+		name         string
+		ext          string
+		expectedType string
+	}{
+		{name: "jsonl", ext: ".jsonl", expectedType: "application/x-ndjson"},
+		{name: "JSONL uppercase", ext: ".JSONL", expectedType: "application/x-ndjson"},
+		{name: "json", ext: ".json", expectedType: "application/json"},
+		{name: "JSON uppercase", ext: ".JSON", expectedType: "application/json"},
+		{name: "csv", ext: ".csv", expectedType: "text/csv"},
+		{name: "xml", ext: ".xml", expectedType: "application/xml"},
+		{name: "txt", ext: ".txt", expectedType: "text/plain; charset=utf-8"},
+		{name: "unknown extension", ext: ".unknown", expectedType: ""},
+		{name: "no extension", ext: "", expectedType: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := contentTypeForExtension(tt.ext)
+			if result != tt.expectedType {
+				t.Errorf("contentTypeForExtension(%q) = %q, want %q", tt.ext, result, tt.expectedType)
+			}
+		})
 	}
 }
 

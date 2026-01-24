@@ -497,6 +497,12 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "no results")
 		return
 	}
+
+	ext := filepath.Ext(job.ResultPath)
+	if ct := contentTypeForExtension(ext); ct != "" {
+		w.Header().Set("Content-Type", ct)
+	}
+
 	http.ServeFile(w, r, job.ResultPath)
 }
 
@@ -732,4 +738,21 @@ func isValidProfileName(name string) bool {
 		return true
 	}
 	return profileNameRegex.MatchString(name)
+}
+
+func contentTypeForExtension(ext string) string {
+	switch strings.ToLower(ext) {
+	case ".jsonl":
+		return "application/x-ndjson"
+	case ".json":
+		return "application/json"
+	case ".csv":
+		return "text/csv"
+	case ".xml":
+		return "application/xml"
+	case ".txt":
+		return "text/plain; charset=utf-8"
+	default:
+		return ""
+	}
 }

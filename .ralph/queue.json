@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0028",
-      "status": "todo",
-      "title": "Return correct Content-Type for job results",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "ux"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/api/server_test.go"
-      ],
-      "evidence": [
-        "internal/api/server.go handleJobResults uses http.ServeFile without setting Content-Type, so .jsonl results may be served as application/octet-stream."
-      ],
-      "plan": [
-        "Set Content-Type based on result file extension (e.g., application/x-ndjson for .jsonl).",
-        "Add API tests asserting Content-Type for job results responses."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0029",
       "status": "todo",
       "title": "Handle non-OK job result responses in the web UI",
