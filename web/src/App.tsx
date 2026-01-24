@@ -9,6 +9,54 @@ import {
 
 type JobEntry = Job;
 
+type EvidenceItem = {
+  url: string;
+  title: string;
+  snippet: string;
+  score: number;
+  confidence?: number;
+  citationUrl?: string;
+  clusterId?: string;
+};
+
+type ClusterItem = {
+  id: string;
+  label: string;
+  confidence: number;
+  evidence: EvidenceItem[];
+};
+
+type CitationItem = {
+  canonical: string;
+  anchor?: string;
+  url?: string;
+};
+
+type ExtractedData = Record<string, unknown>;
+
+type NormalizedData = Record<string, unknown>;
+
+type CrawlResultItem = {
+  url: string;
+  status: number;
+  title: string;
+  text: string;
+  links: string[];
+  metadata?: Record<string, unknown>;
+  extracted?: ExtractedData;
+  normalized?: NormalizedData;
+};
+
+type ResearchResultItem = {
+  summary?: string;
+  confidence?: number;
+  evidence?: EvidenceItem[];
+  clusters?: ClusterItem[];
+  citations?: CitationItem[];
+};
+
+type ResultItem = CrawlResultItem | ResearchResultItem;
+
 const defaultHeaders = "";
 
 export function App() {
@@ -29,36 +77,13 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [resultItems, setResultItems] = useState<ResultItem[]>([]);
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [resultSummary, setResultSummary] = useState<string | null>(null);
   const [resultConfidence, setResultConfidence] = useState<number | null>(null);
-  const [resultEvidence, setResultEvidence] = useState<
-    {
-      url: string;
-      title: string;
-      snippet: string;
-      score: number;
-      confidence?: number;
-      citationUrl?: string;
-      clusterId?: string;
-    }[]
-  >([]);
-  const [resultClusters, setResultClusters] = useState<
-    {
-      id: string;
-      label: string;
-      confidence: number;
-      evidence: {
-        url: string;
-        title: string;
-        score: number;
-        confidence?: number;
-        citationUrl?: string;
-      }[];
-    }[]
-  >([]);
-  const [resultCitations, setResultCitations] = useState<
-    { canonical: string; anchor?: string; url?: string }[]
-  >([]);
+  const [resultEvidence, setResultEvidence] = useState<EvidenceItem[]>([]);
+  const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
+  const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
 
   const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
@@ -91,6 +116,31 @@ export function App() {
       setUsePlaywright(false);
     }
   }, [headless, usePlaywright]);
+
+  useEffect(() => {
+    if (resultItems.length === 0) {
+      setResultSummary(null);
+      setResultConfidence(null);
+      setResultEvidence([]);
+      setResultClusters([]);
+      setResultCitations([]);
+      return;
+    }
+    const item = resultItems[selectedResultIndex];
+    if (isResearchResultItem(item)) {
+      setResultSummary(item.summary ?? null);
+      setResultConfidence(item.confidence ?? null);
+      setResultEvidence(item.evidence ?? []);
+      setResultClusters(item.clusters ?? []);
+      setResultCitations(item.citations ?? []);
+    } else {
+      setResultSummary(null);
+      setResultConfidence(null);
+      setResultEvidence([]);
+      setResultClusters([]);
+      setResultCitations([]);
+    }
+  }, [selectedResultIndex, resultItems]);
 
   async function submitScrape() {
     if (!scrapeUrl) {
@@ -201,6 +251,8 @@ export function App() {
 
   async function loadResults(jobId: string) {
     setSelectedJobId(jobId);
+    setResultItems([]);
+    setSelectedResultIndex(0);
     setResultSummary(null);
     setResultConfidence(null);
     setResultEvidence([]);
@@ -210,25 +262,25 @@ export function App() {
     try {
       const response = await fetch(`/v1/jobs/${jobId}/results`);
       const text = await response.text();
-      const firstLine = text.split("\n").find((line) => line.trim());
-      if (firstLine) {
-        const parsed = JSON.parse(firstLine);
-        if (parsed?.summary) {
-          setResultSummary(parsed.summary);
-        }
-        if (typeof parsed?.confidence === "number") {
-          setResultConfidence(parsed.confidence);
-        }
-        if (Array.isArray(parsed?.evidence)) {
-          setResultEvidence(parsed.evidence);
-        }
-        if (Array.isArray(parsed?.clusters)) {
-          setResultClusters(parsed.clusters);
-        }
-        if (Array.isArray(parsed?.citations)) {
-          setResultCitations(parsed.citations);
+      const lines = text.split("\n").filter((line) => line.trim());
+
+      const parsedItems: ResultItem[] = [];
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          parsedItems.push(parsed);
+        } catch {
+          // Skip malformed JSON lines
         }
       }
+
+      // Check if we had input but failed to parse anything
+      if (parsedItems.length === 0 && lines.length > 0) {
+        setError("No valid results found. Results file may be corrupted.");
+        return;
+      }
+
+      setResultItems(parsedItems);
       setRawResult(text);
     } catch (err) {
       setError(String(err));
@@ -553,6 +605,38 @@ export function App() {
         {selectedJobId ? (
           <div className="panel" style={{ marginTop: 16 }}>
             <h3>Results: {selectedJobId}</h3>
+            {resultItems.length > 1 ? (
+              <div className="result-navigation">
+                <div className="result-counter">
+                  Showing {selectedResultIndex + 1} of {resultItems.length}{" "}
+                  results
+                </div>
+                <div className="result-nav-buttons">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() =>
+                      setSelectedResultIndex((i) => Math.max(0, i - 1))
+                    }
+                    disabled={selectedResultIndex === 0}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() =>
+                      setSelectedResultIndex((i) =>
+                        Math.min(resultItems.length - 1, i + 1),
+                      )
+                    }
+                    disabled={selectedResultIndex === resultItems.length - 1}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {typeof resultConfidence === "number" ? (
               <div className="badge running" style={{ marginBottom: 8 }}>
                 Confidence {resultConfidence.toFixed(2)}
@@ -630,12 +714,59 @@ export function App() {
                 ))}
               </div>
             ) : null}
-            {rawResult ? (
+            {resultItems.length > 0 ? (
               <div style={{ marginTop: 12 }}>
-                <details>
-                  <summary>Normalized Data (First Item)</summary>
-                  <NormalizedView raw={rawResult} />
-                </details>
+                <h4>Results List</h4>
+                <div className="result-items-list">
+                  {resultItems.map((item, index) => {
+                    const isCrawl = isCrawlResultItem(item);
+                    const itemKey = isCrawl ? item.url : `result-${index}`;
+                    return (
+                      <button
+                        key={itemKey}
+                        type="button"
+                        className={`result-item ${index === selectedResultIndex ? "selected" : ""}`}
+                        onClick={() => setSelectedResultIndex(index)}
+                      >
+                        {isCrawl ? (
+                          <>
+                            <div className="result-item-header">
+                              <span className="result-item-url">
+                                {item.url}
+                              </span>
+                              <span
+                                className={`badge ${statusClass(String(item.status))}`}
+                              >
+                                {item.status}
+                              </span>
+                            </div>
+                            <div className="result-item-title">
+                              {item.title || "Untitled"}
+                            </div>
+                            {item.links?.length ? (
+                              <div className="result-item-meta">
+                                {item.links.length} links
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <div className="result-item-non-crawl">
+                            Result {index + 1} (research/aggregated)
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {resultItems.length > 0 ? (
+                  <details style={{ marginTop: 12 }}>
+                    <summary>Normalized Data (Selected Item)</summary>
+                    <NormalizedView
+                      raw={rawResult ?? ""}
+                      index={selectedResultIndex}
+                    />
+                  </details>
+                ) : null}
                 <details style={{ marginTop: 8 }}>
                   <summary>Raw output</summary>
                   <pre>{rawResult}</pre>
@@ -653,12 +784,16 @@ export function App() {
   );
 }
 
-function NormalizedView({ raw }: { raw: string }) {
+function NormalizedView({ raw, index }: { raw: string; index?: number }) {
   try {
-    const firstLine = raw.split("\n").find((line) => line.trim());
-    if (!firstLine) return null;
-    const data = JSON.parse(firstLine);
-    if (!data.normalized) return <div>No normalized data found.</div>;
+    const lines = raw.split("\n").filter((line) => line.trim());
+    const targetIndex = index ?? 0;
+    if (targetIndex >= lines.length) return null;
+    const data = JSON.parse(lines[targetIndex]);
+    // Only crawl results have normalized data
+    if (!isCrawlResultItem(data) || !data.normalized) {
+      return <div>No normalized data found for this result type.</div>;
+    }
     return (
       <pre style={{ background: "rgba(0, 50, 50, 0.3)" }}>
         {JSON.stringify(data.normalized, null, 2)}
@@ -667,6 +802,23 @@ function NormalizedView({ raw }: { raw: string }) {
   } catch {
     return <div>Failed to parse result.</div>;
   }
+}
+
+function isCrawlResultItem(item: ResultItem): item is CrawlResultItem {
+  return "url" in item && "status" in item;
+}
+
+function isResearchResultItem(item: ResultItem): item is ResearchResultItem {
+  // Must explicitly NOT be a crawl result (no url/status)
+  // AND must have at least one research field
+  const isNotCrawl = !("url" in item && "status" in item);
+  const hasResearchField =
+    "summary" in item ||
+    "confidence" in item ||
+    "evidence" in item ||
+    "clusters" in item ||
+    "citations" in item;
+  return isNotCrawl && hasResearchField;
 }
 
 function statusClass(status: string) {

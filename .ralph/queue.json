@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0014",
-      "status": "todo",
-      "title": "Web UI: Handle multi-line results",
-      "priority": "medium",
-      "tags": [
-        "web",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "loadResults in App.tsx only parses the first line of the results file",
-        "This hides results for crawl and research jobs which produce multiple lines"
-      ],
-      "plan": [
-        "Modify loadResults to parse all lines of the JSONL file",
-        "Update the UI to display a list of results with a details view for each"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0015",
       "status": "todo",
       "title": "Web UI: Add Cancel Job button",

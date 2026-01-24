@@ -452,6 +452,43 @@
       "completed_at": "2026-01-24T08:16:18.329025000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0014",
+      "status": "done",
+      "title": "Web UI: Handle multi-line results",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx"
+      ],
+      "evidence": [
+        "loadResults in App.tsx only parses the first line of the results file",
+        "This hides results for crawl and research jobs which produce multiple lines"
+      ],
+      "plan": [
+        "Modify loadResults to parse all lines of the JSONL file",
+        "Update the UI to display a list of results with a details view for each"
+      ],
+      "notes": [
+        "Modified loadResults to parse all JSONL lines instead of just first line",
+        "Added ResultItem union type with CrawlResultItem and ResearchResultItem",
+        "Added resultItems state and selectedResultIndex for multi-result navigation",
+        "Added isCrawlResultItem and isResearchResultItem type guards",
+        "Fixed useEffect to clear stale display state when resultItems is empty",
+        "Fixed isResearchResultItem to explicitly check not a crawl result first",
+        "Fixed NormalizedView to check if item is crawl result before accessing normalized",
+        "Fixed ClusterItem.evidence to use EvidenceItem type consistently"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T08:35:01.183178000Z",
+      "completed_at": "2026-01-24T08:35:01.183178000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
