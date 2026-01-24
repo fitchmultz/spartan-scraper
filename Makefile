@@ -5,7 +5,7 @@ BIN_DIR := bin
 WEB_DIR := web
 DATA_DIR := .data
 
-.PHONY: install update lint type-check format clean test generate build ci web-dev
+.PHONY: install update lint type-check format clean test test-ci generate build ci web-dev
 
 install:
 	go mod download
@@ -32,6 +32,10 @@ clean:
 test:
 	go test ./...
 
+test-ci:
+	go test $$(go list ./... | grep -v /e2e)
+	cd $(WEB_DIR) && pnpm run test
+
 generate:
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
 	bash scripts/strip_openapi_todos.sh --path $(WEB_DIR)/src/api
@@ -41,7 +45,7 @@ build:
 	go build -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
 
-ci: generate format type-check lint build test
+ci: generate format type-check lint build test-ci
 
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev

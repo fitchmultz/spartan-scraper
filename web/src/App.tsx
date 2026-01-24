@@ -1,3 +1,6 @@
+// App is the main React component for the Spartan Scraper web UI.
+// It provides a single-page interface for submitting scrape/crawl/research jobs,
+// viewing job status, and browsing results.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteV1JobsById,
@@ -291,6 +294,21 @@ export function App() {
     setRawResult(null);
     try {
       const response = await fetch(`/v1/jobs/${jobId}/results`);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to load results (${response.status} ${response.statusText})`;
+        try {
+          const errorData = (await response.json()) as { error?: string };
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If parsing error body fails, use default message
+        }
+        setError(errorMessage);
+        return;
+      }
+
       const text = await response.text();
       const lines = text.split("\n").filter((line) => line.trim());
 

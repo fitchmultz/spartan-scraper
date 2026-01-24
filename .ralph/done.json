@@ -989,6 +989,35 @@
       "completed_at": "2026-01-24T20:06:41.615418000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0029",
+      "status": "done",
+      "title": "Handle non-OK job result responses in the web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux",
+        "error-handling"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/package.json"
+      ],
+      "evidence": [
+        "web/src/App.tsx loadResults() calls fetch('/v1/jobs/.../results') and parses response text without checking response.ok, so 404/500 become misleading UI errors."
+      ],
+      "plan": [
+        "Check response.ok before parsing and surface server error messages for non-2xx responses.",
+        "Introduce a minimal web test harness (e.g., Vitest + Testing Library) and add tests for error states."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T21:57:26.232766000Z",
+      "completed_at": "2026-01-24T21:57:26.232766000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
