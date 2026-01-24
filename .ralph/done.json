@@ -107,6 +107,40 @@
       "completed_at": "2026-01-24T05:18:20.371279000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0004",
+      "status": "done",
+      "title": "Capture actual status in ChromedpFetcher",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "chromedp"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go"
+      ],
+      "evidence": [
+        "ChromedpFetcher returns a hardcoded 200 status for all successful captures",
+        "It should capture the status of the main navigation response"
+      ],
+      "plan": [
+        "Use network.EventResponseReceived to capture the status of the main frame request",
+        "Update Result.Status with the actual captured status"
+      ],
+      "notes": [
+        "Implemented responseTracker using network.EventResponseReceived to capture actual HTTP status",
+        "Added robust url parsing with net/url for RFC-compliant URL matching",
+        "Fallback to 200 with Warn-level log if status not captured (backward compatibility)",
+        "18 comprehensive tests covering redirects, ports, query strings, edge cases",
+        "Thread-safe concurrent access protection with mutex"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T05:35:32.100787000Z",
+      "completed_at": "2026-01-24T05:35:32.100787000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

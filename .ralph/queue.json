@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0004",
-      "status": "todo",
-      "title": "Capture actual status in ChromedpFetcher",
-      "priority": "high",
-      "tags": [
-        "fetch",
-        "chromedp"
-      ],
-      "scope": [
-        "internal/fetch/chromedp_fetcher.go"
-      ],
-      "evidence": [
-        "ChromedpFetcher returns a hardcoded 200 status for all successful captures",
-        "It should capture the status of the main navigation response"
-      ],
-      "plan": [
-        "Use network.EventResponseReceived to capture the status of the main frame request",
-        "Update Result.Status with the actual captured status"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0005",
       "status": "todo",
       "title": "Optimize PlaywrightFetcher browser reuse",

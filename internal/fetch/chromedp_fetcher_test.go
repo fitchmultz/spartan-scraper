@@ -242,3 +242,214 @@ func TestChromedpFetcher_Fetch_NetworkIdle_Integration(t *testing.T) {
 	assert.Equal(t, RenderEngineChromedp, result.Engine)
 	assert.NotZero(t, result.FetchedAt)
 }
+
+func TestResponseTracker(t *testing.T) {
+	t.Run("captures status from matching document response", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com",
+				Status: 200,
+			},
+		})
+
+		assert.Equal(t, int64(200), rt.getStatus())
+	})
+
+	t.Run("captures status from redirected URL", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com/welcome",
+				Status: 302,
+			},
+		})
+
+		assert.Equal(t, int64(302), rt.getStatus())
+	})
+
+	t.Run("captures status when target is prefix of response", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com/path"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com/path/to/page",
+				Status: 200,
+			},
+		})
+
+		assert.Equal(t, int64(200), rt.getStatus())
+	})
+
+	t.Run("rejects non-matching host", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://other.com/path",
+				Status: 200,
+			},
+		})
+
+		assert.Equal(t, int64(0), rt.getStatus())
+	})
+
+	t.Run("rejects different resource types", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeScript,
+			Response: &network.Response{
+				URL:    "https://example.com/script.js",
+				Status: 200,
+			},
+		})
+
+		assert.Equal(t, int64(0), rt.getStatus())
+	})
+
+	t.Run("rejects false positive prefix with same host", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com/api"}
+
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com/app",
+				Status: 404,
+			},
+		})
+
+		// Should NOT match - "app" is not a prefix of "api" nor vice versa
+		assert.Equal(t, int64(0), rt.getStatus())
+	})
+
+	t.Run("only captures first matching document", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		// First response
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com",
+				Status: 302,
+			},
+		})
+
+		// Second response (redirected)
+		rt.onEvent(&network.EventResponseReceived{
+			Type: network.ResourceTypeDocument,
+			Response: &network.Response{
+				URL:    "https://example.com/home",
+				Status: 200,
+			},
+		})
+
+		// Should have captured the first status
+		assert.Equal(t, int64(302), rt.getStatus())
+	})
+
+	t.Run("ignores non-ResponseReceived events", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		rt.onEvent(&network.EventRequestWillBeSent{})
+		rt.onEvent(&network.EventLoadingFinished{})
+
+		assert.Equal(t, int64(0), rt.getStatus())
+	})
+
+	t.Run("thread safe concurrent access", func(t *testing.T) {
+		rt := &responseTracker{targetURL: "https://example.com"}
+
+		var wg sync.WaitGroup
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				rt.onEvent(&network.EventResponseReceived{
+					Type: network.ResourceTypeDocument,
+					Response: &network.Response{
+						URL:    "https://example.com",
+						Status: int64(200 + idx),
+					},
+				})
+			}(i)
+		}
+		wg.Wait()
+
+		// Should have captured exactly one status
+		status := rt.getStatus()
+		assert.True(t, status >= 200 && status < 300, "status should be in range [200, 300)")
+	})
+
+	t.Run("urlMatch exact match", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com", "https://example.com"))
+	})
+
+	t.Run("urlMatch prefix with same host", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com", "https://example.com/path"))
+		assert.True(t, rt.urlsMatch("https://example.com/path", "https://example.com/path/to/page"))
+	})
+
+	t.Run("urlMatch different host", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.False(t, rt.urlsMatch("https://example.com", "https://other.com"))
+		assert.False(t, rt.urlsMatch("https://example.com/path", "https://other.com/path"))
+	})
+
+	t.Run("urlMatch different scheme", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.False(t, rt.urlsMatch("https://example.com", "http://example.com"))
+		assert.False(t, rt.urlsMatch("https://example.com/path", "http://example.com/path"))
+	})
+
+	t.Run("urlMatch prevents false positive prefix", func(t *testing.T) {
+		rt := &responseTracker{}
+		// "app" is a prefix of "apple" but they don't share the same full path structure
+		// However, since they both start with /a, this could be a false positive
+		// The implementation should handle this by checking the base URL
+		assert.True(t, rt.urlsMatch("https://example.com/api", "https://example.com/api/v1"))
+		// Different prefix should not match
+		assert.False(t, rt.urlsMatch("https://example.com/api", "https://example.com/app"))
+	})
+
+	t.Run("urlMatch with ports", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com:8080", "https://example.com:8080/path"))
+		assert.True(t, rt.urlsMatch("https://example.com:8080/api", "https://example.com:8080/api/v1"))
+		// Different ports should not match
+		assert.False(t, rt.urlsMatch("https://example.com:8080", "https://example.com:9090"))
+		assert.False(t, rt.urlsMatch("https://example.com:8080/path", "https://example.com:9090/path"))
+		// Explicit port vs implicit default port - these don't match because
+		// url.Parse preserves explicit ports in the Host field
+		assert.False(t, rt.urlsMatch("https://example.com", "https://example.com:443"))
+		assert.False(t, rt.urlsMatch("http://example.com", "http://example.com:80"))
+	})
+
+	t.Run("urlMatch with query and fragment", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com/path", "https://example.com/path?query=value"))
+		assert.True(t, rt.urlsMatch("https://example.com/path", "https://example.com/path#section"))
+		assert.True(t, rt.urlsMatch("https://example.com/path", "https://example.com/path?query=value#section"))
+	})
+
+	t.Run("urlMatch with trailing slashes", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com/path", "https://example.com/path/"))
+		assert.True(t, rt.urlsMatch("https://example.com/path/", "https://example.com/path"))
+		assert.True(t, rt.urlsMatch("https://example.com", "https://example.com/"))
+	})
+
+	t.Run("urlMatch with empty paths", func(t *testing.T) {
+		rt := &responseTracker{}
+		assert.True(t, rt.urlsMatch("https://example.com", "https://example.com/"))
+		assert.True(t, rt.urlsMatch("https://example.com/", "https://example.com/path"))
+	})
+}
