@@ -624,6 +624,47 @@
       "completed_at": "2026-01-24T09:24:12.514043000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0019",
+      "status": "done",
+      "title": "Cap HTTP fetch response size to prevent memory exhaustion",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "performance",
+        "fetch",
+        "memory"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/config/config.go",
+        ".env",
+        ".env.example",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go reads response bodies with io.ReadAll(resp.Body) and no size limit, so very large responses can exhaust memory.",
+        "internal/config/config.go has no setting to cap response size for fetch operations."
+      ],
+      "plan": [
+        "Add a configurable max response bytes setting in config + env (.env/.env.example) and plumb it into fetch.Request.",
+        "Enforce the limit in HTTPFetcher (limit reader / MaxBytes) and return a clear error when exceeded.",
+        "Add tests for over-limit responses and confirm normal-sized responses still succeed."
+      ],
+      "notes": [
+        "Added configurable MaxResponseBytes field to config (env: MAX_RESPONSE_BYTES, default 10MB)",
+        "Enforced size limit in HTTPFetcher using io.LimitReader with +1 overflow detection",
+        "Plumbed MaxResponseBytes through all modules: scrape, research, crawl, jobs, cli, mcp, api",
+        "Added comprehensive tests in http_fetcher_test.go covering normal, at-limit, over-limit, and zero-limit (backward compat) cases",
+        "All CI passes (generate, format, type-check, lint, build, test)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T16:14:05.496301000Z",
+      "completed_at": "2026-01-24T16:14:05.496301000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

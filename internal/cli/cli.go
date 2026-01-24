@@ -1501,6 +1501,7 @@ func initJobManager(ctx context.Context, cfg config.Config, store *store.Store) 
 		cfg.RateLimitBurst,
 		cfg.MaxRetries,
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.MaxResponseBytes,
 		cfg.UsePlaywright,
 	)
 	manager.Start(ctx)

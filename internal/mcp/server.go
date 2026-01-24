@@ -68,6 +68,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		cfg.RateLimitBurst,
 		cfg.MaxRetries,
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.MaxResponseBytes,
 		cfg.UsePlaywright,
 	)
 	mgr.Start(context.Background())

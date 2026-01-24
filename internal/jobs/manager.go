@@ -36,6 +36,7 @@ type Manager struct {
 	limiter          *fetch.HostLimiter
 	maxRetries       int
 	retryBase        time.Duration
+	maxResponseBytes int64
 	usePlaywright    bool
 	queue            chan model.Job
 	pipelineRegistry *pipeline.Registry
@@ -63,7 +64,7 @@ func (m *Manager) Status() ManagerStatus {
 }
 
 // NewManager creates a new job manager with the specified configuration.
-func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, usePlaywright bool) *Manager {
+func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, maxResponseBytes int64, usePlaywright bool) *Manager {
 	jsRegistry, err := pipeline.LoadJSRegistry(dataDir)
 	if err != nil {
 		slog.Warn("failed to load JS registry", "error", err)
@@ -77,6 +78,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		limiter:          fetch.NewHostLimiter(rateLimitQPS, rateLimitBurst),
 		maxRetries:       maxRetries,
 		retryBase:        retryBase,
+		maxResponseBytes: maxResponseBytes,
 		usePlaywright:    usePlaywright,
 		queue:            make(chan model.Job, 128),
 		pipelineRegistry: pipeline.NewRegistry(),
@@ -372,23 +374,24 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := scrape.Run(jobCtx, scrape.Request{
-			URL:           url,
-			RequestID:     job.ID,
-			Headless:      headless,
-			UsePlaywright: usePlaywright,
-			Auth:          auth,
-			Extract:       extractOpts,
-			Pipeline:      pipelineOpts,
-			Timeout:       time.Duration(timeoutSecs) * time.Second,
-			UserAgent:     m.userAgent,
-			Limiter:       m.limiter,
-			MaxRetries:    m.maxRetries,
-			RetryBase:     m.retryBase,
-			DataDir:       m.dataDir,
-			Incremental:   incremental,
-			Store:         m.store,
-			Registry:      m.pipelineRegistry,
-			JSRegistry:    m.jsRegistry,
+			URL:              url,
+			RequestID:        job.ID,
+			Headless:         headless,
+			UsePlaywright:    usePlaywright,
+			Auth:             auth,
+			Extract:          extractOpts,
+			Pipeline:         pipelineOpts,
+			Timeout:          time.Duration(timeoutSecs) * time.Second,
+			UserAgent:        m.userAgent,
+			Limiter:          m.limiter,
+			MaxRetries:       m.maxRetries,
+			RetryBase:        m.retryBase,
+			MaxResponseBytes: m.maxResponseBytes,
+			DataDir:          m.dataDir,
+			Incremental:      incremental,
+			Store:            m.store,
+			Registry:         m.pipelineRegistry,
+			JSRegistry:       m.jsRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -423,26 +426,27 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		results, err := crawl.Run(jobCtx, crawl.Request{
-			URL:           url,
-			RequestID:     job.ID,
-			MaxDepth:      maxDepth,
-			MaxPages:      maxPages,
-			Concurrency:   m.maxConcurrency,
-			Headless:      headless,
-			UsePlaywright: usePlaywright,
-			Auth:          auth,
-			Extract:       extractOpts,
-			Pipeline:      pipelineOpts,
-			Timeout:       time.Duration(timeoutSecs) * time.Second,
-			UserAgent:     m.userAgent,
-			Limiter:       m.limiter,
-			MaxRetries:    reqRetries(m.maxRetries),
-			RetryBase:     m.retryBase,
-			DataDir:       m.dataDir,
-			Incremental:   incremental,
-			Store:         m.store,
-			Registry:      m.pipelineRegistry,
-			JSRegistry:    m.jsRegistry,
+			URL:              url,
+			RequestID:        job.ID,
+			MaxDepth:         maxDepth,
+			MaxPages:         maxPages,
+			Concurrency:      m.maxConcurrency,
+			Headless:         headless,
+			UsePlaywright:    usePlaywright,
+			Auth:             auth,
+			Extract:          extractOpts,
+			Pipeline:         pipelineOpts,
+			Timeout:          time.Duration(timeoutSecs) * time.Second,
+			UserAgent:        m.userAgent,
+			Limiter:          m.limiter,
+			MaxRetries:       reqRetries(m.maxRetries),
+			RetryBase:        m.retryBase,
+			MaxResponseBytes: m.maxResponseBytes,
+			DataDir:          m.dataDir,
+			Incremental:      incremental,
+			Store:            m.store,
+			Registry:         m.pipelineRegistry,
+			JSRegistry:       m.jsRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -480,27 +484,28 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		pipelineOpts := decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(jobCtx, research.Request{
-			Query:         query,
-			RequestID:     job.ID,
-			URLs:          urls,
-			MaxDepth:      maxDepth,
-			MaxPages:      maxPages,
-			Concurrency:   m.maxConcurrency,
-			Headless:      headless,
-			UsePlaywright: usePlaywright,
-			Auth:          auth,
-			Extract:       extractOpts,
-			Pipeline:      pipelineOpts,
-			Timeout:       time.Duration(timeoutSecs) * time.Second,
-			UserAgent:     m.userAgent,
-			Limiter:       m.limiter,
-			MaxRetries:    m.maxRetries,
-			RetryBase:     m.retryBase,
-			DataDir:       m.dataDir,
-			Incremental:   incremental,
-			Store:         m.store,
-			Registry:      m.pipelineRegistry,
-			JSRegistry:    m.jsRegistry,
+			Query:            query,
+			RequestID:        job.ID,
+			URLs:             urls,
+			MaxDepth:         maxDepth,
+			MaxPages:         maxPages,
+			Concurrency:      m.maxConcurrency,
+			Headless:         headless,
+			UsePlaywright:    usePlaywright,
+			Auth:             auth,
+			Extract:          extractOpts,
+			Pipeline:         pipelineOpts,
+			Timeout:          time.Duration(timeoutSecs) * time.Second,
+			UserAgent:        m.userAgent,
+			Limiter:          m.limiter,
+			MaxRetries:       m.maxRetries,
+			RetryBase:        m.retryBase,
+			MaxResponseBytes: m.maxResponseBytes,
+			DataDir:          m.dataDir,
+			Incremental:      incremental,
+			Store:            m.store,
+			Registry:         m.pipelineRegistry,
+			JSRegistry:       m.jsRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

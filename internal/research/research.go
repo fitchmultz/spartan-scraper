@@ -24,27 +24,28 @@ import (
 )
 
 type Request struct {
-	Query         string
-	RequestID     string
-	URLs          []string
-	MaxDepth      int
-	MaxPages      int
-	Concurrency   int
-	Headless      bool
-	UsePlaywright bool
-	Auth          fetch.AuthOptions
-	Extract       extract.ExtractOptions
-	Pipeline      pipeline.Options
-	Timeout       time.Duration
-	UserAgent     string
-	Limiter       *fetch.HostLimiter
-	MaxRetries    int
-	RetryBase     time.Duration
-	DataDir       string
-	Incremental   bool
-	Store         scrape.CrawlStateStore
-	Registry      *pipeline.Registry
-	JSRegistry    *pipeline.JSRegistry
+	Query            string
+	RequestID        string
+	URLs             []string
+	MaxDepth         int
+	MaxPages         int
+	Concurrency      int
+	Headless         bool
+	UsePlaywright    bool
+	Auth             fetch.AuthOptions
+	Extract          extract.ExtractOptions
+	Pipeline         pipeline.Options
+	Timeout          time.Duration
+	UserAgent        string
+	Limiter          *fetch.HostLimiter
+	MaxRetries       int
+	RetryBase        time.Duration
+	MaxResponseBytes int64
+	DataDir          string
+	Incremental      bool
+	Store            scrape.CrawlStateStore
+	Registry         *pipeline.Registry
+	JSRegistry       *pipeline.JSRegistry
 }
 
 type Evidence struct {
@@ -93,26 +94,27 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		if req.MaxDepth > 0 {
 			slog.Debug("research crawling target", "url", target, "maxDepth", req.MaxDepth)
 			pages, err := crawl.Run(ctx, crawl.Request{
-				URL:           target,
-				RequestID:     req.RequestID,
-				MaxDepth:      req.MaxDepth,
-				MaxPages:      req.MaxPages,
-				Concurrency:   req.Concurrency,
-				Headless:      req.Headless,
-				UsePlaywright: req.UsePlaywright,
-				Auth:          req.Auth,
-				Extract:       req.Extract,
-				Pipeline:      req.Pipeline,
-				Timeout:       req.Timeout,
-				UserAgent:     req.UserAgent,
-				Limiter:       req.Limiter,
-				MaxRetries:    req.MaxRetries,
-				RetryBase:     req.RetryBase,
-				DataDir:       req.DataDir,
-				Incremental:   req.Incremental,
-				Store:         req.Store,
-				Registry:      req.Registry,
-				JSRegistry:    req.JSRegistry,
+				URL:              target,
+				RequestID:        req.RequestID,
+				MaxDepth:         req.MaxDepth,
+				MaxPages:         req.MaxPages,
+				Concurrency:      req.Concurrency,
+				Headless:         req.Headless,
+				UsePlaywright:    req.UsePlaywright,
+				Auth:             req.Auth,
+				Extract:          req.Extract,
+				Pipeline:         req.Pipeline,
+				Timeout:          req.Timeout,
+				UserAgent:        req.UserAgent,
+				Limiter:          req.Limiter,
+				MaxRetries:       req.MaxRetries,
+				RetryBase:        req.RetryBase,
+				MaxResponseBytes: req.MaxResponseBytes,
+				DataDir:          req.DataDir,
+				Incremental:      req.Incremental,
+				Store:            req.Store,
+				Registry:         req.Registry,
+				JSRegistry:       req.JSRegistry,
 			})
 			if err != nil {
 				slog.Error("research crawl failed", "url", target, "error", err)
@@ -132,23 +134,24 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		} else {
 			slog.Debug("research scraping target", "url", target)
 			res, err := scrape.Run(ctx, scrape.Request{
-				URL:           target,
-				RequestID:     req.RequestID,
-				Headless:      req.Headless,
-				UsePlaywright: req.UsePlaywright,
-				Auth:          req.Auth,
-				Extract:       req.Extract,
-				Pipeline:      req.Pipeline,
-				Timeout:       req.Timeout,
-				UserAgent:     req.UserAgent,
-				Limiter:       req.Limiter,
-				MaxRetries:    req.MaxRetries,
-				RetryBase:     req.RetryBase,
-				DataDir:       req.DataDir,
-				Incremental:   req.Incremental,
-				Store:         req.Store,
-				Registry:      req.Registry,
-				JSRegistry:    req.JSRegistry,
+				URL:              target,
+				RequestID:        req.RequestID,
+				Headless:         req.Headless,
+				UsePlaywright:    req.UsePlaywright,
+				Auth:             req.Auth,
+				Extract:          req.Extract,
+				Pipeline:         req.Pipeline,
+				Timeout:          req.Timeout,
+				UserAgent:        req.UserAgent,
+				Limiter:          req.Limiter,
+				MaxRetries:       req.MaxRetries,
+				RetryBase:        req.RetryBase,
+				MaxResponseBytes: req.MaxResponseBytes,
+				DataDir:          req.DataDir,
+				Incremental:      req.Incremental,
+				Store:            req.Store,
+				Registry:         req.Registry,
+				JSRegistry:       req.JSRegistry,
 			})
 			if err != nil {
 				slog.Error("research scrape failed", "url", target, "error", err)

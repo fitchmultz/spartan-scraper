@@ -44,6 +44,7 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 		cfg.RateLimitBurst,
 		cfg.MaxRetries,
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.MaxResponseBytes,
 		false,
 	)
 	ctx, cancel := context.WithCancel(context.Background())

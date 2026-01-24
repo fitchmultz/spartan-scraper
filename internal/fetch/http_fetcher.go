@@ -3,6 +3,7 @@ package fetch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -105,7 +106,20 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}, nil
 		}
 
-		body, readErr := io.ReadAll(resp.Body)
+		// Enforce max response size limit
+		var bodyReader io.Reader = resp.Body
+		if req.MaxResponseBytes > 0 {
+			// +1 allows us to detect when limit is exceeded
+			bodyReader = io.LimitReader(resp.Body, req.MaxResponseBytes+1)
+		}
+		body, readErr := io.ReadAll(bodyReader)
+
+		// Check if response exceeded the size limit
+		if req.MaxResponseBytes > 0 && int64(len(body)) > req.MaxResponseBytes {
+			_ = resp.Body.Close()
+			return Result{}, fmt.Errorf("response body exceeded maximum size of %d bytes", req.MaxResponseBytes)
+		}
+
 		_ = resp.Body.Close()
 		if readErr != nil {
 			slog.Warn("failed to read HTTP response body", "url", req.URL, "error", readErr, "attempt", attempt)

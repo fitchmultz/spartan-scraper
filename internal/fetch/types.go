@@ -116,21 +116,22 @@ type AuthOptions struct {
 }
 
 type Request struct {
-	URL             string
-	Timeout         time.Duration
-	UserAgent       string
-	Headless        bool
-	UsePlaywright   bool
-	Auth            AuthOptions
-	Limiter         *HostLimiter
-	MaxRetries      int
-	RetryBaseDelay  time.Duration
-	IfNoneMatch     string   `json:"-"`
-	IfModifiedSince string   `json:"-"`
-	DataDir         string   `json:"-"`
-	PreNavJS        []string `json:"-"`
-	PostNavJS       []string `json:"-"`
-	WaitSelectors   []string `json:"-"`
+	URL              string
+	Timeout          time.Duration
+	UserAgent        string
+	Headless         bool
+	UsePlaywright    bool
+	Auth             AuthOptions
+	Limiter          *HostLimiter
+	MaxRetries       int
+	RetryBaseDelay   time.Duration
+	MaxResponseBytes int64    `json:"maxResponseBytes,omitempty"`
+	IfNoneMatch      string   `json:"-"`
+	IfModifiedSince  string   `json:"-"`
+	DataDir          string   `json:"-"`
+	PreNavJS         []string `json:"-"`
+	PostNavJS        []string `json:"-"`
+	WaitSelectors    []string `json:"-"`
 }
 
 type Result struct {

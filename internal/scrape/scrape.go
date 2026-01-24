@@ -21,23 +21,24 @@ import (
 
 // Request represents a single page scrape request.
 type Request struct {
-	URL           string
-	RequestID     string
-	Headless      bool
-	UsePlaywright bool
-	Auth          fetch.AuthOptions
-	Extract       extract.ExtractOptions
-	Pipeline      pipeline.Options
-	Timeout       time.Duration
-	UserAgent     string
-	Limiter       *fetch.HostLimiter
-	MaxRetries    int
-	RetryBase     time.Duration
-	DataDir       string
-	Incremental   bool
-	Store         CrawlStateStore
-	Registry      *pipeline.Registry
-	JSRegistry    *pipeline.JSRegistry
+	URL              string
+	RequestID        string
+	Headless         bool
+	UsePlaywright    bool
+	Auth             fetch.AuthOptions
+	Extract          extract.ExtractOptions
+	Pipeline         pipeline.Options
+	Timeout          time.Duration
+	UserAgent        string
+	Limiter          *fetch.HostLimiter
+	MaxRetries       int
+	RetryBase        time.Duration
+	MaxResponseBytes int64
+	DataDir          string
+	Incremental      bool
+	Store            CrawlStateStore
+	Registry         *pipeline.Registry
+	JSRegistry       *pipeline.JSRegistry
 }
 
 // Result contains the outcome of a scrape operation.
@@ -92,18 +93,19 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	fetcher := fetch.NewFetcher()
 
 	fetchReq := fetch.Request{
-		URL:             req.URL,
-		Timeout:         req.Timeout,
-		UserAgent:       req.UserAgent,
-		Headless:        req.Headless,
-		UsePlaywright:   req.UsePlaywright,
-		Auth:            req.Auth,
-		Limiter:         req.Limiter,
-		MaxRetries:      req.MaxRetries,
-		RetryBaseDelay:  req.RetryBase,
-		DataDir:         req.DataDir,
-		IfNoneMatch:     ifNoneMatch,
-		IfModifiedSince: ifModifiedSince,
+		URL:              req.URL,
+		Timeout:          req.Timeout,
+		UserAgent:        req.UserAgent,
+		Headless:         req.Headless,
+		UsePlaywright:    req.UsePlaywright,
+		Auth:             req.Auth,
+		Limiter:          req.Limiter,
+		MaxRetries:       req.MaxRetries,
+		RetryBaseDelay:   req.RetryBase,
+		MaxResponseBytes: req.MaxResponseBytes,
+		DataDir:          req.DataDir,
+		IfNoneMatch:      ifNoneMatch,
+		IfModifiedSince:  ifModifiedSince,
 	}
 
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindScrape))

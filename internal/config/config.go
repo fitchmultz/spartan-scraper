@@ -22,6 +22,7 @@ type Config struct {
 	RateLimitBurst     int
 	MaxRetries         int
 	RetryBaseMs        int
+	MaxResponseBytes   int64
 	UsePlaywright      bool
 	AuthOverrides      EnvOverrides
 	LogLevel           string
@@ -40,6 +41,7 @@ func Load() Config {
 		RateLimitBurst:     getenvInt("RATE_LIMIT_BURST", 4),
 		MaxRetries:         getenvInt("MAX_RETRIES", 2),
 		RetryBaseMs:        getenvInt("RETRY_BASE_MS", 400),
+		MaxResponseBytes:   getenvInt64("MAX_RESPONSE_BYTES", 10*1024*1024),
 		UsePlaywright:      getenvBool("USE_PLAYWRIGHT", false),
 		AuthOverrides:      loadAuthOverrides(),
 		LogLevel:           getenv("LOG_LEVEL", "info"),
@@ -117,6 +119,18 @@ func getenvInt(key string, fallback int) int {
 		return fallback
 	}
 	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func getenvInt64(key string, fallback int64) int64 {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return fallback
 	}

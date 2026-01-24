@@ -30,6 +30,7 @@ func setupTestManager(t *testing.T) (*Manager, *store.Store, func()) {
 		20,
 		3,
 		100*time.Millisecond,
+		10*1024*1024,
 		false,
 	)
 
