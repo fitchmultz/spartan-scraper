@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0015",
-      "status": "todo",
-      "title": "Web UI: Add Cancel Job button",
-      "priority": "medium",
-      "tags": [
-        "web",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "web/src/api/index.ts"
-      ],
-      "evidence": [
-        "There is no way to cancel a running job from the Web UI"
-      ],
-      "plan": [
-        "Add a 'Cancel' button to job items in the UI",
-        "Implement the cancel call using the generated API client"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0016",
       "status": "todo",
       "title": "Web UI: Add Delete Job button",

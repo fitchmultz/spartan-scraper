@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  deleteV1JobsById,
   getV1Jobs,
   postV1Crawl,
   postV1Research,
@@ -284,6 +285,26 @@ export function App() {
       setRawResult(text);
     } catch (err) {
       setError(String(err));
+    }
+  }
+
+  async function cancelJob(jobId: string) {
+    setLoading(true);
+    try {
+      const { error: apiError } = await deleteV1JobsById({
+        baseUrl: "",
+        path: { id: jobId },
+      });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
+      setError(null);
+      await refreshJobs();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -589,15 +610,26 @@ export function App() {
                 </div>
                 <div>Updated: {job.updatedAt}</div>
                 {job.error ? <div>Error: {job.error}</div> : null}
-                {job.status === "succeeded" ? (
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => void loadResults(job.id ?? "")}
-                  >
-                    View Results
-                  </button>
-                ) : null}
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  {job.status === "succeeded" ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void loadResults(job.id ?? "")}
+                    >
+                      View Results
+                    </button>
+                  ) : null}
+                  {job.status === "queued" || job.status === "running" ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void cancelJob(job.id ?? "")}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))
           )}
@@ -826,6 +858,8 @@ function statusClass(status: string) {
     case "succeeded":
       return "success";
     case "failed":
+      return "failed";
+    case "canceled":
       return "failed";
     case "running":
       return "running";
