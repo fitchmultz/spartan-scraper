@@ -419,6 +419,39 @@
       "completed_at": "2026-01-24T07:59:58.274210000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0013",
+      "status": "done",
+      "title": "Refactor CLI to reduce duplication",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "refactor"
+      ],
+      "scope": [
+        "internal/cli/cli.go"
+      ],
+      "evidence": [
+        "runScrape, runCrawl, and runResearch have high code duplication for flag parsing and job enqueuing"
+      ],
+      "plan": [
+        "Extract common flag sets and job enqueuing logic into helper functions",
+        "Simplify subcommand implementations"
+      ],
+      "notes": [
+        "Refactored runScrape, runCrawl, runResearch to use common helpers (registerCommonFlags, resolveAuthFromFlags, initJobManager, handleJobResult)",
+        "Refactored runServer to use initJobManager helper (missed in Phase 2)",
+        "Refactored runSchedule add to use registerBrowserFlags and registerPipelineFlags",
+        "Reduced ~230 lines of duplicated code across CLI commands",
+        "All tests pass, CI gate successful"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T08:16:18.329025000Z",
+      "completed_at": "2026-01-24T08:16:18.329025000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

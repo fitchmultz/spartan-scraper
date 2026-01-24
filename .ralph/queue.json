@@ -2,32 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0013",
-      "status": "todo",
-      "title": "Refactor CLI to reduce duplication",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "refactor"
-      ],
-      "scope": [
-        "internal/cli/cli.go"
-      ],
-      "evidence": [
-        "runScrape, runCrawl, and runResearch have high code duplication for flag parsing and job enqueuing"
-      ],
-      "plan": [
-        "Extract common flag sets and job enqueuing logic into helper functions",
-        "Simplify subcommand implementations"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0014",
       "status": "todo",
       "title": "Web UI: Handle multi-line results",

@@ -82,43 +82,8 @@ func Run(ctx context.Context) int {
 func runScrape(ctx context.Context, cfg config.Config) int {
 	fs := flag.NewFlagSet("scrape", flag.ExitOnError)
 	url := fs.String("url", "", "URL to scrape")
-	headless := fs.Bool("headless", false, "Use headless browser")
-	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
-	out := fs.String("out", "", "Output file (JSON)")
-	wait := fs.Bool("wait", false, "Wait for completion and write output")
-	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
-	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
-	profileName := fs.String("auth-profile", "", "Auth profile name")
-	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
+	cf := registerCommonFlags(fs, cfg)
 
-	extractTemplate := fs.String("extract-template", "", "Extraction template name")
-	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
-	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
-
-	preProcessors := stringSliceFlag{}
-	postProcessors := stringSliceFlag{}
-	transformers := stringSliceFlag{}
-	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
-	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
-	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
-
-	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
-	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
-	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
-	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
-	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
-	tokenValues := stringSliceFlag{}
-	fs.Var(&tokenValues, "token", "Token value (repeatable)")
-	loginURL := fs.String("login-url", "", "Login URL for headless auth")
-	loginUserSelector := fs.String("login-user-selector", "", "CSS selector for username input")
-	loginPassSelector := fs.String("login-pass-selector", "", "CSS selector for password input")
-	loginSubmitSelector := fs.String("login-submit-selector", "", "CSS selector for submit button")
-	loginUser := fs.String("login-user", "", "Username for login")
-	loginPass := fs.String("login-pass", "", "Password for login")
-	headers := stringSliceFlag{}
-	cookies := stringSliceFlag{}
-	fs.Var(&headers, "header", "Extra header (repeatable, Key: Value)")
-	fs.Var(&cookies, "cookie", "Cookie value (repeatable, name=value)")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan scrape --url <url> [options]
@@ -142,15 +107,15 @@ Options:
 		return 1
 	}
 
-	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	extractOpts, err := loadExtractOptions(*cf.extractTemplate, *cf.extractConfig, *cf.extractValidate)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	pipelineOpts := pipeline.Options{
-		PreProcessors:  []string(preProcessors),
-		PostProcessors: []string(postProcessors),
-		Transformers:   []string(transformers),
+		PreProcessors:  []string(cf.preProcessors),
+		PostProcessors: []string(cf.postProcessors),
+		Transformers:   []string(cf.transformers),
 	}
 
 	store, err := store.Open(cfg.DataDir)
@@ -160,39 +125,15 @@ Options:
 	}
 	defer store.Close()
 
-	manager := jobs.NewManager(
-		store,
-		cfg.DataDir,
-		cfg.UserAgent,
-		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
-		cfg.MaxConcurrency,
-		cfg.RateLimitQPS,
-		cfg.RateLimitBurst,
-		cfg.MaxRetries,
-		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
-		cfg.UsePlaywright,
-	)
-	manager.Start(ctx)
-	authOverrides := auth.ResolveInput{
-		Headers: toHeaderKVs(headers.ToMap()),
-		Cookies: toCookies([]string(cookies)),
-		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
-		Login: buildLoginFlow(loginFlowInput{
-			URL:            *loginURL,
-			UserSelector:   *loginUserSelector,
-			PassSelector:   *loginPassSelector,
-			SubmitSelector: *loginSubmitSelector,
-			Username:       *loginUser,
-			Password:       *loginPass,
-		}),
-	}
-	authOptions, err := resolveAuthForRequest(cfg, *url, *profileName, authOverrides)
+	manager := initJobManager(ctx, cfg, store)
+
+	authOptions, err := resolveAuthFromFlags(cfg, *url, cf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
-	job, err := manager.CreateScrapeJob(ctx, *url, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateScrapeJob(ctx, *url, *cf.headless, *cf.playwright, authOptions, *cf.timeout, extractOpts, pipelineOpts, *cf.incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -202,28 +143,7 @@ Options:
 		return 1
 	}
 
-	if *wait || *out != "" {
-		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		if *out != "" {
-			if err := copyResults(ctx, store, job.ID, *out); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(job.ID)
-			return 0
-		}
-		if err := printResults(ctx, store, job.ID); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		return 0
-	}
-	payload, _ := json.MarshalIndent(job, "", "  ")
-	fmt.Println(string(payload))
-	return 0
+	return handleJobResult(ctx, store, job, *cf.wait || *cf.out != "", time.Duration(*cf.waitTimeout)*time.Second, *cf.out)
 }
 
 func waitForJob(ctx context.Context, store *store.Store, id string, timeout time.Duration) error {
@@ -299,37 +219,8 @@ func runCrawl(ctx context.Context, cfg config.Config) int {
 	url := fs.String("url", "", "Root URL to crawl")
 	maxDepth := fs.Int("max-depth", 2, "Max crawl depth")
 	maxPages := fs.Int("max-pages", 200, "Max pages to crawl")
-	headless := fs.Bool("headless", false, "Use headless browser")
-	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
-	out := fs.String("out", "", "Output file (JSONL)")
-	wait := fs.Bool("wait", false, "Wait for completion and write output")
-	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
-	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
-	profileName := fs.String("auth-profile", "", "Auth profile name")
-	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
+	cf := registerCommonFlags(fs, cfg)
 
-	extractTemplate := fs.String("extract-template", "", "Extraction template name")
-	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
-	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
-
-	preProcessors := stringSliceFlag{}
-	postProcessors := stringSliceFlag{}
-	transformers := stringSliceFlag{}
-	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
-	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
-	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
-
-	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
-	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
-	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
-	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
-	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
-	tokenValues := stringSliceFlag{}
-	headers := stringSliceFlag{}
-	cookies := stringSliceFlag{}
-	fs.Var(&tokenValues, "token", "Token value (repeatable)")
-	fs.Var(&headers, "header", "Extra header (repeatable, Key: Value)")
-	fs.Var(&cookies, "cookie", "Cookie value (repeatable, name=value)")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan crawl --url <url> [options]
@@ -337,7 +228,7 @@ func runCrawl(ctx context.Context, cfg config.Config) int {
 Examples:
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan crawl --url https://example.com --headless --wait --out ./out/site.jsonl
-	spartan crawl --url https://example.com --pre-processor redact --transformer json-clean
+  spartan crawl --url https://example.com --pre-processor redact --transformer json-clean
 
 Options:
 `)
@@ -349,15 +240,15 @@ Options:
 		return 1
 	}
 
-	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	extractOpts, err := loadExtractOptions(*cf.extractTemplate, *cf.extractConfig, *cf.extractValidate)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	pipelineOpts := pipeline.Options{
-		PreProcessors:  []string(preProcessors),
-		PostProcessors: []string(postProcessors),
-		Transformers:   []string(transformers),
+		PreProcessors:  []string(cf.preProcessors),
+		PostProcessors: []string(cf.postProcessors),
+		Transformers:   []string(cf.transformers),
 	}
 
 	store, err := store.Open(cfg.DataDir)
@@ -367,31 +258,15 @@ Options:
 	}
 	defer store.Close()
 
-	manager := jobs.NewManager(
-		store,
-		cfg.DataDir,
-		cfg.UserAgent,
-		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
-		cfg.MaxConcurrency,
-		cfg.RateLimitQPS,
-		cfg.RateLimitBurst,
-		cfg.MaxRetries,
-		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
-		cfg.UsePlaywright,
-	)
-	manager.Start(ctx)
-	authOverrides := auth.ResolveInput{
-		Headers: toHeaderKVs(headers.ToMap()),
-		Cookies: toCookies([]string(cookies)),
-		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
-	}
-	authOptions, err := resolveAuthForRequest(cfg, *url, *profileName, authOverrides)
+	manager := initJobManager(ctx, cfg, store)
+
+	authOptions, err := resolveAuthFromFlags(cfg, *url, cf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
-	job, err := manager.CreateCrawlJob(ctx, *url, *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateCrawlJob(ctx, *url, *maxDepth, *maxPages, *cf.headless, *cf.playwright, authOptions, *cf.timeout, extractOpts, pipelineOpts, *cf.incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -401,28 +276,7 @@ Options:
 		return 1
 	}
 
-	if *wait || *out != "" {
-		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		if *out != "" {
-			if err := copyResults(ctx, store, job.ID, *out); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(job.ID)
-			return 0
-		}
-		if err := printResults(ctx, store, job.ID); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		return 0
-	}
-	payload, _ := json.MarshalIndent(job, "", "  ")
-	fmt.Println(string(payload))
-	return 0
+	return handleJobResult(ctx, store, job, *cf.wait || *cf.out != "", time.Duration(*cf.waitTimeout)*time.Second, *cf.out)
 }
 
 func runResearch(ctx context.Context, cfg config.Config) int {
@@ -431,37 +285,8 @@ func runResearch(ctx context.Context, cfg config.Config) int {
 	urls := fs.String("urls", "", "Comma-separated list of URLs to research")
 	maxDepth := fs.Int("max-depth", 2, "Max crawl depth per URL (0 for single-page scrape)")
 	maxPages := fs.Int("max-pages", 200, "Max pages to crawl per URL")
-	headless := fs.Bool("headless", false, "Use headless browser")
-	playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
-	out := fs.String("out", "", "Output file (JSONL)")
-	wait := fs.Bool("wait", false, "Wait for completion and write output")
-	waitTimeout := fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)")
-	timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
-	authBasic := fs.String("auth-basic", "", "Basic auth user:pass")
-	profileName := fs.String("auth-profile", "", "Auth profile name")
-	incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
+	cf := registerCommonFlags(fs, cfg)
 
-	extractTemplate := fs.String("extract-template", "", "Extraction template name")
-	extractConfig := fs.String("extract-config", "", "Path to inline template JSON")
-	extractValidate := fs.Bool("extract-validate", false, "Validate extraction against schema")
-
-	preProcessors := stringSliceFlag{}
-	postProcessors := stringSliceFlag{}
-	transformers := stringSliceFlag{}
-	fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
-	fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
-	fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
-
-	tokenKind := fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key")
-	tokenHeader := fs.String("token-header", "", "Token header name (api_key or bearer override)")
-	tokenQuery := fs.String("token-query", "", "Token query param name (api_key)")
-	tokenCookie := fs.String("token-cookie", "", "Token cookie name (api_key)")
-	tokenValues := stringSliceFlag{}
-	headerList := stringSliceFlag{}
-	cookieList := stringSliceFlag{}
-	fs.Var(&tokenValues, "token", "Token value (repeatable)")
-	fs.Var(&headerList, "header", "Extra header (repeatable, Key: Value)")
-	fs.Var(&cookieList, "cookie", "Cookie value (repeatable, name=value)")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan research --query <query> --urls <url1,url2,...> [options]
@@ -469,7 +294,7 @@ func runResearch(ctx context.Context, cfg config.Config) int {
 Examples:
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
   spartan research --query "login flow" --urls https://example.com --headless --wait --out ./out/research.jsonl
-	spartan research --query "pricing model" --urls https://example.com --transformer json-clean
+  spartan research --query "pricing model" --urls https://example.com --transformer json-clean
 
 Options:
 `)
@@ -481,15 +306,15 @@ Options:
 		return 1
 	}
 
-	extractOpts, err := loadExtractOptions(*extractTemplate, *extractConfig, *extractValidate)
+	extractOpts, err := loadExtractOptions(*cf.extractTemplate, *cf.extractConfig, *cf.extractValidate)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	pipelineOpts := pipeline.Options{
-		PreProcessors:  []string(preProcessors),
-		PostProcessors: []string(postProcessors),
-		Transformers:   []string(transformers),
+		PreProcessors:  []string(cf.preProcessors),
+		PostProcessors: []string(cf.postProcessors),
+		Transformers:   []string(cf.transformers),
 	}
 
 	store, err := store.Open(cfg.DataDir)
@@ -499,32 +324,16 @@ Options:
 	}
 	defer store.Close()
 
-	manager := jobs.NewManager(
-		store,
-		cfg.DataDir,
-		cfg.UserAgent,
-		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
-		cfg.MaxConcurrency,
-		cfg.RateLimitQPS,
-		cfg.RateLimitBurst,
-		cfg.MaxRetries,
-		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
-		cfg.UsePlaywright,
-	)
-	manager.Start(ctx)
+	manager := initJobManager(ctx, cfg, store)
 
-	authOverrides := auth.ResolveInput{
-		Headers: toHeaderKVs(headerList.ToMap()),
-		Cookies: toCookies([]string(cookieList)),
-		Tokens:  buildTokens(*authBasic, []string(tokenValues), *tokenKind, *tokenHeader, *tokenQuery, *tokenCookie),
-	}
-	authOptions, err := resolveAuthForRequest(cfg, splitCSV(*urls)[0], *profileName, authOverrides)
+	// Resolve auth using the first URL as the base
+	authOptions, err := resolveAuthFromFlags(cfg, splitCSV(*urls)[0], cf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
-	job, err := manager.CreateResearchJob(ctx, *query, splitCSV(*urls), *maxDepth, *maxPages, *headless, *playwright, authOptions, *timeout, extractOpts, pipelineOpts, *incremental)
+	job, err := manager.CreateResearchJob(ctx, *query, splitCSV(*urls), *maxDepth, *maxPages, *cf.headless, *cf.playwright, authOptions, *cf.timeout, extractOpts, pipelineOpts, *cf.incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -534,29 +343,7 @@ Options:
 		return 1
 	}
 
-	if *wait || *out != "" {
-		if err := waitForJob(ctx, store, job.ID, time.Duration(*waitTimeout)*time.Second); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		if *out != "" {
-			if err := copyResults(ctx, store, job.ID, *out); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
-			}
-			fmt.Println(job.ID)
-			return 0
-		}
-		if err := printResults(ctx, store, job.ID); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		return 0
-	}
-
-	payload, _ := json.MarshalIndent(job, "", "  ")
-	fmt.Println(string(payload))
-	return 0
+	return handleJobResult(ctx, store, job, *cf.wait || *cf.out != "", time.Duration(*cf.waitTimeout)*time.Second, *cf.out)
 }
 
 func runAuth(ctx context.Context, cfg config.Config) int {
@@ -908,17 +695,11 @@ Examples:
 		urls := fs.String("urls", "", "Comma-separated URLs for research")
 		maxDepth := fs.Int("max-depth", 2, "Max crawl depth")
 		maxPages := fs.Int("max-pages", 200, "Max pages to crawl")
-		headless := fs.Bool("headless", false, "Use headless browser")
-		playwright := fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages")
-		timeout := fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds")
 		authProfile := fs.String("auth-profile", "", "Auth profile name")
 
-		preProcessors := stringSliceFlag{}
-		postProcessors := stringSliceFlag{}
-		transformers := stringSliceFlag{}
-		fs.Var(&preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
-		fs.Var(&postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
-		fs.Var(&transformers, "transformer", "Output transformer name (repeatable)")
+		// Use browserFlags for headless/playwright/timeout to reduce duplication
+		bf := registerBrowserFlags(fs, cfg)
+		pf := registerPipelineFlags(fs)
 
 		_ = fs.Parse(os.Args[3:])
 
@@ -928,13 +709,13 @@ Examples:
 		}
 
 		params := map[string]interface{}{
-			"headless":   *headless,
-			"playwright": *playwright,
-			"timeout":    *timeout,
+			"headless":   *bf.headless,
+			"playwright": *bf.playwright,
+			"timeout":    *bf.timeout,
 			"pipeline": pipeline.Options{
-				PreProcessors:  []string(preProcessors),
-				PostProcessors: []string(postProcessors),
-				Transformers:   []string(transformers),
+				PreProcessors:  []string(pf.preProcessors),
+				PostProcessors: []string(pf.postProcessors),
+				Transformers:   []string(pf.transformers),
 			},
 		}
 		if *authProfile != "" {
@@ -1021,20 +802,7 @@ Notes:
 	}
 	defer store.Close()
 
-	manager := jobs.NewManager(
-		store,
-		cfg.DataDir,
-		cfg.UserAgent,
-		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
-		cfg.MaxConcurrency,
-		cfg.RateLimitQPS,
-		cfg.RateLimitBurst,
-		cfg.MaxRetries,
-		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
-		cfg.UsePlaywright,
-	)
-
-	manager.Start(serverCtx)
+	manager := initJobManager(serverCtx, cfg, store)
 	go func() {
 		if err := scheduler.Run(serverCtx, cfg.DataDir, manager); err != nil {
 			slog.Error("scheduler error", "error", err)
@@ -1554,4 +1322,220 @@ func loadExtractOptions(template, configPath string, validate bool) (extract.Ext
 		opts.Inline = &tmpl
 	}
 	return opts, nil
+}
+
+// commonFlags holds flag pointers shared across scrape, crawl, and research commands
+type commonFlags struct {
+	// Extraction flags
+	extractTemplate *string
+	extractConfig   *string
+	extractValidate *bool
+
+	// Pipeline flags
+	preProcessors  stringSliceFlag
+	postProcessors stringSliceFlag
+	transformers   stringSliceFlag
+
+	// Auth flags
+	authBasic   *string
+	tokenKind   *string
+	tokenHeader *string
+	tokenQuery  *string
+	tokenCookie *string
+	tokenValues stringSliceFlag
+	headers     stringSliceFlag
+	cookies     stringSliceFlag
+
+	// Login flow flags
+	loginURL            *string
+	loginUserSelector   *string
+	loginPassSelector   *string
+	loginSubmitSelector *string
+	loginUser           *string
+	loginPass           *string
+
+	// Browser flags
+	headless   *bool
+	playwright *bool
+	timeout    *int
+
+	// Output flags
+	out         *string
+	wait        *bool
+	waitTimeout *int
+
+	// Profile flag
+	profileName *string
+
+	// Incremental flag
+	incremental *bool
+}
+
+// browserFlags holds browser-related flags for scheduling
+type browserFlags struct {
+	headless   *bool
+	playwright *bool
+	timeout    *int
+}
+
+// pipelineFlags holds pipeline processor flags for scheduling
+type pipelineFlags struct {
+	preProcessors  stringSliceFlag
+	postProcessors stringSliceFlag
+	transformers   stringSliceFlag
+}
+
+// registerCommonFlags registers all shared flags on the given FlagSet
+// and returns a commonFlags struct with pointers to the flag values.
+// The cfg parameter is used for default values (e.g., UsePlaywright).
+func registerCommonFlags(fs *flag.FlagSet, cfg config.Config) commonFlags {
+	cf := commonFlags{
+		// Extraction flags
+		extractTemplate: fs.String("extract-template", "", "Extraction template name"),
+		extractConfig:   fs.String("extract-config", "", "Path to inline template JSON"),
+		extractValidate: fs.Bool("extract-validate", false, "Validate extraction against schema"),
+
+		// Pipeline flags
+		preProcessors:  stringSliceFlag{},
+		postProcessors: stringSliceFlag{},
+		transformers:   stringSliceFlag{},
+
+		// Auth flags
+		authBasic:   fs.String("auth-basic", "", "Basic auth user:pass"),
+		tokenKind:   fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key"),
+		tokenHeader: fs.String("token-header", "", "Token header name (api_key or bearer override)"),
+		tokenQuery:  fs.String("token-query", "", "Token query param name (api_key)"),
+		tokenCookie: fs.String("token-cookie", "", "Token cookie name (api_key)"),
+		tokenValues: stringSliceFlag{},
+		headers:     stringSliceFlag{},
+		cookies:     stringSliceFlag{},
+
+		// Login flow flags
+		loginURL:            fs.String("login-url", "", "Login URL for headless auth"),
+		loginUserSelector:   fs.String("login-user-selector", "", "CSS selector for username input"),
+		loginPassSelector:   fs.String("login-pass-selector", "", "CSS selector for password input"),
+		loginSubmitSelector: fs.String("login-submit-selector", "", "CSS selector for submit button"),
+		loginUser:           fs.String("login-user", "", "Username for login"),
+		loginPass:           fs.String("login-pass", "", "Password for login"),
+
+		// Browser flags (use cfg defaults for playwright/timeout)
+		headless:   fs.Bool("headless", false, "Use headless browser"),
+		playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
+		timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+
+		// Output flags
+		out:         fs.String("out", "", "Output file (JSON)"),
+		wait:        fs.Bool("wait", false, "Wait for completion and write output"),
+		waitTimeout: fs.Int("wait-timeout", 0, "Max wait time in seconds (0 = no timeout)"),
+
+		// Profile flag
+		profileName: fs.String("auth-profile", "", "Auth profile name"),
+
+		// Incremental flag
+		incremental: fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)"),
+	}
+
+	// Register repeatable flags
+	fs.Var(&cf.preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+	fs.Var(&cf.postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+	fs.Var(&cf.transformers, "transformer", "Output transformer name (repeatable)")
+	fs.Var(&cf.tokenValues, "token", "Token value (repeatable)")
+	fs.Var(&cf.headers, "header", "Extra header (repeatable, Key: Value)")
+	fs.Var(&cf.cookies, "cookie", "Cookie value (repeatable, name=value)")
+
+	return cf
+}
+
+// registerBrowserFlags registers browser-related flags on the given FlagSet.
+// Used by schedule add which needs browser flags but not the full common flags set.
+func registerBrowserFlags(fs *flag.FlagSet, cfg config.Config) browserFlags {
+	bf := browserFlags{
+		headless:   fs.Bool("headless", false, "Use headless browser"),
+		playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
+		timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+	}
+	return bf
+}
+
+// registerPipelineFlags registers pipeline processor flags on the given FlagSet.
+// Used by schedule add which needs pipeline flags but not the full common flags set.
+func registerPipelineFlags(fs *flag.FlagSet) pipelineFlags {
+	pf := pipelineFlags{
+		preProcessors:  stringSliceFlag{},
+		postProcessors: stringSliceFlag{},
+		transformers:   stringSliceFlag{},
+	}
+	fs.Var(&pf.preProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
+	fs.Var(&pf.postProcessors, "post-processor", "Pipeline post-processor plugin name (repeatable)")
+	fs.Var(&pf.transformers, "transformer", "Output transformer name (repeatable)")
+	return pf
+}
+
+// resolveAuthFromFlags builds auth options from common flags and CLI input
+func resolveAuthFromFlags(cfg config.Config, url string, cf commonFlags) (fetch.AuthOptions, error) {
+	authOverrides := auth.ResolveInput{
+		Headers: toHeaderKVs(cf.headers.ToMap()),
+		Cookies: toCookies([]string(cf.cookies)),
+		Tokens:  buildTokens(*cf.authBasic, []string(cf.tokenValues), *cf.tokenKind, *cf.tokenHeader, *cf.tokenQuery, *cf.tokenCookie),
+		Login: buildLoginFlow(loginFlowInput{
+			URL:            *cf.loginURL,
+			UserSelector:   *cf.loginUserSelector,
+			PassSelector:   *cf.loginPassSelector,
+			SubmitSelector: *cf.loginSubmitSelector,
+			Username:       *cf.loginUser,
+			Password:       *cf.loginPass,
+		}),
+	}
+	return resolveAuthForRequest(cfg, url, *cf.profileName, authOverrides)
+}
+
+// initJobManager creates and starts a job manager with the given config
+func initJobManager(ctx context.Context, cfg config.Config, store *store.Store) *jobs.Manager {
+	manager := jobs.NewManager(
+		store,
+		cfg.DataDir,
+		cfg.UserAgent,
+		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
+		cfg.MaxConcurrency,
+		cfg.RateLimitQPS,
+		cfg.RateLimitBurst,
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.UsePlaywright,
+	)
+	manager.Start(ctx)
+	return manager
+}
+
+// handleJobResult handles waiting for and outputting job results
+// Returns 0 on success, non-zero exit code on error
+func handleJobResult(ctx context.Context, store *store.Store, job model.Job, wait bool, waitTimeout time.Duration, out string) int {
+	if !wait && out == "" {
+		// Just print the job JSON
+		payload, _ := json.MarshalIndent(job, "", "  ")
+		fmt.Println(string(payload))
+		return 0
+	}
+
+	// Wait for completion
+	if err := waitForJob(ctx, store, job.ID, waitTimeout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	// Handle output
+	if out != "" {
+		if err := copyResults(ctx, store, job.ID, out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fmt.Println(job.ID)
+		return 0
+	}
+
+	if err := printResults(ctx, store, job.ID); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
 }
