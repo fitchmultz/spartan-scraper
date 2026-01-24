@@ -1,32 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0018",
-      "status": "todo",
-      "title": "Periodic DB checkpoint in Manager",
-      "priority": "low",
-      "tags": [
-        "jobs",
-        "store",
-        "performance"
-      ],
-      "scope": [
-        "internal/jobs/manager.go"
-      ],
-      "evidence": [
-        "SQLite WAL mode is used but checkpoints are only manual or on close",
-        "Large WAL files can degrade performance over time"
-      ],
-      "plan": [
-        "Add a background ticker in Manager to call Store.Checkpoint periodically"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

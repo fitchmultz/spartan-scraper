@@ -168,6 +168,28 @@ func (m *Manager) Start(ctx context.Context) {
 			}
 		}(i)
 	}
+
+	// Start periodic database checkpoint goroutine
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		slog.Info("started periodic db checkpoint", "interval", "5m")
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Debug("stopping periodic db checkpoint")
+				return
+			case <-ticker.C:
+				if err := m.store.Checkpoint(ctx); err != nil {
+					slog.Warn("periodic db checkpoint failed", "error", err)
+				} else {
+					slog.Debug("periodic db checkpoint succeeded")
+				}
+			}
+		}
+	}()
 }
 
 // Wait blocks until all active workers have finished processing.

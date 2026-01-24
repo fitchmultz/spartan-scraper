@@ -591,6 +591,39 @@
       "completed_at": "2026-01-24T09:14:28.204741000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0018",
+      "status": "done",
+      "title": "Periodic DB checkpoint in Manager",
+      "priority": "low",
+      "tags": [
+        "jobs",
+        "store",
+        "performance"
+      ],
+      "scope": [
+        "internal/jobs/manager.go"
+      ],
+      "evidence": [
+        "SQLite WAL mode is used but checkpoints are only manual or on close",
+        "Large WAL files can degrade performance over time"
+      ],
+      "plan": [
+        "Add a background ticker in Manager to call Store.Checkpoint periodically"
+      ],
+      "notes": [
+        "Implemented periodic WAL checkpoint goroutine in Manager.Start()",
+        "Runs every 5 minutes using PASSIVE mode (non-blocking)",
+        "Properly integrates with existing WaitGroup shutdown pattern",
+        "CI gate passed: generate, format, type-check, lint, build, test"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T09:24:12.514043000Z",
+      "completed_at": "2026-01-24T09:24:12.514043000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
