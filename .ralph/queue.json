@@ -1,4 +1,497 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Fix path traversal vulnerability in auth import/export",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "auth"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/auth/vault.go"
+      ],
+      "evidence": [
+        "v1/auth/import and v1/auth/export take a raw 'path' from the request body",
+        "This allows reading/writing files anywhere on the disk the process has access to"
+      ],
+      "plan": [
+        "Modify handleAuthImport and handleAuthExport to validate the path",
+        "Restrict paths to a safe directory or use a predefined filename relative to DataDir",
+        "Consider removing absolute path support from these endpoints"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0002",
+      "status": "todo",
+      "title": "Implement RenderWaitModeNetworkIdle in ChromedpFetcher",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "chromedp",
+        "performance"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go"
+      ],
+      "evidence": [
+        "ChromedpFetcher.performWait for RenderWaitModeNetworkIdle is a stub (2s sleep)",
+        "Robust network idle requires implementing event listeners for network.EventRequestPaused or similar"
+      ],
+      "plan": [
+        "Implement network activity tracking using chromedp listeners",
+        "Replace 2s sleep with a wait loop that checks for zero inflight requests"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0003",
+      "status": "todo",
+      "title": "Implement browser availability check",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "infra",
+        "health"
+      ],
+      "scope": [
+        "internal/fetch/fetcher.go"
+      ],
+      "evidence": [
+        "fetch.CheckBrowserAvailability is a stub returning nil",
+        "healthz endpoint relies on this to report browser status"
+      ],
+      "plan": [
+        "Implement actual checks for chrome/chromium on PATH",
+        "Implement check for playwright drivers if usePlaywright is true"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0004",
+      "status": "todo",
+      "title": "Capture actual status in ChromedpFetcher",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "chromedp"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go"
+      ],
+      "evidence": [
+        "ChromedpFetcher returns a hardcoded 200 status for all successful captures",
+        "It should capture the status of the main navigation response"
+      ],
+      "plan": [
+        "Use network.EventResponseReceived to capture the status of the main frame request",
+        "Update Result.Status with the actual captured status"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0005",
+      "status": "todo",
+      "title": "Optimize PlaywrightFetcher browser reuse",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "playwright",
+        "performance"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go"
+      ],
+      "evidence": [
+        "PlaywrightFetcher initializes a new Playwright and browser instance for every fetch",
+        "This is highly inefficient for concurrent or sequential scrapes"
+      ],
+      "plan": [
+        "Implement a singleton or pool for Playwright and browser instances",
+        "Ensure proper lifecycle management and cleanup"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0006",
+      "status": "todo",
+      "title": "Implement pagination in Store.List",
+      "priority": "medium",
+      "tags": [
+        "store",
+        "performance"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "Store.List returns all jobs in a single query",
+        "This will scale poorly as the number of jobs increases"
+      ],
+      "plan": [
+        "Add limit and offset parameters to Store.List",
+        "Update API and CLI to support pagination"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0007",
+      "status": "todo",
+      "title": "Implement job recovery on Manager startup",
+      "priority": "medium",
+      "tags": [
+        "jobs",
+        "resilience"
+      ],
+      "scope": [
+        "internal/jobs/manager.go"
+      ],
+      "evidence": [
+        "Manager.Start does not load existing 'Queued' jobs from the store",
+        "If the server restarts, pending jobs are never processed"
+      ],
+      "plan": [
+        "In Manager.Start, query the store for jobs with 'Queued' status",
+        "Enqueue these jobs into the worker pool"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0008",
+      "status": "todo",
+      "title": "Unify API error format to JSON",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "API error responses use plain text http.Error",
+        "The rest of the API returns JSON, creating inconsistency for clients"
+      ],
+      "plan": [
+        "Create a standard ErrorResponse struct",
+        "Refactor error handling to return JSON with appropriate status codes"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0009",
+      "status": "todo",
+      "title": "Fix runJobs cancel CLI to be server-aware",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "jobs"
+      ],
+      "scope": [
+        "internal/cli/cli.go"
+      ],
+      "evidence": [
+        "runJobs cancel creates a new Manager instance to cancel a job",
+        "This is incorrect if another manager (server) is already running and owns the job"
+      ],
+      "plan": [
+        "Modify cli.runJobs cancel to check if the API server is reachable",
+        "If server is running, use API call to cancel; otherwise fall back to local store update"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0010",
+      "status": "todo",
+      "title": "Support SchemaInteger in validation",
+      "priority": "medium",
+      "tags": [
+        "extract",
+        "validation"
+      ],
+      "scope": [
+        "internal/extract/schema.go",
+        "internal/extract/types.go"
+      ],
+      "evidence": [
+        "extract.validateScalar only handles SchemaNumber",
+        "SchemaInteger is missing as a explicit type even though it's common in schemas"
+      ],
+      "plan": [
+        "Add SchemaInteger to SchemaType enum",
+        "Update validateScalar to handle integer validation (no decimals allowed)"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0011",
+      "status": "todo",
+      "title": "Deep nesting support in Schema validation",
+      "priority": "medium",
+      "tags": [
+        "extract",
+        "validation"
+      ],
+      "scope": [
+        "internal/extract/schema.go"
+      ],
+      "evidence": [
+        "ValidateDocument only handles properties at the top level",
+        "It doesn't recursively validate nested objects in properties"
+      ],
+      "plan": [
+        "Refactor ValidateDocument/validateField to be recursive",
+        "Support SchemaObject validation within validateField"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0012",
+      "status": "todo",
+      "title": "BlockedResourceOther in PlaywrightFetcher",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "playwright"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go"
+      ],
+      "evidence": [
+        "isBlockedType in playwright_fetcher.go doesn't handle BlockedResourceOther",
+        "This makes it impossible to block arbitrary resource types in Playwright"
+      ],
+      "plan": [
+        "Update isBlockedType to handle BlockedResourceOther",
+        "Map it to appropriate Playwright resource types or handle as fallback"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0013",
+      "status": "todo",
+      "title": "Refactor CLI to reduce duplication",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "refactor"
+      ],
+      "scope": [
+        "internal/cli/cli.go"
+      ],
+      "evidence": [
+        "runScrape, runCrawl, and runResearch have high code duplication for flag parsing and job enqueuing"
+      ],
+      "plan": [
+        "Extract common flag sets and job enqueuing logic into helper functions",
+        "Simplify subcommand implementations"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0014",
+      "status": "todo",
+      "title": "Web UI: Handle multi-line results",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx"
+      ],
+      "evidence": [
+        "loadResults in App.tsx only parses the first line of the results file",
+        "This hides results for crawl and research jobs which produce multiple lines"
+      ],
+      "plan": [
+        "Modify loadResults to parse all lines of the JSONL file",
+        "Update the UI to display a list of results with a details view for each"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0015",
+      "status": "todo",
+      "title": "Web UI: Add Cancel Job button",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/api/index.ts"
+      ],
+      "evidence": [
+        "There is no way to cancel a running job from the Web UI"
+      ],
+      "plan": [
+        "Add a 'Cancel' button to job items in the UI",
+        "Implement the cancel call using the generated API client"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0016",
+      "status": "todo",
+      "title": "Web UI: Add Delete Job button",
+      "priority": "low",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "Jobs cannot be deleted from the system via the Web UI"
+      ],
+      "plan": [
+        "Ensure API supports job deletion (looks like it does in handleJob)",
+        "Add a 'Delete' button to the UI with a confirmation dialog"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0017",
+      "status": "todo",
+      "title": "Web UI: Show Manager status",
+      "priority": "low",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx"
+      ],
+      "evidence": [
+        "The Web UI does not show the number of queued and active jobs",
+        "This info is available via healthz or a potential new status endpoint"
+      ],
+      "plan": [
+        "Fetch manager status from the API",
+        "Display status in the hero or sidebar of the Web UI"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0018",
+      "status": "todo",
+      "title": "Periodic DB checkpoint in Manager",
+      "priority": "low",
+      "tags": [
+        "jobs",
+        "store",
+        "performance"
+      ],
+      "scope": [
+        "internal/jobs/manager.go"
+      ],
+      "evidence": [
+        "SQLite WAL mode is used but checkpoints are only manual or on close",
+        "Large WAL files can degrade performance over time"
+      ],
+      "plan": [
+        "Add a background ticker in Manager to call Store.Checkpoint periodically"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-23T12:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
