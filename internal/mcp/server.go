@@ -165,17 +165,17 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless)",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
 		},
 		{
 			Name:        "crawl_site",
 			Description: "Crawl a site with depth and page limits",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
 		},
 		{
 			Name:        "research",
 			Description: "Deep research across multiple sources",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean"}),
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
 		},
 		{
 			Name:        "job_status",
@@ -233,7 +233,9 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateScrapeJob(ctx, url, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		pipelineOpts := getPipelineOptions(params.Arguments)
+		incremental := getBoolDefault(params.Arguments, "incremental", false)
+		job, err := s.manager.CreateScrapeJob(ctx, url, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +265,9 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		pipelineOpts := getPipelineOptions(params.Arguments)
+		incremental := getBoolDefault(params.Arguments, "incremental", false)
+		job, err := s.manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return nil, err
 		}
@@ -298,7 +302,9 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
-		job, err := s.manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipeline.Options{}, false)
+		pipelineOpts := getPipelineOptions(params.Arguments)
+		incremental := getBoolDefault(params.Arguments, "incremental", false)
+		job, err := s.manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
 		if err != nil {
 			return nil, err
 		}
@@ -438,6 +444,19 @@ func getStringSlice(args map[string]interface{}, key string) []string {
 		return v
 	default:
 		return nil
+	}
+}
+
+// getPipelineOptions extracts pipeline options from MCP tool arguments.
+// Returns empty Options if args is nil or no pipeline options are provided.
+func getPipelineOptions(args map[string]interface{}) pipeline.Options {
+	if args == nil {
+		return pipeline.Options{}
+	}
+	return pipeline.Options{
+		PreProcessors:  getStringSlice(args, "preProcessors"),
+		PostProcessors: getStringSlice(args, "postProcessors"),
+		Transformers:   getStringSlice(args, "transformers"),
 	}
 }
 

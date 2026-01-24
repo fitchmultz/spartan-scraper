@@ -117,13 +117,40 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	waitForJobs(t, client, port, 1)
 
 	runOK(t, env, "mcp", "--help")
+
 	mcpOut := runMCP(t, env, []string{
 		`{"id":1,"method":"initialize"}`,
 		`{"id":2,"method":"tools/list"}`,
-		`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com"}}}`,
 	})
 	if !strings.Contains(mcpOut, `"tools"`) {
 		t.Fatalf("expected MCP tools list in output")
+	}
+	if !strings.Contains(mcpOut, `"preProcessors"`) {
+		t.Fatalf("expected preProcessors in tools schema")
+	}
+	if !strings.Contains(mcpOut, `"postProcessors"`) {
+		t.Fatalf("expected postProcessors in tools schema")
+	}
+	if !strings.Contains(mcpOut, `"transformers"`) {
+		t.Fatalf("expected transformers in tools schema")
+	}
+	if !strings.Contains(mcpOut, `"incremental"`) {
+		t.Fatalf("expected incremental in tools schema")
+	}
+
+	mcpCallOut := runMCP(t, env, []string{
+		`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com","preProcessors":["prep1","prep2"],"postProcessors":["post1"],"transformers":["trans1"],"incremental":true}}}`,
+	})
+	if strings.Contains(mcpCallOut, `"error"`) && strings.Contains(mcpCallOut, `"message"`) {
+		var resp map[string]interface{}
+		if err := json.Unmarshal([]byte(mcpCallOut), &resp); err == nil {
+			if errMsg, ok := resp["error"].(map[string]interface{}); ok {
+				msg, _ := errMsg["message"].(string)
+				if !strings.Contains(msg, "job failed") {
+					t.Fatalf("unexpected MCP error: %s", msg)
+				}
+			}
+		}
 	}
 
 	cancel()

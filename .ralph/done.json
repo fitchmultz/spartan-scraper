@@ -917,6 +917,44 @@
       "completed_at": "2026-01-24T18:29:39.336123000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0027",
+      "status": "done",
+      "title": "Expose pipeline and incremental options in MCP tools",
+      "priority": "medium",
+      "tags": [
+        "mcp",
+        "feature",
+        "consistency"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/pipeline/types.go",
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go toolsList() schemas omit incremental and pipeline options for scrape/crawl/research.",
+        "internal/mcp/server.go handleToolCall creates jobs with pipeline.Options{} and incremental=false, ignoring pipeline/incremental inputs."
+      ],
+      "plan": [
+        "Extend MCP input schemas to accept pipeline options and incremental flags.",
+        "Parse the new fields and pass them into CreateScrapeJob/CreateCrawlJob/CreateResearchJob.",
+        "Add tests covering MCP tool calls with pipeline and incremental options."
+      ],
+      "notes": [
+        "Extended MCP tool schemas to accept pipeline options (preProcessors, postProcessors, transformers) and incremental flag",
+        "Added getPipelineOptions() helper to extract pipeline options from MCP tool arguments",
+        "Updated handleToolCall to parse and pass pipeline options and incremental flags to job creation",
+        "Added comprehensive tests: getPipelineOptions unit tests, handleToolCall integration tests, schema validation tests",
+        "Verified backward compatibility - new parameters are optional, all tests pass"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T19:48:38.043880000Z",
+      "completed_at": "2026-01-24T19:48:38.043880000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

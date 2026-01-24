@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0027",
-      "status": "todo",
-      "title": "Expose pipeline and incremental options in MCP tools",
-      "priority": "medium",
-      "tags": [
-        "mcp",
-        "feature",
-        "consistency"
-      ],
-      "scope": [
-        "internal/mcp/server.go",
-        "internal/pipeline/types.go",
-        "internal/mcp/server_test.go"
-      ],
-      "evidence": [
-        "internal/mcp/server.go toolsList() schemas omit incremental and pipeline options for scrape/crawl/research.",
-        "internal/mcp/server.go handleToolCall creates jobs with pipeline.Options{} and incremental=false, ignoring pipeline/incremental inputs."
-      ],
-      "plan": [
-        "Extend MCP input schemas to accept pipeline options and incremental flags.",
-        "Parse the new fields and pass them into CreateScrapeJob/CreateCrawlJob/CreateResearchJob.",
-        "Add tests covering MCP tool calls with pipeline and incremental options."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0028",
       "status": "todo",
       "title": "Return correct Content-Type for job results",
