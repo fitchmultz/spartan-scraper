@@ -141,6 +141,41 @@
       "completed_at": "2026-01-24T05:35:32.100787000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0005",
+      "status": "done",
+      "title": "Optimize PlaywrightFetcher browser reuse",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "playwright",
+        "performance"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go"
+      ],
+      "evidence": [
+        "PlaywrightFetcher initializes a new Playwright and browser instance for every fetch",
+        "This is highly inefficient for concurrent or sequential scrapes"
+      ],
+      "plan": [
+        "Implement a singleton or pool for Playwright and browser instances",
+        "Ensure proper lifecycle management and cleanup"
+      ],
+      "notes": [
+        "Implemented singleton pattern for Playwright/Browser instances",
+        "Browser reused across fetch operations with isolated per-fetch contexts",
+        "Added comprehensive test coverage (7 tests including race detection)",
+        "Concurrent safety verified with -race flag",
+        "Refinement phase: context propagation, cleanup logging, sequential reuse test"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T05:52:52.802836000Z",
+      "completed_at": "2026-01-24T05:52:52.802836000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

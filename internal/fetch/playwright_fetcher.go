@@ -6,12 +6,19 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
 )
 
-type PlaywrightFetcher struct{}
+type PlaywrightFetcher struct {
+	mu          sync.RWMutex
+	pw          *playwright.Playwright
+	browser     playwright.Browser
+	initialized bool
+	headless    bool
+}
 
 func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
@@ -45,7 +52,7 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 			_ = req.Limiter.Wait(ctx, req.URL)
 		}
 
-		result, err := f.fetchOnce(req, prof, navTimeout)
+		result, err := f.fetchOnce(ctx, req, prof, navTimeout)
 		if err == nil {
 			slog.Debug("Playwright fetch success", "url", req.URL)
 			return result, nil
@@ -65,28 +72,92 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 	return Result{}, errors.New("max retries exceeded")
 }
 
-func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeout time.Duration) (Result, error) {
-	slog.Debug("starting Playwright engine", "url", req.URL)
+func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	// If already initialized with same headless setting, we're good
+	if f.initialized && f.headless == headless {
+		return nil
+	}
+
+	// Clean up existing if headless setting changed
+	if f.initialized && f.headless != headless {
+		slog.Debug("headless mode changed, cleaning up existing browser", "old", f.headless, "new", headless)
+		if err := f.cleanup(); err != nil {
+			slog.Warn("cleanup during headless switch failed, continuing", "error", err)
+		}
+	}
+
+	// Initialize Playwright
+	slog.Debug("initializing Playwright")
 	pw, err := playwright.Run()
 	if err != nil {
 		slog.Error("failed to run Playwright", "error", err)
-		return Result{}, err
+		return err
 	}
-	defer func() {
-		_ = pw.Stop()
-	}()
 
-	slog.Debug("launching Chromium browser", "url", req.URL)
+	// Initialize Browser
+	slog.Debug("launching Chromium browser", "headless", headless)
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(req.Headless),
+		Headless: playwright.Bool(headless),
 	})
 	if err != nil {
 		slog.Error("failed to launch browser", "error", err)
+		pw.Stop()
+		return err
+	}
+
+	f.pw = pw
+	f.browser = browser
+	f.initialized = true
+	f.headless = headless
+	return nil
+}
+
+func (f *PlaywrightFetcher) cleanup() error {
+	var errs []error
+
+	if f.browser != nil {
+		if err := f.browser.Close(); err != nil {
+			errs = append(errs, err)
+		}
+		f.browser = nil
+	}
+
+	if f.pw != nil {
+		if err := f.pw.Stop(); err != nil {
+			errs = append(errs, err)
+		}
+		f.pw = nil
+	}
+
+	f.initialized = false
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
+}
+
+func (f *PlaywrightFetcher) Close() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cleanup()
+}
+
+func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof RenderProfile, navTimeout time.Duration) (Result, error) {
+	// Ensure initialized (lazily creates pw + browser if needed)
+	if err := f.ensureInitialized(ctx, req.Headless); err != nil {
 		return Result{}, err
 	}
-	defer func() {
-		_ = browser.Close()
-	}()
+
+	f.mu.RLock()
+	browser := f.browser
+	f.mu.RUnlock()
+
+	if browser == nil {
+		return Result{}, errors.New("browser not initialized")
+	}
 
 	ctxOptions := playwright.BrowserNewContextOptions{}
 	if req.UserAgent != "" {
@@ -106,24 +177,24 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 	}
 
 	slog.Debug("creating browser context", "url", req.URL)
-	ctx, err := browser.NewContext(ctxOptions)
+	browserCtx, err := browser.NewContext(ctxOptions)
 	if err != nil {
 		slog.Error("failed to create browser context", "error", err)
 		return Result{}, err
 	}
 	defer func() {
-		_ = ctx.Close()
+		_ = browserCtx.Close()
 	}()
 
 	if len(prof.Block.URLPatterns) > 0 || len(prof.Block.ResourceTypes) > 0 {
 		slog.Debug("setting up resource blocking", "url", req.URL, "patterns", prof.Block.URLPatterns, "types", prof.Block.ResourceTypes)
 		for _, pattern := range prof.Block.URLPatterns {
-			_ = ctx.Route(pattern, func(route playwright.Route) {
+			_ = browserCtx.Route(pattern, func(route playwright.Route) {
 				_ = route.Abort("blockedbyclient")
 			})
 		}
 		if len(prof.Block.ResourceTypes) > 0 {
-			_ = ctx.Route("**/*", func(route playwright.Route) {
+			_ = browserCtx.Route("**/*", func(route playwright.Route) {
 				req := route.Request()
 				resType := req.ResourceType()
 				for _, blockType := range prof.Block.ResourceTypes {
@@ -155,12 +226,12 @@ func (f *PlaywrightFetcher) fetchOnce(req Request, prof RenderProfile, navTimeou
 			}
 			if len(cookies) > 0 {
 				slog.Debug("adding cookies to context", "url", req.URL, "count", len(cookies))
-				_ = ctx.AddCookies(cookies)
+				_ = browserCtx.AddCookies(cookies)
 			}
 		}
 	}
 
-	page, err := ctx.NewPage()
+	page, err := browserCtx.NewPage()
 	if err != nil {
 		slog.Error("failed to create new page", "error", err)
 		return Result{}, err

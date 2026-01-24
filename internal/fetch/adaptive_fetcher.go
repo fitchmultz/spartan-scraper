@@ -137,6 +137,14 @@ func (f *AdaptiveFetcher) fetchHeadless(ctx context.Context, req Request, prof R
 	return Result{}, err
 }
 
+func (f *AdaptiveFetcher) Close() error {
+	// Only Playwright fetcher needs cleanup for its singleton browser
+	if f.pw != nil {
+		return f.pw.Close()
+	}
+	return nil
+}
+
 func defaultRenderProfile() RenderProfile {
 	return RenderProfile{
 		Wait: RenderWaitPolicy{
