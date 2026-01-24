@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0021",
-      "status": "todo",
-      "title": "Close HTTP response body on error to avoid leaks",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "fetch",
-        "resource"
-      ],
-      "scope": [
-        "internal/fetch/http_fetcher.go",
-        "internal/fetch/http_fetcher_test.go"
-      ],
-      "evidence": [
-        "internal/fetch/http_fetcher.go returns early on err != nil || resp == nil without closing resp.Body when resp is non-nil."
-      ],
-      "plan": [
-        "When client.Do returns both err and resp, close resp.Body before retry/return.",
-        "Add a unit test using a custom RoundTripper that returns resp+err to assert body is closed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0022",
       "status": "todo",
       "title": "Propagate rate limiter wait errors in HTTP fetcher",

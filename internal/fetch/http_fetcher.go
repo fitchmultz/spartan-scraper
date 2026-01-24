@@ -83,6 +83,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		resp, err := client.Do(httpReq)
 		if err != nil || resp == nil {
 			slog.Warn("HTTP request failed", "url", req.URL, "error", err, "attempt", attempt)
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
 			if attempt >= retries || !shouldRetry(err, 0) {
 				return Result{}, err
 			}

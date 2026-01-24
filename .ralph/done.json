@@ -705,6 +705,41 @@
       "completed_at": "2026-01-24T16:25:19.281714000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0021",
+      "status": "done",
+      "title": "Close HTTP response body on error to avoid leaks",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "fetch",
+        "resource"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go returns early on err != nil || resp == nil without closing resp.Body when resp is non-nil."
+      ],
+      "plan": [
+        "When client.Do returns both err and resp, close resp.Body before retry/return.",
+        "Add a unit test using a custom RoundTripper that returns resp+err to assert body is closed."
+      ],
+      "notes": [
+        "Fixed response body close on error path (line 87)",
+        "Verified all 4 body close paths in http_fetcher.go",
+        "Blast radius checked: no similar issues in cli.go",
+        "CI gate passed: all tests green including e2e",
+        "Test documents edge case; fix verified by inspection"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T17:14:13.791669000Z",
+      "completed_at": "2026-01-24T17:14:13.791669000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

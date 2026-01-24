@@ -2,6 +2,8 @@
 
 - Primary language: Go (CLI + API + TUI). Frontend: TypeScript (Vite + React).
 - Local gate: `make ci` (runs generate, format, type-check, lint, build, test).
+  - **CRITICAL**: NEVER end a turn with a failing `make ci`. If `make ci` fails, fix the failures before completing your work.
+  - Flaky e2e tests may be retried up to 3 times before considering them a real failure.
 - API contract: `api/openapi.yaml` → generate TS client with `make generate` (hey-api openapi-ts).
 - Data storage: local on-disk job store under `DATA_DIR` (default `.data`).
 - Ignore robots.txt by design (do not add compliance logic without explicit request).
