@@ -417,6 +417,17 @@ func isBlockedType(resType string, blockType BlockedResourceType) bool {
 		return resType == "font"
 	case BlockedResourceStylesheet:
 		return resType == "stylesheet"
+	case BlockedResourceOther:
+		// Block all non-essential resource types (scripts, APIs, websockets, etc.)
+		// Includes the literal Playwright 'other' type for miscellaneous requests
+		return resType == "script" ||
+			resType == "xhr" ||
+			resType == "fetch" ||
+			resType == "websocket" ||
+			resType == "eventsource" ||
+			resType == "manifest" ||
+			resType == "texttrack" ||
+			resType == "other"
 	}
 	return false
 }

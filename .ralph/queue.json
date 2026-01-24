@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0012",
-      "status": "todo",
-      "title": "BlockedResourceOther in PlaywrightFetcher",
-      "priority": "medium",
-      "tags": [
-        "fetch",
-        "playwright"
-      ],
-      "scope": [
-        "internal/fetch/playwright_fetcher.go"
-      ],
-      "evidence": [
-        "isBlockedType in playwright_fetcher.go doesn't handle BlockedResourceOther",
-        "This makes it impossible to block arbitrary resource types in Playwright"
-      ],
-      "plan": [
-        "Update isBlockedType to handle BlockedResourceOther",
-        "Map it to appropriate Playwright resource types or handle as fallback"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0013",
       "status": "todo",
       "title": "Refactor CLI to reduce duplication",

@@ -318,3 +318,67 @@ func TestPlaywrightFetcher_BrowserReuseSequential(t *testing.T) {
 	// Cleanup
 	_ = f.Close()
 }
+
+// TestIsBlockedType verifies the isBlockedType function correctly matches
+// Playwright resource types to blocked resource types.
+func TestIsBlockedType(t *testing.T) {
+	tests := []struct {
+		name      string
+		resType   string
+		blockType BlockedResourceType
+		want      bool
+	}{
+		// Positive matches - specific types
+		{"image matches image", "image", BlockedResourceImage, true},
+		{"media matches media", "media", BlockedResourceMedia, true},
+		{"font matches font", "font", BlockedResourceFont, true},
+		{"stylesheet matches stylesheet", "stylesheet", BlockedResourceStylesheet, true},
+
+		// Positive matches - BlockedResourceOther blocks non-essential types
+		{"script matches other", "script", BlockedResourceOther, true},
+		{"xhr matches other", "xhr", BlockedResourceOther, true},
+		{"fetch matches other", "fetch", BlockedResourceOther, true},
+		{"websocket matches other", "websocket", BlockedResourceOther, true},
+		{"eventsource matches other", "eventsource", BlockedResourceOther, true},
+		{"manifest matches other", "manifest", BlockedResourceOther, true},
+		{"texttrack matches other", "texttrack", BlockedResourceOther, true},
+
+		// Negative matches - different types
+		{"image does not match stylesheet", "stylesheet", BlockedResourceImage, false},
+		{"media does not match image", "image", BlockedResourceMedia, false},
+		{"font does not match media", "media", BlockedResourceFont, false},
+		{"stylesheet does not match font", "font", BlockedResourceStylesheet, false},
+		{"image does not match other", "image", BlockedResourceOther, false},
+		{"media does not match other", "media", BlockedResourceOther, false},
+		{"font does not match other", "font", BlockedResourceOther, false},
+		{"stylesheet does not match other", "stylesheet", BlockedResourceOther, false},
+
+		// Document should never be blocked (main HTML document)
+		{"document does not match other", "document", BlockedResourceOther, false},
+		{"document does not match image", "document", BlockedResourceImage, false},
+
+		// Playwright resource types that shouldn't match specific blocked types
+		{"script does not match media", "script", BlockedResourceMedia, false},
+		{"xhr does not match font", "xhr", BlockedResourceFont, false},
+		{"websocket does not match stylesheet", "websocket", BlockedResourceStylesheet, false},
+
+		// Case sensitivity
+		{"Image (capital) does not match image", "Image", BlockedResourceImage, false},
+		{"IMAGE (upper) does not match image", "IMAGE", BlockedResourceImage, false},
+		{"image lowercase matches", "image", BlockedResourceImage, true},
+
+		// Empty strings
+		{"empty resType does not match image", "", BlockedResourceImage, false},
+
+		// Literal Playwright 'other' type - blocked by BlockedResourceOther
+		// Note: 'other' in Playwright covers miscellaneous requests like beacons, CSP reports, pings
+		{"other matches other", "other", BlockedResourceOther, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isBlockedType(tt.resType, tt.blockType); got != tt.want {
+				t.Errorf("isBlockedType(%q, %v) = %v, want %v", tt.resType, tt.blockType, got, tt.want)
+			}
+		})
+	}
+}
