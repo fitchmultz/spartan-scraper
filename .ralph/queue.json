@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0026",
-      "status": "todo",
-      "title": "Stream job results in CLI export/print to avoid large reads",
-      "priority": "medium",
-      "tags": [
-        "performance",
-        "cli",
-        "memory"
-      ],
-      "scope": [
-        "internal/cli/cli.go",
-        "internal/exporter/exporter.go",
-        "internal/exporter/exporter_test.go"
-      ],
-      "evidence": [
-        "internal/cli/cli.go runExport reads result files with os.ReadFile, loading entire results into memory.",
-        "internal/cli/cli.go printResults also uses os.ReadFile, which is costly for large result files."
-      ],
-      "plan": [
-        "Introduce a streaming export path (e.g., io.Reader-based) in exporter.",
-        "Update runExport and printResults to stream results from disk.",
-        "Add tests covering large result files and streaming output."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0027",
       "status": "todo",
       "title": "Expose pipeline and incremental options in MCP tools",

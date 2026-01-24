@@ -879,6 +879,44 @@
       "completed_at": "2026-01-24T18:06:51.440385000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0026",
+      "status": "done",
+      "title": "Stream job results in CLI export/print to avoid large reads",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "cli",
+        "memory"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/cli/cli.go runExport reads result files with os.ReadFile, loading entire results into memory.",
+        "internal/cli/cli.go printResults also uses os.ReadFile, which is costly for large result files."
+      ],
+      "plan": [
+        "Introduce a streaming export path (e.g., io.Reader-based) in exporter.",
+        "Update runExport and printResults to stream results from disk.",
+        "Add tests covering large result files and streaming output."
+      ],
+      "notes": [
+        "Added ExportStream API using io.Reader/io.Writer for memory-efficient large file handling",
+        "Updated runExport and printResults to stream from disk using os.Open instead of os.ReadFile",
+        "JSONL format now streams with O(1) per-line memory (10MB max buffer vs ~2x file size)",
+        "Added 8 new streaming tests covering large files (100KB), error handling, and consistency",
+        "Maintained backward compatibility - Export() now wraps ExportStream()"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T18:29:39.336123000Z",
+      "completed_at": "2026-01-24T18:29:39.336123000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

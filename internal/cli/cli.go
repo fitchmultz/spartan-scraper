@@ -206,11 +206,17 @@ func printResults(ctx context.Context, store *store.Store, id string) error {
 	if job.ResultPath == "" {
 		return fmt.Errorf("no result path for job")
 	}
-	data, err := os.ReadFile(job.ResultPath)
+
+	f, err := os.Open(job.ResultPath)
 	if err != nil {
 		return err
 	}
-	fmt.Print(string(data))
+	defer f.Close()
+
+	// For printResults, always use jsonl format (raw output)
+	if err := exporter.ExportStream(job, f, "jsonl", os.Stdout); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -609,31 +615,39 @@ Options:
 		fmt.Fprintln(os.Stderr, "no result path for job")
 		return 1
 	}
-	raw, err := os.ReadFile(job.ResultPath)
+
+	f, err := os.Open(job.ResultPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	defer f.Close()
 
-	payload, err := exporter.Export(job, raw, *format)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-
+	var outWriter io.Writer
 	if *out == "" {
-		fmt.Print(payload)
-		return 0
+		outWriter = os.Stdout
+	} else {
+		if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		outFile, err := os.Create(*out)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer outFile.Close()
+		outWriter = outFile
 	}
-	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+
+	if err := exporter.ExportStream(job, f, *format, outWriter); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := os.WriteFile(*out, []byte(payload), 0o600); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+
+	if *out != "" {
+		fmt.Println(*out)
 	}
-	fmt.Println(*out)
 	return 0
 }
 
