@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0002",
-      "status": "todo",
-      "title": "Implement RenderWaitModeNetworkIdle in ChromedpFetcher",
-      "priority": "high",
-      "tags": [
-        "fetch",
-        "chromedp",
-        "performance"
-      ],
-      "scope": [
-        "internal/fetch/chromedp_fetcher.go"
-      ],
-      "evidence": [
-        "ChromedpFetcher.performWait for RenderWaitModeNetworkIdle is a stub (2s sleep)",
-        "Robust network idle requires implementing event listeners for network.EventRequestPaused or similar"
-      ],
-      "plan": [
-        "Implement network activity tracking using chromedp listeners",
-        "Replace 2s sleep with a wait loop that checks for zero inflight requests"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0003",
       "status": "todo",
       "title": "Implement browser availability check",

@@ -5,13 +5,27 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
-type ChromedpFetcher struct{}
+type ChromedpFetcher struct {
+	networkTracker *networkTracker
+}
+
+type networkTracker struct {
+	inflight      int32         // Number of active network requests (atomic)
+	mu            sync.Mutex    // Protects idleSince, done, and closed
+	idleSince     time.Time     // When inflight first reached 0
+	quietDuration time.Duration // How long to wait at 0 inflight before declaring idle
+	done          chan struct{} // Closed when network idle is confirmed
+	closed        int32         // 0 = open, 1 = closed (atomic for double-close protection)
+	firstSeen     int32         // 0 = not seen, 1 = seen (atomic)
+}
 
 func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
@@ -236,6 +250,104 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 	}, nil
 }
 
+func (f *ChromedpFetcher) waitForNetworkIdle(ctx context.Context, policy RenderWaitPolicy) error {
+	quietMs := policy.NetworkIdleQuietMs
+	if quietMs <= 0 {
+		quietMs = 500 // Default 500ms quiet window
+	}
+
+	tracker := &networkTracker{
+		quietDuration: time.Duration(quietMs) * time.Millisecond,
+		done:          make(chan struct{}),
+	}
+
+	slog.Debug("network idle wait started", "quietMs", quietMs)
+	start := time.Now()
+
+	chromedp.ListenTarget(ctx, tracker.onEvent)
+
+	select {
+	case <-tracker.done:
+		duration := time.Since(start)
+		slog.Debug("network idle detected", "duration", duration.Milliseconds())
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(time.Duration(quietMs) * time.Millisecond):
+		if atomic.LoadInt32(&tracker.firstSeen) == 0 {
+			slog.Debug("no network events received, assuming already idle")
+			return nil
+		}
+	}
+	return nil
+}
+
+func (t *networkTracker) onEvent(ev any) {
+	switch ev := ev.(type) {
+	case *network.EventRequestWillBeSent:
+		if atomic.LoadInt32(&t.firstSeen) == 0 {
+			atomic.StoreInt32(&t.firstSeen, 1)
+			atomic.StoreInt32(&t.inflight, 1)
+		} else {
+			atomic.AddInt32(&t.inflight, 1)
+		}
+		t.resetIdleSince()
+		slog.Debug("request started", "requestId", ev.RequestID, "inflight", atomic.LoadInt32(&t.inflight))
+
+	case *network.EventLoadingFinished:
+		if atomic.LoadInt32(&t.firstSeen) == 0 {
+			atomic.StoreInt32(&t.firstSeen, 1)
+			atomic.StoreInt32(&t.inflight, 0)
+		} else {
+			newCount := atomic.AddInt32(&t.inflight, -1)
+			slog.Debug("request finished", "requestId", ev.RequestID, "inflight", newCount)
+			if newCount < 0 {
+				slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
+			}
+		}
+		t.checkIdle()
+
+	case *network.EventLoadingFailed:
+		if atomic.LoadInt32(&t.firstSeen) == 0 {
+			atomic.StoreInt32(&t.firstSeen, 1)
+			atomic.StoreInt32(&t.inflight, 0)
+		} else {
+			newCount := atomic.AddInt32(&t.inflight, -1)
+			slog.Debug("request failed", "requestId", ev.RequestID, "inflight", newCount)
+			if newCount < 0 {
+				slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
+			}
+		}
+		t.checkIdle()
+	}
+}
+
+func (t *networkTracker) resetIdleSince() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.idleSince = time.Time{}
+}
+
+func (t *networkTracker) checkIdle() {
+	if atomic.LoadInt32(&t.inflight) == 0 {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		if atomic.LoadInt32(&t.closed) != 0 {
+			return
+		}
+
+		if t.idleSince.IsZero() {
+			t.idleSince = time.Now()
+		} else if time.Since(t.idleSince) >= t.quietDuration {
+			atomic.StoreInt32(&t.closed, 1)
+			close(t.done)
+		}
+	} else {
+		t.resetIdleSince()
+	}
+}
+
 func (f *ChromedpFetcher) performLogin(ctx context.Context, auth AuthOptions) error {
 	if auth.LoginUserSelector == "" || auth.LoginPassSelector == "" || auth.LoginSubmitSelector == "" {
 		return errors.New("login selectors are required for headless login")
@@ -259,12 +371,7 @@ func (f *ChromedpFetcher) performWait(ctx context.Context, policy RenderWaitPoli
 
 	switch policy.Mode {
 	case RenderWaitModeNetworkIdle:
-		// Not natively supported as a single call in basic chromedp without listeners.
-		// Fallback to a fixed sleep or check simple signals.
-		// Implementing robust network idle in chromedp requires event listeners which is complex here.
-		// We will simulate with a fixed sleep for now + DOM ready.
-		// TODO: Implement event listener for network idle.
-		return chromedp.Run(ctx, chromedp.Sleep(2*time.Second))
+		return f.waitForNetworkIdle(ctx, policy)
 	case RenderWaitModeSelector:
 		if policy.Selector != "" {
 			return chromedp.Run(ctx, chromedp.WaitVisible(policy.Selector, chromedp.ByQuery))
