@@ -70,7 +70,9 @@ type ResearchResult struct {
 
 func Export(job model.Job, raw []byte, format string) (string, error) {
 	switch format {
-	case "json", "jsonl":
+	case "json":
+		return exportJSON(job, raw)
+	case "jsonl":
 		return string(raw), nil
 	case "md":
 		return exportMarkdown(job, raw)
@@ -78,6 +80,43 @@ func Export(job model.Job, raw []byte, format string) (string, error) {
 		return exportCSV(job, raw)
 	default:
 		return "", fmt.Errorf("unsupported format: %s", format)
+	}
+}
+
+func exportJSON(job model.Job, raw []byte) (string, error) {
+	switch job.Kind {
+	case model.KindScrape:
+		item, err := parseSingle[ScrapeResult](raw)
+		if err != nil {
+			return "", err
+		}
+		data, err := json.MarshalIndent(item, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	case model.KindCrawl:
+		items, err := parseLines[CrawlResult](raw)
+		if err != nil {
+			return "", err
+		}
+		data, err := json.MarshalIndent(items, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	case model.KindResearch:
+		item, err := parseSingle[ResearchResult](raw)
+		if err != nil {
+			return "", err
+		}
+		data, err := json.MarshalIndent(item, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	default:
+		return "", errors.New("unknown job kind")
 	}
 }
 

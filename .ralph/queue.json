@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0023",
-      "status": "todo",
-      "title": "Make exporter json output real JSON instead of JSONL",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "export",
-        "format"
-      ],
-      "scope": [
-        "internal/exporter/exporter.go",
-        "internal/exporter/exporter_test.go"
-      ],
-      "evidence": [
-        "internal/exporter/exporter.go Export() returns string(raw) for both \"json\" and \"jsonl\", so \"json\" output is still JSONL."
-      ],
-      "plan": [
-        "Convert JSONL to proper JSON: single object for scrape/research, array for crawl.",
-        "Keep jsonl output as-is while fixing json output only.",
-        "Add tests validating json output structure per job kind."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0024",
       "status": "todo",
       "title": "Increase exporter JSONL scan buffer for large lines",
