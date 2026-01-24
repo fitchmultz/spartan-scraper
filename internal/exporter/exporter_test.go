@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -322,6 +323,85 @@ func TestExportUnsupportedFormat(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "unsupported format") {
 		t.Errorf("Expected 'unsupported format' error, got: %v", err)
+	}
+}
+
+// TestParseLargeJSONLLine verifies that JSONL lines larger than the default
+// 64KB scanner buffer can be parsed successfully. This is a regression test
+// for RQ-0024.
+func TestParseLargeJSONLLine(t *testing.T) {
+	tests := []struct {
+		name        string
+		sizeKB      int
+		exceeds64KB bool
+	}{
+		{"Small line (1KB)", 1, false},
+		{"Medium line (50KB)", 50, false},
+		{"Large line (100KB) - exceeds default buffer", 100, true},
+		{"Very large line (500KB)", 500, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a JSONL line larger than 64KB
+			largeText := strings.Repeat("x", tt.sizeKB*1024)
+			jsonLine := fmt.Sprintf(`{"url":"https://example.com","status":200,"title":"Large Content","text":"%s"}`, largeText)
+
+			// Test parseSingle path (Scrape job)
+			t.Run("parseSingle", func(t *testing.T) {
+				job := model.Job{Kind: model.KindScrape}
+				result, err := Export(job, []byte(jsonLine), "json")
+				if err != nil {
+					t.Fatalf("Export() failed for %d KB line: %v", tt.sizeKB, err)
+				}
+
+				// Verify output is valid JSON
+				var scrapeResult ScrapeResult
+				if err := json.Unmarshal([]byte(result), &scrapeResult); err != nil {
+					t.Fatalf("Output is not valid JSON: %v", err)
+				}
+
+				// Verify the text content was preserved
+				if scrapeResult.Text != largeText {
+					t.Errorf("Text content not preserved: got length %d, want %d", len(scrapeResult.Text), len(largeText))
+				}
+			})
+
+			// Test parseLines path (Crawl job with multiple large lines)
+			t.Run("parseLines", func(t *testing.T) {
+				// Create multiple large JSONL lines
+				jsonlLines := []string{
+					fmt.Sprintf(`{"url":"https://example.com/page1","status":200,"title":"Page 1","text":"%s"}`, largeText),
+					fmt.Sprintf(`{"url":"https://example.com/page2","status":200,"title":"Page 2","text":"%s"}`, largeText),
+					fmt.Sprintf(`{"url":"https://example.com/page3","status":200,"title":"Page 3","text":"%s"}`, largeText),
+				}
+				raw := []byte(strings.Join(jsonlLines, "\n"))
+
+				job := model.Job{Kind: model.KindCrawl}
+				result, err := Export(job, raw, "json")
+				if err != nil {
+					t.Fatalf("Export() failed for %d KB lines: %v", tt.sizeKB, err)
+				}
+
+				// Verify output is valid JSON array
+				var crawlResults []CrawlResult
+				if err := json.Unmarshal([]byte(result), &crawlResults); err != nil {
+					t.Fatalf("Output is not valid JSON: %v", err)
+				}
+
+				// Verify all items were parsed
+				if len(crawlResults) != 3 {
+					t.Errorf("Expected 3 items, got %d", len(crawlResults))
+				}
+
+				// Verify each line's text content was preserved
+				for i, item := range crawlResults {
+					if item.Text != largeText {
+						t.Errorf("Item %d: text content not preserved: got length %d, want %d", i, len(item.Text), len(largeText))
+					}
+				}
+			})
+		})
 	}
 }
 

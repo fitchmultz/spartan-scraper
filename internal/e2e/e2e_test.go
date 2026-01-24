@@ -329,6 +329,7 @@ func requireLineCount(t *testing.T, path string, min int) {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	count := 0
 	for scanner.Scan() {
 		if strings.TrimSpace(scanner.Text()) != "" {

@@ -812,6 +812,40 @@
       "completed_at": "2026-01-24T17:41:46.140484000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0024",
+      "status": "done",
+      "title": "Increase exporter JSONL scan buffer for large lines",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "export",
+        "large-input"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go parseSingle/parseLines use bufio.Scanner without Buffer(), so JSON lines >64KB will fail."
+      ],
+      "plan": [
+        "Set a larger scanner buffer (and max token size) for JSONL parsing.",
+        "Add a regression test with a JSON line larger than 64KB."
+      ],
+      "notes": [
+        "Fixed bufio.Scanner buffer in parseSingle and parseLines (exporter.go)",
+        "Added scanner.Buffer with 64KB initial buffer, 10MB max token",
+        "Added TestParseLargeJSONLLine regression test covering 1KB-500KB lines",
+        "Fixed same pattern in e2e requireLineCount helper for consistency"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T17:53:53.050487000Z",
+      "completed_at": "2026-01-24T17:53:53.050487000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

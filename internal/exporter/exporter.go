@@ -322,6 +322,7 @@ func exportCSV(job model.Job, raw []byte) (string, error) {
 func parseSingle[T any](raw []byte) (T, error) {
 	var out T
 	scanner := bufio.NewScanner(bytes.NewReader(raw))
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -338,6 +339,7 @@ func parseSingle[T any](raw []byte) (T, error) {
 func parseLines[T any](raw []byte) ([]T, error) {
 	items := make([]T, 0)
 	scanner := bufio.NewScanner(bytes.NewReader(raw))
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
