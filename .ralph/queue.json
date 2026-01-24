@@ -1,4 +1,527 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0019",
+      "status": "todo",
+      "title": "Cap HTTP fetch response size to prevent memory exhaustion",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "performance",
+        "fetch",
+        "memory"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/config/config.go",
+        ".env",
+        ".env.example",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go reads response bodies with io.ReadAll(resp.Body) and no size limit, so very large responses can exhaust memory.",
+        "internal/config/config.go has no setting to cap response size for fetch operations."
+      ],
+      "plan": [
+        "Add a configurable max response bytes setting in config + env (.env/.env.example) and plumb it into fetch.Request.",
+        "Enforce the limit in HTTPFetcher (limit reader / MaxBytes) and return a clear error when exceeded.",
+        "Add tests for over-limit responses and confirm normal-sized responses still succeed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0020",
+      "status": "todo",
+      "title": "Stop MCP job manager on Close and use cancellable context",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "mcp",
+        "lifecycle"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/jobs/manager.go",
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go NewServer starts the manager with context.Background(), so workers never stop with server shutdown.",
+        "internal/mcp/server.go Close only closes the store and does not cancel or wait for the manager goroutines."
+      ],
+      "plan": [
+        "Store a cancellable context in the MCP Server and start the manager with it.",
+        "Update Close to cancel the context, wait for the manager, then close the store.",
+        "Add a test that Close stops the manager and does not leave work running."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0021",
+      "status": "todo",
+      "title": "Close HTTP response body on error to avoid leaks",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "fetch",
+        "resource"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go returns early on err != nil || resp == nil without closing resp.Body when resp is non-nil."
+      ],
+      "plan": [
+        "When client.Do returns both err and resp, close resp.Body before retry/return.",
+        "Add a unit test using a custom RoundTripper that returns resp+err to assert body is closed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0022",
+      "status": "todo",
+      "title": "Propagate rate limiter wait errors in HTTP fetcher",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "fetch",
+        "cancellation"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/limiter.go",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go ignores errors from req.Limiter.Wait(ctx, req.URL), so context cancellations do not short-circuit fetch."
+      ],
+      "plan": [
+        "Check the error return from limiter.Wait and return immediately on cancellation/error.",
+        "Add a test that cancels context before Wait and asserts Fetch returns the context error."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0023",
+      "status": "todo",
+      "title": "Make exporter json output real JSON instead of JSONL",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "export",
+        "format"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go Export() returns string(raw) for both \"json\" and \"jsonl\", so \"json\" output is still JSONL."
+      ],
+      "plan": [
+        "Convert JSONL to proper JSON: single object for scrape/research, array for crawl.",
+        "Keep jsonl output as-is while fixing json output only.",
+        "Add tests validating json output structure per job kind."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0024",
+      "status": "todo",
+      "title": "Increase exporter JSONL scan buffer for large lines",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "export",
+        "large-input"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go parseSingle/parseLines use bufio.Scanner without Buffer(), so JSON lines >64KB will fail."
+      ],
+      "plan": [
+        "Set a larger scanner buffer (and max token size) for JSONL parsing.",
+        "Add a regression test with a JSON line larger than 64KB."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0025",
+      "status": "todo",
+      "title": "Stabilize exporter field ordering for markdown and CSV",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "export",
+        "determinism"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go iterates map fields with range in exportMarkdown and exportCSV, which produces nondeterministic ordering."
+      ],
+      "plan": [
+        "Collect field keys, sort them, and use sorted order in markdown and CSV output.",
+        "Add tests that assert stable ordering of fields across runs."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0026",
+      "status": "todo",
+      "title": "Stream job results in CLI export/print to avoid large reads",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "cli",
+        "memory"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/cli/cli.go runExport reads result files with os.ReadFile, loading entire results into memory.",
+        "internal/cli/cli.go printResults also uses os.ReadFile, which is costly for large result files."
+      ],
+      "plan": [
+        "Introduce a streaming export path (e.g., io.Reader-based) in exporter.",
+        "Update runExport and printResults to stream results from disk.",
+        "Add tests covering large result files and streaming output."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0027",
+      "status": "todo",
+      "title": "Expose pipeline and incremental options in MCP tools",
+      "priority": "medium",
+      "tags": [
+        "mcp",
+        "feature",
+        "consistency"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/pipeline/types.go",
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go toolsList() schemas omit incremental and pipeline options for scrape/crawl/research.",
+        "internal/mcp/server.go handleToolCall creates jobs with pipeline.Options{} and incremental=false, ignoring pipeline/incremental inputs."
+      ],
+      "plan": [
+        "Extend MCP input schemas to accept pipeline options and incremental flags.",
+        "Parse the new fields and pass them into CreateScrapeJob/CreateCrawlJob/CreateResearchJob.",
+        "Add tests covering MCP tool calls with pipeline and incremental options."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0028",
+      "status": "todo",
+      "title": "Return correct Content-Type for job results",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/server_test.go"
+      ],
+      "evidence": [
+        "internal/api/server.go handleJobResults uses http.ServeFile without setting Content-Type, so .jsonl results may be served as application/octet-stream."
+      ],
+      "plan": [
+        "Set Content-Type based on result file extension (e.g., application/x-ndjson for .jsonl).",
+        "Add API tests asserting Content-Type for job results responses."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0029",
+      "status": "todo",
+      "title": "Handle non-OK job result responses in the web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux",
+        "error-handling"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/package.json"
+      ],
+      "evidence": [
+        "web/src/App.tsx loadResults() calls fetch('/v1/jobs/.../results') and parses response text without checking response.ok, so 404/500 become misleading UI errors."
+      ],
+      "plan": [
+        "Check response.ok before parsing and surface server error messages for non-2xx responses.",
+        "Introduce a minimal web test harness (e.g., Vitest + Testing Library) and add tests for error states."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0030",
+      "status": "todo",
+      "title": "Make web API base URL configurable",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "config",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/api/index.ts",
+        "web/package.json",
+        "web/.env"
+      ],
+      "evidence": [
+        "web/src/App.tsx calls API helpers with baseUrl: '' and uses fetch('/v1/jobs/...'), so the UI cannot target a non-root API host."
+      ],
+      "plan": [
+        "Add VITE_API_BASE_URL (or similar) and wire API client + fetch calls to use it.",
+        "Document defaults in web/.env(.example) and add tests covering base URL usage."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0031",
+      "status": "todo",
+      "title": "Expand web auth inputs to cover cookies/query token options",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux",
+        "auth"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "internal/fetch/types.go"
+      ],
+      "evidence": [
+        "web/src/App.tsx buildAuth() only passes basic and headers, while fetch.AuthOptions supports cookies and query tokens."
+      ],
+      "plan": [
+        "Add UI fields for cookies and query params (and map to AuthOptions).",
+        "Update buildAuth to include the new fields and add UI tests for serialization."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0032",
+      "status": "todo",
+      "title": "Include install step in make ci",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "ci"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile defines ci as generate format type-check lint build test, but the Makefile contract requires make ci to include install."
+      ],
+      "plan": [
+        "Update the ci target to run install before other steps.",
+        "Ensure ci still runs generate/format/type-check/lint/build/test in the expected order."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0033",
+      "status": "todo",
+      "title": "Implement real dependency updates in make update",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "deps"
+      ],
+      "scope": [
+        "Makefile",
+        "go.mod",
+        "web/package.json",
+        "pnpm-lock.yaml"
+      ],
+      "evidence": [
+        "Makefile update target only echoes manual instructions instead of updating dependencies."
+      ],
+      "plan": [
+        "Replace the echo with actual update commands for Go and pnpm deps.",
+        "Ensure lockfiles are updated and documented as part of make update."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0034",
+      "status": "todo",
+      "title": "Install CLI binary to ~/.local/bin in make build",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "cli"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile build target only runs go build -o bin/spartan and does not install the binary to ~/.local/bin as required by the Makefile contract."
+      ],
+      "plan": [
+        "Extend make build to copy/install the binary into ~/.local/bin (creating the dir if needed).",
+        "Keep existing bin/ output for local dev while ensuring the install step succeeds."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0035",
+      "status": "todo",
+      "title": "Expand make clean to remove lock files and log artifacts",
+      "priority": "low",
+      "tags": [
+        "build",
+        "cleanup"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile clean only removes bin/.data and web dist/node_modules, but the Makefile contract calls for deleting lock files and logs as well."
+      ],
+      "plan": [
+        "Add removal for lockfiles (e.g., pnpm-lock.yaml) and common log/artifact directories.",
+        "Document any destructive behavior in README or Makefile comments if needed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0036",
+      "status": "todo",
+      "title": "Add missing file-level docstrings to code files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "consistency"
+      ],
+      "scope": [
+        "cmd/spartan/main.go",
+        "internal/exporter/exporter.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/mcp/server.go",
+        "web/src/App.tsx",
+        "web/src/main.tsx"
+      ],
+      "evidence": [
+        "cmd/spartan/main.go starts directly with package main and has no file-level purpose comment.",
+        "internal/exporter/exporter.go and internal/fetch/http_fetcher.go have no top-of-file package purpose comments.",
+        "web/src/App.tsx and web/src/main.tsx have no file-level doc comments describing their role."
+      ],
+      "plan": [
+        "Scan for code files lacking file-level docstrings (Go + TS/TSX) and add concise purpose comments.",
+        "Ensure any executable scripts have --help with examples (confirm or update as needed)."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T12:33:41Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
