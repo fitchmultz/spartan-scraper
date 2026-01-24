@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"spartan-scraper/internal/extract"
@@ -148,7 +149,13 @@ func exportMarkdown(job model.Job, raw []byte) (string, error) {
 			b.WriteString(fmt.Sprintf("- **Description**: %s\n", desc))
 		}
 		b.WriteString("\n## Extracted Fields\n\n")
-		for k, v := range item.Normalized.Fields {
+		fieldKeys := make([]string, 0, len(item.Normalized.Fields))
+		for k := range item.Normalized.Fields {
+			fieldKeys = append(fieldKeys, k)
+		}
+		sort.Strings(fieldKeys)
+		for _, k := range fieldKeys {
+			v := item.Normalized.Fields[k]
 			b.WriteString(fmt.Sprintf("- **%s**: %s\n", k, strings.Join(v.Values, ", ")))
 		}
 		b.WriteString("\n## Text Content\n\n")
@@ -169,7 +176,13 @@ func exportMarkdown(job model.Job, raw []byte) (string, error) {
 			b.WriteString(fmt.Sprintf("## %s\n\n- URL: %s\n- Status: %d\n", safe(title, item.URL), item.URL, item.Status))
 			if len(item.Normalized.Fields) > 0 {
 				b.WriteString("\n### Fields\n")
-				for k, v := range item.Normalized.Fields {
+				fieldKeys := make([]string, 0, len(item.Normalized.Fields))
+				for k := range item.Normalized.Fields {
+					fieldKeys = append(fieldKeys, k)
+				}
+				sort.Strings(fieldKeys)
+				for _, k := range fieldKeys {
+					v := item.Normalized.Fields[k]
 					b.WriteString(fmt.Sprintf("- **%s**: %s\n", k, strings.Join(v.Values, ", ")))
 				}
 			}
@@ -229,6 +242,9 @@ func exportCSV(job model.Job, raw []byte) (string, error) {
 		fieldNames := make([]string, 0, len(item.Normalized.Fields))
 		for k := range item.Normalized.Fields {
 			fieldNames = append(fieldNames, k)
+		}
+		sort.Strings(fieldNames)
+		for _, k := range fieldNames {
 			headers = append(headers, "field_"+k)
 		}
 		_ = writer.Write(headers)
@@ -266,6 +282,7 @@ func exportCSV(job model.Job, raw []byte) (string, error) {
 		for k := range fieldSet {
 			fieldNames = append(fieldNames, k)
 		}
+		sort.Strings(fieldNames)
 
 		headers := []string{"url", "status", "title"}
 		for _, k := range fieldNames {

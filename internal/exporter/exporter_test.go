@@ -422,3 +422,162 @@ func sampleCrawlResultJSONL(count int) string {
 func sampleResearchResultJSONL() string {
 	return `{"query":"test query","summary":"Test summary","confidence":0.95,"evidence":[{"url":"https://example.com/evidence1","title":"Evidence 1","snippet":"Test snippet","score":0.9,"simhash":1234567890,"clusterId":"cluster1","confidence":0.9,"citationUrl":"https://example.com/cite1"}],"clusters":[{"id":"cluster1","label":"Test Cluster","confidence":0.9,"evidence":[]}],"citations":[{"url":"https://example.com/cite1","anchor":"section1","canonical":"https://example.com/canonical1"}]}`
 }
+
+func TestExportMarkdownHasStableFieldOrder(t *testing.T) {
+	// Create a scrape result with multiple fields in random map order
+	raw := []byte(`{"url":"https://example.com","status":200,"title":"Test","text":"Content","metadata":{"description":"Desc"},"normalized":{"fields":{"zebra":{"values":["z"]},"apple":{"values":["a"]},"banana":{"values":["b"]}}}}`)
+	job := model.Job{Kind: model.KindScrape}
+
+	// Export multiple times and verify the output is identical
+	var results []string
+	for i := 0; i < 5; i++ {
+		result, err := Export(job, raw, "md")
+		if err != nil {
+			t.Fatalf("Export() failed on iteration %d: %v", i, err)
+		}
+		results = append(results, result)
+	}
+
+	// All exports should produce identical output
+	for i := 1; i < len(results); i++ {
+		if results[i] != results[0] {
+			t.Errorf("Export %d differs from export 0\n%s\nvs\n%s", i, results[0], results[i])
+		}
+	}
+
+	// Verify fields are alphabetically ordered
+	firstResult := results[0]
+	appleIdx := strings.Index(firstResult, "**apple**:")
+	bananaIdx := strings.Index(firstResult, "**banana**:")
+	zebraIdx := strings.Index(firstResult, "**zebra**:")
+
+	if appleIdx == -1 || bananaIdx == -1 || zebraIdx == -1 {
+		t.Fatal("One or more field names not found in output")
+	}
+
+	// Verify alphabetical order: apple before banana before zebra
+	if !(appleIdx < bananaIdx && bananaIdx < zebraIdx) {
+		t.Error("Fields are not in alphabetical order")
+	}
+}
+
+func TestExportCSVHasStableFieldOrder(t *testing.T) {
+	// Create a scrape result with multiple fields
+	raw := []byte(`{"url":"https://example.com","status":200,"title":"Test","text":"Content","metadata":{"description":"Desc"},"normalized":{"fields":{"zebra":{"values":["z"]},"apple":{"values":["a"]},"banana":{"values":["b"]}}}}`)
+	job := model.Job{Kind: model.KindScrape}
+
+	// Export multiple times
+	var results []string
+	for i := 0; i < 5; i++ {
+		result, err := Export(job, raw, "csv")
+		if err != nil {
+			t.Fatalf("Export() failed on iteration %d: %v", i, err)
+		}
+		results = append(results, result)
+	}
+
+	// All exports should produce identical output
+	for i := 1; i < len(results); i++ {
+		if results[i] != results[0] {
+			t.Errorf("Export %d differs from export 0\n%s\nvs\n%s", i, results[0], results[i])
+		}
+	}
+
+	// Verify CSV headers are alphabetically ordered
+	firstResult := results[0]
+	lines := strings.Split(strings.TrimSpace(firstResult), "\n")
+	if len(lines) < 2 {
+		t.Fatal("Expected at least 2 lines in CSV output (header + data)")
+	}
+
+	header := lines[0]
+	expectedHeader := "url,status,title,description,field_apple,field_banana,field_zebra"
+	if header != expectedHeader {
+		t.Errorf("CSV header order incorrect.\nGot: %s\nWant: %s", header, expectedHeader)
+	}
+}
+
+func TestExportCrawlCSVFieldOrderIsStable(t *testing.T) {
+	// Create crawl results with different field sets across items
+	raw := []byte(`{"url":"https://example.com/page1","status":200,"title":"Page1","text":"Text1","normalized":{"fields":{"zebra":{"values":["z1"]},"apple":{"values":["a1"]}}}}
+{"url":"https://example.com/page2","status":200,"title":"Page2","text":"Text2","normalized":{"fields":{"banana":{"values":["b2"]},"apple":{"values":["a2"]}}}}
+{"url":"https://example.com/page3","status":200,"title":"Page3","text":"Text3","normalized":{"fields":{"zebra":{"values":["z3"]},"banana":{"values":["b3"]}}}}`)
+	job := model.Job{Kind: model.KindCrawl}
+
+	// Export multiple times
+	var results []string
+	for i := 0; i < 5; i++ {
+		result, err := Export(job, raw, "csv")
+		if err != nil {
+			t.Fatalf("Export() failed on iteration %d: %v", i, err)
+		}
+		results = append(results, result)
+	}
+
+	// All exports should be identical
+	for i := 1; i < len(results); i++ {
+		if results[i] != results[0] {
+			t.Errorf("Export %d differs from export 0", i)
+		}
+	}
+
+	// Verify headers are alphabetically ordered
+	firstResult := results[0]
+	lines := strings.Split(strings.TrimSpace(firstResult), "\n")
+	header := lines[0]
+	expectedHeader := "url,status,title,field_apple,field_banana,field_zebra"
+	if header != expectedHeader {
+		t.Errorf("Crawl CSV header order incorrect.\nGot: %s\nWant: %s", header, expectedHeader)
+	}
+}
+
+func TestExportCrawlMarkdownFieldOrderIsStable(t *testing.T) {
+	// Create crawl results with fields in non-alphabetical order
+	raw := []byte(`{"url":"https://example.com/page1","status":200,"title":"Page1","text":"Text1","normalized":{"fields":{"zebra":{"values":["z"]},"apple":{"values":["a"]}}}}
+{"url":"https://example.com/page2","status":200,"title":"Page2","text":"Text2","normalized":{"fields":{"banana":{"values":["b"]}}}}`)
+	job := model.Job{Kind: model.KindCrawl}
+
+	// Export multiple times
+	var results []string
+	for i := 0; i < 5; i++ {
+		result, err := Export(job, raw, "md")
+		if err != nil {
+			t.Fatalf("Export() failed on iteration %d: %v", i, err)
+		}
+		results = append(results, result)
+	}
+
+	// All exports should be identical
+	for i := 1; i < len(results); i++ {
+		if results[i] != results[0] {
+			t.Errorf("Export %d differs from export 0", i)
+		}
+	}
+
+	// Verify page1 fields are in alphabetical order
+	firstResult := results[0]
+	page1Start := strings.Index(firstResult, "## Page1")
+	if page1Start == -1 {
+		t.Fatal("Page1 section not found")
+	}
+
+	// Find the positions of field markers within Page1's section
+	page1End := strings.Index(firstResult[page1Start:], "\n## ")
+	if page1End == -1 {
+		page1End = len(firstResult)
+	} else {
+		page1End += page1Start
+	}
+	page1Section := firstResult[page1Start:page1End]
+
+	appleIdx := strings.Index(page1Section, "**apple**:")
+	zebraIdx := strings.Index(page1Section, "**zebra**:")
+
+	if appleIdx == -1 || zebraIdx == -1 {
+		t.Fatal("Fields not found in Page1 section")
+	}
+
+	if !(appleIdx < zebraIdx) {
+		t.Error("Page1 fields are not in alphabetical order")
+	}
+}

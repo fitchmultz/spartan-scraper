@@ -846,6 +846,39 @@
       "completed_at": "2026-01-24T17:53:53.050487000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0025",
+      "status": "done",
+      "title": "Stabilize exporter field ordering for markdown and CSV",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "export",
+        "determinism"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go iterates map fields with range in exportMarkdown and exportCSV, which produces nondeterministic ordering."
+      ],
+      "plan": [
+        "Collect field keys, sort them, and use sorted order in markdown and CSV output.",
+        "Add tests that assert stable ordering of fields across runs."
+      ],
+      "notes": [
+        "Fixed 4 code paths: scrape/crawl markdown + CSV now use sorted field keys",
+        "Added 4 regression tests verifying stable alphabetical ordering",
+        "All tests pass, full CI gate passes"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T18:06:51.440385000Z",
+      "completed_at": "2026-01-24T18:06:51.440385000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
