@@ -47,6 +47,11 @@ export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(op
 
 /**
  * Import auth vault
+ *
+ * Import auth vault from a file in the data directory.
+ * The path must be a simple filename (no directory separators or path traversal).
+ * The file is resolved relative to the configured DATA_DIR.
+ *
  */
 export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthImportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthImportResponses, unknown, ThrowOnError>({
     url: '/v1/auth/import',
@@ -59,6 +64,11 @@ export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * Export auth vault
+ *
+ * Export auth vault to a file in the data directory.
+ * The path must be a simple filename (no directory separators or path traversal).
+ * The file is resolved relative to the configured DATA_DIR.
+ *
  */
 export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthExportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthExportResponses, unknown, ThrowOnError>({
     url: '/v1/auth/export',

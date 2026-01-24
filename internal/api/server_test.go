@@ -235,3 +235,123 @@ func TestHandleResearch(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
 }
+
+func TestHandleAuthImportPathTraversal(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		body           string
+		expectedStatus int
+	}{
+		{
+			name:           "valid filename",
+			body:           `{"path": "backup.json"}`,
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "empty path",
+			body:           `{"path": ""}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "absolute path",
+			body:           `{"path": "/tmp/backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "path traversal with ..",
+			body:           `{"path": "../backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "with directory",
+			body:           `{"path": "subdir/backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "backslash",
+			body:           `{"path": "subdir\\backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "double slash",
+			body:           `{"path": "sub//backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/v1/auth/import", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAuthExportPathTraversal(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		body           string
+		expectedStatus int
+	}{
+		{
+			name:           "valid filename",
+			body:           `{"path": "backup.json"}`,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "empty path",
+			body:           `{"path": ""}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "absolute path",
+			body:           `{"path": "/tmp/backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "path traversal with ..",
+			body:           `{"path": "../backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "with directory",
+			body:           `{"path": "subdir/backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "backslash",
+			body:           `{"path": "subdir\\backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "double slash",
+			body:           `{"path": "sub//backup.json"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/v1/auth/export", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
+			}
+		})
+	}
+}

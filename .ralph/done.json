@@ -1,4 +1,42 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "done",
+      "title": "Fix path traversal vulnerability in auth import/export",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "auth"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/auth/vault.go"
+      ],
+      "evidence": [
+        "v1/auth/import and v1/auth/export take a raw 'path' from the request body",
+        "This allows reading/writing files anywhere on the disk the process has access to"
+      ],
+      "plan": [
+        "Modify handleAuthImport and handleAuthExport to validate the path",
+        "Restrict paths to a safe directory or use a predefined filename relative to DataDir",
+        "Consider removing absolute path support from these endpoints"
+      ],
+      "notes": [
+        "Fixed path traversal vulnerability in auth import/export",
+        "Added validateVaultPath to restrict paths to simple filenames",
+        "Paths now resolved relative to DATA_DIR only",
+        "Added comprehensive test coverage for path traversal attacks",
+        "Updated OpenAPI spec with path validation pattern"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T04:15:35.340040000Z",
+      "completed_at": "2026-01-24T04:15:35.340040000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }

@@ -17,6 +17,10 @@ const (
 	legacyFile    = "profiles.json"
 )
 
+var (
+	ErrInvalidPath = errors.New("invalid path")
+)
+
 func LoadVault(dataDir string) (Vault, error) {
 	path := vaultPath(dataDir)
 	data, err := os.ReadFile(path)
@@ -128,7 +132,11 @@ func ListProfileNames(dataDir string) ([]string, error) {
 }
 
 func ImportVault(dataDir string, path string) error {
-	data, err := os.ReadFile(path)
+	if err := validateVaultPath(path); err != nil {
+		return err
+	}
+	fullPath := filepath.Join(dataDirOrDefault(dataDir), path)
+	data, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}
@@ -143,18 +151,19 @@ func ImportVault(dataDir string, path string) error {
 }
 
 func ExportVault(dataDir string, path string) error {
+	if err := validateVaultPath(path); err != nil {
+		return err
+	}
 	vault, err := LoadVault(dataDir)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
+	fullPath := filepath.Join(dataDirOrDefault(dataDir), path)
 	payload, err := json.MarshalIndent(vault, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, payload, 0o600)
+	return os.WriteFile(fullPath, payload, 0o600)
 }
 
 func UpsertPreset(dataDir string, preset TargetPreset) error {
@@ -208,6 +217,19 @@ func dataDirOrDefault(dataDir string) string {
 		base = ".data"
 	}
 	return base
+}
+
+func validateVaultPath(path string) error {
+	if path == "" {
+		return errors.New("path is required")
+	}
+	if path == "." || path == ".." {
+		return ErrInvalidPath
+	}
+	if strings.ContainsAny(path, "/\\") {
+		return ErrInvalidPath
+	}
+	return nil
 }
 
 func migrateLegacyProfiles(dataDir string) (Vault, bool, error) {

@@ -5,6 +5,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -540,11 +541,11 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if payload.Path == "" {
-		http.Error(w, "path is required", http.StatusBadRequest)
-		return
-	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
+		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -568,11 +569,11 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if payload.Path == "" {
-		http.Error(w, "path is required", http.StatusBadRequest)
-		return
-	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {
+		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

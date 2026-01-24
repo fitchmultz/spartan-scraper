@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
-      "status": "doing",
-      "title": "Fix path traversal vulnerability in auth import/export",
-      "priority": "critical",
-      "tags": [
-        "security",
-        "api",
-        "auth"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/auth/vault.go"
-      ],
-      "evidence": [
-        "v1/auth/import and v1/auth/export take a raw 'path' from the request body",
-        "This allows reading/writing files anywhere on the disk the process has access to"
-      ],
-      "plan": [
-        "Modify handleAuthImport and handleAuthExport to validate the path",
-        "Restrict paths to a safe directory or use a predefined filename relative to DataDir",
-        "Consider removing absolute path support from these endpoints"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-24T03:44:45.024744000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0002",
       "status": "todo",
       "title": "Implement RenderWaitModeNetworkIdle in ChromedpFetcher",

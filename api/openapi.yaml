@@ -71,6 +71,10 @@ paths:
   /v1/auth/import:
     post:
       summary: Import auth vault
+      description: |
+        Import auth vault from a file in the data directory.
+        The path must be a simple filename (no directory separators or path traversal).
+        The file is resolved relative to the configured DATA_DIR.
       requestBody:
         required: true
         content:
@@ -87,6 +91,10 @@ paths:
   /v1/auth/export:
     post:
       summary: Export auth vault
+      description: |
+        Export auth vault to a file in the data directory.
+        The path must be a simple filename (no directory separators or path traversal).
+        The file is resolved relative to the configured DATA_DIR.
       requestBody:
         required: true
         content:
@@ -418,12 +426,16 @@ components:
       properties:
         path:
           type: string
+          pattern: '^[^/\\]+$'
+          description: Simple filename only (no path, no directory separators, resolved relative to DATA_DIR)
       required: [path]
     AuthVaultExport:
       type: object
       properties:
         path:
           type: string
+          pattern: '^[^/\\]+$'
+          description: Simple filename only (no path, no directory separators, resolved relative to DATA_DIR)
       required: [path]
     StatusResponse:
       type: object

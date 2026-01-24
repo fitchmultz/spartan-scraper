@@ -113,10 +113,16 @@ export type AuthProfilesResponse = {
 };
 
 export type AuthVaultImport = {
+    /**
+     * Simple filename only (no path, no directory separators, resolved relative to DATA_DIR)
+     */
     path: string;
 };
 
 export type AuthVaultExport = {
+    /**
+     * Simple filename only (no path, no directory separators, resolved relative to DATA_DIR)
+     */
     path: string;
 };
 
