@@ -406,12 +406,30 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	jobsList, err := s.store.List(r.Context())
+	query := r.URL.Query()
+	limit := parseIntParam(query.Get("limit"), 100)
+	offset := parseIntParam(query.Get("offset"), 0)
+
+	opts := store.ListOptions{Limit: limit, Offset: offset}
+	jobsList, err := s.store.ListOpts(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, map[string]interface{}{"jobs": jobsList})
+}
+
+// parseIntParam parses an integer parameter with a default value.
+// Invalid values (negative or non-numeric) result in the default.
+func parseIntParam(s string, defaultVal int) int {
+	if s == "" {
+		return defaultVal
+	}
+	var val int
+	if _, err := fmt.Sscanf(s, "%d", &val); err != nil || val < 0 {
+		return defaultVal
+	}
+	return val
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {

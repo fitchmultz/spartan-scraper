@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0006",
-      "status": "todo",
-      "title": "Implement pagination in Store.List",
-      "priority": "medium",
-      "tags": [
-        "store",
-        "performance"
-      ],
-      "scope": [
-        "internal/store/store.go"
-      ],
-      "evidence": [
-        "Store.List returns all jobs in a single query",
-        "This will scale poorly as the number of jobs increases"
-      ],
-      "plan": [
-        "Add limit and offset parameters to Store.List",
-        "Update API and CLI to support pagination"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0007",
       "status": "todo",
       "title": "Implement job recovery on Manager startup",

@@ -1124,13 +1124,19 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 
 	switch os.Args[2] {
 	case "list":
+		fs := flag.NewFlagSet("jobs list", flag.ExitOnError)
+		limit := fs.Int("limit", 100, "Maximum number of jobs to list")
+		offset := fs.Int("offset", 0, "Number of jobs to skip")
+		_ = fs.Parse(os.Args[3:])
+
 		st, err := store.Open(cfg.DataDir)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		defer st.Close()
-		jobsList, err := st.List(ctx)
+		opts := store.ListOptions{Limit: *limit, Offset: *offset}
+		jobsList, err := st.ListOpts(ctx, opts)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -1206,12 +1212,14 @@ func printJobsHelp() {
   spartan jobs <subcommand> [options]
 
 Subcommands:
-  list    List all jobs
+  list    List jobs (with pagination)
   get     Get job details
   cancel  Cancel a running or queued job
 
 Examples:
   spartan jobs list
+  spartan jobs list --limit 50
+  spartan jobs list --offset 100
   spartan jobs get <job-id>
   spartan jobs cancel <job-id>
 `)

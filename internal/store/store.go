@@ -15,6 +15,27 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// ListOptions specifies pagination parameters for Store.ListOpts.
+type ListOptions struct {
+	Limit  int
+	Offset int
+}
+
+// Defaults returns options with safe defaults applied.
+// Limit defaults to 100, max is 1000. Offset defaults to 0.
+func (o ListOptions) Defaults() ListOptions {
+	if o.Limit <= 0 {
+		o.Limit = 100
+	}
+	if o.Limit > 1000 {
+		o.Limit = 1000
+	}
+	if o.Offset < 0 {
+		o.Offset = 0
+	}
+	return o
+}
+
 type Store struct {
 	db *sql.DB
 
@@ -175,7 +196,12 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 }
 
 func (s *Store) List(ctx context.Context) ([]model.Job, error) {
-	rows, err := s.db.QueryContext(ctx, `select id, kind, status, created_at, updated_at, params, result_path, error from jobs order by created_at desc`)
+	return s.ListOpts(ctx, ListOptions{})
+}
+
+func (s *Store) ListOpts(ctx context.Context, opts ListOptions) ([]model.Job, error) {
+	opts = opts.Defaults()
+	rows, err := s.db.QueryContext(ctx, `select id, kind, status, created_at, updated_at, params, result_path, error from jobs order by created_at desc limit ? offset ?`, opts.Limit, opts.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +231,7 @@ func (s *Store) List(ctx context.Context) ([]model.Job, error) {
 		}
 		results = append(results, job)
 	}
-	return results, nil
+	return results, rows.Err()
 }
 
 func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState, error) {

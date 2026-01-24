@@ -159,6 +159,22 @@ paths:
   /v1/jobs:
     get:
       summary: List jobs
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of jobs to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of jobs to skip
       responses:
         '200':
           description: Job list

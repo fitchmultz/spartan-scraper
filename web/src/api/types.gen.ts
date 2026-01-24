@@ -389,7 +389,16 @@ export type PostV1ResearchResponse = PostV1ResearchResponses[keyof PostV1Researc
 export type GetV1JobsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum number of jobs to return
+         */
+        limit?: number;
+        /**
+         * Number of jobs to skip
+         */
+        offset?: number;
+    };
     url: '/v1/jobs';
 };
 

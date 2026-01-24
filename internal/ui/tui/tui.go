@@ -104,9 +104,10 @@ func (m model) View() string {
 	return out
 }
 
-func fetchJobs(ctx context.Context, store *store.Store) tea.Cmd {
+func fetchJobs(ctx context.Context, st *store.Store) tea.Cmd {
 	return func() tea.Msg {
-		jobs, err := store.List(ctx)
+		opts := store.ListOptions{Limit: 100, Offset: 0}
+		jobs, err := st.ListOpts(ctx, opts)
 		if err != nil {
 			return jobsMsg{err: err}
 		}

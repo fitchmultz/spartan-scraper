@@ -176,6 +176,41 @@
       "completed_at": "2026-01-24T05:52:52.802836000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0006",
+      "status": "done",
+      "title": "Implement pagination in Store.List",
+      "priority": "medium",
+      "tags": [
+        "store",
+        "performance"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "Store.List returns all jobs in a single query",
+        "This will scale poorly as the number of jobs increases"
+      ],
+      "plan": [
+        "Add limit and offset parameters to Store.List",
+        "Update API and CLI to support pagination"
+      ],
+      "notes": [
+        "Added ListOptions with Limit/Offset and Defaults() method",
+        "Store.List now delegates to ListOpts for backward compatibility",
+        "API /v1/jobs accepts limit (default 100, max 1000) and offset (default 0) query params",
+        "CLI 'jobs list' accepts --limit and --offset flags",
+        "Bug fix: Store.List now returns rows.Err() instead of nil",
+        "Comprehensive test coverage for pagination, defaults, and edge cases"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T06:10:10.594977000Z",
+      "completed_at": "2026-01-24T06:10:10.594977000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
