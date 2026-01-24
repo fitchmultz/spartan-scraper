@@ -36,6 +36,66 @@ func (o ListOptions) Defaults() ListOptions {
 	return o
 }
 
+// ListByStatusOptions specifies pagination parameters for Store.ListByStatus.
+type ListByStatusOptions struct {
+	Limit  int
+	Offset int
+}
+
+// Defaults returns options with safe defaults applied.
+// Limit defaults to 100, max is 1000. Offset defaults to 0.
+func (o ListByStatusOptions) Defaults() ListByStatusOptions {
+	if o.Limit <= 0 {
+		o.Limit = 100
+	}
+	if o.Limit > 1000 {
+		o.Limit = 1000
+	}
+	if o.Offset < 0 {
+		o.Offset = 0
+	}
+	return o
+}
+
+// ListByStatus returns all jobs with the given status, ordered by created_at.
+// If no options are provided, it uses safe defaults (limit 100, offset 0).
+func (s *Store) ListByStatus(ctx context.Context, status model.Status, opts ListByStatusOptions) ([]model.Job, error) {
+	opts = opts.Defaults()
+	rows, err := s.db.QueryContext(ctx,
+		`select id, kind, status, created_at, updated_at, params, result_path, error
+		 from jobs where status = ? order by created_at desc limit ? offset ?`, status, opts.Limit, opts.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := []model.Job{}
+	for rows.Next() {
+		var job model.Job
+		var createdAt, updatedAt string
+		var params string
+		if err := rows.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
+			return nil, err
+		}
+		var parseErr error
+		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse created_at for job %s: %w", job.ID, parseErr)
+		}
+		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse updated_at for job %s: %w", job.ID, parseErr)
+		}
+		if params != "" {
+			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal params for job %s: %w", job.ID, err)
+			}
+		}
+		results = append(results, job)
+	}
+	return results, rows.Err()
+}
+
 type Store struct {
 	db *sql.DB
 

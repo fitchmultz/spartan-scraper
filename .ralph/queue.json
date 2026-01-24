@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0007",
-      "status": "todo",
-      "title": "Implement job recovery on Manager startup",
-      "priority": "medium",
-      "tags": [
-        "jobs",
-        "resilience"
-      ],
-      "scope": [
-        "internal/jobs/manager.go"
-      ],
-      "evidence": [
-        "Manager.Start does not load existing 'Queued' jobs from the store",
-        "If the server restarts, pending jobs are never processed"
-      ],
-      "plan": [
-        "In Manager.Start, query the store for jobs with 'Queued' status",
-        "Enqueue these jobs into the worker pool"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0008",
       "status": "todo",
       "title": "Unify API error format to JSON",

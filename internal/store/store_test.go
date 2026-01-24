@@ -222,3 +222,126 @@ func TestStoreListUsesDefaults(t *testing.T) {
 		t.Errorf("expected 5 jobs with List(), got %d", len(jobs))
 	}
 }
+
+func TestStoreListByStatus(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create jobs with different statuses
+	queuedJob := model.Job{
+		ID:        "j1",
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com/1"},
+	}
+
+	runningJob := model.Job{
+		ID:        "j2",
+		Kind:      model.KindScrape,
+		Status:    model.StatusRunning,
+		CreatedAt: time.Now().Add(-1 * time.Second),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com/2"},
+	}
+
+	succeededJob := model.Job{
+		ID:        "j3",
+		Kind:      model.KindCrawl,
+		Status:    model.StatusSucceeded,
+		CreatedAt: time.Now().Add(-2 * time.Second),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com/3"},
+	}
+
+	if err := s.Create(ctx, queuedJob); err != nil {
+		t.Fatalf("failed to create queued job: %v", err)
+	}
+	if err := s.Create(ctx, runningJob); err != nil {
+		t.Fatalf("failed to create running job: %v", err)
+	}
+	if err := s.Create(ctx, succeededJob); err != nil {
+		t.Fatalf("failed to create succeeded job: %v", err)
+	}
+
+	// Query for queued jobs
+	queued, err := s.ListByStatus(ctx, model.StatusQueued, ListByStatusOptions{})
+	if err != nil {
+		t.Fatalf("ListByStatus failed: %v", err)
+	}
+
+	if len(queued) != 1 {
+		t.Errorf("expected 1 queued job, got %d", len(queued))
+	}
+	if len(queued) > 0 && queued[0].ID != "j1" {
+		t.Errorf("expected job j1, got %s", queued[0].ID)
+	}
+
+	// Query for running jobs
+	running, err := s.ListByStatus(ctx, model.StatusRunning, ListByStatusOptions{})
+	if err != nil {
+		t.Fatalf("ListByStatus failed: %v", err)
+	}
+
+	if len(running) != 1 {
+		t.Errorf("expected 1 running job, got %d", len(running))
+	}
+	if len(running) > 0 && running[0].ID != "j2" {
+		t.Errorf("expected job j2, got %s", running[0].ID)
+	}
+
+	// Query for succeeded jobs
+	succeeded, err := s.ListByStatus(ctx, model.StatusSucceeded, ListByStatusOptions{})
+	if err != nil {
+		t.Fatalf("ListByStatus failed: %v", err)
+	}
+
+	if len(succeeded) != 1 {
+		t.Errorf("expected 1 succeeded job, got %d", len(succeeded))
+	}
+	if len(succeeded) > 0 && succeeded[0].ID != "j3" {
+		t.Errorf("expected job j3, got %s", succeeded[0].ID)
+	}
+
+	// Query for failed jobs (none exist)
+	failed, err := s.ListByStatus(ctx, model.StatusFailed, ListByStatusOptions{})
+	if err != nil {
+		t.Fatalf("ListByStatus failed: %v", err)
+	}
+
+	if len(failed) != 0 {
+		t.Errorf("expected 0 failed jobs, got %d", len(failed))
+	}
+}
+
+func TestListByStatusOptionsDefaults(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      ListByStatusOptions
+		wantLimit  int
+		wantOffset int
+	}{
+		{"zero values use defaults", ListByStatusOptions{}, 100, 0},
+		{"negative limit uses default", ListByStatusOptions{Limit: -1}, 100, 0},
+		{"negative offset uses zero", ListByStatusOptions{Offset: -5}, 100, 0},
+		{"max limit capped", ListByStatusOptions{Limit: 2000}, 1000, 0},
+		{"valid values preserved", ListByStatusOptions{Limit: 50, Offset: 10}, 50, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.input.Defaults()
+			if got.Limit != tt.wantLimit || got.Offset != tt.wantOffset {
+				t.Errorf("Defaults() = {%d, %d}, want {%d, %d}",
+					got.Limit, got.Offset, tt.wantLimit, tt.wantOffset)
+			}
+		})
+	}
+}

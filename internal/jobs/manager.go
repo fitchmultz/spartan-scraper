@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -84,9 +85,52 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 	}
 }
 
+// recoverQueuedJobs loads all queued jobs from the store and enqueues them.
+func (m *Manager) recoverQueuedJobs(ctx context.Context) error {
+	var totalRecovered int
+	opts := store.ListByStatusOptions{Limit: 100}
+
+	for {
+		jobs, err := m.store.ListByStatus(ctx, model.StatusQueued, opts)
+		if err != nil {
+			return fmt.Errorf("failed to list queued jobs: %w", err)
+		}
+
+		if len(jobs) == 0 {
+			break
+		}
+
+		slog.Info("recovering queued jobs", "count", len(jobs), "offset", opts.Offset)
+		for _, job := range jobs {
+			slog.Info("recovering queued job", "jobID", job.ID, "kind", job.Kind)
+			if err := m.Enqueue(job); err != nil {
+				slog.Error("failed to enqueue recovered job", "jobID", job.ID, "error", err)
+				// Continue with next job rather than aborting entire recovery
+			} else {
+				totalRecovered++
+			}
+		}
+
+		opts.Offset += len(jobs)
+		if len(jobs) < opts.Limit {
+			break
+		}
+	}
+
+	slog.Info("job recovery complete", "total_recovered", totalRecovered)
+	return nil
+}
+
 // Start launches the worker pool to process enqueued jobs.
 func (m *Manager) Start(ctx context.Context) {
 	slog.Info("starting job manager", "concurrency", m.maxConcurrency)
+
+	// Recover any queued jobs from previous runs
+	if err := m.recoverQueuedJobs(ctx); err != nil {
+		slog.Error("failed to recover queued jobs", "error", err)
+		// Continue startup anyway - new jobs will still work
+	}
+
 	for i := 0; i < m.maxConcurrency; i++ {
 		m.wg.Add(1)
 		go func(workerID int) {
