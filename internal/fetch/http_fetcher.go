@@ -40,7 +40,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		if req.Limiter != nil {
 			slog.Debug("waiting for rate limiter", "url", req.URL)
-			_ = req.Limiter.Wait(ctx, req.URL)
+			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
+				return Result{}, err
+			}
 		}
 
 		jar, _ := cookiejar.New(nil)

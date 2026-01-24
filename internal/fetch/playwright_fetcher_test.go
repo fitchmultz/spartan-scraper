@@ -319,6 +319,46 @@ func TestPlaywrightFetcher_BrowserReuseSequential(t *testing.T) {
 	_ = f.Close()
 }
 
+// TestPlaywrightFetch_ContextCancellationDuringLimiterWait verifies that context
+// cancellation is properly propagated when waiting for the rate limiter.
+//
+// This test documents the fix for RQ-0022: the Playwright fetcher checks the
+// error return from req.Limiter.Wait and returns immediately on cancellation
+// instead of continuing to ensure Playwright initialization and perform the fetch.
+func TestPlaywrightFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
+	limiter := NewHostLimiter(1, 1)
+
+	// Consume the burst token so that the next Fetch call will block in Wait.
+	// We call Wait directly on the limiter to avoid needing a real Playwright binary.
+	ctx := context.Background()
+	_ = limiter.Wait(ctx, "http://example.com")
+
+	// Now create a cancelled context for the fetch request
+	// This request will need to wait for the rate limiter, but the context
+	// is already cancelled, so Wait should return immediately with context.Canceled
+	cancelledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	fetcher := &PlaywrightFetcher{}
+	req := Request{
+		URL:     "http://example.com",
+		Timeout: 5 * time.Second,
+		Limiter: limiter,
+	}
+
+	result, err := fetcher.Fetch(cancelledCtx, req, RenderProfile{})
+
+	// Assert: should return context.Canceled error
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+
+	// Assert: result should be empty (zero value)
+	if result != (Result{}) {
+		t.Errorf("expected empty Result, got %+v", result)
+	}
+}
+
 // TestIsBlockedType verifies the isBlockedType function correctly matches
 // Playwright resource types to blocked resource types.
 func TestIsBlockedType(t *testing.T) {

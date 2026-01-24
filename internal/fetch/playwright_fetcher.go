@@ -49,7 +49,9 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 
 		if req.Limiter != nil {
 			slog.Debug("waiting for rate limiter", "url", req.URL)
-			_ = req.Limiter.Wait(ctx, req.URL)
+			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
+				return Result{}, err
+			}
 		}
 
 		result, err := f.fetchOnce(ctx, req, prof, navTimeout)

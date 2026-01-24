@@ -740,6 +740,44 @@
       "completed_at": "2026-01-24T17:14:13.791669000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0022",
+      "status": "done",
+      "title": "Propagate rate limiter wait errors in HTTP fetcher",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "fetch",
+        "cancellation"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "internal/fetch/limiter.go",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go ignores errors from req.Limiter.Wait(ctx, req.URL), so context cancellations do not short-circuit fetch.",
+        "internal/fetch/chromedp_fetcher.go and internal/fetch/playwright_fetcher.go have the same bug pattern (discarding limiter.Wait errors)."
+      ],
+      "plan": [
+        "Check the error return from limiter.Wait and return immediately on cancellation/error.",
+        "Add a test that cancels context before Wait and asserts Fetch returns the context error."
+      ],
+      "notes": [
+        "All three fetchers (HTTP, Chromedp, Playwright) now propagate rate limiter Wait errors",
+        "Added context cancellation tests for all three fetchers",
+        "Tests verified with race detector (-race)",
+        "Full CI gate (make ci) passes"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T17:28:14.580004000Z",
+      "completed_at": "2026-01-24T17:28:14.580004000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

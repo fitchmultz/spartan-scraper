@@ -228,3 +228,66 @@ func TestHTTPFetch_ResponseBodyClosedOnError(t *testing.T) {
 	// http_fetcher.go provides defense in depth should this behavior change
 	// or if a different HTTP client implementation is used.
 }
+
+// TestHTTPFetch_ContextCancellationDuringLimiterWait verifies that context
+// cancellation is properly propagated when waiting for the rate limiter.
+//
+// This test documents the fix for RQ-0022: the HTTP fetcher now checks the
+// error return from req.Limiter.Wait and returns immediately on cancellation
+// instead of continuing to make the HTTP request.
+func TestHTTPFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
+	// Create a host limiter with low QPS (1 request per second) to ensure Wait is called.
+	// With burst=1, the first request consumes the burst, and subsequent requests
+	// must wait for the limiter to allow them through.
+	limiter := NewHostLimiter(1, 1)
+
+	// Consume the burst token so that the next Fetch call will block in Wait.
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("burst consumer"))
+	}))
+	defer server.Close()
+
+	fetcher := &HTTPFetcher{}
+	req := Request{
+		URL:     server.URL,
+		Timeout: 5 * time.Second,
+		Limiter: limiter,
+	}
+
+	// First request consumes the burst token
+	_, _ = fetcher.Fetch(ctx, req)
+
+	// Now create a cancelled context for the second request
+	// This request will need to wait for the rate limiter, but the context
+	// is already cancelled, so Wait should return immediately with context.Canceled
+	cancelledCtx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	serverCalled := false
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverCalled = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("should not reach here"))
+	}))
+	defer server2.Close()
+
+	req.URL = server2.URL
+	result, err := fetcher.Fetch(cancelledCtx, req)
+
+	// Assert: should return context.Canceled error
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+
+	// Assert: result should be empty (zero value)
+	if result != (Result{}) {
+		t.Errorf("expected empty Result, got %+v", result)
+	}
+
+	// Assert: server should not have been called (defensive check)
+	if serverCalled {
+		t.Error("server was called despite cancelled context")
+	}
+}
