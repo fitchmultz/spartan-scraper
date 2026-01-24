@@ -5,6 +5,7 @@ import {
   postV1Crawl,
   postV1Research,
   postV1Scrape,
+  getHealthz,
   type Job,
 } from "./api";
 
@@ -86,6 +87,10 @@ export function App() {
   const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
   const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
+  const [managerStatus, setManagerStatus] = useState<{
+    queued: number;
+    active: number;
+  } | null>(null);
 
   const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
 
@@ -106,11 +111,35 @@ export function App() {
     }
   }, []);
 
+  const refreshManagerStatus = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await getHealthz({ baseUrl: "" });
+      if (apiError) {
+        console.error("Failed to fetch manager status:", apiError);
+        return;
+      }
+      const queueDetails = data?.components?.queue?.details;
+      if (queueDetails && typeof queueDetails === "object") {
+        const queued =
+          typeof queueDetails.queued === "number" ? queueDetails.queued : 0;
+        const active =
+          typeof queueDetails.active === "number" ? queueDetails.active : 0;
+        setManagerStatus({ queued, active });
+      }
+    } catch (err) {
+      console.error("Failed to fetch manager status:", err);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshJobs();
-    const handle = window.setInterval(() => void refreshJobs(), 4000);
+    void refreshManagerStatus();
+    const handle = window.setInterval(() => {
+      void refreshJobs();
+      void refreshManagerStatus();
+    }, 4000);
     return () => window.clearInterval(handle);
-  }, [refreshJobs]);
+  }, [refreshJobs, refreshManagerStatus]);
 
   useEffect(() => {
     if (!headless && usePlaywright) {
@@ -350,6 +379,12 @@ export function App() {
         <div className="stats">
           <h3>Live Signals</h3>
           <div>{loading ? "Refreshing…" : "Standing by"}</div>
+          {managerStatus !== null ? (
+            <>
+              <div>Queued: {managerStatus.queued}</div>
+              <div>Active: {managerStatus.active}</div>
+            </>
+          ) : null}
           <div>Total jobs: {jobs.length}</div>
           <div>Headless mode: {headless ? "Enabled" : "Disabled"}</div>
           <div>Playwright: {usePlaywright ? "Enabled" : "Disabled"}</div>

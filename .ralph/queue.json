@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0017",
-      "status": "todo",
-      "title": "Web UI: Show Manager status",
-      "priority": "low",
-      "tags": [
-        "web",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "The Web UI does not show the number of queued and active jobs",
-        "This info is available via healthz or a potential new status endpoint"
-      ],
-      "plan": [
-        "Fetch manager status from the API",
-        "Display status in the hero or sidebar of the Web UI"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0018",
       "status": "todo",
       "title": "Periodic DB checkpoint in Manager",
