@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0020",
-      "status": "todo",
-      "title": "Stop MCP job manager on Close and use cancellable context",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "mcp",
-        "lifecycle"
-      ],
-      "scope": [
-        "internal/mcp/server.go",
-        "internal/jobs/manager.go",
-        "internal/mcp/server_test.go"
-      ],
-      "evidence": [
-        "internal/mcp/server.go NewServer starts the manager with context.Background(), so workers never stop with server shutdown.",
-        "internal/mcp/server.go Close only closes the store and does not cancel or wait for the manager goroutines."
-      ],
-      "plan": [
-        "Store a cancellable context in the MCP Server and start the manager with it.",
-        "Update Close to cancel the context, wait for the manager, then close the store.",
-        "Add a test that Close stops the manager and does not leave work running."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0021",
       "status": "todo",
       "title": "Close HTTP response body on error to avoid leaks",

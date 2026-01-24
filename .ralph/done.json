@@ -665,6 +665,46 @@
       "completed_at": "2026-01-24T16:14:05.496301000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0020",
+      "status": "done",
+      "title": "Stop MCP job manager on Close and use cancellable context",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "mcp",
+        "lifecycle"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/jobs/manager.go",
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go NewServer starts the manager with context.Background(), so workers never stop with server shutdown.",
+        "internal/mcp/server.go Close only closes the store and does not cancel or wait for the manager goroutines."
+      ],
+      "plan": [
+        "Store a cancellable context in the MCP Server and start the manager with it.",
+        "Update Close to cancel the context, wait for the manager, then close the store.",
+        "Add a test that Close stops the manager and does not leave work running."
+      ],
+      "notes": [
+        "Added cancellable context to Server struct (ctx, cancel fields)",
+        "NewServer now creates context.WithCancel and passes to mgr.Start()",
+        "Close() orchestrates proper shutdown: cancel → Wait() → store.Close()",
+        "Added TestServerCloseStopsManager to verify no goroutine leaks",
+        "Added TestServerCloseIdempotent to verify safe double-close",
+        "All tests pass: go test ./internal/mcp/...",
+        "Manager already correctly handles ctx.Done() in workers and checkpoint goroutine"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-24T16:25:19.281714000Z",
+      "completed_at": "2026-01-24T16:25:19.281714000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

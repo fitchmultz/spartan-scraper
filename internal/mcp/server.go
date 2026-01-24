@@ -23,6 +23,8 @@ type Server struct {
 	store   *store.Store
 	manager *jobs.Manager
 	cfg     config.Config
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 type request struct {
@@ -71,11 +73,29 @@ func NewServer(cfg config.Config) (*Server, error) {
 		cfg.MaxResponseBytes,
 		cfg.UsePlaywright,
 	)
-	mgr.Start(context.Background())
-	return &Server{store: st, manager: mgr, cfg: cfg}, nil
+	ctx, cancel := context.WithCancel(context.Background())
+	mgr.Start(ctx)
+	return &Server{
+		store:   st,
+		manager: mgr,
+		cfg:     cfg,
+		ctx:     ctx,
+		cancel:  cancel,
+	}, nil
 }
 
 func (s *Server) Close() error {
+	// Cancel the manager's context first
+	if s.cancel != nil {
+		s.cancel()
+	}
+
+	// Wait for all manager goroutines to finish
+	if s.manager != nil {
+		s.manager.Wait()
+	}
+
+	// Finally close the store
 	if s.store != nil {
 		return s.store.Close()
 	}
