@@ -3,7 +3,7 @@
   "tasks": [
     {
       "id": "RQ-0001",
-      "status": "todo",
+      "status": "doing",
       "title": "Fix path traversal vulnerability in auth import/export",
       "priority": "critical",
       "tags": [
@@ -27,7 +27,7 @@
       "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T03:44:45.024744000Z",
       "depends_on": [],
       "custom_fields": {}
     },
