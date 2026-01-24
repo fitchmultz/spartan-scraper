@@ -2,6 +2,7 @@ package extract
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -54,7 +55,7 @@ func validateField(name string, val FieldValue, schema *Schema) []string {
 	// Check if array or single
 	// Scraping always produces []string.
 	// If schema type is array, we treat the whole slice.
-	// If schema type is string/number/bool, we typically take the first element (or iterate if user meant "any of").
+	// If schema type is string/number/integer/bool, we typically take the first element (or iterate if user meant "any of").
 	// Convention: If schema type != array, we validate the FIRST value. If there are multiple, warn? Or just use first.
 	// Let's validate the first value for scalar types.
 
@@ -85,6 +86,18 @@ func validateField(name string, val FieldValue, schema *Schema) []string {
 		errs = append(errs, validateScalar(name, v, schema)...)
 	}
 
+	return errs
+}
+
+// validateNumericConstraints checks minimum/maximum constraints for a numeric value.
+func validateNumericConstraints(path string, f float64, schema *Schema) []string {
+	var errs []string
+	if schema.Minimum != nil && f < *schema.Minimum {
+		errs = append(errs, fmt.Sprintf("%s: below minimum %v", path, *schema.Minimum))
+	}
+	if schema.Maximum != nil && f > *schema.Maximum {
+		errs = append(errs, fmt.Sprintf("%s: above maximum %v", path, *schema.Maximum))
+	}
 	return errs
 }
 
@@ -123,12 +136,17 @@ func validateScalar(path string, value string, schema *Schema) []string {
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: not a number", path))
 		} else {
-			if schema.Minimum != nil && f < *schema.Minimum {
-				errs = append(errs, fmt.Sprintf("%s: below minimum %v", path, *schema.Minimum))
-			}
-			if schema.Maximum != nil && f > *schema.Maximum {
-				errs = append(errs, fmt.Sprintf("%s: above maximum %v", path, *schema.Maximum))
-			}
+			errs = append(errs, validateNumericConstraints(path, f, schema)...)
+		}
+
+	case SchemaInteger:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: not an integer", path))
+		} else if math.Trunc(f) != f {
+			errs = append(errs, fmt.Sprintf("%s: must be an integer (got %s with decimals)", path, value))
+		} else {
+			errs = append(errs, validateNumericConstraints(path, f, schema)...)
 		}
 
 	case SchemaBool:

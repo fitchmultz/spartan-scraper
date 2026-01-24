@@ -314,6 +314,41 @@
       "completed_at": "2026-01-24T07:03:39.239025000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0010",
+      "status": "done",
+      "title": "Support SchemaInteger in validation",
+      "priority": "medium",
+      "tags": [
+        "extract",
+        "validation"
+      ],
+      "scope": [
+        "internal/extract/schema.go",
+        "internal/extract/types.go"
+      ],
+      "evidence": [
+        "extract.validateScalar only handles SchemaNumber",
+        "SchemaInteger is missing as a explicit type even though it's common in schemas"
+      ],
+      "plan": [
+        "Add SchemaInteger to SchemaType enum",
+        "Update validateScalar to handle integer validation (no decimals allowed)"
+      ],
+      "notes": [
+        "Add SchemaInteger constant to SchemaType enum",
+        "Implement integer validation with math.Trunc for decimal detection",
+        "Extract validateNumericConstraints helper to eliminate duplication with SchemaNumber",
+        "Add 10 new test cases covering valid/invalid integers, boundaries, and scientific notation",
+        "Edge case: Inf without max constraint would be accepted (same as SchemaNumber)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T07:24:59.938777000Z",
+      "completed_at": "2026-01-24T07:24:59.938777000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

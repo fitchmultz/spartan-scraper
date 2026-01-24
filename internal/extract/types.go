@@ -120,11 +120,12 @@ type ExecuteOutput struct {
 type SchemaType string
 
 const (
-	SchemaString SchemaType = "string"
-	SchemaNumber SchemaType = "number"
-	SchemaBool   SchemaType = "boolean"
-	SchemaArray  SchemaType = "array"
-	SchemaObject SchemaType = "object"
+	SchemaString  SchemaType = "string"
+	SchemaNumber  SchemaType = "number"
+	SchemaInteger SchemaType = "integer"
+	SchemaBool    SchemaType = "boolean"
+	SchemaArray   SchemaType = "array"
+	SchemaObject  SchemaType = "object"
 )
 
 type Schema struct {
