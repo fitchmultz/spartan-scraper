@@ -245,6 +245,41 @@
       "completed_at": "2026-01-24T06:31:31.115535000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0008",
+      "status": "done",
+      "title": "Unify API error format to JSON",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "API error responses use plain text http.Error",
+        "The rest of the API returns JSON, creating inconsistency for clients"
+      ],
+      "plan": [
+        "Create a standard ErrorResponse struct",
+        "Refactor error handling to return JSON with appropriate status codes"
+      ],
+      "notes": [
+        "Added ErrorResponse struct with JSON error format",
+        "Added writeJSONError helper function",
+        "Replaced 54+ http.Error calls with writeJSONError",
+        "Updated OpenAPI spec with ErrorResponse schema",
+        "Added comprehensive test coverage for JSON error responses",
+        "All API endpoints now return consistent JSON errors"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T06:51:12.540997000Z",
+      "completed_at": "2026-01-24T06:51:12.540997000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -45,6 +45,11 @@ type HealthResponse struct {
 	Components map[string]ComponentStatus `json:"components"`
 }
 
+// ErrorResponse represents a standard error response.
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`
@@ -159,33 +164,33 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ScrapeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
 	if req.URL == "" {
-		http.Error(w, "url is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
 	if !isValidURL(req.URL) {
-		http.Error(w, "invalid url: must be http or https and have a host", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid url: must be http or https and have a host")
 		return
 	}
 	if !isValidProfileName(req.AuthProfile) {
-		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
 		return
 	}
 	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
 		return
 	}
 
@@ -215,16 +220,16 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 
 	authOptions, err := resolveAuthForRequest(s.cfg, req.URL, req.AuthProfile, req.Auth)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	job, err := s.manager.CreateScrapeJob(r.Context(), req.URL, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if err := s.manager.Enqueue(job); err != nil {
-		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "failed to enqueue job: "+err.Error())
 		return
 	}
 
@@ -233,41 +238,41 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req CrawlRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
 	if req.URL == "" {
-		http.Error(w, "url is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
 	if !isValidURL(req.URL) {
-		http.Error(w, "invalid url: must be http or https and have a host", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid url: must be http or https and have a host")
 		return
 	}
 	if !isValidProfileName(req.AuthProfile) {
-		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
 		return
 	}
 	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
 		return
 	}
 	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
-		http.Error(w, "maxDepth must be between 1 and 10", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "maxDepth must be between 1 and 10")
 		return
 	}
 	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
-		http.Error(w, "maxPages must be between 1 and 10000", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "maxPages must be between 1 and 10000")
 		return
 	}
 
@@ -297,16 +302,16 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 
 	authOptions, err := resolveAuthForRequest(s.cfg, req.URL, req.AuthProfile, req.Auth)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	job, err := s.manager.CreateCrawlJob(r.Context(), req.URL, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if err := s.manager.Enqueue(job); err != nil {
-		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "failed to enqueue job: "+err.Error())
 		return
 	}
 
@@ -315,43 +320,43 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ResearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
 	if req.Query == "" || len(req.URLs) == 0 {
-		http.Error(w, "query and urls are required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "query and urls are required")
 		return
 	}
 	for _, u := range req.URLs {
 		if !isValidURL(u) {
-			http.Error(w, fmt.Sprintf("invalid url in list: %s (must be http or https and have a host)", u), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid url in list: %s (must be http or https and have a host)", u))
 			return
 		}
 	}
 	if !isValidProfileName(req.AuthProfile) {
-		http.Error(w, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
 		return
 	}
 	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		http.Error(w, "timeoutSeconds must be between 5 and 300", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
 		return
 	}
 	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
-		http.Error(w, "maxDepth must be between 1 and 10", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "maxDepth must be between 1 and 10")
 		return
 	}
 	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
-		http.Error(w, "maxPages must be between 1 and 10000", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "maxPages must be between 1 and 10000")
 		return
 	}
 
@@ -385,16 +390,16 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	}
 	authOptions, err := resolveAuthForRequest(s.cfg, targetURL, req.AuthProfile, req.Auth)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	job, err := s.manager.CreateResearchJob(r.Context(), req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if err := s.manager.Enqueue(job); err != nil {
-		http.Error(w, "failed to enqueue job: "+err.Error(), http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, "failed to enqueue job: "+err.Error())
 		return
 	}
 
@@ -403,7 +408,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	query := r.URL.Query()
@@ -413,7 +418,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	opts := store.ListOptions{Limit: limit, Offset: offset}
 	jobsList, err := s.store.ListOpts(r.Context(), opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, map[string]interface{}{"jobs": jobsList})
@@ -440,45 +445,45 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	}
 	id := filepath.Base(path)
 	if id == "" || id == "jobs" {
-		http.Error(w, "id required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "id required")
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
 		job, err := s.store.Get(r.Context(), id)
 		if err != nil {
-			http.Error(w, "not found", http.StatusNotFound)
+			writeJSONError(w, http.StatusNotFound, "not found")
 			return
 		}
 		writeJSON(w, job)
 	case http.MethodDelete:
 		if err := s.manager.CancelJob(r.Context(), id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, map[string]string{"status": "canceled"})
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	id := filepath.Base(strings.TrimSuffix(r.URL.Path, "/results"))
 	if id == "" {
-		http.Error(w, "id required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "id required")
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	job, err := s.store.Get(r.Context(), id)
 	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		writeJSONError(w, http.StatusNotFound, "not found")
 		return
 	}
 	if job.ResultPath == "" {
-		http.Error(w, "no results", http.StatusNotFound)
+		writeJSONError(w, http.StatusNotFound, "no results")
 		return
 	}
 	http.ServeFile(w, r, job.ResultPath)
@@ -486,12 +491,12 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	vault, err := auth.LoadVault(s.cfg.DataDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, map[string]interface{}{"profiles": vault.Profiles})
@@ -500,55 +505,55 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	if name == "" || name == "profiles" {
-		http.Error(w, "name required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "name required")
 		return
 	}
 	switch r.Method {
 	case http.MethodPut:
 		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+			writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var profile auth.Profile
 		if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-			http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 			return
 		}
 		if profile.Name == "" {
 			profile.Name = name
 		}
 		if profile.Name != name {
-			http.Error(w, "profile name mismatch", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "profile name mismatch")
 			return
 		}
 		if !isValidProfileName(profile.Name) {
-			http.Error(w, "invalid profile name: only alphanumeric, hyphens, and underscores allowed", http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, "invalid profile name: only alphanumeric, hyphens, and underscores allowed")
 			return
 		}
 		if err := auth.UpsertProfile(s.cfg.DataDir, profile); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeJSON(w, profile)
 	case http.MethodDelete:
 		if err := auth.DeleteProfile(s.cfg.DataDir, name); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, map[string]string{"status": "ok"})
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
 
 func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -556,15 +561,15 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
 		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
@@ -572,11 +577,11 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		http.Error(w, "content-type must be application/json", http.StatusUnsupportedMediaType)
+		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -584,15 +589,15 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {
 		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
@@ -602,6 +607,16 @@ func writeJSON(w http.ResponseWriter, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		slog.Error("failed to encode json response", "error", err)
+	}
+}
+
+// writeJSONError writes a JSON error response with the given status code.
+func writeJSONError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	errResp := ErrorResponse{Error: message}
+	if err := json.NewEncoder(w).Encode(errResp); err != nil {
+		slog.Error("failed to encode json error response", "error", err)
 	}
 }
 

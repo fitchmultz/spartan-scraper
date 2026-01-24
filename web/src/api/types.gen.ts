@@ -229,6 +229,13 @@ export type ComponentStatus = {
     };
 };
 
+export type ErrorResponse = {
+    /**
+     * Human-readable error message
+     */
+    error: string;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -261,6 +268,19 @@ export type GetV1AuthProfilesData = {
     url: '/v1/auth/profiles';
 };
 
+export type GetV1AuthProfilesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1AuthProfilesError = GetV1AuthProfilesErrors[keyof GetV1AuthProfilesErrors];
+
 export type GetV1AuthProfilesResponses = {
     /**
      * Auth profiles
@@ -278,6 +298,23 @@ export type DeleteV1AuthProfilesByNameData = {
     query?: never;
     url: '/v1/auth/profiles/{name}';
 };
+
+export type DeleteV1AuthProfilesByNameErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1AuthProfilesByNameError = DeleteV1AuthProfilesByNameErrors[keyof DeleteV1AuthProfilesByNameErrors];
 
 export type DeleteV1AuthProfilesByNameResponses = {
     /**
@@ -297,6 +334,23 @@ export type PutV1AuthProfilesByNameData = {
     url: '/v1/auth/profiles/{name}';
 };
 
+export type PutV1AuthProfilesByNameErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+};
+
+export type PutV1AuthProfilesByNameError = PutV1AuthProfilesByNameErrors[keyof PutV1AuthProfilesByNameErrors];
+
 export type PutV1AuthProfilesByNameResponses = {
     /**
      * Auth profile saved
@@ -312,6 +366,27 @@ export type PostV1AuthImportData = {
     query?: never;
     url: '/v1/auth/import';
 };
+
+export type PostV1AuthImportErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1AuthImportError = PostV1AuthImportErrors[keyof PostV1AuthImportErrors];
 
 export type PostV1AuthImportResponses = {
     /**
@@ -329,6 +404,27 @@ export type PostV1AuthExportData = {
     url: '/v1/auth/export';
 };
 
+export type PostV1AuthExportErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1AuthExportError = PostV1AuthExportErrors[keyof PostV1AuthExportErrors];
+
 export type PostV1AuthExportResponses = {
     /**
      * Exported
@@ -344,6 +440,31 @@ export type PostV1ScrapeData = {
     query?: never;
     url: '/v1/scrape';
 };
+
+export type PostV1ScrapeErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type PostV1ScrapeError = PostV1ScrapeErrors[keyof PostV1ScrapeErrors];
 
 export type PostV1ScrapeResponses = {
     /**
@@ -361,6 +482,31 @@ export type PostV1CrawlData = {
     url: '/v1/crawl';
 };
 
+export type PostV1CrawlErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type PostV1CrawlError = PostV1CrawlErrors[keyof PostV1CrawlErrors];
+
 export type PostV1CrawlResponses = {
     /**
      * Job created
@@ -376,6 +522,31 @@ export type PostV1ResearchData = {
     query?: never;
     url: '/v1/research';
 };
+
+export type PostV1ResearchErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type PostV1ResearchError = PostV1ResearchErrors[keyof PostV1ResearchErrors];
 
 export type PostV1ResearchResponses = {
     /**
@@ -402,6 +573,19 @@ export type GetV1JobsData = {
     url: '/v1/jobs';
 };
 
+export type GetV1JobsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1JobsError = GetV1JobsErrors[keyof GetV1JobsErrors];
+
 export type GetV1JobsResponses = {
     /**
      * Job list
@@ -419,6 +603,23 @@ export type DeleteV1JobsByIdData = {
     query?: never;
     url: '/v1/jobs/{id}';
 };
+
+export type DeleteV1JobsByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1JobsByIdError = DeleteV1JobsByIdErrors[keyof DeleteV1JobsByIdErrors];
 
 export type DeleteV1JobsByIdResponses = {
     /**
@@ -438,6 +639,23 @@ export type GetV1JobsByIdData = {
     url: '/v1/jobs/{id}';
 };
 
+export type GetV1JobsByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type GetV1JobsByIdError = GetV1JobsByIdErrors[keyof GetV1JobsByIdErrors];
+
 export type GetV1JobsByIdResponses = {
     /**
      * Job
@@ -455,6 +673,23 @@ export type GetV1JobsByIdResultsData = {
     query?: never;
     url: '/v1/jobs/{id}/results';
 };
+
+export type GetV1JobsByIdResultsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type GetV1JobsByIdResultsError = GetV1JobsByIdResultsErrors[keyof GetV1JobsByIdResultsErrors];
 
 export type GetV1JobsByIdResultsResponses = {
     /**

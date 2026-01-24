@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -26,17 +26,17 @@ export const getHealthz = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * List auth profiles
  */
-export const getV1AuthProfiles = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuthProfilesData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuthProfilesResponses, unknown, ThrowOnError>({ url: '/v1/auth/profiles', ...options });
+export const getV1AuthProfiles = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuthProfilesData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuthProfilesResponses, GetV1AuthProfilesErrors, ThrowOnError>({ url: '/v1/auth/profiles', ...options });
 
 /**
  * Delete auth profile
  */
-export const deleteV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthProfilesByNameResponses, unknown, ThrowOnError>({ url: '/v1/auth/profiles/{name}', ...options });
+export const deleteV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthProfilesByNameResponses, DeleteV1AuthProfilesByNameErrors, ThrowOnError>({ url: '/v1/auth/profiles/{name}', ...options });
 
 /**
  * Upsert auth profile
  */
-export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<PutV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).put<PutV1AuthProfilesByNameResponses, unknown, ThrowOnError>({
+export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<PutV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).put<PutV1AuthProfilesByNameResponses, PutV1AuthProfilesByNameErrors, ThrowOnError>({
     url: '/v1/auth/profiles/{name}',
     ...options,
     headers: {
@@ -53,7 +53,7 @@ export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(op
  * The file is resolved relative to the configured DATA_DIR.
  *
  */
-export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthImportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthImportResponses, unknown, ThrowOnError>({
+export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthImportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthImportResponses, PostV1AuthImportErrors, ThrowOnError>({
     url: '/v1/auth/import',
     ...options,
     headers: {
@@ -70,7 +70,7 @@ export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: 
  * The file is resolved relative to the configured DATA_DIR.
  *
  */
-export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthExportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthExportResponses, unknown, ThrowOnError>({
+export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthExportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthExportResponses, PostV1AuthExportErrors, ThrowOnError>({
     url: '/v1/auth/export',
     ...options,
     headers: {
@@ -82,7 +82,7 @@ export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: 
 /**
  * Scrape a single page
  */
-export const postV1Scrape = <ThrowOnError extends boolean = false>(options: Options<PostV1ScrapeData, ThrowOnError>) => (options.client ?? client).post<PostV1ScrapeResponses, unknown, ThrowOnError>({
+export const postV1Scrape = <ThrowOnError extends boolean = false>(options: Options<PostV1ScrapeData, ThrowOnError>) => (options.client ?? client).post<PostV1ScrapeResponses, PostV1ScrapeErrors, ThrowOnError>({
     url: '/v1/scrape',
     ...options,
     headers: {
@@ -94,7 +94,7 @@ export const postV1Scrape = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Crawl a site
  */
-export const postV1Crawl = <ThrowOnError extends boolean = false>(options: Options<PostV1CrawlData, ThrowOnError>) => (options.client ?? client).post<PostV1CrawlResponses, unknown, ThrowOnError>({
+export const postV1Crawl = <ThrowOnError extends boolean = false>(options: Options<PostV1CrawlData, ThrowOnError>) => (options.client ?? client).post<PostV1CrawlResponses, PostV1CrawlErrors, ThrowOnError>({
     url: '/v1/crawl',
     ...options,
     headers: {
@@ -106,7 +106,7 @@ export const postV1Crawl = <ThrowOnError extends boolean = false>(options: Optio
 /**
  * Deep research across multiple sources
  */
-export const postV1Research = <ThrowOnError extends boolean = false>(options: Options<PostV1ResearchData, ThrowOnError>) => (options.client ?? client).post<PostV1ResearchResponses, unknown, ThrowOnError>({
+export const postV1Research = <ThrowOnError extends boolean = false>(options: Options<PostV1ResearchData, ThrowOnError>) => (options.client ?? client).post<PostV1ResearchResponses, PostV1ResearchErrors, ThrowOnError>({
     url: '/v1/research',
     ...options,
     headers: {
@@ -118,19 +118,19 @@ export const postV1Research = <ThrowOnError extends boolean = false>(options: Op
 /**
  * List jobs
  */
-export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, unknown, ThrowOnError>({ url: '/v1/jobs', ...options });
+export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, GetV1JobsErrors, ThrowOnError>({ url: '/v1/jobs', ...options });
 
 /**
  * Cancel a job
  */
-export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, unknown, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
+export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, DeleteV1JobsByIdErrors, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
 
 /**
  * Get a job
  */
-export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResponses, unknown, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
+export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResponses, GetV1JobsByIdErrors, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
 
 /**
  * Get job results
  */
-export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, unknown, ThrowOnError>({ url: '/v1/jobs/{id}/results', ...options });
+export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, GetV1JobsByIdResultsErrors, ThrowOnError>({ url: '/v1/jobs/{id}/results', ...options });

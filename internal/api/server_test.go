@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -182,6 +183,20 @@ func TestHandleScrapeValidation(t *testing.T) {
 			if status := rr.Code; status != tt.expectedStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v", status, tt.expectedStatus)
 			}
+
+			// Verify JSON response
+			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %v", ct)
+			}
+
+			// Verify error field exists
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Errorf("failed to parse JSON response: %v", err)
+			}
+			if _, ok := resp["error"]; !ok {
+				t.Errorf("expected 'error' field in response, got: %v", resp)
+			}
 		})
 	}
 }
@@ -216,6 +231,20 @@ func TestHandleCrawlValidation(t *testing.T) {
 
 			if status := rr.Code; status != tt.expectedStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v", status, tt.expectedStatus)
+			}
+
+			// Verify JSON response
+			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %v", ct)
+			}
+
+			// Verify error field exists
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Errorf("failed to parse JSON response: %v", err)
+			}
+			if _, ok := resp["error"]; !ok {
+				t.Errorf("expected 'error' field in response, got: %v", resp)
 			}
 		})
 	}
@@ -292,6 +321,20 @@ func TestHandleAuthImportPathTraversal(t *testing.T) {
 			if status := rr.Code; status != tt.expectedStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
 			}
+
+			// Verify JSON response
+			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %v", ct)
+			}
+
+			// Verify error field exists
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Errorf("failed to parse JSON response: %v", err)
+			}
+			if _, ok := resp["error"]; !ok {
+				t.Errorf("expected 'error' field in response, got: %v", resp)
+			}
 		})
 	}
 }
@@ -351,6 +394,23 @@ func TestHandleAuthExportPathTraversal(t *testing.T) {
 
 			if status := rr.Code; status != tt.expectedStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
+			}
+
+			// Only verify JSON error response for error status codes
+			if tt.expectedStatus != http.StatusOK {
+				// Verify JSON response
+				if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+					t.Errorf("expected Content-Type application/json, got %v", ct)
+				}
+
+				// Verify error field exists
+				var resp map[string]interface{}
+				if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+					t.Errorf("failed to parse JSON response: %v", err)
+				}
+				if _, ok := resp["error"]; !ok {
+					t.Errorf("expected 'error' field in response, got: %v", resp)
+				}
 			}
 		})
 	}
