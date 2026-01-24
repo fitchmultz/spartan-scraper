@@ -72,6 +72,41 @@
       "completed_at": "2026-01-24T04:51:58.292649000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0003",
+      "status": "done",
+      "title": "Implement browser availability check",
+      "priority": "high",
+      "tags": [
+        "fetch",
+        "infra",
+        "health"
+      ],
+      "scope": [
+        "internal/fetch/fetcher.go"
+      ],
+      "evidence": [
+        "fetch.CheckBrowserAvailability is a stub returning nil",
+        "healthz endpoint relies on this to report browser status"
+      ],
+      "plan": [
+        "Implement actual checks for chrome/chromium on PATH",
+        "Implement check for playwright drivers if usePlaywright is true"
+      ],
+      "notes": [
+        "Implemented browser availability check with Chrome/Chromium detection on PATH and platform-specific paths",
+        "Added Playwright driver availability check with 10-second timeout protection",
+        "Made runtime.GOOS and os.Getenv testable via package-level variables",
+        "Comprehensive test coverage for all platforms (Linux, macOS, Windows)",
+        "All tests pass and CI gate passes"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T05:18:20.371279000Z",
+      "completed_at": "2026-01-24T05:18:20.371279000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0003",
-      "status": "todo",
-      "title": "Implement browser availability check",
-      "priority": "high",
-      "tags": [
-        "fetch",
-        "infra",
-        "health"
-      ],
-      "scope": [
-        "internal/fetch/fetcher.go"
-      ],
-      "evidence": [
-        "fetch.CheckBrowserAvailability is a stub returning nil",
-        "healthz endpoint relies on this to report browser status"
-      ],
-      "plan": [
-        "Implement actual checks for chrome/chromium on PATH",
-        "Implement check for playwright drivers if usePlaywright is true"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0004",
       "status": "todo",
       "title": "Capture actual status in ChromedpFetcher",
