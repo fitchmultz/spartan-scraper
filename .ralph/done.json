@@ -280,6 +280,40 @@
       "completed_at": "2026-01-24T06:51:12.540997000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0009",
+      "status": "done",
+      "title": "Fix runJobs cancel CLI to be server-aware",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "jobs"
+      ],
+      "scope": [
+        "internal/cli/cli.go"
+      ],
+      "evidence": [
+        "runJobs cancel creates a new Manager instance to cancel a job",
+        "This is incorrect if another manager (server) is already running and owns the job"
+      ],
+      "plan": [
+        "Modify cli.runJobs cancel to check if the API server is reachable",
+        "If server is running, use API call to cancel; otherwise fall back to local store update"
+      ],
+      "notes": [
+        "Fixed cancel CLI to detect and use API when server is running",
+        "Removed incorrect Manager instantiation that conflicted with server-owned jobs",
+        "Added isServerRunning() helper with 2s health check timeout",
+        "Added cancelJobViaAPI() helper with 5s timeout and ErrorResponse parsing",
+        "CI passed: all tests green including e2e (22.3s)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T07:03:39.239025000Z",
+      "completed_at": "2026-01-24T07:03:39.239025000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0009",
-      "status": "todo",
-      "title": "Fix runJobs cancel CLI to be server-aware",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "jobs"
-      ],
-      "scope": [
-        "internal/cli/cli.go"
-      ],
-      "evidence": [
-        "runJobs cancel creates a new Manager instance to cancel a job",
-        "This is incorrect if another manager (server) is already running and owns the job"
-      ],
-      "plan": [
-        "Modify cli.runJobs cancel to check if the API server is reachable",
-        "If server is running, use API call to cancel; otherwise fall back to local store update"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0010",
       "status": "todo",
       "title": "Support SchemaInteger in validation",

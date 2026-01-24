@@ -1171,6 +1171,19 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 			return 1
 		}
 		id := os.Args[3]
+
+		// Check if server is running first
+		if isServerRunning(ctx, cfg.Port) {
+			// Server owns the job - use API to properly cancel active job
+			if err := cancelJobViaAPI(ctx, cfg.Port, id); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to cancel job via API: %v\n", err)
+				return 1
+			}
+			fmt.Println("canceled", id)
+			return 0
+		}
+
+		// Server not running - fall back to direct store update
 		st, err := store.Open(cfg.DataDir)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -1178,20 +1191,8 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 		}
 		defer st.Close()
 
-		manager := jobs.NewManager(
-			st,
-			cfg.DataDir,
-			cfg.UserAgent,
-			time.Duration(cfg.RequestTimeoutSecs)*time.Second,
-			cfg.MaxConcurrency,
-			cfg.RateLimitQPS,
-			cfg.RateLimitBurst,
-			cfg.MaxRetries,
-			time.Duration(cfg.RetryBaseMs)*time.Millisecond,
-			cfg.UsePlaywright,
-		)
-
-		if err := manager.CancelJob(ctx, id); err != nil {
+		// Only update store status (no active jobs to cancel since server isn't running)
+		if err := st.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user"); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -1451,6 +1452,48 @@ func resolveAuthForRequest(cfg config.Config, url string, profile string, overri
 		return fetch.AuthOptions{}, err
 	}
 	return auth.ToFetchOptions(resolved), nil
+}
+
+// isServerRunning checks if the Spartan API server is running by pinging the healthz endpoint.
+func isServerRunning(ctx context.Context, port string) bool {
+	url := fmt.Sprintf("http://localhost:%s/healthz", port)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+// cancelJobViaAPI cancels a job by calling the server's DELETE /v1/jobs/{id} endpoint.
+func cancelJobViaAPI(ctx context.Context, port, jobID string) error {
+	url := fmt.Sprintf("http://localhost:%s/v1/jobs/%s", port, jobID)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp api.ErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil {
+			return fmt.Errorf("server returned %d: %s", resp.StatusCode, errResp.Error)
+		}
+		return fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func runHealth(ctx context.Context, cfg config.Config) int {
