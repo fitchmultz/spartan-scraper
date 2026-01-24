@@ -1,6 +1,9 @@
 package extract
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ExtractOptions struct {
 	Template string    `json:"template,omitempty"`
@@ -69,8 +72,9 @@ const (
 )
 
 type FieldValue struct {
-	Values []string    `json:"values"`
-	Source FieldSource `json:"source"`
+	Values    []string    `json:"values,omitempty"`
+	Source    FieldSource `json:"source"`
+	RawObject string      `json:"rawObject,omitempty"` // JSON-encoded object for SchemaObject validation
 }
 
 type Extracted struct {
@@ -140,6 +144,20 @@ type Schema struct {
 	Minimum              *float64           `json:"minimum,omitempty"`
 	Maximum              *float64           `json:"maximum,omitempty"`
 	AdditionalProperties bool               `json:"additionalProperties,omitempty"`
+}
+
+// NewObjectFieldValue creates a FieldValue containing a nested object.
+// The nested map will be JSON-serialized for storage and can be validated
+// against a SchemaObject schema.
+func NewObjectFieldValue(fields map[string]FieldValue, source FieldSource) (FieldValue, error) {
+	data, err := json.Marshal(fields)
+	if err != nil {
+		return FieldValue{}, err
+	}
+	return FieldValue{
+		RawObject: string(data),
+		Source:    source,
+	}, nil
 }
 
 type TemplateRegistry struct {

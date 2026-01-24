@@ -349,6 +349,42 @@
       "completed_at": "2026-01-24T07:24:59.938777000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0011",
+      "status": "done",
+      "title": "Deep nesting support in Schema validation",
+      "priority": "medium",
+      "tags": [
+        "extract",
+        "validation"
+      ],
+      "scope": [
+        "internal/extract/schema.go"
+      ],
+      "evidence": [
+        "ValidateDocument only handles properties at the top level",
+        "It doesn't recursively validate nested objects in properties"
+      ],
+      "plan": [
+        "Refactor ValidateDocument/validateField to be recursive",
+        "Support SchemaObject validation within validateField"
+      ],
+      "notes": [
+        "Implemented recursive validation with depth tracking",
+        "Added SchemaObject support in validateField for nested properties",
+        "Added array of objects validation support",
+        "Implemented depth limiting (max 10 levels) to prevent stack overflow",
+        "Added RawObject field to FieldValue and NewObjectFieldValue helper",
+        "Comprehensive test coverage: 7 test functions with 20+ subtests",
+        "All CI gates pass: make ci clean"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T07:40:34.607750000Z",
+      "completed_at": "2026-01-24T07:40:34.607750000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

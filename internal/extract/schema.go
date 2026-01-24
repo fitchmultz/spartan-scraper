@@ -1,14 +1,22 @@
 package extract
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
 
+const maxValidationDepth = 10
+
 func ValidateDocument(doc NormalizedDocument, schema *Schema) ValidationResult {
+	return validateDocumentWithDepth(doc, schema, 0)
+}
+
+func validateDocumentWithDepth(doc NormalizedDocument, schema *Schema, depth int) ValidationResult {
 	if schema == nil {
 		return ValidationResult{Valid: true}
 	}
@@ -29,7 +37,7 @@ func ValidateDocument(doc NormalizedDocument, schema *Schema) ValidationResult {
 			if !exists {
 				continue
 			}
-			errs := validateField(fieldName, fieldVal, fieldSchema)
+			errs := validateField(fieldName, fieldVal, fieldSchema, depth)
 			errors = append(errors, errs...)
 		}
 
@@ -49,17 +57,16 @@ func ValidateDocument(doc NormalizedDocument, schema *Schema) ValidationResult {
 	}
 }
 
-func validateField(name string, val FieldValue, schema *Schema) []string {
+func validateField(name string, val FieldValue, schema *Schema, depth int) []string {
 	var errs []string
 
-	// Check if array or single
-	// Scraping always produces []string.
-	// If schema type is array, we treat the whole slice.
-	// If schema type is string/number/integer/bool, we typically take the first element (or iterate if user meant "any of").
-	// Convention: If schema type != array, we validate the FIRST value. If there are multiple, warn? Or just use first.
-	// Let's validate the first value for scalar types.
+	// Check validation depth limit to prevent infinite recursion
+	if depth > maxValidationDepth {
+		return []string{fmt.Sprintf("%s: validation depth exceeded", name)}
+	}
 
-	if schema.Type == SchemaArray {
+	switch schema.Type {
+	case SchemaArray:
 		if schema.MinLength > 0 && len(val.Values) < schema.MinLength {
 			errs = append(errs, fmt.Sprintf("%s: too few items (got %d, min %d)", name, len(val.Values), schema.MinLength))
 		}
@@ -67,12 +74,46 @@ func validateField(name string, val FieldValue, schema *Schema) []string {
 			errs = append(errs, fmt.Sprintf("%s: too many items (got %d, max %d)", name, len(val.Values), schema.MaxLength))
 		}
 		if schema.Items != nil {
+			// For array items, validate each value against the items schema
 			for i, v := range val.Values {
-				itemErrs := validateScalar(fmt.Sprintf("%s[%d]", name, i), v, schema.Items)
+				itemPath := fmt.Sprintf("%s[%d]", name, i)
+				itemField := FieldValue{Values: []string{v}, Source: val.Source}
+
+				// If items schema is an object, try to parse the value as JSON
+				if schema.Items.Type == SchemaObject {
+					itemField.RawObject = v
+					itemField.Values = nil
+				}
+
+				itemErrs := validateField(itemPath, itemField, schema.Items, depth+1)
 				errs = append(errs, itemErrs...)
 			}
 		}
-	} else {
+
+	case SchemaObject:
+		// Validate nested object
+		if val.RawObject == "" {
+			// No object data to validate - this is acceptable for backwards compatibility
+			// Only error if this is a required field with no data at all
+			if len(val.Values) == 0 {
+				errs = append(errs, fmt.Sprintf("%s: missing object data", name))
+			}
+			return errs
+		}
+
+		// Parse JSON object
+		var nestedFields map[string]FieldValue
+		if err := json.Unmarshal([]byte(val.RawObject), &nestedFields); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: invalid object JSON: %v", name, err))
+			return errs
+		}
+
+		// Recursively validate the nested object with incremented depth
+		nestedDoc := NormalizedDocument{Fields: nestedFields}
+		nestedResult := validateDocumentWithDepth(nestedDoc, schema, depth+1)
+		errs = append(errs, prefixErrors(nestedResult.Errors, name+".")...)
+
+	default:
 		// Scalar check on first value
 		if len(val.Values) == 0 {
 			// If required, it would have been caught by top level check?
@@ -101,6 +142,15 @@ func validateNumericConstraints(path string, f float64, schema *Schema) []string
 	return errs
 }
 
+// prefixErrors adds a prefix to all error messages for nested error reporting.
+func prefixErrors(errors []string, prefix string) []string {
+	result := make([]string, len(errors))
+	for i, err := range errors {
+		result[i] = prefix + err
+	}
+	return result
+}
+
 func validateScalar(path string, value string, schema *Schema) []string {
 	var errs []string
 
@@ -118,17 +168,8 @@ func validateScalar(path string, value string, schema *Schema) []string {
 		if schema.MaxLength > 0 && len(value) > schema.MaxLength {
 			errs = append(errs, fmt.Sprintf("%s: too long (len %d, max %d)", path, len(value), schema.MaxLength))
 		}
-		if len(schema.Enum) > 0 {
-			found := false
-			for _, allowed := range schema.Enum {
-				if allowed == value {
-					found = true
-					break
-				}
-			}
-			if !found {
-				errs = append(errs, fmt.Sprintf("%s: value not in enum", path))
-			}
+		if len(schema.Enum) > 0 && !slices.Contains(schema.Enum, value) {
+			errs = append(errs, fmt.Sprintf("%s: value not in enum", path))
 		}
 
 	case SchemaNumber:
@@ -154,6 +195,9 @@ func validateScalar(path string, value string, schema *Schema) []string {
 		if lower != "true" && lower != "false" && lower != "1" && lower != "0" {
 			errs = append(errs, fmt.Sprintf("%s: not a boolean", path))
 		}
+
+	default:
+		errs = append(errs, fmt.Sprintf("%s: unknown schema type: %s", path, schema.Type))
 	}
 
 	return errs
