@@ -121,7 +121,11 @@ export const postV1Research = <ThrowOnError extends boolean = false>(options: Op
 export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, GetV1JobsErrors, ThrowOnError>({ url: '/v1/jobs', ...options });
 
 /**
- * Cancel a job
+ * Cancel or delete a job
+ *
+ * Cancels a queued or running job.
+ * With ?force=true, permanently deletes the job from the store.
+ *
  */
 export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, DeleteV1JobsByIdErrors, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
 

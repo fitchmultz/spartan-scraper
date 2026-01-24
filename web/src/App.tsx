@@ -308,6 +308,34 @@ export function App() {
     }
   }
 
+  async function deleteJob(jobId: string) {
+    if (!confirm("Are you sure you want to permanently delete this job?")) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error: apiError } = await deleteV1JobsById({
+        baseUrl: "",
+        path: { id: jobId },
+        query: { force: true },
+      });
+      if (apiError) {
+        setError(String(apiError));
+        return;
+      }
+      setError(null);
+      await refreshJobs();
+      if (selectedJobId === jobId) {
+        setSelectedJobId(null);
+        setResultItems([]);
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="app">
       <section className="hero">
@@ -629,6 +657,14 @@ export function App() {
                       Cancel
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void deleteJob(job.id ?? "")}
+                    style={{ color: "#ff6b6b" }}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))

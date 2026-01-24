@@ -345,3 +345,59 @@ func TestListByStatusOptionsDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestStoreDelete(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job
+	job := model.Job{
+		ID:        "j1",
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+
+	if err := s.Create(ctx, job); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Verify it exists
+	got, err := s.Get(ctx, "j1")
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if got.ID != job.ID {
+		t.Errorf("expected job j1, got %s", got.ID)
+	}
+
+	// Delete the job
+	if err := s.Delete(ctx, "j1"); err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
+
+	// Verify it's gone
+	_, err = s.Get(ctx, "j1")
+	if err == nil {
+		t.Error("expected error when getting deleted job, got nil")
+	}
+
+	// Delete non-existent job should not error (idempotent)
+	if err := s.Delete(ctx, "j1"); err != nil {
+		t.Errorf("Delete of non-existent job should succeed, got: %v", err)
+	}
+
+	// Delete with empty ID should not panic
+	if err := s.Delete(ctx, ""); err != nil {
+		// Empty ID just won't match any rows, so it succeeds
+		t.Errorf("Delete with empty ID should succeed, got: %v", err)
+	}
+}

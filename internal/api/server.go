@@ -457,11 +457,22 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, job)
 	case http.MethodDelete:
-		if err := s.manager.CancelJob(r.Context(), id); err != nil {
-			writeJSONError(w, http.StatusInternalServerError, err.Error())
-			return
+		// Check if this is a force delete (query param)
+		if r.URL.Query().Get("force") == "true" {
+			// Permanent delete
+			if err := s.store.Delete(r.Context(), id); err != nil {
+				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			writeJSON(w, map[string]string{"status": "deleted"})
+		} else {
+			// Cancel only (existing behavior)
+			if err := s.manager.CancelJob(r.Context(), id); err != nil {
+				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			writeJSON(w, map[string]string{"status": "canceled"})
 		}
-		writeJSON(w, map[string]string{"status": "canceled"})
 	default:
 		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

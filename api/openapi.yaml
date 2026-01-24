@@ -415,16 +415,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Cancel a job
+      summary: Cancel or delete a job
+      description: |
+        Cancels a queued or running job.
+        With ?force=true, permanently deletes the job from the store.
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: string
+        - in: query
+          name: force
+          schema:
+            type: boolean
+            default: false
+          description: If true, permanently delete the job. If false, cancel active jobs.
       responses:
         '200':
-          description: Job canceled
+          description: Operation succeeded
           content:
             application/json:
               schema:

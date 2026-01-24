@@ -523,6 +523,40 @@
       "completed_at": "2026-01-24T08:46:16.565405000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0016",
+      "status": "done",
+      "title": "Web UI: Add Delete Job button",
+      "priority": "low",
+      "tags": [
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "Jobs cannot be deleted from the system via the Web UI"
+      ],
+      "plan": [
+        "Ensure API supports job deletion (looks like it does in handleJob)",
+        "Add a 'Delete' button to the UI with a confirmation dialog"
+      ],
+      "notes": [
+        "Added DELETE /v1/jobs/{id}?force=true endpoint",
+        "Store.Delete() method with full test coverage",
+        "UI Delete button with confirmation dialog",
+        "Proper state cleanup (clears selection if deleted)",
+        "All CI checks passing"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-23T12:00:00Z",
+      "updated_at": "2026-01-24T09:02:40.482034000Z",
+      "completed_at": "2026-01-24T09:02:40.482034000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

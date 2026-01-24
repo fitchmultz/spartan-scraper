@@ -326,6 +326,12 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 	return err
 }
 
+// Delete permanently removes a job from the store.
+func (s *Store) Delete(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM jobs WHERE id = ?", id)
+	return err
+}
+
 func (s *Store) Close() error {
 	// Try to checkpoint WAL before closing
 	_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")

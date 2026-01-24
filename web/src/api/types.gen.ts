@@ -600,7 +600,12 @@ export type DeleteV1JobsByIdData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * If true, permanently delete the job. If false, cancel active jobs.
+         */
+        force?: boolean;
+    };
     url: '/v1/jobs/{id}';
 };
 
@@ -623,7 +628,7 @@ export type DeleteV1JobsByIdError = DeleteV1JobsByIdErrors[keyof DeleteV1JobsByI
 
 export type DeleteV1JobsByIdResponses = {
     /**
-     * Job canceled
+     * Operation succeeded
      */
     200: StatusResponse;
 };

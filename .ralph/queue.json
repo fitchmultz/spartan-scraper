@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0016",
-      "status": "todo",
-      "title": "Web UI: Add Delete Job button",
-      "priority": "low",
-      "tags": [
-        "web",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "internal/api/server.go"
-      ],
-      "evidence": [
-        "Jobs cannot be deleted from the system via the Web UI"
-      ],
-      "plan": [
-        "Ensure API supports job deletion (looks like it does in handleJob)",
-        "Add a 'Delete' button to the UI with a confirmation dialog"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-23T12:00:00Z",
-      "updated_at": "2026-01-23T12:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0017",
       "status": "todo",
       "title": "Web UI: Show Manager status",
