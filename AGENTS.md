@@ -1,28 +1,139 @@
-# AGENTS.md
+# Repository Guidelines
 
-- Primary language: Go (CLI + API + TUI). Frontend: TypeScript (Vite + React).
-- Local gate: `make ci` (runs generate, format, type-check, lint, build, test).
-  - **CRITICAL**: NEVER end a turn with a failing `make ci`. If `make ci` fails, fix the failures before completing your work.
-  - Flaky e2e tests may be retried up to 3 times before considering them a real failure.
-- API contract: `api/openapi.yaml` → generate TS client with `make generate` (hey-api openapi-ts).
-- Data storage: local on-disk job store under `DATA_DIR` (default `.data`).
-- Ignore robots.txt by design (do not add compliance logic without explicit request).
-- Playwright is optional for JS-heavy pages (`USE_PLAYWRIGHT=1` or `--playwright`).
-- Extraction pipeline is centralized in `internal/extract`. Templates live in `DATA_DIR/extract_templates.json`.
-- Pipeline hooks and plugin contracts live in `internal/pipeline` (pre/post fetch/extract/output + transformers).
-- Headless per-target JS is configured in `DATA_DIR/pipeline_js.json`.
+## Project Overview
 
-## Package Structure
-- `cmd/spartan`: Main entry point for the CLI.
-- `internal/api`: REST API server and route handlers.
-- `internal/auth`: Auth profile management and vault.
-- `internal/cli`: CLI subcommand implementations.
-- `internal/config`: Global configuration and logging.
-- `internal/crawl`: Concurrent website crawling logic.
-- `internal/extract`: HTML content extraction and normalization.
-- `internal/fetch`: Content fetching (HTTP, Chromedp, Playwright).
-- `internal/jobs`: Job manager and worker pool.
-- `internal/model`: Shared domain models and constants.
-- `internal/pipeline`: Pipeline hooks, processors, and transformers.
-- `internal/store`: Persistent storage for jobs and crawl states.
-- `internal/ui/tui`: Terminal User Interface.
+- **Primary language**: Go (CLI + API + TUI)
+- **Frontend**: TypeScript (Vite + React)
+- **Local CI gate**: `make ci` — must pass before completing work or committing
+- **API contract**: `api/openapi.yaml` → generates TS client via `make generate` (hey-api openapi-ts)
+
+## Development Workflow
+
+### Local CI Gate
+
+`make ci` runs: `install → generate → format → type-check → lint → build → test-ci`
+
+**CRITICAL**: Never end a turn with a failing `make ci`. If `make ci` fails, fix all failures before completing your work.
+
+### Build, Test, and Development Commands
+
+```bash
+make install          # Download Go deps + install pnpm deps
+make update           # Update all Go/pnpm deps to latest (review before committing)
+make generate         # Generate TS API client from openapi.yaml
+make format           # Format Go (gofmt) and TS (biome)
+make type-check       # Type-check TS (biome/tsc)
+make lint             # Lint Go (go vet) and TS (biome)
+make build            # Build Go binary + web assets + install to ~/.local/bin
+make test             # Run Go tests (including e2e)
+make test-ci          # Run Go tests (excluding e2e) + web tests
+make ci               # Full CI pipeline: install, generate, format, type-check, lint, build, test-ci
+make clean            # Remove build artifacts, dependencies, node_modules, installed binary
+make web-dev          # Start web dev server (http://localhost:5173)
+```
+
+### Testing Guidelines
+
+- **Go tests**: Use `go test ./...` with `CI=1` for consistent output
+- **E2E tests**: Located in `internal/e2e` — excluded from `make test-ci`
+- **Web tests**: Run with `cd web && pnpm run test`
+- **Flaky E2E tests**: May be retried up to 3 times before considering them a real failure
+
+## Project Structure
+
+### Source Code Organization
+
+```
+cmd/spartan/          # Main CLI entry point
+internal/             # Go packages (internal only)
+  api/                # REST API server and route handlers
+  auth/               # Auth profile management and vault
+  cli/                # CLI subcommand implementations
+  config/             # Global configuration and logging
+  crawl/              # Concurrent website crawling logic
+  e2e/                # End-to-end integration tests
+  extract/            # HTML content extraction and normalization
+  exporter/           # Result exporters (markdown, CSV, JSON)
+  fetch/              # Content fetching (HTTP, Chromedp, Playwright)
+  jobs/               # Job manager and worker pool
+  mcp/                # MCP stdio server for agent orchestration
+  model/              # Shared domain models and constants
+  pipeline/           # Pipeline hooks, processors, and transformers
+  research/           # Multi-source research workflows
+  scheduler/          # Recurring job scheduler
+  scrape/             # Single-page scraping logic
+  store/              # Persistent storage for jobs and crawl states
+  ui/tui/             # Terminal User Interface
+web/                  # Frontend (Vite + React)
+  src/                # TypeScript source
+  src/api/            # Generated API client (from openapi.yaml)
+api/                  # OpenAPI contract (api/openapi.yaml)
+scripts/              # Utility scripts
+docs/                 # Documentation (usage, architecture, landscape)
+```
+
+### Data Storage
+
+- **Job store**: Local on-disk under `DATA_DIR` (default `.data`)
+- **Auth vault**: `.data/auth_vault.json` (profiles + presets + inheritance)
+- **Render profiles**: `.data/render_profiles.json`
+- **Extraction templates**: `DATA_DIR/extract_templates.json`
+- **Pipeline JS config**: `DATA_DIR/pipeline_js.json`
+
+## Coding Style & Naming Conventions
+
+### Go
+
+- **Formatting**: `gofmt -w ./cmd ./internal` (enforced via `make format`)
+- **Linting**: `go vet ./...` (enforced via `make lint`)
+- **Naming**: Follow Go conventions (camelCase for variables, PascalCase for exported types)
+- **Package structure**: Each internal package has a single, clear responsibility
+
+### TypeScript
+
+- **Formatting**: `biome format . --write` (enforced via `make format`)
+- **Linting**: `biome lint .` (enforced via `make lint`)
+- **Type checking**: `tsc --noEmit` (enforced via `make type-check`)
+- **Framework**: Vite + React with strict TypeScript
+
+## Architecture & Patterns
+
+### Extraction Pipeline
+
+- Centralized in `internal/extract`
+- Templates stored in `DATA_DIR/extract_templates.json`
+- Pipeline hooks and plugin contracts in `internal/pipeline` (pre/post fetch/extract/output + transformers)
+- Headless per-target JS configured in `DATA_DIR/pipeline_js.json`
+
+### Content Fetching
+
+- **HTTP**: Default fetcher
+- **Chromedp**: Headless Chromium (built-in, always available)
+- **Playwright**: Optional for JS-heavy pages — enable with `USE_PLAYWRIGHT=1` or `--playwright` flag
+- **Install Playwright**: `go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps`
+
+### Robots.txt
+
+- **Ignored by design** — do not add compliance logic without explicit user request
+
+## Toolchain
+
+Pinned in `.tool-versions`:
+
+- Go `1.25.6`
+- Node `24.13.0`
+- pnpm `10.28.0`
+
+## Commit & Pull Request Guidelines
+
+- **Local CI**: Run `make ci` before committing — it must pass
+- **Commit messages**: Use clear, descriptive messages (no enforced format currently)
+- **PR requirements**: Ensure `make ci` passes, describe changes clearly
+
+## Documentation
+
+- `README.md`: Project overview and quickstart
+- `AGENTS.md`: This file — repository guidelines for AI agents
+- `docs/usage.md`: CLI/API/Web/MCP entry points and flags
+- `docs/architecture.md`: System structure and data flow
+- `docs/landscape.md`: Project context and design decisions
