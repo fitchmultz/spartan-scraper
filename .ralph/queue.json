@@ -4,40 +4,60 @@
     {
       "id": "RQ-0052",
       "status": "todo",
-      "title": "Implement list functionality across CLI, API, TUI, and web interfaces",
+      "title": "Add missing list views (templates, crawl states, profiles, schedules) to TUI and web UI",
       "priority": "medium",
       "tags": [
         "cli",
         "api",
         "tui",
         "web",
-        "ux"
+        "ux",
+        "templates",
+        "crawl-states"
       ],
       "scope": [
         "internal/cli/cli.go",
         "internal/api/server.go",
+        "internal/store/store.go",
+        "internal/extract/templates.go",
+        "internal/model/state.go",
         "internal/ui/tui/tui.go",
         "web/src/App.tsx",
+        "api/openapi.yaml",
         "make test",
         "make ci"
       ],
       "evidence": [
         "User request: list",
-        "AGENTS.md: Project has CLI, API, TUI, and web interfaces requiring consistent list capabilities"
+        "internal/cli/cli.go: Has 'spartan auth list', 'spartan jobs list', 'spartan schedule list' but no template or crawl state listing",
+        "internal/api/server.go: Has /v1/auth/profiles, /v1/jobs, /v1/schedules endpoints but no /v1/templates or /v1/crawl-states",
+        "internal/ui/tui/tui.go: Only lists jobs (hardcoded 100 limit), no views for profiles, schedules, templates, or crawl states",
+        "web/src/App.tsx: Only shows jobs list, no views for profiles, schedules, templates, or crawl states",
+        "internal/extract/templates.go: TemplateRegistry loads built-in and file-based templates but no listing API",
+        "internal/model/state.go: CrawlState exists but no listing methods in store"
       ],
       "plan": [
-        "Design comprehensive list commands for jobs, profiles, templates, and crawl states",
-        "Implement CLI 'spartan list' subcommand with filters and output formats",
-        "Add /v1/list endpoints to API for all resource types",
-        "Update TUI job list with enhanced filtering and pagination",
-        "Add list views to web UI for all resource types",
-        "Add tests across all interfaces",
+        "Add TemplateNames() function to extract package to list available templates (built-in + file-based)",
+        "Add ListCrawlStates() method to store to retrieve all crawl states",
+        "Add /v1/templates endpoint to API to list all available extraction templates",
+        "Add /v1/crawl-states endpoint to API to list all crawl states",
+        "Add 'spartan templates list' CLI subcommand",
+        "Add 'spartan crawl-states list' CLI subcommand",
+        "Update TUI to add tabs/sections for profiles, schedules, templates, and crawl states",
+        "Update web UI to add list views for profiles, schedules, templates, and crawl states",
+        "Update api/openapi.yaml with new endpoints and regenerate TS client",
+        "Add tests for new listing functionality across all interfaces",
         "Run make test and make ci"
       ],
-      "notes": [],
+      "notes": [
+        "Note: Job listing already exists across all interfaces (CLI: spartan jobs list, API: /v1/jobs, TUI: job list, Web: job list)",
+        "Note: Status filtering for jobs is covered by RQ-0046",
+        "Note: TUI pagination and job details are covered by RQ-0047",
+        "Focus this task on adding missing list views for templates, crawl states, profiles, and schedules"
+      ],
       "request": "list",
       "created_at": "2026-01-25T22:00:00Z",
-      "updated_at": "2026-01-25T22:00:00Z",
+      "updated_at": "2026-01-25T22:11:56Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -62,18 +82,28 @@
         "make ci"
       ],
       "evidence": [
-        "internal/store/store.go: ListByStatus exists but is only used for recovery.",
-        "internal/api/server.go handleJobs and internal/cli/cli.go jobs list have no status filter support."
+        "internal/store/store.go: ListByStatus() function exists (lines 63-98) with Status parameter and pagination via ListByStatusOptions, but is not currently exposed via API/CLI/TUI.",
+        "internal/api/server.go: handleJobs() (lines 421-437) supports limit/offset query params but no status filter. Uses store.ListOpts() instead of ListByStatus().",
+        "internal/cli/cli.go: runJobs() list subcommand (lines 1002-1023) has --limit and --offset flags but no --status flag. Uses store.ListOpts().",
+        "internal/ui/tui/tui.go: fetchJobs() (lines 107-121) calls store.ListOpts() with hardcoded limit=100/offset=0, no filtering capability.",
+        "internal/model/job.go: Valid status values defined (lines 14-18): queued, running, succeeded, failed, canceled."
       ],
       "plan": [
-        "Add status query param to /v1/jobs and CLI/TUI filters that use ListByStatus when provided.",
-        "Add tests for filtered listing and ensure defaults unchanged.",
+        "Add status query param to /v1/jobs API endpoint that uses store.ListByStatus() when provided, fallback to ListOpts() when omitted.",
+        "Add --status flag to CLI 'spartan jobs list' command that passes status to store.ListByStatus() when specified.",
+        "Add status filter capability to TUI (keyboard trigger or persistent filter).",
+        "Add tests in internal/api/server_test.go for status-filtered listing across all interfaces.",
+        "Verify that default behavior (no status filter) returns all jobs unchanged.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "Store.ListByStatus() already exists with proper implementation (SQL WHERE status = ? with pagination).",
+        "Valid status values: queued, running, succeeded, failed, canceled.",
+        "TUI filtering should align with RQ-0047 (TUI pagination/details) for consistent UX."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T23:08:45.000Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -85,27 +115,49 @@
       "tags": [
         "tui",
         "ux",
-        "parity"
+        "parity",
+        "jobs"
       ],
       "scope": [
         "internal/ui/tui/tui.go",
-        "internal/ui/tui",
+        "internal/jobs/manager.go",
+        "internal/store/store.go",
+        "internal/model/job.go",
+        "internal/exporter/exporter.go",
         "make test",
         "make ci"
       ],
       "evidence": [
-        "internal/ui/tui/tui.go: UI only lists jobs and supports q/r; no detail view or actions.",
-        "internal/ui/tui/tui.go: fetchJobs always limits to 100 with no pagination or filtering."
+        "internal/ui/tui/tui.go: UI only lists jobs with ID/Kind/Status/UpdatedAt columns, supports q (quit) and r (refresh) keybindings.",
+        "internal/ui/tui/tui.go: fetchJobs() uses store.ListOpts() with hardcoded Limit=100/Offset=0 (line 109), no pagination or filtering.",
+        "internal/ui/tui/tui.go: model struct only has jobs []string and err field (lines 14-19), no selection state or detail view.",
+        "internal/ui/tui/tui.go: No test file exists (no internal/ui/tui/*_test.go files found).",
+        "internal/jobs/manager.go: CancelJob() exists (line 223) and handles both active and queued jobs via manager.activeJobs map.",
+        "internal/store/store.go: Get(id) returns full Job model with params/resultPath/error fields (line 235).",
+        "internal/exporter/exporter.go: ExportStream() supports jsonl/json/md/csv formats (line 90) for viewing/exporting results."
       ],
       "plan": [
-        "Add selection + detail pane for a job, plus keybindings to cancel and open results/export.",
-        "Implement pagination or filtering and extend smoke test coverage.",
+        "Add selection state to TUI model (selectedJobID string) and implement cursor navigation (up/down arrows).",
+        "Add detail view pane showing full job info (ID, Kind, Status, CreatedAt, UpdatedAt, Params summary, Error if any).",
+        "Add pagination controls (page up/down or Left/Right arrows) using store.ListOpts() with configurable Limit/Offset.",
+        "Add 'c' keybinding to cancel selected job via manager.CancelJob(), handle both server-managed and local-cancel scenarios.",
+        "Add 'e' keybinding to export/view results for selected job using exporter.ExportStream() with format selection.",
+        "Add 'd' keybinding to drill down into job details (full params, result path, etc.).",
+        "Implement TUI test file (internal/ui/tui/tui_test.go) with smoke test for job selection, pagination, and actions.",
+        "Update Smoke() function to verify pagination, selection, and cancel functionality work correctly.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "TUI currently only receives store, not manager - needs manager access to call CancelJob() directly.",
+        "store.Get() already supports retrieving full job details by ID (line 235 in store.go).",
+        "exporter.ExportStream() already supports streaming results to stdout or file (line 90 in exporter.go).",
+        "CLI has spartan jobs get, spartan jobs list, spartan jobs cancel commands - TUI should provide equivalent UX.",
+        "Pagination should handle edge cases (no more results, negative offset).",
+        "Detail view should truncate long Params/Error to fit TUI layout."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T22:19:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -118,29 +170,47 @@
         "web",
         "ux",
         "auth",
-        "parity"
+        "parity",
+        "openapi"
       ],
       "scope": [
         "web/src/App.tsx",
-        "web/src/api",
+        "web/src/api/index.ts",
         "api/openapi.yaml",
         "web/src/App.test.tsx",
+        "internal/cli/cli.go",
+        "make generate",
         "make test",
         "make ci"
       ],
       "evidence": [
-        "web/src/App.tsx: request bodies only include auth basic/headers/cookies/query; no authProfile or login selectors.",
-        "internal/cli/cli.go: auth flags include login-url/login-user-selector/login-pass-selector/login-submit-selector + tokens."
+        "api/openapi.yaml: ScrapeRequest/CrawlRequest/ResearchRequest already include authProfile field (lines 879, 919, 963) and auth: AuthOptions (lines 882, 922, 966).",
+        "api/openapi.yaml: AuthOptions already includes loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass (lines 853-865).",
+        "web/src/api/types.gen.ts: Generated types already include ScrapeRequest/CrawlRequest/ResearchRequest with authProfile and auth fields (lines 159-198).",
+        "web/src/App.tsx: buildAuth() function (lines 1094-1109) only constructs basic/headers/cookies/query; does not include login flow fields (loginUrl, loginUserSelector, etc.).",
+        "web/src/App.tsx: Request payloads in submitScrape/submitCrawl/submitResearch (lines 227-240, 261-276, 297-312) use buildAuth() but never set authProfile field.",
+        "web/src/App.tsx: UI state includes authBasic/headersRaw/cookiesRaw/queryRaw (lines 87-90) but no authProfile state or login flow state.",
+        "internal/cli/cli.go: CLI already supports --auth-profile flag and login flow flags (--login-url, --login-user-selector, --login-pass-selector, --login-submit-selector)."
       ],
       "plan": [
-        "Expose auth profile selection and login flow fields in the web UI and include them in request bodies.",
-        "Regenerate API types if needed and add/extend UI tests for auth payloads.",
+        "Add authProfile state to App.tsx and fetch auth profiles from /v1/auth/profiles API to populate a dropdown selector.",
+        "Add login flow state fields (loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass) to App.tsx.",
+        "Update buildAuth() function to include login flow fields (loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass) in the returned AuthOptions object.",
+        "Add authProfile field to request payloads in submitScrape(), submitCrawl(), and submitResearch().",
+        "Add UI controls for login flow fields (optional, collapsed or separate section since not always needed).",
+        "Import getV1AuthProfiles from web/src/api/index.ts and call it to load available profiles.",
+        "Add tests in web/src/App.test.tsx to verify auth payloads include authProfile and login flow fields when specified.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "API types are already up-to-date; no need to regenerate (api/openapi.yaml already defines all required fields).",
+        "The backend API already supports authProfile and login flow; this is purely a web UI parity task.",
+        "Login flow fields should be optional and only included in the payload if set to avoid cluttering requests for simple auth scenarios.",
+        "Consider adding a 'Use Auth Profile' toggle vs 'Custom Auth' switch for cleaner UX."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T23:00:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -157,23 +227,49 @@
       "scope": [
         "web/src/App.tsx",
         "web/src/App.test.tsx",
-        "internal/pipeline",
+        "internal/pipeline/types.go",
+        "internal/pipeline/interfaces.go",
+        "internal/cli/cli.go",
+        "api/openapi.yaml",
         "make test",
         "make ci"
       ],
       "evidence": [
-        "web/src/App.tsx: scrape/crawl/research bodies omit pipeline pre/post processors and transformers.",
-        "internal/cli/cli.go: common flags support --pre-processor/--post-processor/--transformer and --incremental."
+        "web/src/App.tsx:227-240: submitScrape() payload includes url/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:261-276: submitCrawl() payload includes url/maxDepth/maxPages/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:297-312: submitResearch() payload includes query/urls/maxDepth/maxPages/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:79-106: App state includes headless/usePlaywright/maxDepth/maxPages/timeout/authBasic/headersRaw/cookiesRaw/queryRaw/extractTemplate/extractValidate but NO pipeline or incremental state.",
+        "internal/cli/cli.go:124-128: CLI builds pipeline.Options with PreProcessors/PostProcessors/Transformers from flags.",
+        "internal/cli/cli.go:145: CLI passes incremental bool to CreateScrapeJob.",
+        "internal/cli/cli.go:1559-1561: CLI defines --pre-processor/--post-processor/--transformer flags (repeatable string arrays).",
+        "internal/cli/cli.go:1555: CLI defines --incremental boolean flag.",
+        "api/openapi.yaml:616-630: PipelineOptions schema defines preProcessors/postProcessors/transformers as string arrays.",
+        "api/openapi.yaml:885-886,925-926,969-970: ScrapeRequest/CrawlRequest/ResearchRequest all include optional pipeline field referencing PipelineOptions.",
+        "api/openapi.yaml:892,932,976: ScrapeRequest/CrawlRequest/ResearchRequest all include optional incremental boolean field.",
+        "web/src/api/types.gen.ts:18-22: Generated PipelineOptions type includes preProcessors/postProcessors/transformers string arrays.",
+        "web/src/api/types.gen.ts:159-198: Generated ScrapeRequest/CrawlRequest/ResearchRequest all include optional pipeline and incremental fields."
       ],
       "plan": [
-        "Add UI controls for pipeline processors/transformers and incremental mode; include in request payloads.",
-        "Update/extend App tests to verify payloads.",
+        "Add state variables to App.tsx for pipeline options: preProcessors (string), postProcessors (string), transformers (string), incremental (boolean).",
+        "Add UI section for pipeline options with text inputs for preProcessors/postProcessors/transformers (comma-separated values) and checkbox for incremental.",
+        "Parse pipeline text inputs into arrays (split by comma, trim whitespace) to match PipelineOptions type structure.",
+        "Update submitScrape() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Update submitCrawl() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Update submitResearch() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Add tests in web/src/App.test.tsx to verify that pipeline options are correctly parsed and included in request payloads.",
+        "Add tests in web/src/App.test.tsx to verify that incremental checkbox value is correctly included in request payloads.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "API types (web/src/api/types.gen.ts) already include PipelineOptions and incremental fields - no make generate needed.",
+        "Backend API and CLI already support pipeline and incremental options - this is purely a web UI parity task.",
+        "Pipeline options (preProcessors, postProcessors, transformers) are repeatable arrays in CLI; web UI should use comma-separated text inputs for simplicity.",
+        "incremental is a boolean toggle in CLI; web UI should use checkbox.",
+        "All three request types (scrape/crawl/research) need the same pipeline and incremental fields for consistency."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T23:30:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -185,29 +281,54 @@
       "tags": [
         "web",
         "performance",
-        "ux"
+        "ux",
+        "api",
+        "pagination"
       ],
       "scope": [
         "web/src/App.tsx",
         "internal/api/server.go",
         "api/openapi.yaml",
+        "internal/exporter/exporter.go",
         "web/src/App.test.tsx",
+        "internal/api/server_test.go",
+        "make generate",
         "make test",
         "make ci"
       ],
       "evidence": [
-        "web/src/App.tsx: loadResults uses response.text() and splits all lines, loading full results into memory.",
-        "internal/api/server.go: /v1/jobs/{id}/results serves full file with no paging/streaming controls."
+        "web/src/App.tsx:360-361: loadResults() uses response.text() and splits all lines, loading full results into memory.",
+        "web/src/App.tsx:364-371: parseItems loops through all lines and parses every JSON object into memory.",
+        "internal/api/server.go:524-530: /v1/jobs/{id}/results for jsonl format uses http.ServeFile() with no pagination.",
+        "internal/api/server.go:534-555: For json/md/csv formats, uses exporter.ExportStream() but still processes entire file.",
+        "api/openapi.yaml:459-508: /v1/jobs/{id}/results endpoint only has format parameter, no limit/offset pagination.",
+        "internal/exporter/exporter.go:404-417: exportJSONLStream streams input to output but cannot be used for pagination.",
+        "internal/exporter/exporter.go:534-553: parseLinesReader() loads all items into memory with no limit/offset support.",
+        "Large crawl results (1000+ pages) cause web UI to freeze or crash due to memory exhaustion."
       ],
       "plan": [
-        "Add pagination/streaming for results (API support or client-side incremental parsing) to avoid loading full files.",
-        "Update UI to lazy-load pages and add tests for large result handling.",
+        "Add limit and offset query parameters to /v1/jobs/{id}/results endpoint in api/openapi.yaml for paginated JSONL responses.",
+        "Add Limit() and Offset() helper functions to internal/exporter/exporter.go to parse query parameters with defaults (limit=100, offset=0).",
+        "Add ExportPaginated() function to internal/exporter/exporter.go that returns a slice of items with offset/limit applied.",
+        "Update internal/api/server.go handleJobResults() to call ExportPaginated() for jsonl format when limit/offset params present.",
+        "Regenerate TS client with make generate to include new API parameters.",
+        "Update web/src/App.tsx loadResults() to track current page (page state variable) and request limit/offset from API.",
+        "Add pagination controls to web UI (Previous/Next buttons, page number display, jump to page input) in results view.",
+        "Update web/src/App.tsx to clear result items when format changes or new job is selected to avoid stale state.",
+        "Add tests in web/src/App.test.tsx for pagination (verify page changes, correct data per page, edge cases).",
+        "Add tests in internal/api/server_test.go for limit/offset query parameter handling.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "Default page size of 100 items balances UI responsiveness with API load.",
+        "offset is 0-indexed: page=1 means offset=0, page=2 means offset=100, etc.",
+        "Client-side lazy loading is insufficient; must paginate at API level to avoid transferring huge payloads.",
+        "For formats other than jsonl (json/md/csv), pagination is less critical since these are typically single-item exports or small reports.",
+        "Consider adding X-Total-Count response header for total item count to enable 'Showing X-Y of Z results' display."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T23:45:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
@@ -228,18 +349,31 @@
         "make ci"
       ],
       "evidence": [
-        "internal/api/server.go: JSON decoders accept unknown fields; typos are silently ignored.",
-        "No DisallowUnknownFields usage in handleScrape/handleCrawl/handleResearch/auth handlers."
+        "internal/api/server.go:210: handleScrape uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields, silently ignoring typos like 'ur' instead of 'url'.",
+        "internal/api/server.go:281: handleCrawl uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields.",
+        "internal/api/server.go:354: handleResearch uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields.",
+        "internal/api/server.go:585: handleAuthProfile (PUT) uses json.NewDecoder(r.Body).Decode(&profile) without DisallowUnknownFields.",
+        "internal/api/server.go:629,657,699: handleAuthImport/handleAuthExport/handleSchedules use json.NewDecoder without DisallowUnknownFields.",
+        "internal/api/server_test.go: No tests exist for unknown field validation; existing tests focus on missing fields, invalid values, and malformed JSON."
       ],
       "plan": [
-        "Enable DisallowUnknownFields on API JSON decoders and return actionable error messages.",
-        "Add tests to ensure unknown fields trigger 400 responses.",
+        "Add decoder := json.NewDecoder(r.Body); decoder.DisallowUnknownFields() pattern to handleScrape at line 210.",
+        "Add decoder.DisallowUnknownFields() to handleCrawl at line 281.",
+        "Add decoder.DisallowUnknownFields() to handleResearch at line 354.",
+        "Add decoder.DisallowUnknownFields() to handleAuthProfile (PUT) at line 585.",
+        "Add decoder.DisallowUnknownFields() to handleAuthImport, handleAuthExport, handleSchedules at lines 629,657,699.",
+        "Add test in internal/api/server_test.go: TestUnknownFieldsRejected with subtests for /v1/scrape, /v1/crawl, /v1/research, /v1/schedules, and /v1/auth/profiles endpoints.",
+        "Verify that unknown fields return 400 with clear error message containing 'unknown field' or 'json: unknown field'.",
         "Run make test and make ci."
       ],
-      "notes": [],
+      "notes": [
+        "Go json.Decoder.DisallowUnknownFields() returns json.UnmarshalTypeError for unknown fields, which should trigger the existing error handling at line 211 (handleScrape), 282 (handleCrawl), 355 (handleResearch), etc.",
+        "The writeJSONError helper already returns 400 status for 'invalid json' errors, so DisallowUnknownFields errors will be handled correctly without code changes.",
+        "Only applies to POST/PUT endpoints with request bodies: handleScrape, handleCrawl, handleResearch, handleSchedules (POST), handleAuthProfile (PUT), handleAuthImport, handleAuthExport."
+      ],
       "request": "scan finding",
       "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T23:50:00Z",
       "depends_on": [],
       "custom_fields": {}
     }
