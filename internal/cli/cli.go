@@ -743,10 +743,13 @@ Examples:
 		maxDepth := fs.Int("max-depth", 2, "Max crawl depth")
 		maxPages := fs.Int("max-pages", 200, "Max pages to crawl")
 		authProfile := fs.String("auth-profile", "", "Auth profile name")
+		incremental := fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)")
 
-		// Use browserFlags for headless/playwright/timeout to reduce duplication
+		// Register all flag groups
 		bf := registerBrowserFlags(fs, cfg)
 		pf := registerPipelineFlags(fs)
+		ef := registerExtractFlags(fs)
+		af := registerAuthFlags(fs)
 
 		_ = fs.Parse(os.Args[3:])
 
@@ -764,9 +767,62 @@ Examples:
 				PostProcessors: []string(pf.postProcessors),
 				Transformers:   []string(pf.transformers),
 			},
+			"incremental": *incremental,
 		}
+
+		// Add extract options if specified
+		if *ef.extractTemplate != "" {
+			params["extractTemplate"] = *ef.extractTemplate
+		}
+		if *ef.extractConfig != "" {
+			params["extractConfig"] = *ef.extractConfig
+		}
+		if *ef.extractValidate {
+			params["extractValidate"] = *ef.extractValidate
+		}
+
+		// Add auth profile if specified
 		if *authProfile != "" {
 			params["authProfile"] = *authProfile
+		}
+
+		// Add auth overrides if specified
+		if *af.authBasic != "" {
+			params["authBasic"] = *af.authBasic
+		}
+		if *af.tokenKind != "" {
+			params["tokenKind"] = *af.tokenKind
+		}
+		if *af.tokenHeader != "" {
+			params["tokenHeader"] = *af.tokenHeader
+		}
+		if *af.tokenQuery != "" {
+			params["tokenQuery"] = *af.tokenQuery
+		}
+		if *af.tokenCookie != "" {
+			params["tokenCookie"] = *af.tokenCookie
+		}
+		if len(af.tokenValues) > 0 {
+			params["tokens"] = []string(af.tokenValues)
+		}
+		if len(af.headers.ToMap()) > 0 {
+			params["headers"] = toHeaderKVs(af.headers.ToMap())
+		}
+		if len(af.cookies) > 0 {
+			params["cookies"] = toCookies([]string(af.cookies))
+		}
+
+		// Add login flow if specified
+		loginFlow := buildLoginFlow(loginFlowInput{
+			URL:            *af.loginURL,
+			UserSelector:   *af.loginUserSelector,
+			PassSelector:   *af.loginPassSelector,
+			SubmitSelector: *af.loginSubmitSelector,
+			Username:       *af.loginUser,
+			Password:       *af.loginPass,
+		})
+		if loginFlow != nil {
+			params["login"] = loginFlow
 		}
 		switch *kind {
 		case "scrape":
@@ -1450,10 +1506,10 @@ type pipelineFlags struct {
 }
 
 // registerCommonFlags registers all shared flags on the given FlagSet
-// and returns a commonFlags struct with pointers to the flag values.
+// and returns a commonFlags struct with pointers to flag values.
 // The cfg parameter is used for default values (e.g., UsePlaywright).
-func registerCommonFlags(fs *flag.FlagSet, cfg config.Config) commonFlags {
-	cf := commonFlags{
+func registerCommonFlags(fs *flag.FlagSet, cfg config.Config) *commonFlags {
+	cf := &commonFlags{
 		// Extraction flags
 		extractTemplate: fs.String("extract-template", "", "Extraction template name"),
 		extractConfig:   fs.String("extract-config", "", "Path to inline template JSON"),
@@ -1510,10 +1566,10 @@ func registerCommonFlags(fs *flag.FlagSet, cfg config.Config) commonFlags {
 	return cf
 }
 
-// registerBrowserFlags registers browser-related flags on the given FlagSet.
+// registerBrowserFlags registers browser-related flags on given FlagSet.
 // Used by schedule add which needs browser flags but not the full common flags set.
-func registerBrowserFlags(fs *flag.FlagSet, cfg config.Config) browserFlags {
-	bf := browserFlags{
+func registerBrowserFlags(fs *flag.FlagSet, cfg config.Config) *browserFlags {
+	bf := &browserFlags{
 		headless:   fs.Bool("headless", false, "Use headless browser"),
 		playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
 		timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
@@ -1521,10 +1577,10 @@ func registerBrowserFlags(fs *flag.FlagSet, cfg config.Config) browserFlags {
 	return bf
 }
 
-// registerPipelineFlags registers pipeline processor flags on the given FlagSet.
+// registerPipelineFlags registers pipeline processor flags on given FlagSet.
 // Used by schedule add which needs pipeline flags but not the full common flags set.
-func registerPipelineFlags(fs *flag.FlagSet) pipelineFlags {
-	pf := pipelineFlags{
+func registerPipelineFlags(fs *flag.FlagSet) *pipelineFlags {
+	pf := &pipelineFlags{
 		preProcessors:  stringSliceFlag{},
 		postProcessors: stringSliceFlag{},
 		transformers:   stringSliceFlag{},
@@ -1535,8 +1591,74 @@ func registerPipelineFlags(fs *flag.FlagSet) pipelineFlags {
 	return pf
 }
 
+// extractFlags holds extraction-related flags
+type extractFlags struct {
+	extractTemplate *string
+	extractConfig   *string
+	extractValidate *bool
+}
+
+// registerExtractFlags registers extraction flags on given FlagSet
+func registerExtractFlags(fs *flag.FlagSet) *extractFlags {
+	ef := &extractFlags{
+		extractTemplate: fs.String("extract-template", "", "Extraction template name"),
+		extractConfig:   fs.String("extract-config", "", "Path to inline template JSON"),
+		extractValidate: fs.Bool("extract-validate", false, "Validate extraction against schema"),
+	}
+	return ef
+}
+
+// authFlags holds auth override flags
+type authFlags struct {
+	authBasic   *string
+	tokenKind   *string
+	tokenHeader *string
+	tokenQuery  *string
+	tokenCookie *string
+	tokenValues stringSliceFlag
+	headers     stringSliceFlag
+	cookies     stringSliceFlag
+
+	// Login flow flags
+	loginURL            *string
+	loginUserSelector   *string
+	loginPassSelector   *string
+	loginSubmitSelector *string
+	loginUser           *string
+	loginPass           *string
+}
+
+// registerAuthFlags registers auth override flags on given FlagSet
+func registerAuthFlags(fs *flag.FlagSet) *authFlags {
+	af := &authFlags{
+		authBasic:   fs.String("auth-basic", "", "Basic auth user:pass"),
+		tokenKind:   fs.String("token-kind", "bearer", "Token kind: bearer|basic|api_key"),
+		tokenHeader: fs.String("token-header", "", "Token header name (api_key or bearer override)"),
+		tokenQuery:  fs.String("token-query", "", "Token query param name (api_key)"),
+		tokenCookie: fs.String("token-cookie", "", "Token cookie name (api_key)"),
+		tokenValues: stringSliceFlag{},
+		headers:     stringSliceFlag{},
+		cookies:     stringSliceFlag{},
+
+		// Login flow flags
+		loginURL:            fs.String("login-url", "", "Login URL for headless auth"),
+		loginUserSelector:   fs.String("login-user-selector", "", "CSS selector for username input"),
+		loginPassSelector:   fs.String("login-pass-selector", "", "CSS selector for password input"),
+		loginSubmitSelector: fs.String("login-submit-selector", "", "CSS selector for submit button"),
+		loginUser:           fs.String("login-user", "", "Username for login"),
+		loginPass:           fs.String("login-pass", "", "Password for login"),
+	}
+
+	// Register repeatable flags
+	fs.Var(&af.tokenValues, "token", "Token value (repeatable)")
+	fs.Var(&af.headers, "header", "Extra header (repeatable, Key: Value)")
+	fs.Var(&af.cookies, "cookie", "Cookie value (repeatable, name=value)")
+
+	return af
+}
+
 // resolveAuthFromFlags builds auth options from common flags and CLI input
-func resolveAuthFromFlags(cfg config.Config, url string, cf commonFlags) (fetch.AuthOptions, error) {
+func resolveAuthFromFlags(cfg config.Config, url string, cf *commonFlags) (fetch.AuthOptions, error) {
 	authOverrides := auth.ResolveInput{
 		Headers: toHeaderKVs(cf.headers.ToMap()),
 		Cookies: toCookies([]string(cf.cookies)),

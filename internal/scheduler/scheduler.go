@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -138,10 +139,27 @@ func loadExtract(params map[string]interface{}) extract.ExtractOptions {
 	if params == nil {
 		return extract.ExtractOptions{}
 	}
-	return extract.ExtractOptions{
+	opts := extract.ExtractOptions{
 		Template: stringParam(params, "extractTemplate"),
 		Validate: boolParam(params, "extractValidate"),
 	}
+
+	// Handle inline template from extractConfig
+	if extractConfigPath := stringParam(params, "extractConfig"); extractConfigPath != "" {
+		data, err := os.ReadFile(extractConfigPath)
+		if err != nil {
+			slog.Warn("failed to read extract config", "path", extractConfigPath, "error", err)
+			return opts
+		}
+		var tmpl extract.Template
+		if err := json.Unmarshal(data, &tmpl); err != nil {
+			slog.Warn("failed to parse extract config", "path", extractConfigPath, "error", err)
+			return opts
+		}
+		opts.Inline = &tmpl
+	}
+
+	return opts
 }
 
 func loadPipeline(params map[string]interface{}) pipeline.Options {
@@ -170,12 +188,16 @@ func loadAuth(params map[string]interface{}, dataDir string, targetURL string, e
 	if params == nil {
 		return fetch.AuthOptions{}, nil
 	}
-	profileName, _ := params["authProfile"].(string)
-	input := auth.ResolveInput{
-		ProfileName: profileName,
-		URL:         targetURL,
-		Env:         &env,
-	}
+
+	// Start with auth overrides from params
+	input := loadAuthOverrides(params)
+
+	// Add profile name and URL
+	input.ProfileName = stringParam(params, "authProfile")
+	input.URL = targetURL
+	input.Env = &env
+
+	// Resolve with overrides and profile
 	resolved, err := auth.Resolve(dataDir, input)
 	if err != nil {
 		return fetch.AuthOptions{}, err
@@ -389,5 +411,135 @@ func stringSliceParam(params map[string]interface{}, key string) []string {
 		return value
 	default:
 		return nil
+	}
+}
+
+func loadAuthOverrides(params map[string]interface{}) auth.ResolveInput {
+	if params == nil {
+		return auth.ResolveInput{}
+	}
+
+	input := auth.ResolveInput{
+		Headers: loadHeaderKVs(params),
+		Cookies: loadCookies(params),
+		Tokens:  loadTokens(params),
+		Login:   loadLoginFlow(params),
+	}
+
+	return input
+}
+
+func loadHeaderKVs(params map[string]interface{}) []auth.HeaderKV {
+	raw, ok := params["headers"]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []auth.HeaderKV:
+		return v
+	case []interface{}:
+		headers := make([]auth.HeaderKV, 0, len(v))
+		for _, item := range v {
+			if h, ok := item.(map[string]interface{}); ok {
+				headers = append(headers, auth.HeaderKV{
+					Key:   stringFromMap(h, "key"),
+					Value: stringFromMap(h, "value"),
+				})
+			}
+		}
+		return headers
+	}
+	return nil
+}
+
+func loadCookies(params map[string]interface{}) []auth.Cookie {
+	raw, ok := params["cookies"]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []auth.Cookie:
+		return v
+	case []interface{}:
+		cookies := make([]auth.Cookie, 0, len(v))
+		for _, item := range v {
+			if c, ok := item.(map[string]interface{}); ok {
+				cookies = append(cookies, auth.Cookie{
+					Name:   stringFromMap(c, "name"),
+					Value:  stringFromMap(c, "value"),
+					Domain: stringFromMap(c, "domain"),
+					Path:   stringFromMap(c, "path"),
+				})
+			}
+		}
+		return cookies
+	}
+	return nil
+}
+
+func loadTokens(params map[string]interface{}) []auth.Token {
+	if params == nil {
+		return nil
+	}
+
+	tokens := make([]auth.Token, 0)
+
+	// Basic auth token
+	if basic := stringParam(params, "authBasic"); basic != "" {
+		tokens = append(tokens, auth.Token{Kind: auth.TokenBasic, Value: basic})
+	}
+
+	// Other tokens
+	tokenKind := parseTokenKind(stringParam(params, "tokenKind"))
+	tokenValues := stringSliceParam(params, "tokens")
+	for _, value := range tokenValues {
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		tokens = append(tokens, auth.Token{
+			Kind:   tokenKind,
+			Value:  value,
+			Header: stringParam(params, "tokenHeader"),
+			Query:  stringParam(params, "tokenQuery"),
+			Cookie: stringParam(params, "tokenCookie"),
+		})
+	}
+
+	if len(tokens) == 0 {
+		return nil
+	}
+	return tokens
+}
+
+func loadLoginFlow(params map[string]interface{}) *auth.LoginFlow {
+	loginURL := stringParam(params, "loginURL")
+	if loginURL == "" {
+		return nil
+	}
+	return &auth.LoginFlow{
+		URL:            loginURL,
+		UserSelector:   stringParam(params, "loginUserSelector"),
+		PassSelector:   stringParam(params, "loginPassSelector"),
+		SubmitSelector: stringParam(params, "loginSubmitSelector"),
+		Username:       stringParam(params, "loginUser"),
+		Password:       stringParam(params, "loginPass"),
+	}
+}
+
+func stringFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func parseTokenKind(kind string) auth.TokenKind {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "basic":
+		return auth.TokenBasic
+	case "api_key", "api-key", "apikey":
+		return auth.TokenApiKey
+	default:
+		return auth.TokenBearer
 	}
 }

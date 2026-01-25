@@ -1473,6 +1473,47 @@
       "completed_at": "2026-01-25T18:45:13.053322000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0042",
+      "status": "done",
+      "title": "Add schedule CLI flags for extract config, incremental mode, and auth overrides",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "scheduler",
+        "parity"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/scheduler_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/cli.go: runSchedule add only supports auth-profile + pipeline + browser flags; no extract/incremental/auth overrides.",
+        "internal/scheduler/scheduler.go: loadExtract reads extractTemplate/extractValidate and enqueue reads incremental but schedule params never set them."
+      ],
+      "plan": [
+        "Extend schedule add flags to capture extract-template/config/validate, incremental, and auth overrides (headers/cookies/tokens/login).",
+        "Ensure scheduler loadExtract/loadAuth consume these params and add tests for scheduled job param persistence.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Added extract flags: --extract-template, --extract-config, --extract-validate",
+        "Added incremental mode flag: --incremental",
+        "Added auth override flags: --auth-basic, --token-kind, --token, --header, --cookie, --login-*",
+        "Fixed critical bug: flag registration functions now return pointers (repeatable flags work correctly)",
+        "Added comprehensive tests: TestExtractConfigPersistence, TestIncrementalModePersistence, TestAuthOverridePersistence",
+        "Scheduler now loads extract config files and auth overrides from schedule params"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T19:21:26.740565000Z",
+      "completed_at": "2026-01-25T19:21:26.740565000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
