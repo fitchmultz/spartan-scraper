@@ -965,7 +965,7 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 			return 0
 		}
 
-		// Server not running - fall back to direct store update
+		// Server not running - use manager's cancel logic for consistency
 		st, err := store.Open(cfg.DataDir)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -973,9 +973,21 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 		}
 		defer st.Close()
 
-		// Only update store status (no active jobs to cancel since server isn't running)
-		if err := st.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user"); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		manager := jobs.NewManager(
+			st,
+			cfg.DataDir,
+			cfg.UserAgent,
+			time.Duration(cfg.RequestTimeoutSecs)*time.Second,
+			cfg.MaxConcurrency,
+			cfg.RateLimitQPS,
+			cfg.RateLimitBurst,
+			cfg.MaxRetries,
+			time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+			cfg.MaxResponseBytes,
+			cfg.UsePlaywright,
+		)
+		if err := manager.CancelJob(ctx, id); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to cancel job: %v\n", err)
 			return 1
 		}
 		fmt.Println("canceled", id)

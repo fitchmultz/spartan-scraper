@@ -160,6 +160,183 @@ func TestManagerCancelJob(t *testing.T) {
 	}
 }
 
+func TestManagerCancelJob_AfterSuccess(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create a job and manually set it to succeeded
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	// Manually set status to succeeded
+	if err := st.UpdateStatus(ctx, job.ID, model.StatusSucceeded, "test success"); err != nil {
+		t.Fatalf("UpdateStatus failed: %v", err)
+	}
+
+	// Verify job is succeeded
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.Status != model.StatusSucceeded {
+		t.Fatalf("expected job to be succeeded, got status %v", persisted.Status)
+	}
+
+	// Try to cancel the succeeded job
+	if err := m.CancelJob(ctx, job.ID); err != nil {
+		t.Errorf("CancelJob failed: %v", err)
+	}
+
+	// Verify status was NOT overwritten
+	persisted, err = st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.Status != model.StatusSucceeded {
+		t.Errorf("expected status to remain succeeded, got %v", persisted.Status)
+	}
+}
+
+func TestManagerCancelJob_AfterFailure(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create a job and manually set it to failed
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	// Manually set status to failed
+	if err := st.UpdateStatus(ctx, job.ID, model.StatusFailed, "test failure"); err != nil {
+		t.Fatalf("UpdateStatus failed: %v", err)
+	}
+
+	// Verify job is failed
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.Status != model.StatusFailed {
+		t.Fatalf("expected job to be failed, got status %v", persisted.Status)
+	}
+
+	// Try to cancel the failed job
+	if err := m.CancelJob(ctx, job.ID); err != nil {
+		t.Errorf("CancelJob failed: %v", err)
+	}
+
+	// Verify status was NOT overwritten
+	persisted, err = st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.Status != model.StatusFailed {
+		t.Errorf("expected status to remain failed, got %v", persisted.Status)
+	}
+}
+
+func TestManagerCancelJob_WhileRunning(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create a job with a URL that will take some time
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	if err := m.Enqueue(job); err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	m.Start(ctx)
+
+	// Wait for job to be running
+	var persisted model.Job
+	for i := 0; i < 10; i++ {
+		persisted, err = st.Get(ctx, job.ID)
+		if err != nil {
+			t.Fatalf("failed to get job from store: %v", err)
+		}
+		if persisted.Status == model.StatusRunning {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	// Verify job is running
+	if persisted.Status != model.StatusRunning {
+		t.Fatalf("expected job to be running, got status %v", persisted.Status)
+	}
+
+	// Cancel job
+	if err := m.CancelJob(ctx, job.ID); err != nil {
+		t.Errorf("CancelJob failed: %v", err)
+	}
+
+	// Wait for cancellation or completion
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify job is not stuck in running (either canceled or terminal)
+	persisted, err = st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	// Job should be explicitly canceled
+	if persisted.Status != model.StatusCanceled {
+		t.Errorf("expected job to be canceled, got status %v", persisted.Status)
+	}
+}
+
+func TestManagerRun_ContextCancellation(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create a job
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	if err := m.Enqueue(job); err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	m.Start(ctx)
+
+	// Wait a bit for job to start
+	time.Sleep(50 * time.Millisecond)
+
+	// Cancel job
+	if err := m.CancelJob(ctx, job.ID); err != nil {
+		t.Errorf("CancelJob failed: %v", err)
+	}
+
+	// Wait for cancellation or completion
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify job status is either canceled or a terminal state (succeeded/failed)
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	// Job should NOT be stuck in running state
+	if persisted.Status == model.StatusRunning {
+		t.Errorf("job should not be stuck in running state, got status %v", persisted.Status)
+	}
+}
+
 func TestManagerRecoverQueuedJobs(t *testing.T) {
 	m, st, cleanup := setupTestManager(t)
 	defer cleanup()

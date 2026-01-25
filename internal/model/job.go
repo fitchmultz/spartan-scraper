@@ -18,6 +18,10 @@ const (
 	StatusCanceled  Status = "canceled"
 )
 
+func (s Status) IsTerminal() bool {
+	return s == StatusSucceeded || s == StatusFailed || s == StatusCanceled
+}
+
 type Job struct {
 	ID         string                 `json:"id"`
 	Kind       Kind                   `json:"kind"`

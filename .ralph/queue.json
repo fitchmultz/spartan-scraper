@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0037",
-      "status": "todo",
-      "title": "Fix job cancellation status updates and guard against overwriting completed jobs",
-      "priority": "high",
-      "tags": [
-        "jobs",
-        "bug",
-        "status",
-        "cancellation"
-      ],
-      "scope": [
-        "internal/jobs/manager.go",
-        "internal/jobs/manager_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/jobs/manager.go: run() returns nil on jobCtx.Err() after setting status to running, leaving jobs stuck in running state.",
-        "internal/jobs/manager.go: CancelJob() unconditionally updates status to canceled, even if a job already succeeded or failed."
-      ],
-      "plan": [
-        "Update job cancellation flow to set status to canceled when context is canceled and avoid overwriting terminal statuses.",
-        "Add tests in internal/jobs/manager_test.go for cancel-after-success and context-cancel status updates.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0038",
       "status": "todo",
       "title": "Delete job artifacts on force delete (result files + job directory)",

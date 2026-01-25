@@ -232,6 +232,16 @@ func (m *Manager) CancelJob(ctx context.Context, id string) error {
 		slog.Info("job not active, marking as canceled in store", "jobID", id)
 	}
 
+	job, err := m.store.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	if job.Status.IsTerminal() {
+		slog.Info("job already in terminal state, not overwriting", "jobID", id, "status", job.Status)
+		return nil
+	}
+
 	return m.store.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user")
 }
 
@@ -321,10 +331,9 @@ func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []st
 func (m *Manager) run(ctx context.Context, job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
 
-	// Check if already canceled
 	latest, err := m.store.Get(ctx, job.ID)
-	if err == nil && latest.Status == model.StatusCanceled {
-		slog.Info("job was canceled before starting", "jobID", job.ID)
+	if err == nil && latest.Status.IsTerminal() {
+		slog.Info("job already in terminal state, not running", "jobID", job.ID, "status", latest.Status)
 		return nil
 	}
 
@@ -396,6 +405,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during scrape", "jobID", job.ID)
+				if err := m.store.UpdateStatus(ctx, job.ID, model.StatusCanceled, "canceled by user"); err != nil {
+					slog.Error("failed to update job status to canceled", "jobID", job.ID, "error", err)
+				}
 				return nil
 			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
@@ -451,6 +463,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during crawl", "jobID", job.ID)
+				if err := m.store.UpdateStatus(ctx, job.ID, model.StatusCanceled, "canceled by user"); err != nil {
+					slog.Error("failed to update job status to canceled", "jobID", job.ID, "error", err)
+				}
 				return nil
 			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
@@ -510,6 +525,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during research", "jobID", job.ID)
+				if err := m.store.UpdateStatus(ctx, job.ID, model.StatusCanceled, "canceled by user"); err != nil {
+					slog.Error("failed to update job status to canceled", "jobID", job.ID, "error", err)
+				}
 				return nil
 			}
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)

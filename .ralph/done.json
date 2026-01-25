@@ -1263,6 +1263,48 @@
       "completed_at": "2026-01-25T06:56:33.268934000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0037",
+      "status": "done",
+      "title": "Fix job cancellation status updates and guard against overwriting completed jobs",
+      "priority": "high",
+      "tags": [
+        "jobs",
+        "bug",
+        "status",
+        "cancellation"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/jobs/manager_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/jobs/manager.go: run() returns nil on jobCtx.Err() after setting status to running, leaving jobs stuck in running state.",
+        "internal/jobs/manager.go: CancelJob() unconditionally updates status to canceled, even if a job already succeeded or failed."
+      ],
+      "plan": [
+        "Update job cancellation flow to set status to canceled when context is canceled and avoid overwriting terminal statuses.",
+        "Add tests in internal/jobs/manager_test.go for cancel-after-success and context-cancel status updates.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Fixed CancelJob to guard against overwriting terminal statuses (succeeded/failed/canceled)",
+        "Fixed run() to skip jobs in ANY terminal state, not just canceled",
+        "Added explicit StatusCanceled updates when context is canceled in scrape/crawl/research workers",
+        "Changed CLI cancel to use manager.CancelJob() for consistency",
+        "Added IsTerminal() helper method to model.Job.Status",
+        "All tests pass: cancel-after-success, cancel-after-failure, cancel-while-running, and context cancellation",
+        "make ci passes with all checks"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T16:02:59.942674000Z",
+      "completed_at": "2026-01-25T16:02:59.942674000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
