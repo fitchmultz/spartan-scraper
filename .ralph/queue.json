@@ -2,32 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0035",
-      "status": "todo",
-      "title": "Expand make clean to remove lock files and log artifacts",
-      "priority": "low",
-      "tags": [
-        "build",
-        "cleanup"
-      ],
-      "scope": [
-        "Makefile"
-      ],
-      "evidence": [
-        "Makefile clean only removes bin/.data and web dist/node_modules, but the Makefile contract calls for deleting lock files and logs as well."
-      ],
-      "plan": [
-        "Add removal for lockfiles (e.g., pnpm-lock.yaml) and common log/artifact directories.",
-        "Document any destructive behavior in README or Makefile comments if needed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0036",
       "status": "todo",
       "title": "Add missing file-level docstrings to code files",

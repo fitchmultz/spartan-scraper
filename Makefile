@@ -34,10 +34,18 @@ format:
 	gofmt -w ./cmd ./internal
 	cd $(WEB_DIR) && pnpm exec biome format . --write
 
+# clean: Remove build artifacts, dependencies, and temporary files
+# Removes: bin/, .data/, node_modules/ (root + web), dist/, installed binary
+# Also removes: Go test binaries (*.test), coverage files (*.out), out/stress/ (log artifacts)
+# Preserves: Source-controlled lock files (go.sum, web/pnpm-lock.yaml)
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)
-	cd $(WEB_DIR) && rm -rf dist node_modules
+	rm -rf node_modules $(WEB_DIR)/node_modules
+	cd $(WEB_DIR) && rm -rf dist
 	rm -f $(INSTALL_DIR)/$(APP_NAME)
+	find . -type f -name "*.test" -delete
+	find . -type f -name "*.out" -delete
+	rm -rf out/stress
 
 test:
 	CI=1 go test ./...

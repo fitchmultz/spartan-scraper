@@ -1192,6 +1192,38 @@
       "completed_at": "2026-01-25T06:26:33.354429000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0035",
+      "status": "done",
+      "title": "Expand make clean to remove lock files and log artifacts",
+      "priority": "low",
+      "tags": [
+        "build",
+        "cleanup"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile clean only removes bin/.data and web dist/node_modules, but the Makefile contract calls for deleting lock files and logs as well."
+      ],
+      "plan": [
+        "Add removal for lockfiles (e.g., pnpm-lock.yaml) and common log/artifact directories.",
+        "Document any destructive behavior in README or Makefile comments if needed."
+      ],
+      "notes": [
+        "Expanded make clean to remove root node_modules, Go test artifacts (*.test, *.out), and log directory (out/stress/)",
+        "Added comprehensive documentation clarifying what is removed vs preserved",
+        "Preserved source-controlled lock files (go.sum, pnpm-lock.yaml) per standard clean target conventions",
+        "All CI checks pass (make ci)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-25T06:36:45.722675000Z",
+      "completed_at": "2026-01-25T06:36:45.722675000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
