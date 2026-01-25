@@ -2,34 +2,42 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0045",
+      "id": "RQ-0052",
       "status": "todo",
-      "title": "Expand MCP toolset to include job list/cancel/export",
+      "title": "Implement list functionality across CLI, API, TUI, and web interfaces",
       "priority": "medium",
       "tags": [
-        "mcp",
-        "parity",
-        "api"
+        "cli",
+        "api",
+        "tui",
+        "web",
+        "ux"
       ],
       "scope": [
-        "internal/mcp/server.go",
-        "internal/mcp/server_test.go",
+        "internal/cli/cli.go",
+        "internal/api/server.go",
+        "internal/ui/tui/tui.go",
+        "web/src/App.tsx",
         "make test",
         "make ci"
       ],
       "evidence": [
-        "internal/mcp/server.go: toolsList only includes scrape_page, crawl_site, research, job_status, job_results.",
-        "internal/mcp/server.go: no tools to cancel jobs, list jobs, or export results like CLI/API."
+        "User request: list",
+        "AGENTS.md: Project has CLI, API, TUI, and web interfaces requiring consistent list capabilities"
       ],
       "plan": [
-        "Define MCP schemas for job_list, job_cancel, and job_export with necessary arguments.",
-        "Implement handlers and add tests in internal/mcp/server_test.go.",
-        "Run make test and make ci."
+        "Design comprehensive list commands for jobs, profiles, templates, and crawl states",
+        "Implement CLI 'spartan list' subcommand with filters and output formats",
+        "Add /v1/list endpoints to API for all resource types",
+        "Update TUI job list with enhanced filtering and pagination",
+        "Add list views to web UI for all resource types",
+        "Add tests across all interfaces",
+        "Run make test and make ci"
       ],
       "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "request": "list",
+      "created_at": "2026-01-25T22:00:00Z",
+      "updated_at": "2026-01-25T22:00:00Z",
       "depends_on": [],
       "custom_fields": {}
     },

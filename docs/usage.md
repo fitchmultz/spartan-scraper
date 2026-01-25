@@ -238,6 +238,9 @@ Tools:
 - `research`
 - `job_status`
 - `job_results`
+- `job_list`
+- `job_cancel`
+- `job_export`
 
 Example:
 ```

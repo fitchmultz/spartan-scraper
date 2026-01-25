@@ -15,6 +15,7 @@ import (
 
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
+	"spartan-scraper/internal/exporter"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
@@ -191,6 +192,21 @@ func (s *Server) toolsList() []tool {
 			Description: "Get job results by id",
 			InputSchema: schema(map[string]string{"id": "string"}, nil),
 		},
+		{
+			Name:        "job_list",
+			Description: "List all jobs with pagination",
+			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number"}),
+		},
+		{
+			Name:        "job_cancel",
+			Description: "Cancel a running or queued job by id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "job_export",
+			Description: "Export job results in specified format (jsonl, json, md, csv)",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string"}),
+		},
 	}
 }
 
@@ -360,6 +376,52 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, errors.New("id is required")
 		}
 		return loadResult(ctx, s.store, id)
+	case "job_list":
+		limit := getInt(params.Arguments, "limit", 100)
+		offset := getInt(params.Arguments, "offset", 0)
+		jobs, err := s.store.ListOpts(ctx, store.ListOptions{Limit: limit, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"jobs": jobs}, nil
+	case "job_cancel":
+		id := getString(params.Arguments, "id")
+		if id == "" {
+			return nil, errors.New("id is required")
+		}
+		if err := s.manager.CancelJob(ctx, id); err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"status": "canceled", "id": id}, nil
+	case "job_export":
+		id := getString(params.Arguments, "id")
+		if id == "" {
+			return nil, errors.New("id is required")
+		}
+		format := getString(params.Arguments, "format")
+		if format == "" {
+			format = "jsonl"
+		}
+		validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
+		if !validFormats[format] {
+			return nil, errors.New("invalid format: must be jsonl, json, md, or csv")
+		}
+		job, err := s.store.Get(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("job not found: %w", err)
+		}
+		if job.ResultPath == "" {
+			return nil, errors.New("job has no results")
+		}
+		rawBytes, err := os.ReadFile(job.ResultPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read result file: %w", err)
+		}
+		exported, err := exporter.Export(job, rawBytes, format)
+		if err != nil {
+			return nil, fmt.Errorf("failed to export job: %w", err)
+		}
+		return exported, nil
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", params.Name)
 	}

@@ -3,9 +3,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -593,6 +596,506 @@ func TestToolsListSchemaIncludesPipelineAndIncremental(t *testing.T) {
 			if _, ok := props[field]; !ok {
 				t.Errorf("expected %s in properties", field)
 			}
+		}
+	})
+}
+
+func TestJobListTool(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	t.Run("job_list in toolsList", func(t *testing.T) {
+		tools := srv.toolsList()
+		toolMap := make(map[string]tool)
+		for _, t := range tools {
+			toolMap[t.Name] = t
+		}
+		jobListTool, ok := toolMap["job_list"]
+		if !ok {
+			t.Fatal("job_list tool not found in toolsList")
+		}
+		if jobListTool.Description != "List all jobs with pagination" {
+			t.Errorf("expected description 'List all jobs with pagination', got '%s'", jobListTool.Description)
+		}
+		schema := jobListTool.InputSchema
+		props, ok := schema["properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("properties not found in schema")
+		}
+		if _, ok := props["limit"]; !ok {
+			t.Error("expected 'limit' in properties")
+		}
+		if _, ok := props["offset"]; !ok {
+			t.Error("expected 'offset' in properties")
+		}
+		required := schema["required"]
+		if len(required.([]string)) != 0 {
+			t.Error("expected no required fields")
+		}
+	})
+}
+
+func TestHandleJobList(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	ctx := context.Background()
+
+	t.Run("list all jobs", func(t *testing.T) {
+		_, err := srv.manager.CreateScrapeJob(ctx, "http://example.com/1", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+		_, err = srv.manager.CreateScrapeJob(ctx, "http://example.com/2", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_list",
+				"arguments": map[string]interface{}{},
+			}),
+		}
+
+		result, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatal("result is not a map")
+		}
+		jobs := resultMap["jobs"]
+		if jobs == nil {
+			t.Fatal("jobs not found in result")
+		}
+
+		jobCount := reflect.ValueOf(jobs).Len()
+		if jobCount != 2 {
+			t.Errorf("expected 2 jobs, got %d", jobCount)
+		}
+	})
+
+	t.Run("list with limit and offset", func(t *testing.T) {
+		for i := 0; i < 5; i++ {
+			_, err := srv.manager.CreateScrapeJob(ctx, fmt.Sprintf("http://example.com/%d", i), false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+			if err != nil {
+				t.Fatalf("CreateScrapeJob failed: %v", err)
+			}
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_list",
+				"arguments": map[string]interface{}{"limit": 2, "offset": 2},
+			}),
+		}
+
+		result, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatal("result is not a map")
+		}
+		jobs := resultMap["jobs"]
+		if jobs == nil {
+			t.Fatal("jobs not found in result")
+		}
+		jobCount := reflect.ValueOf(jobs).Len()
+		if jobCount != 2 {
+			t.Errorf("expected 2 jobs (offset 2, limit 2), got %d", jobCount)
+		}
+	})
+}
+
+func TestJobCancelTool(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	t.Run("job_cancel in toolsList", func(t *testing.T) {
+		tools := srv.toolsList()
+		toolMap := make(map[string]tool)
+		for _, t := range tools {
+			toolMap[t.Name] = t
+		}
+		jobCancelTool, ok := toolMap["job_cancel"]
+		if !ok {
+			t.Fatal("job_cancel tool not found in toolsList")
+		}
+		if jobCancelTool.Description != "Cancel a running or queued job by id" {
+			t.Errorf("expected description 'Cancel a running or queued job by id', got '%s'", jobCancelTool.Description)
+		}
+		schema := jobCancelTool.InputSchema
+		props, ok := schema["properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("properties not found in schema")
+		}
+		if _, ok := props["id"]; !ok {
+			t.Error("expected 'id' in properties")
+		}
+		required := schema["required"].([]string)
+		if len(required) != 1 || required[0] != "id" {
+			t.Error("expected 'id' to be required")
+		}
+	})
+}
+
+func TestHandleJobCancel(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	ctx := context.Background()
+
+	t.Run("cancel queued job", func(t *testing.T) {
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_cancel",
+				"arguments": map[string]interface{}{"id": job.ID},
+			}),
+		}
+
+		result, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatal("result is not a map")
+		}
+		if resultMap["status"] != "canceled" {
+			t.Errorf("expected status 'canceled', got '%v'", resultMap["status"])
+		}
+		if resultMap["id"] != job.ID {
+			t.Errorf("expected id '%s', got '%v'", job.ID, resultMap["id"])
+		}
+
+		updatedJob, err := srv.store.Get(ctx, job.ID)
+		if err != nil {
+			t.Fatalf("Get job failed: %v", err)
+		}
+		if updatedJob.Status != "canceled" {
+			t.Errorf("expected job status 'canceled', got '%s'", updatedJob.Status)
+		}
+	})
+
+	t.Run("cancel non-existent job", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_cancel",
+				"arguments": map[string]interface{}{"id": "non-existent-id"},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Error("expected error for non-existent job")
+		}
+	})
+
+	t.Run("cancel without id", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_cancel",
+				"arguments": map[string]interface{}{},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Error("expected error for missing id")
+		}
+	})
+}
+
+func TestJobExportTool(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	t.Run("job_export in toolsList", func(t *testing.T) {
+		tools := srv.toolsList()
+		toolMap := make(map[string]tool)
+		for _, t := range tools {
+			toolMap[t.Name] = t
+		}
+		jobExportTool, ok := toolMap["job_export"]
+		if !ok {
+			t.Fatal("job_export tool not found in toolsList")
+		}
+		if jobExportTool.Description != "Export job results in specified format (jsonl, json, md, csv)" {
+			t.Errorf("expected description 'Export job results in specified format (jsonl, json, md, csv)', got '%s'", jobExportTool.Description)
+		}
+		schema := jobExportTool.InputSchema
+		props, ok := schema["properties"].(map[string]interface{})
+		if !ok {
+			t.Fatal("properties not found in schema")
+		}
+		if _, ok := props["id"]; !ok {
+			t.Error("expected 'id' in properties")
+		}
+		if _, ok := props["format"]; !ok {
+			t.Error("expected 'format' in properties")
+		}
+		required := schema["required"].([]string)
+		if len(required) != 1 || required[0] != "id" {
+			t.Error("expected 'id' to be required and 'format' to be optional")
+		}
+	})
+}
+
+func TestHandleJobExport(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UserAgent:          "test-agent",
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     5,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UsePlaywright:      false,
+	}
+
+	srv, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("NewServer failed: %v", err)
+	}
+	defer srv.Close()
+
+	ctx := context.Background()
+
+	t.Run("export job as jsonl", func(t *testing.T) {
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		resultFile := job.ResultPath
+		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
+		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+			t.Fatalf("failed to create job directory: %v", err)
+		}
+		resultContent := `{"url":"http://example.com","status":200,"title":"Test","text":"Content"}`
+		if err := os.WriteFile(resultFile, []byte(resultContent), 0o644); err != nil {
+			t.Fatalf("failed to write result file: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_export",
+				"arguments": map[string]interface{}{"id": job.ID, "format": "jsonl"},
+			}),
+		}
+
+		result, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		resultStr, ok := result.(string)
+		if !ok {
+			t.Fatal("result is not a string")
+		}
+		resultStr = strings.TrimSpace(resultStr)
+		if resultStr != resultContent {
+			t.Errorf("expected result '%s', got '%s'", resultContent, resultStr)
+		}
+	})
+
+	t.Run("export job with default format", func(t *testing.T) {
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		resultFile := job.ResultPath
+		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
+		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+			t.Fatalf("failed to create job directory: %v", err)
+		}
+		resultContent := `{"url":"http://example.com","status":200}`
+		if err := os.WriteFile(resultFile, []byte(resultContent), 0o644); err != nil {
+			t.Fatalf("failed to write result file: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_export",
+				"arguments": map[string]interface{}{"id": job.ID},
+			}),
+		}
+
+		result, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		resultStr, ok := result.(string)
+		if !ok {
+			t.Fatal("result is not a string")
+		}
+		resultStr = strings.TrimSpace(resultStr)
+		if resultStr != resultContent {
+			t.Errorf("expected result '%s', got '%s'", resultContent, resultStr)
+		}
+	})
+
+	t.Run("export job with invalid format", func(t *testing.T) {
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		resultFile := job.ResultPath
+		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
+		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+			t.Fatalf("failed to create job directory: %v", err)
+		}
+		resultContent := `{"url":"http://example.com","status":200}`
+		if err := os.WriteFile(resultFile, []byte(resultContent), 0o644); err != nil {
+			t.Fatalf("failed to write result file: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_export",
+				"arguments": map[string]interface{}{"id": job.ID, "format": "txt"},
+			}),
+		}
+
+		_, err = srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Error("expected error for invalid format")
+		}
+	})
+
+	t.Run("export job without results", func(t *testing.T) {
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob failed: %v", err)
+		}
+
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_export",
+				"arguments": map[string]interface{}{"id": job.ID, "format": "jsonl"},
+			}),
+		}
+
+		_, err = srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Error("expected error for job without results")
+		}
+	})
+
+	t.Run("export non-existent job", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name":      "job_export",
+				"arguments": map[string]interface{}{"id": "non-existent-id", "format": "jsonl"},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Error("expected error for non-existent job")
 		}
 	})
 }
