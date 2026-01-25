@@ -863,7 +863,7 @@ Examples:
 			IntervalSeconds: *interval,
 			Params:          params,
 		}
-		if err := scheduler.Add(cfg.DataDir, schedule); err != nil {
+		if _, err := scheduler.Add(cfg.DataDir, schedule); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}

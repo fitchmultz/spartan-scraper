@@ -126,7 +126,7 @@ func TestSchedulerStorage(t *testing.T) {
 		Params:          map[string]interface{}{"url": "http://example.com"},
 	}
 
-	if err := Add(dataDir, s1); err != nil {
+	if _, err := Add(dataDir, s1); err != nil {
 		t.Fatalf("Add failed: %v", err)
 	}
 
@@ -288,7 +288,7 @@ func TestScheduleValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testDataDir := t.TempDir()
-			err := Add(testDataDir, tt.schedule)
+			_, err := Add(testDataDir, tt.schedule)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -340,7 +340,7 @@ func TestExtractConfigPersistence(t *testing.T) {
 		},
 	}
 
-	if err := Add(dataDir, schedule); err != nil {
+	if _, err := Add(dataDir, schedule); err != nil {
 		t.Fatalf("Add failed: %v", err)
 	}
 
@@ -435,7 +435,7 @@ func TestIncrementalModePersistence(t *testing.T) {
 				Params:          tc.params,
 			}
 
-			if err := Add(testDataDir, schedule); err != nil {
+			if _, err := Add(testDataDir, schedule); err != nil {
 				t.Fatalf("Add failed: %v", err)
 			}
 
@@ -545,7 +545,7 @@ func TestAuthOverridePersistence(t *testing.T) {
 				Params:          tc.params,
 			}
 
-			err := Add(testDataDir, schedule)
+			_, err := Add(testDataDir, schedule)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
 				return

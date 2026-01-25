@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0043",
-      "status": "todo",
-      "title": "Expose schedule management endpoints in the API",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "scheduler",
-        "parity"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "api/openapi.yaml",
-        "internal/scheduler",
-        "internal/api/server_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/api/server.go: Routes() has no schedule endpoints.",
-        "internal/cli/cli.go: runSchedule provides list/add/delete; scheduler exists but API has no access."
-      ],
-      "plan": [
-        "Add /v1/schedules list/add/delete handlers that wrap scheduler.LoadAll/Add/Delete with validation.",
-        "Update api/openapi.yaml and regenerate clients; add API tests for schedule CRUD.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0044",
       "status": "todo",
       "title": "Add API export endpoint or format parameter for job results",

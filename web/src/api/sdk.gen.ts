@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -138,3 +138,25 @@ export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Opt
  * Get job results
  */
 export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, GetV1JobsByIdResultsErrors, ThrowOnError>({ url: '/v1/jobs/{id}/results', ...options });
+
+/**
+ * List schedules
+ */
+export const getV1Schedules = <ThrowOnError extends boolean = false>(options?: Options<GetV1SchedulesData, ThrowOnError>) => (options?.client ?? client).get<GetV1SchedulesResponses, GetV1SchedulesErrors, ThrowOnError>({ url: '/v1/schedules', ...options });
+
+/**
+ * Add a schedule
+ */
+export const postV1Schedules = <ThrowOnError extends boolean = false>(options: Options<PostV1SchedulesData, ThrowOnError>) => (options.client ?? client).post<PostV1SchedulesResponses, PostV1SchedulesErrors, ThrowOnError>({
+    url: '/v1/schedules',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a schedule
+ */
+export const deleteV1SchedulesById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SchedulesByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SchedulesByIdResponses, DeleteV1SchedulesByIdErrors, ThrowOnError>({ url: '/v1/schedules/{id}', ...options });

@@ -1514,6 +1514,47 @@
       "completed_at": "2026-01-25T19:21:26.740565000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0043",
+      "status": "done",
+      "title": "Expose schedule management endpoints in the API",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "scheduler",
+        "parity"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "api/openapi.yaml",
+        "internal/scheduler",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go: Routes() has no schedule endpoints.",
+        "internal/cli/cli.go: runSchedule provides list/add/delete; scheduler exists but API has no access."
+      ],
+      "plan": [
+        "Add /v1/schedules list/add/delete handlers that wrap scheduler.LoadAll/Add/Delete with validation.",
+        "Update api/openapi.yaml and regenerate clients; add API tests for schedule CRUD.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Added schedule CRUD endpoints (GET/POST/DELETE /v1/schedules)",
+        "Modified scheduler.Add to return added schedule for correct POST response",
+        "Comprehensive test coverage (5 test functions, all passing)",
+        "CI passes completely",
+        "Fixed critical bug in schedule retrieval"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T20:17:34.181530000Z",
+      "completed_at": "2026-01-25T20:17:34.181530000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

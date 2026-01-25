@@ -490,6 +490,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/schedules:
+    get:
+      summary: List schedules
+      responses:
+        '200':
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleListResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Add a schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleRequest'
+      responses:
+        '200':
+          description: Schedule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/schedules/{id}:
+    delete:
+      summary: Delete a schedule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ExtractOptions:
@@ -919,3 +1014,93 @@ components:
           description: Human-readable error message
       required:
         - error
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique schedule identifier
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+        intervalSeconds:
+          type: integer
+          minimum: 1
+          description: Interval between runs in seconds
+        nextRun:
+          type: string
+          format: date-time
+          description: Next scheduled run time (RFC3339)
+        params:
+          type: object
+          additionalProperties: true
+          description: Schedule parameters
+      required:
+        - id
+        - kind
+        - intervalSeconds
+        - nextRun
+        - params
+    ScheduleRequest:
+      type: object
+      required: [kind, intervalSeconds]
+      properties:
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+        intervalSeconds:
+          type: integer
+          minimum: 1
+          description: Interval between runs in seconds
+        url:
+          type: string
+          format: uri
+        query:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        maxDepth:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 2
+        maxPages:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          default: 200
+        headless:
+          type: boolean
+          default: false
+        playwright:
+          type: boolean
+          default: false
+        timeoutSeconds:
+          type: integer
+          default: 30
+          minimum: 5
+          maximum: 300
+        authProfile:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
+        incremental:
+          type: boolean
+          default: false
+    ScheduleListResponse:
+      type: object
+      properties:
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+      required:
+        - schedules

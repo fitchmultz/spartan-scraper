@@ -236,6 +236,53 @@ export type ErrorResponse = {
     error: string;
 };
 
+export type Schedule = {
+    /**
+     * Unique schedule identifier
+     */
+    id: string;
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Interval between runs in seconds
+     */
+    intervalSeconds: number;
+    /**
+     * Next scheduled run time (RFC3339)
+     */
+    nextRun: string;
+    /**
+     * Schedule parameters
+     */
+    params: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScheduleRequest = {
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Interval between runs in seconds
+     */
+    intervalSeconds: number;
+    url?: string;
+    query?: string;
+    urls?: Array<string>;
+    maxDepth?: number;
+    maxPages?: number;
+    headless?: boolean;
+    playwright?: boolean;
+    timeoutSeconds?: number;
+    authProfile?: string;
+    auth?: AuthOptions;
+    extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
+    incremental?: boolean;
+};
+
+export type ScheduleListResponse = {
+    schedules: Array<Schedule>;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -704,3 +751,104 @@ export type GetV1JobsByIdResultsResponses = {
 };
 
 export type GetV1JobsByIdResultsResponse = GetV1JobsByIdResultsResponses[keyof GetV1JobsByIdResultsResponses];
+
+export type GetV1SchedulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/schedules';
+};
+
+export type GetV1SchedulesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1SchedulesError = GetV1SchedulesErrors[keyof GetV1SchedulesErrors];
+
+export type GetV1SchedulesResponses = {
+    /**
+     * Schedule list
+     */
+    200: ScheduleListResponse;
+};
+
+export type GetV1SchedulesResponse = GetV1SchedulesResponses[keyof GetV1SchedulesResponses];
+
+export type PostV1SchedulesData = {
+    body: ScheduleRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/schedules';
+};
+
+export type PostV1SchedulesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1SchedulesError = PostV1SchedulesErrors[keyof PostV1SchedulesErrors];
+
+export type PostV1SchedulesResponses = {
+    /**
+     * Schedule created
+     */
+    200: Schedule;
+};
+
+export type PostV1SchedulesResponse = PostV1SchedulesResponses[keyof PostV1SchedulesResponses];
+
+export type DeleteV1SchedulesByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/schedules/{id}';
+};
+
+export type DeleteV1SchedulesByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1SchedulesByIdError = DeleteV1SchedulesByIdErrors[keyof DeleteV1SchedulesByIdErrors];
+
+export type DeleteV1SchedulesByIdResponses = {
+    /**
+     * Deleted
+     */
+    200: StatusResponse;
+};
+
+export type DeleteV1SchedulesByIdResponse = DeleteV1SchedulesByIdResponses[keyof DeleteV1SchedulesByIdResponses];

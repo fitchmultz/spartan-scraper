@@ -233,7 +233,7 @@ func SaveAll(dataDir string, schedules []Schedule) error {
 	return os.WriteFile(path, payload, 0o600)
 }
 
-func Add(dataDir string, schedule Schedule) error {
+func Add(dataDir string, schedule Schedule) (*Schedule, error) {
 	if schedule.ID == "" {
 		schedule.ID = uuid.NewString()
 	}
@@ -245,15 +245,18 @@ func Add(dataDir string, schedule Schedule) error {
 	}
 
 	if err := validateScheduleParams(schedule); err != nil {
-		return err
+		return nil, err
 	}
 
 	items, err := LoadAll(dataDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	items = append(items, schedule)
-	return SaveAll(dataDir, items)
+	if err := SaveAll(dataDir, items); err != nil {
+		return nil, err
+	}
+	return &schedule, nil
 }
 
 func Delete(dataDir, id string) error {
