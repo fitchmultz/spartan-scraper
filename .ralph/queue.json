@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0031",
-      "status": "todo",
-      "title": "Expand web auth inputs to cover cookies/query token options",
-      "priority": "medium",
-      "tags": [
-        "web",
-        "ux",
-        "auth"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "internal/fetch/types.go"
-      ],
-      "evidence": [
-        "web/src/App.tsx buildAuth() only passes basic and headers, while fetch.AuthOptions supports cookies and query tokens."
-      ],
-      "plan": [
-        "Add UI fields for cookies and query params (and map to AuthOptions).",
-        "Update buildAuth to include the new fields and add UI tests for serialization."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0032",
       "status": "todo",
       "title": "Include install step in make ci",

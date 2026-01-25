@@ -75,6 +75,8 @@ export function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(30);
   const [authBasic, setAuthBasic] = useState("");
   const [headersRaw, setHeadersRaw] = useState(defaultHeaders);
+  const [cookiesRaw, setCookiesRaw] = useState("");
+  const [queryRaw, setQueryRaw] = useState("");
   const [extractTemplate, setExtractTemplate] = useState("");
   const [extractValidate, setExtractValidate] = useState(false);
   const [researchQuery, setResearchQuery] = useState("");
@@ -97,6 +99,8 @@ export function App() {
   } | null>(null);
 
   const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
+  const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
+  const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
 
   const refreshJobs = useCallback(async () => {
     setLoading(true);
@@ -194,7 +198,7 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap),
+          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -230,7 +234,7 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap),
+          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -267,7 +271,7 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap),
+          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -471,6 +475,26 @@ export function App() {
             rows={3}
             value={headersRaw}
             onChange={(event) => setHeadersRaw(event.target.value)}
+          />
+          <label htmlFor="cookies-raw" style={{ marginTop: 12 }}>
+            Cookies (one per line: name=value)
+          </label>
+          <textarea
+            id="cookies-raw"
+            rows={2}
+            value={cookiesRaw}
+            onChange={(event) => setCookiesRaw(event.target.value)}
+            placeholder="session_id=abc123&#10;auth_token=xyz789"
+          />
+          <label htmlFor="query-raw" style={{ marginTop: 12 }}>
+            Query params (one per line: key=value)
+          </label>
+          <textarea
+            id="query-raw"
+            rows={2}
+            value={queryRaw}
+            onChange={(event) => setQueryRaw(event.target.value)}
+            placeholder="api_key=your_key&#10;version=v1"
           />
           <div className="row" style={{ marginTop: 12 }}>
             <label>
@@ -985,13 +1009,55 @@ function parseHeaders(raw: string) {
   return Object.keys(headers).length ? headers : undefined;
 }
 
-function buildAuth(basic: string, headers?: Record<string, string>) {
-  if (!basic && !headers) {
+export function parseCookies(raw: string): string[] | undefined {
+  if (!raw.trim()) {
+    return undefined;
+  }
+  const cookies: string[] = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return cookies.length ? cookies : undefined;
+}
+
+export function parseQueryParams(
+  raw: string,
+): Record<string, string> | undefined {
+  if (!raw.trim()) {
+    return undefined;
+  }
+  const params: Record<string, string> = {};
+  raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const idx = line.indexOf("=");
+      if (idx > 0) {
+        const key = line.slice(0, idx).trim();
+        const value = line.slice(idx + 1).trim();
+        if (key && value) {
+          params[key] = value;
+        }
+      }
+    });
+  return Object.keys(params).length ? params : undefined;
+}
+
+export function buildAuth(
+  basic: string,
+  headers?: Record<string, string>,
+  cookies?: string[],
+  query?: Record<string, string>,
+) {
+  if (!basic && !headers && !cookies && !query) {
     return undefined;
   }
   return {
     basic: basic || undefined,
     headers,
+    cookies,
+    query,
   };
 }
 
