@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0030",
-      "status": "todo",
-      "title": "Make web API base URL configurable",
-      "priority": "medium",
-      "tags": [
-        "web",
-        "config",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "web/src/api/index.ts",
-        "web/package.json",
-        "web/.env"
-      ],
-      "evidence": [
-        "web/src/App.tsx calls API helpers with baseUrl: '' and uses fetch('/v1/jobs/...'), so the UI cannot target a non-root API host."
-      ],
-      "plan": [
-        "Add VITE_API_BASE_URL (or similar) and wire API client + fetch calls to use it.",
-        "Document defaults in web/.env(.example) and add tests covering base URL usage."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0031",
       "status": "todo",
       "title": "Expand web auth inputs to cover cookies/query token options",

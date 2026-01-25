@@ -4,6 +4,7 @@
 // to verify correct error handling behavior. The actual App.tsx implementation should match
 // this logic for the tests to remain valid.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { getApiBaseUrl } from "./lib/api-config";
 
 const validNDJSON = JSON.stringify({
   url: "https://example.com",
@@ -15,7 +16,11 @@ const validNDJSON = JSON.stringify({
 
 async function loadResults(jobId: string) {
   try {
-    const response = await fetch(`/v1/jobs/${jobId}/results`);
+    const apiBaseUrl = getApiBaseUrl();
+    const resultsUrl = apiBaseUrl
+      ? `${apiBaseUrl}/v1/jobs/${jobId}/results`
+      : `/v1/jobs/${jobId}/results`;
+    const response = await fetch(resultsUrl);
 
     if (!response.ok) {
       let errorMessage = `Failed to load results (${response.status} ${response.statusText})`;

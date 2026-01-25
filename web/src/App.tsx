@@ -11,6 +11,7 @@ import {
   getHealthz,
   type Job,
 } from "./api";
+import { buildApiUrl, getApiBaseUrl } from "./lib/api-config";
 
 type JobEntry = Job;
 
@@ -100,7 +101,9 @@ export function App() {
   const refreshJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error: apiError } = await getV1Jobs({ baseUrl: "" });
+      const { data, error: apiError } = await getV1Jobs({
+        baseUrl: getApiBaseUrl(),
+      });
       if (apiError) {
         setError(String(apiError));
         return;
@@ -116,7 +119,9 @@ export function App() {
 
   const refreshManagerStatus = useCallback(async () => {
     try {
-      const { data, error: apiError } = await getHealthz({ baseUrl: "" });
+      const { data, error: apiError } = await getHealthz({
+        baseUrl: getApiBaseUrl(),
+      });
       if (apiError) {
         console.error("Failed to fetch manager status:", apiError);
         return;
@@ -183,7 +188,7 @@ export function App() {
     setLoading(true);
     try {
       const { error: apiError } = await postV1Scrape({
-        baseUrl: "",
+        baseUrl: getApiBaseUrl(),
         body: {
           url: scrapeUrl,
           headless,
@@ -217,7 +222,7 @@ export function App() {
     setLoading(true);
     try {
       const { error: apiError } = await postV1Crawl({
-        baseUrl: "",
+        baseUrl: getApiBaseUrl(),
         body: {
           url: crawlUrl,
           maxDepth,
@@ -253,7 +258,7 @@ export function App() {
     setLoading(true);
     try {
       const { error: apiError } = await postV1Research({
-        baseUrl: "",
+        baseUrl: getApiBaseUrl(),
         body: {
           query: researchQuery,
           urls: parseUrlList(researchUrls),
@@ -293,7 +298,8 @@ export function App() {
     setResultCitations([]);
     setRawResult(null);
     try {
-      const response = await fetch(`/v1/jobs/${jobId}/results`);
+      const resultsUrl = buildApiUrl(`/v1/jobs/${jobId}/results`);
+      const response = await fetch(resultsUrl);
 
       if (!response.ok) {
         let errorMessage = `Failed to load results (${response.status} ${response.statusText})`;
@@ -339,7 +345,7 @@ export function App() {
     setLoading(true);
     try {
       const { error: apiError } = await deleteV1JobsById({
-        baseUrl: "",
+        baseUrl: getApiBaseUrl(),
         path: { id: jobId },
       });
       if (apiError) {
@@ -362,7 +368,7 @@ export function App() {
     setLoading(true);
     try {
       const { error: apiError } = await deleteV1JobsById({
-        baseUrl: "",
+        baseUrl: getApiBaseUrl(),
         path: { id: jobId },
         query: { force: true },
       });
