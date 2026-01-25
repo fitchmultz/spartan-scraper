@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0033",
-      "status": "todo",
-      "title": "Implement real dependency updates in make update",
-      "priority": "medium",
-      "tags": [
-        "build",
-        "deps"
-      ],
-      "scope": [
-        "Makefile",
-        "go.mod",
-        "web/package.json",
-        "pnpm-lock.yaml"
-      ],
-      "evidence": [
-        "Makefile update target only echoes manual instructions instead of updating dependencies."
-      ],
-      "plan": [
-        "Replace the echo with actual update commands for Go and pnpm deps.",
-        "Ensure lockfiles are updated and documented as part of make update."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-24T12:33:41Z",
-      "updated_at": "2026-01-24T12:33:41Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0034",
       "status": "todo",
       "title": "Install CLI binary to ~/.local/bin in make build",

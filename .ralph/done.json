@@ -1124,6 +1124,42 @@
       "completed_at": "2026-01-25T06:08:40.677215000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0033",
+      "status": "done",
+      "title": "Implement real dependency updates in make update",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "deps"
+      ],
+      "scope": [
+        "Makefile",
+        "go.mod",
+        "web/package.json",
+        "pnpm-lock.yaml"
+      ],
+      "evidence": [
+        "Makefile update target only echoes manual instructions instead of updating dependencies."
+      ],
+      "plan": [
+        "Replace the echo with actual update commands for Go and pnpm deps.",
+        "Ensure lockfiles are updated and documented as part of make update."
+      ],
+      "notes": [
+        "Replaced stub echo with actual go get -u ./... and go mod tidy for Go deps",
+        "Added pnpm update for frontend deps respecting semver ranges",
+        "Lockfiles (go.sum, pnpm-lock.yaml) are updated by the tools themselves",
+        "Validated: make ci passes cleanly with updated dependencies",
+        "Implementation is idempotent and fail-fast (Makefile stops on first error)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-25T06:17:06.501980000Z",
+      "completed_at": "2026-01-25T06:17:06.501980000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

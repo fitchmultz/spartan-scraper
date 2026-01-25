@@ -12,7 +12,12 @@ install:
 	cd $(WEB_DIR) && pnpm install
 
 update:
-	@echo "Dependency updates are manual. Use: cd $(WEB_DIR) && pnpm up -L && go get -u ./..."
+	@echo "Updating Go dependencies..."
+	go get -u ./...
+	go mod tidy
+	@echo "Updating pnpm dependencies..."
+	cd $(WEB_DIR) && pnpm update
+	@echo "Dependency update complete. Review changes before committing."
 
 lint:
 	go vet ./...
