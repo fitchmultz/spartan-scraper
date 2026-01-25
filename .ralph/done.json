@@ -1347,6 +1347,45 @@
       "completed_at": "2026-01-25T16:31:42.455385000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0039",
+      "status": "done",
+      "title": "Prevent CLI research panic when --urls is blank or only separators",
+      "priority": "high",
+      "tags": [
+        "cli",
+        "bug",
+        "validation"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/cli/cli_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/cli.go: runResearch uses splitCSV(*urls)[0] without checking length; splitCSV removes empty entries.",
+        "internal/cli/cli.go: splitCSV() returns [] when input is only commas/whitespace, causing index out of range."
+      ],
+      "plan": [
+        "Guard runResearch against empty splitCSV output and return a clear validation error.",
+        "Add tests in internal/cli/cli_test.go for inputs like ',', ' , ' to ensure no panic and proper error.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Fixed panic by adding validation before urlList[0] access in runResearch and runSchedule",
+        "Added TestSplitCSVEdgeCases with 9 comprehensive test cases covering all panic scenarios",
+        "All CLI tests pass including new edge case tests",
+        "Full CI pipeline passes (make ci)",
+        "Manual testing confirms: ',' and ' , ' now return clear error instead of panicking"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T17:09:03.084773000Z",
+      "completed_at": "2026-01-25T17:09:03.084773000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

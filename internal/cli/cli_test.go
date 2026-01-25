@@ -29,6 +29,32 @@ func TestSplitCSV(t *testing.T) {
 	}
 }
 
+func TestSplitCSVEdgeCases(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{",", []string{}},                   // Only comma
+		{" , ", []string{}},                 // Only comma with whitespace
+		{",,", []string{}},                  // Multiple commas
+		{", ,", []string{}},                 // Multiple commas with whitespace
+		{"a,", []string{"a"}},               // Trailing comma
+		{",a", []string{"a"}},               // Leading comma
+		{",a,", []string{"a"}},              // Leading and trailing comma
+		{"a,,b", []string{"a", "b"}},        // Empty between
+		{" , a , , b ", []string{"a", "b"}}, // Mixed
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := splitCSV(tt.input)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("splitCSV(%q) = %v; want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestToCookies(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -311,6 +311,11 @@ Options:
 		fmt.Fprintln(os.Stderr, "--query and --urls are required")
 		return 1
 	}
+	urlList := splitCSV(*urls)
+	if len(urlList) == 0 {
+		fmt.Fprintln(os.Stderr, "--urls must contain at least one valid URL")
+		return 1
+	}
 
 	extractOpts, err := loadExtractOptions(*cf.extractTemplate, *cf.extractConfig, *cf.extractValidate)
 	if err != nil {
@@ -333,13 +338,13 @@ Options:
 	manager := initJobManager(ctx, cfg, store)
 
 	// Resolve auth using the first URL as the base
-	authOptions, err := resolveAuthFromFlags(cfg, splitCSV(*urls)[0], cf)
+	authOptions, err := resolveAuthFromFlags(cfg, urlList[0], cf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
-	job, err := manager.CreateResearchJob(ctx, *query, splitCSV(*urls), *maxDepth, *maxPages, *cf.headless, *cf.playwright, authOptions, *cf.timeout, extractOpts, pipelineOpts, *cf.incremental)
+	job, err := manager.CreateResearchJob(ctx, *query, urlList, *maxDepth, *maxPages, *cf.headless, *cf.playwright, authOptions, *cf.timeout, extractOpts, pipelineOpts, *cf.incremental)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -755,8 +760,13 @@ Examples:
 				fmt.Fprintln(os.Stderr, "--query and --urls are required for research")
 				return 1
 			}
+			urlList := splitCSV(*urls)
+			if len(urlList) == 0 {
+				fmt.Fprintln(os.Stderr, "--urls must contain at least one valid URL")
+				return 1
+			}
 			params["query"] = *query
-			params["urls"] = splitCSV(*urls)
+			params["urls"] = urlList
 			params["maxDepth"] = *maxDepth
 			params["maxPages"] = *maxPages
 		default:
