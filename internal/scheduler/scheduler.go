@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
+	"spartan-scraper/internal/validate"
 )
 
 type Schedule struct {
@@ -204,6 +206,11 @@ func Add(dataDir string, schedule Schedule) error {
 	if schedule.NextRun.IsZero() {
 		schedule.NextRun = time.Now().Add(time.Duration(schedule.IntervalSeconds) * time.Second)
 	}
+
+	if err := validateScheduleParams(schedule); err != nil {
+		return err
+	}
+
 	items, err := LoadAll(dataDir)
 	if err != nil {
 		return err
@@ -241,6 +248,60 @@ func schedulesPath(dataDir string) string {
 		base = ".data"
 	}
 	return filepath.Join(base, "schedules.json")
+}
+
+func validateScheduleParams(schedule Schedule) error {
+	switch schedule.Kind {
+	case model.KindScrape:
+		url := stringParam(schedule.Params, "url")
+		timeout := intParam(schedule.Params, "timeout", 0)
+		authProfile := stringParam(schedule.Params, "authProfile")
+		validator := validate.ScrapeRequestValidator{
+			URL:         url,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return fmt.Errorf("invalid scrape schedule: %w", err)
+		}
+	case model.KindCrawl:
+		url := stringParam(schedule.Params, "url")
+		maxDepth := intParam(schedule.Params, "maxDepth", 0)
+		maxPages := intParam(schedule.Params, "maxPages", 0)
+		timeout := intParam(schedule.Params, "timeout", 0)
+		authProfile := stringParam(schedule.Params, "authProfile")
+		validator := validate.CrawlRequestValidator{
+			URL:         url,
+			MaxDepth:    maxDepth,
+			MaxPages:    maxPages,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return fmt.Errorf("invalid crawl schedule: %w", err)
+		}
+	case model.KindResearch:
+		query := stringParam(schedule.Params, "query")
+		urls := stringSliceParam(schedule.Params, "urls")
+		maxDepth := intParam(schedule.Params, "maxDepth", 0)
+		maxPages := intParam(schedule.Params, "maxPages", 0)
+		timeout := intParam(schedule.Params, "timeout", 0)
+		authProfile := stringParam(schedule.Params, "authProfile")
+		validator := validate.ResearchRequestValidator{
+			Query:       query,
+			URLs:        urls,
+			MaxDepth:    maxDepth,
+			MaxPages:    maxPages,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return fmt.Errorf("invalid research schedule: %w", err)
+		}
+	default:
+		return errors.New("unknown schedule kind")
+	}
+	return nil
 }
 
 func stringParam(params map[string]interface{}, key string) string {

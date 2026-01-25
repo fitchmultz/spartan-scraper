@@ -776,3 +776,93 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 		t.Error("job directory should still exist after cancel")
 	}
 }
+
+func TestHandleResearchValidation(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		body           string
+		expectedStatus int
+	}{
+		{
+			name:           "invalid url in urls list",
+			body:           `{"query": "test", "urls": ["ftp://example.com"]}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "empty url in urls list",
+			body:           `{"query": "test", "urls": ["", "https://example.com"]}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/v1/research", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tt.expectedStatus)
+			}
+
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Errorf("failed to parse JSON response: %v", err)
+			}
+			if _, ok := resp["error"]; !ok {
+				t.Errorf("expected 'error' field in response, got: %v", resp)
+			}
+		})
+	}
+}
+
+func TestZeroValuesAllowed(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "scrape with timeout 0",
+			body: `{"url": "https://example.com", "timeoutSeconds": 0}`,
+		},
+		{
+			name: "crawl with maxDepth 0",
+			body: `{"url": "https://example.com", "maxDepth": 0, "maxPages": 10}`,
+		},
+		{
+			name: "crawl with maxPages 0",
+			body: `{"url": "https://example.com", "maxDepth": 2, "maxPages": 0}`,
+		},
+		{
+			name: "research with all zero values",
+			body: `{"query": "test", "urls": ["https://example.com"], "timeoutSeconds": 0, "maxDepth": 0, "maxPages": 0}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoint := "/v1/scrape"
+			if tt.name == "crawl with maxDepth 0" || tt.name == "crawl with maxPages 0" {
+				endpoint = "/v1/crawl"
+			}
+			if tt.name == "research with all zero values" {
+				endpoint = "/v1/research"
+			}
+			req := httptest.NewRequest("POST", endpoint, strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Errorf("handler returned wrong status code for %s: got %v want %v, body: %s", tt.name, status, http.StatusOK, rr.Body.String())
+			}
+		})
+	}
+}

@@ -20,6 +20,7 @@ import (
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
+	"spartan-scraper/internal/validate"
 )
 
 type Server struct {
@@ -225,13 +226,21 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, errors.New("url is required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
+		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		validator := validate.ScrapeRequestValidator{
+			URL:         url,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return nil, err
+		}
 		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
 		if err != nil {
 			return nil, err
 		}
 		headless := getBool(params.Arguments, "headless")
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
@@ -255,15 +264,25 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, errors.New("url is required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
+		maxDepth := getInt(params.Arguments, "maxDepth", 2)
+		maxPages := getInt(params.Arguments, "maxPages", 200)
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
+		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		validator := validate.CrawlRequestValidator{
+			URL:         url,
+			MaxDepth:    maxDepth,
+			MaxPages:    maxPages,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return nil, err
+		}
 		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
 		if err != nil {
 			return nil, err
 		}
-		maxDepth := getInt(params.Arguments, "maxDepth", 2)
-		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
@@ -288,6 +307,21 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, errors.New("query and urls are required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
+		maxDepth := getInt(params.Arguments, "maxDepth", 2)
+		maxPages := getInt(params.Arguments, "maxPages", 200)
+		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
+		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		validator := validate.ResearchRequestValidator{
+			Query:       query,
+			URLs:        urls,
+			MaxDepth:    maxDepth,
+			MaxPages:    maxPages,
+			Timeout:     timeout,
+			AuthProfile: authProfile,
+		}
+		if err := validator.Validate(); err != nil {
+			return nil, err
+		}
 		targetURL := ""
 		if len(urls) > 0 {
 			targetURL = urls[0]
@@ -296,11 +330,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		maxDepth := getInt(params.Arguments, "maxDepth", 2)
-		maxPages := getInt(params.Arguments, "maxPages", 200)
 		headless := getBool(params.Arguments, "headless")
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),

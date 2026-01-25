@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0040",
-      "status": "todo",
-      "title": "Centralize request validation across CLI, API, MCP, and scheduler",
-      "priority": "high",
-      "tags": [
-        "validation",
-        "api",
-        "cli",
-        "mcp",
-        "scheduler"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/cli/cli.go",
-        "internal/mcp/server.go",
-        "internal/scheduler/scheduler.go",
-        "internal/model",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/api/server.go: validates URL scheme/host, timeoutSeconds, maxDepth, maxPages.",
-        "internal/cli/cli.go and internal/mcp/server.go do not validate URL/timeouts/depth/pages before creating jobs.",
-        "internal/scheduler/scheduler.go enqueues jobs without validating params."
-      ],
-      "plan": [
-        "Introduce a shared validation helper (URL, timeout, maxDepth/maxPages, urls list) and reuse it in CLI, API, MCP, and scheduler.",
-        "Standardize error messages and add unit tests for validator plus integration tests in affected packages.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0041",
       "status": "todo",
       "title": "Surface scheduler auth resolution errors instead of silently ignoring them",

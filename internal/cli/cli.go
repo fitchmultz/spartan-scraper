@@ -31,6 +31,7 @@ import (
 	"spartan-scraper/internal/scheduler"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/ui/tui"
+	"spartan-scraper/internal/validate"
 )
 
 // Run executes the CLI application. It parses command-line arguments and
@@ -100,10 +101,18 @@ Options:
 `)
 		fs.PrintDefaults()
 	}
-
 	_ = fs.Parse(os.Args[2:])
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "--url is required")
+		return 1
+	}
+	validator := validate.ScrapeRequestValidator{
+		URL:         *url,
+		Timeout:     *cf.timeout,
+		AuthProfile: *cf.profileName,
+	}
+	if err := validator.Validate(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
 
@@ -245,6 +254,17 @@ Options:
 		fmt.Fprintln(os.Stderr, "--url is required")
 		return 1
 	}
+	validator := validate.CrawlRequestValidator{
+		URL:         *url,
+		MaxDepth:    *maxDepth,
+		MaxPages:    *maxPages,
+		Timeout:     *cf.timeout,
+		AuthProfile: *cf.profileName,
+	}
+	if err := validator.Validate(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
 
 	extractOpts, err := loadExtractOptions(*cf.extractTemplate, *cf.extractConfig, *cf.extractValidate)
 	if err != nil {
@@ -312,8 +332,16 @@ Options:
 		return 1
 	}
 	urlList := splitCSV(*urls)
-	if len(urlList) == 0 {
-		fmt.Fprintln(os.Stderr, "--urls must contain at least one valid URL")
+	validator := validate.ResearchRequestValidator{
+		Query:       *query,
+		URLs:        urlList,
+		MaxDepth:    *maxDepth,
+		MaxPages:    *maxPages,
+		Timeout:     *cf.timeout,
+		AuthProfile: *cf.profileName,
+	}
+	if err := validator.Validate(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
 

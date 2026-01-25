@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"spartan-scraper/internal/auth"
@@ -21,6 +19,7 @@ import (
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
+	"spartan-scraper/internal/validate"
 )
 
 const maxRequestBodySize = 1024 * 1024 // 1MB
@@ -181,16 +180,13 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
-	if !isValidURL(req.URL) {
-		writeJSONError(w, http.StatusBadRequest, "invalid url: must be http or https and have a host")
-		return
+	validator := validate.ScrapeRequestValidator{
+		URL:         req.URL,
+		Timeout:     req.TimeoutSeconds,
+		AuthProfile: req.AuthProfile,
 	}
-	if !isValidProfileName(req.AuthProfile) {
-		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
-		return
-	}
-	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
+	if err := validator.Validate(); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -255,24 +251,15 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
-	if !isValidURL(req.URL) {
-		writeJSONError(w, http.StatusBadRequest, "invalid url: must be http or https and have a host")
-		return
+	validator := validate.CrawlRequestValidator{
+		URL:         req.URL,
+		MaxDepth:    req.MaxDepth,
+		MaxPages:    req.MaxPages,
+		Timeout:     req.TimeoutSeconds,
+		AuthProfile: req.AuthProfile,
 	}
-	if !isValidProfileName(req.AuthProfile) {
-		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
-		return
-	}
-	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
-		return
-	}
-	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
-		writeJSONError(w, http.StatusBadRequest, "maxDepth must be between 1 and 10")
-		return
-	}
-	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
-		writeJSONError(w, http.StatusBadRequest, "maxPages must be between 1 and 10000")
+	if err := validator.Validate(); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -337,26 +324,16 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "query and urls are required")
 		return
 	}
-	for _, u := range req.URLs {
-		if !isValidURL(u) {
-			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid url in list: %s (must be http or https and have a host)", u))
-			return
-		}
+	validator := validate.ResearchRequestValidator{
+		Query:       req.Query,
+		URLs:        req.URLs,
+		MaxDepth:    req.MaxDepth,
+		MaxPages:    req.MaxPages,
+		Timeout:     req.TimeoutSeconds,
+		AuthProfile: req.AuthProfile,
 	}
-	if !isValidProfileName(req.AuthProfile) {
-		writeJSONError(w, http.StatusBadRequest, "invalid authProfile: only alphanumeric, hyphens, and underscores allowed")
-		return
-	}
-	if req.TimeoutSeconds != 0 && (req.TimeoutSeconds < 5 || req.TimeoutSeconds > 300) {
-		writeJSONError(w, http.StatusBadRequest, "timeoutSeconds must be between 5 and 300")
-		return
-	}
-	if req.MaxDepth != 0 && (req.MaxDepth < 1 || req.MaxDepth > 10) {
-		writeJSONError(w, http.StatusBadRequest, "maxDepth must be between 1 and 10")
-		return
-	}
-	if req.MaxPages != 0 && (req.MaxPages < 1 || req.MaxPages > 10000) {
-		writeJSONError(w, http.StatusBadRequest, "maxPages must be between 1 and 10000")
+	if err := validator.Validate(); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -544,8 +521,8 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, "profile name mismatch")
 			return
 		}
-		if !isValidProfileName(profile.Name) {
-			writeJSONError(w, http.StatusBadRequest, "invalid profile name: only alphanumeric, hyphens, and underscores allowed")
+		if err := validate.ValidateAuthProfileName(profile.Name); err != nil {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if err := auth.UpsertProfile(s.cfg.DataDir, profile); err != nil {
@@ -715,29 +692,6 @@ func loginFromOverride(override fetch.AuthOptions) *auth.LoginFlow {
 		Username:       override.LoginUser,
 		Password:       override.LoginPass,
 	}
-}
-
-var profileNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-
-func isValidURL(rawURL string) bool {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return false
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return false
-	}
-	if u.Host == "" {
-		return false
-	}
-	return true
-}
-
-func isValidProfileName(name string) bool {
-	if name == "" {
-		return true
-	}
-	return profileNameRegex.MatchString(name)
 }
 
 func contentTypeForExtension(ext string) string {
