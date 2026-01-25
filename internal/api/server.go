@@ -459,8 +459,8 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		// Check if this is a force delete (query param)
 		if r.URL.Query().Get("force") == "true" {
-			// Permanent delete
-			if err := s.store.Delete(r.Context(), id); err != nil {
+			// Permanent delete including artifacts
+			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
 				writeJSONError(w, http.StatusInternalServerError, err.Error())
 				return
 			}

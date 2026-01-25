@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0038",
-      "status": "todo",
-      "title": "Delete job artifacts on force delete (result files + job directory)",
-      "priority": "high",
-      "tags": [
-        "api",
-        "store",
-        "cleanup",
-        "storage"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/store/store.go",
-        "internal/store/store_test.go",
-        "internal/api/server_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/api/server.go: DELETE /v1/jobs/{id}?force=true only calls store.Delete without removing result files.",
-        "internal/store/store.go: Delete() removes the DB row only; result_path and job directory remain on disk."
-      ],
-      "plan": [
-        "Add a store helper to delete job records plus result artifacts and wire it into the force-delete API path.",
-        "Cover with tests that create a job + result file then verify cleanup on delete.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0039",
       "status": "todo",
       "title": "Prevent CLI research panic when --urls is blank or only separators",

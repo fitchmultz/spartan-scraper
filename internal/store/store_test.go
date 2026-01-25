@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -379,7 +381,7 @@ func TestStoreDelete(t *testing.T) {
 		t.Errorf("expected job j1, got %s", got.ID)
 	}
 
-	// Delete the job
+	// Delete job
 	if err := s.Delete(ctx, "j1"); err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
@@ -399,5 +401,88 @@ func TestStoreDelete(t *testing.T) {
 	if err := s.Delete(ctx, ""); err != nil {
 		// Empty ID just won't match any rows, so it succeeds
 		t.Errorf("Delete with empty ID should succeed, got: %v", err)
+	}
+}
+
+func TestStoreDeleteWithArtifacts(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job
+	job := model.Job{
+		ID:        "j1",
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+
+	if err := s.Create(ctx, job); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Create job directory and result file
+	jobDir := filepath.Join(dataDir, "jobs", "j1")
+	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+		t.Fatalf("failed to create job directory: %v", err)
+	}
+
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+	resultContent := `{"test":"data"}`
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	// Update job with result path
+	job.ResultPath = resultPath
+	if err := s.UpdateResultPath(ctx, "j1", resultPath); err != nil {
+		t.Fatalf("failed to update result path: %v", err)
+	}
+
+	// Verify job and artifacts exist
+	_, err = s.Get(ctx, "j1")
+	if err != nil {
+		t.Fatalf("job should exist before delete: %v", err)
+	}
+
+	if _, err := os.Stat(resultPath); os.IsNotExist(err) {
+		t.Fatalf("result file should exist before delete")
+	}
+
+	if _, err := os.Stat(jobDir); os.IsNotExist(err) {
+		t.Fatalf("job directory should exist before delete")
+	}
+
+	// Delete with artifacts
+	if err := s.DeleteWithArtifacts(ctx, "j1"); err != nil {
+		t.Fatalf("DeleteWithArtifacts failed: %v", err)
+	}
+
+	// Verify job is gone from DB
+	_, err = s.Get(ctx, "j1")
+	if err == nil {
+		t.Error("job should be deleted from database")
+	}
+
+	// Verify result file is deleted
+	if _, err := os.Stat(resultPath); !os.IsNotExist(err) {
+		t.Error("result file should be deleted")
+	}
+
+	// Verify job directory is deleted
+	if _, err := os.Stat(jobDir); !os.IsNotExist(err) {
+		t.Error("job directory should be deleted")
+	}
+
+	// Test idempotency: deleting non-existent job should succeed
+	if err := s.DeleteWithArtifacts(ctx, "j1"); err != nil {
+		t.Errorf("deleting already-deleted job should succeed, got: %v", err)
 	}
 }

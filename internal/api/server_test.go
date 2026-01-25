@@ -14,6 +14,7 @@ import (
 
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/store"
 )
 
@@ -610,5 +611,168 @@ func TestHandleAuthExportPathTraversal(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHandleJobForceDelete(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create a job via API
+	body := `{"url": "https://example.com"}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("failed to create job: got status %v, body: %s", status, rr.Body.String())
+	}
+
+	var job map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to parse job response: %v", err)
+	}
+
+	jobID, ok := job["id"].(string)
+	if !ok {
+		t.Fatalf("job response missing id field")
+	}
+
+	// Create job directory and result file
+	dataDir := srv.cfg.DataDir
+	jobDir := filepath.Join(dataDir, "jobs", jobID)
+	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+		t.Fatalf("failed to create job directory: %v", err)
+	}
+
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+	resultContent := `{"test":"data"}`
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	// Update job with result path
+	st := srv.store
+	ctx := context.Background()
+	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update result path: %v", err)
+	}
+
+	// Force delete the job
+	req = httptest.NewRequest("DELETE", fmt.Sprintf("/v1/jobs/%s?force=true", jobID), nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("force delete failed: got status %v, body: %s", status, rr.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse delete response: %v", err)
+	}
+
+	if status, ok := resp["status"].(string); !ok || status != "deleted" {
+		t.Errorf("expected status 'deleted', got %v", resp["status"])
+	}
+
+	// Verify job is gone from DB
+	_, err := st.Get(ctx, jobID)
+	if err == nil {
+		t.Error("job should be deleted from database after force delete")
+	}
+
+	// Verify result file is deleted
+	if _, err := os.Stat(resultPath); !os.IsNotExist(err) {
+		t.Error("result file should be deleted after force delete")
+	}
+
+	// Verify job directory is deleted
+	if _, err := os.Stat(jobDir); !os.IsNotExist(err) {
+		t.Error("job directory should be deleted after force delete")
+	}
+}
+
+func TestHandleJobCancelNotDelete(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create a job via API
+	body := `{"url": "https://example.com"}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("failed to create job: got status %v", status)
+	}
+
+	var job map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to parse job response: %v", err)
+	}
+
+	jobID, ok := job["id"].(string)
+	if !ok {
+		t.Fatalf("job response missing id field")
+	}
+
+	// Create job directory and result file
+	dataDir := srv.cfg.DataDir
+	jobDir := filepath.Join(dataDir, "jobs", jobID)
+	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+		t.Fatalf("failed to create job directory: %v", err)
+	}
+
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+	resultContent := `{"test":"data"}`
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	// Update job with result path
+	st := srv.store
+	ctx := context.Background()
+	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update result path: %v", err)
+	}
+
+	// Cancel the job (without force=true)
+	req = httptest.NewRequest("DELETE", fmt.Sprintf("/v1/jobs/%s", jobID), nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("cancel failed: got status %v", status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse delete response: %v", err)
+	}
+
+	if status, ok := resp["status"].(string); !ok || status != "canceled" {
+		t.Errorf("expected status 'canceled', got %v", resp["status"])
+	}
+
+	// Verify job still exists in DB (canceled, not deleted)
+	gotJob, err := st.Get(ctx, jobID)
+	if err != nil {
+		t.Error("job should still exist in database after cancel")
+	}
+	if gotJob.Status != model.StatusCanceled {
+		t.Errorf("job status should be 'canceled', got %s", gotJob.Status)
+	}
+
+	// Verify result file still exists
+	if _, err := os.Stat(resultPath); os.IsNotExist(err) {
+		t.Error("result file should still exist after cancel")
+	}
+
+	// Verify job directory still exists
+	if _, err := os.Stat(jobDir); os.IsNotExist(err) {
+		t.Error("job directory should still exist after cancel")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -97,7 +98,8 @@ func (s *Store) ListByStatus(ctx context.Context, status model.Status, opts List
 }
 
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	dataDir string
 
 	// Prepared statements
 	insertJobStmt        *sql.Stmt
@@ -124,7 +126,7 @@ func Open(dataDir string) (*Store, error) {
 	db.SetConnMaxLifetime(1 * time.Hour)
 	db.SetConnMaxIdleTime(30 * time.Minute)
 
-	store := &Store{db: db}
+	store := &Store{db: db, dataDir: dataDir}
 	if err := store.init(); err != nil {
 		return nil, err
 	}
@@ -330,6 +332,25 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 func (s *Store) Delete(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM jobs WHERE id = ?", id)
 	return err
+}
+
+// DeleteWithArtifacts permanently removes a job from store and deletes its result file and directory.
+// This is used for force delete operations.
+func (s *Store) DeleteWithArtifacts(ctx context.Context, id string) error {
+	if err := s.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Delete the job directory (includes result file)
+	// Directory path: {dataDir}/jobs/{id}
+	jobDir := filepath.Join(s.dataDir, "jobs", id)
+	if err := os.RemoveAll(jobDir); err != nil {
+		// Log warning but don't fail if directory removal fails
+		// The DB record is gone, which is the critical part
+		slog.Warn("failed to delete job directory", "id", id, "path", jobDir, "error", err)
+	}
+
+	return nil
 }
 
 func (s *Store) Close() error {
