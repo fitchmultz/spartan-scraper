@@ -1,4 +1,511 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0037",
+      "status": "todo",
+      "title": "Fix job cancellation status updates and guard against overwriting completed jobs",
+      "priority": "high",
+      "tags": [
+        "jobs",
+        "bug",
+        "status",
+        "cancellation"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/jobs/manager_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/jobs/manager.go: run() returns nil on jobCtx.Err() after setting status to running, leaving jobs stuck in running state.",
+        "internal/jobs/manager.go: CancelJob() unconditionally updates status to canceled, even if a job already succeeded or failed."
+      ],
+      "plan": [
+        "Update job cancellation flow to set status to canceled when context is canceled and avoid overwriting terminal statuses.",
+        "Add tests in internal/jobs/manager_test.go for cancel-after-success and context-cancel status updates.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0038",
+      "status": "todo",
+      "title": "Delete job artifacts on force delete (result files + job directory)",
+      "priority": "high",
+      "tags": [
+        "api",
+        "store",
+        "cleanup",
+        "storage"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/store/store.go",
+        "internal/store/store_test.go",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go: DELETE /v1/jobs/{id}?force=true only calls store.Delete without removing result files.",
+        "internal/store/store.go: Delete() removes the DB row only; result_path and job directory remain on disk."
+      ],
+      "plan": [
+        "Add a store helper to delete job records plus result artifacts and wire it into the force-delete API path.",
+        "Cover with tests that create a job + result file then verify cleanup on delete.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0039",
+      "status": "todo",
+      "title": "Prevent CLI research panic when --urls is blank or only separators",
+      "priority": "high",
+      "tags": [
+        "cli",
+        "bug",
+        "validation"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/cli/cli_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/cli.go: runResearch uses splitCSV(*urls)[0] without checking length; splitCSV removes empty entries.",
+        "internal/cli/cli.go: splitCSV() returns [] when input is only commas/whitespace, causing index out of range."
+      ],
+      "plan": [
+        "Guard runResearch against empty splitCSV output and return a clear validation error.",
+        "Add tests in internal/cli/cli_test.go for inputs like ',', ' , ' to ensure no panic and proper error.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0040",
+      "status": "todo",
+      "title": "Centralize request validation across CLI, API, MCP, and scheduler",
+      "priority": "high",
+      "tags": [
+        "validation",
+        "api",
+        "cli",
+        "mcp",
+        "scheduler"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/cli/cli.go",
+        "internal/mcp/server.go",
+        "internal/scheduler/scheduler.go",
+        "internal/model",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go: validates URL scheme/host, timeoutSeconds, maxDepth, maxPages.",
+        "internal/cli/cli.go and internal/mcp/server.go do not validate URL/timeouts/depth/pages before creating jobs.",
+        "internal/scheduler/scheduler.go enqueues jobs without validating params."
+      ],
+      "plan": [
+        "Introduce a shared validation helper (URL, timeout, maxDepth/maxPages, urls list) and reuse it in CLI, API, MCP, and scheduler.",
+        "Standardize error messages and add unit tests for validator plus integration tests in affected packages.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0041",
+      "status": "todo",
+      "title": "Surface scheduler auth resolution errors instead of silently ignoring them",
+      "priority": "medium",
+      "tags": [
+        "scheduler",
+        "auth",
+        "bug"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/scheduler_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/scheduler/scheduler.go: enqueue() assigns authOptions, _ := loadAuth(...) and discards errors.",
+        "internal/scheduler/scheduler.go: loadAuth() can return errors (invalid profile, resolve failure) but they are ignored."
+      ],
+      "plan": [
+        "Propagate loadAuth errors and ensure schedules surface failures (log + skip or mark schedule error state).",
+        "Add tests for invalid auth profile to verify failure handling.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0042",
+      "status": "todo",
+      "title": "Add schedule CLI flags for extract config, incremental mode, and auth overrides",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "scheduler",
+        "parity"
+      ],
+      "scope": [
+        "internal/cli/cli.go",
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/scheduler_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/cli.go: runSchedule add only supports auth-profile + pipeline + browser flags; no extract/incremental/auth overrides.",
+        "internal/scheduler/scheduler.go: loadExtract reads extractTemplate/extractValidate and enqueue reads incremental but schedule params never set them."
+      ],
+      "plan": [
+        "Extend schedule add flags to capture extract-template/config/validate, incremental, and auth overrides (headers/cookies/tokens/login).",
+        "Ensure scheduler loadExtract/loadAuth consume these params and add tests for scheduled job param persistence.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0043",
+      "status": "todo",
+      "title": "Expose schedule management endpoints in the API",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "scheduler",
+        "parity"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "api/openapi.yaml",
+        "internal/scheduler",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go: Routes() has no schedule endpoints.",
+        "internal/cli/cli.go: runSchedule provides list/add/delete; scheduler exists but API has no access."
+      ],
+      "plan": [
+        "Add /v1/schedules list/add/delete handlers that wrap scheduler.LoadAll/Add/Delete with validation.",
+        "Update api/openapi.yaml and regenerate clients; add API tests for schedule CRUD.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0044",
+      "status": "todo",
+      "title": "Add API export endpoint or format parameter for job results",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "export",
+        "parity"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/exporter/exporter.go",
+        "api/openapi.yaml",
+        "web/src/App.tsx",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/cli.go: runExport supports jsonl/json/md/csv via exporter.ExportStream.",
+        "internal/api/server.go: /v1/jobs/{id}/results only serves raw JSONL, no format conversion."
+      ],
+      "plan": [
+        "Add an API endpoint (or format query param) that streams exporter output for json/jsonl/md/csv.",
+        "Update openapi + web UI to support downloads; add API tests for format handling.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0045",
+      "status": "todo",
+      "title": "Expand MCP toolset to include job list/cancel/export",
+      "priority": "medium",
+      "tags": [
+        "mcp",
+        "parity",
+        "api"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/mcp/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/mcp/server.go: toolsList only includes scrape_page, crawl_site, research, job_status, job_results.",
+        "internal/mcp/server.go: no tools to cancel jobs, list jobs, or export results like CLI/API."
+      ],
+      "plan": [
+        "Define MCP schemas for job_list, job_cancel, and job_export with necessary arguments.",
+        "Implement handlers and add tests in internal/mcp/server_test.go.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0046",
+      "status": "todo",
+      "title": "Add status filtering to job listing across API, CLI, and TUI",
+      "priority": "medium",
+      "tags": [
+        "jobs",
+        "api",
+        "cli",
+        "tui"
+      ],
+      "scope": [
+        "internal/store/store.go",
+        "internal/api/server.go",
+        "internal/cli/cli.go",
+        "internal/ui/tui/tui.go",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/store/store.go: ListByStatus exists but is only used for recovery.",
+        "internal/api/server.go handleJobs and internal/cli/cli.go jobs list have no status filter support."
+      ],
+      "plan": [
+        "Add status query param to /v1/jobs and CLI/TUI filters that use ListByStatus when provided.",
+        "Add tests for filtered listing and ensure defaults unchanged.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0047",
+      "status": "todo",
+      "title": "Upgrade TUI to support job details, pagination, and cancel actions",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "parity"
+      ],
+      "scope": [
+        "internal/ui/tui/tui.go",
+        "internal/ui/tui",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/ui/tui/tui.go: UI only lists jobs and supports q/r; no detail view or actions.",
+        "internal/ui/tui/tui.go: fetchJobs always limits to 100 with no pagination or filtering."
+      ],
+      "plan": [
+        "Add selection + detail pane for a job, plus keybindings to cancel and open results/export.",
+        "Implement pagination or filtering and extend smoke test coverage.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0048",
+      "status": "todo",
+      "title": "Add auth profile + login flow support to web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux",
+        "auth",
+        "parity"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/api",
+        "api/openapi.yaml",
+        "web/src/App.test.tsx",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.tsx: request bodies only include auth basic/headers/cookies/query; no authProfile or login selectors.",
+        "internal/cli/cli.go: auth flags include login-url/login-user-selector/login-pass-selector/login-submit-selector + tokens."
+      ],
+      "plan": [
+        "Expose auth profile selection and login flow fields in the web UI and include them in request bodies.",
+        "Regenerate API types if needed and add/extend UI tests for auth payloads.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0049",
+      "status": "todo",
+      "title": "Expose pipeline processors and incremental toggle in web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "pipeline",
+        "parity"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/App.test.tsx",
+        "internal/pipeline",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.tsx: scrape/crawl/research bodies omit pipeline pre/post processors and transformers.",
+        "internal/cli/cli.go: common flags support --pre-processor/--post-processor/--transformer and --incremental."
+      ],
+      "plan": [
+        "Add UI controls for pipeline processors/transformers and incremental mode; include in request payloads.",
+        "Update/extend App tests to verify payloads.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0050",
+      "status": "todo",
+      "title": "Make web UI results loading scalable for large JSONL outputs",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "performance",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "internal/api/server.go",
+        "api/openapi.yaml",
+        "web/src/App.test.tsx",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.tsx: loadResults uses response.text() and splits all lines, loading full results into memory.",
+        "internal/api/server.go: /v1/jobs/{id}/results serves full file with no paging/streaming controls."
+      ],
+      "plan": [
+        "Add pagination/streaming for results (API support or client-side incremental parsing) to avoid loading full files.",
+        "Update UI to lazy-load pages and add tests for large result handling.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0051",
+      "status": "todo",
+      "title": "Reject unknown JSON fields in API requests for clearer UX",
+      "priority": "low",
+      "tags": [
+        "api",
+        "validation",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go: JSON decoders accept unknown fields; typos are silently ignored.",
+        "No DisallowUnknownFields usage in handleScrape/handleCrawl/handleResearch/auth handlers."
+      ],
+      "plan": [
+        "Enable DisallowUnknownFields on API JSON decoders and return actionable error messages.",
+        "Add tests to ensure unknown fields trigger 400 responses.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T14:59:23.136178Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
