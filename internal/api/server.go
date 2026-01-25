@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
+	"spartan-scraper/internal/exporter"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
@@ -508,12 +510,49 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ext := filepath.Ext(job.ResultPath)
-	if ct := contentTypeForExtension(ext); ct != "" {
-		w.Header().Set("Content-Type", ct)
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "jsonl"
 	}
 
-	http.ServeFile(w, r, job.ResultPath)
+	validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
+	if !validFormats[format] {
+		writeJSONError(w, http.StatusBadRequest, "invalid format: must be jsonl, json, md, or csv")
+		return
+	}
+
+	if format == "jsonl" {
+		ext := filepath.Ext(job.ResultPath)
+		if ct := contentTypeForExtension(ext); ct != "" {
+			w.Header().Set("Content-Type", ct)
+		}
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.jsonl"`, job.ID))
+		http.ServeFile(w, r, job.ResultPath)
+		return
+	}
+
+	f, err := os.Open(job.ResultPath)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer f.Close()
+
+	switch format {
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+	case "md":
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	case "csv":
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, job.ID, format))
+
+	if err := exporter.ExportStream(job, f, format, w); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 }
 
 func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {

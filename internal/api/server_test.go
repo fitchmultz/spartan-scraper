@@ -267,6 +267,199 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 	}
 }
 
+func TestHandleJobResultsWithFormats(t *testing.T) {
+	formats := []string{"jsonl", "json", "md", "csv"}
+
+	for _, format := range formats {
+		t.Run("format_"+format, func(t *testing.T) {
+			srv, cleanup := setupTestServer(t)
+			defer cleanup()
+
+			body := `{"url": "https://example.com"}`
+			req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Fatalf("failed to create job: got status %v", status)
+			}
+
+			var job map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+				t.Fatalf("failed to parse job response: %v", err)
+			}
+
+			jobID, ok := job["id"].(string)
+			if !ok {
+				t.Fatalf("job response missing id field")
+			}
+
+			dataDir := t.TempDir()
+			resultDir := filepath.Join(dataDir, "jobs", jobID)
+			if err := os.MkdirAll(resultDir, 0o755); err != nil {
+				t.Fatalf("failed to create result directory: %v", err)
+			}
+
+			resultPath := filepath.Join(resultDir, "results.jsonl")
+			resultContent := `{"url":"https://example.com","status":200,"title":"Test Page"}`
+			if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+				t.Fatalf("failed to write result file: %v", err)
+			}
+
+			st := srv.store
+			ctx := context.Background()
+
+			if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+				t.Fatalf("failed to update job result_path: %v", err)
+			}
+
+			req = httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=%s", jobID, format), nil)
+			rr = httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Errorf("expected 200, got %v", status)
+			}
+
+			expectedCT := map[string]string{
+				"jsonl": "application/x-ndjson",
+				"json":  "application/json",
+				"md":    "text/markdown; charset=utf-8",
+				"csv":   "text/csv; charset=utf-8",
+			}
+			if ct := rr.Header().Get("Content-Type"); ct != expectedCT[format] {
+				t.Errorf("expected Content-Type %q, got %q", expectedCT[format], ct)
+			}
+
+			disposition := rr.Header().Get("Content-Disposition")
+			if disposition == "" {
+				t.Errorf("expected Content-Disposition header, got none")
+			}
+			if !strings.Contains(disposition, jobID) {
+				t.Errorf("Content-Disposition should contain job ID")
+			}
+			if !strings.Contains(disposition, format) {
+				t.Errorf("Content-Disposition should contain format %s", format)
+			}
+		})
+	}
+}
+
+func TestHandleJobResultsInvalidFormat(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{"url": "https://example.com"}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("failed to create job: got status %v", status)
+	}
+
+	var job map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to parse job response: %v", err)
+	}
+
+	jobID, ok := job["id"].(string)
+	if !ok {
+		t.Fatalf("job response missing id field")
+	}
+
+	dataDir := t.TempDir()
+	resultDir := filepath.Join(dataDir, "jobs", jobID)
+	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		t.Fatalf("failed to create result directory: %v", err)
+	}
+
+	resultPath := filepath.Join(resultDir, "results.jsonl")
+	if err := os.WriteFile(resultPath, []byte(`{"test":"data"}`), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	st := srv.store
+	ctx := context.Background()
+
+	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update result path: %v", err)
+	}
+
+	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=xml", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid format, got %v", status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse error response: %v", err)
+	}
+	if _, ok := resp["error"]; !ok {
+		t.Error("expected error field in response")
+	}
+}
+
+func TestHandleJobResultsNoFormatParameter(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{"url": "https://example.com"}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("failed to create job: got status %v", status)
+	}
+
+	var job map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to parse job response: %v", err)
+	}
+
+	jobID, ok := job["id"].(string)
+	if !ok {
+		t.Fatalf("job response missing id field")
+	}
+
+	dataDir := t.TempDir()
+	resultDir := filepath.Join(dataDir, "jobs", jobID)
+	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		t.Fatalf("failed to create result directory: %v", err)
+	}
+
+	resultPath := filepath.Join(resultDir, "results.jsonl")
+	if err := os.WriteFile(resultPath, []byte(`{"test":"data"}`), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	st := srv.store
+	ctx := context.Background()
+
+	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update result path: %v", err)
+	}
+
+	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected 200, got %v", status)
+	}
+
+	if ct := rr.Header().Get("Content-Type"); ct != "application/x-ndjson" {
+		t.Errorf("expected default Content-Type application/x-ndjson, got %v", ct)
+	}
+}
+
 func TestContentTypeForExtension(t *testing.T) {
 	tests := []struct {
 		name         string

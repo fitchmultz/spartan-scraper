@@ -722,13 +722,18 @@ export type GetV1JobsByIdResultsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV)
+         */
+        format?: 'jsonl' | 'json' | 'md' | 'csv';
+    };
     url: '/v1/jobs/{id}/results';
 };
 
 export type GetV1JobsByIdResultsErrors = {
     /**
-     * Bad Request
+     * Bad Request (invalid format)
      */
     400: ErrorResponse;
     /**
@@ -745,9 +750,11 @@ export type GetV1JobsByIdResultsError = GetV1JobsByIdResultsErrors[keyof GetV1Jo
 
 export type GetV1JobsByIdResultsResponses = {
     /**
-     * Results (JSONL)
+     * Results in requested format
      */
-    200: string;
+    200: {
+        [key: string]: unknown;
+    };
 };
 
 export type GetV1JobsByIdResultsResponse = GetV1JobsByIdResultsResponses[keyof GetV1JobsByIdResultsResponses];

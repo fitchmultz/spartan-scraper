@@ -12,7 +12,7 @@
  *
  * @module App
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteV1JobsById,
   getV1Jobs,
@@ -104,10 +104,14 @@ export function App() {
   const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
   const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
+  const [resultFormat, setResultFormat] = useState<string>("jsonl");
   const [managerStatus, setManagerStatus] = useState<{
     queued: number;
     active: number;
   } | null>(null);
+
+  const selectedJobIdRef = useRef<string | null>(null);
+  const resultFormatRef = useRef<string>("jsonl");
 
   const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
   const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -163,6 +167,24 @@ export function App() {
     }, 4000);
     return () => window.clearInterval(handle);
   }, [refreshJobs, refreshManagerStatus]);
+
+  useEffect(() => {
+    selectedJobIdRef.current = selectedJobId;
+  }, [selectedJobId]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref sync requires format in deps to trigger reload
+  useEffect(() => {
+    resultFormatRef.current = resultFormat;
+  }, [resultFormat]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: using refs to avoid circular dependency on loadResults
+  useEffect(() => {
+    const jobId = selectedJobIdRef.current;
+    const fmt = resultFormatRef.current;
+    if (jobId) {
+      void loadResults(jobId, fmt);
+    }
+  }, [resultFormat]);
 
   useEffect(() => {
     if (!headless && usePlaywright) {
@@ -302,7 +324,7 @@ export function App() {
     }
   }
 
-  async function loadResults(jobId: string) {
+  async function loadResults(jobId: string, format: string = "jsonl") {
     setSelectedJobId(jobId);
     setResultItems([]);
     setSelectedResultIndex(0);
@@ -312,8 +334,11 @@ export function App() {
     setResultClusters([]);
     setResultCitations([]);
     setRawResult(null);
+    setResultFormat(format);
     try {
-      const resultsUrl = buildApiUrl(`/v1/jobs/${jobId}/results`);
+      const resultsUrl = buildApiUrl(
+        `/v1/jobs/${jobId}/results?format=${format}`,
+      );
       const response = await fetch(resultsUrl);
 
       if (!response.ok) {
@@ -330,27 +355,36 @@ export function App() {
         return;
       }
 
-      const text = await response.text();
-      const lines = text.split("\n").filter((line) => line.trim());
+      // Handle based on format
+      if (format === "jsonl") {
+        const text = await response.text();
+        const lines = text.split("\n").filter((line) => line.trim());
 
-      const parsedItems: ResultItem[] = [];
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line);
-          parsedItems.push(parsed);
-        } catch {
-          // Skip malformed JSON lines
+        const parsedItems: ResultItem[] = [];
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line);
+            parsedItems.push(parsed);
+          } catch {
+            // Skip malformed JSON lines
+          }
         }
-      }
 
-      // Check if we had input but failed to parse anything
-      if (parsedItems.length === 0 && lines.length > 0) {
-        setError("No valid results found. Results file may be corrupted.");
-        return;
-      }
+        // Check if we had input but failed to parse anything
+        if (parsedItems.length === 0 && lines.length > 0) {
+          setError("No valid results found. Results file may be corrupted.");
+          return;
+        }
 
-      setResultItems(parsedItems);
-      setRawResult(text);
+        setResultItems(parsedItems);
+        setRawResult(text);
+      } else {
+        // For other formats, just store raw text for display
+        const text = await response.text();
+        setRawResult(text);
+        // Don't try to parse JSONL for json/md/csv
+        setResultItems([]);
+      }
     } catch (err) {
       setError(String(err));
     }
@@ -737,7 +771,9 @@ export function App() {
                     <button
                       type="button"
                       className="secondary"
-                      onClick={() => void loadResults(job.id ?? "")}
+                      onClick={() =>
+                        void loadResults(job.id ?? "", resultFormat)
+                      }
                     >
                       View Results
                     </button>

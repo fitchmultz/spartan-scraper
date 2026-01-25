@@ -465,15 +465,31 @@ paths:
           required: true
           schema:
             type: string
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [jsonl, json, md, csv]
+            default: jsonl
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV)
       responses:
         '200':
-          description: Results (JSONL)
+          description: Results in requested format
           content:
+            application/x-ndjson:
+              schema:
+                type: string
             application/json:
+              schema:
+                type: object
+            text/markdown:
+              schema:
+                type: string
+            text/csv:
               schema:
                 type: string
         '400':
-          description: Bad Request
+          description: Bad Request (invalid format)
           content:
             application/json:
               schema:

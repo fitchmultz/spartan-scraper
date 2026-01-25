@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0044",
-      "status": "todo",
-      "title": "Add API export endpoint or format parameter for job results",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "export",
-        "parity"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/exporter/exporter.go",
-        "api/openapi.yaml",
-        "web/src/App.tsx",
-        "internal/api/server_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/cli/cli.go: runExport supports jsonl/json/md/csv via exporter.ExportStream.",
-        "internal/api/server.go: /v1/jobs/{id}/results only serves raw JSONL, no format conversion."
-      ],
-      "plan": [
-        "Add an API endpoint (or format query param) that streams exporter output for json/jsonl/md/csv.",
-        "Update openapi + web UI to support downloads; add API tests for format handling.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-25T14:59:23.136178Z",
-      "updated_at": "2026-01-25T14:59:23.136178Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0045",
       "status": "todo",
       "title": "Expand MCP toolset to include job list/cancel/export",
