@@ -1,10 +1,110 @@
 package scheduler
 
 import (
+	"context"
+	"strings"
 	"testing"
+	"time"
 
+	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/model"
+	"spartan-scraper/internal/store"
 )
+
+func setupTestManager(t *testing.T) (*jobs.Manager, *store.Store, func()) {
+	t.Helper()
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+
+	m := jobs.NewManager(
+		st,
+		dataDir,
+		"TestAgent/1.0",
+		30*time.Second,
+		2,
+		10,
+		20,
+		3,
+		100*time.Millisecond,
+		10*1024*1024,
+		false,
+	)
+
+	cleanup := func() {
+		st.Close()
+	}
+
+	return m, st, cleanup
+}
+
+func TestEnqueueAuthResolutionFailure(t *testing.T) {
+	tests := []struct {
+		name     string
+		schedule Schedule
+	}{
+		{
+			name: "scrape with invalid auth profile",
+			schedule: Schedule{
+				ID:              "scrape-test-id",
+				Kind:            model.KindScrape,
+				IntervalSeconds: 60,
+				Params: map[string]interface{}{
+					"url":         "https://example.com",
+					"authProfile": "non-existent-profile",
+				},
+			},
+		},
+		{
+			name: "crawl with invalid auth profile",
+			schedule: Schedule{
+				ID:              "crawl-test-id",
+				Kind:            model.KindCrawl,
+				IntervalSeconds: 60,
+				Params: map[string]interface{}{
+					"url":         "https://example.com",
+					"authProfile": "missing-profile",
+				},
+			},
+		},
+		{
+			name: "research with invalid auth profile",
+			schedule: Schedule{
+				ID:              "research-test-id",
+				Kind:            model.KindResearch,
+				IntervalSeconds: 60,
+				Params: map[string]interface{}{
+					"query":       "test query",
+					"urls":        []string{"https://example.com"},
+					"authProfile": "bad-profile",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dataDir := t.TempDir()
+			manager, _, cleanup := setupTestManager(t)
+			defer cleanup()
+
+			ctx := context.Background()
+			err := enqueue(ctx, manager, dataDir, tt.schedule)
+
+			if err == nil {
+				t.Errorf("expected error for invalid auth profile, got nil")
+			}
+			if !strings.Contains(err.Error(), "failed to resolve auth") {
+				t.Errorf("error message should mention auth resolution failure: %v", err)
+			}
+			if !strings.Contains(err.Error(), tt.schedule.ID) {
+				t.Errorf("error message should include schedule ID %s: %v", tt.schedule.ID, err)
+			}
+		})
+	}
+}
 
 func TestSchedulerStorage(t *testing.T) {
 	dataDir := t.TempDir()
@@ -190,7 +290,7 @@ func TestScheduleValidation(t *testing.T) {
 				t.Errorf("Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil && tt.errContains != "" {
-				if !containsTestString(err.Error(), tt.errContains) {
+				if !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("Error = %v, want containing %v", err.Error(), tt.errContains)
 				}
 			}
@@ -205,17 +305,4 @@ func TestScheduleValidation(t *testing.T) {
 			}
 		})
 	}
-}
-
-func containsTestString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findTestSubstring(s, substr))
-}
-
-func findTestSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

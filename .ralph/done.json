@@ -1434,6 +1434,45 @@
       "completed_at": "2026-01-25T18:23:57.969100000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0041",
+      "status": "done",
+      "title": "Surface scheduler auth resolution errors instead of silently ignoring them",
+      "priority": "medium",
+      "tags": [
+        "scheduler",
+        "auth",
+        "bug"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/scheduler_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/scheduler/scheduler.go: enqueue() assigns authOptions, _ := loadAuth(...) and discards errors.",
+        "internal/scheduler/scheduler.go: loadAuth() can return errors (invalid profile, resolve failure) but they are ignored."
+      ],
+      "plan": [
+        "Propagate loadAuth errors and ensure schedules surface failures (log + skip or mark schedule error state).",
+        "Add tests for invalid auth profile to verify failure handling.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Propagated loadAuth errors for all three schedule kinds (scrape, crawl, research)",
+        "Added slog.Error logging when enqueue fails in Run()",
+        "Added table-driven test TestEnqueueAuthResolutionFailure covering all schedule kinds",
+        "Simplified test helpers by replacing custom functions with strings.Contains()",
+        "Renamed store type to scheduleStore to avoid naming conflict with internal/store"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-25T18:45:13.053322000Z",
+      "completed_at": "2026-01-25T18:45:13.053322000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

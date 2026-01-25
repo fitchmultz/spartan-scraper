@@ -30,7 +30,7 @@ type Schedule struct {
 	Params          map[string]interface{} `json:"params"`
 }
 
-type store struct {
+type scheduleStore struct {
 	Schedules []Schedule `json:"schedules"`
 }
 
@@ -57,6 +57,12 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 				if err == nil {
 					schedules[i].NextRun = now.Add(time.Duration(schedules[i].IntervalSeconds) * time.Second)
 					changed = true
+				} else {
+					slog.Error("failed to enqueue scheduled job",
+						"schedule_id", schedules[i].ID,
+						"schedule_kind", schedules[i].Kind,
+						"error", err,
+					)
 				}
 			}
 			if changed {
@@ -76,7 +82,10 @@ func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedul
 		url := stringParam(schedule.Params, "url")
 		headless := boolParam(schedule.Params, "headless")
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
-		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
+		authOptions, err := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
+		if err != nil {
+			return fmt.Errorf("failed to resolve auth for scrape schedule %s: %w", schedule.ID, err)
+		}
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateScrapeJob(ctx, url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
@@ -89,7 +98,10 @@ func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedul
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, _ := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
+		authOptions, err := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
+		if err != nil {
+			return fmt.Errorf("failed to resolve auth for crawl schedule %s: %w", schedule.ID, err)
+		}
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
@@ -107,7 +119,10 @@ func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedul
 		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
 		maxDepth := intParam(schedule.Params, "maxDepth", 2)
 		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, _ := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
+		authOptions, err := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
+		if err != nil {
+			return fmt.Errorf("failed to resolve auth for research schedule %s: %w", schedule.ID, err)
+		}
 		incremental := boolParam(schedule.Params, "incremental")
 		job, err := manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
 		if err != nil {
@@ -177,7 +192,7 @@ func LoadAll(dataDir string) ([]Schedule, error) {
 		}
 		return nil, err
 	}
-	var s store
+	var s scheduleStore
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
@@ -189,7 +204,7 @@ func SaveAll(dataDir string, schedules []Schedule) error {
 		return err
 	}
 	path := schedulesPath(dataDir)
-	payload, err := json.MarshalIndent(store{Schedules: schedules}, "", "  ")
+	payload, err := json.MarshalIndent(scheduleStore{Schedules: schedules}, "", "  ")
 	if err != nil {
 		return err
 	}
