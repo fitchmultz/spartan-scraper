@@ -1,3 +1,6 @@
+// Package exporter provides functionality for exporting job results to various formats.
+// It supports JSON, JSONL, Markdown, and CSV output formats with both buffered
+// and streaming interfaces for memory-efficient processing of large results.
 package exporter
 
 import (

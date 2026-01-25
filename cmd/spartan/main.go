@@ -1,3 +1,5 @@
+// Package main provides the command-line entry point for Spartan Scraper.
+// It initializes the CLI runner and exits with the appropriate status code.
 package main
 
 import (

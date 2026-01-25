@@ -1224,6 +1224,45 @@
       "completed_at": "2026-01-25T06:36:45.722675000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0036",
+      "status": "done",
+      "title": "Add missing file-level docstrings to code files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "consistency"
+      ],
+      "scope": [
+        "cmd/spartan/main.go",
+        "internal/exporter/exporter.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/mcp/server.go",
+        "web/src/App.tsx",
+        "web/src/main.tsx"
+      ],
+      "evidence": [
+        "cmd/spartan/main.go starts directly with package main and has no file-level purpose comment.",
+        "internal/exporter/exporter.go and internal/fetch/http_fetcher.go have no top-of-file package purpose comments.",
+        "web/src/App.tsx and web/src/main.tsx have no file-level doc comments describing their role."
+      ],
+      "plan": [
+        "Scan for code files lacking file-level docstrings (Go + TS/TSX) and add concise purpose comments.",
+        "Ensure any executable scripts have --help with examples (confirm or update as needed)."
+      ],
+      "notes": [
+        "Added package-level doc comments to Go files (main.go, exporter.go, http_fetcher.go, server.go)",
+        "Added JSDoc file-level comments to TypeScript files (App.tsx, main.tsx)",
+        "All docstrings follow existing codebase conventions",
+        "CI validation passes"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-25T06:56:33.268934000Z",
+      "completed_at": "2026-01-25T06:56:33.268934000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

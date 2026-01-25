@@ -1,6 +1,17 @@
-// App is the main React component for the Spartan Scraper web UI.
-// It provides a single-page interface for submitting scrape/crawl/research jobs,
-// viewing job status, and browsing results.
+/**
+ * Spartan Scraper Web UI - Main Application Component
+ *
+ * This is the primary React component for the Spartan Scraper web interface.
+ * It provides a single-page application for:
+ *
+ * - Submitting scrape, crawl, and research jobs
+ * - Configuring authentication, headers, cookies, and query parameters
+ * - Managing extraction templates and validation
+ * - Viewing real-time job status and manager state
+ * - Browsing and analyzing job results
+ *
+ * @module App
+ */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteV1JobsById,

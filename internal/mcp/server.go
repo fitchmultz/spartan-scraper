@@ -1,3 +1,6 @@
+// Package mcp implements a Model Context Protocol (MCP) server for Spartan Scraper.
+// It provides JSON-RPC based tools for scraping, crawling, and research operations
+// that can be consumed by MCP-compatible clients.
 package mcp
 
 import (

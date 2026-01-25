@@ -1,3 +1,6 @@
+// HTTP-based Fetcher implementation using the standard library http.Client.
+// Provides retry logic, rate limiting, authentication, conditional requests,
+// and response size limits. See fetcher.go for the Fetcher interface definition.
 package fetch
 
 import (
