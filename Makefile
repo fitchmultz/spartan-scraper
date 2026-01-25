@@ -30,11 +30,11 @@ clean:
 	cd $(WEB_DIR) && rm -rf dist node_modules
 
 test:
-	go test ./...
+	CI=1 go test ./...
 
 test-ci:
-	go test $$(go list ./... | grep -v /e2e)
-	cd $(WEB_DIR) && pnpm run test
+	CI=1 go test $$(go list ./... | grep -v /e2e)
+	cd $(WEB_DIR) && CI=1 pnpm run test
 
 generate:
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api

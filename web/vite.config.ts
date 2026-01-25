@@ -11,6 +11,8 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/test/setup.ts"],
+      // Run tests once in CI mode (non-interactive)
+      watch: process.env.CI !== "1",
     },
     server: {
       proxy: {
