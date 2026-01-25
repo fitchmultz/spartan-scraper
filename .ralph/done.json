@@ -1092,6 +1092,38 @@
       "completed_at": "2026-01-25T06:02:40.595609000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0032",
+      "status": "done",
+      "title": "Include install step in make ci",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "ci"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile defines ci as generate format type-check lint build test, but the Makefile contract requires make ci to include install."
+      ],
+      "plan": [
+        "Update the ci target to run install before other steps.",
+        "Ensure ci still runs generate/format/type-check/lint/build/test in the expected order."
+      ],
+      "notes": [
+        "Added install as first dependency in ci target (Makefile:48)",
+        "CI gate passes: install, generate, format, type-check, lint, build, test-ci all successful",
+        "Implementation is minimal, correct, and idempotent",
+        "No other queue tasks affected by this change"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-25T06:08:40.677215000Z",
+      "completed_at": "2026-01-25T06:08:40.677215000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

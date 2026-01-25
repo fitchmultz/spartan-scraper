@@ -45,7 +45,7 @@ build:
 	go build -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
 
-ci: generate format type-check lint build test-ci
+ci: install generate format type-check lint build test-ci
 
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev
