@@ -5,6 +5,10 @@ BIN_DIR := bin
 WEB_DIR := web
 DATA_DIR := .data
 
+# Installation directory (respects XDG_BIN_HOME if set, otherwise ~/.local/bin)
+XDG_BIN_HOME ?= $(HOME)/.local/bin
+INSTALL_DIR ?= $(XDG_BIN_HOME)
+
 .PHONY: install update lint type-check format clean test test-ci generate build ci web-dev
 
 install:
@@ -33,6 +37,7 @@ format:
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)
 	cd $(WEB_DIR) && rm -rf dist node_modules
+	rm -f $(INSTALL_DIR)/$(APP_NAME)
 
 test:
 	CI=1 go test ./...
@@ -49,6 +54,10 @@ build:
 	mkdir -p $(BIN_DIR)
 	go build -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
+	@echo "Installing $(APP_NAME) to $(INSTALL_DIR)..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(BIN_DIR)/$(APP_NAME) $(INSTALL_DIR)/$(APP_NAME)
+	@echo "Installed: $(INSTALL_DIR)/$(APP_NAME)"
 
 ci: install generate format type-check lint build test-ci
 

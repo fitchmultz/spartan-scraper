@@ -1160,6 +1160,38 @@
       "completed_at": "2026-01-25T06:17:06.501980000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0034",
+      "status": "done",
+      "title": "Install CLI binary to ~/.local/bin in make build",
+      "priority": "medium",
+      "tags": [
+        "build",
+        "cli"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "Makefile build target only runs go build -o bin/spartan and does not install the binary to ~/.local/bin as required by the Makefile contract."
+      ],
+      "plan": [
+        "Extend make build to copy/install the binary into ~/.local/bin (creating the dir if needed).",
+        "Keep existing bin/ output for local dev while ensuring the install step succeeds."
+      ],
+      "notes": [
+        "Extended build target to install CLI binary to ~/.local/bin (respects XDG_BIN_HOME)",
+        "Extended clean target to remove installed binary",
+        "Both bin/spartan (local dev) and ~/.local/bin/spartan (installed) are maintained",
+        "CI gate passes: make ci completes successfully"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-24T12:33:41Z",
+      "updated_at": "2026-01-25T06:26:33.354429000Z",
+      "completed_at": "2026-01-25T06:26:33.354429000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
