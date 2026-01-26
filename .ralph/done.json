@@ -1711,6 +1711,58 @@
       "completed_at": "2026-01-26T00:23:09.264589000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0046",
+      "status": "done",
+      "title": "Add status filtering to job listing across API, CLI, and TUI",
+      "priority": "medium",
+      "tags": [
+        "jobs",
+        "api",
+        "cli",
+        "tui"
+      ],
+      "scope": [
+        "internal/store/store.go",
+        "internal/api/server.go",
+        "internal/cli/cli.go",
+        "internal/ui/tui/tui.go",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/store/store.go: ListByStatus() function exists (lines 63-98) with Status parameter and pagination via ListByStatusOptions, but is not currently exposed via API/CLI/TUI.",
+        "internal/api/server.go: handleJobs() (lines 421-437) supports limit/offset query params but no status filter. Uses store.ListOpts() instead of ListByStatus().",
+        "internal/cli/cli.go: runJobs() list subcommand (lines 1002-1023) has --limit and --offset flags but no --status flag. Uses store.ListOpts().",
+        "internal/ui/tui/tui.go: fetchJobs() (lines 107-121) calls store.ListOpts() with hardcoded limit=100/offset=0, no filtering capability.",
+        "internal/model/job.go: Valid status values defined (lines 14-18): queued, running, succeeded, failed, canceled."
+      ],
+      "plan": [
+        "Add status query param to /v1/jobs API endpoint that uses store.ListByStatus() when provided, fallback to ListOpts() when omitted.",
+        "Add --status flag to CLI 'spartan jobs list' command that passes status to store.ListByStatus() when specified.",
+        "Add status filter capability to TUI (keyboard trigger or persistent filter).",
+        "Add tests in internal/api/server_test.go for status-filtered listing across all interfaces.",
+        "Verify that default behavior (no status filter) returns all jobs unchanged.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Store.ListByStatus() already exists with proper implementation (SQL WHERE status = ? with pagination).",
+        "Valid status values: queued, running, succeeded, failed, canceled.",
+        "TUI filtering should align with RQ-0047 (TUI pagination/details) for consistent UX.",
+        "Added status query param to /v1/jobs API endpoint with validation and 400 error response",
+        "Added --status flag to CLI 'spartan jobs list' command with status validation",
+        "Added status filter capability to TUI with 'f' key to cycle through statuses",
+        "Added comprehensive tests for status filtering, invalid status, and no-filter default behavior",
+        "Regenerated TypeScript client from updated OpenAPI spec"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T01:05:54.031302000Z",
+      "completed_at": "2026-01-26T01:05:54.031302000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

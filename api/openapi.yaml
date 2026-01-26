@@ -436,6 +436,12 @@ paths:
             default: 0
             minimum: 0
           description: Number of jobs to skip
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [queued, running, succeeded, failed, canceled]
+          description: Filter jobs by status (omitted = all jobs)
       responses:
         '200':
           description: Job list
@@ -443,6 +449,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobList'
+        '400':
+          description: Bad Request (invalid status parameter)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '405':
           description: Method Not Allowed
           content:

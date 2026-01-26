@@ -713,11 +713,19 @@ export type GetV1JobsData = {
          * Number of jobs to skip
          */
         offset?: number;
+        /**
+         * Filter jobs by status (omitted = all jobs)
+         */
+        status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
     };
     url: '/v1/jobs';
 };
 
 export type GetV1JobsErrors = {
+    /**
+     * Bad Request (invalid status parameter)
+     */
+    400: ErrorResponse;
     /**
      * Method Not Allowed
      */

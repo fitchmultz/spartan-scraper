@@ -113,6 +113,137 @@ func TestHandleJobs(t *testing.T) {
 	}
 }
 
+func TestHandleJobsWithStatusFilter(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create jobs directly in store to avoid job manager race conditions
+	jobs := []struct {
+		body   string
+		status model.Status
+	}{
+		{`{"url": "https://example1.com"}`, model.StatusQueued},
+		{`{"url": "https://example2.com"}`, model.StatusRunning},
+		{`{"url": "https://example3.com"}`, model.StatusSucceeded},
+		{`{"url": "https://example4.com"}`, model.StatusFailed},
+	}
+
+	jobIDs := make([]string, 0, len(jobs))
+	for i, job := range jobs {
+		var scrapeReq map[string]interface{}
+		if err := json.Unmarshal([]byte(job.body), &scrapeReq); err != nil {
+			t.Fatalf("failed to unmarshal request: %v", err)
+		}
+
+		newJob := model.Job{
+			ID:        fmt.Sprintf("test-job-%d", i),
+			Kind:      model.KindScrape,
+			Status:    job.status,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Params:    scrapeReq,
+		}
+
+		if err := srv.store.Create(context.Background(), newJob); err != nil {
+			t.Fatalf("failed to create job: %v", err)
+		}
+		jobIDs = append(jobIDs, newJob.ID)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/jobs?status=queued", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status 200, got %v", status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse JSON response: %v", err)
+	}
+
+	jobsList, ok := resp["jobs"].([]interface{})
+	if !ok {
+		t.Fatal("expected 'jobs' array in response")
+	}
+
+	if len(jobsList) != 1 {
+		t.Errorf("expected 1 queued job, got %d", len(jobsList))
+	}
+}
+
+func TestHandleJobsWithInvalidStatus(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/v1/jobs?status=invalid_status", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected status 400 for invalid status, got %v", status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse JSON response: %v", err)
+	}
+
+	if _, ok := resp["error"]; !ok {
+		t.Error("expected 'error' field in response")
+	}
+}
+
+func TestHandleJobsNoStatusFilter(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create jobs directly in store to avoid job manager race conditions
+	for i := 0; i < 3; i++ {
+		body := fmt.Sprintf(`{"url": "https://example%d.com"}`, i)
+		var scrapeReq map[string]interface{}
+		if err := json.Unmarshal([]byte(body), &scrapeReq); err != nil {
+			t.Fatalf("failed to unmarshal request: %v", err)
+		}
+
+		newJob := model.Job{
+			ID:        fmt.Sprintf("test-job-no-filter-%d", i),
+			Kind:      model.KindScrape,
+			Status:    model.StatusQueued,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Params:    scrapeReq,
+		}
+
+		if err := srv.store.Create(context.Background(), newJob); err != nil {
+			t.Fatalf("failed to create job: %v", err)
+		}
+	}
+
+	req := httptest.NewRequest("GET", "/v1/jobs", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status 200, got %v", status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse JSON response: %v", err)
+	}
+
+	jobsList, ok := resp["jobs"].([]interface{})
+	if !ok {
+		t.Fatal("expected 'jobs' array in response")
+	}
+
+	if len(jobsList) != 3 {
+		t.Errorf("expected all 3 jobs without filter, got %d", len(jobsList))
+	}
+}
+
 func TestHandleJobResultsNotFound(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

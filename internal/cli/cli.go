@@ -1123,6 +1123,7 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 		fs := flag.NewFlagSet("jobs list", flag.ExitOnError)
 		limit := fs.Int("limit", 100, "Maximum number of jobs to list")
 		offset := fs.Int("offset", 0, "Number of jobs to skip")
+		status := fs.String("status", "", "Filter jobs by status (queued|running|succeeded|failed|canceled)")
 		_ = fs.Parse(os.Args[3:])
 
 		st, err := store.Open(cfg.DataDir)
@@ -1131,8 +1132,21 @@ func runJobs(ctx context.Context, cfg config.Config) int {
 			return 1
 		}
 		defer st.Close()
-		opts := store.ListOptions{Limit: *limit, Offset: *offset}
-		jobsList, err := st.ListOpts(ctx, opts)
+
+		var jobsList []model.Job
+		if *status != "" {
+			statusVal := model.Status(*status)
+			if !statusVal.IsValid() {
+				fmt.Fprintf(os.Stderr, "invalid status: %s (must be queued, running, succeeded, failed, or canceled)\n", *status)
+				return 1
+			}
+			opts := store.ListByStatusOptions{Limit: *limit, Offset: *offset}
+			jobsList, err = st.ListByStatus(ctx, statusVal, opts)
+		} else {
+			opts := store.ListOptions{Limit: *limit, Offset: *offset}
+			jobsList, err = st.ListOpts(ctx, opts)
+		}
+
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
@@ -1229,6 +1243,8 @@ Examples:
   spartan jobs list
   spartan jobs list --limit 50
   spartan jobs list --offset 100
+  spartan jobs list --status running
+  spartan jobs list --status failed --limit 20
   spartan jobs get <job-id>
   spartan jobs cancel <job-id>
 `)

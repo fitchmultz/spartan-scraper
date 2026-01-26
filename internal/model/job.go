@@ -18,8 +18,24 @@ const (
 	StatusCanceled  Status = "canceled"
 )
 
+var validStatuses = map[Status]bool{
+	StatusQueued:    true,
+	StatusRunning:   true,
+	StatusSucceeded: true,
+	StatusFailed:    true,
+	StatusCanceled:  true,
+}
+
 func (s Status) IsTerminal() bool {
 	return s == StatusSucceeded || s == StatusFailed || s == StatusCanceled
+}
+
+func (s Status) IsValid() bool {
+	return validStatuses[s]
+}
+
+func ValidStatuses() []Status {
+	return []Status{StatusQueued, StatusRunning, StatusSucceeded, StatusFailed, StatusCanceled}
 }
 
 type Job struct {

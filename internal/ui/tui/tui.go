@@ -10,20 +10,22 @@ import (
 
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/extract"
+	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/scheduler"
 	"spartan-scraper/internal/store"
 )
 
-type model struct {
-	ctx         context.Context
-	store       *store.Store
-	tab         string
-	jobs        []string
-	profiles    []string
-	schedules   []string
-	templates   []string
-	crawlStates []string
-	err         error
+type appModel struct {
+	ctx          context.Context
+	store        *store.Store
+	tab          string
+	statusFilter *model.Status
+	jobs         []string
+	profiles     []string
+	schedules    []string
+	templates    []string
+	crawlStates  []string
+	err          error
 }
 
 type tickMsg time.Time
@@ -74,7 +76,7 @@ func RunWithOptions(ctx context.Context, store *store.Store, opts Options) int {
 		}
 		return 0
 	}
-	m := model{ctx: ctx, store: store, tab: "jobs"}
+	m := appModel{ctx: ctx, store: store, tab: "jobs"}
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
@@ -84,9 +86,9 @@ func RunWithOptions(ctx context.Context, store *store.Store, opts Options) int {
 }
 
 func Smoke(ctx context.Context, store *store.Store) error {
-	m := model{ctx: ctx, store: store, tab: "jobs"}
+	m := appModel{ctx: ctx, store: store, tab: "jobs"}
 
-	msg := fetchJobs(ctx, store)()
+	msg := fetchJobs(ctx, store, m.statusFilter)()
 	if jobMsg, ok := msg.(jobsMsg); ok {
 		m.jobs = jobMsg.jobs
 		if jobMsg.err != nil {
@@ -130,9 +132,9 @@ func Smoke(ctx context.Context, store *store.Store) error {
 	return m.err
 }
 
-func (m model) Init() tea.Cmd {
+func (m appModel) Init() tea.Cmd {
 	return tea.Batch(
-		fetchJobs(m.ctx, m.store),
+		fetchJobs(m.ctx, m.store, m.statusFilter),
 		fetchProfiles(m.ctx, m.store),
 		fetchSchedules(m.ctx, m.store),
 		fetchTemplates(m.ctx, m.store),
@@ -141,7 +143,7 @@ func (m model) Init() tea.Cmd {
 	)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -149,7 +151,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "r":
 			return m, tea.Batch(
-				fetchJobs(m.ctx, m.store),
+				fetchJobs(m.ctx, m.store, m.statusFilter),
 				fetchProfiles(m.ctx, m.store),
 				fetchSchedules(m.ctx, m.store),
 				fetchTemplates(m.ctx, m.store),
@@ -170,9 +172,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "5":
 			m.tab = "crawl-states"
 			return m, nil
+		case "f":
+			m.statusFilter = cycleStatusFilter(m.statusFilter)
+			return m, fetchJobs(m.ctx, m.store, m.statusFilter)
 		}
 	case tickMsg:
-		return m, tea.Batch(fetchJobs(m.ctx, m.store), tick())
+		return m, tea.Batch(fetchJobs(m.ctx, m.store, m.statusFilter), tick())
 	case jobsMsg:
 		m.jobs = msg.jobs
 		if msg.err != nil {
@@ -202,9 +207,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
+func (m appModel) View() string {
 	out := headerStyle.Render("Spartan Scraper") + "\n\n"
-	out += "Tabs: [1] Jobs [2] Profiles [3] Schedules [4] Templates [5] Crawl States | r=refresh, q=quit\n\n"
+	out += "Tabs: [1] Jobs [2] Profiles [3] Schedules [4] Templates [5] Crawl States | r=refresh, f=filter, q=quit\n\n"
 
 	if m.err != nil {
 		out += errorStyle.Render(m.err.Error()) + "\n\n"
@@ -212,9 +217,13 @@ func (m model) View() string {
 
 	switch m.tab {
 	case "jobs":
-		out += headerStyle.Render("Jobs") + "\n\n"
+		out += headerStyle.Render("Jobs")
+		if m.statusFilter != nil {
+			out += fmt.Sprintf(" (filter: %s)", *m.statusFilter)
+		}
+		out += "\n\n"
 		if len(m.jobs) == 0 {
-			out += "No jobs yet.\n"
+			out += "No jobs found.\n"
 			return out
 		}
 		for _, line := range m.jobs {
@@ -260,10 +269,19 @@ func (m model) View() string {
 	return out
 }
 
-func fetchJobs(ctx context.Context, st *store.Store) tea.Cmd {
+func fetchJobs(ctx context.Context, st *store.Store, statusFilter *model.Status) tea.Cmd {
 	return func() tea.Msg {
-		opts := store.ListOptions{Limit: 100, Offset: 0}
-		jobs, err := st.ListOpts(ctx, opts)
+		var jobs []model.Job
+		var err error
+
+		if statusFilter != nil {
+			opts := store.ListByStatusOptions{Limit: 100, Offset: 0}
+			jobs, err = st.ListByStatus(ctx, *statusFilter, opts)
+		} else {
+			opts := store.ListOptions{Limit: 100, Offset: 0}
+			jobs, err = st.ListOpts(ctx, opts)
+		}
+
 		if err != nil {
 			return jobsMsg{err: err}
 		}
@@ -274,6 +292,22 @@ func fetchJobs(ctx context.Context, st *store.Store) tea.Cmd {
 		}
 		return jobsMsg{jobs: lines}
 	}
+}
+
+func cycleStatusFilter(current *model.Status) *model.Status {
+	statuses := model.ValidStatuses()
+	if current == nil {
+		return &statuses[0]
+	}
+	for i, s := range statuses {
+		if s == *current {
+			if i < len(statuses)-1 {
+				return &statuses[i+1]
+			}
+			return nil
+		}
+	}
+	return nil
 }
 
 func fetchProfiles(ctx context.Context, st *store.Store) tea.Cmd {

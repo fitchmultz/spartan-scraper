@@ -428,9 +428,24 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	limit := parseIntParam(query.Get("limit"), 100)
 	offset := parseIntParam(query.Get("offset"), 0)
+	statusParam := query.Get("status")
 
-	opts := store.ListOptions{Limit: limit, Offset: offset}
-	jobsList, err := s.store.ListOpts(r.Context(), opts)
+	var jobsList []model.Job
+	var err error
+
+	if statusParam != "" {
+		status := model.Status(statusParam)
+		if !status.IsValid() {
+			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam))
+			return
+		}
+		opts := store.ListByStatusOptions{Limit: limit, Offset: offset}
+		jobsList, err = s.store.ListByStatus(r.Context(), status, opts)
+	} else {
+		opts := store.ListOptions{Limit: limit, Offset: offset}
+		jobsList, err = s.store.ListOpts(r.Context(), opts)
+	}
+
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
