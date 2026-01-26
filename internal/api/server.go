@@ -216,7 +216,9 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ScrapeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
@@ -287,7 +289,9 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req CrawlRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
@@ -360,7 +364,9 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ResearchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
@@ -644,7 +650,9 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var profile auth.Profile
-		if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&profile); err != nil {
 			writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 			return
 		}
@@ -688,7 +696,9 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Path string `json:"path"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
@@ -716,7 +726,9 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Path string `json:"path"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
@@ -758,7 +770,9 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var req ScheduleRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
 			writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 			return
 		}

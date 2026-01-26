@@ -2019,6 +2019,57 @@
       "completed_at": "2026-01-26T17:50:50.218180000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0051",
+      "status": "done",
+      "title": "Reject unknown JSON fields in API requests for clearer UX",
+      "priority": "low",
+      "tags": [
+        "api",
+        "validation",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/api/server.go:210: handleScrape uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields, silently ignoring typos like 'ur' instead of 'url'.",
+        "internal/api/server.go:283: handleCrawl uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields.",
+        "internal/api/server.go:356: handleResearch uses json.NewDecoder(r.Body).Decode(&req) without DisallowUnknownFields.",
+        "internal/api/server.go:647: handleAuthProfile (PUT) uses json.NewDecoder(r.Body).Decode(&profile) without DisallowUnknownFields.",
+        "internal/api/server.go:659,690,738: handleAuthImport/handleAuthExport/handleSchedules (POST) use json.NewDecoder without DisallowUnknownFields.",
+        "internal/api/server_test.go: No tests exist for unknown field validation; existing tests focus on missing fields, invalid values, and malformed JSON."
+      ],
+      "plan": [
+        "Add decoder := json.NewDecoder(r.Body); decoder.DisallowUnknownFields() pattern to handleScrape at line 210.",
+        "Add decoder.DisallowUnknownFields() to handleCrawl at line 283.",
+        "Add decoder.DisallowUnknownFields() to handleResearch at line 356.",
+        "Add decoder.DisallowUnknownFields() to handleAuthProfile (PUT) at line 647.",
+        "Add decoder.DisallowUnknownFields() to handleAuthImport, handleAuthExport, handleSchedules (POST) at lines 659, 690, 738.",
+        "Add test in internal/api/server_test.go: TestUnknownFieldsRejected with subtests for /v1/scrape, /v1/crawl, /v1/research, /v1/schedules, and /v1/auth/profiles endpoints.",
+        "Verify that unknown fields return 400 with clear error message containing 'unknown field' or 'json: unknown field'.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Go json.Decoder.DisallowUnknownFields() returns json.UnmarshalTypeError for unknown fields, which should trigger the existing error handling after each Decode call.",
+        "The writeJSONError helper already returns 400 status for 'invalid json' errors, so DisallowUnknownFields errors will be handled correctly without code changes.",
+        "Only applies to POST/PUT endpoints with request bodies: handleScrape, handleCrawl, handleResearch, handleSchedules (POST), handleAuthProfile (PUT), handleAuthImport, handleAuthExport.",
+        "Patched 7 JSON decoder sites with DisallowUnknownFields() in internal/api/server.go",
+        "Added TestRejectUnknownFields with 7 subtests covering all endpoints",
+        "All tests pass (make test) and CI pipeline passes (make ci)",
+        "Verified no other POST/PUT handlers with JSON bodies were missed",
+        "No breaking changes to API behavior; existing error handling works correctly"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T18:23:30.250681000Z",
+      "completed_at": "2026-01-26T18:23:30.250681000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
