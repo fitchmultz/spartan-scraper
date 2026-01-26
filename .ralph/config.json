@@ -19,6 +19,6 @@
     "repoprompt_plan_required": false,
     "repoprompt_tool_injection": true,
     "phases": 3,
-    "iterations": 2
+    "iterations": 1
   }
 }
