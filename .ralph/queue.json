@@ -1,4 +1,688 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0053",
+      "status": "todo",
+      "title": "Split internal/cli/cli.go into focused command modules",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "cli",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/cli/cli.go"
+      ],
+      "evidence": [
+        "File is 1,884 LOC, nearly 5x the 400 LOC heuristic",
+        "Contains 13+ command handler functions (runScrape, runCrawl, runResearch, etc.)",
+        "Single file handles all CLI routing, flag parsing, and command execution",
+        "Each command has unique flag sets and business logic that should be co-located"
+      ],
+      "plan": [
+        "Analyze the 13 command handlers and group them by domain (scraping vs. management vs. auth)",
+        "Create separate packages: internal/cli/scrape/, internal/cli/manage/, internal/cli/auth/",
+        "Move runScrape, runCrawl, runResearch to internal/cli/scrape/",
+        "Move runAuth, runExport, runTemplates, runCrawlStates to internal/cli/manage/",
+        "Move runJobs, runServer, runTUI, runHealth, runMCP, runSchedule to internal/cli/manage/",
+        "Update internal/cli/cli.go to only handle routing and common flag setup",
+        "Run make test to ensure all CLI commands still work",
+        "Run make ci to ensure build and tests pass"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0054",
+      "status": "todo",
+      "title": "Split internal/api/server.go into focused handler modules",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "api",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "File is 1,024 LOC, exceeding the 1,000 LOC threshold",
+        "Contains handlers for scrape, crawl, research, jobs, schedules, auth, templates, crawl states, and health endpoints",
+        "Multiple request/response types defined inline that should be in dedicated package",
+        "Mixes HTTP routing, business logic, and response serialization"
+      ],
+      "plan": [
+        "Identify all handler functions and their responsibilities",
+        "Create internal/api/handlers/ subpackage with separate files: scrape.go, crawl.go, research.go, jobs.go, schedules.go, auth.go",
+        "Extract request/response types to internal/api/types.go or internal/model/",
+        "Move utility functions (error responses, JSON encoding) to internal/api/util.go",
+        "Update internal/api/server.go to only handle HTTP routing and middleware",
+        "Update all imports in tests and other packages",
+        "Run make test and make ci to verify functionality"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0055",
+      "status": "todo",
+      "title": "Split internal/api/server_test.go into focused test files",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "api",
+        "testing",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/api/server_test.go"
+      ],
+      "evidence": [
+        "Test file is 1,827 LOC, nearly 5x the 400 LOC heuristic",
+        "Likely contains tests for multiple endpoints in a single file",
+        "Large test files become hard to maintain and navigate",
+        "Tests for different concerns should be grouped together"
+      ],
+      "plan": [
+        "Analyze test functions to identify which endpoints they test",
+        "Create test files per handler: internal/api/handlers/scrape_test.go, crawl_test.go, research_test.go, etc.",
+        "Move setupTestServer helper to internal/api/setup_test.go",
+        "Ensure each test file tests a single handler module",
+        "Run make test-ci to verify all tests still pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0056",
+      "status": "todo",
+      "title": "Split internal/mcp/server_test.go into focused test files",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "mcp",
+        "testing",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "Test file is 1,109 LOC, exceeding the 1,000 LOC threshold",
+        "MCP server has multiple tools that should have separate test files",
+        "Testing different MCP tools in one file reduces maintainability"
+      ],
+      "plan": [
+        "Identify which tests correspond to which MCP tools (scrape, crawl, research, jobs, schedules)",
+        "Create tool-specific test files: internal/mcp/tools/scrape_test.go, crawl_test.go, research_test.go, etc.",
+        "Extract common test setup to internal/mcp/setup_test.go",
+        "Ensure each test file focuses on a single tool's behavior",
+        "Run make test-ci to verify all tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0057",
+      "status": "todo",
+      "title": "Refactor web/src/App.tsx into focused components",
+      "priority": "high",
+      "tags": [
+        "file-size",
+        "frontend",
+        "react",
+        "refactoring"
+      ],
+      "scope": [
+        "web/src/App.tsx"
+      ],
+      "evidence": [
+        "Component is 2,077 LOC, massive for a single React component",
+        "Contains 65+ useState hooks indicating excessive state complexity",
+        "Likely handles multiple concerns: job submission, auth, templates, results display",
+        "Monolithic components are hard to test, maintain, and reason about"
+      ],
+      "plan": [
+        "Identify distinct UI sections: scrape form, crawl form, research form, auth config, templates, results viewer, job list",
+        "Create separate components in web/src/components/: ScrapeForm.tsx, CrawlForm.tsx, ResearchForm.tsx, AuthConfig.tsx, TemplateManager.tsx, JobList.tsx, ResultsViewer.tsx",
+        "Extract shared types to web/src/types.ts",
+        "Move hooks that manage specific state to respective components",
+        "Use React Context for shared state like jobs list and auth profiles",
+        "Update App.tsx to compose components and handle routing/layout",
+        "Run cd web && pnpm run test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0058",
+      "status": "todo",
+      "title": "Add package docstrings to all Go source files",
+      "priority": "high",
+      "tags": [
+        "documentation",
+        "go",
+        "standards"
+      ],
+      "scope": [
+        "internal"
+      ],
+      "evidence": [
+        "Only 9 out of 43 Go files have package docstrings",
+        "Files missing docs include: model/job.go, model/state.go, config/log.go, pipeline/*.go, auth/types.go, extract/*.go (except extract.go)",
+        "AGENTS.md requires: 'every code file needs a docstring that explains: What the module/file is responsible for, What it explicitly does NOT handle, Any invariants or assumptions'"
+      ],
+      "plan": [
+        "List all Go files without package docstrings in internal/",
+        "For each file, read its contents to understand its purpose",
+        "Write docstrings following the template: '// Package <name> provides <what it does>. It handles <scope>. It does NOT handle <boundaries>.'",
+        "Add docstrings to: model/job.go, model/state.go, config/log.go, pipeline/interfaces.go, pipeline/types.go, pipeline/js.go, pipeline/transformers.go, auth/types.go",
+        "Add docstrings to: extract/types.go, extract/normalize.go, extract/jsonld.go, extract/pipeline.go, extract/templates.go, fetch/types.go, fetch/retry.go, fetch/limiter.go, fetch/render_profiles.go, fetch/adaptive_fetcher.go",
+        "Verify all docstrings explain responsibility, exclusions, and invariants",
+        "Run make ci to ensure formatting passes"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0059",
+      "status": "todo",
+      "title": "Extract job creation shared logic to avoid duplication",
+      "priority": "high",
+      "tags": [
+        "dry",
+        "refactoring",
+        "jobs",
+        "scheduler",
+        "mcp"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go",
+        "internal/mcp/server.go"
+      ],
+      "evidence": [
+        "Job creation logic duplicated between scheduler/enqueue() and MCP tool handlers",
+        "Both create scrape, crawl, research jobs with similar patterns: load auth, load extract opts, load pipeline opts, call manager.Create*Job",
+        "Three occurrences of job creation in scheduler.go (scrape, crawl, research cases)",
+        "Three occurrences in mcp/server.go (scrape, crawl, research tool handlers)",
+        "Changes to job creation require updating 6 places"
+      ],
+      "plan": [
+        "Analyze the 6 job creation sites to identify common parameters and logic",
+        "Create internal/jobs/builder.go or add functions to manager.go that take a unified JobSpec struct",
+        "Define JobSpec with fields: URL, Query, URLs, MaxDepth, MaxPages, Headless, Playwright, Timeout, AuthOptions, ExtractOpts, PipelineOpts, Incremental, Kind",
+        "Create BuildJobFromSpec(ctx, spec JobSpec) (job.Job, error) function in manager.go",
+        "Refactor scheduler.go to use shared builder for all 3 schedule kinds",
+        "Refactor mcp/server.go to use shared builder for all 3 tool handlers",
+        "Ensure validation logic remains in appropriate layers",
+        "Run make test to verify scheduler and MCP tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0060",
+      "status": "todo",
+      "title": "Add comprehensive tests for pipeline package",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "pipeline",
+        "coverage"
+      ],
+      "scope": [
+        "internal/pipeline"
+      ],
+      "evidence": [
+        "internal/pipeline/transformers.go has no test file",
+        "internal/pipeline/interfaces.go has no test file",
+        "internal/pipeline/js.go has no test file",
+        "internal/pipeline/types.go has no test file",
+        "AGENTS.md requires: 'All new or changed code must have tests that cover the full expected behavior and failure modes'",
+        "Tests should live as close as possible to the code they validate"
+      ],
+      "plan": [
+        "Read transformer implementations in transformers.go to understand behavior",
+        "Create internal/pipeline/transformers_test.go with unit tests for each transformer",
+        "Read interfaces.go and identify any testable contracts",
+        "Create internal/pipeline/interfaces_test.go with interface contract tests",
+        "Read js.go to understand JS pipeline execution",
+        "Create internal/pipeline/js_test.go with tests for JS loading and execution",
+        "Read types.go to understand shared pipeline types",
+        "Create internal/pipeline/types_test.go with tests for type constructors and validation",
+        "Ensure all tests cover success and failure modes",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0061",
+      "status": "todo",
+      "title": "Add comprehensive tests for fetch package utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "fetch",
+        "coverage"
+      ],
+      "scope": [
+        "internal/fetch"
+      ],
+      "evidence": [
+        "internal/fetch/adaptive_fetcher.go has no test file",
+        "internal/fetch/retry.go has no test file",
+        "internal/fetch/limiter.go has no test file",
+        "internal/fetch/types.go has no test file",
+        "internal/fetch/render_profiles.go has no test file",
+        "Fetch utilities are critical to content fetching and should be tested"
+      ],
+      "plan": [
+        "Read adaptive_fetcher.go to understand the adaptive fallback logic",
+        "Create internal/fetch/adaptive_fetcher_test.go with tests for HTTP probe, JS detection, and headless fallback",
+        "Read retry.go to understand retry strategy and exponential backoff",
+        "Create internal/fetch/retry_test.go with tests for retry counts, delays, and failure conditions",
+        "Read limiter.go to understand rate limiting implementation",
+        "Create internal/fetch/limiter_test.go with tests for rate limiting, burst capacity, and concurrency",
+        "Read types.go to understand shared fetch types and interfaces",
+        "Create internal/fetch/types_test.go with tests for type constructors and validation",
+        "Read render_profiles.go to understand profile loading and matching",
+        "Create internal/fetch/render_profiles_test.go with tests for profile matching and merging",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0062",
+      "status": "todo",
+      "title": "Add comprehensive tests for extract package utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "extract",
+        "coverage"
+      ],
+      "scope": [
+        "internal/extract"
+      ],
+      "evidence": [
+        "internal/extract/types.go has no test file",
+        "internal/extract/normalize.go has no test file",
+        "internal/extract/jsonld.go has no test file",
+        "internal/extract/pipeline.go has no test file",
+        "internal/extract/templates.go has no test file",
+        "Extract utilities are critical to content extraction and should be tested"
+      ],
+      "plan": [
+        "Read types.go to understand extraction types and options",
+        "Create internal/extract/types_test.go with tests for type constructors and validation",
+        "Read normalize.go to understand content normalization logic",
+        "Create internal/extract/normalize_test.go with tests for text cleanup, deduplication, and structured data extraction",
+        "Read jsonld.go to understand JSON-LD extraction",
+        "Create internal/extract/jsonld_test.go with tests for parsing various JSON-LD formats",
+        "Read pipeline.go to understand extraction pipeline hooks",
+        "Create internal/extract/pipeline_test.go with tests for pre/post extract hooks",
+        "Read templates.go to understand template loading and parsing",
+        "Create internal/extract/templates_test.go with tests for template loading, validation, and application",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0063",
+      "status": "todo",
+      "title": "Add tests for model, config, and auth utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "model",
+        "config",
+        "auth",
+        "coverage"
+      ],
+      "scope": [
+        "internal/model",
+        "internal/config",
+        "internal/auth"
+      ],
+      "evidence": [
+        "internal/model/job.go has no test file",
+        "internal/model/state.go has no test file",
+        "internal/config/log.go has no test file",
+        "internal/auth/types.go has no test file",
+        "These contain core domain models and utilities that should be tested"
+      ],
+      "plan": [
+        "Read model/job.go to understand Job, Kind, Status types and methods",
+        "Create internal/model/job_test.go with tests for IsTerminal(), IsValid(), and ValidStatuses()",
+        "Read model/state.go to understand CrawlState type",
+        "Create internal/model/state_test.go with tests for CrawlState field validation",
+        "Read config/log.go to understand logger initialization",
+        "Create internal/config/log_test.go with tests for logger configuration and level parsing",
+        "Read auth/types.go to understand auth types and merge logic",
+        "Create internal/auth/types_test.go with tests for auth option merging and validation",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0064",
+      "status": "todo",
+      "title": "Split internal/exporter/exporter.go into focused format modules",
+      "priority": "high",
+      "tags": [
+        "file-size",
+        "exporter",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go"
+      ],
+      "evidence": [
+        "File is 835 LOC, exceeding the 700 LOC threshold",
+        "Contains implementations for multiple formats: JSON, JSONL, Markdown, CSV",
+        "Each format implementation has its own stream/buffer logic that could be co-located",
+        "Large file reduces maintainability and makes it hard to add new formats"
+      ],
+      "plan": [
+        "Analyze exporter.go to identify format-specific functions",
+        "Create separate format files: internal/exporter/json.go, jsonl.go, markdown.go, csv.go",
+        "Move format-specific types (ScrapeResult, CrawlResult, ResearchResult) to appropriate files or types.go",
+        "Keep Export and ExportStream entry points in exporter.go or move to a dispatcher file",
+        "Ensure each format file is cohesive and focused",
+        "Update all imports in tests and other packages",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0065",
+      "status": "todo",
+      "title": "Split internal/exporter/exporter_test.go into focused test files",
+      "priority": "high",
+      "tags": [
+        "file-size",
+        "exporter",
+        "testing",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/exporter/exporter_test.go"
+      ],
+      "evidence": [
+        "Test file is 880 LOC, exceeding the 700 LOC threshold",
+        "Likely contains tests for multiple export formats in a single file",
+        "Tests for different formats should be grouped with their implementations"
+      ],
+      "plan": [
+        "Analyze test functions to identify which export formats they test",
+        "Move JSON tests to internal/exporter/json_test.go after splitting exporter.go",
+        "Move JSONL tests to internal/exporter/jsonl_test.go",
+        "Move Markdown tests to internal/exporter/markdown_test.go",
+        "Move CSV tests to internal/exporter/csv_test.go",
+        "Keep shared test helpers in internal/exporter/setup_test.go",
+        "Run make test-ci to verify all tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0066",
+      "status": "todo",
+      "title": "Review and standardize error handling patterns",
+      "priority": "medium",
+      "tags": [
+        "error-handling",
+        "standards",
+        "consistency"
+      ],
+      "scope": [
+        "internal"
+      ],
+      "evidence": [
+        "Error handling patterns vary across packages: some use fmt.Errorf with context, others use errors.New",
+        "Validation errors in validate/request.go use Validate() methods on structs",
+        "Scheduler uses fmt.Errorf with detailed context (e.g., 'failed to resolve auth for scrape schedule %s: %w')",
+        "API server uses ErrorResponse struct for HTTP errors",
+        "Inconsistent error handling makes debugging harder and reduces predictability"
+      ],
+      "plan": [
+        "Search for all error return statements across internal/ to categorize patterns",
+        "Identify common error types: validation errors, not found errors, permission errors, internal errors",
+        "Create internal/errors/package or add to existing error patterns",
+        "Standardize on wrapping with context using fmt.Errorf('%s: %w', context, err)",
+        "Define error constructors for common patterns: ValidationError, NotFoundError, PermissionError",
+        "Update inconsistent error sites to use standardized patterns",
+        "Ensure error messages include enough context for debugging without exposing secrets",
+        "Run make test to verify all tests still pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0067",
+      "status": "todo",
+      "title": "Review and standardize logging levels and messages",
+      "priority": "medium",
+      "tags": [
+        "logging",
+        "consistency",
+        "slog"
+      ],
+      "scope": [
+        "internal"
+      ],
+      "evidence": [
+        "Logging uses slog consistently but level choices vary: crawl.go has 24 slog calls (mix of Debug, Info, Error, Warn)",
+        "adaptive_fetcher.go has 14 slog calls with detailed context about fetch decisions",
+        "Inconsistent use of structured fields: some logs include all context, others minimal",
+        "Debug logs for sensitive operations (e.g., auth handling) may expose secrets"
+      ],
+      "plan": [
+        "Review all slog.Error, Warn, Info, Debug calls across internal/",
+        "Categorize log levels: Error (failures requiring action), Warn (issues but continuing), Info (significant state changes), Debug (detailed flow)",
+        "Check for any logs that might expose secrets (auth tokens, passwords, API keys)",
+        "Redact or remove sensitive information from logs",
+        "Standardize on structured logging with consistent field names: url, jobID, component, duration",
+        "Document logging conventions in AGENTS.md or internal/README.md",
+        "Add tests that verify sensitive data is not logged in error paths",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0068",
+      "status": "todo",
+      "title": "Extract validation logic to reusable validators",
+      "priority": "medium",
+      "tags": [
+        "dry",
+        "validation",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/validate",
+        "internal/scheduler",
+        "internal/mcp",
+        "internal/api"
+      ],
+      "evidence": [
+        "internal/validate/request.go has 3 validators (ScrapeRequestValidator, CrawlRequestValidator, ResearchRequestValidator)",
+        "Each validator has similar pattern: ValidateURL, ValidateMaxDepth, ValidateMaxPages, ValidateTimeout, ValidateAuthProfileName",
+        "Scheduler and API handlers likely duplicate similar validation logic",
+        "Repeated validation patterns violate DRY principle"
+      ],
+      "plan": [
+        "Read validate/request.go to understand current validator implementations",
+        "Read scheduler.go to find validation logic in validateSchedule()",
+        "Read api/server.go to find validation logic in handlers",
+        "Identify common validation rules and create reusable functions: ValidateJobCommon(opts JobCommonOpts)",
+        "Create internal/validate/job.go with shared validation logic",
+        "Update scheduler to use shared validators",
+        "Update API handlers to use shared validators",
+        "Ensure MCP tool handlers use shared validators",
+        "Run make test to verify all validation tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0069",
+      "status": "todo",
+      "title": "Verify generated TypeScript API types match Go API contracts",
+      "priority": "low",
+      "tags": [
+        "typescript",
+        "api",
+        "sync",
+        "openapi"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "web/src/api"
+      ],
+      "evidence": [
+        "API contract is api/openapi.yaml and generates TS client via 'make generate' (hey-api openapi-ts)",
+        "Potential drift between Go server types and generated TS types",
+        "No automated verification that generated types match actual API responses",
+        "Type mismatches cause runtime errors in web client"
+      ],
+      "plan": [
+        "Read api/openapi.yaml to understand the API contract",
+        "Read internal/api/server.go to identify all request/response types",
+        "Compare Go types with OpenAPI spec for consistency",
+        "Read generated types in web/src/api/types.gen.ts",
+        "Verify all API endpoints and types are correctly represented in OpenAPI spec",
+        "Add a test or script that validates API responses against OpenAPI schema",
+        "Consider adding 'make verify-api' target to check type consistency",
+        "Run make generate to ensure regeneration works",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0070",
+      "status": "todo",
+      "title": "Review config.Load() singleton pattern for thread safety",
+      "priority": "low",
+      "tags": [
+        "config",
+        "thread-safety",
+        "concurrency"
+      ],
+      "scope": [
+        "internal/config"
+      ],
+      "evidence": [
+        "config.Load() is called once in cli.go and config object is passed around",
+        "Search found only 1 call to config.Load() in the entire codebase",
+        "No evidence of concurrent access issues, but config could be accessed from multiple goroutines (scheduler, manager)",
+        "Config object should be immutable or thread-safe if shared across goroutines"
+      ],
+      "plan": [
+        "Read internal/config/config.go to understand Config struct and its fields",
+        "Check if Config struct is modified after Load() returns",
+        "Trace config usage across scheduler, manager, api to identify write patterns",
+        "If config is modified after initialization, make Config immutable (read-only fields) or add mutex",
+        "Document config access patterns in AGENTS.md or config.go package docs",
+        "Add tests that verify config thread safety if mutations are possible",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2025-01-26T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
