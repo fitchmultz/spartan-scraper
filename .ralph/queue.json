@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0054",
-      "status": "todo",
-      "title": "Split internal/api/server.go into focused handler modules",
-      "priority": "critical",
-      "tags": [
-        "file-size",
-        "api",
-        "refactoring"
-      ],
-      "scope": [
-        "internal/api/server.go"
-      ],
-      "evidence": [
-        "File is 1,024 LOC, exceeding the 1,000 LOC threshold",
-        "Contains handlers for scrape, crawl, research, jobs, schedules, auth, templates, crawl states, and health endpoints",
-        "Multiple request/response types defined inline that should be in dedicated package",
-        "Mixes HTTP routing, business logic, and response serialization"
-      ],
-      "plan": [
-        "Identify all handler functions and their responsibilities",
-        "Create internal/api/handlers/ subpackage with separate files: scrape.go, crawl.go, research.go, jobs.go, schedules.go, auth.go",
-        "Extract request/response types to internal/api/types.go or internal/model/",
-        "Move utility functions (error responses, JSON encoding) to internal/api/util.go",
-        "Update internal/api/server.go to only handle HTTP routing and middleware",
-        "Update all imports in tests and other packages",
-        "Run make test and make ci to verify functionality"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0055",
       "status": "todo",
       "title": "Split internal/api/server_test.go into focused test files",
@@ -51,14 +16,14 @@
         "internal/api/server_test.go"
       ],
       "evidence": [
-        "Test file is 1,827 LOC, nearly 5x the 400 LOC heuristic",
-        "Likely contains tests for multiple endpoints in a single file",
+        "Test file is 1,830 LOC, nearly 5x the 400 LOC heuristic",
+        "Tests for all API endpoints (scrape, crawl, research, jobs, schedules, auth, templates, crawl states, health) are in one file",
         "Large test files become hard to maintain and navigate",
         "Tests for different concerns should be grouped together"
       ],
       "plan": [
         "Analyze test functions to identify which endpoints they test",
-        "Create test files per handler: internal/api/handlers/scrape_test.go, crawl_test.go, research_test.go, etc.",
+        "Create test files per handler in internal/api/: scrape_test.go, crawl_test.go, research_test.go, jobs_test.go, job_results_test.go, schedules_test.go, auth_test.go, templates_test.go, crawl_states_test.go, health_test.go",
         "Move setupTestServer helper to internal/api/setup_test.go",
         "Ensure each test file tests a single handler module",
         "Run make test-ci to verify all tests still pass",
@@ -67,7 +32,7 @@
       "notes": [],
       "request": "scan finding",
       "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-26T21:35:00Z",
       "depends_on": [],
       "custom_fields": {}
     },

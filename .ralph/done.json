@@ -2113,6 +2113,48 @@
       "completed_at": "2026-01-26T19:53:24.560714000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0054",
+      "status": "done",
+      "title": "Split internal/api/server.go into focused handler modules",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "api",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "File is 1,024 LOC, exceeding the 1,000 LOC threshold",
+        "Contains handlers for scrape, crawl, research, jobs, schedules, auth, templates, crawl states, and health endpoints",
+        "Multiple request/response types defined inline that should be in dedicated package",
+        "Mixes HTTP routing, business logic, and response serialization"
+      ],
+      "plan": [
+        "Identify all handler functions and their responsibilities",
+        "Create internal/api/handlers/ subpackage with separate files: scrape.go, crawl.go, research.go, jobs.go, schedules.go, auth.go",
+        "Extract request/response types to internal/api/types.go or internal/model/",
+        "Move utility functions (error responses, JSON encoding) to internal/api/util.go",
+        "Update internal/api/server.go to only handle HTTP routing and middleware",
+        "Update all imports in tests and other packages",
+        "Run make test and make ci to verify functionality"
+      ],
+      "notes": [
+        "Split server.go from 1,024 LOC to 41 LOC",
+        "Created 12 focused modules: types.go (99 LOC), util.go (142 LOC), and 10 handlers (25-146 LOC each)",
+        "All files under 400 LOC threshold",
+        "Added package docstrings to all API files per AGENTS.md",
+        "Updated RQ-0055 to reflect actual handler paths (internal/api/ not handlers/)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-26T21:55:22.061886000Z",
+      "completed_at": "2026-01-26T21:55:22.061886000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

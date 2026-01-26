@@ -1,3 +1,6 @@
+// Package api provides integration tests for the REST API server.
+// These tests cover all HTTP endpoints including health checks, job management,
+// auth profile management, schedules, templates, and crawl states.
 package api
 
 import (
