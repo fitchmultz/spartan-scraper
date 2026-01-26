@@ -1,10 +1,11 @@
-package cli
+package cli_test
 
 import (
 	"reflect"
 	"testing"
 
 	"spartan-scraper/internal/auth"
+	"spartan-scraper/internal/cli/common"
 )
 
 func TestSplitCSV(t *testing.T) {
@@ -18,12 +19,11 @@ func TestSplitCSV(t *testing.T) {
 		{" a , b , c ", []string{"a", "b", "c"}},
 		{"a,,c", []string{"a", "c"}},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := splitCSV(tt.input)
+			got := common.SplitCSV(tt.input)
 			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("splitCSV(%q) = %v; want %v", tt.input, got, tt.expected)
+				t.Errorf("SplitCSV(%q) = %v; want %v", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -44,12 +44,11 @@ func TestSplitCSVEdgeCases(t *testing.T) {
 		{"a,,b", []string{"a", "b"}},        // Empty between
 		{" , a , , b ", []string{"a", "b"}}, // Mixed
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := splitCSV(tt.input)
+			got := common.SplitCSV(tt.input)
 			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("splitCSV(%q) = %v; want %v", tt.input, got, tt.expected)
+				t.Errorf("SplitCSV(%q) = %v; want %v", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -67,12 +66,11 @@ func TestToCookies(t *testing.T) {
 		{"whitespace", []string{" a = b "}, []auth.Cookie{{Name: "a", Value: "b"}}},
 		{"missing_name", []string{"=value"}, []auth.Cookie{}},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := toCookies(tt.input)
+			got := common.ToCookies(tt.input)
 			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("toCookies(%v) = %v; want %v", tt.input, got, tt.expected)
+				t.Errorf("ToCookies(%v) = %v; want %v", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -87,13 +85,12 @@ func TestToHeaderKVs(t *testing.T) {
 		{"empty", nil, nil},
 		{"valid", map[string]string{"Key": "Value"}, []auth.HeaderKV{{Key: "Key", Value: "Value"}}},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := toHeaderKVs(tt.input)
+			got := common.ToHeaderKVs(tt.input)
 			// map iteration is random, so we just check length and presence if more than 1
 			if len(got) != len(tt.expected) {
-				t.Errorf("toHeaderKVs(%v) len = %d; want %d", tt.input, len(got), len(tt.expected))
+				t.Errorf("ToHeaderKVs(%v) len = %d; want %d", tt.input, len(got), len(tt.expected))
 			}
 			for _, want := range tt.expected {
 				found := false
@@ -104,7 +101,7 @@ func TestToHeaderKVs(t *testing.T) {
 					}
 				}
 				if !found {
-					t.Errorf("toHeaderKVs(%v) missing %v", tt.input, want)
+					t.Errorf("ToHeaderKVs(%v) missing %v", tt.input, want)
 				}
 			}
 		})
@@ -124,12 +121,11 @@ func TestParseTokenKind(t *testing.T) {
 		{"unknown", auth.TokenBearer},
 		{"", auth.TokenBearer},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := parseTokenKind(tt.input)
+			got := common.ParseTokenKind(tt.input)
 			if got != tt.expected {
-				t.Errorf("parseTokenKind(%q) = %v; want %v", tt.input, got, tt.expected)
+				t.Errorf("ParseTokenKind(%q) = %v; want %v", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -152,16 +148,15 @@ func TestBuildTokens(t *testing.T) {
 		{"both", "user:pass", []string{"t1"}, "bearer", "", "", "", 2},
 		{"with_fields", "", []string{"val"}, "api_key", "X-Key", "k", "c", 1},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildTokens(tt.basic, tt.tokens, tt.kind, tt.header, tt.query, tt.cookie)
+			got := common.BuildTokens(tt.basic, tt.tokens, tt.kind, tt.header, tt.query, tt.cookie)
 			if len(got) != tt.expectedLen {
-				t.Errorf("buildTokens() len = %d; want %d", len(got), tt.expectedLen)
+				t.Errorf("BuildTokens() len = %d; want %d", len(got), tt.expectedLen)
 			}
 			if tt.name == "with_fields" && len(got) > 0 {
 				if got[0].Header != tt.header || got[0].Query != tt.query || got[0].Cookie != tt.cookie {
-					t.Errorf("buildTokens() fields mismatch: %+v", got[0])
+					t.Errorf("BuildTokens() fields mismatch: %+v", got[0])
 				}
 			}
 		})
@@ -171,22 +166,21 @@ func TestBuildTokens(t *testing.T) {
 func TestBuildLoginFlow(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    loginFlowInput
+		input    common.LoginFlowInput
 		expected *auth.LoginFlow
 	}{
-		{"empty", loginFlowInput{}, nil},
-		{"full", loginFlowInput{URL: "http://login", Username: "user"}, &auth.LoginFlow{URL: "http://login", Username: "user"}},
+		{"empty", common.LoginFlowInput{}, nil},
+		{"full", common.LoginFlowInput{URL: "http://login", Username: "user"}, &auth.LoginFlow{URL: "http://login", Username: "user"}},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildLoginFlow(tt.input)
+			got := common.BuildLoginFlow(tt.input)
 			if (got == nil) != (tt.expected == nil) {
-				t.Fatalf("buildLoginFlow() nil mismatch: got %v, want %v", got == nil, tt.expected == nil)
+				t.Fatalf("BuildLoginFlow() nil mismatch: got %v, want %v", got == nil, tt.expected == nil)
 			}
 			if got != nil && tt.expected != nil {
 				if got.URL != tt.expected.URL || got.Username != tt.expected.Username {
-					t.Errorf("buildLoginFlow() = %+v; want %+v", got, tt.expected)
+					t.Errorf("BuildLoginFlow() = %+v; want %+v", got, tt.expected)
 				}
 			}
 		})
@@ -194,30 +188,26 @@ func TestBuildLoginFlow(t *testing.T) {
 }
 
 func TestStringSliceFlag(t *testing.T) {
-	var s stringSliceFlag
+	var s common.StringSliceFlag
 	if s.String() != "" {
 		t.Errorf("empty stringSliceFlag.String() = %q; want \"\"", s.String())
 	}
-
 	if err := s.Set("a:b"); err != nil {
 		t.Errorf("Set() error: %v", err)
 	}
 	if err := s.Set("c:d"); err != nil {
 		t.Errorf("Set() error: %v", err)
 	}
-
 	if s.String() != "a:b,c:d" {
 		t.Errorf("stringSliceFlag.String() = %q; want \"a:b,c:d\"", s.String())
 	}
-
 	m := s.ToMap()
 	expected := map[string]string{"a": "b", "c": "d"}
 	if !reflect.DeepEqual(m, expected) {
 		t.Errorf("ToMap() = %v; want %v", m, expected)
 	}
-
 	// Test invalid entries in ToMap
-	var s2 stringSliceFlag
+	var s2 common.StringSliceFlag
 	_ = s2.Set("invalid")
 	_ = s2.Set(" : ")
 	if len(s2.ToMap()) != 0 {

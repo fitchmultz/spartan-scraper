@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0053",
-      "status": "todo",
-      "title": "Split internal/cli/cli.go into focused command modules",
-      "priority": "critical",
-      "tags": [
-        "file-size",
-        "cli",
-        "refactoring"
-      ],
-      "scope": [
-        "internal/cli/cli.go"
-      ],
-      "evidence": [
-        "File is 1,884 LOC, nearly 5x the 400 LOC heuristic",
-        "Contains 13+ command handler functions (runScrape, runCrawl, runResearch, etc.)",
-        "Single file handles all CLI routing, flag parsing, and command execution",
-        "Each command has unique flag sets and business logic that should be co-located"
-      ],
-      "plan": [
-        "Analyze the 13 command handlers and group them by domain (scraping vs. management vs. auth)",
-        "Create separate packages: internal/cli/scrape/, internal/cli/manage/, internal/cli/auth/",
-        "Move runScrape, runCrawl, runResearch to internal/cli/scrape/",
-        "Move runAuth, runExport, runTemplates, runCrawlStates to internal/cli/manage/",
-        "Move runJobs, runServer, runTUI, runHealth, runMCP, runSchedule to internal/cli/manage/",
-        "Update internal/cli/cli.go to only handle routing and common flag setup",
-        "Run make test to ensure all CLI commands still work",
-        "Run make ci to ensure build and tests pass"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0054",
       "status": "todo",
       "title": "Split internal/api/server.go into focused handler modules",
