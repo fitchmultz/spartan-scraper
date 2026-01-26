@@ -1,10 +1,11 @@
 // Unit tests for loadResults error handling logic.
-// These tests verify the error handling behavior by testing the logic in isolation.
-// Note: loadResults is internal to the App component, so these tests duplicate the logic
+// These tests verify error handling behavior by testing logic in isolation.
+// Note: loadResults is internal to App component, so these tests duplicate logic
 // to verify correct error handling behavior. The actual App.tsx implementation should match
-// this logic for the tests to remain valid.
+// this logic for tests to remain valid.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getApiBaseUrl } from "./lib/api-config";
+import { buildAuth } from "./App";
 
 const validNDJSON = JSON.stringify({
   url: "https://example.com",
@@ -345,6 +346,131 @@ describe("loadResults error handling", () => {
       expect(mockFetch).toHaveBeenCalledWith(
         "/v1/jobs/test-id/results?format=csv",
       );
+    });
+  });
+});
+
+describe("auth payload generation", () => {
+  it("should include login flow fields when specified", () => {
+    const auth = buildAuth(
+      "", // basic
+      undefined, // headers
+      undefined, // cookies
+      undefined, // query
+      "https://example.com/login", // loginUrl
+      "#email", // loginUserSelector
+      "#password", // loginPassSelector
+      "button[type=submit]", // loginSubmitSelector
+      "user@example.com", // loginUser
+      "secret123", // loginPass
+    );
+
+    expect(auth).toEqual({
+      loginUrl: "https://example.com/login",
+      loginUserSelector: "#email",
+      loginPassSelector: "#password",
+      loginSubmitSelector: "button[type=submit]",
+      loginUser: "user@example.com",
+      loginPass: "secret123",
+    });
+  });
+
+  it("should exclude undefined login flow fields", () => {
+    const auth = buildAuth(
+      "user:pass",
+      { "X-API": "token" },
+      undefined,
+      { key: "value" },
+      "",
+      undefined,
+      undefined,
+      undefined,
+      "",
+      "",
+    );
+
+    expect(auth).toEqual({
+      basic: "user:pass",
+      headers: { "X-API": "token" },
+      cookies: undefined,
+      query: { key: "value" },
+    });
+  });
+
+  it("should return undefined when no auth is specified", () => {
+    const auth = buildAuth(
+      "",
+      undefined,
+      undefined,
+      undefined,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    );
+    expect(auth).toBeUndefined();
+  });
+
+  it("should include both basic auth and login flow fields", () => {
+    const auth = buildAuth(
+      "user:pass",
+      undefined,
+      undefined,
+      undefined,
+      "https://example.com/login",
+      "#email",
+      "#password",
+      "button[type=submit]",
+      "user@example.com",
+      "secret123",
+    );
+
+    expect(auth).toEqual({
+      basic: "user:pass",
+      loginUrl: "https://example.com/login",
+      loginUserSelector: "#email",
+      loginPassSelector: "#password",
+      loginSubmitSelector: "button[type=submit]",
+      loginUser: "user@example.com",
+      loginPass: "secret123",
+    });
+  });
+
+  it("should return undefined when all fields are empty strings", () => {
+    const auth = buildAuth(
+      "",
+      undefined,
+      undefined,
+      undefined,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    );
+    expect(auth).toBeUndefined();
+  });
+
+  it("should handle partial login flow configuration", () => {
+    const auth = buildAuth(
+      "",
+      undefined,
+      undefined,
+      undefined,
+      "https://example.com/login",
+      undefined,
+      undefined,
+      undefined,
+      "user@example.com",
+      "",
+    );
+
+    expect(auth).toEqual({
+      loginUrl: "https://example.com/login",
+      loginUser: "user@example.com",
     });
   });
 });

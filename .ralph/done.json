@@ -1827,6 +1827,66 @@
       "completed_at": "2026-01-26T01:58:38.426696000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0048",
+      "status": "done",
+      "title": "Add auth profile + login flow support to web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "ux",
+        "auth",
+        "parity",
+        "openapi"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/api/index.ts",
+        "api/openapi.yaml",
+        "web/src/App.test.tsx",
+        "internal/cli/cli.go",
+        "make generate",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "api/openapi.yaml: ScrapeRequest/CrawlRequest/ResearchRequest already include authProfile field (lines 879, 919, 963) and auth: AuthOptions (lines 882, 922, 966).",
+        "api/openapi.yaml: AuthOptions already includes loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass (lines 853-865).",
+        "web/src/api/types.gen.ts: Generated types already include ScrapeRequest/CrawlRequest/ResearchRequest with authProfile and auth fields (lines 159-198).",
+        "web/src/App.tsx: buildAuth() function (lines 1094-1109) only constructs basic/headers/cookies/query; does not include login flow fields (loginUrl, loginUserSelector, etc.).",
+        "web/src/App.tsx: Request payloads in submitScrape/submitCrawl/submitResearch (lines 227-240, 261-276, 297-312) use buildAuth() but never set authProfile field.",
+        "web/src/App.tsx: UI state includes authBasic/headersRaw/cookiesRaw/queryRaw (lines 87-90) but no authProfile state or login flow state.",
+        "internal/cli/cli.go: CLI already supports --auth-profile flag and login flow flags (--login-url, --login-user-selector, --login-pass-selector, --login-submit-selector)."
+      ],
+      "plan": [
+        "Add authProfile state to App.tsx and fetch auth profiles from /v1/auth/profiles API to populate a dropdown selector.",
+        "Add login flow state fields (loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass) to App.tsx.",
+        "Update buildAuth() function to include login flow fields (loginUrl, loginUserSelector, loginPassSelector, loginSubmitSelector, loginUser, loginPass) in the returned AuthOptions object.",
+        "Add authProfile field to request payloads in submitScrape(), submitCrawl(), and submitResearch().",
+        "Add UI controls for login flow fields (optional, collapsed or separate section since not always needed).",
+        "Import getV1AuthProfiles from web/src/api/index.ts and call it to load available profiles.",
+        "Add tests in web/src/App.test.tsx to verify auth payloads include authProfile and login flow fields when specified.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "API types are already up-to-date; no need to regenerate (api/openapi.yaml already defines all required fields).",
+        "The backend API already supports authProfile and login flow; this is purely a web UI parity task.",
+        "Login flow fields should be optional and only included in the payload if set to avoid cluttering requests for simple auth scenarios.",
+        "Consider adding a 'Use Auth Profile' toggle vs 'Custom Auth' switch for cleaner UX.",
+        "Added authProfile state and dropdown selectors for all 3 job panels",
+        "Added 6 login flow state fields (URL, selectors, credentials)",
+        "Updated buildAuth() to include login flow fields in AuthOptions",
+        "Added authProfile field to ScrapeRequest/CrawlRequest/ResearchRequest payloads",
+        "Added collapsible login flow UI sections to all 3 panels",
+        "Added 6 comprehensive tests for auth payload generation"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T15:35:14.941462000Z",
+      "completed_at": "2026-01-26T15:35:14.941462000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

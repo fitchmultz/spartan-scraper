@@ -94,6 +94,13 @@ export function App() {
   const [headersRaw, setHeadersRaw] = useState(defaultHeaders);
   const [cookiesRaw, setCookiesRaw] = useState("");
   const [queryRaw, setQueryRaw] = useState("");
+  const [authProfile, setAuthProfile] = useState("");
+  const [loginUrl, setLoginUrl] = useState("");
+  const [loginUserSelector, setLoginUserSelector] = useState("");
+  const [loginPassSelector, setLoginPassSelector] = useState("");
+  const [loginSubmitSelector, setLoginSubmitSelector] = useState("");
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
   const [extractTemplate, setExtractTemplate] = useState("");
   const [extractValidate, setExtractValidate] = useState(false);
   const [researchQuery, setResearchQuery] = useState("");
@@ -322,7 +329,19 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
+          authProfile: authProfile || undefined,
+          auth: buildAuth(
+            authBasic,
+            headerMap,
+            cookieList,
+            queryMap,
+            loginUrl,
+            loginUserSelector,
+            loginPassSelector,
+            loginSubmitSelector,
+            loginUser,
+            loginPass,
+          ),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -358,7 +377,19 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
+          authProfile: authProfile || undefined,
+          auth: buildAuth(
+            authBasic,
+            headerMap,
+            cookieList,
+            queryMap,
+            loginUrl,
+            loginUserSelector,
+            loginPassSelector,
+            loginSubmitSelector,
+            loginUser,
+            loginPass,
+          ),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -395,7 +426,19 @@ export function App() {
           headless,
           playwright: headless ? usePlaywright : false,
           timeoutSeconds,
-          auth: buildAuth(authBasic, headerMap, cookieList, queryMap),
+          authProfile: authProfile || undefined,
+          auth: buildAuth(
+            authBasic,
+            headerMap,
+            cookieList,
+            queryMap,
+            loginUrl,
+            loginUserSelector,
+            loginPassSelector,
+            loginSubmitSelector,
+            loginUser,
+            loginPass,
+          ),
           extract: {
             template: extractTemplate || undefined,
             validate: extractValidate,
@@ -595,6 +638,24 @@ export function App() {
               />
             </label>
           </div>
+          <label htmlFor="auth-profile" style={{ marginTop: 12 }}>
+            Auth Profile
+          </label>
+          <select
+            id="auth-profile"
+            value={authProfile}
+            onChange={(event) => setAuthProfile(event.target.value)}
+          >
+            <option value="">None</option>
+            {profiles.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}{" "}
+                {p.parents.length > 0
+                  ? `(extends: ${p.parents.join(", ")})`
+                  : ""}
+              </option>
+            ))}
+          </select>
           <label htmlFor="auth-basic" style={{ marginTop: 12 }}>
             Basic auth (user:pass)
           </label>
@@ -632,6 +693,87 @@ export function App() {
             onChange={(event) => setQueryRaw(event.target.value)}
             placeholder="api_key=your_key&#10;version=v1"
           />
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Login Flow Configuration (Headless Auth)
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="login-url">Login URL</label>
+              <input
+                id="login-url"
+                value={loginUrl}
+                onChange={(event) => setLoginUrl(event.target.value)}
+                placeholder="https://example.com/login"
+              />
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  User Selector
+                  <input
+                    value={loginUserSelector}
+                    onChange={(event) =>
+                      setLoginUserSelector(event.target.value)
+                    }
+                    placeholder="#email"
+                  />
+                </label>
+                <label>
+                  Pass Selector
+                  <input
+                    value={loginPassSelector}
+                    onChange={(event) =>
+                      setLoginPassSelector(event.target.value)
+                    }
+                    placeholder="#password"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Submit Selector
+                  <input
+                    value={loginSubmitSelector}
+                    onChange={(event) =>
+                      setLoginSubmitSelector(event.target.value)
+                    }
+                    placeholder="button[type=submit]"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    value={loginUser}
+                    onChange={(event) => setLoginUser(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={loginPass}
+                    onChange={(event) => setLoginPass(event.target.value)}
+                    placeholder="•••••••"
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
           <div className="row" style={{ marginTop: 12 }}>
             <label>
               Extract Template
@@ -723,6 +865,105 @@ export function App() {
               />
             </label>
           </div>
+          <label htmlFor="crawl-auth-profile" style={{ marginTop: 12 }}>
+            Auth Profile
+          </label>
+          <select
+            id="crawl-auth-profile"
+            value={authProfile}
+            onChange={(event) => setAuthProfile(event.target.value)}
+          >
+            <option value="">None</option>
+            {profiles.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}{" "}
+                {p.parents.length > 0
+                  ? `(extends: ${p.parents.join(", ")})`
+                  : ""}
+              </option>
+            ))}
+          </select>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Login Flow Configuration (Headless Auth)
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="crawl-login-url">Login URL</label>
+              <input
+                id="crawl-login-url"
+                value={loginUrl}
+                onChange={(event) => setLoginUrl(event.target.value)}
+                placeholder="https://example.com/login"
+              />
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  User Selector
+                  <input
+                    value={loginUserSelector}
+                    onChange={(event) =>
+                      setLoginUserSelector(event.target.value)
+                    }
+                    placeholder="#email"
+                  />
+                </label>
+                <label>
+                  Pass Selector
+                  <input
+                    value={loginPassSelector}
+                    onChange={(event) =>
+                      setLoginPassSelector(event.target.value)
+                    }
+                    placeholder="#password"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Submit Selector
+                  <input
+                    value={loginSubmitSelector}
+                    onChange={(event) =>
+                      setLoginSubmitSelector(event.target.value)
+                    }
+                    placeholder="button[type=submit]"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    value={loginUser}
+                    onChange={(event) => setLoginUser(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={loginPass}
+                    onChange={(event) => setLoginPass(event.target.value)}
+                    placeholder="•••••••"
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
             <button type="button" onClick={() => void submitCrawl()}>
               Launch Crawl
@@ -806,6 +1047,105 @@ export function App() {
               />
             </label>
           </div>
+          <label htmlFor="research-auth-profile" style={{ marginTop: 12 }}>
+            Auth Profile
+          </label>
+          <select
+            id="research-auth-profile"
+            value={authProfile}
+            onChange={(event) => setAuthProfile(event.target.value)}
+          >
+            <option value="">None</option>
+            {profiles.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}{" "}
+                {p.parents.length > 0
+                  ? `(extends: ${p.parents.join(", ")})`
+                  : ""}
+              </option>
+            ))}
+          </select>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Login Flow Configuration (Headless Auth)
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="research-login-url">Login URL</label>
+              <input
+                id="research-login-url"
+                value={loginUrl}
+                onChange={(event) => setLoginUrl(event.target.value)}
+                placeholder="https://example.com/login"
+              />
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  User Selector
+                  <input
+                    value={loginUserSelector}
+                    onChange={(event) =>
+                      setLoginUserSelector(event.target.value)
+                    }
+                    placeholder="#email"
+                  />
+                </label>
+                <label>
+                  Pass Selector
+                  <input
+                    value={loginPassSelector}
+                    onChange={(event) =>
+                      setLoginPassSelector(event.target.value)
+                    }
+                    placeholder="#password"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Submit Selector
+                  <input
+                    value={loginSubmitSelector}
+                    onChange={(event) =>
+                      setLoginSubmitSelector(event.target.value)
+                    }
+                    placeholder="button[type=submit]"
+                  />
+                </label>
+              </div>
+              <div className="row" style={{ marginTop: "12px" }}>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    value={loginUser}
+                    onChange={(event) => setLoginUser(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    value={loginPass}
+                    onChange={(event) => setLoginPass(event.target.value)}
+                    placeholder="•••••••"
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
             <button type="button" onClick={() => void submitResearch()}>
               Run Research
@@ -1264,8 +1604,25 @@ export function buildAuth(
   headers?: Record<string, string>,
   cookies?: string[],
   query?: Record<string, string>,
+  loginUrl?: string,
+  loginUserSelector?: string,
+  loginPassSelector?: string,
+  loginSubmitSelector?: string,
+  loginUser?: string,
+  loginPass?: string,
 ) {
-  if (!basic && !headers && !cookies && !query) {
+  if (
+    !basic &&
+    !headers &&
+    !cookies &&
+    !query &&
+    !loginUrl &&
+    !loginUserSelector &&
+    !loginPassSelector &&
+    !loginSubmitSelector &&
+    !loginUser &&
+    !loginPass
+  ) {
     return undefined;
   }
   return {
@@ -1273,6 +1630,12 @@ export function buildAuth(
     headers,
     cookies,
     query,
+    loginUrl: loginUrl || undefined,
+    loginUserSelector: loginUserSelector || undefined,
+    loginPassSelector: loginPassSelector || undefined,
+    loginSubmitSelector: loginSubmitSelector || undefined,
+    loginUser: loginUser || undefined,
+    loginPass: loginPass || undefined,
   };
 }
 
