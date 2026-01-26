@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0057",
-      "status": "todo",
-      "title": "Refactor web/src/App.tsx into focused components",
-      "priority": "high",
-      "tags": [
-        "file-size",
-        "frontend",
-        "react",
-        "refactoring"
-      ],
-      "scope": [
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "Component is 2,077 LOC, massive for a single React component",
-        "Contains 65+ useState hooks indicating excessive state complexity",
-        "Likely handles multiple concerns: job submission, auth, templates, results display",
-        "Monolithic components are hard to test, maintain, and reason about"
-      ],
-      "plan": [
-        "Identify distinct UI sections: scrape form, crawl form, research form, auth config, templates, results viewer, job list",
-        "Create separate components in web/src/components/: ScrapeForm.tsx, CrawlForm.tsx, ResearchForm.tsx, AuthConfig.tsx, TemplateManager.tsx, JobList.tsx, ResultsViewer.tsx",
-        "Extract shared types to web/src/types.ts",
-        "Move hooks that manage specific state to respective components",
-        "Use React Context for shared state like jobs list and auth profiles",
-        "Update App.tsx to compose components and handle routing/layout",
-        "Run cd web && pnpm run test to verify tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0058",
       "status": "todo",
       "title": "Add package docstrings to all Go source files",

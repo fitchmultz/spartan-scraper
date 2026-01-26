@@ -2244,6 +2244,53 @@
       "completed_at": "2026-01-26T22:43:50.928230000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0057",
+      "status": "done",
+      "title": "Refactor web/src/App.tsx into focused components",
+      "priority": "high",
+      "tags": [
+        "file-size",
+        "frontend",
+        "react",
+        "refactoring"
+      ],
+      "scope": [
+        "web/src/App.tsx"
+      ],
+      "evidence": [
+        "Component is 2,077 LOC, massive for a single React component",
+        "Contains 65+ useState hooks indicating excessive state complexity",
+        "Likely handles multiple concerns: job submission, auth, templates, results display",
+        "Monolithic components are hard to test, maintain, and reason about"
+      ],
+      "plan": [
+        "Identify distinct UI sections: scrape form, crawl form, research form, auth config, templates, results viewer, job list",
+        "Create separate components in web/src/components/: ScrapeForm.tsx, CrawlForm.tsx, ResearchForm.tsx, AuthConfig.tsx, TemplateManager.tsx, JobList.tsx, ResultsViewer.tsx",
+        "Extract shared types to web/src/types.ts",
+        "Move hooks that manage specific state to respective components",
+        "Use React Context for shared state like jobs list and auth profiles",
+        "Update App.tsx to compose components and handle routing/layout",
+        "Run cd web && pnpm run test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Fixed duplicate Next button bug in ResultsViewer.tsx:89-100",
+        "Added docstrings to all 10 new component files and 2 utility files per AGENTS.md standard",
+        "All components under 400 LOC threshold (largest is ResultsViewer.tsx at 297 LOC after fix)",
+        "App.tsx reduced from 2,078 LOC to ~660 LOC (68% reduction)",
+        "Created focused components: AuthConfig, PipelineOptions, ScrapeForm, CrawlForm, ResearchForm, Hero, JobList, ResultsViewer, InfoSections, NormalizedView",
+        "Shared utilities: types.ts (72 LOC) and form-utils.ts (265 LOC)",
+        "Updated test imports in App.test.tsx and auth-parsers.test.ts",
+        "All 78 tests pass, type-check passes, lint passes, build succeeds"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-26T23:25:31.638265000Z",
+      "completed_at": "2026-01-26T23:25:31.638265000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCookies, parseQueryParams, buildAuth } from "./App";
+import { parseCookies, parseQueryParams, buildAuth } from "./lib/form-utils";
 
 // Test parseCookies function
 describe("parseCookies", () => {

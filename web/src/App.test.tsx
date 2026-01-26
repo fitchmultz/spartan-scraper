@@ -12,7 +12,7 @@ import {
   buildScrapeRequest,
   buildCrawlRequest,
   buildResearchRequest,
-} from "./App";
+} from "./lib/form-utils";
 
 const validNDJSON = JSON.stringify({
   url: "https://example.com",
