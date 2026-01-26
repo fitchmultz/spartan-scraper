@@ -1887,6 +1887,71 @@
       "completed_at": "2026-01-26T15:35:14.941462000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0049",
+      "status": "done",
+      "title": "Expose pipeline processors and incremental toggle in web UI",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "pipeline",
+        "parity"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/App.test.tsx",
+        "internal/pipeline/types.go",
+        "internal/pipeline/interfaces.go",
+        "internal/cli/cli.go",
+        "api/openapi.yaml",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.tsx:227-240: submitScrape() payload includes url/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:261-276: submitCrawl() payload includes url/maxDepth/maxPages/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:297-312: submitResearch() payload includes query/urls/maxDepth/maxPages/headless/playwright/timeout/auth/extract but NO pipeline or incremental field.",
+        "web/src/App.tsx:79-106: App state includes headless/usePlaywright/maxDepth/maxPages/timeout/authBasic/headersRaw/cookiesRaw/queryRaw/extractTemplate/extractValidate but NO pipeline or incremental state.",
+        "internal/cli/cli.go:124-128: CLI builds pipeline.Options with PreProcessors/PostProcessors/Transformers from flags.",
+        "internal/cli/cli.go:145: CLI passes incremental bool to CreateScrapeJob.",
+        "internal/cli/cli.go:1559-1561: CLI defines --pre-processor/--post-processor/--transformer flags (repeatable string arrays).",
+        "internal/cli/cli.go:1555: CLI defines --incremental boolean flag.",
+        "api/openapi.yaml:616-630: PipelineOptions schema defines preProcessors/postProcessors/transformers as string arrays.",
+        "api/openapi.yaml:885-886,925-926,969-970: ScrapeRequest/CrawlRequest/ResearchRequest all include optional pipeline field referencing PipelineOptions.",
+        "api/openapi.yaml:892,932,976: ScrapeRequest/CrawlRequest/ResearchRequest all include optional incremental boolean field.",
+        "web/src/api/types.gen.ts:18-22: Generated PipelineOptions type includes preProcessors/postProcessors/transformers string arrays.",
+        "web/src/api/types.gen.ts:159-198: Generated ScrapeRequest/CrawlRequest/ResearchRequest all include optional pipeline and incremental fields."
+      ],
+      "plan": [
+        "Add state variables to App.tsx for pipeline options: preProcessors (string), postProcessors (string), transformers (string), incremental (boolean).",
+        "Add UI section for pipeline options with text inputs for preProcessors/postProcessors/transformers (comma-separated values) and checkbox for incremental.",
+        "Parse pipeline text inputs into arrays (split by comma, trim whitespace) to match PipelineOptions type structure.",
+        "Update submitScrape() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Update submitCrawl() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Update submitResearch() to include pipeline: {preProcessors, postProcessors, transformers} and incremental in the request body.",
+        "Add tests in web/src/App.test.tsx to verify that pipeline options are correctly parsed and included in request payloads.",
+        "Add tests in web/src/App.test.tsx to verify that incremental checkbox value is correctly included in request payloads.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "API types (web/src/api/types.gen.ts) already include PipelineOptions and incremental fields - no make generate needed.",
+        "Backend API and CLI already support pipeline and incremental options - this is purely a web UI parity task.",
+        "Pipeline options (preProcessors, postProcessors, transformers) are repeatable arrays in CLI; web UI should use comma-separated text inputs for simplicity.",
+        "incremental is a boolean toggle in CLI; web UI should use checkbox.",
+        "All three request types (scrape/crawl/research) need the same pipeline and incremental fields for consistency.",
+        "Added pipeline options state and UI for all three operations (scrape/crawl/research)",
+        "Implemented helper functions: parseProcessors(), buildPipelineOptions(), build*Request()",
+        "UI uses comma-separated text inputs for processors and checkbox for incremental",
+        "Added 11 comprehensive tests for pipeline parsing and request building",
+        "make ci passed cleanly with 61 tests"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T16:15:23.395772000Z",
+      "completed_at": "2026-01-26T16:15:23.395772000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

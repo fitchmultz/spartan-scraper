@@ -5,7 +5,14 @@
 // this logic for tests to remain valid.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getApiBaseUrl } from "./lib/api-config";
-import { buildAuth } from "./App";
+import {
+  buildAuth,
+  parseProcessors,
+  buildPipelineOptions,
+  buildScrapeRequest,
+  buildCrawlRequest,
+  buildResearchRequest,
+} from "./App";
 
 const validNDJSON = JSON.stringify({
   url: "https://example.com",
@@ -346,6 +353,179 @@ describe("loadResults error handling", () => {
       expect(mockFetch).toHaveBeenCalledWith(
         "/v1/jobs/test-id/results?format=csv",
       );
+    });
+  });
+});
+
+describe("pipeline options parsing", () => {
+  it("should return undefined for empty string", () => {
+    expect(parseProcessors("")).toBeUndefined();
+  });
+
+  it("should return undefined for whitespace-only string", () => {
+    expect(parseProcessors("   ,   ,   ")).toBeUndefined();
+  });
+
+  it("should parse single processor", () => {
+    expect(parseProcessors("redact")).toEqual(["redact"]);
+  });
+
+  it("should parse multiple processors", () => {
+    expect(parseProcessors("redact, sanitize, cleanup")).toEqual([
+      "redact",
+      "sanitize",
+      "cleanup",
+    ]);
+  });
+
+  it("should trim whitespace", () => {
+    expect(parseProcessors("  redact  ,  sanitize  ")).toEqual([
+      "redact",
+      "sanitize",
+    ]);
+  });
+
+  it("should handle extra commas", () => {
+    expect(parseProcessors("redact,,sanitize,,cleanup")).toEqual([
+      "redact",
+      "sanitize",
+      "cleanup",
+    ]);
+  });
+});
+
+describe("buildPipelineOptions", () => {
+  it("should return undefined for all empty processors", () => {
+    expect(buildPipelineOptions("", "", "")).toBeUndefined();
+  });
+
+  it("should build pipeline options with pre-processors", () => {
+    const result = buildPipelineOptions("redact,sanitize", "", "");
+    expect(result).toEqual({
+      preProcessors: ["redact", "sanitize"],
+      postProcessors: undefined,
+      transformers: undefined,
+    });
+  });
+
+  it("should build pipeline options with all processor types", () => {
+    const result = buildPipelineOptions("redact", "cleanup", "json-export");
+    expect(result).toEqual({
+      preProcessors: ["redact"],
+      postProcessors: ["cleanup"],
+      transformers: ["json-export"],
+    });
+  });
+});
+
+describe("buildScrapeRequest with pipeline options", () => {
+  it("should include pipeline options in request", () => {
+    const request = buildScrapeRequest(
+      "https://example.com",
+      true,
+      false,
+      30,
+      undefined,
+      undefined,
+      { template: "article", validate: true },
+      "redact,sanitize",
+      "cleanup",
+      "json-export",
+      true,
+    );
+
+    expect(request).toMatchObject({
+      url: "https://example.com",
+      pipeline: {
+        preProcessors: ["redact", "sanitize"],
+        postProcessors: ["cleanup"],
+        transformers: ["json-export"],
+      },
+      incremental: true,
+      extract: { template: "article", validate: true },
+    });
+  });
+
+  it("should omit undefined pipeline options", () => {
+    const request = buildScrapeRequest(
+      "https://example.com",
+      false,
+      false,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      "",
+      "",
+      "",
+      false,
+    );
+
+    expect(request.pipeline).toBeUndefined();
+    expect(request.incremental).toBeUndefined();
+  });
+});
+
+describe("buildCrawlRequest with pipeline options", () => {
+  it("should include pipeline options in request", () => {
+    const request = buildCrawlRequest(
+      "https://example.com",
+      2,
+      10,
+      true,
+      false,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      "redact",
+      "cleanup",
+      "",
+      false,
+    );
+
+    expect(request).toMatchObject({
+      url: "https://example.com",
+      maxDepth: 2,
+      maxPages: 10,
+      pipeline: {
+        preProcessors: ["redact"],
+        postProcessors: ["cleanup"],
+        transformers: undefined,
+      },
+      incremental: undefined,
+    });
+  });
+});
+
+describe("buildResearchRequest with pipeline options", () => {
+  it("should include pipeline options in request", () => {
+    const request = buildResearchRequest(
+      "test query",
+      ["https://example.com", "https://test.com"],
+      3,
+      20,
+      false,
+      false,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      "sanitize,cleanup",
+      "",
+      "csv-export",
+      true,
+    );
+
+    expect(request).toMatchObject({
+      query: "test query",
+      urls: ["https://example.com", "https://test.com"],
+      pipeline: {
+        preProcessors: ["sanitize", "cleanup"],
+        postProcessors: undefined,
+        transformers: ["csv-export"],
+      },
+      incremental: true,
     });
   });
 });

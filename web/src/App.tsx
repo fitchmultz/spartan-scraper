@@ -27,6 +27,10 @@ import {
   type Job,
   type CrawlState,
   type AuthProfile,
+  type ScrapeRequest,
+  type CrawlRequest,
+  type ResearchRequest,
+  type ExtractOptions,
 } from "./api";
 import { buildApiUrl, getApiBaseUrl } from "./lib/api-config";
 
@@ -103,6 +107,10 @@ export function App() {
   const [loginPass, setLoginPass] = useState("");
   const [extractTemplate, setExtractTemplate] = useState("");
   const [extractValidate, setExtractValidate] = useState(false);
+  const [preProcessors, setPreProcessors] = useState("");
+  const [postProcessors, setPostProcessors] = useState("");
+  const [transformers, setTransformers] = useState("");
+  const [incremental, setIncremental] = useState(false);
   const [researchQuery, setResearchQuery] = useState("");
   const [researchUrls, setResearchUrls] = useState("");
   const [jobs, setJobs] = useState<JobEntry[]>([]);
@@ -324,13 +332,13 @@ export function App() {
     try {
       const { error: apiError } = await postV1Scrape({
         baseUrl: getApiBaseUrl(),
-        body: {
-          url: scrapeUrl,
+        body: buildScrapeRequest(
+          scrapeUrl,
           headless,
-          playwright: headless ? usePlaywright : false,
+          usePlaywright,
           timeoutSeconds,
-          authProfile: authProfile || undefined,
-          auth: buildAuth(
+          authProfile || undefined,
+          buildAuth(
             authBasic,
             headerMap,
             cookieList,
@@ -342,11 +350,15 @@ export function App() {
             loginUser,
             loginPass,
           ),
-          extract: {
+          {
             template: extractTemplate || undefined,
             validate: extractValidate,
           },
-        },
+          preProcessors,
+          postProcessors,
+          transformers,
+          incremental,
+        ),
       });
       if (apiError) {
         setError(String(apiError));
@@ -370,15 +382,15 @@ export function App() {
     try {
       const { error: apiError } = await postV1Crawl({
         baseUrl: getApiBaseUrl(),
-        body: {
-          url: crawlUrl,
+        body: buildCrawlRequest(
+          crawlUrl,
           maxDepth,
           maxPages,
           headless,
-          playwright: headless ? usePlaywright : false,
+          usePlaywright,
           timeoutSeconds,
-          authProfile: authProfile || undefined,
-          auth: buildAuth(
+          authProfile || undefined,
+          buildAuth(
             authBasic,
             headerMap,
             cookieList,
@@ -390,11 +402,15 @@ export function App() {
             loginUser,
             loginPass,
           ),
-          extract: {
+          {
             template: extractTemplate || undefined,
             validate: extractValidate,
           },
-        },
+          preProcessors,
+          postProcessors,
+          transformers,
+          incremental,
+        ),
       });
       if (apiError) {
         setError(String(apiError));
@@ -418,16 +434,16 @@ export function App() {
     try {
       const { error: apiError } = await postV1Research({
         baseUrl: getApiBaseUrl(),
-        body: {
-          query: researchQuery,
-          urls: parseUrlList(researchUrls),
+        body: buildResearchRequest(
+          researchQuery,
+          parseUrlList(researchUrls),
           maxDepth,
           maxPages,
           headless,
-          playwright: headless ? usePlaywright : false,
+          usePlaywright,
           timeoutSeconds,
-          authProfile: authProfile || undefined,
-          auth: buildAuth(
+          authProfile || undefined,
+          buildAuth(
             authBasic,
             headerMap,
             cookieList,
@@ -439,11 +455,15 @@ export function App() {
             loginUser,
             loginPass,
           ),
-          extract: {
+          {
             template: extractTemplate || undefined,
             validate: extractValidate,
           },
-        },
+          preProcessors,
+          postProcessors,
+          transformers,
+          incremental,
+        ),
       });
       if (apiError) {
         setError(String(apiError));
@@ -792,6 +812,61 @@ export function App() {
               Validate Schema
             </label>
           </div>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Pipeline Options
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="scrape-pre-processors">
+                Pre-Processors (comma-separated)
+              </label>
+              <input
+                id="scrape-pre-processors"
+                value={preProcessors}
+                onChange={(event) => setPreProcessors(event.target.value)}
+                placeholder="redact, sanitize"
+              />
+              <label htmlFor="scrape-post-processors" style={{ marginTop: 12 }}>
+                Post-Processors (comma-separated)
+              </label>
+              <input
+                id="scrape-post-processors"
+                value={postProcessors}
+                onChange={(event) => setPostProcessors(event.target.value)}
+                placeholder="cleanup, normalize"
+              />
+              <label htmlFor="scrape-transformers" style={{ marginTop: 12 }}>
+                Transformers (comma-separated)
+              </label>
+              <input
+                id="scrape-transformers"
+                value={transformers}
+                onChange={(event) => setTransformers(event.target.value)}
+                placeholder="json-clean, csv-export"
+              />
+              <label style={{ marginTop: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={incremental}
+                  onChange={(event) => setIncremental(event.target.checked)}
+                />{" "}
+                Incremental (ETag/Hash tracking)
+              </label>
+            </div>
+          </details>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
             <button type="button" onClick={() => void submitScrape()}>
               Deploy Scrape
@@ -962,6 +1037,79 @@ export function App() {
                   />
                 </label>
               </div>
+            </div>
+          </details>
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Extract Template
+              <input
+                value={extractTemplate}
+                onChange={(e) => setExtractTemplate(e.target.value)}
+                placeholder="default, article, product..."
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={extractValidate}
+                onChange={(e) => setExtractValidate(e.target.checked)}
+              />{" "}
+              Validate Schema
+            </label>
+          </div>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Pipeline Options
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="crawl-pre-processors">
+                Pre-Processors (comma-separated)
+              </label>
+              <input
+                id="crawl-pre-processors"
+                value={preProcessors}
+                onChange={(event) => setPreProcessors(event.target.value)}
+                placeholder="redact, sanitize"
+              />
+              <label htmlFor="crawl-post-processors" style={{ marginTop: 12 }}>
+                Post-Processors (comma-separated)
+              </label>
+              <input
+                id="crawl-post-processors"
+                value={postProcessors}
+                onChange={(event) => setPostProcessors(event.target.value)}
+                placeholder="cleanup, normalize"
+              />
+              <label htmlFor="crawl-transformers" style={{ marginTop: 12 }}>
+                Transformers (comma-separated)
+              </label>
+              <input
+                id="crawl-transformers"
+                value={transformers}
+                onChange={(event) => setTransformers(event.target.value)}
+                placeholder="json-clean, csv-export"
+              />
+              <label style={{ marginTop: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={incremental}
+                  onChange={(event) => setIncremental(event.target.checked)}
+                />{" "}
+                Incremental (ETag/Hash tracking)
+              </label>
             </div>
           </details>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
@@ -1144,6 +1292,82 @@ export function App() {
                   />
                 </label>
               </div>
+            </div>
+          </details>
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Extract Template
+              <input
+                value={extractTemplate}
+                onChange={(e) => setExtractTemplate(e.target.value)}
+                placeholder="default, article, product..."
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={extractValidate}
+                onChange={(e) => setExtractValidate(e.target.checked)}
+              />{" "}
+              Validate Schema
+            </label>
+          </div>
+          <details>
+            <summary
+              style={{
+                cursor: "pointer",
+                marginBottom: "8px",
+                color: "var(--accent)",
+              }}
+            >
+              Pipeline Options
+            </summary>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <label htmlFor="research-pre-processors">
+                Pre-Processors (comma-separated)
+              </label>
+              <input
+                id="research-pre-processors"
+                value={preProcessors}
+                onChange={(event) => setPreProcessors(event.target.value)}
+                placeholder="redact, sanitize"
+              />
+              <label
+                htmlFor="research-post-processors"
+                style={{ marginTop: 12 }}
+              >
+                Post-Processors (comma-separated)
+              </label>
+              <input
+                id="research-post-processors"
+                value={postProcessors}
+                onChange={(event) => setPostProcessors(event.target.value)}
+                placeholder="cleanup, normalize"
+              />
+              <label htmlFor="research-transformers" style={{ marginTop: 12 }}>
+                Transformers (comma-separated)
+              </label>
+              <input
+                id="research-transformers"
+                value={transformers}
+                onChange={(event) => setTransformers(event.target.value)}
+                placeholder="json-clean, csv-export"
+              />
+              <label style={{ marginTop: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={incremental}
+                  onChange={(event) => setIncremental(event.target.checked)}
+                />{" "}
+                Incremental (ETag/Hash tracking)
+              </label>
             </div>
           </details>
           <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
@@ -1599,6 +1823,17 @@ export function parseQueryParams(
   return Object.keys(params).length ? params : undefined;
 }
 
+export function parseProcessors(raw: string): string[] | undefined {
+  if (!raw.trim()) {
+    return undefined;
+  }
+  const processors = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return processors.length ? processors : undefined;
+}
+
 export function buildAuth(
   basic: string,
   headers?: Record<string, string>,
@@ -1644,4 +1879,112 @@ function parseUrlList(raw: string) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function buildPipelineOptions(
+  preProcessorsRaw: string,
+  postProcessorsRaw: string,
+  transformersRaw: string,
+) {
+  const pre = parseProcessors(preProcessorsRaw);
+  const post = parseProcessors(postProcessorsRaw);
+  const trans = parseProcessors(transformersRaw);
+
+  if (!pre && !post && !trans) {
+    return undefined;
+  }
+
+  return {
+    preProcessors: pre,
+    postProcessors: post,
+    transformers: trans,
+  };
+}
+
+export function buildScrapeRequest(
+  url: string,
+  headless: boolean,
+  usePlaywright: boolean,
+  timeoutSeconds: number,
+  authProfile: string | undefined,
+  auth: ReturnType<typeof buildAuth>,
+  extract: ExtractOptions | undefined,
+  preProcessors: string,
+  postProcessors: string,
+  transformers: string,
+  incremental: boolean,
+): ScrapeRequest {
+  return {
+    url,
+    headless,
+    playwright: headless ? usePlaywright : false,
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract,
+    pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
+    incremental: incremental || undefined,
+  };
+}
+
+export function buildCrawlRequest(
+  url: string,
+  maxDepth: number,
+  maxPages: number,
+  headless: boolean,
+  usePlaywright: boolean,
+  timeoutSeconds: number,
+  authProfile: string | undefined,
+  auth: ReturnType<typeof buildAuth>,
+  extract: ExtractOptions | undefined,
+  preProcessors: string,
+  postProcessors: string,
+  transformers: string,
+  incremental: boolean,
+): CrawlRequest {
+  return {
+    url,
+    maxDepth,
+    maxPages,
+    headless,
+    playwright: headless ? usePlaywright : false,
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract,
+    pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
+    incremental: incremental || undefined,
+  };
+}
+
+export function buildResearchRequest(
+  query: string,
+  urls: string[],
+  maxDepth: number,
+  maxPages: number,
+  headless: boolean,
+  usePlaywright: boolean,
+  timeoutSeconds: number,
+  authProfile: string | undefined,
+  auth: ReturnType<typeof buildAuth>,
+  extract: ExtractOptions | undefined,
+  preProcessors: string,
+  postProcessors: string,
+  transformers: string,
+  incremental: boolean,
+): ResearchRequest {
+  return {
+    query,
+    urls,
+    maxDepth,
+    maxPages,
+    headless,
+    playwright: headless ? usePlaywright : false,
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract,
+    pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
+    incremental: incremental || undefined,
+  };
 }
