@@ -2203,6 +2203,47 @@
       "completed_at": "2026-01-26T22:18:29.400674000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0056",
+      "status": "done",
+      "title": "Split internal/mcp/server_test.go into focused test files",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "mcp",
+        "testing",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/mcp/server_test.go"
+      ],
+      "evidence": [
+        "Test file is 1,109 LOC, exceeding the 1,000 LOC threshold",
+        "MCP server has multiple tools that should have separate test files",
+        "Testing different MCP tools in one file reduces maintainability"
+      ],
+      "plan": [
+        "Identify which tests correspond to which MCP tools (scrape, crawl, research, jobs, schedules)",
+        "Create tool-specific test files: internal/mcp/tools/scrape_test.go, crawl_test.go, research_test.go, etc.",
+        "Extract common test setup to internal/mcp/setup_test.go",
+        "Ensure each test file focuses on a single tool's behavior",
+        "Run make test-ci to verify all tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Deleted 1,110 LOC server_test.go file",
+        "Created 8 focused test files (1,385 total LOC)",
+        "All files have proper docstrings per AGENTS.md",
+        "Added tests for job_status and job_results tools",
+        "Full CI passes: install, generate, format, type-check, lint, build, test-ci"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-26T22:43:50.928230000Z",
+      "completed_at": "2026-01-26T22:43:50.928230000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
