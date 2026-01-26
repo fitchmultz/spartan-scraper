@@ -1274,7 +1274,22 @@ Notes:
 		return 1
 	}
 	defer store.Close()
-	return tui.RunWithOptions(ctx, store, tui.Options{Smoke: *smoke})
+
+	manager := jobs.NewManager(
+		store,
+		cfg.DataDir,
+		cfg.UserAgent,
+		time.Duration(cfg.RequestTimeoutSecs)*time.Second,
+		cfg.MaxConcurrency,
+		cfg.RateLimitQPS,
+		cfg.RateLimitBurst,
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
+		cfg.MaxResponseBytes,
+		cfg.UsePlaywright,
+	)
+
+	return tui.RunWithOptions(ctx, store, manager, tui.Options{Smoke: *smoke})
 }
 
 func printHelp() {

@@ -1763,6 +1763,70 @@
       "completed_at": "2026-01-26T01:05:54.031302000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0047",
+      "status": "done",
+      "title": "Upgrade TUI to support job details, pagination, and cancel actions",
+      "priority": "medium",
+      "tags": [
+        "tui",
+        "ux",
+        "parity",
+        "jobs"
+      ],
+      "scope": [
+        "internal/ui/tui/tui.go",
+        "internal/jobs/manager.go",
+        "internal/store/store.go",
+        "internal/model/job.go",
+        "internal/exporter/exporter.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/ui/tui/tui.go: UI only lists jobs with ID/Kind/Status/UpdatedAt columns, supports q (quit) and r (refresh) keybindings.",
+        "internal/ui/tui/tui.go: fetchJobs() uses store.ListOpts() with hardcoded Limit=100/Offset=0 (line 109), no pagination or filtering.",
+        "internal/ui/tui/tui.go: model struct only has jobs []string and err field (lines 14-19), no selection state or detail view.",
+        "internal/ui/tui/tui.go: No test file exists (no internal/ui/tui/*_test.go files found).",
+        "internal/jobs/manager.go: CancelJob() exists (line 223) and handles both active and queued jobs via manager.activeJobs map.",
+        "internal/store/store.go: Get(id) returns full Job model with params/resultPath/error fields (line 235).",
+        "internal/exporter/exporter.go: ExportStream() supports jsonl/json/md/csv formats (line 90) for viewing/exporting results."
+      ],
+      "plan": [
+        "Add selection state to TUI model (selectedJobID string) and implement cursor navigation (up/down arrows).",
+        "Add detail view pane showing full job info (ID, Kind, Status, CreatedAt, UpdatedAt, Params summary, Error if any).",
+        "Add pagination controls (page up/down or Left/Right arrows) using store.ListOpts() with configurable Limit/Offset.",
+        "Add 'c' keybinding to cancel selected job via manager.CancelJob(), handle both server-managed and local-cancel scenarios.",
+        "Add 'e' keybinding to export/view results for selected job using exporter.ExportStream() with format selection.",
+        "Add 'd' keybinding to drill down into job details (full params, result path, etc.).",
+        "Implement TUI test file (internal/ui/tui/tui_test.go) with smoke test for job selection, pagination, and actions.",
+        "Update Smoke() function to verify pagination, selection, and cancel functionality work correctly.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "TUI currently only receives store, not manager - needs manager access to call CancelJob() directly.",
+        "store.Get() already supports retrieving full job details by ID (line 235 in store.go).",
+        "exporter.ExportStream() already supports streaming results to stdout or file (line 90 in exporter.go).",
+        "CLI has spartan jobs get, spartan jobs list, spartan jobs cancel commands - TUI should provide equivalent UX.",
+        "Pagination should handle edge cases (no more results, negative offset).",
+        "Detail view should truncate long Params/Error to fit TUI layout.",
+        "Implemented job selection, cursor navigation, and detail view",
+        "Added pagination (20 jobs/page) with left/right/pageup/pagedown/g/G keys",
+        "Implemented 'c' key to cancel jobs via manager.CancelJob()",
+        "Implemented 'e' key to show CLI export instruction message",
+        "Implemented 'd' and 'Enter' keys for job detail view",
+        "Added 3 TUI tests: pagination, job selection, cancel",
+        "Removed dead code (unused selectedIndex field)",
+        "Fixed cursor bounds validation after job refresh",
+        "All tests pass and make ci succeeds"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T01:58:38.426696000Z",
+      "completed_at": "2026-01-26T01:58:38.426696000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
