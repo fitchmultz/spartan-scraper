@@ -1952,6 +1952,73 @@
       "completed_at": "2026-01-26T16:15:23.395772000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0050",
+      "status": "done",
+      "title": "Make web UI results loading scalable for large JSONL outputs",
+      "priority": "medium",
+      "tags": [
+        "web",
+        "performance",
+        "ux",
+        "api",
+        "pagination"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "internal/api/server.go",
+        "api/openapi.yaml",
+        "internal/exporter/exporter.go",
+        "web/src/App.test.tsx",
+        "internal/api/server_test.go",
+        "make generate",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.tsx:360-361: loadResults() uses response.text() and splits all lines, loading full results into memory.",
+        "web/src/App.tsx:364-371: parseItems loops through all lines and parses every JSON object into memory.",
+        "internal/api/server.go:524-530: /v1/jobs/{id}/results for jsonl format uses http.ServeFile() with no pagination.",
+        "internal/api/server.go:534-555: For json/md/csv formats, uses exporter.ExportStream() but still processes entire file.",
+        "api/openapi.yaml:459-508: /v1/jobs/{id}/results endpoint only has format parameter, no limit/offset pagination.",
+        "internal/exporter/exporter.go:404-417: exportJSONLStream streams input to output but cannot be used for pagination.",
+        "internal/exporter/exporter.go:534-553: parseLinesReader() loads all items into memory with no limit/offset support.",
+        "Large crawl results (1000+ pages) cause web UI to freeze or crash due to memory exhaustion."
+      ],
+      "plan": [
+        "Add limit and offset query parameters to /v1/jobs/{id}/results endpoint in api/openapi.yaml for paginated JSONL responses.",
+        "Add Limit() and Offset() helper functions to internal/exporter/exporter.go to parse query parameters with defaults (limit=100, offset=0).",
+        "Add ExportPaginated() function to internal/exporter/exporter.go that returns a slice of items with offset/limit applied.",
+        "Update internal/api/server.go handleJobResults() to call ExportPaginated() for jsonl format when limit/offset params present.",
+        "Regenerate TS client with make generate to include new API parameters.",
+        "Update web/src/App.tsx loadResults() to track current page (page state variable) and request limit/offset from API.",
+        "Add pagination controls to web UI (Previous/Next buttons, page number display, jump to page input) in results view.",
+        "Update web/src/App.tsx to clear result items when format changes or new job is selected to avoid stale state.",
+        "Add tests in web/src/App.test.tsx for pagination (verify page changes, correct data per page, edge cases).",
+        "Add tests in internal/api/server_test.go for limit/offset query parameter handling.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Default page size of 100 items balances UI responsiveness with API load.",
+        "offset is 0-indexed: page=1 means offset=0, page=2 means offset=100, etc.",
+        "Client-side lazy loading is insufficient; must paginate at API level to avoid transferring huge payloads.",
+        "For formats other than jsonl (json/md/csv), pagination is less critical since these are typically single-item exports or small reports.",
+        "Consider adding X-Total-Count response header for total item count to enable 'Showing X-Y of Z results' display.",
+        "Added comprehensive pagination support to web UI results",
+        "Backend: limit/offset parameters in API, ExportPaginated for efficient JSONL pagination",
+        "Frontend: pagination UI with Previous/Next, jump-to-page, X-Total-Count handling",
+        "Tests: 17 pagination tests in App.test.tsx covering edge cases",
+        "Documentation: added comments to Limit(), Offset(), ExportPaginated(), min() functions",
+        "CSS: dark theme pagination controls with proper validation",
+        "make ci passes with all 78 tests (61 original + 17 pagination)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-25T14:59:23.136178Z",
+      "updated_at": "2026-01-26T17:50:50.218180000Z",
+      "completed_at": "2026-01-26T17:50:50.218180000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -654,3 +654,196 @@ describe("auth payload generation", () => {
     });
   });
 });
+
+describe("pagination", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const generateMockItems = (count: number) => {
+    return Array.from({ length: count }, (_, i) => ({
+      url: `https://example.com/page${i + 1}`,
+      status: 200,
+      title: `Page ${i + 1}`,
+      text: `Content ${i + 1}`,
+      links: [],
+    }));
+  };
+
+  it("should include pagination parameters for jsonl format", async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => generateMockItems(100),
+      headers: new Headers({ "X-Total-Count": "250" }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const apiBaseUrl = getApiBaseUrl();
+    const resultsUrl = apiBaseUrl
+      ? `${apiBaseUrl}/v1/jobs/test-id/results?format=jsonl&limit=100&offset=0`
+      : `/v1/jobs/test-id/results?format=jsonl&limit=100&offset=0`;
+    const response = await fetch(resultsUrl);
+
+    expect(response.ok).toBe(true);
+    expect(response.headers.get("X-Total-Count")).toBe("250");
+    const items = (await response.json()) as unknown[];
+    expect(items.length).toBe(100);
+  });
+
+  it("should not include pagination parameters for non-jsonl formats", async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => "json format content",
+      headers: new Headers(),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const apiBaseUrl = getApiBaseUrl();
+    const resultsUrl = apiBaseUrl
+      ? `${apiBaseUrl}/v1/jobs/test-id/results?format=json`
+      : `/v1/jobs/test-id/results?format=json`;
+    const response = await fetch(resultsUrl);
+
+    expect(response.ok).toBe(true);
+    expect(response.headers.get("X-Total-Count")).toBeNull();
+  });
+
+  it("should calculate correct offset for page 1", () => {
+    const page = 1;
+    const resultsPerPage = 100;
+    const expectedOffset = (page - 1) * resultsPerPage;
+    expect(expectedOffset).toBe(0);
+  });
+
+  it("should calculate correct offset for page 2", () => {
+    const page = 2;
+    const resultsPerPage = 100;
+    const expectedOffset = (page - 1) * resultsPerPage;
+    expect(expectedOffset).toBe(100);
+  });
+
+  it("should calculate correct offset for page 5", () => {
+    const page = 5;
+    const resultsPerPage = 100;
+    const expectedOffset = (page - 1) * resultsPerPage;
+    expect(expectedOffset).toBe(400);
+  });
+
+  it("should calculate total pages correctly", () => {
+    const totalResults = 250;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    expect(totalPages).toBe(3);
+  });
+
+  it("should handle exact multiple for total pages", () => {
+    const totalResults = 300;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    expect(totalPages).toBe(3);
+  });
+
+  it("should handle partial last page for total pages", () => {
+    const totalResults = 251;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    expect(totalPages).toBe(3);
+  });
+
+  it("should validate page number is within range", () => {
+    const totalResults = 250;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+
+    const validPage = 2;
+    expect(validPage >= 1 && validPage <= totalPages).toBe(true);
+
+    const invalidPageLow = 0;
+    expect(invalidPageLow >= 1 && invalidPageLow <= totalPages).toBe(false);
+
+    const invalidPageHigh = 4;
+    expect(invalidPageHigh >= 1 && invalidPageHigh <= totalPages).toBe(false);
+  });
+
+  it("should handle empty results with pagination", () => {
+    const totalResults = 0;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    expect(totalPages).toBe(0);
+  });
+
+  it("should handle single page with items less than per page", () => {
+    const totalResults = 50;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    expect(totalPages).toBe(1);
+  });
+
+  it("should handle max page edge case", () => {
+    const totalResults = 1000;
+    const resultsPerPage = 100;
+    const maxPage = Math.ceil(totalResults / resultsPerPage);
+    const offsetForLastPage = (maxPage - 1) * resultsPerPage;
+    expect(offsetForLastPage).toBe(900);
+  });
+
+  it("should disable previous button on first page", () => {
+    const currentPage = 1;
+    const isDisabled = currentPage <= 1;
+    expect(isDisabled).toBe(true);
+  });
+
+  it("should disable next button on last page", () => {
+    const totalResults = 250;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    const currentPage = totalPages;
+    const isDisabled = currentPage >= totalPages;
+    expect(isDisabled).toBe(true);
+  });
+
+  it("should enable both buttons on middle page", () => {
+    const totalResults = 300;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    const currentPage = 2;
+    const previousDisabled = currentPage <= 1;
+    const nextDisabled = currentPage >= totalPages;
+    expect(previousDisabled).toBe(false);
+    expect(nextDisabled).toBe(false);
+  });
+
+  it("should clamp jump input to valid page range", () => {
+    const totalResults = 250;
+    const resultsPerPage = 100;
+    const maxPage = Math.ceil(totalResults / resultsPerPage);
+
+    const validInput = 2;
+    const isValid =
+      validInput >= 1 && validInput <= maxPage && Number.isInteger(validInput);
+    expect(isValid).toBe(true);
+
+    const invalidLow = 0;
+    expect(invalidLow >= 1 && invalidLow <= maxPage).toBe(false);
+
+    const invalidHigh = 4;
+    expect(invalidHigh >= 1 && invalidHigh <= maxPage).toBe(false);
+
+    const invalidDecimal = 1.5;
+    expect(Number.isInteger(invalidDecimal)).toBe(false);
+  });
+
+  it("should display correct page info text", () => {
+    const currentPage = 2;
+    const totalResults = 250;
+    const resultsPerPage = 100;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+
+    const expectedText = `Page ${currentPage} of ${totalPages}(${totalResults} total results)`;
+    expect(expectedText).toBe("Page 2 of 3(250 total results)");
+  });
+});

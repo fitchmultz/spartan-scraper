@@ -306,3 +306,58 @@ button:disabled {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+}
+
+.pagination-info {
+  flex: 1;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.pagination-jump {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pagination-jump input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(10, 10, 14, 0.8);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.pagination-controls button {
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #1a1200;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.pagination-controls button:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.pagination-controls button:not(:disabled):hover {
+  background: var(--accent-strong);
+}

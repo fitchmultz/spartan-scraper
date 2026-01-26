@@ -832,6 +832,14 @@ export type GetV1JobsByIdResultsData = {
          * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV)
          */
         format?: 'jsonl' | 'json' | 'md' | 'csv';
+        /**
+         * Maximum number of result items to return (applies only to jsonl format)
+         */
+        limit?: number;
+        /**
+         * Number of result items to skip before returning results (applies only to jsonl format)
+         */
+        offset?: number;
     };
     url: '/v1/jobs/{id}/results';
 };

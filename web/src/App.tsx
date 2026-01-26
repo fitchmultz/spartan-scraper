@@ -126,6 +126,10 @@ export function App() {
   const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
   const [rawResult, setRawResult] = useState<string | null>(null);
   const [resultFormat, setResultFormat] = useState<string>("jsonl");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [resultsPerPage] = useState(100);
+  const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
   const [managerStatus, setManagerStatus] = useState<{
     queued: number;
     active: number;
@@ -323,6 +327,10 @@ export function App() {
     }
   }, [selectedResultIndex, resultItems]);
 
+  useEffect(() => {
+    setJumpInputValue(currentPage.toString());
+  }, [currentPage]);
+
   async function submitScrape() {
     if (!scrapeUrl) {
       setError("Scrape URL is required.");
@@ -478,20 +486,33 @@ export function App() {
     }
   }
 
-  async function loadResults(jobId: string, format: string = "jsonl") {
+  async function loadResults(
+    jobId: string,
+    format: string = "jsonl",
+    page: number = 1,
+  ) {
     setSelectedJobId(jobId);
-    setResultItems([]);
-    setSelectedResultIndex(0);
-    setResultSummary(null);
-    setResultConfidence(null);
-    setResultEvidence([]);
-    setResultClusters([]);
-    setResultCitations([]);
-    setRawResult(null);
     setResultFormat(format);
+
+    if (page === 1) {
+      setCurrentPage(1);
+      setTotalResults(0);
+      setResultItems([]);
+      setSelectedResultIndex(0);
+      setResultSummary(null);
+      setResultConfidence(null);
+      setResultEvidence([]);
+      setResultClusters([]);
+      setResultCitations([]);
+      setRawResult(null);
+    }
+
     try {
+      const offset = (page - 1) * resultsPerPage;
+      const paginationParams =
+        format === "jsonl" ? `&limit=${resultsPerPage}&offset=${offset}` : "";
       const resultsUrl = buildApiUrl(
-        `/v1/jobs/${jobId}/results?format=${format}`,
+        `/v1/jobs/${jobId}/results?format=${format}${paginationParams}`,
       );
       const response = await fetch(resultsUrl);
 
@@ -511,32 +532,18 @@ export function App() {
 
       // Handle based on format
       if (format === "jsonl") {
-        const text = await response.text();
-        const lines = text.split("\n").filter((line) => line.trim());
-
-        const parsedItems: ResultItem[] = [];
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line);
-            parsedItems.push(parsed);
-          } catch {
-            // Skip malformed JSON lines
-          }
+        const totalCountStr = response.headers.get("X-Total-Count");
+        if (totalCountStr) {
+          setTotalResults(parseInt(totalCountStr, 10));
         }
 
-        // Check if we had input but failed to parse anything
-        if (parsedItems.length === 0 && lines.length > 0) {
-          setError("No valid results found. Results file may be corrupted.");
-          return;
-        }
-
-        setResultItems(parsedItems);
-        setRawResult(text);
+        const items = (await response.json()) as ResultItem[];
+        setResultItems(items);
+        setRawResult(JSON.stringify(items, null, 2));
       } else {
         // For other formats, just store raw text for display
         const text = await response.text();
         setRawResult(text);
-        // Don't try to parse JSONL for json/md/csv
         setResultItems([]);
       }
     } catch (err) {
@@ -1427,7 +1434,7 @@ export function App() {
                       type="button"
                       className="secondary"
                       onClick={() =>
-                        void loadResults(job.id ?? "", resultFormat)
+                        void loadResults(job.id ?? "", resultFormat, 1)
                       }
                     >
                       View Results
@@ -1570,6 +1577,86 @@ export function App() {
             {resultItems.length > 0 ? (
               <div style={{ marginTop: 12 }}>
                 <h4>Results List</h4>
+                {resultFormat === "jsonl" && totalResults > 0 ? (
+                  <div className="pagination-controls">
+                    <button
+                      type="button"
+                      disabled={currentPage <= 1}
+                      onClick={() => {
+                        if (!selectedJobId) return;
+                        const newPage = currentPage - 1;
+                        setCurrentPage(newPage);
+                        loadResults(selectedJobId, resultFormat, newPage);
+                      }}
+                    >
+                      Previous
+                    </button>
+
+                    <span className="pagination-info">
+                      Page {currentPage} of{" "}
+                      {Math.ceil(totalResults / resultsPerPage)}({totalResults}{" "}
+                      total results)
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={
+                        currentPage >= Math.ceil(totalResults / resultsPerPage)
+                      }
+                      onClick={() => {
+                        if (!selectedJobId) return;
+                        const newPage = currentPage + 1;
+                        setCurrentPage(newPage);
+                        loadResults(selectedJobId, resultFormat, newPage);
+                      }}
+                    >
+                      Next
+                    </button>
+
+                    <div className="pagination-jump">
+                      <input
+                        type="number"
+                        min="1"
+                        max={Math.ceil(totalResults / resultsPerPage)}
+                        value={jumpInputValue}
+                        onChange={(e) => {
+                          if (!selectedJobId) return;
+                          const page = parseInt(e.target.value, 10);
+                          const maxPage = Math.ceil(
+                            totalResults / resultsPerPage,
+                          );
+
+                          if (
+                            Number.isInteger(page) &&
+                            page >= 1 &&
+                            page <= maxPage
+                          ) {
+                            setJumpInputValue(e.target.value);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedJobId) return;
+                          const pageInput = document.querySelector(
+                            ".pagination-jump input",
+                          ) as HTMLInputElement;
+                          const page = parseInt(pageInput.value, 10);
+                          if (
+                            page >= 1 &&
+                            page <= Math.ceil(totalResults / resultsPerPage)
+                          ) {
+                            setCurrentPage(page);
+                            loadResults(selectedJobId, resultFormat, page);
+                          }
+                        }}
+                      >
+                        Go
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="result-items-list">
                   {resultItems.map((item, index) => {
                     const isCrawl = isCrawlResultItem(item);

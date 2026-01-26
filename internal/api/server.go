@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,12 @@ import (
 	"spartan-scraper/internal/scheduler"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/validate"
+)
+
+const (
+	KindScrape   = "scrape"
+	KindCrawl    = "crawl"
+	KindResearch = "research"
 )
 
 const maxRequestBodySize = 1024 * 1024 // 1MB
@@ -539,6 +546,44 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if format == "jsonl" {
+		hasPagination := r.URL.Query().Get("limit") != "" || r.URL.Query().Get("offset") != ""
+
+		if hasPagination {
+			limit := exporter.Limit(r)
+			offset := exporter.Offset(r)
+
+			f, err := os.Open(job.ResultPath)
+			if err != nil {
+				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			defer f.Close()
+
+			var items interface{}
+			var total int
+
+			switch job.Kind {
+			case KindCrawl:
+				items, total, err = exporter.ExportPaginated[exporter.CrawlResult](f, limit, offset)
+			case KindScrape:
+				items, total, err = exporter.ExportPaginated[exporter.ScrapeResult](f, limit, offset)
+			case KindResearch:
+				items, total, err = exporter.ExportPaginated[exporter.ResearchResult](f, limit, offset)
+			default:
+				items, total, err = exporter.ExportPaginated[map[string]interface{}](f, limit, offset)
+			}
+
+			if err != nil {
+				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Total-Count", strconv.Itoa(total))
+			writeJSON(w, items)
+			return
+		}
+
 		ext := filepath.Ext(job.ResultPath)
 		if ct := contentTypeForExtension(ext); ct != "" {
 			w.Header().Set("Content-Type", ct)
