@@ -2155,6 +2155,54 @@
       "completed_at": "2026-01-26T21:55:22.061886000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0055",
+      "status": "done",
+      "title": "Split internal/api/server_test.go into focused test files",
+      "priority": "critical",
+      "tags": [
+        "file-size",
+        "api",
+        "testing",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/api/server_test.go"
+      ],
+      "evidence": [
+        "Test file is 1,830 LOC, nearly 5x the 400 LOC heuristic",
+        "Tests for all API endpoints (scrape, crawl, research, jobs, schedules, auth, templates, crawl states, health) are in one file",
+        "Large test files become hard to maintain and navigate",
+        "Tests for different concerns should be grouped together",
+        "Contains cross-cutting tests (TestZeroValuesAllowed, TestRejectUnknownFields) and utility tests (TestContentTypeForExtension) that need special placement"
+      ],
+      "plan": [
+        "Analyze test functions to identify which endpoints they test",
+        "Create test files per handler in internal/api/: scrape_test.go, crawl_test.go, research_test.go, jobs_test.go, job_results_test.go, schedules_test.go, auth_test.go, templates_test.go, crawl_states_test.go, health_test.go",
+        "Move setupTestServer helper to internal/api/setup_test.go",
+        "Move TestContentTypeForExtension to internal/api/util_test.go (tests contentTypeForExtension from util.go)",
+        "Keep TestZeroValuesAllowed and TestRejectUnknownFields in server_test.go as cross-cutting integration tests",
+        "Ensure each handler-specific test file tests a single handler module",
+        "Run make test-ci to verify all tests still pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "server_test.go will remain after splitting to host cross-cutting integration tests that span multiple handlers",
+        "util_test.go is needed for utility function tests (contentTypeForExtension) since util.go has no tests currently",
+        "Cross-cutting tests (zero values, unknown fields) are better kept together rather than scattered across handler tests",
+        "Split 1,830 LOC server_test.go into 12 focused test files",
+        "Created setup_test.go for shared test infrastructure",
+        "Each handler now has dedicated test file (scrape, crawl, research, jobs, schedules, auth, templates, crawl_states, health)",
+        "Cross-cutting tests (zero values, unknown fields) remain in server_test.go",
+        "All 32 tests pass, make ci passes"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-26T22:18:29.400674000Z",
+      "completed_at": "2026-01-26T22:18:29.400674000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
