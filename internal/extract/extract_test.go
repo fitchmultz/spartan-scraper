@@ -75,3 +75,51 @@ func TestApplyTemplate(t *testing.T) {
 		t.Errorf("expected 1 link '/link1', got %v", extracted.Links)
 	}
 }
+
+func TestListTemplateNames(t *testing.T) {
+	dataDir := t.TempDir()
+
+	// Test with no custom templates (should return built-ins)
+	names, err := ListTemplateNames(dataDir)
+	if err != nil {
+		t.Fatalf("ListTemplateNames failed: %v", err)
+	}
+
+	// Should have at least the 3 built-in templates
+	if len(names) < 3 {
+		t.Errorf("expected at least 3 templates, got %d", len(names))
+	}
+
+	// Check for specific built-in templates
+	hasDefault := false
+	hasArticle := false
+	hasProduct := false
+	for _, name := range names {
+		if name == "default" {
+			hasDefault = true
+		}
+		if name == "article" {
+			hasArticle = true
+		}
+		if name == "product" {
+			hasProduct = true
+		}
+	}
+
+	if !hasDefault {
+		t.Error("expected 'default' template in list")
+	}
+	if !hasArticle {
+		t.Error("expected 'article' template in list")
+	}
+	if !hasProduct {
+		t.Error("expected 'product' template in list")
+	}
+
+	// Verify sorting (should be alphabetical)
+	for i := 1; i < len(names); i++ {
+		if names[i-1] > names[i] {
+			t.Errorf("templates not sorted: %s > %s", names[i-1], names[i])
+		}
+	}
+}

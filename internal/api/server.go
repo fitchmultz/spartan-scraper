@@ -131,7 +131,7 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	return &Server{manager: manager, store: store, cfg: cfg}
 }
 
-// Routes returns the HTTP handler with all API routes configured.
+// Routes returns HTTP handler with all API routes configured.
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)
@@ -146,6 +146,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/jobs/", s.handleJob)
 	mux.HandleFunc("/v1/schedules", s.handleSchedules)
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
+	mux.HandleFunc("/v1/templates", s.handleTemplates)
+	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
 	return mux
 }
 
@@ -796,6 +798,41 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	names, err := extract.ListTemplateNames(s.cfg.DataDir)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, map[string]interface{}{"templates": names})
+}
+
+func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	query := r.URL.Query()
+	limit := parseIntParam(query.Get("limit"), 100)
+	offset := parseIntParam(query.Get("offset"), 0)
+	opts := store.ListCrawlStatesOptions{Limit: limit, Offset: offset}
+
+	states, err := s.store.ListCrawlStates(r.Context(), opts)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, map[string]interface{}{"crawlStates": states})
 }
 
 func writeJSON(w http.ResponseWriter, payload interface{}) {

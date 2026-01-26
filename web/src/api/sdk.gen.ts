@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -78,6 +78,20 @@ export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: 
         ...options.headers
     }
 });
+
+/**
+ * List extraction templates
+ *
+ * Returns list of all available extraction templates (built-in + file-based)
+ */
+export const listTemplates = <ThrowOnError extends boolean = false>(options?: Options<ListTemplatesData, ThrowOnError>) => (options?.client ?? client).get<ListTemplatesResponses, ListTemplatesErrors, ThrowOnError>({ url: '/v1/templates', ...options });
+
+/**
+ * List crawl states
+ *
+ * Returns list of crawl states used for incremental tracking, ordered by last_scraped DESC
+ */
+export const listCrawlStates = <ThrowOnError extends boolean = false>(options?: Options<ListCrawlStatesData, ThrowOnError>) => (options?.client ?? client).get<ListCrawlStatesResponses, ListCrawlStatesErrors, ThrowOnError>({ url: '/v1/crawl-states', ...options });
 
 /**
  * Scrape a single page

@@ -60,6 +60,10 @@ func Run(ctx context.Context) int {
 		return runExport(ctx, cfg)
 	case "schedule":
 		return runSchedule(ctx, cfg)
+	case "templates":
+		return runTemplates(ctx, cfg)
+	case "crawl-states":
+		return runCrawlStates(ctx, cfg)
 	case "mcp":
 		return runMCP(ctx, cfg)
 	case "server":
@@ -889,6 +893,122 @@ Examples:
 	}
 }
 
+func runTemplates(ctx context.Context, cfg config.Config) int {
+	if len(os.Args) < 3 {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan templates <subcommand> [options]
+
+Subcommands:
+  list    List available extraction templates
+
+Examples:
+  spartan templates list
+`)
+		return 1
+	}
+
+	if os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan templates <subcommand> [options]
+
+Subcommands:
+  list    List available extraction templates
+
+Examples:
+  spartan templates list
+`)
+		return 0
+	}
+
+	switch os.Args[2] {
+	case "list":
+		names, err := extract.ListTemplateNames(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		for _, name := range names {
+			fmt.Println(name)
+		}
+		return 0
+	default:
+		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", os.Args[2])
+		return 1
+	}
+}
+
+func runCrawlStates(ctx context.Context, cfg config.Config) int {
+	if len(os.Args) < 3 {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan crawl-states <subcommand> [options]
+
+Subcommands:
+  list    List crawl states (incremental tracking)
+
+Examples:
+  spartan crawl-states list
+  spartan crawl-states list --limit 50
+`)
+		return 1
+	}
+
+	if os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help" {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan crawl-states <subcommand> [options]
+
+Subcommands:
+  list    List crawl states (incremental tracking)
+
+Examples:
+  spartan crawl-states list
+  spartan crawl-states list --limit 50
+`)
+		return 0
+	}
+
+	switch os.Args[2] {
+	case "list":
+		fs := flag.NewFlagSet("crawl-states list", flag.ExitOnError)
+		limit := fs.Int("limit", 100, "Maximum number of crawl states to list")
+		offset := fs.Int("offset", 0, "Number of crawl states to skip")
+		_ = fs.Parse(os.Args[3:])
+
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+
+		opts := store.ListCrawlStatesOptions{Limit: *limit, Offset: *offset}
+		states, err := st.ListCrawlStates(ctx, opts)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+
+		if len(states) == 0 {
+			fmt.Println("No crawl states found.")
+			return 0
+		}
+
+		fmt.Println("URL\tETag\tLast-Modified\tHash\tLast-Scraped")
+		for _, state := range states {
+			lastScraped := "never"
+			if !state.LastScraped.IsZero() {
+				lastScraped = state.LastScraped.Format(time.RFC3339)
+			}
+			fmt.Printf("%s\t%s\t%s\t%s\t%s\n",
+				state.URL, state.ETag, state.LastModified,
+				state.ContentHash, lastScraped)
+		}
+		return 0
+	default:
+		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", os.Args[2])
+		return 1
+	}
+}
+
 func runServer(ctx context.Context, cfg config.Config) int {
 	if len(os.Args) > 2 && (os.Args[2] == "--help" || os.Args[2] == "-h" || os.Args[2] == "help") {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -1148,17 +1268,19 @@ Usage:
   spartan <command> [options]
 
 Commands:
-  scrape   Scrape a single page
-  crawl    Crawl a website
-  research Deep research across multiple sources
-	auth     Manage auth vault and profiles
-  export   Export job results (jsonl, json, md, csv)
-  schedule Manage scheduled jobs
-  mcp      Run MCP server over stdio
-  server   Run API server + workers
-  jobs     Manage jobs (list, get, cancel)
-  health   Check system health
-  tui      Launch terminal UI
+  scrape       Scrape a single page
+  crawl        Crawl a website
+  research     Deep research across multiple sources
+  auth         Manage auth vault and profiles
+  templates    List extraction templates
+  crawl-states List crawl states (incremental tracking)
+  export       Export job results (jsonl, json, md, csv)
+  schedule     Manage scheduled jobs
+  mcp          Run MCP server over stdio
+  server       Run API server + workers
+  jobs         Manage jobs (list, get, cancel)
+  health       Check system health
+  tui          Launch terminal UI
 
 Examples:
   spartan scrape --url https://example.com --out ./out/example.json
@@ -1169,18 +1291,21 @@ Examples:
 	spartan auth set --name acme --parent base --token "token" --token-kind bearer
 	spartan auth set --name acme --preset-name acme-site --preset-host "*.acme.com"
 	spartan auth resolve --url https://example.com --profile acme
-	spartan auth vault export --out ./out/auth_vault.json
-	spartan auth vault import --path ./out/auth_vault.json
-  spartan export --job-id <id> --format md --out ./out/report.md
-  spartan schedule add --kind scrape --interval 3600 --url https://example.com
-  spartan schedule list
-  spartan schedule delete --id <id>
-  spartan jobs list
-  spartan jobs cancel <id>
-  spartan health
-  spartan mcp
-  spartan server
-  spartan tui
+  spartan auth vault export --out ./out/auth_vault.json
+  spartan auth vault import --path ./out/auth_vault.json
+  spartan templates list
+  spartan crawl-states list
+  spartan crawl-states list --limit 10
+   spartan export --job-id <id> --format md --out ./out/report.md
+   spartan schedule add --kind scrape --interval 3600 --url https://example.com
+   spartan schedule list
+   spartan schedule delete --id <id>
+   spartan jobs list
+   spartan jobs cancel <id>
+   spartan health
+   spartan mcp
+   spartan server
+   spartan tui
 
 Use "spartan <command> --help" for command-specific flags.
 `)

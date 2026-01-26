@@ -58,6 +58,27 @@ func (o ListByStatusOptions) Defaults() ListByStatusOptions {
 	return o
 }
 
+// ListCrawlStatesOptions specifies pagination parameters for Store.ListCrawlStates.
+type ListCrawlStatesOptions struct {
+	Limit  int
+	Offset int
+}
+
+// Defaults returns options with safe defaults applied.
+// Limit defaults to 100, max is 1000. Offset defaults to 0.
+func (o ListCrawlStatesOptions) Defaults() ListCrawlStatesOptions {
+	if o.Limit <= 0 {
+		o.Limit = 100
+	}
+	if o.Limit > 1000 {
+		o.Limit = 1000
+	}
+	if o.Offset < 0 {
+		o.Offset = 0
+	}
+	return o
+}
+
 // ListByStatus returns all jobs with the given status, ordered by created_at.
 // If no options are provided, it uses safe defaults (limit 100, offset 0).
 func (s *Store) ListByStatus(ctx context.Context, status model.Status, opts ListByStatusOptions) ([]model.Job, error) {
@@ -328,6 +349,39 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 	return err
 }
 
+// ListCrawlStates returns all crawl states, ordered by last_scraped DESC.
+// If no options are provided, it uses safe defaults (limit 100, offset 0).
+func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions) ([]model.CrawlState, error) {
+	opts = opts.Defaults()
+	rows, err := s.db.QueryContext(ctx,
+		`select url, etag, last_modified, content_hash, last_scraped
+		 from crawl_states order by last_scraped desc limit ? offset ?`,
+		opts.Limit, opts.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := []model.CrawlState{}
+	for rows.Next() {
+		var state model.CrawlState
+		var lastScraped string
+		if err := rows.Scan(&state.URL, &state.ETag, &state.LastModified,
+			&state.ContentHash, &lastScraped); err != nil {
+			return nil, err
+		}
+		if lastScraped != "" {
+			var parseErr error
+			state.LastScraped, parseErr = time.Parse(time.RFC3339Nano, lastScraped)
+			if parseErr != nil {
+				return nil, fmt.Errorf("failed to parse last_scraped for URL %s: %w", state.URL, parseErr)
+			}
+		}
+		results = append(results, state)
+	}
+	return results, rows.Err()
+}
+
 // Delete permanently removes a job from the store.
 func (s *Store) Delete(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM jobs WHERE id = ?", id)
@@ -386,4 +440,9 @@ func (s *Store) Checkpoint(ctx context.Context) error {
 func (s *Store) UpdateResultPath(ctx context.Context, id string, resultPath string) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE jobs SET result_path = ? WHERE id = ?", resultPath, id)
 	return err
+}
+
+// DataDir returns the data directory path.
+func (s *Store) DataDir() string {
+	return s.dataDir
 }

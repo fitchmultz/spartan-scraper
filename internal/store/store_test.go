@@ -486,3 +486,120 @@ func TestStoreDeleteWithArtifacts(t *testing.T) {
 		t.Errorf("deleting already-deleted job should succeed, got: %v", err)
 	}
 }
+
+func TestListCrawlStates(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	// Insert test data
+	states := []model.CrawlState{
+		{
+			URL:          "https://example.com/page1",
+			ETag:         "etag1",
+			LastModified: "Mon, 01 Jan 2026 00:00:00 GMT",
+			ContentHash:  "hash1",
+			LastScraped:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			URL:          "https://example.com/page2",
+			ETag:         "etag2",
+			LastModified: "Tue, 02 Jan 2026 00:00:00 GMT",
+			ContentHash:  "hash2",
+			LastScraped:  time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, state := range states {
+		err := s.UpsertCrawlState(ctx, state)
+		if err != nil {
+			t.Fatalf("failed to insert crawl state: %v", err)
+		}
+	}
+
+	// List all
+	listed, err := s.ListCrawlStates(ctx, ListCrawlStatesOptions{})
+	if err != nil {
+		t.Fatalf("failed to list crawl states: %v", err)
+	}
+
+	if len(listed) != 2 {
+		t.Errorf("expected 2 states, got %d", len(listed))
+	}
+
+	// Verify ordering (most recent first)
+	if listed[0].URL != "https://example.com/page2" {
+		t.Errorf("expected page2 first, got %s", listed[0].URL)
+	}
+}
+
+func TestListCrawlStatesPagination(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	// Insert 3 states
+	for i := 1; i <= 3; i++ {
+		state := model.CrawlState{
+			URL:         fmt.Sprintf("https://example.com/page%d", i),
+			ETag:        fmt.Sprintf("etag%d", i),
+			ContentHash: fmt.Sprintf("hash%d", i),
+			LastScraped: time.Date(2026, 1, i, 0, 0, 0, 0, time.UTC),
+		}
+		err := s.UpsertCrawlState(ctx, state)
+		if err != nil {
+			t.Fatalf("failed to insert crawl state: %v", err)
+		}
+	}
+
+	// Test limit
+	listed, err := s.ListCrawlStates(ctx, ListCrawlStatesOptions{Limit: 2})
+	if err != nil {
+		t.Fatalf("failed to list crawl states: %v", err)
+	}
+	if len(listed) != 2 {
+		t.Errorf("expected 2 states with limit, got %d", len(listed))
+	}
+
+	// Test offset
+	listed, err = s.ListCrawlStates(ctx, ListCrawlStatesOptions{Offset: 1})
+	if err != nil {
+		t.Fatalf("failed to list crawl states: %v", err)
+	}
+	if len(listed) != 2 {
+		t.Errorf("expected 2 states with offset 1, got %d", len(listed))
+	}
+}
+
+func TestListCrawlStatesOptionsDefaults(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      ListCrawlStatesOptions
+		wantLimit  int
+		wantOffset int
+	}{
+		{"zero values use defaults", ListCrawlStatesOptions{}, 100, 0},
+		{"negative limit uses default", ListCrawlStatesOptions{Limit: -1}, 100, 0},
+		{"negative offset uses zero", ListCrawlStatesOptions{Offset: -5}, 100, 0},
+		{"max limit capped", ListCrawlStatesOptions{Limit: 2000}, 1000, 0},
+		{"valid values preserved", ListCrawlStatesOptions{Limit: 50, Offset: 10}, 50, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.input.Defaults()
+			if got.Limit != tt.wantLimit || got.Offset != tt.wantOffset {
+				t.Errorf("Defaults() = {%d, %d}, want {%d, %d}",
+					got.Limit, got.Offset, tt.wantLimit, tt.wantOffset)
+			}
+		})
+	}
+}

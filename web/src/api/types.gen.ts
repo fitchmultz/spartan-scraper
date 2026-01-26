@@ -283,6 +283,29 @@ export type ScheduleListResponse = {
     schedules: Array<Schedule>;
 };
 
+export type CrawlState = {
+    /**
+     * URL that was crawled
+     */
+    url?: string;
+    /**
+     * ETag header value for incremental detection
+     */
+    etag?: string | null;
+    /**
+     * Last-Modified header value
+     */
+    lastModified?: string | null;
+    /**
+     * Hash of content for incremental detection
+     */
+    contentHash?: string | null;
+    /**
+     * Timestamp of last scrape
+     */
+    lastScraped?: string | null;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -480,6 +503,80 @@ export type PostV1AuthExportResponses = {
 };
 
 export type PostV1AuthExportResponse = PostV1AuthExportResponses[keyof PostV1AuthExportResponses];
+
+export type ListTemplatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/templates';
+};
+
+export type ListTemplatesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListTemplatesError = ListTemplatesErrors[keyof ListTemplatesErrors];
+
+export type ListTemplatesResponses = {
+    /**
+     * Template list
+     */
+    200: {
+        /**
+         * List of template names
+         */
+        templates?: Array<string>;
+    };
+};
+
+export type ListTemplatesResponse = ListTemplatesResponses[keyof ListTemplatesResponses];
+
+export type ListCrawlStatesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Maximum number of crawl states to return
+         */
+        limit?: number;
+        /**
+         * Number of crawl states to skip
+         */
+        offset?: number;
+    };
+    url: '/v1/crawl-states';
+};
+
+export type ListCrawlStatesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListCrawlStatesError = ListCrawlStatesErrors[keyof ListCrawlStatesErrors];
+
+export type ListCrawlStatesResponses = {
+    /**
+     * Crawl states list
+     */
+    200: {
+        crawlStates?: Array<CrawlState>;
+    };
+};
+
+export type ListCrawlStatesResponse = ListCrawlStatesResponses[keyof ListCrawlStatesResponses];
 
 export type PostV1ScrapeData = {
     body: ScrapeRequest;

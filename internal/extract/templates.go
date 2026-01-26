@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 var (
@@ -124,4 +125,22 @@ func ResolveTemplate(opts ExtractOptions, registry *TemplateRegistry) (Template,
 
 	// Fallback to default if named one not found
 	return builtInTemplates["default"], nil
+}
+
+// ListTemplateNames returns all available template names (built-in + file-based).
+// Returns sorted list for consistent ordering.
+func ListTemplateNames(dataDir string) ([]string, error) {
+	registry, err := LoadTemplateRegistry(dataDir)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(registry.Templates))
+	for name := range registry.Templates {
+		names = append(names, name)
+	}
+
+	// Sort for consistent ordering
+	sort.Strings(names)
+	return names, nil
 }

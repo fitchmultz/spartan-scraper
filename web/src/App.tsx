@@ -20,7 +20,13 @@ import {
   postV1Research,
   postV1Scrape,
   getHealthz,
+  listTemplates,
+  listCrawlStates,
+  getV1AuthProfiles,
+  getV1Schedules,
   type Job,
+  type CrawlState,
+  type AuthProfile,
 } from "./api";
 import { buildApiUrl, getApiBaseUrl } from "./lib/api-config";
 
@@ -110,6 +116,15 @@ export function App() {
     active: number;
   } | null>(null);
 
+  const [profiles, setProfiles] = useState<
+    { name: string; parents: string[] }[]
+  >([]);
+  const [schedules, setSchedules] = useState<
+    { id: string; kind: string; intervalSeconds: number; nextRun: string }[]
+  >([]);
+  const [templates, setTemplates] = useState<string[]>([]);
+  const [crawlStates, setCrawlStates] = useState<CrawlState[]>([]);
+
   const selectedJobIdRef = useRef<string | null>(null);
   const resultFormatRef = useRef<string>("jsonl");
 
@@ -158,21 +173,97 @@ export function App() {
     }
   }, []);
 
+  const refreshProfiles = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await getV1AuthProfiles({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (apiError) {
+        console.error("Failed to fetch profiles:", apiError);
+        return;
+      }
+      const profileList = (data?.profiles ?? [])
+        .filter((p) => p.name !== undefined)
+        .map((p: AuthProfile) => ({
+          name: p.name as string,
+          parents: p.parents || [],
+        }));
+      setProfiles(profileList);
+    } catch (err) {
+      console.error("Failed to fetch profiles:", err);
+    }
+  }, []);
+
+  const refreshSchedules = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await getV1Schedules({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (apiError) {
+        console.error("Failed to fetch schedules:", apiError);
+        return;
+      }
+      setSchedules(data?.schedules || []);
+    } catch (err) {
+      console.error("Failed to fetch schedules:", err);
+    }
+  }, []);
+
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await listTemplates({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (apiError) {
+        console.error("Failed to fetch templates:", apiError);
+        return;
+      }
+      setTemplates(data?.templates || []);
+    } catch (err) {
+      console.error("Failed to fetch templates:", err);
+    }
+  }, []);
+
+  const refreshCrawlStates = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await listCrawlStates({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (apiError) {
+        console.error("Failed to fetch crawl states:", apiError);
+        return;
+      }
+      setCrawlStates(data?.crawlStates || []);
+    } catch (err) {
+      console.error("Failed to fetch crawl states:", err);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshJobs();
     void refreshManagerStatus();
+    void refreshProfiles();
+    void refreshSchedules();
+    void refreshTemplates();
+    void refreshCrawlStates();
     const handle = window.setInterval(() => {
       void refreshJobs();
       void refreshManagerStatus();
     }, 4000);
     return () => window.clearInterval(handle);
-  }, [refreshJobs, refreshManagerStatus]);
+  }, [
+    refreshJobs,
+    refreshManagerStatus,
+    refreshProfiles,
+    refreshSchedules,
+    refreshTemplates,
+    refreshCrawlStates,
+  ]);
 
   useEffect(() => {
     selectedJobIdRef.current = selectedJobId;
   }, [selectedJobId]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ref sync requires format in deps to trigger reload
   useEffect(() => {
     resultFormatRef.current = resultFormat;
   }, [resultFormat]);
@@ -974,6 +1065,83 @@ export function App() {
           </div>
         ) : null}
       </section>
+
+      {profiles.length > 0 && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2>Auth Profiles</h2>
+          <div className="job-list">
+            {profiles.map((profile) => (
+              <div key={profile.name} className="job-item">
+                <div>{profile.name}</div>
+                <div style={{ fontSize: "0.8em", color: "#666" }}>
+                  {profile.parents.length > 0
+                    ? `Parents: ${profile.parents.join(", ")}`
+                    : "No parents"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {schedules.length > 0 && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2>Schedules</h2>
+          <div className="job-list">
+            {schedules.map((sched) => (
+              <div key={sched.id} className="job-item">
+                <div>{sched.kind}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div>ID: {sched.id}</div>
+                  <div>Interval: {sched.intervalSeconds}s</div>
+                  <div>Next: {new Date(sched.nextRun).toLocaleString()}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {templates.length > 0 && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2>Extraction Templates</h2>
+          <div className="job-list">
+            {templates.map((name) => (
+              <div key={name} className="job-item">
+                <div>{name}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {crawlStates.length > 0 && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2>Crawl States (Incremental Tracking)</h2>
+          <div className="job-list">
+            {crawlStates.map((state) => (
+              <div key={state.url} className="job-item">
+                <div style={{ wordBreak: "break-all" }}>{state.url}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    fontSize: "0.8em",
+                  }}
+                >
+                  {state.etag && <div>ETag: {state.etag}</div>}
+                  {state.lastScraped && (
+                    <div>
+                      Scraped: {new Date(state.lastScraped).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="footer">
         Spartan Scraper — build once, deploy everywhere.

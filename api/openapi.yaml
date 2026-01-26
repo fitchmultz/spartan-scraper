@@ -204,6 +204,81 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/templates:
+    get:
+      summary: List extraction templates
+      description: Returns list of all available extraction templates (built-in + file-based)
+      operationId: listTemplates
+      responses:
+        '200':
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: string
+                    description: List of template names
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/crawl-states:
+    get:
+      summary: List crawl states
+      description: Returns list of crawl states used for incremental tracking, ordered by last_scraped DESC
+      operationId: listCrawlStates
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of crawl states to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of crawl states to skip
+      responses:
+        '200':
+          description: Crawl states list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  crawlStates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CrawlState'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/scrape:
     post:
       summary: Scrape a single page
@@ -1120,3 +1195,26 @@ components:
             $ref: '#/components/schemas/Schedule'
       required:
         - schedules
+    CrawlState:
+      type: object
+      properties:
+        url:
+          type: string
+          description: URL that was crawled
+        etag:
+          type: string
+          description: ETag header value for incremental detection
+          nullable: true
+        lastModified:
+          type: string
+          description: Last-Modified header value
+          nullable: true
+        contentHash:
+          type: string
+          description: Hash of content for incremental detection
+          nullable: true
+        lastScraped:
+          type: string
+          format: date-time
+          description: Timestamp of last scrape
+          nullable: true

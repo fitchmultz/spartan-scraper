@@ -2,66 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0052",
-      "status": "todo",
-      "title": "Add missing list views (templates, crawl states, profiles, schedules) to TUI and web UI",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "api",
-        "tui",
-        "web",
-        "ux",
-        "templates",
-        "crawl-states"
-      ],
-      "scope": [
-        "internal/cli/cli.go",
-        "internal/api/server.go",
-        "internal/store/store.go",
-        "internal/extract/templates.go",
-        "internal/model/state.go",
-        "internal/ui/tui/tui.go",
-        "web/src/App.tsx",
-        "api/openapi.yaml",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "User request: list",
-        "internal/cli/cli.go: Has 'spartan auth list', 'spartan jobs list', 'spartan schedule list' but no template or crawl state listing",
-        "internal/api/server.go: Has /v1/auth/profiles, /v1/jobs, /v1/schedules endpoints but no /v1/templates or /v1/crawl-states",
-        "internal/ui/tui/tui.go: Only lists jobs (hardcoded 100 limit), no views for profiles, schedules, templates, or crawl states",
-        "web/src/App.tsx: Only shows jobs list, no views for profiles, schedules, templates, or crawl states",
-        "internal/extract/templates.go: TemplateRegistry loads built-in and file-based templates but no listing API",
-        "internal/model/state.go: CrawlState exists but no listing methods in store"
-      ],
-      "plan": [
-        "Add TemplateNames() function to extract package to list available templates (built-in + file-based)",
-        "Add ListCrawlStates() method to store to retrieve all crawl states",
-        "Add /v1/templates endpoint to API to list all available extraction templates",
-        "Add /v1/crawl-states endpoint to API to list all crawl states",
-        "Add 'spartan templates list' CLI subcommand",
-        "Add 'spartan crawl-states list' CLI subcommand",
-        "Update TUI to add tabs/sections for profiles, schedules, templates, and crawl states",
-        "Update web UI to add list views for profiles, schedules, templates, and crawl states",
-        "Update api/openapi.yaml with new endpoints and regenerate TS client",
-        "Add tests for new listing functionality across all interfaces",
-        "Run make test and make ci"
-      ],
-      "notes": [
-        "Note: Job listing already exists across all interfaces (CLI: spartan jobs list, API: /v1/jobs, TUI: job list, Web: job list)",
-        "Note: Status filtering for jobs is covered by RQ-0046",
-        "Note: TUI pagination and job details are covered by RQ-0047",
-        "Focus this task on adding missing list views for templates, crawl states, profiles, and schedules"
-      ],
-      "request": "list",
-      "created_at": "2026-01-25T22:00:00Z",
-      "updated_at": "2026-01-25T22:11:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0046",
       "status": "todo",
       "title": "Add status filtering to job listing across API, CLI, and TUI",
