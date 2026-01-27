@@ -1,3 +1,6 @@
+// Package config provides application configuration loading from environment variables.
+// It handles loading defaults from .env files and parsing environment variables.
+// It does NOT handle runtime configuration updates or validation beyond type parsing.
 package config
 
 import (

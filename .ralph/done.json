@@ -2291,6 +2291,59 @@
       "completed_at": "2026-01-26T23:25:31.638265000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0058",
+      "status": "done",
+      "title": "Add package docstrings to all Go source files",
+      "priority": "high",
+      "tags": [
+        "documentation",
+        "go",
+        "standards"
+      ],
+      "scope": [
+        "internal"
+      ],
+      "evidence": [
+        "41 out of 75 Go files have package docstrings (34 missing docstrings)",
+        "Files missing docs include: model/job.go, model/state.go, config/log.go, config/config.go, pipeline/*.go, auth/*.go, extract/*.go (except extract.go), fetch/*.go, validate/*.go, research/research.go, ui/tui/tui.go, scheduler/scheduler.go, store/store.go",
+        "AGENTS.md requires: 'every code file needs a docstring that explains: What the module/file is responsible for, What it explicitly does NOT handle, Any invariants or assumptions callers must respect'"
+      ],
+      "plan": [
+        "List all Go files without package docstrings in internal/ (confirmed 34 files)",
+        "For each file, read its contents to understand its purpose",
+        "Write docstrings following the template: '// Package <name> provides <what it does>. It handles <scope>. It does NOT handle <boundaries>.'",
+        "Add docstrings to model files: model/job.go, model/state.go",
+        "Add docstrings to config files: config/log.go, config/config.go",
+        "Add docstrings to pipeline files: pipeline/interfaces.go, pipeline/types.go, pipeline/js.go, pipeline/transformers.go, pipeline/registry.go",
+        "Add docstrings to auth files: auth/types.go, auth/merge.go, auth/vault.go",
+        "Add docstrings to extract files: extract/types.go, extract/normalize.go, extract/jsonld.go, extract/pipeline.go, extract/templates.go, extract/schema.go",
+        "Add docstrings to fetch files: fetch/types.go, fetch/retry.go, fetch/limiter.go, fetch/render_profiles.go, fetch/adaptive_fetcher.go, fetch/http_fetcher.go, fetch/playwright_fetcher.go, fetch/chromedp_fetcher.go, fetch/detect.go, fetch/render_profiles_store.go",
+        "Add docstrings to validate files: validate/request.go, validate/validate.go",
+        "Add docstrings to other internal files: research/research.go, ui/tui/tui.go, scheduler/scheduler.go, store/store.go",
+        "Add docstrings to cli files: cli/cli.go, cli/*.go (all subdirectories)",
+        "Verify all docstrings explain responsibility, exclusions, and invariants",
+        "Run make ci to ensure formatting passes"
+      ],
+      "notes": [
+        "Task scope expanded from original 43 files to 75 total Go files in internal/",
+        "Additional packages discovered: research, ui/tui, scheduler, store, cli subdirectories",
+        "New files in existing packages also need docstrings: extract/schema.go, pipeline/registry.go, fetch/playwright_fetcher.go, fetch/http_fetcher.go, fetch/chromedp_fetcher.go, fetch/detect.go, fetch/render_profiles_store.go",
+        "Fixed 3 issues found during Phase 3 review",
+        "Fixed auth package docstring: removed circular reference to vault.go",
+        "Fixed pipeline package docstring: removed circular reference and corrected inaccurate statement",
+        "Fixed http_fetcher.go: moved package docstring to correct location after package declaration",
+        "All 34 internal Go files now have accurate package docstrings",
+        "make ci passes: format, lint, type-check, build, tests all pass",
+        "Reviewed queue: no stale task data affected by docstring changes"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T00:00:22.679736000Z",
+      "completed_at": "2026-01-27T00:00:22.679736000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

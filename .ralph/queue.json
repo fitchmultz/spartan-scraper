@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0058",
-      "status": "todo",
-      "title": "Add package docstrings to all Go source files",
-      "priority": "high",
-      "tags": [
-        "documentation",
-        "go",
-        "standards"
-      ],
-      "scope": [
-        "internal"
-      ],
-      "evidence": [
-        "Only 9 out of 43 Go files have package docstrings",
-        "Files missing docs include: model/job.go, model/state.go, config/log.go, pipeline/*.go, auth/types.go, extract/*.go (except extract.go)",
-        "AGENTS.md requires: 'every code file needs a docstring that explains: What the module/file is responsible for, What it explicitly does NOT handle, Any invariants or assumptions'"
-      ],
-      "plan": [
-        "List all Go files without package docstrings in internal/",
-        "For each file, read its contents to understand its purpose",
-        "Write docstrings following the template: '// Package <name> provides <what it does>. It handles <scope>. It does NOT handle <boundaries>.'",
-        "Add docstrings to: model/job.go, model/state.go, config/log.go, pipeline/interfaces.go, pipeline/types.go, pipeline/js.go, pipeline/transformers.go, auth/types.go",
-        "Add docstrings to: extract/types.go, extract/normalize.go, extract/jsonld.go, extract/pipeline.go, extract/templates.go, fetch/types.go, fetch/retry.go, fetch/limiter.go, fetch/render_profiles.go, fetch/adaptive_fetcher.go",
-        "Verify all docstrings explain responsibility, exclusions, and invariants",
-        "Run make ci to ensure formatting passes"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0059",
       "status": "todo",
       "title": "Extract job creation shared logic to avoid duplication",

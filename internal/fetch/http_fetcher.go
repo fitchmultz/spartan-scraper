@@ -1,6 +1,6 @@
-// HTTP-based Fetcher implementation using the standard library http.Client.
-// Provides retry logic, rate limiting, authentication, conditional requests,
-// and response size limits. See fetcher.go for the Fetcher interface definition.
+// Package fetch provides HTTP and headless browser content fetching capabilities.
+// It handles request routing, rate limiting, retry logic, and render profiles.
+// It does NOT handle content extraction or parsing.
 package fetch
 
 import (
@@ -15,7 +15,9 @@ import (
 	"time"
 )
 
-// HTTPFetcher implements content fetching using the standard Go http.Client.
+// HTTPFetcher implements content fetching using the standard library http.Client.
+// Provides retry logic, rate limiting, authentication, conditional requests,
+// and response size limits. See fetcher.go for the Fetcher interface definition.
 type HTTPFetcher struct{}
 
 // Fetch performs a standard HTTP GET request to retrieve the content of a URL.

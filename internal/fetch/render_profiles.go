@@ -1,3 +1,6 @@
+// Package fetch provides HTTP and headless browser content fetching capabilities.
+// It handles request routing, rate limiting, retry logic, and render profiles.
+// It does NOT handle content extraction or parsing.
 package fetch
 
 import (

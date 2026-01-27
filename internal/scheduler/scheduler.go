@@ -1,3 +1,6 @@
+// Package scheduler provides recurring job scheduling and automatic job enqueuing.
+// It handles schedule persistence, interval-based triggering, and job creation.
+// It does NOT handle job execution (jobs package does).
 package scheduler
 
 import (

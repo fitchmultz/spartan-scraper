@@ -1,3 +1,7 @@
+// Package auth provides authentication profile management and credential resolution.
+// It handles profile inheritance, preset matching, environment variable overrides,
+// profile persistence (Load/Save vault), and CRUD operations.
+// It does NOT handle authentication execution.
 package auth
 
 type TokenKind string

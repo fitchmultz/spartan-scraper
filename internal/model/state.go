@@ -1,3 +1,6 @@
+// Package model defines shared domain types for jobs, crawling, and state tracking.
+// It handles type definitions for Job, Kind, Status, and CrawlState.
+// It does NOT handle job persistence, execution, or state transitions.
 package model
 
 import "time"

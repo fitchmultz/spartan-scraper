@@ -1,3 +1,6 @@
+// Package validate provides request validators for scrape, crawl, and research operations.
+// It handles validation of URLs, timeouts, depths, pages, and profile names.
+// It does NOT define validation rules (validate.go does).
 package validate
 
 import (

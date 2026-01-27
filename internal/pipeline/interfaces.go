@@ -1,3 +1,7 @@
+// Package pipeline provides a plugin system for extending scrape and crawl workflows.
+// It handles plugin hooks at pre/post stages of fetch, extract, and output operations,
+// plugin registration, and JavaScript plugin execution.
+// It does NOT handle workflow execution or plugin implementations.
 package pipeline
 
 type Plugin interface {

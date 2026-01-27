@@ -1,3 +1,6 @@
+// Package store provides SQLite-backed persistent storage for jobs and crawl states.
+// It handles job CRUD operations, status tracking, and incremental crawling state.
+// It does NOT handle job execution or scheduling.
 package store
 
 import (

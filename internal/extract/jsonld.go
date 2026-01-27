@@ -1,3 +1,6 @@
+// Package extract provides HTML content extraction using selectors, JSON-LD, and regex.
+// It handles template-based extraction, field normalization, and schema validation.
+// It does NOT handle fetching or rendering HTML content.
 package extract
 
 import (
