@@ -1,4 +1,612 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0072",
+      "status": "todo",
+      "title": "Bind API server to localhost by default and add HTTP server timeouts",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "server",
+        "hardening"
+      ],
+      "scope": [
+        "internal/cli/server/server.go",
+        "internal/config/config.go",
+        ".env",
+        ".env.example",
+        "docs/usage.md",
+        "README.md",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/server/server.go constructs http.Server with Addr: \"0.0.0.0:\" + cfg.Port, exposing the API on all interfaces by default.",
+        "internal/cli/server/server.go constructs http.Server with only Addr and Handler (no ReadHeaderTimeout/ReadTimeout/WriteTimeout/IdleTimeout set)."
+      ],
+      "plan": [
+        "Add a config setting (e.g., BIND_ADDR) with safe default 127.0.0.1 and plumb it through internal/config/config.go.",
+        "Update internal/cli/server/server.go to bind to cfg.BindAddr (default localhost) and document how to opt into 0.0.0.0 explicitly.",
+        "Add conservative HTTP server timeouts (ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout) suitable for local usage.",
+        "Update README/docs to reflect the new bind behavior and config knobs.",
+        "Add tests verifying default binding and that timeouts are non-zero/sane.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0071",
+      "status": "todo",
+      "title": "Redact secrets and filesystem paths from job APIs (and MCP job_status)",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "mcp",
+        "data-leak"
+      ],
+      "scope": [
+        "internal/api/jobs.go",
+        "internal/model/job.go",
+        "internal/mcp/server.go",
+        "api/openapi.yaml",
+        "web/src/App.tsx",
+        "make generate",
+        "make test-ci",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/model/job.go defines Job with Params, ResultPath, and Error fields that may contain secrets and local filesystem paths.",
+        "internal/api/jobs.go returns model.Job values directly in GET /v1/jobs and GET /v1/jobs/{id}, exposing Params and ResultPath to clients.",
+        "internal/mcp/server.go tool job_status returns s.store.Get(ctx, id), which includes Job.ResultPath and Job.Params as stored."
+      ],
+      "plan": [
+        "Define API-safe job response types (e.g., JobSummary/JobDetail) that omit ResultPath and redact sensitive Params fields (auth, login, headers, cookies, tokens).",
+        "Update API handlers in internal/api/jobs.go (and any other endpoints returning model.Job) to return the safe types.",
+        "Update MCP job_status (and any other MCP responses returning model.Job) to use the safe type or a redacted view.",
+        "Update api/openapi.yaml schemas to match the new response shapes and regenerate TS client (make generate).",
+        "Update web UI to consume the new job response types.",
+        "Add/extend tests ensuring secrets and paths are not returned (API + MCP).",
+        "Run make test-ci and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0073",
+      "status": "todo",
+      "title": "Lock down DATA_DIR permissions and write job artifacts with 0600",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "storage",
+        "data-dir",
+        "permissions"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/store/store.go",
+        "internal/auth/vault.go",
+        "internal/scheduler/scheduler.go",
+        ".env",
+        ".env.example",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/store/store.go Open() creates DATA_DIR with os.MkdirAll(dataDir, 0o755), leaving job DB directory world-readable/executable by default.",
+        "internal/auth/vault.go SaveVault() uses os.MkdirAll(dataDirOrDefault(dataDir), 0o755) even though auth vault files are secret-bearing.",
+        "internal/jobs/manager.go run() uses os.MkdirAll(resultDir, 0o755) and os.Create(job.ResultPath), which creates result files with process umask defaults (not guaranteed 0600)."
+      ],
+      "plan": [
+        "Define a single helper for ensuring DATA_DIR exists with secure permissions (prefer 0700) and reuse it across store/auth/scheduler/jobs.",
+        "Write job result files and other secret-bearing artifacts using os.OpenFile with explicit 0600 perms (and directories 0700).",
+        "Decide and document whether to chmod existing directories/files on startup (migration) vs only apply to new writes.",
+        "Add tests that assert created directories and files have expected mode bits (skip/adjust on Windows if needed).",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0074",
+      "status": "todo",
+      "title": "Redact querystrings/userinfo from URLs in logs and log only safe error messages",
+      "priority": "high",
+      "tags": [
+        "security",
+        "logging",
+        "privacy",
+        "slog"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/research/research.go",
+        "internal/crawl/crawl.go",
+        "internal/api/util.go",
+        "internal/apperrors",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/jobs/manager.go logs full URLs via slog.Info(\"processing scrape job\", \"url\", url) and slog.Error(\"scrape job failed\", \"url\", url, ...).",
+        "internal/research/research.go logs full URLs via slog.Debug(\"research crawling target\", \"url\", target, ...) and slog.Error(\"research crawl failed\", \"url\", target, ...).",
+        "internal/crawl/crawl.go logs per-page URLs via slog.Debug(\"enqueuing crawl task\", \"url\", url, ...) which may include tokens in query params."
+      ],
+      "plan": [
+        "Introduce a shared URL sanitization helper for logs (strip query, fragment, and userinfo; optionally truncate long paths).",
+        "Replace slog fields that log raw URL strings with sanitized output across jobs/crawl/research (and any other occurrences).",
+        "Ensure error logs use apperrors.SafeMessage(err) (or equivalent) instead of raw err when the error may contain secrets or filesystem paths.",
+        "Add tests for URL sanitization edge cases (userinfo, query tokens, fragments, invalid URLs) and a small regression test covering at least one log site.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0075",
+      "status": "todo",
+      "title": "Make MCP tools/list JSON schema output deterministic (stable key ordering)",
+      "priority": "high",
+      "tags": [
+        "mcp",
+        "bug",
+        "determinism",
+        "api-contract"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/mcp/server_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/mcp/server.go schema() builds the JSON schema by ranging over Go maps (required/optional), which produces nondeterministic property and required key ordering.",
+        "MCP tools/list output is part of the client-facing contract; nondeterministic ordering can cause flaky snapshots and caching issues for consumers."
+      ],
+      "plan": [
+        "Refactor schema() to iterate keys in sorted order for both properties and required arrays.",
+        "Add a regression test that calls tools/list multiple times and asserts identical JSON output (or at least identical schema key ordering).",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0076",
+      "status": "todo",
+      "title": "Remove fetch-mocking from web tests and replace with non-mocked coverage",
+      "priority": "high",
+      "tags": [
+        "web",
+        "testing",
+        "policy",
+        "ux"
+      ],
+      "scope": [
+        "web/src/App.test.tsx",
+        "web/src/App.tsx",
+        "web/src/lib",
+        "internal/api",
+        "make test-ci",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.test.tsx uses vi.stubGlobal(\"fetch\", ...) and vi.fn().mockResolvedValueOnce(...) to simulate API responses.",
+        "Repository guidelines require tests in make ci to avoid mocks; current web tests violate that constraint."
+      ],
+      "plan": [
+        "Decide target strategy: (A) convert to integration tests that run against a real local API server, or (B) extract pure parsing/formatting helpers and test them directly without mocking fetch.",
+        "Refactor App.tsx (or web/src/lib) so the logic under test is accessible without stubbing globals.",
+        "Replace App.test.tsx with tests that cover success/failure modes using the chosen non-mock approach.",
+        "Ensure web test suite remains fast and deterministic under make test-ci.",
+        "Run make test-ci and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0077",
+      "status": "todo",
+      "title": "Add open-source release essentials (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)",
+      "priority": "high",
+      "tags": [
+        "oss",
+        "docs",
+        "go-public"
+      ],
+      "scope": [
+        "LICENSE",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "README.md"
+      ],
+      "evidence": [
+        "Repository root has no LICENSE/COPYING file (no matches for LICENSE*).",
+        "Repository root has no CONTRIBUTING.md, CODE_OF_CONDUCT.md, or SECURITY.md files."
+      ],
+      "plan": [
+        "Choose an explicit license (MIT/Apache-2.0/etc) and add LICENSE file.",
+        "Add CONTRIBUTING.md with setup, make targets, coding standards, and how to report bugs/security issues.",
+        "Add CODE_OF_CONDUCT.md (e.g., Contributor Covenant) and reference it from README.md.",
+        "Add SECURITY.md describing how to report vulnerabilities and expected response process.",
+        "Run make ci to ensure docs additions don’t break tooling."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0086",
+      "status": "todo",
+      "title": "Split `internal/jobs/manager.go` (733 LOC) and define correct shutdown semantics",
+      "priority": "high",
+      "tags": [
+        "jobs",
+        "refactor",
+        "shutdown",
+        "file-size"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/jobs/manager_test.go",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/jobs/manager.go is 733 lines, exceeding the 700 LOC threshold that requires explicit justification and is a maintainability risk.",
+        "internal/jobs/manager.go Start() drains and runs queued jobs after ctx.Done(), but uses the canceled context, which risks spurious failures or surprising behavior during shutdown."
+      ],
+      "plan": [
+        "Split manager.go into cohesive files (e.g., manager.go, worker.go, job_create.go, job_run.go) while keeping package boundaries stable.",
+        "Define and document shutdown behavior: whether to stop processing immediately, drain without running, or drain with a new bounded context.",
+        "Adjust worker loop implementation to match the decided semantics and add tests for shutdown + queued jobs.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0078",
+      "status": "todo",
+      "title": "Prepare Go module path for public consumption (set module to final GitHub import path)",
+      "priority": "high",
+      "tags": [
+        "go",
+        "release",
+        "packaging"
+      ],
+      "scope": [
+        "go.mod",
+        "cmd/spartan",
+        "internal",
+        "make build",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "go.mod declares `module spartan-scraper`, which is not a resolvable public import path for `go install` once the repo is public."
+      ],
+      "plan": [
+        "Decide the final public repo path (e.g., github.com/<org>/spartan-scraper).",
+        "Update go.mod module directive to the final path and update all internal imports accordingly.",
+        "Verify `go build` and `go test ./...` work in a clean checkout and that `make build` still installs the binary.",
+        "Update README.md with a `go install ...@latest` installation option (if desired).",
+        "Run make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0084",
+      "status": "todo",
+      "title": "Make OpenAPI post-processing script portable (remove perl/rg hard deps or add checks)",
+      "priority": "medium",
+      "tags": [
+        "tooling",
+        "openapi",
+        "dx"
+      ],
+      "scope": [
+        "scripts/strip_openapi_todos.sh",
+        "Makefile",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "scripts/strip_openapi_todos.sh shells out to `rg` and `perl` to modify generated TS files.",
+        "Makefile `generate` target invokes scripts/strip_openapi_todos.sh, so missing rg/perl breaks generation for new contributors."
+      ],
+      "plan": [
+        "Decide whether to (A) replace the script with a Node-based implementation (using repo’s existing Node toolchain) or (B) implement robust fallbacks to grep/sed and avoid perl.",
+        "Add explicit preflight checks with actionable error messages (which dependency is missing and how to install).",
+        "Update docs/usage.md (or README) to list required tooling for `make generate`.",
+        "Run make generate and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0081",
+      "status": "todo",
+      "title": "Sync root `.env` with `.env.example` (MAX_RESPONSE_BYTES and other config drift)",
+      "priority": "medium",
+      "tags": [
+        "config",
+        "docs",
+        "ux"
+      ],
+      "scope": [
+        ".env",
+        ".env.example",
+        "internal/config/config.go",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "internal/config/config.go loads MAX_RESPONSE_BYTES into Config.MaxResponseBytes with a default (10MB).",
+        "Root .env.example includes MAX_RESPONSE_BYTES, but root .env does not, creating config drift for local runs."
+      ],
+      "plan": [
+        "Decide canonical config list and ensure root .env and .env.example contain the same keys (with safe defaults).",
+        "Update docs/usage.md configuration section to match the actual config keys consumed by internal/config/config.go.",
+        "Add a small test or lint check (optional) that ensures .env.example and .env stay aligned (keys match)."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0080",
+      "status": "todo",
+      "title": "Add `make ci-slow` (stress test) and align docs with actual CI gate",
+      "priority": "medium",
+      "tags": [
+        "makefile",
+        "ci",
+        "docs",
+        "e2e"
+      ],
+      "scope": [
+        "Makefile",
+        "scripts/stress_test.sh",
+        "docs/usage.md",
+        "README.md",
+        "make ci",
+        "make ci-slow"
+      ],
+      "evidence": [
+        "Makefile defines `ci: install generate format type-check lint build test-ci` and `test-ci` excludes `internal/e2e` and only runs `cd web && pnpm run test`.",
+        "docs/usage.md section \"CI Coverage\" claims `make ci` covers MCP, scheduler, web preview smoke test, and external auth targets, which is not reflected in Makefile targets.",
+        "scripts/stress_test.sh exists and performs real-target checks across CLI + API + MCP + scheduler + web build, but it is not wired into Make targets."
+      ],
+      "plan": [
+        "Add a `ci-slow` (or `e2e`) target that runs `scripts/stress_test.sh` (and/or `make test` including internal/e2e) with clear expectations and timeouts.",
+        "Update docs/usage.md and README.md to clearly separate `make ci` (fast local gate) from `make ci-slow` (real targets/headless).",
+        "Ensure `make ci` remains deterministic and reasonably fast; keep network/headless in the slow target.",
+        "Add minimal validation to `scripts/stress_test.sh` so failures are actionable (preflight checks, clearer output).",
+        "Run make ci and (optionally) make ci-slow."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0085",
+      "status": "todo",
+      "title": "Harden `scripts/stress_test.sh` prerequisites and remove implicit `python` dependency",
+      "priority": "medium",
+      "tags": [
+        "scripts",
+        "dx",
+        "ci-slow"
+      ],
+      "scope": [
+        "scripts/stress_test.sh",
+        "docs/usage.md",
+        "Makefile"
+      ],
+      "evidence": [
+        "scripts/stress_test.sh shells out to `python -c` for JSON parsing (job status/id extraction), which may not exist as `python` on many systems (python3 only).",
+        "scripts/stress_test.sh also assumes curl, sed, and make/pnpm are available but does not preflight or explain missing deps beyond generic failures."
+      ],
+      "plan": [
+        "Add a preflight section that checks required commands and prints actionable install hints (go, pnpm, curl, etc.).",
+        "Replace `python -c` usage with a more predictable approach (prefer `jq` if present, or a small Node one-liner using the repo’s Node toolchain).",
+        "Ensure `--help` documents prerequisites explicitly and includes at least one end-to-end example.",
+        "If `make ci-slow` is added, wire it to use the improved script and keep outputs stable.",
+        "Run `scripts/stress_test.sh --help` and (optionally) a short smoke run against example.com."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0082",
+      "status": "todo",
+      "title": "Docs parity sweep: CLI commands and API endpoints vs actual router",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "ux",
+        "consistency"
+      ],
+      "scope": [
+        "docs/usage.md",
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/help.go",
+        "internal/api/server.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "docs/usage.md \"Global entry points\" list omits commands that exist in internal/cli/cli.go routing (templates, crawl-states, jobs, health).",
+        "docs/usage.md API endpoint list does not include every route registered by internal/api/server.go (e.g., /v1/schedules, /v1/templates, /v1/crawl-states)."
+      ],
+      "plan": [
+        "List all CLI commands from internal/cli/help.go and internal/cli/cli.go and ensure docs/usage.md reflects them with concise examples.",
+        "List all API routes from internal/api/server.go and ensure docs/usage.md endpoint list matches (or justify omissions).",
+        "Verify api/openapi.yaml covers all API routes (and update if gaps exist).",
+        "Run make generate to ensure TS client remains in sync after any OpenAPI edits."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0083",
+      "status": "todo",
+      "title": "Fix README web-dev proxy docs (use web/.env VITE_API_BASE_URL, not root PORT)",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "web",
+        "ux"
+      ],
+      "scope": [
+        "README.md",
+        "web/vite.config.ts",
+        "web/.env.example"
+      ],
+      "evidence": [
+        "README.md states the Web UI dev server proxies to `PORT` from root `.env`.",
+        "web/vite.config.ts uses VITE_API_BASE_URL (or defaults to http://localhost:8741) and does not read the root `.env`."
+      ],
+      "plan": [
+        "Update README.md Web UI section to point users at `web/.env` / `web/.env.example` and VITE_API_BASE_URL for proxy target.",
+        "Clarify how to run backend on a non-default port and how to configure the web proxy accordingly.",
+        "Run make ci to ensure docs-only change doesn’t break formatting/linting."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0079",
+      "status": "todo",
+      "title": "Add `spartan version` and unify version across CLI, OpenAPI, and MCP",
+      "priority": "medium",
+      "tags": [
+        "cli",
+        "release",
+        "versioning",
+        "api"
+      ],
+      "scope": [
+        "cmd/spartan/main.go",
+        "internal/cli/help.go",
+        "internal/mcp/server.go",
+        "api/openapi.yaml",
+        "Makefile",
+        "make build",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/mcp/server.go responds to initialize with a hard-coded version string \"0.1.0\".",
+        "api/openapi.yaml info.version is \"0.1.0\".",
+        "CLI help (internal/cli/help.go) does not expose a version command or build metadata."
+      ],
+      "plan": [
+        "Introduce a single version source (e.g., internal/buildinfo with Version/Commit/Date variables set via ldflags).",
+        "Add a `spartan version` subcommand and include version in `spartan --help` output (or top banner).",
+        "Plumb version into MCP initialize response and OpenAPI info.version (generate-time or runtime).",
+        "Update Makefile build to pass ldflags for version/commit/date.",
+        "Add tests that assert version is surfaced in CLI output and MCP initialize response.",
+        "Run make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0087",
+      "status": "todo",
+      "title": "Remove stray empty directory `spartan-scraper/internal/api/` from repo",
+      "priority": "low",
+      "tags": [
+        "cleanup",
+        "repo-hygiene"
+      ],
+      "scope": [
+        "spartan-scraper/internal/api",
+        ".gitignore",
+        "make ci"
+      ],
+      "evidence": [
+        "Repository contains an empty `spartan-scraper/internal/api/` directory at the root (separate from `internal/api/`), which looks like an accidental artifact."
+      ],
+      "plan": [
+        "Confirm whether the directory is tracked in git (and why it exists).",
+        "Remove the directory if it is accidental; ensure no tooling depends on it.",
+        "If the directory is generated, add/adjust ignore rules so it never shows up in clean checkouts.",
+        "Run make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T16:55:31Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
