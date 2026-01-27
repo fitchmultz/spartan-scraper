@@ -12,9 +12,9 @@ import (
 	"sort"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 )
 
 const (

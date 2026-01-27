@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestHandleCrawlStates(t *testing.T) {

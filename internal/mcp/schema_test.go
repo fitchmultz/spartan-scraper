@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 func TestGetPipelineOptions(t *testing.T) {

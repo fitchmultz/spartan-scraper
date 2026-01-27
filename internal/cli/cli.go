@@ -10,10 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"spartan-scraper/internal/cli/manage"
-	"spartan-scraper/internal/cli/scrape"
-	"spartan-scraper/internal/cli/server"
-	"spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/manage"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/scrape"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/server"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 // Run executes CLI application. It parses command-line arguments and

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 )
 
 func RunTemplates(_ context.Context, cfg config.Config, args []string) int {

@@ -7,9 +7,9 @@ import (
 	"context"
 	"time"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jobs.Manager {

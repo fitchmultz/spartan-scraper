@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/cli/common"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 )
 
 func TestSplitCSV(t *testing.T) {

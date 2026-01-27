@@ -16,7 +16,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 
-	"spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 type ChromedpFetcher struct {

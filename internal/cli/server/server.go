@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"spartan-scraper/internal/api"
-	"spartan-scraper/internal/cli/common"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/scheduler"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func RunServer(ctx context.Context, cfg config.Config, args []string) int {

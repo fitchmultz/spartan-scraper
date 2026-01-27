@@ -11,9 +11,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/exporter"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func RunExport(ctx context.Context, cfg config.Config, args []string) int {

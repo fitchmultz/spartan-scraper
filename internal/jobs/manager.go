@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 // Manager coordinates the execution of scraping, crawling, and research jobs.

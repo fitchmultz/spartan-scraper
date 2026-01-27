@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"os"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/mcp"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/mcp"
 )
 
 func RunMCP(ctx context.Context, cfg config.Config, args []string) int {

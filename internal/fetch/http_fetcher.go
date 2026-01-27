@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 // HTTPFetcher implements content fetching using the standard library http.Client.

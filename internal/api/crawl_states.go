@@ -6,7 +6,7 @@ package api
 import (
 	"net/http"
 
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {

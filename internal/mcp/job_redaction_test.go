@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestJobStatus_RedactsSensitiveData(t *testing.T) {

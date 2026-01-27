@@ -5,7 +5,7 @@ package api
 import (
 	"net/http"
 
-	"spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

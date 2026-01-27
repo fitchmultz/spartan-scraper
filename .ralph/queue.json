@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0078",
-      "status": "todo",
-      "title": "Prepare Go module path for public consumption (set module to final GitHub import path)",
-      "priority": "high",
-      "tags": [
-        "go",
-        "release",
-        "packaging"
-      ],
-      "scope": [
-        "go.mod",
-        "cmd/spartan",
-        "internal",
-        "make build",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "go.mod declares `module spartan-scraper`, which is not a resolvable public import path for `go install` once the repo is public."
-      ],
-      "plan": [
-        "Decide the final public repo path (e.g., github.com/<org>/spartan-scraper).",
-        "Update go.mod module directive to the final path and update all internal imports accordingly.",
-        "Verify `go build` and `go test ./...` work in a clean checkout and that `make build` still installs the binary.",
-        "Update README.md with a `go install ...@latest` installation option (if desired).",
-        "Run make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0084",
       "status": "todo",
       "title": "Make OpenAPI post-processing script portable (remove perl/rg hard deps or add checks)",

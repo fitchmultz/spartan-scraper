@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/exporter"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func HandleJobResult(ctx context.Context, st *store.Store, job model.Job, wait bool, waitTimeout time.Duration, out string) int {

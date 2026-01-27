@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 func testConfig(cfg config.Config) config.Config {

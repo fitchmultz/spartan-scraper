@@ -7,15 +7,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/crawl"
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/fsutil"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/research"
-	"spartan-scraper/internal/scrape"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/crawl"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/research"
+	"github.com/fitchmultz/spartan-scraper/internal/scrape"
 )
 
 func (m *Manager) run(ctx context.Context, job model.Job) error {

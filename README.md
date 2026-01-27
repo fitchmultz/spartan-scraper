@@ -13,6 +13,10 @@ A high‑performance, Go‑first web scraping + automation standard for all futu
 ## Quickstart
 
 ```bash
+# Quick install (requires Go 1.25+)
+go install github.com/fitchmultz/spartan-scraper@latest
+
+# Or build from source
 make install
 make generate
 make build

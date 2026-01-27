@@ -18,13 +18,13 @@ import (
 	"strings"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/crawl"
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/scrape"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/crawl"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/scrape"
 )
 
 type Request struct {

@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 func Resolve(dataDir string, in ResolveInput) (ResolvedAuth, error) {

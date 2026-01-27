@@ -3,9 +3,9 @@
 package api
 
 import (
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 // ComponentStatus represents the health of a single system component.

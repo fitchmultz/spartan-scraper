@@ -18,8 +18,8 @@ import (
 	"io"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 // Export exports job results to the specified format and returns the output as a string.

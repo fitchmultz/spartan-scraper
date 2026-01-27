@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/joho/godotenv"
-	"spartan-scraper/internal/auth"
 )
 
 // EnvOverrides is an alias for auth.EnvOverrides

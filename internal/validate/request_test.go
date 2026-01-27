@@ -3,7 +3,7 @@ package validate
 import (
 	"testing"
 
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestValidateJob_Scrape(t *testing.T) {

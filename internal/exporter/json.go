@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 // exportJSONStream exports job results to JSON format with streaming.

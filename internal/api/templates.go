@@ -6,7 +6,7 @@ package api
 import (
 	"net/http"
 
-	"spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 )
 
 func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {

@@ -14,8 +14,8 @@ import (
 	"sort"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 // exportMarkdownStream exports job results to Markdown format with streaming.

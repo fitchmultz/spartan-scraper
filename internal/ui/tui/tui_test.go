@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func TestTUIPagination(t *testing.T) {

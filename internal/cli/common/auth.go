@@ -7,9 +7,9 @@ package common
 import (
 	"strings"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 type LoginFlowInput struct {

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/fsutil"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestStoreJobs(t *testing.T) {

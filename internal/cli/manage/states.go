@@ -10,8 +10,8 @@ import (
 	"os"
 	"time"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func RunCrawlStates(ctx context.Context, cfg config.Config, args []string) int {

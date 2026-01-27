@@ -6,7 +6,7 @@ import (
 	"context"
 	"os"
 
-	"spartan-scraper/internal/cli"
+	"github.com/fitchmultz/spartan-scraper/internal/cli"
 )
 
 func main() {

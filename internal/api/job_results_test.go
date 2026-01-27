@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 )
 
 func TestHandleJobResultsNotFound(t *testing.T) {

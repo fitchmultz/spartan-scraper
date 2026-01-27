@@ -8,7 +8,7 @@
 // This file does NOT handle parsing or export logic - it only defines data structures.
 package exporter
 
-import "spartan-scraper/internal/extract"
+import "github.com/fitchmultz/spartan-scraper/internal/extract"
 
 // ScrapeResult represents a single page scrape result with extracted fields and metadata.
 type ScrapeResult struct {

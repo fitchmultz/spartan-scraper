@@ -3383,6 +3383,53 @@
       "completed_at": "2026-01-27T22:49:37.977862000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0078",
+      "status": "done",
+      "title": "Prepare Go module path for public consumption (set module to final GitHub import path)",
+      "priority": "high",
+      "tags": [
+        "go",
+        "release",
+        "packaging"
+      ],
+      "scope": [
+        "go.mod",
+        "cmd/spartan",
+        "internal",
+        "README.md",
+        "make build",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "go.mod declares `module spartan-scraper`, which is not a resolvable public import path for `go install` once the repo is public.",
+        "git remote origin is set to https://github.com/fitchmultz/spartan-scraper.git, indicating final public module path should be github.com/fitchmultz/spartan-scraper.",
+        "Codebase contains imports like \"spartan-scraper/internal/cli\" which will need to be updated when module path changes."
+      ],
+      "plan": [
+        "Confirm final public repo path (based on git remote: github.com/fitchmultz/spartan-scraper).",
+        "Update go.mod module directive from 'spartan-scraper' to 'github.com/fitchmultz/spartan-scraper'.",
+        "Update all internal imports from 'spartan-scraper/...' to 'github.com/fitchmultz/spartan-scraper/...' across all .go files.",
+        "Verify `go build` and `go test ./...` work in a clean checkout and that `make build` still installs the binary.",
+        "Update README.md with a `go install github.com/fitchmultz/spartan-scraper@latest` installation option.",
+        "Run make ci."
+      ],
+      "notes": [
+        "GitHub remote origin confirmed as https://github.com/fitchmultz/spartan-scraper.git via `git remote -v`.",
+        "Updated go.mod module path from 'spartan-scraper' to 'github.com/fitchmultz/spartan-scraper'",
+        "Updated all 87 Go files with new import path (264 import occurrences)",
+        "Updated README.md with 'go install github.com/fitchmultz/spartan-scraper@latest' option",
+        "Updated internal/apperrors/README.md with new module path examples",
+        "Verified: make ci passes, all tests pass, binary installs correctly"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T23:02:01.246701000Z",
+      "completed_at": "2026-01-27T23:02:01.246701000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

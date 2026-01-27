@@ -10,10 +10,10 @@ import (
 	"os"
 	"time"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/store"
-	uitui "spartan-scraper/internal/ui/tui"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
+	uitui "github.com/fitchmultz/spartan-scraper/internal/ui/tui"
 )
 
 func RunTUI(ctx context.Context, cfg config.Config, args []string) int {

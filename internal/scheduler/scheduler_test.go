@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func setupTestManager(t *testing.T) (*jobs.Manager, *store.Store, func()) {

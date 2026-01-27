@@ -10,11 +10,11 @@ import (
 	"os"
 	"time"
 
-	"spartan-scraper/internal/cli/common"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/scheduler"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
 func RunSchedule(_ context.Context, cfg config.Config, args []string) int {

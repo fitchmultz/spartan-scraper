@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"regexp"
 
-	"spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 var profileNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)

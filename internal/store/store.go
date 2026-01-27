@@ -15,9 +15,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/fsutil"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 
 	_ "modernc.org/sqlite"
 )

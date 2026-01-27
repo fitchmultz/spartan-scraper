@@ -67,8 +67,8 @@ default:
 Sentinel errors are pre-defined errors that can be compared with `errors.Is`:
 
 ```go
-import "spartan-scraper/internal/apperrors"
-import "spartan-scraper/internal/validate"
+import "github.com/fitchmultz/spartan-scraper/internal/apperrors"
+import "github.com/fitchmultz/spartan-scraper/internal/validate"
 
 // Check for specific sentinel
 if errors.Is(err, apperrors.ErrInvalidURLScheme) {
@@ -89,7 +89,7 @@ Use `writeError(w, err)` in HTTP handlers for consistent status code mapping:
 ```go
 import (
     "net/http"
-    "spartan-scraper/internal/apperrors"
+    "github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {

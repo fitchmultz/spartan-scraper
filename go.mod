@@ -1,4 +1,4 @@
-module spartan-scraper
+module github.com/fitchmultz/spartan-scraper
 
 go 1.25
 

@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/cli/common"
-	"spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 func RunAuth(_ context.Context, cfg config.Config, args []string) int {

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/validate"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {

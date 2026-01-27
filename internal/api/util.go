@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 const maxRequestBodySize = 1024 * 1024

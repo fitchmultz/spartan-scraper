@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 func TestServer_DefaultBindingIsLocalhost(t *testing.T) {

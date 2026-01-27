@@ -18,7 +18,7 @@ package model
 import (
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 // redactedPlaceholder is the string used to replace sensitive values.

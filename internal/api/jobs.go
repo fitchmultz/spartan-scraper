@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {

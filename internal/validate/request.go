@@ -4,8 +4,8 @@
 package validate
 
 import (
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 // JobValidationOpts is a unified set of validation inputs for all job kinds.

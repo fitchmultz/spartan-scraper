@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/exporter"
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {

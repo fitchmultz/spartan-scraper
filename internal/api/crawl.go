@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/validate"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {

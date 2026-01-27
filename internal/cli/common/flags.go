@@ -7,7 +7,7 @@ package common
 import (
 	"flag"
 
-	"spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 type StringSliceFlag []string

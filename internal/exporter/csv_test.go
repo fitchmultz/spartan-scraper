@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestExportCSVHasStableFieldOrder(t *testing.T) {

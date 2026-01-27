@@ -17,15 +17,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"spartan-scraper/internal/apperrors"
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/fsutil"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
-	"spartan-scraper/internal/validate"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 type Schedule struct {

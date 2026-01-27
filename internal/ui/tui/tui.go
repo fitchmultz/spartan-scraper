@@ -12,12 +12,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"spartan-scraper/internal/auth"
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/scheduler"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 type appModel struct {

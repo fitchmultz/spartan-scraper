@@ -12,11 +12,11 @@ import (
 	"os"
 	"time"
 
-	"spartan-scraper/internal/api"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func RunJobs(ctx context.Context, cfg config.Config, args []string) int {

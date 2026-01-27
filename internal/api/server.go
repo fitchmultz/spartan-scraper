@@ -6,9 +6,9 @@ package api
 import (
 	"net/http"
 
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/jobs"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 type Server struct {

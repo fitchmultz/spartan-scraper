@@ -7,7 +7,7 @@ import (
 	"context"
 	"log/slog"
 
-	"spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 type AdaptiveFetcher struct {

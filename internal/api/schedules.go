@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/scheduler"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
 func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {

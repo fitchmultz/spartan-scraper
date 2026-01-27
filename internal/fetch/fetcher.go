@@ -12,8 +12,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/playwright-community/playwright-go"
-	"spartan-scraper/internal/apperrors"
 )
 
 var (

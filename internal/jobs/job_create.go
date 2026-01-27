@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/model"
-	"spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 // CreateScrapeJob creates and persists a new scrape job.

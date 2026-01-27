@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"time"
 
-	"spartan-scraper/internal/api"
-	"spartan-scraper/internal/config"
-	"spartan-scraper/internal/fetch"
-	"spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func RunHealth(ctx context.Context, cfg config.Config, _ []string) int {

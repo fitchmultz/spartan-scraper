@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"spartan-scraper/internal/extract"
-	"spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 func TestHostFromURL_Empty(t *testing.T) {
