@@ -1,41 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0070",
-      "status": "todo",
-      "title": "Review config.Load() singleton pattern for thread safety",
-      "priority": "low",
-      "tags": [
-        "config",
-        "thread-safety",
-        "concurrency"
-      ],
-      "scope": [
-        "internal/config"
-      ],
-      "evidence": [
-        "config.Load() is called once in cli.go and config object is passed around",
-        "Search found only 1 call to config.Load() in the entire codebase",
-        "No evidence of concurrent access issues, but config could be accessed from multiple goroutines (scheduler, manager)",
-        "Config object should be immutable or thread-safe if shared across goroutines"
-      ],
-      "plan": [
-        "Read internal/config/config.go to understand Config struct and its fields",
-        "Check if Config struct is modified after Load() returns",
-        "Trace config usage across scheduler, manager, api to identify write patterns",
-        "If config is modified after initialization, make Config immutable (read-only fields) or add mutex",
-        "Document config access patterns in AGENTS.md or config.go package docs",
-        "Add tests that verify config thread safety if mutations are possible",
-        "Run make test to verify tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

@@ -1,6 +1,22 @@
 // Package config provides application configuration loading from environment variables.
 // It handles loading defaults from .env files and parsing environment variables.
-// It does NOT handle runtime configuration updates or validation beyond type parsing.
+//
+// # Immutability & thread-safety
+//
+// This project uses a "load once at startup, then pass by value" configuration pattern:
+//
+//   - config.Load() is called once at process startup (see internal/cli/cli.go).
+//   - Load returns a Config value (not a pointer).
+//   - The Config value is passed by value to constructors/handlers, so each component gets
+//     its own copy of the struct.
+//
+// After Load returns, Config is treated as immutable: components must not mutate fields.
+// As long as callers follow this rule, Config is safe for concurrent read access.
+//
+// Note: Config contains AuthOverrides.Headers and AuthOverrides.Cookies map fields.
+// Maps are reference types; copying Config copies the map header, not the underlying map.
+// Therefore these maps must be treated as read-only. If a component needs to modify them,
+// it must make a deep copy first.
 package config
 
 import (
@@ -15,6 +31,16 @@ import (
 // EnvOverrides is an alias for auth.EnvOverrides
 type EnvOverrides = auth.EnvOverrides
 
+// Config is the application's configuration snapshot.
+//
+// Config is intended to be immutable after Load() returns. It is passed around by value,
+// so each consumer receives its own copy of the struct.
+//
+// Thread-safety guarantee: Config is safe for concurrent read access as long as callers
+// do not mutate it.
+//
+// WARNING: AuthOverrides.Headers and AuthOverrides.Cookies are maps (reference types).
+// Treat them as read-only. If you need to add/remove entries, make a deep copy first.
 type Config struct {
 	Port               string
 	DataDir            string
@@ -32,6 +58,14 @@ type Config struct {
 	LogFormat          string
 }
 
+// Load reads configuration from environment variables (optionally loading defaults from
+// a local .env file).
+//
+// Intended usage: call Load once during application startup, then pass the returned Config
+// value into constructors/handlers.
+//
+// Load does not maintain any singleton/global Config instance; it simply returns a value.
+// The returned Config is treated as immutable after loading.
 func Load() Config {
 	_ = godotenv.Load()
 	return Config{

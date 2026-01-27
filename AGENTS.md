@@ -98,6 +98,12 @@ docs/                 # Documentation (usage, architecture, landscape)
 
 ## Architecture & Patterns
 
+### Configuration (immutability + concurrency)
+
+- `internal/config.Load()` is called once at process startup and returns a `config.Config` value (not a pointer).
+- `config.Config` is treated as **immutable after loading** and is safe for concurrent read access when used this way.
+- `AuthOverrides.Headers` and `AuthOverrides.Cookies` are maps (reference types). Treat them as read-only; deep-copy before modifying.
+
 ### Extraction Pipeline
 
 - Centralized in `internal/extract`

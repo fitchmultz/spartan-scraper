@@ -1,6 +1,7 @@
-// Package config provides application configuration loading from environment variables.
-// It handles loading defaults from .env files and parsing environment variables.
-// It does NOT handle runtime configuration updates or validation beyond type parsing.
+// File log.go configures the default slog logger based on Config.
+//
+// It does NOT implement configuration loading (see config.go) and it does NOT implement
+// runtime log-level switching; it is intended to run once at startup.
 package config
 
 import (

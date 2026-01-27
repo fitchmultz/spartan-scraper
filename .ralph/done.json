@@ -2928,6 +2928,62 @@
       "completed_at": "2026-01-27T16:24:09.269633000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0070",
+      "status": "done",
+      "title": "Review config.Load() singleton pattern for thread safety",
+      "priority": "low",
+      "tags": [
+        "config",
+        "thread-safety",
+        "concurrency"
+      ],
+      "scope": [
+        "internal/config",
+        "internal/cli/cli.go",
+        "internal/api/server.go",
+        "internal/mcp/server.go",
+        "internal/jobs/manager.go"
+      ],
+      "evidence": [
+        "config.Load() is called exactly once in internal/cli/cli.go:20",
+        "Config struct is passed by value to all command handlers (server, api, mcp, cli subcommands)",
+        "API server stores a copy of config as s.cfg field (passed by value)",
+        "MCP server stores a copy of config as s.cfg field (passed by value)",
+        "Manager extracts config values as individual parameters and stores as private immutable fields",
+        "Scheduler only receives dataDir string, not full config struct",
+        "No mutations to config fields found anywhere in codebase (no cfg.Field = patterns)",
+        "Goroutines access config through manager's private fields which are immutable after initialization",
+        "AuthOverrides map in EnvOverrides could be mutated but is only read in current codebase"
+      ],
+      "plan": [
+        "Review config package documentation to confirm immutability intent",
+        "Add doc comment to Config struct explicitly stating it is immutable after Load()",
+        "Add package-level documentation explaining config access patterns and thread-safety guarantees",
+        "Consider adding tests that verify config values are not mutated (e.g., using go test -race)",
+        "Document in AGENTS.md that config is safe for concurrent read access",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "No actual thread safety issues found - config is effectively immutable by design",
+        "Config values are passed by value throughout codebase, not by reference",
+        "Task priority should remain low as no actionable thread safety bugs discovered",
+        "Added package-level docs to config.go explaining immutability & thread-safety guarantees",
+        "Added Config struct docs with thread-safety guarantee and map field warnings",
+        "Added Load() docs clarifying startup-only usage",
+        "Added TestConfig_ConcurrentReadIsSafe (64 goroutines × 2000 iterations) validated with -race",
+        "Updated AGENTS.md with Configuration (immutability + concurrency) section",
+        "Verified no config mutation patterns in codebase (sweep complete)",
+        "make ci passes cleanly (all tests + formatting + linting + type-check)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T16:41:37.541743000Z",
+      "completed_at": "2026-01-27T16:41:37.541743000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
