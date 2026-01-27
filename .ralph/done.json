@@ -2984,6 +2984,47 @@
       "completed_at": "2026-01-27T16:41:37.541743000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0072",
+      "status": "done",
+      "title": "Bind API server to localhost by default and add HTTP server timeouts",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "server",
+        "hardening"
+      ],
+      "scope": [
+        "internal/cli/server/server.go",
+        "internal/config/config.go",
+        ".env",
+        ".env.example",
+        "docs/usage.md",
+        "README.md",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/cli/server/server.go:53-54 constructs http.Server with Addr: \"0.0.0.0:\" + cfg.Port, exposing the API on all interfaces by default.",
+        "internal/cli/server/server.go:53-54 constructs http.Server with only Addr and Handler (no ReadHeaderTimeout/ReadTimeout/WriteTimeout/IdleTimeout set)."
+      ],
+      "plan": [
+        "Add a config setting (e.g., BIND_ADDR) with safe default 127.0.0.1 and plumb it through internal/config/config.go.",
+        "Update internal/cli/server/server.go to bind to cfg.BindAddr (default localhost) and document how to opt into 0.0.0.0 explicitly.",
+        "Add conservative HTTP server timeouts (ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout) suitable for local usage.",
+        "Update README/docs to reflect the new bind behavior and config knobs.",
+        "Add tests verifying default binding and that timeouts are non-zero/sane.",
+        "Run make test and make ci."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T18:17:28.625448000Z",
+      "completed_at": "2026-01-27T18:17:28.625448000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -76,8 +76,11 @@ make build
 ./bin/spartan schedule add --kind scrape --interval 3600 --url https://example.com
 ./bin/spartan schedule list
 
-# Run API server + background worker
+# Run API server + background worker (API binds to localhost by default)
 ./bin/spartan server
+
+# Expose API on all interfaces (use with caution)
+BIND_ADDR=0.0.0.0 ./bin/spartan server
 
 # Launch TUI
 ./bin/spartan tui

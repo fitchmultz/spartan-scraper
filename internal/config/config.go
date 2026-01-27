@@ -42,7 +42,16 @@ type EnvOverrides = auth.EnvOverrides
 // WARNING: AuthOverrides.Headers and AuthOverrides.Cookies are maps (reference types).
 // Treat them as read-only. If you need to add/remove entries, make a deep copy first.
 type Config struct {
-	Port               string
+	Port     string
+	BindAddr string
+
+	// HTTP server hardening timeouts (in seconds). These are applied when constructing
+	// API http.Server (see internal/cli/server/server.go).
+	ServerReadHeaderTimeoutSecs int
+	ServerReadTimeoutSecs       int
+	ServerWriteTimeoutSecs      int
+	ServerIdleTimeoutSecs       int
+
 	DataDir            string
 	UserAgent          string
 	MaxConcurrency     int
@@ -69,7 +78,14 @@ type Config struct {
 func Load() Config {
 	_ = godotenv.Load()
 	return Config{
-		Port:               getenv("PORT", "8741"),
+		Port:     getenv("PORT", "8741"),
+		BindAddr: getenv("BIND_ADDR", "127.0.0.1"),
+
+		ServerReadHeaderTimeoutSecs: getenvInt("SERVER_READ_HEADER_TIMEOUT_SECONDS", 10),
+		ServerReadTimeoutSecs:       getenvInt("SERVER_READ_TIMEOUT_SECONDS", 30),
+		ServerWriteTimeoutSecs:      getenvInt("SERVER_WRITE_TIMEOUT_SECONDS", 60),
+		ServerIdleTimeoutSecs:       getenvInt("SERVER_IDLE_TIMEOUT_SECONDS", 120),
+
 		DataDir:            getenv("DATA_DIR", ".data"),
 		UserAgent:          getenv("USER_AGENT", "SpartanScraper/0.1 (+https://local)"),
 		MaxConcurrency:     getenvInt("MAX_CONCURRENCY", 4),

@@ -249,7 +249,10 @@ printf '{"id":1,"method":"tools/list"}\n' | spartan mcp
 
 ## API
 
-Base URL: `http://localhost:${PORT}` (default 8741).
+Base URL: `http://${BIND_ADDR}:${PORT}` (defaults to `http://127.0.0.1:8741`).
+
+Note: if you set `BIND_ADDR=0.0.0.0` (bind all interfaces), clients should connect via
+`http://127.0.0.1:${PORT}` locally or via the machine's LAN IP/hostname from other devices.
 
 Endpoints:
 - `GET /healthz`
@@ -309,6 +312,11 @@ Outputs: `out/stress/`
 
 `.env` / `.env.example`:
 - `PORT`
+- `BIND_ADDR` (default `127.0.0.1`; set `0.0.0.0` to expose beyond localhost)
+- `SERVER_READ_HEADER_TIMEOUT_SECONDS` (default `10`)
+- `SERVER_READ_TIMEOUT_SECONDS` (default `30`)
+- `SERVER_WRITE_TIMEOUT_SECONDS` (default `60`)
+- `SERVER_IDLE_TIMEOUT_SECONDS` (default `120`)
 - `DATA_DIR`
 - `USER_AGENT`
 - `MAX_CONCURRENCY`

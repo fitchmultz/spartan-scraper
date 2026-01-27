@@ -49,10 +49,7 @@ Notes:
 	}()
 
 	apiServer := api.NewServer(manager, st, cfg)
-	httpServer := &http.Server{
-		Addr:    "0.0.0.0:" + cfg.Port,
-		Handler: apiServer.Routes(),
-	}
+	httpServer := newHTTPServer(cfg, apiServer.Routes())
 
 	go func() {
 		slog.Info("Spartan server listening", "addr", httpServer.Addr)
@@ -87,4 +84,17 @@ Notes:
 	}
 	slog.Info("shutdown complete")
 	return 0
+}
+
+func newHTTPServer(cfg config.Config, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:    cfg.BindAddr + ":" + cfg.Port,
+		Handler: handler,
+
+		// Timeouts mitigate slowloris/resource-exhaustion attacks.
+		ReadHeaderTimeout: time.Duration(cfg.ServerReadHeaderTimeoutSecs) * time.Second,
+		ReadTimeout:       time.Duration(cfg.ServerReadTimeoutSecs) * time.Second,
+		WriteTimeout:      time.Duration(cfg.ServerWriteTimeoutSecs) * time.Second,
+		IdleTimeout:       time.Duration(cfg.ServerIdleTimeoutSecs) * time.Second,
+	}
 }
