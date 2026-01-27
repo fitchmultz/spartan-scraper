@@ -107,5 +107,5 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, job)
+	writeJSON(w, model.SanitizeJob(job))
 }

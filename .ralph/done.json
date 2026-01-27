@@ -3025,6 +3025,70 @@
       "completed_at": "2026-01-27T18:17:28.625448000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0071",
+      "status": "done",
+      "title": "Redact secrets and filesystem paths from job APIs (and MCP job_status)",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "mcp",
+        "data-leak"
+      ],
+      "scope": [
+        "internal/api/jobs.go",
+        "internal/model/job.go",
+        "internal/mcp/server.go",
+        "api/openapi.yaml",
+        "web/src/types.ts",
+        "web/src/App.tsx",
+        "web/src/components/JobList.tsx",
+        "make generate",
+        "make test-ci",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/model/job.go defines Job with Params (map[string]interface{}), ResultPath (string), and Error (string) fields that may contain secrets and local filesystem paths.",
+        "internal/api/jobs.go handleJobs() returns model.Job values directly via s.store.ListOpts/ListByStatus, exposing Params and ResultPath to clients.",
+        "internal/api/jobs.go handleJob() GET returns job directly via s.store.Get(), exposing full Job struct including ResultPath and Params.",
+        "internal/mcp/server.go job_status tool returns s.store.Get(ctx, id) directly, exposing Job.ResultPath and Job.Params without redaction.",
+        "internal/mcp/server.go job_list tool returns s.store.ListOpts() directly, exposing full Job structs.",
+        "api/openapi.yaml Job schema includes params (object), resultPath (string), and error (string) without redaction.",
+        "web/src/types.ts exports JobEntry = Job (from generated API client), which will need regeneration after OpenAPI changes."
+      ],
+      "plan": [
+        "Create new API-safe job response types (e.g., JobSummary/JobDetail) in internal/model or internal/api that omit ResultPath and redact sensitive Params fields (auth, login, headers, cookies, tokens).",
+        "Add helper function to redact sensitive fields from Params map (remove keys: auth, login, headers, cookies, tokens, password, secret, key, credential).",
+        "Update internal/api/jobs.go handleJobs() to return safe job list response.",
+        "Update internal/api/jobs.go handleJob() to return safe job detail response.",
+        "Update internal/mcp/server.go job_status tool to return redacted job view.",
+        "Update internal/mcp/server.go job_list tool to return redacted job list.",
+        "Update api/openapi.yaml Job schema to use safe types (remove resultPath, redact params).",
+        "Regenerate TypeScript client via make generate.",
+        "Update web/src/types.ts if needed for any UI-specific Job type aliases.",
+        "Add tests in internal/api/jobs_test.go (or new file) to verify secrets and paths are not returned.",
+        "Add tests in internal/mcp/server_test.go to verify MCP job_status/job_list redact sensitive data.",
+        "Run make test-ci and make ci."
+      ],
+      "notes": [
+        "Job.Params is map[string]interface{} which can contain arbitrary nested data - redaction must handle nested structures.",
+        "Job.ResultPath is a local filesystem path that should never be exposed to clients.",
+        "The OpenAPI Job schema is used for both requests and responses - consider splitting into Job (response) and JobInput (request) if needed.",
+        "web/src/api/index.ts contains generated client code that will be regenerated - verify no manual edits are lost.",
+        "Fixed over-broad key matching to preserve non-sensitive keys like authProfile",
+        "Added sanitization to create-job endpoints (scrape, crawl, research)",
+        "Expanded header redaction to include Proxy-Authorization, X-Access-Token, X-Token",
+        "Consolidated path redaction using apperrors.RedactString() throughout",
+        "All tests pass, make ci clean"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T19:05:10.355067000Z",
+      "completed_at": "2026-01-27T19:05:10.355067000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

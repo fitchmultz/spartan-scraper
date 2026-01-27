@@ -48,6 +48,6 @@ type Job struct {
 	CreatedAt  time.Time              `json:"createdAt"`
 	UpdatedAt  time.Time              `json:"updatedAt"`
 	Params     map[string]interface{} `json:"params"`
-	ResultPath string                 `json:"resultPath"`
+	ResultPath string                 `json:"resultPath,omitempty"`
 	Error      string                 `json:"error"`
 }

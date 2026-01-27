@@ -203,10 +203,15 @@ export type Job = {
     status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
     createdAt: string;
     updatedAt: string;
+    /**
+     * Job parameters. Sensitive fields (auth, headers, cookies, tokens, passwords, secrets) are redacted.
+     */
     params?: {
         [key: string]: unknown;
     };
-    resultPath?: string;
+    /**
+     * Error message if job failed. Secrets and filesystem paths are redacted.
+     */
     error?: string;
 };
 

@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0071",
-      "status": "todo",
-      "title": "Redact secrets and filesystem paths from job APIs (and MCP job_status)",
-      "priority": "critical",
-      "tags": [
-        "security",
-        "api",
-        "mcp",
-        "data-leak"
-      ],
-      "scope": [
-        "internal/api/jobs.go",
-        "internal/model/job.go",
-        "internal/mcp/server.go",
-        "api/openapi.yaml",
-        "web/src/App.tsx",
-        "make generate",
-        "make test-ci",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/model/job.go defines Job with Params, ResultPath, and Error fields that may contain secrets and local filesystem paths.",
-        "internal/api/jobs.go returns model.Job values directly in GET /v1/jobs and GET /v1/jobs/{id}, exposing Params and ResultPath to clients.",
-        "internal/mcp/server.go tool job_status returns s.store.Get(ctx, id), which includes Job.ResultPath and Job.Params as stored."
-      ],
-      "plan": [
-        "Define API-safe job response types (e.g., JobSummary/JobDetail) that omit ResultPath and redact sensitive Params fields (auth, login, headers, cookies, tokens).",
-        "Update API handlers in internal/api/jobs.go (and any other endpoints returning model.Job) to return the safe types.",
-        "Update MCP job_status (and any other MCP responses returning model.Job) to use the safe type or a redacted view.",
-        "Update api/openapi.yaml schemas to match the new response shapes and regenerate TS client (make generate).",
-        "Update web UI to consume the new job response types.",
-        "Add/extend tests ensuring secrets and paths are not returned (API + MCP).",
-        "Run make test-ci and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0073",
       "status": "todo",
       "title": "Lock down DATA_DIR permissions and write job artifacts with 0600",

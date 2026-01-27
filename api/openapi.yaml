@@ -1108,10 +1108,10 @@ components:
           format: date-time
         params:
           type: object
-        resultPath:
-          type: string
+          description: Job parameters. Sensitive fields (auth, headers, cookies, tokens, passwords, secrets) are redacted.
         error:
           type: string
+          description: Error message if job failed. Secrets and filesystem paths are redacted.
     JobList:
       type: object
       properties:

@@ -399,7 +399,11 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
-		return s.store.Get(ctx, id)
+		job, err := s.store.Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return model.SanitizeJob(job), nil
 	case "job_results":
 		id := getString(params.Arguments, "id")
 		if id == "" {
@@ -413,7 +417,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"jobs": jobs}, nil
+		return map[string]interface{}{"jobs": model.SanitizeJobs(jobs)}, nil
 	case "job_cancel":
 		id := getString(params.Arguments, "id")
 		if id == "" {

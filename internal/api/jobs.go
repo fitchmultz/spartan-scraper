@@ -44,7 +44,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, map[string]interface{}{"jobs": jobsList})
+	writeJSON(w, map[string]interface{}{"jobs": model.SanitizeJobs(jobsList)})
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +65,7 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 			return
 		}
-		writeJSON(w, job)
+		writeJSON(w, model.SanitizeJob(job))
 	case http.MethodDelete:
 		if r.URL.Query().Get("force") == "true" {
 			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
