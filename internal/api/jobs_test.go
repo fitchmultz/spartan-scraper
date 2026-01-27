@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/model"
 )
 
@@ -198,7 +199,7 @@ func TestHandleJobForceDelete(t *testing.T) {
 
 	dataDir := srv.cfg.DataDir
 	jobDir := filepath.Join(dataDir, "jobs", jobID)
-	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(jobDir); err != nil {
 		t.Fatalf("failed to create job directory: %v", err)
 	}
 
@@ -271,7 +272,7 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 
 	dataDir := srv.cfg.DataDir
 	jobDir := filepath.Join(dataDir, "jobs", jobID)
-	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(jobDir); err != nil {
 		t.Fatalf("failed to create job directory: %v", err)
 	}
 

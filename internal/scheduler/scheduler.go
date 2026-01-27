@@ -21,6 +21,7 @@ import (
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/jobs"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
@@ -206,7 +207,7 @@ func LoadAll(dataDir string) ([]Schedule, error) {
 }
 
 func SaveAll(dataDir string, schedules []Schedule) error {
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+	if err := fsutil.EnsureDataDir(dataDir); err != nil {
 		return err
 	}
 	path := schedulesPath(dataDir)

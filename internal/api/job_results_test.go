@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"spartan-scraper/internal/fsutil"
 )
 
 func TestHandleJobResultsNotFound(t *testing.T) {
@@ -134,7 +136,7 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 
 			dataDir := t.TempDir()
 			resultDir := filepath.Join(dataDir, "jobs", jobID)
-			if err := os.MkdirAll(resultDir, 0o755); err != nil {
+			if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 				t.Fatalf("failed to create result directory: %v", err)
 			}
 
@@ -200,7 +202,7 @@ func TestHandleJobResultsWithFormats(t *testing.T) {
 
 			dataDir := t.TempDir()
 			resultDir := filepath.Join(dataDir, "jobs", jobID)
-			if err := os.MkdirAll(resultDir, 0o755); err != nil {
+			if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 				t.Fatalf("failed to create result directory: %v", err)
 			}
 
@@ -275,7 +277,7 @@ func TestHandleJobResultsInvalidFormat(t *testing.T) {
 
 	dataDir := t.TempDir()
 	resultDir := filepath.Join(dataDir, "jobs", jobID)
-	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)
 	}
 
@@ -334,7 +336,7 @@ func TestHandleJobResultsNoFormatParameter(t *testing.T) {
 
 	dataDir := t.TempDir()
 	resultDir := filepath.Join(dataDir, "jobs", jobID)
-	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)
 	}
 
@@ -391,7 +393,7 @@ func TestHandleJobResultsWithPagination(t *testing.T) {
 
 	dataDir := t.TempDir()
 	resultDir := filepath.Join(dataDir, "jobs", jobID)
-	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)
 	}
 

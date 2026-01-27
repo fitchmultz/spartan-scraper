@@ -31,6 +31,7 @@ import (
 
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
 )
@@ -302,7 +303,7 @@ func TestHandleJobExport(t *testing.T) {
 
 		resultFile := job.ResultPath
 		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
-		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 			t.Fatalf("failed to create job directory: %v", err)
 		}
 		resultContent := `{"url":"http://example.com","status":200,"title":"Test","text":"Content"}`
@@ -340,7 +341,7 @@ func TestHandleJobExport(t *testing.T) {
 
 		resultFile := job.ResultPath
 		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
-		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 			t.Fatalf("failed to create job directory: %v", err)
 		}
 		resultContent := `{"url":"http://example.com","status":200}`
@@ -378,7 +379,7 @@ func TestHandleJobExport(t *testing.T) {
 
 		resultFile := job.ResultPath
 		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
-		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 			t.Fatalf("failed to create job directory: %v", err)
 		}
 		resultContent := `{"url":"http://example.com","status":200}`
@@ -576,7 +577,7 @@ func TestHandleJobResults(t *testing.T) {
 
 		resultFile := job.ResultPath
 		resultDir := filepath.Join(tmpDir, "jobs", job.ID)
-		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 			t.Fatalf("failed to create job directory: %v", err)
 		}
 		resultContent := `{"url":"http://example.com","status":200,"title":"Test","text":"Content"}`

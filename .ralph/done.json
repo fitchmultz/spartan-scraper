@@ -3089,6 +3089,55 @@
       "completed_at": "2026-01-27T19:05:10.355067000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0073",
+      "status": "done",
+      "title": "Lock down DATA_DIR permissions and write job artifacts with 0600",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "storage",
+        "data-dir",
+        "permissions"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/store/store.go",
+        "internal/auth/vault.go",
+        "internal/scheduler/scheduler.go",
+        ".env",
+        ".env.example",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/store/store.go:116 Open() creates DATA_DIR with os.MkdirAll(dataDir, 0o755), leaving job DB directory world-readable/executable by default.",
+        "internal/auth/vault.go:54 SaveVault() uses os.MkdirAll(dataDirOrDefault(dataDir), 0o755) even though auth vault files are secret-bearing.",
+        "internal/jobs/manager.go:482 run() uses os.MkdirAll(resultDir, 0o755) and os.Create(job.ResultPath), which creates result files with process umask defaults (not guaranteed 0600).",
+        "internal/scheduler/scheduler.go:189 SaveAll() uses os.MkdirAll(dataDir, 0o755) for schedules.json storage."
+      ],
+      "plan": [
+        "Define a single helper for ensuring DATA_DIR exists with secure permissions (prefer 0700) and reuse it across store/auth/scheduler/jobs.",
+        "Write job result files and other secret-bearing artifacts using os.OpenFile with explicit 0600 perms (and directories 0700).",
+        "Decide and document whether to chmod existing directories/files on startup (migration) vs only apply to new writes.",
+        "Add tests that assert created directories and files have expected mode bits (skip/adjust on Windows if needed).",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Verified all scope files exist and evidence is current as of 2026-01-27.",
+        "Created internal/fsutil package with secure filesystem helpers (EnsureDataDir, WriteFileSecure, CreateSecure, MkdirAllSecure)",
+        "Updated store.go, vault.go, manager.go, scheduler.go to use fsutil helpers",
+        "Updated all test files to use fsutil.MkdirAllSecure for test directory creation",
+        "All directories now created with 0700, job result files with 0600",
+        "make ci passes completely, all tests pass including new fsutil tests"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T19:54:18.842975000Z",
+      "completed_at": "2026-01-27T19:54:18.842975000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

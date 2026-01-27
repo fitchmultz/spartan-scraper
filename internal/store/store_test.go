@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/model"
 )
 
@@ -430,7 +431,7 @@ func TestStoreDeleteWithArtifacts(t *testing.T) {
 
 	// Create job directory and result file
 	jobDir := filepath.Join(dataDir, "jobs", "j1")
-	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(jobDir); err != nil {
 		t.Fatalf("failed to create job directory: %v", err)
 	}
 

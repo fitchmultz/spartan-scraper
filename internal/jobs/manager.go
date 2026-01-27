@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"spartan-scraper/internal/crawl"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/research"
@@ -374,7 +374,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	}()
 
 	resultDir := filepath.Dir(job.ResultPath)
-	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		slog.Error("failed to create result directory", "jobID", job.ID, "error", err)
 		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
@@ -382,7 +382,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		return err
 	}
 
-	file, err := os.Create(job.ResultPath)
+	file, err := fsutil.CreateSecure(job.ResultPath)
 	if err != nil {
 		slog.Error("failed to create result file", "jobID", job.ID, "error", err)
 		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {

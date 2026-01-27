@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"spartan-scraper/internal/apperrors"
+	"spartan-scraper/internal/fsutil"
 	"spartan-scraper/internal/model"
 
 	_ "modernc.org/sqlite"
@@ -136,7 +137,7 @@ type Store struct {
 }
 
 func Open(dataDir string) (*Store, error) {
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+	if err := fsutil.EnsureDataDir(dataDir); err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dataDir, "jobs.db")

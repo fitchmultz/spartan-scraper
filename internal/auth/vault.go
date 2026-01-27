@@ -14,6 +14,7 @@ import (
 
 	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/fsutil"
 )
 
 const (
@@ -62,7 +63,7 @@ func SaveVault(dataDir string, vault Vault) error {
 	if vault.Version == "" {
 		vault.Version = vaultVersion
 	}
-	if err := os.MkdirAll(dataDirOrDefault(dataDir), 0o755); err != nil {
+	if err := fsutil.EnsureDataDir(dataDirOrDefault(dataDir)); err != nil {
 		return err
 	}
 	path := vaultPath(dataDir)
