@@ -15,6 +15,8 @@ import (
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+
+	"spartan-scraper/internal/apperrors"
 )
 
 type ChromedpFetcher struct {
@@ -44,7 +46,7 @@ func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderPro
 		return Result{}, errors.New("url is required")
 	}
 
-	slog.Debug("Chromedp fetch start", "url", req.URL)
+	slog.Debug("Chromedp fetch start", "url", apperrors.SanitizeURL(req.URL))
 
 	retries := clampRetry(req.MaxRetries)
 	baseDelay := req.RetryBaseDelay
@@ -63,11 +65,11 @@ func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderPro
 
 	for attempt := 0; attempt <= retries; attempt++ {
 		if attempt > 0 {
-			slog.Debug("retrying Chromedp fetch", "url", req.URL, "attempt", attempt)
+			slog.Debug("retrying Chromedp fetch", "url", apperrors.SanitizeURL(req.URL), "attempt", attempt)
 		}
 
 		if req.Limiter != nil {
-			slog.Debug("waiting for rate limiter", "url", req.URL)
+			slog.Debug("waiting for rate limiter", "url", apperrors.SanitizeURL(req.URL))
 			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
 				return Result{}, err
 			}
@@ -75,26 +77,26 @@ func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderPro
 
 		res, err := f.doFetch(ctx, req, prof, renderTimeout)
 		if err == nil {
-			slog.Debug("Chromedp fetch success", "url", req.URL)
+			slog.Debug("Chromedp fetch success", "url", apperrors.SanitizeURL(req.URL))
 			return res, nil
 		}
 
-		slog.Warn("Chromedp fetch failed", "url", req.URL, "error", err, "attempt", attempt)
+		slog.Warn("Chromedp fetch failed", "url", apperrors.SanitizeURL(req.URL), "error", err, "attempt", attempt)
 
 		if attempt >= retries || !shouldRetry(err, 0) {
 			return Result{}, err
 		}
 		delay := backoff(baseDelay, attempt)
-		slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+		slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
 		time.Sleep(delay)
 	}
 
-	slog.Error("Chromedp fetch max retries exceeded", "url", req.URL)
+	slog.Error("Chromedp fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
 	return Result{}, errors.New("max retries exceeded")
 }
 
 func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof RenderProfile, timeout time.Duration) (Result, error) {
-	slog.Debug("starting Chromedp allocator", "url", req.URL, "timeout", timeout)
+	slog.Debug("starting Chromedp allocator", "url", apperrors.SanitizeURL(req.URL), "timeout", timeout)
 	allocatorOpts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
 	if req.UserAgent != "" {
 		allocatorOpts = append(allocatorOpts, chromedp.UserAgent(req.UserAgent))
@@ -148,33 +150,33 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 		}
 	}
 	if len(blockedPatterns) > 0 {
-		slog.Debug("blocking resources", "url", req.URL, "patterns", blockedPatterns)
+		slog.Debug("blocking resources", "url", apperrors.SanitizeURL(req.URL), "patterns", blockedPatterns)
 		actions = append(actions, network.SetBlockedURLs(blockedPatterns))
 	}
 
 	// Run initial setup
 	if err := chromedp.Run(ctx, actions...); err != nil {
-		slog.Error("Chromedp setup failed", "url", req.URL, "error", err)
+		slog.Error("Chromedp setup failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err
 	}
 
 	// Login flow if configured
 	currentURL := ""
 	if req.Auth.LoginURL != "" {
-		slog.Info("performing headless login", "url", req.URL, "loginURL", req.Auth.LoginURL)
+		slog.Info("performing headless login", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL))
 		err := f.performLogin(ctx, req.Auth)
 		if err != nil {
-			slog.Error("headless login failed", "url", req.URL, "loginURL", req.Auth.LoginURL, "error", err)
+			slog.Error("headless login failed", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL), "error", err)
 			return Result{}, err
 		}
 		if err := chromedp.Run(ctx, chromedp.Location(&currentURL)); err != nil {
 			return Result{}, err
 		}
-		slog.Info("login complete", "url", req.URL, "currentURL", currentURL)
+		slog.Info("login complete", "url", apperrors.SanitizeURL(req.URL), "currentURL", apperrors.SanitizeURL(currentURL))
 	}
 
 	if len(req.PreNavJS) > 0 {
-		slog.Debug("running pre-navigation JS", "url", req.URL, "count", len(req.PreNavJS))
+		slog.Debug("running pre-navigation JS", "url", apperrors.SanitizeURL(req.URL), "count", len(req.PreNavJS))
 		if err := chromedp.Run(ctx, chromedp.Navigate("about:blank")); err != nil {
 			return Result{}, err
 		}
@@ -183,7 +185,7 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 				continue
 			}
 			if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
-				slog.Error("pre-navigation JS failed", "url", req.URL, "error", err)
+				slog.Error("pre-navigation JS failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 				return Result{}, err
 			}
 		}
@@ -197,33 +199,33 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 
 	// Navigate to target
 	if currentURL == "" || currentURL == req.Auth.LoginURL {
-		slog.Debug("navigating to target", "url", req.URL)
+		slog.Debug("navigating to target", "url", apperrors.SanitizeURL(req.URL))
 		if err := chromedp.Run(ctx, chromedp.Navigate(req.URL)); err != nil {
 			if !isAbortErr(err) {
-				slog.Error("navigation failed", "url", req.URL, "error", err)
+				slog.Error("navigation failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 				return Result{}, err
 			}
-			slog.Warn("navigation aborted (ignored)", "url", req.URL, "error", err)
+			slog.Warn("navigation aborted (ignored)", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		}
 	}
 
 	// Wait strategies
-	slog.Debug("waiting for page to be ready", "url", req.URL, "mode", prof.Wait.Mode)
+	slog.Debug("waiting for page to be ready", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode)
 	waitErr := f.performWait(ctx, prof.Wait)
 	if waitErr != nil && !strings.Contains(waitErr.Error(), "timeout") {
 		// Log error but might try to capture HTML anyway?
 		// For now, fail on wait error unless it's just a timeout and we want partial results.
 		// Strict strictness: fail.
-		slog.Error("wait strategy failed", "url", req.URL, "mode", prof.Wait.Mode, "error", waitErr)
+		slog.Error("wait strategy failed", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode, "error", waitErr)
 		return Result{}, waitErr
 	}
 	if waitErr != nil && strings.Contains(waitErr.Error(), "timeout") {
-		slog.Warn("wait strategy timed out (continuing)", "url", req.URL, "mode", prof.Wait.Mode)
+		slog.Warn("wait strategy timed out (continuing)", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode)
 	}
 
 	// Extra sleep if requested
 	if prof.Wait.ExtraSleepMs > 0 {
-		slog.Debug("extra sleep", "url", req.URL, "ms", prof.Wait.ExtraSleepMs)
+		slog.Debug("extra sleep", "url", apperrors.SanitizeURL(req.URL), "ms", prof.Wait.ExtraSleepMs)
 		_ = chromedp.Run(ctx, chromedp.Sleep(time.Duration(prof.Wait.ExtraSleepMs)*time.Millisecond))
 	}
 
@@ -231,30 +233,30 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 		if strings.TrimSpace(selector) == "" {
 			continue
 		}
-		slog.Debug("waiting for selector", "url", req.URL, "selector", selector)
+		slog.Debug("waiting for selector", "url", apperrors.SanitizeURL(req.URL), "selector", selector)
 		if err := chromedp.Run(ctx, chromedp.WaitVisible(selector, chromedp.ByQuery)); err != nil {
-			slog.Error("wait for selector failed", "url", req.URL, "selector", selector, "error", err)
+			slog.Error("wait for selector failed", "url", apperrors.SanitizeURL(req.URL), "selector", selector, "error", err)
 			return Result{}, err
 		}
 	}
 
 	if len(req.PostNavJS) > 0 {
-		slog.Debug("running post-navigation JS", "url", req.URL, "count", len(req.PostNavJS))
+		slog.Debug("running post-navigation JS", "url", apperrors.SanitizeURL(req.URL), "count", len(req.PostNavJS))
 		for _, script := range req.PostNavJS {
 			if strings.TrimSpace(script) == "" {
 				continue
 			}
 			if err := chromedp.Run(ctx, chromedp.Evaluate(script, nil)); err != nil {
-				slog.Error("post-navigation JS failed", "url", req.URL, "error", err)
+				slog.Error("post-navigation JS failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 				return Result{}, err
 			}
 		}
 	}
 
 	var html string
-	slog.Debug("capturing outer HTML", "url", req.URL)
+	slog.Debug("capturing outer HTML", "url", apperrors.SanitizeURL(req.URL))
 	if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &html, chromedp.ByQuery)); err != nil {
-		slog.Error("failed to capture HTML", "url", req.URL, "error", err)
+		slog.Error("failed to capture HTML", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err
 	}
 
@@ -263,9 +265,9 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 	status := int(capturedStatus)
 	if status == 0 {
 		status = 200
-		slog.Warn("status not captured from network events, using default 200", "url", req.URL)
+		slog.Warn("status not captured from network events, using default 200", "url", apperrors.SanitizeURL(req.URL))
 	} else {
-		slog.Debug("using captured status", "url", req.URL, "status", status)
+		slog.Debug("using captured status", "url", apperrors.SanitizeURL(req.URL), "status", status)
 	}
 
 	return Result{
@@ -404,10 +406,10 @@ func (rt *responseTracker) onEvent(ev any) {
 			rt.status = evResp.Response.Status
 			rt.captured = true
 			rt.mu.Unlock()
-			slog.Debug("captured response status", "url", respURL, "target", rt.targetURL, "status", rt.status)
+			slog.Debug("captured response status", "url", apperrors.SanitizeURL(respURL), "target", apperrors.SanitizeURL(rt.targetURL), "status", rt.status)
 			return
 		}
-		slog.Debug("document response URL does not match target", "respURL", respURL, "targetURL", rt.targetURL)
+		slog.Debug("document response URL does not match target", "respURL", apperrors.SanitizeURL(respURL), "targetURL", apperrors.SanitizeURL(rt.targetURL))
 	}
 	rt.mu.Unlock()
 }

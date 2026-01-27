@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0074",
-      "status": "todo",
-      "title": "Redact querystrings/userinfo from URLs in logs and log only safe error messages",
-      "priority": "high",
-      "tags": [
-        "security",
-        "logging",
-        "privacy",
-        "slog"
-      ],
-      "scope": [
-        "internal/jobs/manager.go",
-        "internal/research/research.go",
-        "internal/crawl/crawl.go",
-        "internal/api/util.go",
-        "internal/apperrors",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/jobs/manager.go logs full URLs via slog.Info(\"processing scrape job\", \"url\", url) and slog.Error(\"scrape job failed\", \"url\", url, ...).",
-        "internal/research/research.go logs full URLs via slog.Debug(\"research crawling target\", \"url\", target, ...) and slog.Error(\"research crawl failed\", \"url\", target, ...).",
-        "internal/crawl/crawl.go logs per-page URLs via slog.Debug(\"enqueuing crawl task\", \"url\", url, ...) which may include tokens in query params."
-      ],
-      "plan": [
-        "Introduce a shared URL sanitization helper for logs (strip query, fragment, and userinfo; optionally truncate long paths).",
-        "Replace slog fields that log raw URL strings with sanitized output across jobs/crawl/research (and any other occurrences).",
-        "Ensure error logs use apperrors.SafeMessage(err) (or equivalent) instead of raw err when the error may contain secrets or filesystem paths.",
-        "Add tests for URL sanitization edge cases (userinfo, query tokens, fragments, invalid URLs) and a small regression test covering at least one log site.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0075",
       "status": "todo",
       "title": "Make MCP tools/list JSON schema output deterministic (stable key ordering)",

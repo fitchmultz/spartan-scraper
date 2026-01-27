@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/playwright-community/playwright-go"
+
+	"spartan-scraper/internal/apperrors"
 )
 
 type PlaywrightFetcher struct {
@@ -29,7 +31,7 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 		return Result{}, errors.New("url is required")
 	}
 
-	slog.Debug("Playwright fetch start", "url", req.URL)
+	slog.Debug("Playwright fetch start", "url", apperrors.SanitizeURL(req.URL))
 
 	retries := clampRetry(req.MaxRetries)
 	baseDelay := req.RetryBaseDelay
@@ -47,11 +49,11 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 
 	for attempt := 0; attempt <= retries; attempt++ {
 		if attempt > 0 {
-			slog.Debug("retrying Playwright fetch", "url", req.URL, "attempt", attempt)
+			slog.Debug("retrying Playwright fetch", "url", apperrors.SanitizeURL(req.URL), "attempt", attempt)
 		}
 
 		if req.Limiter != nil {
-			slog.Debug("waiting for rate limiter", "url", req.URL)
+			slog.Debug("waiting for rate limiter", "url", apperrors.SanitizeURL(req.URL))
 			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
 				return Result{}, err
 			}
@@ -59,21 +61,21 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 
 		result, err := f.fetchOnce(ctx, req, prof, navTimeout)
 		if err == nil {
-			slog.Debug("Playwright fetch success", "url", req.URL)
+			slog.Debug("Playwright fetch success", "url", apperrors.SanitizeURL(req.URL))
 			return result, nil
 		}
 
-		slog.Warn("Playwright fetch failed", "url", req.URL, "error", err, "attempt", attempt)
+		slog.Warn("Playwright fetch failed", "url", apperrors.SanitizeURL(req.URL), "error", err, "attempt", attempt)
 
 		if attempt >= retries || !shouldRetry(err, 0) {
 			return Result{}, err
 		}
 		delay := backoff(baseDelay, attempt)
-		slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+		slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
 		time.Sleep(delay)
 	}
 
-	slog.Error("Playwright fetch max retries exceeded", "url", req.URL)
+	slog.Error("Playwright fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
 	return Result{}, errors.New("max retries exceeded")
 }
 
@@ -181,7 +183,7 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		}
 	}
 
-	slog.Debug("creating browser context", "url", req.URL)
+	slog.Debug("creating browser context", "url", apperrors.SanitizeURL(req.URL))
 	browserCtx, err := browser.NewContext(ctxOptions)
 	if err != nil {
 		slog.Error("failed to create browser context", "error", err)
@@ -192,7 +194,7 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	}()
 
 	if len(prof.Block.URLPatterns) > 0 || len(prof.Block.ResourceTypes) > 0 {
-		slog.Debug("setting up resource blocking", "url", req.URL, "patterns", prof.Block.URLPatterns, "types", prof.Block.ResourceTypes)
+		slog.Debug("setting up resource blocking", "url", apperrors.SanitizeURL(req.URL), "patterns", prof.Block.URLPatterns, "types", prof.Block.ResourceTypes)
 		for _, pattern := range prof.Block.URLPatterns {
 			_ = browserCtx.Route(pattern, func(route playwright.Route) {
 				_ = route.Abort("blockedbyclient")
@@ -230,7 +232,7 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 				})
 			}
 			if len(cookies) > 0 {
-				slog.Debug("adding cookies to context", "url", req.URL, "count", len(cookies))
+				slog.Debug("adding cookies to context", "url", apperrors.SanitizeURL(req.URL), "count", len(cookies))
 				_ = browserCtx.AddCookies(cookies)
 			}
 		}
@@ -257,9 +259,9 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	waitUntil := playwright.WaitUntilStateCommit
 
 	if req.Auth.LoginURL != "" {
-		slog.Info("performing headless login", "url", req.URL, "loginURL", req.Auth.LoginURL)
+		slog.Info("performing headless login", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL))
 		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
-			slog.Error("login page navigation failed", "url", req.URL, "loginURL", req.Auth.LoginURL, "error", err)
+			slog.Error("login page navigation failed", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL), "error", err)
 			return Result{}, err
 		}
 		if err = page.Fill(req.Auth.LoginUserSelector, req.Auth.LoginUser); err != nil {
@@ -272,13 +274,13 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 			return Result{}, err
 		}
 		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutFloat}); err != nil {
-			slog.Warn("wait for load state after login timed out", "url", req.URL)
+			slog.Warn("wait for load state after login timed out", "url", apperrors.SanitizeURL(req.URL))
 		}
-		slog.Info("login complete", "url", req.URL)
+		slog.Info("login complete", "url", apperrors.SanitizeURL(req.URL))
 	}
 
 	if len(req.PreNavJS) > 0 {
-		slog.Debug("running pre-navigation JS", "url", req.URL, "count", len(req.PreNavJS))
+		slog.Debug("running pre-navigation JS", "url", apperrors.SanitizeURL(req.URL), "count", len(req.PreNavJS))
 		if _, err = page.Goto("about:blank", playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
 			return Result{}, err
 		}
@@ -287,16 +289,16 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 				continue
 			}
 			if _, err := page.Evaluate(script); err != nil {
-				slog.Error("pre-navigation JS failed", "url", req.URL, "error", err)
+				slog.Error("pre-navigation JS failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 				return Result{}, err
 			}
 		}
 	}
 
-	slog.Debug("navigating to target", "url", req.URL)
+	slog.Debug("navigating to target", "url", apperrors.SanitizeURL(req.URL))
 	resp, err := page.Goto(req.URL, playwright.PageGotoOptions{Timeout: &navTimeoutFloat, WaitUntil: waitUntil})
 	if err != nil {
-		slog.Error("navigation failed", "url", req.URL, "error", err)
+		slog.Error("navigation failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err
 	}
 
@@ -304,16 +306,16 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	if resp != nil {
 		statusCode = resp.Status()
 	}
-	slog.Debug("navigation complete", "url", req.URL, "status", statusCode)
+	slog.Debug("navigation complete", "url", apperrors.SanitizeURL(req.URL), "status", statusCode)
 
-	slog.Debug("waiting for page to be ready", "url", req.URL, "mode", prof.Wait.Mode)
+	slog.Debug("waiting for page to be ready", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode)
 	if err := f.performWait(page, prof.Wait, timeoutFloat); err != nil {
-		slog.Warn("wait strategy failed or timed out", "url", req.URL, "mode", prof.Wait.Mode, "error", err)
+		slog.Warn("wait strategy failed or timed out", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode, "error", err)
 		// Fall through to capture whatever we have
 	}
 
 	if prof.Wait.ExtraSleepMs > 0 {
-		slog.Debug("extra sleep", "url", req.URL, "ms", prof.Wait.ExtraSleepMs)
+		slog.Debug("extra sleep", "url", apperrors.SanitizeURL(req.URL), "ms", prof.Wait.ExtraSleepMs)
 		time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)
 	}
 
@@ -321,30 +323,30 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		if strings.TrimSpace(selector) == "" {
 			continue
 		}
-		slog.Debug("waiting for selector", "url", req.URL, "selector", selector)
+		slog.Debug("waiting for selector", "url", apperrors.SanitizeURL(req.URL), "selector", selector)
 		if _, err := page.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{State: playwright.WaitForSelectorStateVisible, Timeout: &timeoutFloat}); err != nil {
-			slog.Error("wait for selector failed", "url", req.URL, "selector", selector, "error", err)
+			slog.Error("wait for selector failed", "url", apperrors.SanitizeURL(req.URL), "selector", selector, "error", err)
 			return Result{}, err
 		}
 	}
 
 	if len(req.PostNavJS) > 0 {
-		slog.Debug("running post-navigation JS", "url", req.URL, "count", len(req.PostNavJS))
+		slog.Debug("running post-navigation JS", "url", apperrors.SanitizeURL(req.URL), "count", len(req.PostNavJS))
 		for _, script := range req.PostNavJS {
 			if strings.TrimSpace(script) == "" {
 				continue
 			}
 			if _, err := page.Evaluate(script); err != nil {
-				slog.Error("post-navigation JS failed", "url", req.URL, "error", err)
+				slog.Error("post-navigation JS failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
 				return Result{}, err
 			}
 		}
 	}
 
-	slog.Debug("capturing page content", "url", req.URL)
+	slog.Debug("capturing page content", "url", apperrors.SanitizeURL(req.URL))
 	content, err := page.Content()
 	if err != nil {
-		slog.Error("failed to capture content", "url", req.URL, "error", err)
+		slog.Error("failed to capture content", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err
 	}
 

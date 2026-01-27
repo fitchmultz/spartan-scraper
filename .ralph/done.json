@@ -3138,6 +3138,70 @@
       "completed_at": "2026-01-27T19:54:18.842975000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0074",
+      "status": "done",
+      "title": "Redact querystrings/userinfo from URLs in logs and log only safe error messages",
+      "priority": "high",
+      "tags": [
+        "security",
+        "logging",
+        "privacy",
+        "slog"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/research/research.go",
+        "internal/crawl/crawl.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "internal/fetch/adaptive_fetcher.go",
+        "internal/api/util.go",
+        "internal/apperrors",
+        "make test",
+        "make ci"
+      ],
+      "evidence": [
+        "internal/jobs/manager.go logs full URLs via slog.Info(\"processing scrape job\", \"url\", url) at line 398 and slog.Error(\"scrape job failed\", \"url\", url, ...) at line 434.",
+        "internal/jobs/manager.go also logs URLs for crawl jobs at line 451 and research jobs at line 511.",
+        "internal/research/research.go logs full URLs via slog.Debug(\"research crawling target\", \"url\", target, ...) at line 98 and slog.Error(\"research crawl failed\", \"url\", target, ...) at line 123.",
+        "internal/crawl/crawl.go logs full URLs via slog.Info(\"crawl.Run start\", \"url\", req.URL, ...) at line 72 and slog.Debug(\"enqueuing crawl task\", \"url\", url, ...) at line 341.",
+        "internal/fetch/http_fetcher.go logs full URLs throughout (lines 30, 43, 47, 61, 100, 106, 140, 150, 155, 165).",
+        "internal/fetch/chromedp_fetcher.go logs full URLs throughout (lines 47, 66, 70, 78, 88, 92, 97, 151, 157, 164, 167, 173, 177, 186, 200, 203, 211, 217, 226, 234, 236, 242, 248, 255, 257, 268).",
+        "internal/fetch/playwright_fetcher.go logs full URLs throughout (lines 32, 50, 54, 62, 72, 76, 184, 195, 233, 260, 262, 277, 281, 290, 296, 299, 307, 309, 316, 324, 326, 332, 338, 344, 347).",
+        "internal/fetch/adaptive_fetcher.go logs full URLs throughout (lines 39, 44, 49, 55, 59, 64, 80, 85, 97, 102, 118, 131, 135).",
+        "internal/apperrors/sanitize.go already provides RedactString() and SafeMessage() for redacting secrets and filesystem paths, but has no URL-specific sanitization helper.",
+        "internal/api/util.go already uses apperrors.SafeMessage() in writeError() at line 57 for HTTP error responses."
+      ],
+      "plan": [
+        "Add a URL sanitization helper to internal/apperrors/sanitize.go (or new internal/logutil package) that strips query params, fragments, and userinfo from URLs for safe logging.",
+        "Update internal/jobs/manager.go to use sanitized URLs in slog calls (lines 398, 434, 451, 492, 511, 554).",
+        "Update internal/research/research.go to use sanitized URLs in slog calls (lines 88, 98, 123, 138, 160).",
+        "Update internal/crawl/crawl.go to use sanitized URLs in slog calls (lines 72, 99, 111, 122, 167, 191, 194, 201, 207, 224, 229, 239, 249, 261, 272, 288, 314, 341).",
+        "Update internal/fetch/http_fetcher.go to use sanitized URLs in slog calls.",
+        "Update internal/fetch/chromedp_fetcher.go to use sanitized URLs in slog calls.",
+        "Update internal/fetch/playwright_fetcher.go to use sanitized URLs in slog calls.",
+        "Update internal/fetch/adaptive_fetcher.go to use sanitized URLs in slog calls.",
+        "Add tests for URL sanitization edge cases (userinfo, query tokens, fragments, invalid URLs) in internal/apperrors/sanitize_test.go or internal/logutil package.",
+        "Run make test and make ci."
+      ],
+      "notes": [
+        "Scope expanded to include all fetcher implementations (http_fetcher.go, chromedp_fetcher.go, playwright_fetcher.go, adaptive_fetcher.go) which extensively log URLs.",
+        "internal/apperrors already has SafeMessage() and RedactString() for error redaction - URL sanitization should be added there or in a dedicated logutil package.",
+        "internal/api/util.go already correctly uses apperrors.SafeMessage() for HTTP error responses.",
+        "Added SanitizeURL() function to internal/apperrors/sanitize.go that strips query params, fragments, and userinfo from URLs",
+        "Updated all slog calls across 8 files to use apperrors.SanitizeURL() for URL logging",
+        "Created comprehensive tests in internal/apperrors/sanitize_url_test.go with 17 test cases",
+        "All 78 web tests pass, all Go tests pass, make ci passes completely"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T20:18:13.607543000Z",
+      "completed_at": "2026-01-27T20:18:13.607543000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

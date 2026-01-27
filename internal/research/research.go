@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/crawl"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
@@ -95,7 +96,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		}
 
 		if req.MaxDepth > 0 {
-			slog.Debug("research crawling target", "url", target, "maxDepth", req.MaxDepth)
+			slog.Debug("research crawling target", "url", apperrors.SanitizeURL(target), "maxDepth", req.MaxDepth)
 			pages, err := crawl.Run(ctx, crawl.Request{
 				URL:              target,
 				RequestID:        req.RequestID,
@@ -120,7 +121,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				JSRegistry:       req.JSRegistry,
 			})
 			if err != nil {
-				slog.Error("research crawl failed", "url", target, "error", err)
+				slog.Error("research crawl failed", "url", apperrors.SanitizeURL(target), "error", err)
 				continue
 			}
 			for _, page := range pages {
@@ -135,7 +136,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				})
 			}
 		} else {
-			slog.Debug("research scraping target", "url", target)
+			slog.Debug("research scraping target", "url", apperrors.SanitizeURL(target))
 			res, err := scrape.Run(ctx, scrape.Request{
 				URL:              target,
 				RequestID:        req.RequestID,
@@ -157,7 +158,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				JSRegistry:       req.JSRegistry,
 			})
 			if err != nil {
-				slog.Error("research scrape failed", "url", target, "error", err)
+				slog.Error("research scrape failed", "url", apperrors.SanitizeURL(target), "error", err)
 				continue
 			}
 			if res.Status != 304 {

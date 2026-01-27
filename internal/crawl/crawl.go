@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
@@ -69,7 +70,7 @@ type PageResult struct {
 // Run executes a crawl request. It concurrently fetches and processes pages
 // starting from a root URL, following links up to a maximum depth and page count.
 func Run(ctx context.Context, req Request) ([]PageResult, error) {
-	slog.Info("crawl.Run start", "url", req.URL, "maxDepth", req.MaxDepth, "maxPages", req.MaxPages)
+	slog.Info("crawl.Run start", "url", apperrors.SanitizeURL(req.URL), "maxDepth", req.MaxDepth, "maxPages", req.MaxPages)
 	if req.MaxDepth <= 0 {
 		req.MaxDepth = 1
 	}
@@ -96,7 +97,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 
 	startURL, err := url.Parse(req.URL)
 	if err != nil {
-		slog.Error("failed to parse start URL", "url", req.URL, "error", err)
+		slog.Error("failed to parse start URL", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return nil, err
 	}
 
@@ -108,7 +109,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	}
 
 	processPage := func(item task) (PageResult, bool, bool) {
-		slog.Debug("processing crawl page", "url", item.URL, "depth", item.Depth)
+		slog.Debug("processing crawl page", "url", apperrors.SanitizeURL(item.URL), "depth", item.Depth)
 		// Check state if incremental
 		var state model.CrawlState
 		var ifNoneMatch, ifModifiedSince string
@@ -119,7 +120,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 				state = existingState
 				ifNoneMatch = state.ETag
 				ifModifiedSince = state.LastModified
-				slog.Debug("incremental crawl", "url", item.URL, "etag", ifNoneMatch, "lastModified", ifModifiedSince)
+				slog.Debug("incremental crawl", "url", apperrors.SanitizeURL(item.URL), "etag", ifNoneMatch, "lastModified", ifModifiedSince)
 			}
 		}
 
@@ -164,7 +165,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			DataDir:    req.DataDir,
 		})
 		if err != nil {
-			slog.Error("pre-fetch pipeline failed", "url", item.URL, "error", err)
+			slog.Error("pre-fetch pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false
 		}
 		fetchReq = fetchInput.Request
@@ -188,23 +189,23 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			}
 		}
 
-		slog.Debug("fetching crawl page", "url", fetchReq.URL)
+		slog.Debug("fetching crawl page", "url", apperrors.SanitizeURL(fetchReq.URL))
 		res, err := fetcher.Fetch(ctx, fetchReq)
 		if err != nil {
-			slog.Error("fetch failed", "url", item.URL, "error", err)
+			slog.Error("fetch failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false // Don't enqueue children if fetch failed
 		}
 		if res.Status >= 400 {
-			slog.Warn("fetch returned error status", "url", item.URL, "status", res.Status)
+			slog.Warn("fetch returned error status", "url", apperrors.SanitizeURL(item.URL), "status", res.Status)
 			return PageResult{}, false, false
 		}
-		slog.Debug("fetch complete", "url", res.URL, "status", res.Status)
+		slog.Debug("fetch complete", "url", apperrors.SanitizeURL(res.URL), "status", res.Status)
 
 		postFetchCtx := baseCtx
 		postFetchCtx.Stage = pipeline.StagePostFetch
 		fetchOut, err := registry.RunPostFetch(postFetchCtx, fetchInput, pipeline.FetchOutput{Result: res})
 		if err != nil {
-			slog.Error("post-fetch pipeline failed", "url", item.URL, "error", err)
+			slog.Error("post-fetch pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false
 		}
 		res = fetchOut.Result
@@ -221,12 +222,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		}
 
 		if isUnchanged {
-			slog.Info("crawl page unchanged", "url", item.URL)
+			slog.Info("crawl page unchanged", "url", apperrors.SanitizeURL(item.URL))
 			// Update LastScraped timestamp
 			if req.Incremental && req.Store != nil {
 				state.LastScraped = time.Now()
 				if err := req.Store.UpsertCrawlState(ctx, state); err != nil {
-					slog.Error("failed to update crawl state", "url", item.URL, "error", err)
+					slog.Error("failed to update crawl state", "url", apperrors.SanitizeURL(item.URL), "error", err)
 				}
 			}
 			// Return a page result indicating it was skipped
@@ -236,7 +237,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			}, false, true // skip processing/extracting
 		}
 
-		slog.Debug("extracting crawl page", "url", res.URL)
+		slog.Debug("extracting crawl page", "url", apperrors.SanitizeURL(res.URL))
 		preExtractCtx := baseCtx
 		preExtractCtx.Stage = pipeline.StagePreExtract
 		extractInput, err := registry.RunPreExtract(preExtractCtx, pipeline.ExtractInput{
@@ -246,7 +247,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			DataDir: req.DataDir,
 		})
 		if err != nil {
-			slog.Error("pre-extract pipeline failed", "url", item.URL, "error", err)
+			slog.Error("pre-extract pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false
 		}
 
@@ -258,7 +259,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			DataDir: extractInput.DataDir,
 		})
 		if extractErr != nil {
-			slog.Error("extraction failed", "url", item.URL, "error", extractErr)
+			slog.Error("extraction failed", "url", apperrors.SanitizeURL(item.URL), "error", extractErr)
 			return PageResult{}, false, false
 		}
 
@@ -269,7 +270,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			Normalized: output.Normalized,
 		})
 		if err != nil {
-			slog.Error("post-extract pipeline failed", "url", item.URL, "error", err)
+			slog.Error("post-extract pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false
 		}
 		output.Extracted = extractOut.Extracted
@@ -285,7 +286,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 				LastScraped:  time.Now(),
 			}
 			if err := req.Store.UpsertCrawlState(ctx, newState); err != nil {
-				slog.Error("failed to update crawl state", "url", item.URL, "error", err)
+				slog.Error("failed to update crawl state", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			}
 		}
 
@@ -307,11 +308,11 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 
 		finalResult, err := applyCrawlOutputPipeline(ctx, registry, baseCtx, result)
 		if err != nil {
-			slog.Error("crawl output pipeline failed", "url", item.URL, "error", err)
+			slog.Error("crawl output pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)
 			return PageResult{}, false, false
 		}
 
-		slog.Info("crawl page complete", "url", item.URL, "status", res.Status, "title", result.Title)
+		slog.Info("crawl page complete", "url", apperrors.SanitizeURL(item.URL), "status", res.Status, "title", result.Title)
 		return finalResult, true, false
 	}
 
@@ -338,12 +339,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		visited[norm] = true
 		visitedMu.Unlock()
 
-		slog.Debug("enqueuing crawl task", "url", url, "depth", depth)
+		slog.Debug("enqueuing crawl task", "url", apperrors.SanitizeURL(url), "depth", depth)
 		wg.Add(1)
 		select {
 		case tasks <- task{URL: url, Depth: depth}:
 		default:
-			slog.Warn("crawl task channel full", "url", url)
+			slog.Warn("crawl task channel full", "url", apperrors.SanitizeURL(url))
 			wg.Done()
 		case <-ctx.Done():
 			wg.Done()

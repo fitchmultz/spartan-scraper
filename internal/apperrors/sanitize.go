@@ -1,6 +1,9 @@
 package apperrors
 
-import "regexp"
+import (
+	"net/url"
+	"regexp"
+)
 
 var (
 	// e.g. "Bearer abc123", "bearer eyJ...", "Basic Zm9vOmJhcg=="
@@ -57,4 +60,35 @@ func SafeMessage(err error) string {
 		return ""
 	}
 	return RedactString(err.Error())
+}
+
+// SanitizeURL removes query parameters, fragments, and userinfo from URLs for safe logging.
+// It preserves the scheme, host, and path for debugging purposes while stripping sensitive
+// components that may contain tokens, credentials, or session identifiers.
+//
+// If the URL cannot be parsed, the original string is returned unchanged to avoid
+// breaking logging for malformed input.
+//
+// Examples:
+//   - "https://api.example.com/v1/users" → "https://api.example.com/v1/users"
+//   - "https://api.example.com?token=secret" → "https://api.example.com"
+//   - "https://user:pass@example.com/path" → "https://example.com/path"
+//   - "https://example.com/page#section" → "https://example.com/page"
+func SanitizeURL(rawURL string) string {
+	if rawURL == "" {
+		return rawURL
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		// Return original on parse error; don't break logging
+		return rawURL
+	}
+
+	// Strip sensitive components
+	u.RawQuery = ""
+	u.Fragment = ""
+	u.User = nil
+
+	return u.String()
 }

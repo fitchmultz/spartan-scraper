@@ -395,7 +395,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	switch job.Kind {
 	case model.KindScrape:
 		url, _ := job.Params["url"].(string)
-		slog.Info("processing scrape job", "jobID", job.ID, "url", url)
+		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(url))
 		headless, _ := job.Params["headless"].(bool)
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
@@ -431,7 +431,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 				}
 				return nil
 			}
-			slog.Error("scrape job failed", "jobID", job.ID, "url", url, "error", err)
+			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
 			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 			}
@@ -448,7 +448,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		}
 	case model.KindCrawl:
 		url, _ := job.Params["url"].(string)
-		slog.Info("processing crawl job", "jobID", job.ID, "url", url)
+		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(url))
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
 		headless, _ := job.Params["headless"].(bool)
@@ -489,7 +489,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 				}
 				return nil
 			}
-			slog.Error("crawl job failed", "jobID", job.ID, "url", url, "error", err)
+			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
 			if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, err.Error()); err != nil {
 				slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 			}

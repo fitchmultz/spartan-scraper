@@ -13,6 +13,8 @@ import (
 	"net/http/cookiejar"
 	"strings"
 	"time"
+
+	"spartan-scraper/internal/apperrors"
 )
 
 // HTTPFetcher implements content fetching using the standard library http.Client.
@@ -27,7 +29,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		return Result{}, errors.New("url is required")
 	}
 
-	slog.Debug("HTTP fetch start", "url", req.URL)
+	slog.Debug("HTTP fetch start", "url", apperrors.SanitizeURL(req.URL))
 
 	// Apply auth query parameters before making the request
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
@@ -40,11 +42,11 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 	for attempt := 0; attempt <= retries; attempt++ {
 		if attempt > 0 {
-			slog.Debug("retrying HTTP fetch", "url", req.URL, "attempt", attempt)
+			slog.Debug("retrying HTTP fetch", "url", apperrors.SanitizeURL(req.URL), "attempt", attempt)
 		}
 
 		if req.Limiter != nil {
-			slog.Debug("waiting for rate limiter", "url", req.URL)
+			slog.Debug("waiting for rate limiter", "url", apperrors.SanitizeURL(req.URL))
 			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
 				return Result{}, err
 			}
@@ -58,7 +60,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
 		if err != nil {
-			slog.Error("failed to create HTTP request", "url", req.URL, "error", err)
+			slog.Error("failed to create HTTP request", "url", apperrors.SanitizeURL(req.URL), "error", err)
 			return Result{}, err
 		}
 
@@ -89,7 +91,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		resp, err := client.Do(httpReq)
 		if err != nil || resp == nil {
-			slog.Warn("HTTP request failed", "url", req.URL, "error", err, "attempt", attempt)
+			slog.Warn("HTTP request failed", "url", apperrors.SanitizeURL(req.URL), "error", err, "attempt", attempt)
 			if resp != nil {
 				_ = resp.Body.Close()
 			}
@@ -97,13 +99,13 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 				return Result{}, err
 			}
 			delay := backoff(baseDelay, attempt)
-			slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
 			time.Sleep(delay)
 			continue
 		}
 
 		if resp.StatusCode == http.StatusNotModified {
-			slog.Debug("HTTP 304 Not Modified", "url", req.URL)
+			slog.Debug("HTTP 304 Not Modified", "url", apperrors.SanitizeURL(req.URL))
 			_ = resp.Body.Close()
 			return Result{
 				URL:          req.URL,
@@ -132,12 +134,12 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		_ = resp.Body.Close()
 		if readErr != nil {
-			slog.Warn("failed to read HTTP response body", "url", req.URL, "error", readErr, "attempt", attempt)
+			slog.Warn("failed to read HTTP response body", "url", apperrors.SanitizeURL(req.URL), "error", readErr, "attempt", attempt)
 			if attempt >= retries || !shouldRetry(readErr, resp.StatusCode) {
 				return Result{}, readErr
 			}
 			delay := backoff(baseDelay, attempt)
-			slog.Debug("backing off before retry", "url", req.URL, "delay", delay)
+			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
 			time.Sleep(delay)
 			continue
 		}
@@ -147,12 +149,12 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if delay <= 0 {
 				delay = backoff(baseDelay, attempt)
 			}
-			slog.Debug("retrying HTTP request based on status code", "url", req.URL, "status", resp.StatusCode, "attempt", attempt, "delay", delay)
+			slog.Debug("retrying HTTP request based on status code", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode, "attempt", attempt, "delay", delay)
 			time.Sleep(delay)
 			continue
 		}
 
-		slog.Debug("HTTP fetch success", "url", req.URL, "status", resp.StatusCode)
+		slog.Debug("HTTP fetch success", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode)
 		return Result{
 			URL:       req.URL,
 			Status:    resp.StatusCode,
@@ -162,6 +164,6 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		}, nil
 	}
 
-	slog.Error("HTTP fetch max retries exceeded", "url", req.URL)
+	slog.Error("HTTP fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
 	return Result{}, errors.New("max retries exceeded")
 }
