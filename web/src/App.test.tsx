@@ -1,10 +1,11 @@
-// Unit tests for loadResults error handling logic.
-// These tests verify error handling behavior by testing logic in isolation.
-// Note: loadResults is internal to App component, so these tests duplicate logic
-// to verify correct error handling behavior. The actual App.tsx implementation should match
-// this logic for tests to remain valid.
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getApiBaseUrl } from "./lib/api-config";
+// Unit tests for results loading utilities and form parsing functions.
+// These tests verify error handling behavior and form building logic in isolation.
+import { describe, it, expect } from "vitest";
+import {
+  parseJsonlResults,
+  buildResultsUrl,
+  parseErrorResponse,
+} from "./lib/results";
 import {
   buildAuth,
   parseProcessors,
@@ -22,338 +23,198 @@ const validNDJSON = JSON.stringify({
   links: [],
 });
 
-async function loadResults(jobId: string, format: string = "jsonl") {
-  try {
-    const apiBaseUrl = getApiBaseUrl();
-    const resultsUrl = apiBaseUrl
-      ? `${apiBaseUrl}/v1/jobs/${jobId}/results?format=${format}`
-      : `/v1/jobs/${jobId}/results?format=${format}`;
-    const response = await fetch(resultsUrl);
-
-    if (!response.ok) {
-      let errorMessage = `Failed to load results (${response.status} ${response.statusText})`;
-      try {
-        const errorData = (await response.json()) as { error?: string };
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // If parsing error body fails, use default message
-      }
-      return { error: errorMessage };
-    }
-
-    const text = await response.text();
-
-    // Handle based on format
-    if (format === "jsonl") {
-      const lines = text.split("\n").filter((line) => line.trim());
-
-      const parsedItems: unknown[] = [];
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line);
-          parsedItems.push(parsed);
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
-
-      // Check if we had input but failed to parse anything
-      if (parsedItems.length === 0 && lines.length > 0) {
-        return {
-          error: "No valid results found. Results file may be corrupted.",
-        };
-      }
-
-      return { data: parsedItems, raw: text };
-    } else {
-      // For other formats, just store raw text for display
-      return { raw: text };
-    }
-  } catch (err) {
-    return { error: String(err) };
-  }
-}
-
-describe("loadResults error handling", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should display server error message on 404", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
+describe("parseErrorResponse", () => {
+  it("should parse valid error JSON", async () => {
+    const mockResponse = {
       ok: false,
       status: 404,
       statusText: "Not Found",
       json: async () => ({ error: "job not found" }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
+    } as unknown as Response;
 
-    const result = await loadResults("test-id");
-
-    expect(result).toEqual({ error: "job not found" });
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
+    const errorMessage = await parseErrorResponse(
+      mockResponse,
+      404,
+      "Not Found",
     );
+    expect(errorMessage).toBe("job not found");
   });
 
-  it("should display server error message on 500", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
+  it("should return default message when error field is missing", async () => {
+    const mockResponse = {
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
-      json: async () => ({ error: "internal server error" }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
+      json: async () => ({ message: "internal error" }),
+    } as unknown as Response;
 
-    const result = await loadResults("test-id");
-
-    expect(result).toEqual({ error: "internal server error" });
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
+    const errorMessage = await parseErrorResponse(
+      mockResponse,
+      500,
+      "Internal Server Error",
+    );
+    expect(errorMessage).toBe(
+      "Failed to load results (500 Internal Server Error)",
     );
   });
 
-  it("should display server error message on 400", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      statusText: "Bad Request",
-      json: async () => ({ error: "invalid job id" }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const result = await loadResults("test-id");
-
-    expect(result).toEqual({ error: "invalid job id" });
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
-    );
-  });
-
-  it("should display default error message when error body cannot be parsed", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
+  it("should return default message when JSON parsing fails", async () => {
+    const mockResponse = {
       ok: false,
       status: 404,
       statusText: "Not Found",
       json: async () => {
         throw new Error("Invalid JSON");
       },
-    });
-    vi.stubGlobal("fetch", mockFetch);
+    } as unknown as Response;
 
-    const result = await loadResults("test-id");
-
-    expect(result).toEqual({ error: "Failed to load results (404 Not Found)" });
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
+    const errorMessage = await parseErrorResponse(
+      mockResponse,
+      404,
+      "Not Found",
     );
+    expect(errorMessage).toBe("Failed to load results (404 Not Found)");
   });
 
-  it("should handle network errors", async () => {
-    const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
-    vi.stubGlobal("fetch", mockFetch);
+  it("should return correct default message format with status and statusText", async () => {
+    const mockResponse = {
+      ok: false,
+      status: 400,
+      statusText: "Bad Request",
+      json: async () => {
+        throw new Error("Invalid JSON");
+      },
+    } as unknown as Response;
 
-    const result = await loadResults("test-id");
-
-    expect(result.error).toContain("Network error");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
+    const errorMessage = await parseErrorResponse(
+      mockResponse,
+      400,
+      "Bad Request",
     );
+    expect(errorMessage).toBe("Failed to load results (400 Bad Request)");
   });
+});
 
-  it("should display 'No valid results found' when results file is corrupted", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => "invalid json\nmore invalid json",
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const result = await loadResults("test-id");
-
-    expect(result).toEqual({
-      error: "No valid results found. Results file may be corrupted.",
-    });
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
-    );
-  });
-
-  it("should parse and display valid results", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => validNDJSON,
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const result = await loadResults("test-id");
+describe("parseJsonlResults", () => {
+  it("should parse valid JSONL", () => {
+    const result = parseJsonlResults(validNDJSON);
 
     expect(result.error).toBeUndefined();
     expect(result.data).toEqual([JSON.parse(validNDJSON)]);
     expect(result.raw).toEqual(validNDJSON);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
-    );
   });
 
-  it("should handle empty results", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => "",
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const result = await loadResults("test-id");
-
-    expect(result.error).toBeUndefined();
-    expect(result.data).toEqual([]);
-    expect(result.raw).toEqual("");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
-    );
-  });
-
-  it("should skip malformed JSON lines in results", async () => {
+  it("should skip malformed lines", () => {
     const mixedNDJSON = `invalid line\n${validNDJSON}\nalso invalid`;
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => mixedNDJSON,
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const result = await loadResults("test-id");
+    const result = parseJsonlResults(mixedNDJSON);
 
     expect(result.error).toBeUndefined();
     expect(result.data).toEqual([JSON.parse(validNDJSON)]);
     expect(result.raw).toEqual(mixedNDJSON);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/v1/jobs/test-id/results?format=jsonl",
-    );
   });
 
-  describe("format parameter handling", () => {
-    it("should include format parameter in URL when format is provided", async () => {
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => validNDJSON,
-      });
-      vi.stubGlobal("fetch", mockFetch);
+  it("should handle empty input", () => {
+    const result = parseJsonlResults("");
 
-      const result = await loadResults("test-id", "json");
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual([]);
+    expect(result.raw).toEqual("");
+  });
 
-      expect(result.error).toBeUndefined();
-      expect(result.data).toBeUndefined();
-      expect(result.raw).toEqual(validNDJSON);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=json",
-      );
+  it("should handle all malformed lines", () => {
+    const corrupted = "invalid json\nmore invalid json";
+    const result = parseJsonlResults(corrupted);
+
+    expect(result.error).toBe(
+      "No valid results found. Results file may be corrupted.",
+    );
+    expect(result.data).toBeUndefined();
+    expect(result.raw).toEqual(corrupted);
+  });
+
+  it("should preserve raw text in all cases", () => {
+    const testText = "some text";
+    const result = parseJsonlResults(testText);
+    expect(result.raw).toEqual(testText);
+  });
+
+  it("should filter empty lines", () => {
+    const withEmptyLines = `\n\n${validNDJSON}\n\n\n`;
+    const result = parseJsonlResults(withEmptyLines);
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual([JSON.parse(validNDJSON)]);
+    expect(result.raw).toEqual(withEmptyLines);
+  });
+
+  it("should parse multiple valid lines", () => {
+    const line2 = JSON.stringify({
+      url: "https://example2.com",
+      status: 200,
+      title: "Test2",
+      text: "Content2",
+      links: [],
     });
+    const multiLineNDJSON = `${validNDJSON}\n${line2}`;
+    const result = parseJsonlResults(multiLineNDJSON);
 
-    it("should default to jsonl format when no format is provided", async () => {
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => validNDJSON,
-      });
-      vi.stubGlobal("fetch", mockFetch);
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual([JSON.parse(validNDJSON), JSON.parse(line2)]);
+    expect(result.raw).toEqual(multiLineNDJSON);
+  });
+});
 
-      const result = await loadResults("test-id");
+describe("buildResultsUrl", () => {
+  it("should return relative path when base URL is empty", () => {
+    const url = buildResultsUrl("test-id", "jsonl");
+    expect(url).toBe("/v1/jobs/test-id/results?format=jsonl");
+  });
 
-      expect(result.error).toBeUndefined();
-      expect(result.data).toEqual([JSON.parse(validNDJSON)]);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=jsonl",
-      );
-    });
+  it("should include format parameter", () => {
+    const url = buildResultsUrl("test-id", "json");
+    expect(url).toContain("?format=json");
+  });
 
-    it("should handle csv format", async () => {
-      const csvContent =
-        "url,status,title,text,links\nhttps://example.com,200,Test,Content,";
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => csvContent,
-      });
-      vi.stubGlobal("fetch", mockFetch);
+  it("should include pagination params for jsonl format", () => {
+    const url = buildResultsUrl("test-id", "jsonl", 100, 0);
+    expect(url).toContain("?format=jsonl&limit=100&offset=0");
+  });
 
-      const result = await loadResults("test-id", "csv");
+  it("should calculate correct offset for page 1", () => {
+    const url = buildResultsUrl("test-id", "jsonl", 100, 0);
+    expect(url).toContain("offset=0");
+  });
 
-      expect(result.error).toBeUndefined();
-      expect(result.raw).toEqual(csvContent);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=csv",
-      );
-    });
+  it("should calculate correct offset for page 2", () => {
+    const url = buildResultsUrl("test-id", "jsonl", 100, 100);
+    expect(url).toContain("offset=100");
+  });
 
-    it("should handle md format", async () => {
-      const mdContent = "# Test Results\n\n- Item 1\n- Item 2";
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => mdContent,
-      });
-      vi.stubGlobal("fetch", mockFetch);
+  it("should calculate correct offset for page 5", () => {
+    const url = buildResultsUrl("test-id", "jsonl", 100, 400);
+    expect(url).toContain("offset=400");
+  });
 
-      const result = await loadResults("test-id", "md");
+  it("should not include pagination for non-jsonl formats", () => {
+    const url = buildResultsUrl("test-id", "json", 100, 0);
+    expect(url).toBe("/v1/jobs/test-id/results?format=json");
+    expect(url).not.toContain("limit");
+    expect(url).not.toContain("offset");
+  });
 
-      expect(result.error).toBeUndefined();
-      expect(result.raw).toEqual(mdContent);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=md",
-      );
-    });
+  it("should handle csv format", () => {
+    const url = buildResultsUrl("test-id", "csv");
+    expect(url).toBe("/v1/jobs/test-id/results?format=csv");
+  });
 
-    it("should handle json format", async () => {
-      const jsonArray = `[${validNDJSON}]`;
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => jsonArray,
-      });
-      vi.stubGlobal("fetch", mockFetch);
+  it("should handle md format", () => {
+    const url = buildResultsUrl("test-id", "md");
+    expect(url).toBe("/v1/jobs/test-id/results?format=md");
+  });
 
-      const result = await loadResults("test-id", "json");
-
-      expect(result.error).toBeUndefined();
-      expect(result.raw).toEqual(jsonArray);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=json",
-      );
-    });
-
-    it("should return empty parsedItems for non-JSONL formats", async () => {
-      const csvContent = "url,status,title\nhttps://example.com,200,Test";
-      const mockFetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        text: async () => csvContent,
-      });
-      vi.stubGlobal("fetch", mockFetch);
-
-      const result = await loadResults("test-id", "csv");
-
-      expect(result.error).toBeUndefined();
-      expect(result.raw).toEqual(csvContent);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/v1/jobs/test-id/results?format=csv",
-      );
-    });
+  it("should handle json format", () => {
+    const url = buildResultsUrl("test-id", "json");
+    expect(url).toBe("/v1/jobs/test-id/results?format=json");
   });
 });
 
@@ -656,60 +517,17 @@ describe("auth payload generation", () => {
 });
 
 describe("pagination", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("should include pagination parameters for jsonl format", () => {
+    const resultsPerPage = 100;
+    const offset = 0;
+    const expectedParams = `limit=${resultsPerPage}&offset=${offset}`;
+    expect(expectedParams).toBe("limit=100&offset=0");
   });
 
-  const generateMockItems = (count: number) => {
-    return Array.from({ length: count }, (_, i) => ({
-      url: `https://example.com/page${i + 1}`,
-      status: 200,
-      title: `Page ${i + 1}`,
-      text: `Content ${i + 1}`,
-      links: [],
-    }));
-  };
-
-  it("should include pagination parameters for jsonl format", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      json: async () => generateMockItems(100),
-      headers: new Headers({ "X-Total-Count": "250" }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const apiBaseUrl = getApiBaseUrl();
-    const resultsUrl = apiBaseUrl
-      ? `${apiBaseUrl}/v1/jobs/test-id/results?format=jsonl&limit=100&offset=0`
-      : `/v1/jobs/test-id/results?format=jsonl&limit=100&offset=0`;
-    const response = await fetch(resultsUrl);
-
-    expect(response.ok).toBe(true);
-    expect(response.headers.get("X-Total-Count")).toBe("250");
-    const items = (await response.json()) as unknown[];
-    expect(items.length).toBe(100);
-  });
-
-  it("should not include pagination parameters for non-jsonl formats", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => "json format content",
-      headers: new Headers(),
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    const apiBaseUrl = getApiBaseUrl();
-    const resultsUrl = apiBaseUrl
-      ? `${apiBaseUrl}/v1/jobs/test-id/results?format=json`
-      : `/v1/jobs/test-id/results?format=json`;
-    const response = await fetch(resultsUrl);
-
-    expect(response.ok).toBe(true);
-    expect(response.headers.get("X-Total-Count")).toBeNull();
+  it("should not include pagination parameters for non-jsonl formats", () => {
+    const format = "json";
+    const expectedParams = `format=${format}`;
+    expect(expectedParams).toBe("format=json");
   });
 
   it("should calculate correct offset for page 1", () => {

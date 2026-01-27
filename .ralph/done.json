@@ -3242,6 +3242,64 @@
       "completed_at": "2026-01-27T20:31:47.169354000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0076",
+      "status": "done",
+      "title": "Remove fetch-mocking from web tests and replace with non-mocked coverage",
+      "priority": "high",
+      "tags": [
+        "web",
+        "testing",
+        "policy",
+        "ux",
+        "refactor"
+      ],
+      "scope": [
+        "web/src/App.test.tsx",
+        "web/src/App.tsx",
+        "web/src/auth-parsers.test.ts",
+        "web/src/lib/api-config.test.ts",
+        "web/src/lib/api-config.ts",
+        "web/src/lib/form-utils.ts",
+        "internal/api",
+        "make test-ci",
+        "make ci"
+      ],
+      "evidence": [
+        "web/src/App.test.tsx uses vi.stubGlobal(\"fetch\", ...) and vi.fn().mockResolvedValueOnce(...) to simulate API responses.",
+        "web/src/App.test.tsx duplicates loadResults function (lines 12-76) to test error handling in isolation.",
+        "Repository guidelines require tests in make ci to avoid mocks; current web tests violate that constraint.",
+        "Only App.test.tsx uses mocking; web/src/auth-parsers.test.ts and web/src/lib/api-config.test.ts are pure unit tests without fetch mocking.",
+        "The loadResults function in App.tsx (lines 197-232) is embedded in the component and would need extraction to web/src/lib for testability."
+      ],
+      "plan": [
+        "Decide target strategy: (A) convert to integration tests that run against a real local API server, or (B) extract loadResults function to web/src/lib/results.ts and test it directly without mocking fetch.",
+        "If choosing (B): Create web/src/lib/results.ts with loadResults, parseJsonlResults, and related helper functions; update App.tsx to import and use these functions.",
+        "Replace App.test.tsx's duplicated loadResults logic with tests that import and test extracted functions from web/src/lib/results.ts directly.",
+        "If choosing (A): Set up a test API server fixture and update App.test.tsx to make real fetch calls against localhost test endpoints.",
+        "Ensure web test suite remains fast and deterministic under make test-ci.",
+        "Verify that web/src/auth-parsers.test.ts and web/src/lib/api-config.test.ts (which don't use mocks) continue to pass.",
+        "Run make test-ci and make ci."
+      ],
+      "notes": [
+        "There are 3 test files in web/src: App.test.tsx (uses fetch mocking), auth-parsers.test.ts (pure unit tests), and lib/api-config.test.ts (pure unit tests).",
+        "The loadResults function in App.tsx (lines 197-232) handles HTTP requests, error parsing, and JSONL parsing - this is the primary logic under test that needs extraction.",
+        "App.test.tsx currently duplicates the loadResults implementation (lines 12-76) to test error handling in isolation; this duplication would be eliminated by extracting the function.",
+        "Strategy (B) - extracting to web/src/lib/results.ts - aligns better with the existing code structure and keeps tests fast without requiring a live API server.",
+        "Fixed critical JSONL parsing bug: loadResults now correctly uses response.text() + parseJsonlResults()",
+        "Removed all fetch mocking from web tests (vi.stubGlobal, vi.fn)",
+        "Extracted results loading logic to web/src/lib/results.ts (160 lines)",
+        "Web tests pass: 84 tests in 806ms, no mocking violations",
+        "CI passes: type-check, lint, format, build, test-ci",
+        "Net code reduction: -193 lines (eliminated duplication)"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T21:10:19.582023000Z",
+      "completed_at": "2026-01-27T21:10:19.582023000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

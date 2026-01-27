@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0076",
-      "status": "todo",
-      "title": "Remove fetch-mocking from web tests and replace with non-mocked coverage",
-      "priority": "high",
-      "tags": [
-        "web",
-        "testing",
-        "policy",
-        "ux"
-      ],
-      "scope": [
-        "web/src/App.test.tsx",
-        "web/src/App.tsx",
-        "web/src/lib",
-        "internal/api",
-        "make test-ci",
-        "make ci"
-      ],
-      "evidence": [
-        "web/src/App.test.tsx uses vi.stubGlobal(\"fetch\", ...) and vi.fn().mockResolvedValueOnce(...) to simulate API responses.",
-        "Repository guidelines require tests in make ci to avoid mocks; current web tests violate that constraint."
-      ],
-      "plan": [
-        "Decide target strategy: (A) convert to integration tests that run against a real local API server, or (B) extract pure parsing/formatting helpers and test them directly without mocking fetch.",
-        "Refactor App.tsx (or web/src/lib) so the logic under test is accessible without stubbing globals.",
-        "Replace App.test.tsx with tests that cover success/failure modes using the chosen non-mock approach.",
-        "Ensure web test suite remains fast and deterministic under make test-ci.",
-        "Run make test-ci and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0077",
       "status": "todo",
       "title": "Add open-source release essentials (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)",

@@ -29,6 +29,7 @@ import {
   type ResearchRequest,
 } from "./api";
 import { buildApiUrl, getApiBaseUrl } from "./lib/api-config";
+import { loadResults as loadResultsUtil } from "./lib/results";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
 import { ResultsViewer } from "./components/ResultsViewer";
@@ -260,46 +261,34 @@ export function App() {
         setRawResult(null);
       }
 
-      try {
-        const offset = (page - 1) * resultsPerPage;
-        const paginationParams =
-          format === "jsonl" ? `&limit=${resultsPerPage}&offset=${offset}` : "";
-        const resultsUrl = buildApiUrl(
-          `/v1/jobs/${jobId}/results?format=${format}${paginationParams}`,
-        );
-        const response = await fetch(resultsUrl);
+      const result = await loadResultsUtil(jobId, format, page, resultsPerPage);
 
-        if (!response.ok) {
-          let errorMessage = `Failed to load results (${response.status} ${response.statusText})`;
-          try {
-            const errorData = (await response.json()) as { error?: string };
-            if (errorData.error) {
-              errorMessage = errorData.error;
-            }
-          } catch {
-            // If parsing error body fails, use default message
-          }
-          setError(errorMessage);
-          return;
-        }
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
 
-        if (format === "jsonl") {
+      // Handle jsonl pagination response headers
+      if (format === "jsonl" && result.data) {
+        try {
+          const resultsUrl = buildApiUrl(
+            `/v1/jobs/${jobId}/results?format=${format}&limit=${resultsPerPage}&offset=${(page - 1) * resultsPerPage}`,
+          );
+          const response = await fetch(resultsUrl, { method: "HEAD" });
           const totalCountStr = response.headers.get("X-Total-Count");
           if (totalCountStr) {
             setTotalResults(parseInt(totalCountStr, 10));
           }
-
-          const items = (await response.json()) as ResultItem[];
-          setResultItems(items);
-          setRawResult(JSON.stringify(items, null, 2));
-        } else {
-          // For other formats, just store raw text for display
-          const text = await response.text();
-          setRawResult(text);
-          setResultItems([]);
+        } catch {
+          // Ignore header fetch errors; results are still valid
         }
-      } catch (err) {
-        setError(String(err));
+
+        setResultItems(result.data as ResultItem[]);
+        setRawResult(JSON.stringify(result.data, null, 2));
+      } else if (result.raw) {
+        // For other formats, store raw text for display
+        setRawResult(result.raw);
+        setResultItems([]);
       }
     },
     [resultsPerPage],
