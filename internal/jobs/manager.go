@@ -119,7 +119,7 @@ func (m *Manager) recoverQueuedJobs(ctx context.Context) error {
 		}
 	}
 
-	slog.Info("job recovery complete", "total_recovered", totalRecovered)
+	slog.Info("job recovery complete", "totalRecovered", totalRecovered)
 	return nil
 }
 
@@ -149,7 +149,7 @@ func (m *Manager) Start(ctx context.Context) {
 							if !ok {
 								return
 							}
-							slog.Info("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
+							slog.Debug("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
 							if err := m.run(ctx, job); err != nil {
 								slog.Error("job failed during drain", "jobID", job.ID, "error", err)
 							}
@@ -162,7 +162,7 @@ func (m *Manager) Start(ctx context.Context) {
 						slog.Debug("job queue closed, stopping worker", "workerID", workerID)
 						return
 					}
-					slog.Info("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
+					slog.Debug("worker picked up job", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
 					if err := m.run(ctx, job); err != nil {
 						slog.Error("job failed", "jobID", job.ID, "error", err)
 					}

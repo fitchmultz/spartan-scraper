@@ -147,7 +147,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if delay <= 0 {
 				delay = backoff(baseDelay, attempt)
 			}
-			slog.Info("retrying HTTP request based on status code", "url", req.URL, "status", resp.StatusCode, "attempt", attempt, "delay", delay)
+			slog.Debug("retrying HTTP request based on status code", "url", req.URL, "status", resp.StatusCode, "attempt", attempt, "delay", delay)
 			time.Sleep(delay)
 			continue
 		}

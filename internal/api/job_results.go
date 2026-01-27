@@ -36,6 +36,16 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	info, err := os.Stat(job.ResultPath)
+	if err != nil {
+		writeError(w, apperrors.NotFound("no results"))
+		return
+	}
+	if info.Size() == 0 {
+		writeError(w, apperrors.NotFound("no results"))
+		return
+	}
+
 	format := r.URL.Query().Get("format")
 	if format == "" {
 		format = "jsonl"

@@ -64,8 +64,8 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 					changed = true
 				} else {
 					slog.Error("failed to enqueue scheduled job",
-						"schedule_id", schedules[i].ID,
-						"schedule_kind", schedules[i].Kind,
+						"scheduleID", schedules[i].ID,
+						"scheduleKind", schedules[i].Kind,
 						"error", err,
 					)
 				}

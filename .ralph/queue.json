@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0067",
-      "status": "todo",
-      "title": "Review and standardize logging levels and messages",
-      "priority": "medium",
-      "tags": [
-        "logging",
-        "consistency",
-        "slog"
-      ],
-      "scope": [
-        "internal"
-      ],
-      "evidence": [
-        "Logging uses slog consistently but level choices vary: crawl.go has 24 slog calls (mix of Debug, Info, Error, Warn)",
-        "adaptive_fetcher.go has 14 slog calls with detailed context about fetch decisions",
-        "Inconsistent use of structured fields: some logs include all context, others minimal",
-        "Debug logs for sensitive operations (e.g., auth handling) may expose secrets"
-      ],
-      "plan": [
-        "Review all slog.Error, Warn, Info, Debug calls across internal/",
-        "Categorize log levels: Error (failures requiring action), Warn (issues but continuing), Info (significant state changes), Debug (detailed flow)",
-        "Check for any logs that might expose secrets (auth tokens, passwords, API keys)",
-        "Redact or remove sensitive information from logs",
-        "Standardize on structured logging with consistent field names: url, jobID, component, duration",
-        "Document logging conventions in AGENTS.md or internal/README.md",
-        "Add tests that verify sensitive data is not logged in error paths",
-        "Run make test to verify tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0068",
       "status": "todo",
       "title": "Extract validation logic to reusable validators",

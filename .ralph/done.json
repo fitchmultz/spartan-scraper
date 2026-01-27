@@ -2761,6 +2761,63 @@
       "completed_at": "2026-01-27T06:21:56.312795000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0067",
+      "status": "done",
+      "title": "Review and standardize logging levels and messages",
+      "priority": "medium",
+      "tags": [
+        "logging",
+        "consistency",
+        "slog"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "internal/crawl/crawl.go",
+        "internal/scrape/scrape.go",
+        "internal/fetch/adaptive_fetcher.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/scheduler/scheduler.go",
+        "internal/cli/server/server.go",
+        "internal/research/research.go"
+      ],
+      "evidence": [
+        "Total slog calls across internal/: 238 across 23 files",
+        "Top slog usage: jobs/manager.go (56), chromedp_fetcher.go (40), playwright_fetcher.go (36), crawl.go (24), scrape/scrape.go (18), adaptive_fetcher.go (14)",
+        "Inconsistent use of structured fields: some logs include all context (url, jobID, workerID), others minimal",
+        "Level usage varies: crawl.go mixes Debug, Info, Error, Warn; manager.go uses Info for worker startup, Error for failures",
+        "Auth module (internal/auth/) does not use slog; auth-related logs in fetchers only log loginURL (not credentials)",
+        "Login logs in chromedp_fetcher.go:164 and playwright_fetcher.go:260 are safe (only URL, not passwords/tokens)"
+      ],
+      "plan": [
+        "Review slog calls in high-usage files: jobs/manager.go, chromedp_fetcher.go, playwright_fetcher.go, crawl.go, scrape/scrape.go",
+        "Categorize log levels: Error (failures requiring action), Warn (issues but continuing), Info (significant state changes), Debug (detailed flow)",
+        "Standardize structured logging with consistent field names: url, jobID, workerID, component, duration, attempt",
+        "Review login-related logs to ensure no credentials are logged (current logs appear safe, verify across all files)",
+        "Consider consolidating high-volume logs (e.g., worker startup/job pickup) to reduce noise in production",
+        "Document logging conventions in internal/config/log.go or add new internal/log/conventions.go",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Auth module (internal/auth/) does not use slog at all - good for security",
+        "Login logs in fetchers only log loginURL, not credentials - safe",
+        "Jobs/manager.go has highest slog usage (56 calls) - good candidate for review first",
+        "Created internal/config/logging.go documenting standardized logging conventions",
+        "Fixed snake_case field names: total_recovered→totalRecovered, schedule_id→scheduleID, schedule_kind→scheduleKind",
+        "Reduced high-volume logs to Debug: worker job pickup (2), HTTP retry (1)",
+        "Reviewed all 10 files in scope; verified appropriate log levels and no credential leaks",
+        "All tests pass; CI pipeline clean"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T12:24:23.247527000Z",
+      "completed_at": "2026-01-27T12:24:23.247527000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
