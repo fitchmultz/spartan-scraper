@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0086",
-      "status": "todo",
-      "title": "Split `internal/jobs/manager.go` (733 LOC) and define correct shutdown semantics",
-      "priority": "high",
-      "tags": [
-        "jobs",
-        "refactor",
-        "shutdown",
-        "file-size"
-      ],
-      "scope": [
-        "internal/jobs/manager.go",
-        "internal/jobs/manager_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/jobs/manager.go is 733 lines, exceeding the 700 LOC threshold that requires explicit justification and is a maintainability risk.",
-        "internal/jobs/manager.go Start() drains and runs queued jobs after ctx.Done(), but uses the canceled context, which risks spurious failures or surprising behavior during shutdown."
-      ],
-      "plan": [
-        "Split manager.go into cohesive files (e.g., manager.go, worker.go, job_create.go, job_run.go) while keeping package boundaries stable.",
-        "Define and document shutdown behavior: whether to stop processing immediately, drain without running, or drain with a new bounded context.",
-        "Adjust worker loop implementation to match the decided semantics and add tests for shutdown + queued jobs.",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0078",
       "status": "todo",
       "title": "Prepare Go module path for public consumption (set module to final GitHub import path)",

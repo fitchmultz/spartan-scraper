@@ -1,0 +1,163 @@
+package jobs
+
+import (
+	"encoding/json"
+
+	"spartan-scraper/internal/extract"
+	"spartan-scraper/internal/fetch"
+	"spartan-scraper/internal/pipeline"
+)
+
+func (m *Manager) DefaultTimeoutSeconds() int {
+	return int(m.requestTimeout.Seconds())
+}
+
+func (m *Manager) DefaultUsePlaywright() bool {
+	return m.usePlaywright
+}
+
+func reqRetries(v int) int {
+	return v
+}
+
+func decodeAuth(value interface{}) fetch.AuthOptions {
+	if value == nil {
+		return fetch.AuthOptions{}
+	}
+	if auth, ok := value.(fetch.AuthOptions); ok {
+		return auth
+	}
+	data, ok := value.(map[string]interface{})
+	if !ok {
+		return fetch.AuthOptions{}
+	}
+	auth := fetch.AuthOptions{}
+	if v, ok := data["basic"].(string); ok {
+		auth.Basic = v
+	}
+	if v, ok := data["loginUrl"].(string); ok {
+		auth.LoginURL = v
+	}
+	if v, ok := data["loginUserSelector"].(string); ok {
+		auth.LoginUserSelector = v
+	}
+	if v, ok := data["loginPassSelector"].(string); ok {
+		auth.LoginPassSelector = v
+	}
+	if v, ok := data["loginSubmitSelector"].(string); ok {
+		auth.LoginSubmitSelector = v
+	}
+	if v, ok := data["loginUser"].(string); ok {
+		auth.LoginUser = v
+	}
+	if v, ok := data["loginPass"].(string); ok {
+		auth.LoginPass = v
+	}
+	if headers, ok := data["headers"].(map[string]interface{}); ok {
+		m := map[string]string{}
+		for k, v := range headers {
+			if sv, ok := v.(string); ok {
+				m[k] = sv
+			}
+		}
+		auth.Headers = m
+	}
+	if cookies, ok := data["cookies"].([]interface{}); ok {
+		values := make([]string, 0, len(cookies))
+		for _, v := range cookies {
+			if sv, ok := v.(string); ok {
+				values = append(values, sv)
+			}
+		}
+		auth.Cookies = values
+	}
+	if query, ok := data["query"].(map[string]interface{}); ok {
+		m := map[string]string{}
+		for k, v := range query {
+			if sv, ok := v.(string); ok {
+				m[k] = sv
+			}
+		}
+		auth.Query = m
+	}
+	return auth
+}
+
+func decodeExtract(value interface{}) extract.ExtractOptions {
+	if value == nil {
+		return extract.ExtractOptions{}
+	}
+	if opts, ok := value.(extract.ExtractOptions); ok {
+		return opts
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return extract.ExtractOptions{}
+	}
+	var opts extract.ExtractOptions
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return extract.ExtractOptions{}
+	}
+	return opts
+}
+
+func toInt(value interface{}, fallback int) int {
+	switch v := value.(type) {
+	case int:
+		if v <= 0 {
+			return fallback
+		}
+		return v
+	case float64:
+		if int(v) <= 0 {
+			return fallback
+		}
+		return int(v)
+	default:
+		return fallback
+	}
+}
+
+func toStringSlice(value interface{}) []string {
+	switch v := value.(type) {
+	case []string:
+		return v
+	case []interface{}:
+		items := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				items = append(items, s)
+			}
+		}
+		return items
+	default:
+		return nil
+	}
+}
+
+func toBool(value interface{}, fallback bool) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	default:
+		return fallback
+	}
+}
+
+func decodePipeline(value interface{}) pipeline.Options {
+	if value == nil {
+		return pipeline.Options{}
+	}
+	if opts, ok := value.(pipeline.Options); ok {
+		return opts
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return pipeline.Options{}
+	}
+	var opts pipeline.Options
+	if err := json.Unmarshal(data, &opts); err != nil {
+		return pipeline.Options{}
+	}
+	return opts
+}

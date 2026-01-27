@@ -524,8 +524,8 @@ func TestManagerRecoverQueuedJobsPagination(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create more jobs than the default pagination limit (100)
-	// to verify that the pagination loop in recoverQueuedJobs works correctly.
+	// Create more jobs than default pagination limit (100)
+	// to verify that pagination loop in recoverQueuedJobs works correctly.
 	const jobCount = 120
 
 	for i := 0; i < jobCount; i++ {
@@ -587,6 +587,79 @@ func TestManagerRecoverQueuedJobsPagination(t *testing.T) {
 	m.Wait()
 
 	// The test passes if we got here without deadlock or panic
-	// The log output will show the actual recovery count
+	// The log output will show actual recovery count
 	// We expect to see "job recovery complete total_recovered=120" in logs
+}
+
+func TestManagerShutdownWithQueuedJobs(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create multiple jobs that will remain queued
+	const jobCount = 5
+	var jobIDs []string
+	for i := 0; i < jobCount; i++ {
+		job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob %d failed: %v", i, err)
+		}
+		jobIDs = append(jobIDs, job.ID)
+	}
+
+	// Enqueue jobs manually to fill the queue before starting
+	for _, jobID := range jobIDs {
+		job, err := st.Get(ctx, jobID)
+		if err != nil {
+			t.Fatalf("failed to get job %s: %v", jobID, err)
+		}
+		if err := m.Enqueue(job); err != nil {
+			t.Fatalf("failed to enqueue job %s: %v", jobID, err)
+		}
+	}
+
+	// Verify queue has jobs
+	if len(m.queue) != jobCount {
+		t.Fatalf("expected %d jobs in queue, got %d", jobCount, len(m.queue))
+	}
+
+	// Start manager with a short-lived context to trigger shutdown
+	startCtx, startCancel := context.WithCancel(ctx)
+	startDone := make(chan struct{})
+
+	go func() {
+		m.Start(startCtx)
+		close(startDone)
+	}()
+
+	// Wait for workers to start
+	time.Sleep(50 * time.Millisecond)
+
+	// Cancel context to trigger shutdown with queued jobs
+	startCancel()
+
+	// Wait for shutdown to complete
+	<-startDone
+	m.Wait()
+
+	// Verify that queued jobs were processed and reached terminal states
+	// Jobs should either be completed, failed, or canceled - not stuck in queued/running
+	allTerminal := true
+	for _, jobID := range jobIDs {
+		job, err := st.Get(ctx, jobID)
+		if err != nil {
+			t.Errorf("failed to get job %s: %v", jobID, err)
+			allTerminal = false
+			continue
+		}
+		if !job.Status.IsTerminal() {
+			t.Errorf("job %s is not in terminal state after shutdown: %v", jobID, job.Status)
+			allTerminal = false
+		}
+	}
+
+	if !allTerminal {
+		t.Error("not all jobs reached terminal state after shutdown")
+	}
 }
