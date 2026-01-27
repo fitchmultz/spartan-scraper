@@ -2607,6 +2607,58 @@
       "completed_at": "2026-01-27T02:54:21.505505000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0064",
+      "status": "done",
+      "title": "Split internal/exporter/exporter.go into focused format modules",
+      "priority": "high",
+      "tags": [
+        "file-size",
+        "exporter",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/exporter_test.go",
+        "internal/api/job_results.go",
+        "internal/cli/common/results.go",
+        "internal/cli/manage/export.go",
+        "internal/mcp/server.go"
+      ],
+      "evidence": [
+        "File is 835 LOC, exceeding the 700 LOC threshold",
+        "Contains implementations for multiple formats: JSON, JSONL, Markdown, CSV",
+        "Each format implementation has its own stream/buffer logic that could be co-located",
+        "Large file reduces maintainability and makes it hard to add new formats"
+      ],
+      "plan": [
+        "Analyze exporter.go to identify format-specific functions",
+        "Create separate format files: internal/exporter/json.go, jsonl.go, markdown.go, csv.go",
+        "Move format-specific types (ScrapeResult, CrawlResult, ResearchResult) to appropriate files or types.go",
+        "Move pagination helpers (Limit, Offset, ExportPaginated) to internal/exporter/pagination.go",
+        "Keep Export and ExportStream entry points in exporter.go as public API",
+        "Update imports in job_results.go, results.go, export.go, server.go",
+        "Ensure each format file is cohesive and focused",
+        "Run make test to verify tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "File contains 835 lines (exporter.go), exceeding the 700 LOC threshold",
+        "ExportStream is the primary public API entry point used by CLI, API, and MCP packages",
+        "Pagination functions (Limit, Offset, ExportPaginated) should be grouped together",
+        "Related task RQ-0065 splits the 880 LOC test file into focused test files",
+        "Split 836 LOC exporter.go into 7 focused files under 400 LOC each",
+        "Removed dead code: exportJSON, exportMarkdown, exportCSV functions",
+        "All files have comprehensive package docs clarifying scope",
+        "CI passes cleanly (17 Go packages, 78 web tests)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T04:25:53.485157000Z",
+      "completed_at": "2026-01-27T04:25:53.485157000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

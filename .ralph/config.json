@@ -10,16 +10,41 @@
   "agent": {
     "runner": "opencode",
     "model": "zai-coding-plan/glm-4.7",
-    "reasoning_effort": "high",
+    "phases": 3,
+    "iterations": 1,
+    "reasoning_effort": "medium",
     "codex_bin": "codex",
     "opencode_bin": "opencode",
     "gemini_bin": "gemini",
     "claude_bin": "claude",
-    "claude_permission_mode": "bypass_permissions",
-    "repoprompt_plan_required": false,
+    "cursor_bin": "agent",
+    "runner_cli": {
+      "defaults": {
+        "output_format": "stream_json",
+        "verbosity": "normal",
+        "approval_mode": "yolo",
+        "sandbox": "default",
+        "plan_mode": "default",
+        "unsupported_option_policy": "warn"
+      },
+      "runners": {
+        "codex": {
+          "sandbox": "disabled"
+        },
+        "claude": {
+          "verbosity": "verbose"
+        }
+      }
+    },
+    "instruction_files": [
+      "~/.codex/AGENTS.md"
+    ],
+    "repoprompt_plan_required": true,
     "repoprompt_tool_injection": true,
-    "phases": 3,
-    "iterations": 1,
+    "ci_gate_command": "make ci",
+    "ci_gate_enabled": true,
+    "git_commit_push_enabled": true,
+    "git_revert_mode": "ask",
     "update_task_before_run": true
   }
 }
