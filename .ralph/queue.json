@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0062",
-      "status": "todo",
-      "title": "Add comprehensive tests for extract package utilities",
-      "priority": "medium",
-      "tags": [
-        "testing",
-        "extract",
-        "coverage"
-      ],
-      "scope": [
-        "internal/extract"
-      ],
-      "evidence": [
-        "internal/extract/types.go has no test file",
-        "internal/extract/normalize.go has no test file",
-        "internal/extract/jsonld.go has no test file",
-        "internal/extract/pipeline.go has no test file",
-        "internal/extract/templates.go has no test file",
-        "Extract utilities are critical to content extraction and should be tested"
-      ],
-      "plan": [
-        "Read types.go to understand extraction types and options",
-        "Create internal/extract/types_test.go with tests for type constructors and validation",
-        "Read normalize.go to understand content normalization logic",
-        "Create internal/extract/normalize_test.go with tests for text cleanup, deduplication, and structured data extraction",
-        "Read jsonld.go to understand JSON-LD extraction",
-        "Create internal/extract/jsonld_test.go with tests for parsing various JSON-LD formats",
-        "Read pipeline.go to understand extraction pipeline hooks",
-        "Create internal/extract/pipeline_test.go with tests for pre/post extract hooks",
-        "Read templates.go to understand template loading and parsing",
-        "Create internal/extract/templates_test.go with tests for template loading, validation, and application",
-        "Run make test-ci to verify new tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0063",
       "status": "todo",
       "title": "Add tests for model, config, and auth utilities",

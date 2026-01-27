@@ -2507,6 +2507,53 @@
       "completed_at": "2026-01-27T01:50:22.448263000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0062",
+      "status": "done",
+      "title": "Add comprehensive tests for extract package utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "extract",
+        "coverage"
+      ],
+      "scope": [
+        "internal/extract"
+      ],
+      "evidence": [
+        "internal/extract/types.go (172 LOC) has no test file",
+        "internal/extract/normalize.go (61 LOC) has no test file",
+        "internal/extract/jsonld.go (167 LOC) has no test file",
+        "internal/extract/templates.go (149 LOC) has no test file",
+        "Extract utilities are critical to content extraction and should be tested",
+        "pipeline.go has ApplyTemplate function already tested in extract_test.go"
+      ],
+      "plan": [
+        "Read types.go to understand extraction types and options",
+        "Create internal/extract/types_test.go with tests for NewObjectFieldValue, type validation, and field structures",
+        "Read normalize.go to understand content normalization logic",
+        "Create internal/extract/normalize_test.go with tests for Normalize function edge cases (missing fields, fallback behavior)",
+        "Read jsonld.go to understand JSON-LD extraction",
+        "Create internal/extract/jsonld_test.go with tests for ExtractJSONLD, MatchJSONLD, and path traversal",
+        "Read templates.go to understand template loading and parsing",
+        "Create internal/extract/templates_test.go with tests for LoadTemplateRegistry, ResolveTemplate, and template merging",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Added 4 test files: types_test.go, normalize_test.go, jsonld_test.go, templates_test.go",
+        "Test coverage: 83.6% (exceeds 80% target)",
+        "All tests pass",
+        "make ci passes cleanly",
+        "No source code modifications (tests only)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T02:29:52.096366000Z",
+      "completed_at": "2026-01-27T02:29:52.096366000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
