@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"sort"
 	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
@@ -213,14 +214,35 @@ func (s *Server) toolsList() []tool {
 
 func schema(required map[string]string, optional map[string]string) map[string]interface{} {
 	properties := map[string]interface{}{}
-	requiredKeys := make([]string, 0)
-	for key, kind := range required {
-		properties[key] = map[string]string{"type": kind}
+
+	// Collect and sort all keys for deterministic ordering
+	keys := make([]string, 0, len(required)+len(optional))
+	for key := range required {
+		keys = append(keys, key)
+	}
+	for key := range optional {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Build required keys slice (only from required map) in sorted order
+	requiredKeys := make([]string, 0, len(required))
+	for key := range required {
 		requiredKeys = append(requiredKeys, key)
 	}
-	for key, kind := range optional {
+	sort.Strings(requiredKeys)
+
+	// Build properties map in sorted order
+	for _, key := range keys {
+		kind := ""
+		if k, ok := required[key]; ok {
+			kind = k
+		} else if k, ok := optional[key]; ok {
+			kind = k
+		}
 		properties[key] = map[string]string{"type": kind}
 	}
+
 	return map[string]interface{}{
 		"type":       "object",
 		"properties": properties,

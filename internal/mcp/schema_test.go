@@ -15,6 +15,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -99,4 +100,29 @@ func TestToolSchemas(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestSchemaDeterministicOutput(t *testing.T) {
+	srv, tmpDir := testServer()
+	defer os.RemoveAll(tmpDir)
+	defer srv.Close()
+
+	// Collect JSON outputs from multiple calls
+	outputs := make([]string, 10)
+	for i := 0; i < len(outputs); i++ {
+		tools := srv.toolsList()
+		data, err := json.Marshal(tools)
+		if err != nil {
+			t.Fatalf("failed to marshal tools: %v", err)
+		}
+		outputs[i] = string(data)
+	}
+
+	// All outputs must be identical
+	for i := 1; i < len(outputs); i++ {
+		if outputs[i] != outputs[0] {
+			t.Errorf("output %d differs from first output\nfirst:\n%s\n%d:\n%s",
+				i, outputs[0], i, outputs[i])
+		}
+	}
 }

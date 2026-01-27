@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0075",
-      "status": "todo",
-      "title": "Make MCP tools/list JSON schema output deterministic (stable key ordering)",
-      "priority": "high",
-      "tags": [
-        "mcp",
-        "bug",
-        "determinism",
-        "api-contract"
-      ],
-      "scope": [
-        "internal/mcp/server.go",
-        "internal/mcp/server_test.go",
-        "make test",
-        "make ci"
-      ],
-      "evidence": [
-        "internal/mcp/server.go schema() builds the JSON schema by ranging over Go maps (required/optional), which produces nondeterministic property and required key ordering.",
-        "MCP tools/list output is part of the client-facing contract; nondeterministic ordering can cause flaky snapshots and caching issues for consumers."
-      ],
-      "plan": [
-        "Refactor schema() to iterate keys in sorted order for both properties and required arrays.",
-        "Add a regression test that calls tools/list multiple times and asserts identical JSON output (or at least identical schema key ordering).",
-        "Run make test and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0076",
       "status": "todo",
       "title": "Remove fetch-mocking from web tests and replace with non-mocked coverage",
