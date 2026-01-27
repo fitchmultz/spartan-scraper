@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0084",
-      "status": "todo",
-      "title": "Make OpenAPI post-processing script portable (remove perl/rg hard deps or add checks)",
-      "priority": "medium",
-      "tags": [
-        "tooling",
-        "openapi",
-        "dx"
-      ],
-      "scope": [
-        "scripts/strip_openapi_todos.sh",
-        "Makefile",
-        "docs/usage.md"
-      ],
-      "evidence": [
-        "scripts/strip_openapi_todos.sh shells out to `rg` and `perl` to modify generated TS files.",
-        "Makefile `generate` target invokes scripts/strip_openapi_todos.sh, so missing rg/perl breaks generation for new contributors."
-      ],
-      "plan": [
-        "Decide whether to (A) replace the script with a Node-based implementation (using repo’s existing Node toolchain) or (B) implement robust fallbacks to grep/sed and avoid perl.",
-        "Add explicit preflight checks with actionable error messages (which dependency is missing and how to install).",
-        "Update docs/usage.md (or README) to list required tooling for `make generate`.",
-        "Run make generate and make ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0081",
       "status": "todo",
       "title": "Sync root `.env` with `.env.example` (MAX_RESPONSE_BYTES and other config drift)",

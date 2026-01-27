@@ -3430,6 +3430,50 @@
       "completed_at": "2026-01-27T23:02:01.246701000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0084",
+      "status": "done",
+      "title": "Make OpenAPI post-processing script portable (remove perl/rg hard deps or add checks)",
+      "priority": "medium",
+      "tags": [
+        "tooling",
+        "openapi",
+        "dx"
+      ],
+      "scope": [
+        "scripts/strip_openapi_todos.sh",
+        "Makefile",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "scripts/strip_openapi_todos.sh line 51 uses `rg -l \"TODO:\"` to find files with TODO comments.",
+        "scripts/strip_openapi_todos.sh line 53 uses `perl -0pi -e 's/^.*TODO:.*\\n//mg'` to strip TODO lines from each file.",
+        "scripts/strip_openapi_todos.sh has no preflight checks for rg or perl availability.",
+        "Makefile generate target (lines 59-60) invokes scripts/strip_openapi_todos.sh after openapi-ts generation.",
+        "docs/usage.md Configuration section lists .env variables but does not document external tool dependencies for make generate."
+      ],
+      "plan": [
+        "Decide whether to (A) replace the script with a Node-based implementation (using repo's existing Node toolchain) or (B) implement robust fallbacks to grep/sed and avoid perl.",
+        "Add explicit preflight checks with actionable error messages (which dependency is missing and how to install).",
+        "Update docs/usage.md (or README) to list required tooling for `make generate`.",
+        "Run make generate and make ci."
+      ],
+      "notes": [
+        "Verified 2026-01-27: scripts/strip_openapi_todos.sh still uses rg and perl without checks (lines 51, 53).",
+        "Makefile generate target still invokes the script directly without dependency verification.",
+        "Replaced bash script with Node.js implementation (no rg/perl deps)",
+        "Added comprehensive test coverage (5 tests passing)",
+        "Updated docs/usage.md with prerequisites section",
+        "Added .test-tmp/ to .gitignore",
+        "make ci passes cleanly"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T23:21:33.254735000Z",
+      "completed_at": "2026-01-27T23:21:33.254735000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

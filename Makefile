@@ -56,7 +56,7 @@ test-ci:
 
 generate:
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
-	bash scripts/strip_openapi_todos.sh --path $(WEB_DIR)/src/api
+	node $(CURDIR)/scripts/strip_openapi_todos.mjs --path $(WEB_DIR)/src/api
 
 build:
 	mkdir -p $(BIN_DIR)

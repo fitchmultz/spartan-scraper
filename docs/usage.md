@@ -308,6 +308,18 @@ Key options:
 
 Outputs: `out/stress/`
 
+## Prerequisites
+
+This project uses a polyglot toolchain. The following are required:
+
+- **Go** 1.25.6 (CLI + API + TUI)
+- **Node.js** 24.13.0 (web frontend + OpenAPI generation)
+- **pnpm** 10.28.0 (Node package manager)
+
+Tool versions are pinned in `.tool-versions`. Use `asdf` or `mise` to install.
+
+No additional tools (ripgrep, perl, etc.) are required for `make generate`.
+
 ## Configuration
 
 `.env` / `.env.example`:
