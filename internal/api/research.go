@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"spartan-scraper/internal/extract"
+	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/validate"
 )
@@ -81,7 +83,21 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	job, err := s.manager.CreateResearchJob(r.Context(), req.Query, req.URLs, req.MaxDepth, req.MaxPages, req.Headless, usePlaywright, authOptions, timeout, extractOpts, pipelineOpts, incremental)
+	spec := jobs.JobSpec{
+		Kind:           model.KindResearch,
+		Query:          req.Query,
+		URLs:           req.URLs,
+		MaxDepth:       req.MaxDepth,
+		MaxPages:       req.MaxPages,
+		Headless:       req.Headless,
+		UsePlaywright:  usePlaywright,
+		Auth:           authOptions,
+		TimeoutSeconds: timeout,
+		Extract:        extractOpts,
+		Pipeline:       pipelineOpts,
+		Incremental:    incremental,
+	}
+	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return

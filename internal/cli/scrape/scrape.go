@@ -14,6 +14,8 @@ import (
 	"spartan-scraper/internal/cli/common"
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/extract"
+	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/validate"
@@ -83,17 +85,18 @@ Options:
 		return 1
 	}
 
-	job, err := manager.CreateScrapeJob(
-		ctx,
-		*url,
-		*cf.Headless,
-		*cf.Playwright,
-		authOptions,
-		*cf.Timeout,
-		extractOpts,
-		pipelineOpts,
-		*cf.Incremental,
-	)
+	spec := jobs.JobSpec{
+		Kind:           model.KindScrape,
+		URL:            *url,
+		Headless:       *cf.Headless,
+		UsePlaywright:  *cf.Playwright,
+		Auth:           authOptions,
+		TimeoutSeconds: *cf.Timeout,
+		Extract:        extractOpts,
+		Pipeline:       pipelineOpts,
+		Incremental:    *cf.Incremental,
+	}
+	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

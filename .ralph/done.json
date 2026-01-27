@@ -2344,6 +2344,67 @@
       "completed_at": "2026-01-27T00:00:22.679736000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0059",
+      "status": "done",
+      "title": "Extract job creation shared logic to avoid duplication",
+      "priority": "high",
+      "tags": [
+        "dry",
+        "refactoring",
+        "jobs",
+        "scheduler",
+        "mcp",
+        "api",
+        "cli"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go",
+        "internal/mcp/server.go",
+        "internal/api/scrape.go",
+        "internal/api/crawl.go",
+        "internal/api/research.go",
+        "internal/cli/scrape/scrape.go",
+        "internal/cli/scrape/crawl.go",
+        "internal/cli/scrape/research.go"
+      ],
+      "evidence": [
+        "Job creation logic duplicated across scheduler, MCP, API handlers, and CLI commands",
+        "All create scrape, crawl, research jobs with similar patterns: load auth, load extract opts, load pipeline opts, call manager.Create*Job",
+        "Twelve total occurrences: 3 in scheduler.go (enqueue), 3 in mcp/server.go (handleToolCall), 3 in api/, 3 in cli/",
+        "Each site validates inputs, resolves auth options, loads extract/pipeline options, then calls manager.CreateScrapeJob/CreateCrawlJob/CreateResearchJob",
+        "Changes to job creation parameters require updating 12 places"
+      ],
+      "plan": [
+        "Analyze the 12 job creation sites to identify common parameters and logic",
+        "Create internal/jobs/builder.go or add functions to manager.go that take a unified JobSpec struct",
+        "Define JobSpec with fields: URL, Query, URLs, MaxDepth, MaxPages, Headless, Playwright, Timeout, AuthOptions, ExtractOpts, PipelineOpts, Incremental, Kind",
+        "Create BuildJobFromSpec(ctx, spec JobSpec) (job.Job, error) function in manager.go",
+        "Refactor scheduler.go to use shared builder for all 3 schedule kinds",
+        "Refactor mcp/server.go to use shared builder for all 3 tool handlers",
+        "Refactor api handlers to use shared builder for scrape/crawl/research endpoints",
+        "Refactor cli commands to use shared builder for scrape/crawl/research commands",
+        "Ensure validation logic remains in appropriate layers (api/cli validate before building)",
+        "Run make test to verify all job creation tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Initial scan identified 6 occurrences, but full audit found 12 total sites across scheduler, mcp, api, and cli packages",
+        "Created unified JobSpec struct in internal/jobs/spec.go",
+        "Added CreateJob(ctx, spec JobSpec) method to manager.go",
+        "Refactored all 12 job creation sites across scheduler, MCP, API, CLI",
+        "Consolidated 3 scheduler branches into single spec-based flow",
+        "~116 lines of duplicate parameter assembly logic eliminated",
+        "All tests pass including new JobSpec validation tests",
+        "Backward compatibility preserved - all Create*Job methods still exist"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T00:38:13.500092000Z",
+      "completed_at": "2026-01-27T00:38:13.500092000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0059",
-      "status": "todo",
-      "title": "Extract job creation shared logic to avoid duplication",
-      "priority": "high",
-      "tags": [
-        "dry",
-        "refactoring",
-        "jobs",
-        "scheduler",
-        "mcp"
-      ],
-      "scope": [
-        "internal/scheduler/scheduler.go",
-        "internal/mcp/server.go"
-      ],
-      "evidence": [
-        "Job creation logic duplicated between scheduler/enqueue() and MCP tool handlers",
-        "Both create scrape, crawl, research jobs with similar patterns: load auth, load extract opts, load pipeline opts, call manager.Create*Job",
-        "Three occurrences of job creation in scheduler.go (scrape, crawl, research cases)",
-        "Three occurrences in mcp/server.go (scrape, crawl, research tool handlers)",
-        "Changes to job creation require updating 6 places"
-      ],
-      "plan": [
-        "Analyze the 6 job creation sites to identify common parameters and logic",
-        "Create internal/jobs/builder.go or add functions to manager.go that take a unified JobSpec struct",
-        "Define JobSpec with fields: URL, Query, URLs, MaxDepth, MaxPages, Headless, Playwright, Timeout, AuthOptions, ExtractOpts, PipelineOpts, Incremental, Kind",
-        "Create BuildJobFromSpec(ctx, spec JobSpec) (job.Job, error) function in manager.go",
-        "Refactor scheduler.go to use shared builder for all 3 schedule kinds",
-        "Refactor mcp/server.go to use shared builder for all 3 tool handlers",
-        "Ensure validation logic remains in appropriate layers",
-        "Run make test to verify scheduler and MCP tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0060",
       "status": "todo",
       "title": "Add comprehensive tests for pipeline package",

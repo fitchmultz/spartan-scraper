@@ -85,6 +85,149 @@ func TestManagerCreateScrapeJob(t *testing.T) {
 	}
 }
 
+func TestManagerCreateJob_Scrape(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	spec := JobSpec{
+		Kind:           model.KindScrape,
+		URL:            "http://example.com",
+		Headless:       true,
+		UsePlaywright:  false,
+		Auth:           fetch.AuthOptions{},
+		TimeoutSeconds: 30,
+		Extract:        extract.ExtractOptions{},
+		Pipeline:       pipeline.Options{},
+		Incremental:    false,
+	}
+	job, err := m.CreateJob(ctx, spec)
+	if err != nil {
+		t.Fatalf("CreateJob failed: %v", err)
+	}
+
+	if job.Kind != model.KindScrape {
+		t.Errorf("expected kind scrape, got %v", job.Kind)
+	}
+
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.ID != job.ID {
+		t.Errorf("expected job id %s, got %s", job.ID, persisted.ID)
+	}
+}
+
+func TestManagerCreateJob_Crawl(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	spec := JobSpec{
+		Kind:           model.KindCrawl,
+		URL:            "http://example.com",
+		MaxDepth:       2,
+		MaxPages:       100,
+		Headless:       true,
+		UsePlaywright:  false,
+		Auth:           fetch.AuthOptions{},
+		TimeoutSeconds: 30,
+		Extract:        extract.ExtractOptions{},
+		Pipeline:       pipeline.Options{},
+		Incremental:    false,
+	}
+	job, err := m.CreateJob(ctx, spec)
+	if err != nil {
+		t.Fatalf("CreateJob failed: %v", err)
+	}
+
+	if job.Kind != model.KindCrawl {
+		t.Errorf("expected kind crawl, got %v", job.Kind)
+	}
+
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.ID != job.ID {
+		t.Errorf("expected job id %s, got %s", job.ID, persisted.ID)
+	}
+}
+
+func TestManagerCreateJob_Research(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	spec := JobSpec{
+		Kind:           model.KindResearch,
+		Query:          "test query",
+		URLs:           []string{"http://example.com"},
+		MaxDepth:       2,
+		MaxPages:       100,
+		Headless:       true,
+		UsePlaywright:  false,
+		Auth:           fetch.AuthOptions{},
+		TimeoutSeconds: 30,
+		Extract:        extract.ExtractOptions{},
+		Pipeline:       pipeline.Options{},
+		Incremental:    false,
+	}
+	job, err := m.CreateJob(ctx, spec)
+	if err != nil {
+		t.Fatalf("CreateJob failed: %v", err)
+	}
+
+	if job.Kind != model.KindResearch {
+		t.Errorf("expected kind research, got %v", job.Kind)
+	}
+
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job from store: %v", err)
+	}
+	if persisted.ID != job.ID {
+		t.Errorf("expected job id %s, got %s", job.ID, persisted.ID)
+	}
+}
+
+func TestManagerCreateJob_InvalidSpec(t *testing.T) {
+	m, _, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	spec := JobSpec{
+		Kind:           model.KindScrape,
+		URL:            "",
+		TimeoutSeconds: 30,
+	}
+
+	_, err := m.CreateJob(ctx, spec)
+	if err == nil {
+		t.Error("expected error for invalid spec, got nil")
+	}
+}
+
+func TestManagerCreateJob_UnknownKind(t *testing.T) {
+	m, _, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	spec := JobSpec{
+		Kind:           "unknown",
+		URL:            "http://example.com",
+		TimeoutSeconds: 30,
+	}
+
+	_, err := m.CreateJob(ctx, spec)
+	if err == nil {
+		t.Error("expected error for unknown kind, got nil")
+	}
+}
+
 func TestToInt(t *testing.T) {
 	tests := []struct {
 		input    interface{}

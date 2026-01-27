@@ -81,61 +81,41 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedule Schedule) error {
 	extractOpts := loadExtract(schedule.Params)
 	pipelineOpts := loadPipeline(schedule.Params)
-	switch schedule.Kind {
-	case model.KindScrape:
-		url := stringParam(schedule.Params, "url")
-		headless := boolParam(schedule.Params, "headless")
-		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
-		authOptions, err := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
-		if err != nil {
-			return fmt.Errorf("failed to resolve auth for scrape schedule %s: %w", schedule.ID, err)
-		}
-		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateScrapeJob(ctx, url, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
-		if err != nil {
-			return err
-		}
-		return manager.Enqueue(job)
-	case model.KindCrawl:
-		url := stringParam(schedule.Params, "url")
-		headless := boolParam(schedule.Params, "headless")
-		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
-		maxDepth := intParam(schedule.Params, "maxDepth", 2)
-		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, err := loadAuth(schedule.Params, dataDir, url, auth.EnvOverrides{})
-		if err != nil {
-			return fmt.Errorf("failed to resolve auth for crawl schedule %s: %w", schedule.ID, err)
-		}
-		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
-		if err != nil {
-			return err
-		}
-		return manager.Enqueue(job)
-	case model.KindResearch:
-		query := stringParam(schedule.Params, "query")
+
+	targetURL := stringParam(schedule.Params, "url")
+	if schedule.Kind == model.KindResearch {
 		urls := stringSliceParam(schedule.Params, "urls")
-		targetURL := ""
 		if len(urls) > 0 {
 			targetURL = urls[0]
 		}
-		headless := boolParam(schedule.Params, "headless")
-		playwright := boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright())
-		maxDepth := intParam(schedule.Params, "maxDepth", 2)
-		maxPages := intParam(schedule.Params, "maxPages", 200)
-		authOptions, err := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
-		if err != nil {
-			return fmt.Errorf("failed to resolve auth for research schedule %s: %w", schedule.ID, err)
-		}
-		incremental := boolParam(schedule.Params, "incremental")
-		job, err := manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, authOptions, intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()), extractOpts, pipelineOpts, incremental)
-		if err != nil {
-			return err
-		}
-		return manager.Enqueue(job)
-	default:
-		return errors.New("unknown schedule kind")
 	}
+
+	authOptions, err := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
+	if err != nil {
+		return fmt.Errorf("failed to resolve auth for schedule %s: %w", schedule.ID, err)
+	}
+
+	spec := jobs.JobSpec{
+		Kind:           schedule.Kind,
+		URL:            stringParam(schedule.Params, "url"),
+		Query:          stringParam(schedule.Params, "query"),
+		URLs:           stringSliceParam(schedule.Params, "urls"),
+		MaxDepth:       intParam(schedule.Params, "maxDepth", 2),
+		MaxPages:       intParam(schedule.Params, "maxPages", 200),
+		Headless:       boolParam(schedule.Params, "headless"),
+		UsePlaywright:  boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright()),
+		Auth:           authOptions,
+		TimeoutSeconds: intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()),
+		Extract:        extractOpts,
+		Pipeline:       pipelineOpts,
+		Incremental:    boolParam(schedule.Params, "incremental"),
+	}
+
+	job, err := manager.CreateJob(ctx, spec)
+	if err != nil {
+		return err
+	}
+	return manager.Enqueue(job)
 }
 
 func loadExtract(params map[string]interface{}) extract.ExtractOptions {

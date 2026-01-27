@@ -19,6 +19,7 @@ import (
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/jobs"
+	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/pipeline"
 	"spartan-scraper/internal/store"
 	"spartan-scraper/internal/validate"
@@ -242,7 +243,6 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, errors.New("url is required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		validator := validate.ScrapeRequestValidator{
 			URL:         url,
@@ -256,14 +256,23 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		headless := getBool(params.Arguments, "headless")
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
-		incremental := getBoolDefault(params.Arguments, "incremental", false)
-		job, err := s.manager.CreateScrapeJob(ctx, url, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
+		spec := jobs.JobSpec{
+			Kind:           model.KindScrape,
+			URL:            url,
+			Headless:       getBool(params.Arguments, "headless"),
+			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Auth:           resolvedAuth,
+			TimeoutSeconds: timeout,
+			Extract:        extractOpts,
+			Pipeline:       pipelineOpts,
+			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
+		}
+		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
 			return nil, err
 		}
@@ -282,7 +291,6 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		authProfile := getString(params.Arguments, "authProfile")
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		validator := validate.CrawlRequestValidator{
 			URL:         url,
@@ -298,14 +306,25 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		headless := getBool(params.Arguments, "headless")
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
-		incremental := getBoolDefault(params.Arguments, "incremental", false)
-		job, err := s.manager.CreateCrawlJob(ctx, url, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
+		spec := jobs.JobSpec{
+			Kind:           model.KindCrawl,
+			URL:            url,
+			MaxDepth:       maxDepth,
+			MaxPages:       maxPages,
+			Headless:       getBool(params.Arguments, "headless"),
+			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Auth:           resolvedAuth,
+			TimeoutSeconds: timeout,
+			Extract:        extractOpts,
+			Pipeline:       pipelineOpts,
+			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
+		}
+		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +344,6 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		authProfile := getString(params.Arguments, "authProfile")
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
-		playwright := getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		validator := validate.ResearchRequestValidator{
 			Query:       query,
@@ -346,14 +364,26 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		headless := getBool(params.Arguments, "headless")
 		extractOpts := extract.ExtractOptions{
 			Template: getString(params.Arguments, "extractTemplate"),
 			Validate: getBool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
-		incremental := getBoolDefault(params.Arguments, "incremental", false)
-		job, err := s.manager.CreateResearchJob(ctx, query, urls, maxDepth, maxPages, headless, playwright, resolvedAuth, timeout, extractOpts, pipelineOpts, incremental)
+		spec := jobs.JobSpec{
+			Kind:           model.KindResearch,
+			Query:          query,
+			URLs:           urls,
+			MaxDepth:       maxDepth,
+			MaxPages:       maxPages,
+			Headless:       getBool(params.Arguments, "headless"),
+			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Auth:           resolvedAuth,
+			TimeoutSeconds: timeout,
+			Extract:        extractOpts,
+			Pipeline:       pipelineOpts,
+			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
+		}
+		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
 			return nil, err
 		}
