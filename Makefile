@@ -48,10 +48,10 @@ clean:
 	rm -rf out/stress
 
 test:
-	CI=1 go test ./...
+	CI=1 go test ./... -p=1 -timeout 2m
 
 test-ci:
-	CI=1 go test $$(go list ./... | grep -v /e2e)
+	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 2m
 	cd $(WEB_DIR) && CI=1 pnpm run test
 
 generate:

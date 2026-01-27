@@ -397,10 +397,6 @@ func TestManagerCancelJob_WhileRunning(t *testing.T) {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
 
-	if err := m.Enqueue(job); err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
-
 	m.Start(ctx)
 
 	// Wait for job to be running
