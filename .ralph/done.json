@@ -3300,6 +3300,49 @@
       "completed_at": "2026-01-27T21:10:19.582023000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0077",
+      "status": "done",
+      "title": "Add open-source release essentials (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)",
+      "priority": "high",
+      "tags": [
+        "oss",
+        "docs",
+        "go-public"
+      ],
+      "scope": [
+        "LICENSE",
+        "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
+        "SECURITY.md",
+        "README.md"
+      ],
+      "evidence": [
+        "Repository root has no LICENSE/COPYING file (no matches for LICENSE*).",
+        "Repository root has no CONTRIBUTING.md, CODE_OF_CONDUCT.md, or SECURITY.md files."
+      ],
+      "plan": [
+        "Choose an explicit license (MIT/Apache-2.0/etc) and add LICENSE file.",
+        "Add CONTRIBUTING.md with setup, make targets, coding standards, and how to report bugs/security issues.",
+        "Add CODE_OF_CONDUCT.md (e.g., Contributor Covenant) and reference it from README.md.",
+        "Add SECURITY.md describing how to report vulnerabilities and expected response process.",
+        "Run make ci to ensure docs additions don't break tooling."
+      ],
+      "notes": [
+        "Added LICENSE (MIT License) at repository root",
+        "Created CONTRIBUTING.md with setup, make targets, code standards, testing guidelines, and bug reporting",
+        "Created CODE_OF_CONDUCT.md with Contributor Covenant 2.1",
+        "Created SECURITY.md with vulnerability reporting process and pre-1.0 status",
+        "Updated README.md with Community section referencing all governance files",
+        "make ci passed cleanly - all documentation additions verified"
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-27T21:23:30.009103000Z",
+      "completed_at": "2026-01-27T21:23:30.009103000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

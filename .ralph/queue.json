@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0077",
-      "status": "todo",
-      "title": "Add open-source release essentials (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)",
-      "priority": "high",
-      "tags": [
-        "oss",
-        "docs",
-        "go-public"
-      ],
-      "scope": [
-        "LICENSE",
-        "CONTRIBUTING.md",
-        "CODE_OF_CONDUCT.md",
-        "SECURITY.md",
-        "README.md"
-      ],
-      "evidence": [
-        "Repository root has no LICENSE/COPYING file (no matches for LICENSE*).",
-        "Repository root has no CONTRIBUTING.md, CODE_OF_CONDUCT.md, or SECURITY.md files."
-      ],
-      "plan": [
-        "Choose an explicit license (MIT/Apache-2.0/etc) and add LICENSE file.",
-        "Add CONTRIBUTING.md with setup, make targets, coding standards, and how to report bugs/security issues.",
-        "Add CODE_OF_CONDUCT.md (e.g., Contributor Covenant) and reference it from README.md.",
-        "Add SECURITY.md describing how to report vulnerabilities and expected response process.",
-        "Run make ci to ensure docs additions don’t break tooling."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0086",
       "status": "todo",
       "title": "Split `internal/jobs/manager.go` (733 LOC) and define correct shutdown semantics",

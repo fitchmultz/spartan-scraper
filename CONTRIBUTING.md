@@ -1,0 +1,210 @@
+# Contributing to Spartan Scraper
+
+Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to Spartan Scraper.
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.25.6
+- Node 24.13.0
+- pnpm 10.28.0
+
+### Quick Setup
+
+```bash
+make install          # Download Go deps + install pnpm deps
+make generate         # Generate TS API client from openapi.yaml
+make build            # Build Go binary + web assets + install to ~/.local/bin
+```
+
+After setup, verify the installation:
+
+```bash
+./bin/spartan --help
+```
+
+## Development Workflow
+
+### Makefile Targets
+
+The Makefile is the canonical interface for all development tasks:
+
+```bash
+make install          # Download Go deps + install pnpm deps
+make update           # Update all Go/pnpm deps to latest (review before committing)
+make generate         # Generate TS API client from openapi.yaml
+make format           # Format Go (gofmt) and TS (biome)
+make type-check       # Type-check TS (biome/tsc)
+make lint             # Lint Go (go vet) and TS (biome)
+make build            # Build Go binary + web assets + install to ~/.local/bin
+make test             # Run Go tests (including e2e)
+make test-ci          # Run Go tests (excluding e2e) + web tests
+make ci               # Full CI pipeline: install, generate, format, type-check, lint, build, test-ci
+make clean            # Remove build artifacts, dependencies, node_modules, installed binary
+make web-dev          # Start web dev server (http://localhost:5173)
+```
+
+### Local CI Gate
+
+**CRITICAL**: `make ci` must pass before committing any changes. The CI pipeline runs:
+
+```
+install → generate → format → type-check → lint → build → test-ci
+```
+
+If `make ci` fails, fix all failures before committing.
+
+### Branch and Commit Workflow
+
+- No enforced commit message format currently
+- Keep commit messages clear and descriptive
+- Ensure `make ci` passes before committing
+- Pull requests are welcome; describe changes clearly
+
+## Code Standards
+
+### Go
+
+- **Formatting**: `gofmt -w ./cmd ./internal` (enforced via `make format`)
+- **Linting**: `go vet ./...` (enforced via `make lint`)
+- **Naming**: Follow Go conventions (camelCase for variables, PascalCase for exported types)
+- **Package structure**: Each internal package has a single, clear responsibility
+- **Documentation**: All code files must have docstrings explaining:
+  - What the module/file is responsible for
+  - What it explicitly does NOT handle
+  - Any invariants or assumptions callers must respect
+
+### TypeScript
+
+- **Formatting**: `biome format . --write` (enforced via `make format`)
+- **Linting**: `biome lint .` (enforced via `make lint`)
+- **Type checking**: `tsc --noEmit` (enforced via `make type-check`)
+- **Framework**: Vite + React with strict TypeScript
+
+### Error Handling
+
+All new error handling must use the `internal/apperrors` package for classification and consistent handling:
+
+- Use `apperrors.Validation()`, `apperrors.NotFound()`, `apperrors.Permission()`, `apperrors.Internal()` for appropriate error types
+- Use `apperrors.Wrap(kind, "safe message", err)` to add context without exposing secrets
+- Use `apperrors.SafeMessage(err)` when logging or returning errors to clients
+- For HTTP handlers, use `writeError(w, err)` from `internal/api/util.go` for consistent status code mapping
+
+See `internal/apperrors/README.md` for detailed usage patterns and examples.
+
+### Architecture Patterns
+
+- **Configuration immutability**: `internal/config.Load()` is called once at startup and returns an immutable value. Treat `config.Config` as read-only after loading.
+- **Pipeline hooks**: See `internal/pipeline` for plugin contracts (pre/post fetch/extract/output + transformers)
+- **Extraction templates**: Stored in `DATA_DIR/extract_templates.json`
+- **Auth vault**: Stored in `.data/auth_vault.json` (profiles + presets + inheritance)
+
+## Testing
+
+### Running Tests
+
+```bash
+make test         # Run Go tests (including e2e)
+make test-ci      # Run Go tests (excluding e2e) + web tests
+```
+
+For Go tests specifically:
+```bash
+go test ./...     # Run all Go tests
+CI=1 go test ./... # Run with consistent output (no race detector)
+```
+
+For web tests:
+```bash
+cd web && pnpm run test
+```
+
+### Testing Guidelines
+
+- Tests must live as close as possible to the code they validate (same module or per-concept tests folder)
+- Full expected behavior and failure modes must be covered
+- New or changed code must have tests
+- E2E tests are located in `internal/e2e` and excluded from `make test-ci`
+- Flaky E2E tests may be retried up to 3 times before considering them a real failure
+
+### Modules and File Boundaries
+
+- Files/modules should represent a single cohesive responsibility
+- Individual source files should remain under ~400 LOC
+- Files exceeding ~700 LOC require explicit justification
+- Files exceeding ~1,000 LOC are presumed to be mis-scoped and must be split
+
+## Project Structure
+
+```
+cmd/spartan/          # Main CLI entry point
+internal/             # Go packages (internal only)
+  api/                # REST API server and route handlers
+  auth/               # Auth profile management and vault
+  cli/                # CLI subcommand implementations
+  config/             # Global configuration and logging
+  crawl/              # Concurrent website crawling logic
+  e2e/                # End-to-end integration tests
+  extract/            # HTML content extraction and normalization
+  exporter/           # Result exporters (markdown, CSV, JSON)
+  fetch/              # Content fetching (HTTP, Chromedp, Playwright)
+  jobs/               # Job manager and worker pool
+  mcp/                # MCP stdio server for agent orchestration
+  model/              # Shared domain models and constants
+  pipeline/           # Pipeline hooks, processors, and transformers
+  research/           # Multi-source research workflows
+  scheduler/          # Recurring job scheduler
+  scrape/             # Single-page scraping logic
+  store/              # Persistent storage for jobs and crawl states
+  ui/tui/             # Terminal User Interface
+web/                  # Frontend (Vite + React)
+  src/                # TypeScript source
+  src/api/            # Generated API client (from openapi.yaml)
+api/                  # OpenAPI contract (api/openapi.yaml)
+scripts/              # Utility scripts
+docs/                 # Documentation (usage, architecture, landscape)
+```
+
+## Reporting Bugs
+
+Currently, no public issue tracker is configured. For bug reports, please use private contact (contact details to be added when project goes public).
+
+When reporting a bug, please include:
+- Reproduction steps
+- Expected behavior vs. actual behavior
+- Environment information (Go version, OS, etc.)
+- Relevant logs or error messages
+- Any configuration that may affect the issue
+
+## Security Issues
+
+**Do NOT open public issues for vulnerabilities.**
+
+See [SECURITY.md](SECURITY.md) for instructions on how to report security vulnerabilities responsibly.
+
+## Documentation
+
+- Keep [AGENTS.md](AGENTS.md) updated with lessons learned and repository philosophy
+- All new features should be documented in `docs/usage.md`
+- Update [README.md](README.md) for user-facing changes
+- Architecture changes should be reflected in `docs/architecture.md`
+
+## Content Fetching Options
+
+- **HTTP**: Default fetcher
+- **Chromedp**: Headless Chromium (built-in, always available)
+- **Playwright**: Optional for JS-heavy pages — enable with `USE_PLAYWRIGHT=1` or `--playwright` flag
+
+Install Playwright browsers:
+```bash
+go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps
+```
+
+## Questions?
+
+If you have questions about contributing or need help getting started, please reach out via private contact (contact details to be added when project goes public).
+
+---
+
+Thank you for contributing to Spartan Scraper!

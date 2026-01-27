@@ -19,6 +19,13 @@ make build
 ./bin/spartan --help
 ```
 
+## Community
+
+- [LICENSE](LICENSE) - MIT License
+- [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
+- [SECURITY.md](SECURITY.md) - Security policy
+
 ## Documentation
 
 - `docs/usage.md`: CLI/API/Web/MCP entry points and flags.
