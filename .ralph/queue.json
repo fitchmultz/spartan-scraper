@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0060",
-      "status": "todo",
-      "title": "Add comprehensive tests for pipeline package",
-      "priority": "medium",
-      "tags": [
-        "testing",
-        "pipeline",
-        "coverage"
-      ],
-      "scope": [
-        "internal/pipeline"
-      ],
-      "evidence": [
-        "internal/pipeline/transformers.go has no test file",
-        "internal/pipeline/interfaces.go has no test file",
-        "internal/pipeline/js.go has no test file",
-        "internal/pipeline/types.go has no test file",
-        "AGENTS.md requires: 'All new or changed code must have tests that cover the full expected behavior and failure modes'",
-        "Tests should live as close as possible to the code they validate"
-      ],
-      "plan": [
-        "Read transformer implementations in transformers.go to understand behavior",
-        "Create internal/pipeline/transformers_test.go with unit tests for each transformer",
-        "Read interfaces.go and identify any testable contracts",
-        "Create internal/pipeline/interfaces_test.go with interface contract tests",
-        "Read js.go to understand JS pipeline execution",
-        "Create internal/pipeline/js_test.go with tests for JS loading and execution",
-        "Read types.go to understand shared pipeline types",
-        "Create internal/pipeline/types_test.go with tests for type constructors and validation",
-        "Ensure all tests cover success and failure modes",
-        "Run make test-ci to verify new tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0061",
       "status": "todo",
       "title": "Add comprehensive tests for fetch package utilities",

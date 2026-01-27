@@ -2405,6 +2405,53 @@
       "completed_at": "2026-01-27T00:38:13.500092000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0060",
+      "status": "done",
+      "title": "Add comprehensive tests for pipeline package",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "pipeline",
+        "coverage"
+      ],
+      "scope": [
+        "internal/pipeline"
+      ],
+      "evidence": [
+        "internal/pipeline/transformers.go has no test file - contains Transformer interface and BaseTransformer struct (30 LOC)",
+        "internal/pipeline/interfaces.go has no test file - contains Plugin interface and BasePlugin struct (60 LOC)",
+        "internal/pipeline/js.go has no test file - contains LoadJSRegistry(), Match(), SelectScripts(), hostMatchesAnyPattern(), defaultDataDir() (135 LOC)",
+        "internal/pipeline/types.go has no test file - contains Target, Stage, Options, Input/Output types, HostFromURL(), NewTarget(), AllStages() (129 LOC)",
+        "internal/pipeline/registry.go already has test coverage in registry_test.go (TestRegistryPluginsFor, TestStageInList)",
+        "AGENTS.md requires: 'All new or changed code must have tests that cover the full expected behavior and failure modes'",
+        "Tests should live as close as possible to the code they validate"
+      ],
+      "plan": [
+        "Create internal/pipeline/transformers_test.go with tests for BaseTransformer.Priority(), Enabled(), Transform() methods",
+        "Create internal/pipeline/interfaces_test.go with tests for BasePlugin.Stages(), Priority(), Enabled(), and all Pre/Post hook methods",
+        "Create internal/pipeline/js_test.go with tests for LoadJSRegistry (file not found, valid JSON, invalid JSON), Match (nil, empty, matching patterns), SelectScripts (filter by engine), and hostMatchesAnyPattern (exact, wildcard, prefix patterns)",
+        "Create internal/pipeline/types_test.go with tests for HostFromURL (valid, invalid, with/without scheme, edge cases), NewTarget(), AllStages(), and Options handling",
+        "Ensure all tests cover success and failure modes (malformed URLs, missing files, invalid JSON, edge cases)",
+        "Run make test to verify new tests pass",
+        "Run make test-ci to verify CI test suite passes",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "registry.go already has test coverage (registry_test.go), skip testing registry functionality",
+        "Created 4 comprehensive test files (608 lines): transformers_test.go, interfaces_test.go, js_test.go, types_test.go",
+        "All tests pass with 95-100% coverage (transformers: 100%, interfaces: 100%, js: 90-100%, types: 100%)",
+        "Tests cover all required functions with success and failure modes (file not found, invalid JSON, malformed URLs, empty inputs, edge cases)",
+        "Full CI gate passes (make ci)",
+        "No stale tasks found - changes are additive only"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T01:10:51.430091000Z",
+      "completed_at": "2026-01-27T01:10:51.430091000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }
