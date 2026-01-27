@@ -41,6 +41,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	res.Components["browser"] = browserStatus
 
+	// Ensure Content-Type is set before WriteHeader (headers are committed on WriteHeader/Write).
+	w.Header().Set("Content-Type", "application/json")
+
 	if !healthy {
 		res.Status = "error"
 		w.WriteHeader(http.StatusServiceUnavailable)

@@ -2870,6 +2870,64 @@
       "completed_at": "2026-01-27T15:07:01.238376000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0069",
+      "status": "done",
+      "title": "Verify generated TypeScript API types match Go API contracts",
+      "priority": "low",
+      "tags": [
+        "typescript",
+        "api",
+        "sync",
+        "openapi"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "web/src/api/types.gen.ts",
+        "internal/api/types.go",
+        "internal/api/util.go",
+        "internal/model/job.go",
+        "internal/model/state.go",
+        "internal/auth/types.go",
+        "internal/research/research.go"
+      ],
+      "evidence": [
+        "API contract is api/openapi.yaml and generates TS client via 'make generate' (hey-api openapi-ts)",
+        "Found specific type mismatches between OpenAPI spec and Go implementations:",
+        "- Job.createdAt/updatedAt are time.Time in Go (RFC3339) but nullable strings in TS spec - Go never nulls these, spec should make them required",
+        "- ResearchEvidence.simhash is uint64 in Go but number in TS - correct (TS uses number for uint64)",
+        "- CrawlState fields (ETag, LastModified, ContentHash, LastScraped) are non-nullable string/time.Time in Go but nullable in TS spec - actual Go serialization never nulls these, spec should match",
+        "- StatusResponse uses {'status': 'string'} in Go but spec calls it StatusResponse - correct",
+        "- Delete operations return {'status': 'canceled'} or {'status': 'deleted'} in Go but spec only shows StatusResponse - correct",
+        "- HealthResponse Components map has interface{} values in Go but ComponentStatus type in TS - Go stores ComponentStatus, should be type-safe",
+        "- No automated verification that generated types match actual API responses",
+        "Type mismatches cause runtime errors in web client"
+      ],
+      "plan": [
+        "Review current type mismatches identified in evidence section",
+        "Fix OpenAPI spec to match actual Go behavior: make Job.createdAt/updatedAt required non-nullable strings",
+        "Fix OpenAPI spec: make CrawlState fields non-nullable (ETag, LastModified, ContentHash, LastScraped)",
+        "Review HealthResponse Components type in Go - verify ComponentStatus is consistently used",
+        "Add integration test that calls API endpoints and validates responses against OpenAPI schema",
+        "Run 'make generate' to regenerate TS types after spec fixes",
+        "Verify web TypeScript compiles with new generated types ('cd web && pnpm run type-check')",
+        "Consider adding 'make verify-api' target that runs schema validation tests",
+        "Run make ci to ensure full pipeline works after changes"
+      ],
+      "notes": [
+        "Fixed Job schema: made id/kind/status/createdAt/updatedAt required",
+        "Fixed CrawlState schema: removed nullable, made all fields required",
+        "Added format: date-time to Job.createdAt and updatedAt",
+        "Regenerated TS types with make generate",
+        "make ci passes - all tests pass, TS compiles cleanly"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T16:24:09.269633000Z",
+      "completed_at": "2026-01-27T16:24:09.269633000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

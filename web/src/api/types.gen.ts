@@ -198,11 +198,11 @@ export type ResearchRequest = {
 };
 
 export type Job = {
-    id?: string;
-    kind?: 'scrape' | 'crawl' | 'research';
-    status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
-    createdAt?: string;
-    updatedAt?: string;
+    id: string;
+    kind: 'scrape' | 'crawl' | 'research';
+    status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+    createdAt: string;
+    updatedAt: string;
     params?: {
         [key: string]: unknown;
     };
@@ -287,23 +287,23 @@ export type CrawlState = {
     /**
      * URL that was crawled
      */
-    url?: string;
+    url: string;
     /**
      * ETag header value for incremental detection
      */
-    etag?: string | null;
+    etag: string;
     /**
      * Last-Modified header value
      */
-    lastModified?: string | null;
+    lastModified: string;
     /**
      * Hash of content for incremental detection
      */
-    contentHash?: string | null;
+    contentHash: string;
     /**
      * Timestamp of last scrape
      */
-    lastScraped?: string | null;
+    lastScraped: string;
 };
 
 export type GetHealthzData = {

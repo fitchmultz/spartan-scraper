@@ -1085,6 +1085,12 @@ components:
           default: false
     Job:
       type: object
+      required:
+        - id
+        - kind
+        - status
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
@@ -1096,8 +1102,10 @@ components:
           enum: [queued, running, succeeded, failed, canceled]
         createdAt:
           type: string
+          format: date-time
         updatedAt:
           type: string
+          format: date-time
         params:
           type: object
         resultPath:
@@ -1229,6 +1237,12 @@ components:
         - schedules
     CrawlState:
       type: object
+      required:
+        - url
+        - etag
+        - lastModified
+        - contentHash
+        - lastScraped
       properties:
         url:
           type: string
@@ -1236,17 +1250,13 @@ components:
         etag:
           type: string
           description: ETag header value for incremental detection
-          nullable: true
         lastModified:
           type: string
           description: Last-Modified header value
-          nullable: true
         contentHash:
           type: string
           description: Hash of content for incremental detection
-          nullable: true
         lastScraped:
           type: string
           format: date-time
           description: Timestamp of last scrape
-          nullable: true

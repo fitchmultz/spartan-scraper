@@ -36,7 +36,7 @@ format:
 
 # clean: Remove build artifacts, dependencies, and temporary files
 # Removes: bin/, .data/, node_modules/ (root + web), dist/, installed binary
-# Also removes: Go test binaries (*.test), coverage files (*.out), out/stress/ (log artifacts)
+# Also removes: Go test binaries (*.test), coverage files (*.out), out/stress (log artifacts)
 # Preserves: Source-controlled lock files (go.sum, web/pnpm-lock.yaml)
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)

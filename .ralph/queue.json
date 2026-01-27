@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0069",
-      "status": "todo",
-      "title": "Verify generated TypeScript API types match Go API contracts",
-      "priority": "low",
-      "tags": [
-        "typescript",
-        "api",
-        "sync",
-        "openapi"
-      ],
-      "scope": [
-        "api/openapi.yaml",
-        "web/src/api"
-      ],
-      "evidence": [
-        "API contract is api/openapi.yaml and generates TS client via 'make generate' (hey-api openapi-ts)",
-        "Potential drift between Go server types and generated TS types",
-        "No automated verification that generated types match actual API responses",
-        "Type mismatches cause runtime errors in web client"
-      ],
-      "plan": [
-        "Read api/openapi.yaml to understand the API contract",
-        "Read internal/api/server.go to identify all request/response types",
-        "Compare Go types with OpenAPI spec for consistency",
-        "Read generated types in web/src/api/types.gen.ts",
-        "Verify all API endpoints and types are correctly represented in OpenAPI spec",
-        "Add a test or script that validates API responses against OpenAPI schema",
-        "Consider adding 'make verify-api' target to check type consistency",
-        "Run make generate to ensure regeneration works",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0070",
       "status": "todo",
       "title": "Review config.Load() singleton pattern for thread safety",
