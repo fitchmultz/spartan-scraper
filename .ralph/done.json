@@ -2554,6 +2554,59 @@
       "completed_at": "2026-01-27T02:29:52.096366000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0063",
+      "status": "done",
+      "title": "Add tests for model, config, and auth utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "model",
+        "config",
+        "auth",
+        "coverage"
+      ],
+      "scope": [
+        "internal/model/job.go",
+        "internal/model/state.go",
+        "internal/config/log.go",
+        "internal/auth/types.go"
+      ],
+      "evidence": [
+        "internal/model/job.go has no test file (no job_test.go)",
+        "internal/model/state.go has no test file (no state_test.go)",
+        "internal/config/log.go has no test file (no log_test.go, only config_test.go exists)",
+        "internal/auth/types.go has no test file (no types_test.go)",
+        "Note: internal/auth/merge_test.go already exists and tests merge logic",
+        "These contain core domain models and utilities that should be tested"
+      ],
+      "plan": [
+        "Read model/job.go to understand Job, Kind, Status types and methods",
+        "Create internal/model/job_test.go with tests for IsTerminal(), IsValid(), and ValidStatuses()",
+        "Read model/state.go to understand CrawlState type",
+        "Create internal/model/state_test.go with tests for CrawlState field validation",
+        "Read config/log.go to understand logger initialization",
+        "Create internal/config/log_test.go with tests for logger configuration and level parsing",
+        "Read auth/types.go to understand auth type definitions",
+        "Create internal/auth/types_test.go with tests for auth type serialization (JSON) and constants",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "auth package already has merge_test.go covering merge logic, so types_test.go should focus on type definitions and constants",
+        "Created internal/model/job_test.go with tests for Status.IsTerminal(), Status.IsValid(), ValidStatuses(), and Kind constants",
+        "Created internal/model/state_test.go with JSON serialization tests for CrawlState",
+        "Created internal/auth/types_test.go with 16 test functions covering all auth types (Token, HeaderKV, Cookie, LoginFlow, Profile, TargetPreset, Vault, EnvOverrides, ResolveInput, ResolvedAuth)",
+        "Created internal/config/log_test.go with 15 test functions covering InitLogger levels, formats, case-insensitivity, invalid inputs, and multiple calls",
+        "Full CI pipeline passes with 50+ new test cases across 4 test files"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T02:54:21.505505000Z",
+      "completed_at": "2026-01-27T02:54:21.505505000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

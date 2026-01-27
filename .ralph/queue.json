@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0063",
-      "status": "todo",
-      "title": "Add tests for model, config, and auth utilities",
-      "priority": "medium",
-      "tags": [
-        "testing",
-        "model",
-        "config",
-        "auth",
-        "coverage"
-      ],
-      "scope": [
-        "internal/model",
-        "internal/config",
-        "internal/auth"
-      ],
-      "evidence": [
-        "internal/model/job.go has no test file",
-        "internal/model/state.go has no test file",
-        "internal/config/log.go has no test file",
-        "internal/auth/types.go has no test file",
-        "These contain core domain models and utilities that should be tested"
-      ],
-      "plan": [
-        "Read model/job.go to understand Job, Kind, Status types and methods",
-        "Create internal/model/job_test.go with tests for IsTerminal(), IsValid(), and ValidStatuses()",
-        "Read model/state.go to understand CrawlState type",
-        "Create internal/model/state_test.go with tests for CrawlState field validation",
-        "Read config/log.go to understand logger initialization",
-        "Create internal/config/log_test.go with tests for logger configuration and level parsing",
-        "Read auth/types.go to understand auth types and merge logic",
-        "Create internal/auth/types_test.go with tests for auth option merging and validation",
-        "Run make test-ci to verify new tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0064",
       "status": "todo",
       "title": "Split internal/exporter/exporter.go into focused format modules",
