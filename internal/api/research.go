@@ -37,7 +37,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "query and urls are required")
 		return
 	}
-	validator := validate.ResearchRequestValidator{
+	opts := validate.JobValidationOpts{
 		Query:       req.Query,
 		URLs:        req.URLs,
 		MaxDepth:    req.MaxDepth,
@@ -45,7 +45,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
 	}
-	if err := validator.Validate(); err != nil {
+	if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
 		writeError(w, err)
 		return
 	}

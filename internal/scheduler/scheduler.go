@@ -277,49 +277,35 @@ func schedulesPath(dataDir string) string {
 func validateScheduleParams(schedule Schedule) error {
 	switch schedule.Kind {
 	case model.KindScrape:
-		url := stringParam(schedule.Params, "url")
-		timeout := intParam(schedule.Params, "timeout", 0)
-		authProfile := stringParam(schedule.Params, "authProfile")
-		validator := validate.ScrapeRequestValidator{
-			URL:         url,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
+		opts := validate.JobValidationOpts{
+			URL:         stringParam(schedule.Params, "url"),
+			Timeout:     intParam(schedule.Params, "timeout", 0),
+			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
 			return fmt.Errorf("invalid scrape schedule: %w", err)
 		}
 	case model.KindCrawl:
-		url := stringParam(schedule.Params, "url")
-		maxDepth := intParam(schedule.Params, "maxDepth", 0)
-		maxPages := intParam(schedule.Params, "maxPages", 0)
-		timeout := intParam(schedule.Params, "timeout", 0)
-		authProfile := stringParam(schedule.Params, "authProfile")
-		validator := validate.CrawlRequestValidator{
-			URL:         url,
-			MaxDepth:    maxDepth,
-			MaxPages:    maxPages,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
+		opts := validate.JobValidationOpts{
+			URL:         stringParam(schedule.Params, "url"),
+			MaxDepth:    intParam(schedule.Params, "maxDepth", 0),
+			MaxPages:    intParam(schedule.Params, "maxPages", 0),
+			Timeout:     intParam(schedule.Params, "timeout", 0),
+			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
 			return fmt.Errorf("invalid crawl schedule: %w", err)
 		}
 	case model.KindResearch:
-		query := stringParam(schedule.Params, "query")
-		urls := stringSliceParam(schedule.Params, "urls")
-		maxDepth := intParam(schedule.Params, "maxDepth", 0)
-		maxPages := intParam(schedule.Params, "maxPages", 0)
-		timeout := intParam(schedule.Params, "timeout", 0)
-		authProfile := stringParam(schedule.Params, "authProfile")
-		validator := validate.ResearchRequestValidator{
-			Query:       query,
-			URLs:        urls,
-			MaxDepth:    maxDepth,
-			MaxPages:    maxPages,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
+		opts := validate.JobValidationOpts{
+			Query:       stringParam(schedule.Params, "query"),
+			URLs:        stringSliceParam(schedule.Params, "urls"),
+			MaxDepth:    intParam(schedule.Params, "maxDepth", 0),
+			MaxPages:    intParam(schedule.Params, "maxPages", 0),
+			Timeout:     intParam(schedule.Params, "timeout", 0),
+			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
 			return fmt.Errorf("invalid research schedule: %w", err)
 		}
 	default:

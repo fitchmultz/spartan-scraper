@@ -36,14 +36,14 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
-	validator := validate.CrawlRequestValidator{
+	opts := validate.JobValidationOpts{
 		URL:         req.URL,
 		MaxDepth:    req.MaxDepth,
 		MaxPages:    req.MaxPages,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
 	}
-	if err := validator.Validate(); err != nil {
+	if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
 		writeError(w, err)
 		return
 	}

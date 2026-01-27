@@ -49,12 +49,12 @@ Options:
 		return 1
 	}
 
-	validator := validate.ScrapeRequestValidator{
+	opts := validate.JobValidationOpts{
 		URL:         *url,
 		Timeout:     *cf.Timeout,
 		AuthProfile: *cf.ProfileName,
 	}
-	if err := validator.Validate(); err != nil {
+	if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}

@@ -36,12 +36,12 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "url is required")
 		return
 	}
-	validator := validate.ScrapeRequestValidator{
+	opts := validate.JobValidationOpts{
 		URL:         req.URL,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
 	}
-	if err := validator.Validate(); err != nil {
+	if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
 		writeError(w, err)
 		return
 	}

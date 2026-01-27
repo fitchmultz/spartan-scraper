@@ -2818,6 +2818,58 @@
       "completed_at": "2026-01-27T12:24:23.247527000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0068",
+      "status": "done",
+      "title": "Extract validation logic to reusable validators",
+      "priority": "medium",
+      "tags": [
+        "dry",
+        "validation",
+        "refactoring"
+      ],
+      "scope": [
+        "internal/validate",
+        "internal/scheduler",
+        "internal/mcp",
+        "internal/api",
+        "internal/cli/scrape"
+      ],
+      "evidence": [
+        "internal/validate/request.go has 3 validators (ScrapeRequestValidator, CrawlRequestValidator, ResearchRequestValidator) that ARE already defined and reused",
+        "Each validator struct has common fields (URL, MaxDepth, MaxPages, Timeout, AuthProfile) and calls same Validate* functions",
+        "12 locations across scheduler, MCP server, API handlers, and CLI commands instantiate validator structs and call Validate() with identical pattern",
+        "Boilerplate pattern: validator := validate.XRequestValidator{...}; validator.Validate() repeats everywhere",
+        "CLI commands in internal/cli/scrape/scrape.go, crawl.go, research.go also follow same validator pattern"
+      ],
+      "plan": [
+        "Read internal/validate/request.go and validate.go to understand current validator implementations",
+        "Define a common JobValidationOpts struct with shared fields: URL, MaxDepth, MaxPages, Timeout, AuthProfile, Query, URLs",
+        "Create ValidateJob(opts JobValidationOpts, kind model.Kind) function that validates based on kind",
+        "Update internal/scheduler/scheduler.go validateScheduleParams() to use ValidateJob()",
+        "Update internal/api handlers (scrape.go, crawl.go, research.go) to use ValidateJob()",
+        "Update internal/mcp/server.go tool handlers to use ValidateJob()",
+        "Update internal/cli/scrape commands (scrape.go, crawl.go, research.go) to use ValidateJob()",
+        "Remove deprecated validator structs from request.go once all callers migrated",
+        "Run make test to verify all validation tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Validators are already centralized in internal/validate/request.go but require boilerplate struct instantiation",
+        "Refactoring should reduce 12 instantiations to single ValidateJob() call with kind parameter",
+        "Replaced 3 validator structs (ScrapeRequestValidator, CrawlRequestValidator, ResearchRequestValidator) with unified JobValidationOpts and ValidateJob()",
+        "Migrated 8 call sites (12 locations) across scheduler, MCP server, API handlers, and CLI commands",
+        "Preserved exact validation behavior, error messages, and ordering",
+        "Net diff: -1 line (177 insertions, 178 deletions)",
+        "All tests pass, CI passes, no remaining references to old structs"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T15:07:01.238376000Z",
+      "completed_at": "2026-01-27T15:07:01.238376000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

@@ -244,12 +244,12 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		authProfile := getString(params.Arguments, "authProfile")
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		validator := validate.ScrapeRequestValidator{
+		opts := validate.JobValidationOpts{
 			URL:         url,
 			Timeout:     timeout,
 			AuthProfile: authProfile,
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
 			return nil, err
 		}
 		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
@@ -292,14 +292,14 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		validator := validate.CrawlRequestValidator{
+		opts := validate.JobValidationOpts{
 			URL:         url,
 			MaxDepth:    maxDepth,
 			MaxPages:    maxPages,
 			Timeout:     timeout,
 			AuthProfile: authProfile,
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
 			return nil, err
 		}
 		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
@@ -345,7 +345,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
 		maxPages := getInt(params.Arguments, "maxPages", 200)
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		validator := validate.ResearchRequestValidator{
+		opts := validate.JobValidationOpts{
 			Query:       query,
 			URLs:        urls,
 			MaxDepth:    maxDepth,
@@ -353,7 +353,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Timeout:     timeout,
 			AuthProfile: authProfile,
 		}
-		if err := validator.Validate(); err != nil {
+		if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
 			return nil, err
 		}
 		targetURL := ""

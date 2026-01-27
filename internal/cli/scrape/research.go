@@ -49,7 +49,7 @@ Options:
 
 	urlList := common.SplitCSV(*urls)
 
-	validator := validate.ResearchRequestValidator{
+	opts := validate.JobValidationOpts{
 		Query:       *query,
 		URLs:        urlList,
 		MaxDepth:    *maxDepth,
@@ -57,7 +57,7 @@ Options:
 		Timeout:     *cf.Timeout,
 		AuthProfile: *cf.ProfileName,
 	}
-	if err := validator.Validate(); err != nil {
+	if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}

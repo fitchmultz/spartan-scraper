@@ -2,18 +2,20 @@ package validate
 
 import (
 	"testing"
+
+	"spartan-scraper/internal/model"
 )
 
-func TestScrapeRequestValidator(t *testing.T) {
+func TestValidateJob_Scrape(t *testing.T) {
 	tests := []struct {
 		name        string
-		validator   ScrapeRequestValidator
+		opts        JobValidationOpts
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "valid request with all fields",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     30,
 				AuthProfile: "test-profile",
@@ -22,7 +24,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "valid request with zero timeout",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     0,
 				AuthProfile: "test-profile",
@@ -31,7 +33,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid URL - wrong scheme",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "ftp://example.com",
 				Timeout:     30,
 				AuthProfile: "test-profile",
@@ -41,7 +43,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid URL - missing host",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://",
 				Timeout:     30,
 				AuthProfile: "test-profile",
@@ -51,7 +53,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "empty URL",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "",
 				Timeout:     30,
 				AuthProfile: "test-profile",
@@ -61,7 +63,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid timeout - too low",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     4,
 				AuthProfile: "test-profile",
@@ -71,7 +73,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid timeout - too high",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     301,
 				AuthProfile: "test-profile",
@@ -81,7 +83,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid authProfile - invalid chars",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     30,
 				AuthProfile: "test profile",
@@ -91,7 +93,7 @@ func TestScrapeRequestValidator(t *testing.T) {
 		},
 		{
 			name: "empty authProfile is valid",
-			validator: ScrapeRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				Timeout:     30,
 				AuthProfile: "",
@@ -102,9 +104,9 @@ func TestScrapeRequestValidator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.validator.Validate()
+			err := ValidateJob(tt.opts, model.KindScrape)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ValidateJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil && tt.errContains != "" {
 				if !containsString(err.Error(), tt.errContains) {
@@ -115,16 +117,16 @@ func TestScrapeRequestValidator(t *testing.T) {
 	}
 }
 
-func TestCrawlRequestValidator(t *testing.T) {
+func TestValidateJob_Crawl(t *testing.T) {
 	tests := []struct {
 		name        string
-		validator   CrawlRequestValidator
+		opts        JobValidationOpts
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "valid request with all fields",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    3,
 				MaxPages:    100,
@@ -135,7 +137,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "valid request with zero maxDepth/maxPages",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    0,
 				MaxPages:    0,
@@ -146,7 +148,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid URL - wrong scheme",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "ftp://example.com",
 				MaxDepth:    3,
 				MaxPages:    100,
@@ -158,7 +160,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxDepth - too low",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    -1,
 				MaxPages:    100,
@@ -170,7 +172,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxDepth - too high",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    11,
 				MaxPages:    100,
@@ -182,7 +184,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxPages - too low",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    3,
 				MaxPages:    -1,
@@ -194,7 +196,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxPages - too high",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    3,
 				MaxPages:    10001,
@@ -206,7 +208,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid timeout",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    3,
 				MaxPages:    100,
@@ -218,7 +220,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid authProfile name",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "https://example.com",
 				MaxDepth:    3,
 				MaxPages:    100,
@@ -230,7 +232,7 @@ func TestCrawlRequestValidator(t *testing.T) {
 		},
 		{
 			name: "all invalid fields",
-			validator: CrawlRequestValidator{
+			opts: JobValidationOpts{
 				URL:         "invalid",
 				MaxDepth:    0,
 				MaxPages:    0,
@@ -243,9 +245,9 @@ func TestCrawlRequestValidator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.validator.Validate()
+			err := ValidateJob(tt.opts, model.KindCrawl)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ValidateJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil && tt.errContains != "" {
 				if !containsString(err.Error(), tt.errContains) {
@@ -256,16 +258,16 @@ func TestCrawlRequestValidator(t *testing.T) {
 	}
 }
 
-func TestResearchRequestValidator(t *testing.T) {
+func TestValidateJob_Research(t *testing.T) {
 	tests := []struct {
 		name        string
-		validator   ResearchRequestValidator
+		opts        JobValidationOpts
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "valid request with multiple URLs",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com", "https://example.org"},
 				MaxDepth:    3,
@@ -277,7 +279,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "empty query",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "",
 				URLs:        []string{"https://example.com"},
 				MaxDepth:    3,
@@ -290,7 +292,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid URL in list",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com", "ftp://example.org"},
 				MaxDepth:    3,
@@ -303,7 +305,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "empty URLs list",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{},
 				MaxDepth:    3,
@@ -316,7 +318,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxDepth",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com"},
 				MaxDepth:    11,
@@ -329,7 +331,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid maxPages",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com"},
 				MaxDepth:    3,
@@ -342,7 +344,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid timeout",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com"},
 				MaxDepth:    3,
@@ -355,7 +357,7 @@ func TestResearchRequestValidator(t *testing.T) {
 		},
 		{
 			name: "invalid authProfile name",
-			validator: ResearchRequestValidator{
+			opts: JobValidationOpts{
 				Query:       "test query",
 				URLs:        []string{"https://example.com"},
 				MaxDepth:    3,
@@ -370,9 +372,9 @@ func TestResearchRequestValidator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.validator.Validate()
+			err := ValidateJob(tt.opts, model.KindResearch)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ValidateJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil && tt.errContains != "" {
 				if !containsString(err.Error(), tt.errContains) {

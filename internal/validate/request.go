@@ -3,81 +3,87 @@
 // It does NOT define validation rules (validate.go does).
 package validate
 
-import "spartan-scraper/internal/apperrors"
+import (
+	"spartan-scraper/internal/apperrors"
+	"spartan-scraper/internal/model"
+)
 
-type ScrapeRequestValidator struct {
-	URL         string
-	Timeout     int
-	AuthProfile string
+// JobValidationOpts is a unified set of validation inputs for all job kinds.
+//
+// Invariants/assumptions:
+// - For scrape/crawl: URL is required.
+// - For research: Query and URLs are required.
+// - MaxDepth/MaxPages/Timeout use "0 means default" semantics (0 is valid).
+// - AuthProfile is optional.
+type JobValidationOpts struct {
+	URL         string   // Required for scrape/crawl
+	Query       string   // Required for research
+	URLs        []string // Required for research
+	MaxDepth    int      // Optional (0 = default)
+	MaxPages    int      // Optional (0 = default)
+	Timeout     int      // Optional (0 = default)
+	AuthProfile string   // Optional
 }
 
-func (v ScrapeRequestValidator) Validate() error {
-	if err := ValidateURL(v.URL); err != nil {
-		return err
-	}
-	if err := ValidateTimeout(v.Timeout); err != nil {
-		return err
-	}
-	if err := ValidateAuthProfileName(v.AuthProfile); err != nil {
-		return err
-	}
-	return nil
-}
+// ValidateJob validates job parameters based on job kind.
+//
+// It preserves exact validation behavior and error messages that previously
+// lived in per-kind validator structs.
+func ValidateJob(opts JobValidationOpts, kind model.Kind) error {
+	switch kind {
+	case model.KindScrape:
+		if err := ValidateURL(opts.URL); err != nil {
+			return err
+		}
+		if err := ValidateTimeout(opts.Timeout); err != nil {
+			return err
+		}
+		if err := ValidateAuthProfileName(opts.AuthProfile); err != nil {
+			return err
+		}
+		return nil
 
-type CrawlRequestValidator struct {
-	URL         string
-	MaxDepth    int
-	MaxPages    int
-	Timeout     int
-	AuthProfile string
-}
+	case model.KindCrawl:
+		if err := ValidateURL(opts.URL); err != nil {
+			return err
+		}
+		if err := ValidateMaxDepth(opts.MaxDepth); err != nil {
+			return err
+		}
+		if err := ValidateMaxPages(opts.MaxPages); err != nil {
+			return err
+		}
+		if err := ValidateTimeout(opts.Timeout); err != nil {
+			return err
+		}
+		if err := ValidateAuthProfileName(opts.AuthProfile); err != nil {
+			return err
+		}
+		return nil
 
-func (v CrawlRequestValidator) Validate() error {
-	if err := ValidateURL(v.URL); err != nil {
-		return err
-	}
-	if err := ValidateMaxDepth(v.MaxDepth); err != nil {
-		return err
-	}
-	if err := ValidateMaxPages(v.MaxPages); err != nil {
-		return err
-	}
-	if err := ValidateTimeout(v.Timeout); err != nil {
-		return err
-	}
-	if err := ValidateAuthProfileName(v.AuthProfile); err != nil {
-		return err
-	}
-	return nil
-}
+	case model.KindResearch:
+		// Preserve old ordering: query required check happens before URL list validation.
+		if opts.Query == "" {
+			return apperrors.Validation("query is required")
+		}
+		if err := ValidateURLs(opts.URLs); err != nil {
+			return err
+		}
+		if err := ValidateMaxDepth(opts.MaxDepth); err != nil {
+			return err
+		}
+		if err := ValidateMaxPages(opts.MaxPages); err != nil {
+			return err
+		}
+		if err := ValidateTimeout(opts.Timeout); err != nil {
+			return err
+		}
+		if err := ValidateAuthProfileName(opts.AuthProfile); err != nil {
+			return err
+		}
+		return nil
 
-type ResearchRequestValidator struct {
-	Query       string
-	URLs        []string
-	MaxDepth    int
-	MaxPages    int
-	Timeout     int
-	AuthProfile string
-}
-
-func (v ResearchRequestValidator) Validate() error {
-	if v.Query == "" {
-		return apperrors.Validation("query is required")
+	default:
+		return apperrors.Validation("unknown job kind")
 	}
-	if err := ValidateURLs(v.URLs); err != nil {
-		return err
-	}
-	if err := ValidateMaxDepth(v.MaxDepth); err != nil {
-		return err
-	}
-	if err := ValidateMaxPages(v.MaxPages); err != nil {
-		return err
-	}
-	if err := ValidateTimeout(v.Timeout); err != nil {
-		return err
-	}
-	if err := ValidateAuthProfileName(v.AuthProfile); err != nil {
-		return err
-	}
-	return nil
 }

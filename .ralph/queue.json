@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0068",
-      "status": "todo",
-      "title": "Extract validation logic to reusable validators",
-      "priority": "medium",
-      "tags": [
-        "dry",
-        "validation",
-        "refactoring"
-      ],
-      "scope": [
-        "internal/validate",
-        "internal/scheduler",
-        "internal/mcp",
-        "internal/api"
-      ],
-      "evidence": [
-        "internal/validate/request.go has 3 validators (ScrapeRequestValidator, CrawlRequestValidator, ResearchRequestValidator)",
-        "Each validator has similar pattern: ValidateURL, ValidateMaxDepth, ValidateMaxPages, ValidateTimeout, ValidateAuthProfileName",
-        "Scheduler and API handlers likely duplicate similar validation logic",
-        "Repeated validation patterns violate DRY principle"
-      ],
-      "plan": [
-        "Read validate/request.go to understand current validator implementations",
-        "Read scheduler.go to find validation logic in validateSchedule()",
-        "Read api/server.go to find validation logic in handlers",
-        "Identify common validation rules and create reusable functions: ValidateJobCommon(opts JobCommonOpts)",
-        "Create internal/validate/job.go with shared validation logic",
-        "Update scheduler to use shared validators",
-        "Update API handlers to use shared validators",
-        "Ensure MCP tool handlers use shared validators",
-        "Run make test to verify all validation tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0069",
       "status": "todo",
       "title": "Verify generated TypeScript API types match Go API contracts",
