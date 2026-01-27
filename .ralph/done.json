@@ -2452,6 +2452,61 @@
       "completed_at": "2026-01-27T01:10:51.430091000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0061",
+      "status": "done",
+      "title": "Add comprehensive tests for fetch package utilities",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "fetch",
+        "coverage"
+      ],
+      "scope": [
+        "internal/fetch/adaptive_fetcher.go",
+        "internal/fetch/limiter.go",
+        "internal/fetch/render_profiles.go",
+        "internal/fetch/retry.go",
+        "internal/fetch/types.go"
+      ],
+      "evidence": [
+        "internal/fetch/adaptive_fetcher.go has no test file (adaptive_fetcher_test.go missing)",
+        "internal/fetch/limiter.go has no test file (limiter_test.go missing)",
+        "internal/fetch/render_profiles.go has no test file (render_profiles_test.go missing)",
+        "internal/fetch/retry.go has no test file (retry_test.go missing)",
+        "internal/fetch/types.go has no test file (types_test.go missing)",
+        "Progress made: chromedp_fetcher_test.go, detect_test.go, fetcher_test.go, http_fetcher_test.go, playwright_fetcher_test.go, render_profiles_store_test.go already exist",
+        "Fetch utilities are critical to content fetching and should have comprehensive test coverage"
+      ],
+      "plan": [
+        "Read adaptive_fetcher.go to understand the adaptive fallback logic",
+        "Create internal/fetch/adaptive_fetcher_test.go with tests for HTTP probe, JS detection, and headless fallback",
+        "Read limiter.go to understand rate limiting implementation",
+        "Create internal/fetch/limiter_test.go with tests for rate limiting, burst capacity, and concurrency",
+        "Read render_profiles.go to understand profile loading and matching (note: render_profiles_store.go already has tests)",
+        "Create internal/fetch/render_profiles_test.go with tests for profile matching and merging",
+        "Read retry.go to understand retry strategy and exponential backoff",
+        "Create internal/fetch/retry_test.go with tests for retry counts, delays, and failure conditions",
+        "Read types.go to understand shared fetch types and interfaces",
+        "Create internal/fetch/types_test.go with tests for type constructors and validation",
+        "Run make test-ci to verify new tests pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Task updated to reflect progress: 6 of 11 fetch package files now have tests. 5 files remain untested.",
+        "Created 5 test files totaling ~844 LOC",
+        "All new tests pass with go test -race",
+        "make ci passes completely",
+        "Tests cover pure functions, rate limiting concurrency, profile matching, retry logic, URL query handling",
+        "Pre-existing race in fetcher_test.go (unrelated to this task)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T01:50:22.448263000Z",
+      "completed_at": "2026-01-27T01:50:22.448263000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

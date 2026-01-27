@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0061",
-      "status": "todo",
-      "title": "Add comprehensive tests for fetch package utilities",
-      "priority": "medium",
-      "tags": [
-        "testing",
-        "fetch",
-        "coverage"
-      ],
-      "scope": [
-        "internal/fetch"
-      ],
-      "evidence": [
-        "internal/fetch/adaptive_fetcher.go has no test file",
-        "internal/fetch/retry.go has no test file",
-        "internal/fetch/limiter.go has no test file",
-        "internal/fetch/types.go has no test file",
-        "internal/fetch/render_profiles.go has no test file",
-        "Fetch utilities are critical to content fetching and should be tested"
-      ],
-      "plan": [
-        "Read adaptive_fetcher.go to understand the adaptive fallback logic",
-        "Create internal/fetch/adaptive_fetcher_test.go with tests for HTTP probe, JS detection, and headless fallback",
-        "Read retry.go to understand retry strategy and exponential backoff",
-        "Create internal/fetch/retry_test.go with tests for retry counts, delays, and failure conditions",
-        "Read limiter.go to understand rate limiting implementation",
-        "Create internal/fetch/limiter_test.go with tests for rate limiting, burst capacity, and concurrency",
-        "Read types.go to understand shared fetch types and interfaces",
-        "Create internal/fetch/types_test.go with tests for type constructors and validation",
-        "Read render_profiles.go to understand profile loading and matching",
-        "Create internal/fetch/render_profiles_test.go with tests for profile matching and merging",
-        "Run make test-ci to verify new tests pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0062",
       "status": "todo",
       "title": "Add comprehensive tests for extract package utilities",
