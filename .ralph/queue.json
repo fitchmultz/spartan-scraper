@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0066",
-      "status": "todo",
-      "title": "Review and standardize error handling patterns",
-      "priority": "medium",
-      "tags": [
-        "error-handling",
-        "standards",
-        "consistency"
-      ],
-      "scope": [
-        "internal"
-      ],
-      "evidence": [
-        "Error handling patterns vary across packages: some use fmt.Errorf with context, others use errors.New",
-        "Validation errors in validate/request.go use Validate() methods on structs",
-        "Scheduler uses fmt.Errorf with detailed context (e.g., 'failed to resolve auth for scrape schedule %s: %w')",
-        "API server uses ErrorResponse struct for HTTP errors",
-        "Inconsistent error handling makes debugging harder and reduces predictability"
-      ],
-      "plan": [
-        "Search for all error return statements across internal/ to categorize patterns",
-        "Identify common error types: validation errors, not found errors, permission errors, internal errors",
-        "Create internal/errors/package or add to existing error patterns",
-        "Standardize on wrapping with context using fmt.Errorf('%s: %w', context, err)",
-        "Define error constructors for common patterns: ValidationError, NotFoundError, PermissionError",
-        "Update inconsistent error sites to use standardized patterns",
-        "Ensure error messages include enough context for debugging without exposing secrets",
-        "Run make test to verify all tests still pass",
-        "Run make ci to ensure full pipeline works"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2025-01-26T00:00:00Z",
-      "updated_at": "2025-01-26T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0067",
       "status": "todo",
       "title": "Review and standardize logging levels and messages",

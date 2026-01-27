@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/exporter"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/store"
@@ -49,7 +50,7 @@ func waitForJob(ctx context.Context, st *store.Store, id string, timeout time.Du
 	start := time.Now()
 	for {
 		if timeout > 0 && time.Since(start) > timeout {
-			return fmt.Errorf("wait timeout after %s", timeout)
+			return apperrors.Internal(fmt.Sprintf("wait timeout after %s", timeout))
 		}
 		job, err := st.Get(ctx, id)
 		if err != nil {
@@ -60,9 +61,9 @@ func waitForJob(ctx context.Context, st *store.Store, id string, timeout time.Du
 			return nil
 		case model.StatusFailed:
 			if job.Error != "" {
-				return fmt.Errorf("job failed: %s", job.Error)
+				return apperrors.Internal(fmt.Sprintf("job failed: %s", job.Error))
 			}
-			return fmt.Errorf("job failed")
+			return apperrors.Internal("job failed")
 		}
 		select {
 		case <-ctx.Done():
@@ -78,7 +79,7 @@ func copyResults(ctx context.Context, st *store.Store, id, outPath string) error
 		return err
 	}
 	if job.ResultPath == "" {
-		return fmt.Errorf("no result path for job")
+		return apperrors.NotFound("no result path for job")
 	}
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
@@ -103,7 +104,7 @@ func printResults(ctx context.Context, st *store.Store, id string) error {
 		return err
 	}
 	if job.ResultPath == "" {
-		return fmt.Errorf("no result path for job")
+		return apperrors.NotFound("no result path for job")
 	}
 
 	f, err := os.Open(job.ResultPath)

@@ -5,7 +5,6 @@ package fetch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/playwright-community/playwright-go"
+	"spartan-scraper/internal/apperrors"
 )
 
 var (
@@ -35,8 +35,8 @@ func NewFetcher() Fetcher {
 }
 
 var (
-	ErrChromeNotFound     = errors.New("chrome/chromium not found on PATH")
-	ErrPlaywrightNotReady = errors.New("playwright drivers not installed or not found")
+	ErrChromeNotFound     = apperrors.ErrChromeNotFound
+	ErrPlaywrightNotReady = apperrors.ErrPlaywrightNotReady
 )
 
 // CheckBrowserAvailability checks if the required browser binaries are available.
@@ -50,7 +50,7 @@ func CheckBrowserAvailability(usePlaywright bool) error {
 func checkChromeAvailability() error {
 	_, err := findChrome()
 	if err != nil {
-		return fmt.Errorf("%w: searched for: google-chrome, google-chrome-stable, chromium, chromium-browser, chrome", ErrChromeNotFound)
+		return apperrors.Wrap(apperrors.KindInternal, "chrome/chromium not found on PATH", ErrChromeNotFound)
 	}
 	return nil
 }
@@ -75,7 +75,7 @@ func checkPlaywrightAvailability() error {
 		return fmt.Errorf("%w: timeout while checking playwright availability", ErrPlaywrightNotReady)
 	case res := <-resultChan:
 		if res.err != nil {
-			return fmt.Errorf("%w: %w", ErrPlaywrightNotReady, res.err)
+			return apperrors.Wrap(apperrors.KindInternal, "playwright drivers not installed or not found", ErrPlaywrightNotReady)
 		}
 		if res.pw != nil {
 			if err := res.pw.Stop(); err != nil {

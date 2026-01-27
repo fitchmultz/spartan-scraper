@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
@@ -322,7 +323,7 @@ func validateScheduleParams(schedule Schedule) error {
 			return fmt.Errorf("invalid research schedule: %w", err)
 		}
 	default:
-		return errors.New("unknown schedule kind")
+		return apperrors.Validation("unknown schedule kind")
 	}
 	return nil
 }

@@ -17,7 +17,7 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 
 	names, err := extract.ListTemplateNames(s.cfg.DataDir)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 

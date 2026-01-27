@@ -9,9 +9,9 @@ package exporter
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/model"
 )
 
@@ -52,7 +52,7 @@ func exportJSONStream(job model.Job, r io.Reader, w io.Writer) error {
 			return err
 		}
 	default:
-		return errors.New("unknown job kind")
+		return apperrors.Internal("unknown job kind")
 	}
 
 	_, err = w.Write(data)

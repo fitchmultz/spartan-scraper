@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/fetch"
@@ -27,10 +28,34 @@ func writeJSON(w http.ResponseWriter, payload interface{}) {
 func writeJSONError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	errResp := ErrorResponse{Error: message}
+	redacted := apperrors.RedactString(message)
+	errResp := ErrorResponse{Error: redacted}
 	if err := json.NewEncoder(w).Encode(errResp); err != nil {
 		slog.Error("failed to encode json error response", "error", err)
 	}
+}
+
+// writeError maps error kinds to appropriate HTTP status codes and writes the response.
+// Error messages are redacted using SafeMessage to prevent secret leakage.
+func writeError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+
+	var status int
+	switch apperrors.KindOf(err) {
+	case apperrors.KindValidation:
+		status = http.StatusBadRequest
+	case apperrors.KindNotFound:
+		status = http.StatusNotFound
+	case apperrors.KindPermission:
+		status = http.StatusForbidden
+	default:
+		status = http.StatusInternalServerError
+	}
+
+	message := apperrors.SafeMessage(err)
+	writeJSONError(w, status, message)
 }
 
 func parseIntParam(s string, defaultVal int) int {

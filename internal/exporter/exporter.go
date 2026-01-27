@@ -18,6 +18,7 @@ import (
 	"io"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/model"
 )
 
@@ -46,6 +47,6 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 	case "csv":
 		return exportCSVStream(job, r, w)
 	default:
-		return fmt.Errorf("unsupported format: %s", format)
+		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}
 }

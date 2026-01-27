@@ -6,7 +6,6 @@ package jobs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/crawl"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
@@ -215,7 +215,7 @@ func (m *Manager) Enqueue(job model.Job) error {
 		return nil
 	default:
 		slog.Warn("job queue full", "jobID", job.ID)
-		return errors.New("job queue full")
+		return apperrors.ErrQueueFull
 	}
 }
 
@@ -345,7 +345,7 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 	case model.KindResearch:
 		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental)
 	default:
-		return model.Job{}, fmt.Errorf("unknown job kind: %s", spec.Kind)
+		return model.Job{}, apperrors.Internal(fmt.Sprintf("unknown job kind: %s", spec.Kind))
 	}
 }
 
@@ -571,7 +571,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err := m.store.UpdateStatus(ctx, job.ID, model.StatusFailed, "unknown job kind"); err != nil {
 			slog.Error("failed to update job status to failed", "jobID", job.ID, "error", err)
 		}
-		return errors.New("unknown job kind")
+		return apperrors.Internal("unknown job kind")
 	}
 
 	if jobCtx.Err() != nil {

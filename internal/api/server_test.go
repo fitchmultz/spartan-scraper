@@ -165,8 +165,8 @@ func TestRejectUnknownFields(t *testing.T) {
 			}
 
 			body := rr.Body.String()
-			if !strings.Contains(body, "invalid json:") {
-				t.Errorf("expected 'invalid json:' in error response, got: %s", body)
+			if !strings.Contains(body, "\"error\"") {
+				t.Errorf("expected error response, got: %s", body)
 			}
 			if !strings.Contains(body, tt.unknownField) {
 				t.Errorf("expected error response to mention unknown field %q, got: %s", tt.unknownField, body)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/model"
 
 	_ "modernc.org/sqlite"
@@ -262,6 +264,9 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 	var createdAt, updatedAt string
 	var params string
 	if err := row.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.Job{}, apperrors.NotFound("job not found")
+		}
 		return model.Job{}, err
 	}
 	var err error

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/model"
 	"spartan-scraper/internal/store"
 )
@@ -29,7 +30,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if statusParam != "" {
 		status := model.Status(statusParam)
 		if !status.IsValid() {
-			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam))
+			writeError(w, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
 			return
 		}
 		opts := store.ListByStatusOptions{Limit: limit, Offset: offset}
@@ -40,7 +41,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	writeJSON(w, map[string]interface{}{"jobs": jobsList})
@@ -61,20 +62,20 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		job, err := s.store.Get(r.Context(), id)
 		if err != nil {
-			writeJSONError(w, http.StatusNotFound, "not found")
+			writeError(w, err)
 			return
 		}
 		writeJSON(w, job)
 	case http.MethodDelete:
 		if r.URL.Query().Get("force") == "true" {
 			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
-				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				writeError(w, err)
 				return
 			}
 			writeJSON(w, map[string]string{"status": "deleted"})
 		} else {
 			if err := s.manager.CancelJob(r.Context(), id); err != nil {
-				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				writeError(w, err)
 				return
 			}
 			writeJSON(w, map[string]string{"status": "canceled"})

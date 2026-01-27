@@ -21,7 +21,7 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 	}
 	vault, err := auth.LoadVault(s.cfg.DataDir)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	writeJSON(w, map[string]interface{}{"profiles": vault.Profiles})
@@ -59,7 +59,7 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := auth.UpsertProfile(s.cfg.DataDir, profile); err != nil {
-			writeJSONError(w, http.StatusBadRequest, err.Error())
+			writeError(w, err)
 			return
 		}
 		writeJSON(w, profile)
@@ -95,10 +95,10 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
 		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
-			writeJSONError(w, http.StatusBadRequest, err.Error())
+			writeError(w, err)
 			return
 		}
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
@@ -125,10 +125,10 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {
 		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
-			writeJSONError(w, http.StatusBadRequest, err.Error())
+			writeError(w, err)
 			return
 		}
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})

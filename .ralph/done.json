@@ -2702,6 +2702,65 @@
       "completed_at": "2026-01-27T05:22:56.977267000Z",
       "depends_on": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0066",
+      "status": "done",
+      "title": "Review and standardize error handling patterns",
+      "priority": "medium",
+      "tags": [
+        "error-handling",
+        "standards",
+        "consistency"
+      ],
+      "scope": [
+        "internal/validate",
+        "internal/fetch",
+        "internal/auth",
+        "internal/store",
+        "internal/jobs",
+        "internal/scheduler",
+        "internal/cli",
+        "internal/api",
+        "internal/exporter"
+      ],
+      "evidence": [
+        "Found 48 error return statements across 17 files (fmt.Errorf and errors.New)",
+        "validate/validate.go defines 6 error variables (ErrInvalidURLScheme, ErrInvalidURLHost, ErrInvalidTimeoutRange, ErrInvalidMaxDepth, ErrInvalidMaxPages, ErrInvalidProfileName)",
+        "fetch/fetcher.go defines 2 error variables (ErrChromeNotFound, ErrPlaywrightNotReady) with context wrapping",
+        "auth/vault.go defines 1 error variable (ErrInvalidPath)",
+        "No dedicated internal/errors package exists",
+        "API uses ErrorResponse struct for HTTP errors (api/types.go:24-27)",
+        "Inconsistent wrapping: scheduler.go:95 wraps errors ('failed to resolve auth for schedule %s: %w'), but spec.go:40-59 uses bare errors.New()",
+        "store/store.go:170-232 uses fmt.Errorf for SQL/DB prep failures",
+        "cli/common/results.go:52-107 uses fmt.Errorf for job result operations",
+        "exporter packages use errors.New('unknown job kind') and fmt.Errorf('unsupported format: %s')"
+      ],
+      "plan": [
+        "Review all 48 error sites across validate, fetch, auth, store, jobs, scheduler, cli, api, exporter",
+        "Create internal/errors package with common error types: ValidationError, NotFoundError, PermissionError, InternalError",
+        "Standardize on fmt.Errorf wrapping pattern: '%s: %w' for context, errors.New for simple sentinel errors",
+        "Migrate existing error variables to internal/errors package (validate's 6, fetch's 2, auth's 1)",
+        "Update bare errors.New() calls in spec.go:40-59 to use structured errors with context",
+        "Ensure error messages include operation context without exposing secrets (no auth tokens, passwords, API keys)",
+        "Document error wrapping conventions in internal/README.md or AGENTS.md",
+        "Run make test to verify all tests still pass",
+        "Run make ci to ensure full pipeline works"
+      ],
+      "notes": [
+        "Created internal/apperrors package with error classification, wrapping, and secret redaction",
+        "Standardized all error sites across 24 files in 9 packages",
+        "Updated HTTP handlers to use writeError() for consistent status mapping",
+        "Added comprehensive internal/apperrors/README.md with usage examples",
+        "Updated AGENTS.md with error handling conventions",
+        "All tests pass (make ci succeeds)"
+      ],
+      "request": "scan finding",
+      "created_at": "2025-01-26T00:00:00Z",
+      "updated_at": "2026-01-27T06:21:56.312795000Z",
+      "completed_at": "2026-01-27T06:21:56.312795000Z",
+      "depends_on": [],
+      "custom_fields": {}
     }
   ]
 }

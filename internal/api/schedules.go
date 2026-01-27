@@ -18,7 +18,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		schedules, err := scheduler.List(s.cfg.DataDir)
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			writeError(w, err)
 			return
 		}
 		response := make([]ScheduleResponse, len(schedules))
@@ -111,7 +111,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 
 		addedSchedule, err := scheduler.Add(s.cfg.DataDir, schedule)
 		if err != nil {
-			writeJSONError(w, http.StatusBadRequest, err.Error())
+			writeError(w, err)
 			return
 		}
 
@@ -139,7 +139,7 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := scheduler.Delete(s.cfg.DataDir, id); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})

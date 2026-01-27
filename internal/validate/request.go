@@ -3,7 +3,7 @@
 // It does NOT define validation rules (validate.go does).
 package validate
 
-import "errors"
+import "spartan-scraper/internal/apperrors"
 
 type ScrapeRequestValidator struct {
 	URL         string
@@ -62,7 +62,7 @@ type ResearchRequestValidator struct {
 
 func (v ResearchRequestValidator) Validate() error {
 	if v.Query == "" {
-		return errors.New("query is required")
+		return apperrors.Validation("query is required")
 	}
 	if err := ValidateURLs(v.URLs); err != nil {
 		return err

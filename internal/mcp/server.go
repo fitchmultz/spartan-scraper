@@ -7,12 +7,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"time"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/auth"
 	"spartan-scraper/internal/config"
 	"spartan-scraper/internal/exporter"
@@ -146,7 +146,7 @@ func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		case "tools/call":
 			result, err := s.handleToolCall(ctx, base)
 			if err != nil {
-				_ = encoder.Encode(response{ID: id, Error: &rpcError{Code: -32000, Message: err.Error()}})
+				_ = encoder.Encode(response{ID: id, Error: &rpcError{Code: -32000, Message: apperrors.SafeMessage(err)}})
 				continue
 			}
 			_ = encoder.Encode(response{ID: id, Result: result})
@@ -240,7 +240,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "scrape_page":
 		url := getString(params.Arguments, "url")
 		if url == "" {
-			return nil, errors.New("url is required")
+			return nil, apperrors.Validation("url is required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
 		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
@@ -286,7 +286,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "crawl_site":
 		url := getString(params.Arguments, "url")
 		if url == "" {
-			return nil, errors.New("url is required")
+			return nil, apperrors.Validation("url is required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
@@ -339,7 +339,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		query := getString(params.Arguments, "query")
 		urls := getStringSlice(params.Arguments, "urls")
 		if query == "" || len(urls) == 0 {
-			return nil, errors.New("query and urls are required")
+			return nil, apperrors.Validation("query and urls are required")
 		}
 		authProfile := getString(params.Arguments, "authProfile")
 		maxDepth := getInt(params.Arguments, "maxDepth", 2)
@@ -397,13 +397,13 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "job_status":
 		id := getString(params.Arguments, "id")
 		if id == "" {
-			return nil, errors.New("id is required")
+			return nil, apperrors.Validation("id is required")
 		}
 		return s.store.Get(ctx, id)
 	case "job_results":
 		id := getString(params.Arguments, "id")
 		if id == "" {
-			return nil, errors.New("id is required")
+			return nil, apperrors.Validation("id is required")
 		}
 		return loadResult(ctx, s.store, id)
 	case "job_list":
@@ -417,7 +417,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "job_cancel":
 		id := getString(params.Arguments, "id")
 		if id == "" {
-			return nil, errors.New("id is required")
+			return nil, apperrors.Validation("id is required")
 		}
 		if err := s.manager.CancelJob(ctx, id); err != nil {
 			return nil, err
@@ -426,7 +426,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "job_export":
 		id := getString(params.Arguments, "id")
 		if id == "" {
-			return nil, errors.New("id is required")
+			return nil, apperrors.Validation("id is required")
 		}
 		format := getString(params.Arguments, "format")
 		if format == "" {
@@ -434,14 +434,14 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
 		if !validFormats[format] {
-			return nil, errors.New("invalid format: must be jsonl, json, md, or csv")
+			return nil, apperrors.Validation("invalid format: must be jsonl, json, md, or csv")
 		}
 		job, err := s.store.Get(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("job not found: %w", err)
 		}
 		if job.ResultPath == "" {
-			return nil, errors.New("job has no results")
+			return nil, apperrors.NotFound("job has no results")
 		}
 		rawBytes, err := os.ReadFile(job.ResultPath)
 		if err != nil {
@@ -470,7 +470,7 @@ func waitForJob(ctx context.Context, store *store.Store, id string) error {
 			if job.Error != "" {
 				return fmt.Errorf("job failed: %s", job.Error)
 			}
-			return errors.New("job failed")
+			return apperrors.Internal("job failed")
 		}
 		select {
 		case <-ctx.Done():
@@ -486,7 +486,7 @@ func loadResult(ctx context.Context, store *store.Store, id string) (string, err
 		return "", err
 	}
 	if job.ResultPath == "" {
-		return "", errors.New("no result path")
+		return "", apperrors.NotFound("no result path")
 	}
 	data, err := os.ReadFile(job.ResultPath)
 	if err != nil {

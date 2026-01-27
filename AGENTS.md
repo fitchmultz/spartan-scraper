@@ -116,6 +116,19 @@ docs/                 # Documentation (usage, architecture, landscape)
 
 - **Ignored by design** — do not add compliance logic without explicit user request
 
+### Error Handling
+
+- **Use `internal/apperrors` package**: All new error handling must use the `apperrors` package for classification and consistent handling
+- **Error kinds**: Use `apperrors.Validation()`, `apperrors.NotFound()`, `apperrors.Permission()`, `apperrors.Internal()` for appropriate error types
+- **Wrapping**: Use `apperrors.Wrap(kind, "safe message", err)` to add context without exposing secrets in user-facing messages
+- **Sentinel errors**: Use `apperrors.WithKind(kind, sentinelErr)` for stable error text that can be compared with `errors.Is()`
+- **Never log secrets**: Always use `apperrors.SafeMessage(err)` when logging or returning errors to clients
+- **HTTP handlers**: Use `writeError(w, err)` from `internal/api/util.go` for consistent status code mapping (validation→400, not_found→404, permission→403, internal→500)
+- **Check error kinds**: Use `apperrors.IsKind(err, apperrors.KindValidation)` to check error types, or `apperrors.KindOf(err)` to get the kind
+- **Error checking**: Use `errors.Is(err, sentinelErr)` and `errors.As(err, &typedErr)` for error inspection
+
+See `internal/apperrors/README.md` for detailed usage patterns and examples.
+
 ## Toolchain
 
 Pinned in `.tool-versions`:

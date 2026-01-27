@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/fetch"
 )
 
@@ -22,7 +23,7 @@ const (
 )
 
 var (
-	ErrInvalidPath = errors.New("invalid path")
+	ErrInvalidPath = apperrors.ErrInvalidPath
 )
 
 func LoadVault(dataDir string) (Vault, error) {
@@ -74,7 +75,7 @@ func SaveVault(dataDir string, vault Vault) error {
 
 func UpsertProfile(dataDir string, profile Profile) error {
 	if strings.TrimSpace(profile.Name) == "" {
-		return errors.New("profile name is required")
+		return apperrors.Validation("profile name is required")
 	}
 	vault, err := LoadVault(dataDir)
 	if err != nil {
@@ -172,7 +173,7 @@ func ExportVault(dataDir string, path string) error {
 
 func UpsertPreset(dataDir string, preset TargetPreset) error {
 	if strings.TrimSpace(preset.Name) == "" {
-		return errors.New("preset name is required")
+		return apperrors.Validation("preset name is required")
 	}
 	vault, err := LoadVault(dataDir)
 	if err != nil {
@@ -225,13 +226,13 @@ func dataDirOrDefault(dataDir string) string {
 
 func validateVaultPath(path string) error {
 	if path == "" {
-		return errors.New("path is required")
+		return apperrors.Validation("path is required")
 	}
 	if path == "." || path == ".." {
-		return ErrInvalidPath
+		return apperrors.WithKind(apperrors.KindValidation, ErrInvalidPath)
 	}
 	if strings.ContainsAny(path, "/\\") {
-		return ErrInvalidPath
+		return apperrors.WithKind(apperrors.KindValidation, ErrInvalidPath)
 	}
 	return nil
 }

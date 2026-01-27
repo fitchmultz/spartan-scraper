@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/exporter"
 	"spartan-scraper/internal/model"
 )
@@ -27,11 +28,11 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	}
 	job, err := s.store.Get(r.Context(), id)
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "not found")
+		writeError(w, err)
 		return
 	}
 	if job.ResultPath == "" {
-		writeJSONError(w, http.StatusNotFound, "no results")
+		writeError(w, apperrors.NotFound("no results"))
 		return
 	}
 
@@ -42,7 +43,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 	validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
 	if !validFormats[format] {
-		writeJSONError(w, http.StatusBadRequest, "invalid format: must be jsonl, json, md, or csv")
+		writeError(w, apperrors.Validation("invalid format: must be jsonl, json, md, or csv"))
 		return
 	}
 
@@ -55,7 +56,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 			f, err := os.Open(job.ResultPath)
 			if err != nil {
-				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				writeError(w, err)
 				return
 			}
 			defer f.Close()
@@ -75,7 +76,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err != nil {
-				writeJSONError(w, http.StatusInternalServerError, err.Error())
+				writeError(w, err)
 				return
 			}
 
@@ -96,7 +97,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(job.ResultPath)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	defer f.Close()
@@ -113,7 +114,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, job.ID, format))
 
 	if err := exporter.ExportStream(job, f, format, w); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 }

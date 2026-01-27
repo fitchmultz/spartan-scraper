@@ -29,7 +29,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if req.URL == "" {
@@ -44,7 +44,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		AuthProfile: req.AuthProfile,
 	}
 	if err := validator.Validate(); err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeError(w, err)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 
 	authOptions, err := resolveAuthForRequest(s.cfg, req.URL, req.AuthProfile, req.Auth)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeError(w, err)
 		return
 	}
 	spec := jobs.JobSpec{
@@ -92,11 +92,11 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 	if err := s.manager.Enqueue(job); err != nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "failed to enqueue job: "+err.Error())
+		writeError(w, err)
 		return
 	}
 

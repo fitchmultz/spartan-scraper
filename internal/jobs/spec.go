@@ -4,9 +4,9 @@
 package jobs
 
 import (
-	"errors"
 	"fmt"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/extract"
 	"spartan-scraper/internal/fetch"
 	"spartan-scraper/internal/model"
@@ -38,24 +38,24 @@ func (s JobSpec) Validate() error {
 	switch s.Kind {
 	case model.KindScrape:
 		if s.URL == "" {
-			return errors.New("url is required for scrape jobs")
+			return apperrors.Validation("url is required for scrape jobs")
 		}
 	case model.KindCrawl:
 		if s.URL == "" {
-			return errors.New("url is required for crawl jobs")
+			return apperrors.Validation("url is required for crawl jobs")
 		}
 	case model.KindResearch:
 		if s.Query == "" {
-			return errors.New("query is required for research jobs")
+			return apperrors.Validation("query is required for research jobs")
 		}
 		if len(s.URLs) == 0 {
-			return errors.New("urls is required for research jobs")
+			return apperrors.Validation("urls is required for research jobs")
 		}
 	default:
-		return fmt.Errorf("unknown job kind: %s", s.Kind)
+		return apperrors.Validation(fmt.Sprintf("unknown job kind: %s", s.Kind))
 	}
 	if s.TimeoutSeconds <= 0 {
-		return errors.New("timeout must be > 0")
+		return apperrors.Validation("timeout must be > 0")
 	}
 	return nil
 }

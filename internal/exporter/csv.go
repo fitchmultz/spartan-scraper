@@ -10,12 +10,12 @@ package exporter
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
+	"spartan-scraper/internal/apperrors"
 	"spartan-scraper/internal/model"
 )
 
@@ -44,7 +44,7 @@ func exportCSVStream(job model.Job, r io.Reader, w io.Writer) error {
 		}
 		return writeResearchCSV(item, writer)
 	default:
-		return errors.New("unknown job kind")
+		return apperrors.Internal("unknown job kind")
 	}
 }
 

@@ -22,7 +22,7 @@ func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 
 	states, err := s.store.ListCrawlStates(r.Context(), opts)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, err)
 		return
 	}
 
