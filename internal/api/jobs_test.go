@@ -217,6 +217,11 @@ func TestHandleJobsPagination(t *testing.T) {
 				t.Errorf("expected status 200, got %v", status)
 			}
 
+			// Verify X-Total-Count header
+			if total := rr.Header().Get("X-Total-Count"); total != "10" {
+				t.Errorf("expected X-Total-Count 10, got %s", total)
+			}
+
 			var resp map[string]interface{}
 			json.Unmarshal(rr.Body.Bytes(), &resp)
 			jobsList := resp["jobs"].([]interface{})

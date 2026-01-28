@@ -124,6 +124,22 @@ func (s *Store) ListByStatus(ctx context.Context, status model.Status, opts List
 	return results, rows.Err()
 }
 
+// CountJobs returns the total number of jobs, optionally filtered by status.
+func (s *Store) CountJobs(ctx context.Context, status model.Status) (int, error) {
+	var query string
+	var args []interface{}
+	if status != "" {
+		query = "select count(*) from jobs where status = ?"
+		args = append(args, status)
+	} else {
+		query = "select count(*) from jobs"
+	}
+
+	var count int
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	return count, err
+}
+
 type Store struct {
 	db      *sql.DB
 	dataDir string
@@ -417,6 +433,13 @@ func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions
 		results = append(results, state)
 	}
 	return results, rows.Err()
+}
+
+// CountCrawlStates returns the total number of crawl states.
+func (s *Store) CountCrawlStates(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, "select count(*) from crawl_states").Scan(&count)
+	return count, err
 }
 
 // Delete permanently removes a job from the store.

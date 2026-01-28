@@ -6,6 +6,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -25,9 +26,11 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 
 	var jobsList []model.Job
 	var err error
+	var total int
+	var status model.Status
 
 	if statusParam != "" {
-		status := model.Status(statusParam)
+		status = model.Status(statusParam)
 		if !status.IsValid() {
 			writeError(w, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
 			return
@@ -43,6 +46,14 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+
+	total, err = s.store.CountJobs(r.Context(), status)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 	writeJSON(w, map[string]interface{}{"jobs": model.SanitizeJobs(jobsList)})
 }
 

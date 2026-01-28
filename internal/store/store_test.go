@@ -604,3 +604,71 @@ func TestListCrawlStatesOptionsDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestStoreCountJobs(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create jobs with different statuses
+	_ = s.Create(ctx, model.Job{ID: "j1", Kind: model.KindScrape, Status: model.StatusQueued, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+	_ = s.Create(ctx, model.Job{ID: "j2", Kind: model.KindScrape, Status: model.StatusRunning, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+	_ = s.Create(ctx, model.Job{ID: "j3", Kind: model.KindScrape, Status: model.StatusSucceeded, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+	_ = s.Create(ctx, model.Job{ID: "j4", Kind: model.KindScrape, Status: model.StatusQueued, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+
+	// Count all
+	count, err := s.CountJobs(ctx, "")
+	if err != nil {
+		t.Fatalf("CountJobs failed: %v", err)
+	}
+	if count != 4 {
+		t.Errorf("expected 4 jobs total, got %d", count)
+	}
+
+	// Count queued
+	count, err = s.CountJobs(ctx, model.StatusQueued)
+	if err != nil {
+		t.Fatalf("CountJobs(queued) failed: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 queued jobs, got %d", count)
+	}
+
+	// Count failed (none)
+	count, err = s.CountJobs(ctx, model.StatusFailed)
+	if err != nil {
+		t.Fatalf("CountJobs(failed) failed: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 failed jobs, got %d", count)
+	}
+}
+
+func TestStoreCountCrawlStates(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Insert test data
+	_ = s.UpsertCrawlState(ctx, model.CrawlState{URL: "https://example.com/1", LastScraped: time.Now()})
+	_ = s.UpsertCrawlState(ctx, model.CrawlState{URL: "https://example.com/2", LastScraped: time.Now()})
+	_ = s.UpsertCrawlState(ctx, model.CrawlState{URL: "https://example.com/3", LastScraped: time.Now()})
+
+	count, err := s.CountCrawlStates(ctx)
+	if err != nil {
+		t.Fatalf("CountCrawlStates failed: %v", err)
+	}
+	if count != 3 {
+		t.Errorf("expected 3 crawl states, got %d", count)
+	}
+}

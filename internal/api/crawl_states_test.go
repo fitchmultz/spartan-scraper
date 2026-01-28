@@ -81,6 +81,11 @@ func TestHandleCrawlStatesPagination(t *testing.T) {
 		t.Fatalf("expected status 200, got %v", status)
 	}
 
+	// Verify X-Total-Count header
+	if total := rr.Header().Get("X-Total-Count"); total != "5" {
+		t.Errorf("expected X-Total-Count 5, got %s", total)
+	}
+
 	var response map[string]interface{}
 	json.Unmarshal(rr.Body.Bytes(), &response)
 	crawlStates := response["crawlStates"].([]interface{})

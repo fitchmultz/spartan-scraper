@@ -88,6 +88,14 @@ export function App() {
   const [totalResults, setTotalResults] = useState(0);
   const [resultsPerPage] = useState(100);
 
+  const [jobsPage, setJobsPage] = useState(1);
+  const [jobsTotal, setJobsTotal] = useState(0);
+  const jobsPerPage = 100;
+
+  const [crawlStatesPage, setCrawlStatesPage] = useState(1);
+  const [crawlStatesTotal, setCrawlStatesTotal] = useState(0);
+  const crawlStatesPerPage = 100;
+
   const [managerStatus, setManagerStatus] = useState<{
     queued: number;
     active: number;
@@ -107,24 +115,39 @@ export function App() {
   const selectedJobIdRef = useRef<string | null>(null);
   const resultFormatRef = useRef<string>("jsonl");
 
-  const refreshJobs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error: apiError } = await getV1Jobs({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        setError(String(apiError));
-        return;
+  const refreshJobs = useCallback(
+    async (page = jobsPage, limit = jobsPerPage) => {
+      setLoading(true);
+      try {
+        const {
+          data,
+          response,
+          error: apiError,
+        } = await getV1Jobs({
+          baseUrl: getApiBaseUrl(),
+          query: {
+            limit,
+            offset: (page - 1) * limit,
+          },
+        });
+        if (apiError) {
+          setError(String(apiError));
+          return;
+        }
+        setJobs(data?.jobs ?? []);
+        const total = response.headers.get("X-Total-Count");
+        if (total) {
+          setJobsTotal(parseInt(total, 10));
+        }
+        setError(null);
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
       }
-      setJobs(data?.jobs ?? []);
-      setError(null);
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [jobsPage],
+  );
 
   const refreshManagerStatus = useCallback(async () => {
     try {
@@ -199,20 +222,35 @@ export function App() {
     }
   }, []);
 
-  const refreshCrawlStates = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await listCrawlStates({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch crawl states:", apiError);
-        return;
+  const refreshCrawlStates = useCallback(
+    async (page = crawlStatesPage, limit = crawlStatesPerPage) => {
+      try {
+        const {
+          data,
+          response,
+          error: apiError,
+        } = await listCrawlStates({
+          baseUrl: getApiBaseUrl(),
+          query: {
+            limit,
+            offset: (page - 1) * limit,
+          },
+        });
+        if (apiError) {
+          console.error("Failed to fetch crawl states:", apiError);
+          return;
+        }
+        setCrawlStates(data?.crawlStates || []);
+        const total = response.headers.get("X-Total-Count");
+        if (total) {
+          setCrawlStatesTotal(parseInt(total, 10));
+        }
+      } catch (err) {
+        console.error("Failed to fetch crawl states:", err);
       }
-      setCrawlStates(data?.crawlStates || []);
-    } catch (err) {
-      console.error("Failed to fetch crawl states:", err);
-    }
-  }, []);
+    },
+    [crawlStatesPage],
+  );
 
   useEffect(() => {
     void refreshJobs();
@@ -620,6 +658,10 @@ export function App() {
         onCancel={cancelJob}
         onDelete={deleteJob}
         onRefresh={refreshJobs}
+        currentPage={jobsPage}
+        totalJobs={jobsTotal}
+        jobsPerPage={jobsPerPage}
+        onPageChange={setJobsPage}
       />
 
       <ResultsViewer
@@ -645,6 +687,10 @@ export function App() {
         schedules={schedules}
         templates={templates}
         crawlStates={crawlStates}
+        crawlStatesPage={crawlStatesPage}
+        crawlStatesTotal={crawlStatesTotal}
+        crawlStatesPerPage={crawlStatesPerPage}
+        onCrawlStatesPageChange={setCrawlStatesPage}
       />
 
       <div className="footer">

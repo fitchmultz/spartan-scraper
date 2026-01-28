@@ -5,6 +5,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -33,6 +34,13 @@ func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	total, err := s.store.CountCrawlStates(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 	writeJSON(w, map[string]interface{}{"crawlStates": states})
 }
 

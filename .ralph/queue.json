@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0104",
-      "status": "todo",
-      "title": "Implement total count metadata for Job and CrawlState listing",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "store",
-        "ux"
-      ],
-      "scope": [
-        "internal/store/store.go",
-        "internal/api/jobs.go",
-        "internal/api/crawl_states.go",
-        "web/src/App.tsx",
-        "web/src/components/JobList.tsx"
-      ],
-      "evidence": [
-        "GET /v1/jobs and GET /v1/crawl-states support limit/offset but do not return total counts",
-        "internal/store/store.go lacks CountJobs and CountCrawlStates methods",
-        "web/src/components/JobList.tsx lacks pagination controls, unlike ResultsViewer.tsx",
-        "JobList only displays up to 100 jobs (API default) with no way to see older entries"
-      ],
-      "plan": [
-        "Add CountJobs and CountCrawlStates methods to internal/store/store.go",
-        "Update GET /v1/jobs and GET /v1/crawl-states handlers to include X-Total-Count header",
-        "Implement pagination logic in web/src/components/JobList.tsx",
-        "Update App.tsx to fetch and pass totalCounts for jobs and crawl states"
-      ],
-      "notes": [
-        "Consistent with how X-Total-Count is already used for job results in internal/api/job_results.go"
-      ],
-      "request": "list",
-      "created_at": "2026-01-28T20:25:00Z",
-      "updated_at": "2026-01-28T20:25:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0094",
       "status": "todo",
       "title": "Enhance CrawlState with metadata (depth, source job ID) for better tracking",

@@ -7,6 +7,7 @@
  *
  * @module JobList
  */
+import { useState, useEffect } from "react";
 import { statusClass } from "../lib/form-utils";
 import type { JobEntry } from "../types";
 
@@ -17,6 +18,10 @@ interface JobListProps {
   onCancel: (jobId: string) => void;
   onDelete: (jobId: string) => void;
   onRefresh: () => void;
+  currentPage: number;
+  totalJobs: number;
+  jobsPerPage: number;
+  onPageChange: (page: number) => void;
 }
 
 export function JobList({
@@ -26,7 +31,19 @@ export function JobList({
   onCancel,
   onDelete,
   onRefresh,
+  currentPage,
+  totalJobs,
+  jobsPerPage,
+  onPageChange,
 }: JobListProps) {
+  const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
+
+  useEffect(() => {
+    setJumpInputValue(currentPage.toString());
+  }, [currentPage]);
+
+  const maxPage = Math.ceil(totalJobs / jobsPerPage);
+
   return (
     <section className="panel">
       <div
@@ -42,6 +59,57 @@ export function JobList({
         </button>
       </div>
       {error ? <p className="error">{error}</p> : null}
+
+      {totalJobs > jobsPerPage ? (
+        <div className="pagination-controls" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            Previous
+          </button>
+
+          <span className="pagination-info">
+            Page {currentPage} of {maxPage} ({totalJobs} total jobs)
+          </span>
+
+          <button
+            type="button"
+            disabled={currentPage >= maxPage}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            Next
+          </button>
+
+          <div className="pagination-jump">
+            <input
+              type="number"
+              min="1"
+              max={maxPage}
+              value={jumpInputValue}
+              onChange={(e) => {
+                const page = parseInt(e.target.value, 10);
+                if (Number.isInteger(page) && page >= 1 && page <= maxPage) {
+                  setJumpInputValue(e.target.value);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const page = parseInt(jumpInputValue, 10);
+                if (page >= 1 && page <= maxPage) {
+                  onPageChange(page);
+                }
+              }}
+            >
+              Go
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="job-list" style={{ marginTop: 12 }}>
         {jobs.length === 0 ? (
           <div>No jobs yet. Submit a scrape or crawl.</div>

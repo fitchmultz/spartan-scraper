@@ -7,6 +7,7 @@
  *
  * @module InfoSections
  */
+import { useState, useEffect } from "react";
 import type { CrawlState } from "../api";
 
 interface InfoSectionsProps {
@@ -19,6 +20,10 @@ interface InfoSectionsProps {
   }>;
   templates: string[];
   crawlStates: CrawlState[];
+  crawlStatesPage: number;
+  crawlStatesTotal: number;
+  crawlStatesPerPage: number;
+  onCrawlStatesPageChange: (page: number) => void;
 }
 
 export function InfoSections({
@@ -26,7 +31,21 @@ export function InfoSections({
   schedules,
   templates,
   crawlStates,
+  crawlStatesPage,
+  crawlStatesTotal,
+  crawlStatesPerPage,
+  onCrawlStatesPageChange,
 }: InfoSectionsProps) {
+  const [jumpInputValue, setJumpInputValue] = useState(
+    crawlStatesPage.toString(),
+  );
+
+  useEffect(() => {
+    setJumpInputValue(crawlStatesPage.toString());
+  }, [crawlStatesPage]);
+
+  const maxPage = Math.ceil(crawlStatesTotal / crawlStatesPerPage);
+
   return (
     <>
       {profiles.length > 0 && (
@@ -81,6 +100,61 @@ export function InfoSections({
       {crawlStates.length > 0 && (
         <section className="panel" style={{ marginTop: 16 }}>
           <h2>Crawl States (Incremental Tracking)</h2>
+
+          {crawlStatesTotal > crawlStatesPerPage ? (
+            <div className="pagination-controls" style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                disabled={crawlStatesPage <= 1}
+                onClick={() => onCrawlStatesPageChange(crawlStatesPage - 1)}
+              >
+                Previous
+              </button>
+
+              <span className="pagination-info">
+                Page {crawlStatesPage} of {maxPage} ({crawlStatesTotal} total)
+              </span>
+
+              <button
+                type="button"
+                disabled={crawlStatesPage >= maxPage}
+                onClick={() => onCrawlStatesPageChange(crawlStatesPage + 1)}
+              >
+                Next
+              </button>
+
+              <div className="pagination-jump">
+                <input
+                  type="number"
+                  min="1"
+                  max={maxPage}
+                  value={jumpInputValue}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value, 10);
+                    if (
+                      Number.isInteger(page) &&
+                      page >= 1 &&
+                      page <= maxPage
+                    ) {
+                      setJumpInputValue(e.target.value);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const page = parseInt(jumpInputValue, 10);
+                    if (page >= 1 && page <= maxPage) {
+                      onCrawlStatesPageChange(page);
+                    }
+                  }}
+                >
+                  Go
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="job-list">
             {crawlStates.map((state) => (
               <div key={state.url} className="job-item">
