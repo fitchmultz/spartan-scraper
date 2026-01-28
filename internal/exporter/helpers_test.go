@@ -9,6 +9,7 @@
 package exporter
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ func sampleScrapeResultJSONL() string {
 func sampleCrawlResultJSONL(count int) string {
 	var lines []string
 	for i := 0; i < count; i++ {
-		lines = append(lines, `{"url":"https://example.com/page`+string(rune('1'+i))+`","status":200,"title":"Page `+string(rune('1'+i))+`","text":"Content `+string(rune('1'+i))+`","normalized":{"title":"Page `+string(rune('1'+i))+`","text":"Text `+string(rune('1'+i))+`","fields":{}}}`)
+		lines = append(lines, fmt.Sprintf(`{"url":"https://example.com/page%d","status":200,"title":"Page %d","text":"Content %d","normalized":{"title":"Page %d","text":"Text %d","fields":{}}}`, i+1, i+1, i+1, i+1, i+1))
 	}
 	return strings.Join(lines, "\n")
 }

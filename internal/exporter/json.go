@@ -34,14 +34,34 @@ func exportJSONStream(job model.Job, r io.Reader, w io.Writer) error {
 			return err
 		}
 	case model.KindCrawl:
-		items, err := parseLinesReader[CrawlResult](r)
+		first := true
+		err = scanReader[CrawlResult](r, func(item CrawlResult) error {
+			if first {
+				if _, err := w.Write([]byte("[\n")); err != nil {
+					return err
+				}
+			} else {
+				if _, err := w.Write([]byte(",\n")); err != nil {
+					return err
+				}
+			}
+			first = false
+			data, err := json.MarshalIndent(item, "  ", "  ")
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(data)
+			return err
+		})
 		if err != nil {
 			return err
 		}
-		data, err = json.MarshalIndent(items, "", "  ")
-		if err != nil {
-			return err
+		if first {
+			_, err = w.Write([]byte("[]"))
+		} else {
+			_, err = w.Write([]byte("\n]"))
 		}
+		return err
 	case model.KindResearch:
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {

@@ -3,7 +3,7 @@
 // CSV export transforms job results into comma-separated values format.
 // Functions include:
 // - exportCSVStream: Stream export to CSV
-// - writeScrapeCSV/writeCrawlCSV/writeResearchCSV: Writer helpers
+// - writeScrapeCSV/writeCrawlCSVStream/writeResearchCSV: Writer helpers
 //
 // This file does NOT handle other formats (JSON, JSONL, Markdown).
 package exporter
@@ -32,11 +32,12 @@ func exportCSVStream(job model.Job, r io.Reader, w io.Writer) error {
 		}
 		return writeScrapeCSV(item, writer)
 	case model.KindCrawl:
-		items, err := parseLinesReader[CrawlResult](r)
+		rs, cleanup, err := ensureSeekable(r)
 		if err != nil {
 			return err
 		}
-		return writeCrawlCSV(items, writer)
+		defer cleanup()
+		return writeCrawlCSVStream(rs, writer)
 	case model.KindResearch:
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {
@@ -86,14 +87,20 @@ func writeScrapeCSV(item ScrapeResult, writer *csv.Writer) error {
 	return writer.Error()
 }
 
-// writeCrawlCSV writes multiple crawl results to the CSV writer.
-func writeCrawlCSV(items []CrawlResult, writer *csv.Writer) error {
+// writeCrawlCSVStream writes multiple crawl results to the CSV writer using two-pass streaming.
+func writeCrawlCSVStream(rs io.ReadSeeker, writer *csv.Writer) error {
+	// Pass 1: Collect unique field keys
 	fieldSet := make(map[string]bool)
-	for _, item := range items {
+	err := scanReader[CrawlResult](rs, func(item CrawlResult) error {
 		for k := range item.Normalized.Fields {
 			fieldSet[k] = true
 		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
 	fieldNames := make([]string, 0, len(fieldSet))
 	for k := range fieldSet {
 		fieldNames = append(fieldNames, k)
@@ -108,7 +115,13 @@ func writeCrawlCSV(items []CrawlResult, writer *csv.Writer) error {
 		return err
 	}
 
-	for _, item := range items {
+	// Reset for Pass 2
+	if _, err := rs.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	// Pass 2: Write rows
+	err = scanReader[CrawlResult](rs, func(item CrawlResult) error {
 		title := item.Title
 		if item.Normalized.Title != "" {
 			title = item.Normalized.Title
@@ -121,10 +134,12 @@ func writeCrawlCSV(items []CrawlResult, writer *csv.Writer) error {
 			}
 			row = append(row, val)
 		}
-		if err := writer.Write(row); err != nil {
-			return err
-		}
+		return writer.Write(row)
+	})
+	if err != nil {
+		return err
 	}
+
 	return writer.Error()
 }
 

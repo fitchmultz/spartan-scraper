@@ -28,11 +28,10 @@ func exportMarkdownStream(job model.Job, r io.Reader, w io.Writer) error {
 		}
 		return writeScrapeMarkdown(item, w)
 	case model.KindCrawl:
-		items, err := parseLinesReader[CrawlResult](r)
-		if err != nil {
-			return err
-		}
-		return writeCrawlMarkdown(items, w)
+		fmt.Fprint(w, "# Crawl Results\n\n")
+		return scanReader[CrawlResult](r, func(item CrawlResult) error {
+			return writeCrawlItemMarkdown(item, w)
+		})
 	case model.KindResearch:
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {
@@ -79,29 +78,26 @@ func writeScrapeMarkdown(item ScrapeResult, w io.Writer) error {
 	return nil
 }
 
-// writeCrawlMarkdown writes multiple crawl results to the writer in Markdown format.
-func writeCrawlMarkdown(items []CrawlResult, w io.Writer) error {
-	fmt.Fprint(w, "# Crawl Results\n\n")
-	for _, item := range items {
-		title := item.Title
-		if item.Normalized.Title != "" {
-			title = item.Normalized.Title
-		}
-		fmt.Fprintf(w, "## %s\n\n- URL: %s\n- Status: %d\n", safe(title, item.URL), item.URL, item.Status)
-		if len(item.Normalized.Fields) > 0 {
-			fmt.Fprint(w, "\n### Fields\n")
-			fieldKeys := make([]string, 0, len(item.Normalized.Fields))
-			for k := range item.Normalized.Fields {
-				fieldKeys = append(fieldKeys, k)
-			}
-			sort.Strings(fieldKeys)
-			for _, k := range fieldKeys {
-				v := item.Normalized.Fields[k]
-				fmt.Fprintf(w, "- **%s**: %s\n", k, strings.Join(v.Values, ", "))
-			}
-		}
-		fmt.Fprint(w, "\n")
+// writeCrawlItemMarkdown writes a single crawl result to the writer in Markdown format.
+func writeCrawlItemMarkdown(item CrawlResult, w io.Writer) error {
+	title := item.Title
+	if item.Normalized.Title != "" {
+		title = item.Normalized.Title
 	}
+	fmt.Fprintf(w, "## %s\n\n- URL: %s\n- Status: %d\n", safe(title, item.URL), item.URL, item.Status)
+	if len(item.Normalized.Fields) > 0 {
+		fmt.Fprint(w, "\n### Fields\n")
+		fieldKeys := make([]string, 0, len(item.Normalized.Fields))
+		for k := range item.Normalized.Fields {
+			fieldKeys = append(fieldKeys, k)
+		}
+		sort.Strings(fieldKeys)
+		for _, k := range fieldKeys {
+			v := item.Normalized.Fields[k]
+			fmt.Fprintf(w, "- **%s**: %s\n", k, strings.Join(v.Values, ", "))
+		}
+	}
+	fmt.Fprint(w, "\n")
 	return nil
 }
 

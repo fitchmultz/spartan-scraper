@@ -15,11 +15,53 @@ package exporter
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
+
+func TestExportStreamCSV_LargeDataset(t *testing.T) {
+	// Generate a dataset that is reasonably large
+	count := 1000
+	raw := sampleCrawlResultJSONL(count)
+	job := model.Job{Kind: model.KindCrawl}
+
+	t.Run("Seekable reader", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := ExportStream(job, strings.NewReader(raw), "csv", &buf)
+		if err != nil {
+			t.Fatalf("ExportStream() failed: %v", err)
+		}
+
+		lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+		// 1 header + count rows
+		if len(lines) != count+1 {
+			t.Errorf("Expected %d lines, got %d", count+1, len(lines))
+		}
+	})
+
+	t.Run("Non-seekable reader", func(t *testing.T) {
+		// Use a pipe to simulate a non-seekable reader
+		pr, pw := io.Pipe()
+		go func() {
+			defer pw.Close()
+			pw.Write([]byte(raw))
+		}()
+
+		var buf bytes.Buffer
+		err := ExportStream(job, pr, "csv", &buf)
+		if err != nil {
+			t.Fatalf("ExportStream() failed: %v", err)
+		}
+
+		lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+		if len(lines) != count+1 {
+			t.Errorf("Expected %d lines, got %d", count+1, len(lines))
+		}
+	})
+}
 
 func TestExportCSVHasStableFieldOrder(t *testing.T) {
 	raw := []byte(`{"url":"https://example.com","status":200,"title":"Test","text":"Content","metadata":{"description":"Desc"},"normalized":{"fields":{"zebra":{"values":["z"]},"apple":{"values":["a"]},"banana":{"values":["b"]}}}}`)
