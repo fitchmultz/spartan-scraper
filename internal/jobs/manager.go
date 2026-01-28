@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
@@ -32,6 +33,7 @@ type Manager struct {
 	queue            chan model.Job
 	pipelineRegistry *pipeline.Registry
 	jsRegistry       *pipeline.JSRegistry
+	templateRegistry *extract.TemplateRegistry
 	wg               sync.WaitGroup
 	activeJobs       map[string]context.CancelFunc
 	mu               sync.Mutex
@@ -60,6 +62,10 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 	if err != nil {
 		slog.Warn("failed to load JS registry", "error", err)
 	}
+	templateRegistry, err := extract.LoadTemplateRegistry(dataDir)
+	if err != nil {
+		slog.Warn("failed to load template registry", "error", err)
+	}
 	return &Manager{
 		store:            store,
 		dataDir:          dataDir,
@@ -74,6 +80,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		queue:            make(chan model.Job, 128),
 		pipelineRegistry: pipeline.NewRegistry(),
 		jsRegistry:       jsRegistry,
+		templateRegistry: templateRegistry,
 		activeJobs:       make(map[string]context.CancelFunc),
 	}
 }

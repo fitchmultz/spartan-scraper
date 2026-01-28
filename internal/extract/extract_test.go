@@ -123,3 +123,40 @@ func TestListTemplateNames(t *testing.T) {
 		}
 	}
 }
+
+func TestExecuteWithRegistry(t *testing.T) {
+	registry := &TemplateRegistry{
+		Templates: map[string]Template{
+			"custom": {
+				Name: "custom",
+				Selectors: []SelectorRule{
+					{Name: "custom_field", Selector: "body", Attr: "text", Trim: true},
+				},
+			},
+		},
+	}
+
+	html := "<html><body>Hello World</body></html>"
+	input := ExecuteInput{
+		URL:  "http://example.com",
+		HTML: html,
+		Options: ExtractOptions{
+			Template: "custom",
+		},
+		Registry: registry,
+	}
+
+	output, err := Execute(input)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	if output.Extracted.Template != "custom" {
+		t.Errorf("expected template 'custom', got %q", output.Extracted.Template)
+	}
+
+	f, ok := output.Extracted.Fields["custom_field"]
+	if !ok || len(f.Values) == 0 || f.Values[0] != "Hello World" {
+		t.Errorf("expected field 'custom_field' to be 'Hello World', got %v", f.Values)
+	}
+}

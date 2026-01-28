@@ -50,6 +50,7 @@ type Request struct {
 	Store            scrape.CrawlStateStore
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
+	TemplateRegistry *extract.TemplateRegistry
 }
 
 type Evidence struct {
@@ -119,6 +120,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				Store:            req.Store,
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,
+				TemplateRegistry: req.TemplateRegistry,
 			})
 			if err != nil {
 				slog.Error("research crawl failed", "url", apperrors.SanitizeURL(target), "error", err)
@@ -156,6 +158,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				Store:            req.Store,
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,
+				TemplateRegistry: req.TemplateRegistry,
 			})
 			if err != nil {
 				slog.Error("research scrape failed", "url", apperrors.SanitizeURL(target), "error", err)

@@ -47,6 +47,7 @@ type Request struct {
 	Store            CrawlStateStore
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
+	TemplateRegistry *extract.TemplateRegistry
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -253,10 +254,11 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 
 		// If changed (or first run), extract and save state
 		output, extractErr := extract.Execute(extract.ExecuteInput{
-			URL:     item.URL,
-			HTML:    extractInput.HTML,
-			Options: extractInput.Options,
-			DataDir: extractInput.DataDir,
+			URL:      item.URL,
+			HTML:     extractInput.HTML,
+			Options:  extractInput.Options,
+			DataDir:  extractInput.DataDir,
+			Registry: req.TemplateRegistry,
 		})
 		if extractErr != nil {
 			slog.Error("extraction failed", "url", apperrors.SanitizeURL(item.URL), "error", extractErr)

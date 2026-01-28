@@ -113,10 +113,11 @@ type NormalizedDocument struct {
 }
 
 type ExecuteInput struct {
-	URL     string
-	HTML    string
-	Options ExtractOptions
-	DataDir string
+	URL      string
+	HTML     string
+	Options  ExtractOptions
+	DataDir  string
+	Registry *TemplateRegistry
 }
 
 type ExecuteOutput struct {

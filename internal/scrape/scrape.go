@@ -39,6 +39,7 @@ type Request struct {
 	Store            CrawlStateStore
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
+	TemplateRegistry *extract.TemplateRegistry
 }
 
 // Result contains the outcome of a scrape operation.
@@ -220,10 +221,11 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	}
 
 	output, err := extract.Execute(extract.ExecuteInput{
-		URL:     res.URL,
-		HTML:    extractInput.HTML,
-		Options: extractInput.Options,
-		DataDir: extractInput.DataDir,
+		URL:      res.URL,
+		HTML:     extractInput.HTML,
+		Options:  extractInput.Options,
+		DataDir:  extractInput.DataDir,
+		Registry: req.TemplateRegistry,
 	})
 	if err != nil {
 		slog.Error("extraction failed", "url", req.URL, "error", err)

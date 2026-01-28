@@ -13,12 +13,16 @@ type Result struct {
 
 // Execute runs the extraction pipeline.
 func Execute(input ExecuteInput) (ExecuteOutput, error) {
-	registry, err := LoadTemplateRegistry(input.DataDir)
+	registry := input.Registry
 	if registry == nil {
-		// Fallback to built-ins if loading fails or returns nil
-		registry = &TemplateRegistry{Templates: make(map[string]Template)}
+		var err error
+		registry, err = LoadTemplateRegistry(input.DataDir)
+		if registry == nil {
+			// Fallback to built-ins if loading fails or returns nil
+			registry = &TemplateRegistry{Templates: make(map[string]Template)}
+		}
+		_ = err // Note: err from LoadTemplateRegistry is mostly for file read errors, we proceed with defaults/nil registry.
 	}
-	// Note: err from LoadTemplateRegistry is mostly for file read errors, we proceed with defaults/nil registry.
 
 	tmpl, err := ResolveTemplate(input.Options, registry)
 	if err != nil {

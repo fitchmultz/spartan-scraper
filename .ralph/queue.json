@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0090",
-      "status": "todo",
-      "title": "Cache template registry in extraction pipeline to avoid repeated disk I/O",
-      "priority": "medium",
-      "tags": [
-        "performance",
-        "refactor"
-      ],
-      "scope": [
-        "internal/extract"
-      ],
-      "evidence": [
-        "extract.Execute calls LoadTemplateRegistry on every invocation, reading extract_templates.json from disk",
-        "Large crawls will suffer performance degradation due to redundant file I/O"
-      ],
-      "plan": [
-        "Modify Execute to accept an optional TemplateRegistry",
-        "Implement a thread-safe singleton or cached registry in the Manager",
-        "Update jobs.run to pass the cached registry to the extraction logic"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0093",
       "status": "todo",
       "title": "Implement browser health monitoring and recovery for PlaywrightFetcher",

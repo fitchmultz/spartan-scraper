@@ -106,6 +106,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Store:            m.store,
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
+			TemplateRegistry: m.templateRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -172,6 +173,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Store:            m.store,
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
+			TemplateRegistry: m.templateRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -242,6 +244,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Store:            m.store,
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
+			TemplateRegistry: m.templateRegistry,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
