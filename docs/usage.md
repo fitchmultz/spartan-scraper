@@ -11,9 +11,13 @@ Global entry points:
 - `spartan crawl`
 - `spartan research`
 - `spartan auth`
+- `spartan templates`
+- `spartan crawl-states`
 - `spartan export`
+- `spartan jobs`
 - `spartan schedule`
 - `spartan server`
+- `spartan health`
 - `spartan tui`
 - `spartan mcp`
 
@@ -93,7 +97,11 @@ Auth flags:
 Presets:
 - `--preset-name <name>` + `--preset-host <pattern>` (repeatable) to map host patterns to a profile.
 
-### Extraction Templates
+### templates
+
+List and manage extraction templates.
+
+  - `spartan templates list`
 
 Spartan supports structured extraction using templates. Templates define CSS selectors, JSON-LD extraction, Regex rules, and schema validation.
 
@@ -125,6 +133,14 @@ Create `DATA_DIR/extract_templates.json`:
     }
   ]
 }
+```
+
+### crawl-states
+
+List incremental crawl states (ETags/Last-Modified tracking).
+
+```
+spartan crawl-states list [--limit <n>]
 ```
 
 ### Render Profiles
@@ -206,12 +222,30 @@ spartan schedule list
 spartan schedule delete --id <schedule-id>
 ```
 
+### jobs
+
+Manage background jobs.
+
+```
+spartan jobs list [--limit <n>] [--offset <n>] [--status <queued|running|succeeded|failed|canceled>]
+spartan jobs get --id <id>
+spartan jobs cancel --id <id>
+```
+
 ### server
 
 Start API + workers + scheduler:
 
 ```
 spartan server
+```
+
+### health
+
+Check system health (database connection, etc).
+
+```
+spartan health
 ```
 
 ### tui
@@ -266,7 +300,13 @@ Endpoints:
 - `POST /v1/research`
 - `GET /v1/jobs`
 - `GET /v1/jobs/{id}`
+- `DELETE /v1/jobs/{id}`
 - `GET /v1/jobs/{id}/results`
+- `GET /v1/schedules`
+- `POST /v1/schedules`
+- `DELETE /v1/schedules/{id}`
+- `GET /v1/templates`
+- `GET /v1/crawl-states`
 
 OpenAPI: `api/openapi.yaml`
 
