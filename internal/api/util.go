@@ -28,8 +28,7 @@ func writeJSON(w http.ResponseWriter, payload interface{}) {
 func writeJSONError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	redacted := apperrors.RedactString(message)
-	errResp := ErrorResponse{Error: redacted}
+	errResp := ErrorResponse{Error: message}
 	if err := json.NewEncoder(w).Encode(errResp); err != nil {
 		slog.Error("failed to encode json error response", "error", err)
 	}
@@ -58,7 +57,7 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusInternalServerError
 	}
 
-	message := err.Error()
+	message := apperrors.SafeMessage(err)
 	writeJSONError(w, status, message)
 }
 
