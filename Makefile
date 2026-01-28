@@ -55,6 +55,7 @@ clean:
 	find . -type f -name "*.test" -delete
 	find . -type f -name "*.out" -delete
 	rm -rf out/stress
+	rm -f $(WEB_DIR)/openapi-ts-error-*.log
 
 test:
 	CI=1 go test ./... -p=1 -timeout 5m
