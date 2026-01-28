@@ -543,6 +543,40 @@ export type ListTemplatesResponses = {
 
 export type ListTemplatesResponse = ListTemplatesResponses[keyof ListTemplatesResponses];
 
+export type DeleteCrawlStatesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * URL of the crawl state to delete. If omitted, all states are cleared.
+         */
+        url?: string;
+    };
+    url: '/v1/crawl-states';
+};
+
+export type DeleteCrawlStatesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteCrawlStatesError = DeleteCrawlStatesErrors[keyof DeleteCrawlStatesErrors];
+
+export type DeleteCrawlStatesResponses = {
+    /**
+     * Deleted
+     */
+    200: StatusResponse;
+};
+
+export type DeleteCrawlStatesResponse = DeleteCrawlStatesResponses[keyof DeleteCrawlStatesResponses];
+
 export type ListCrawlStatesData = {
     body?: never;
     path?: never;

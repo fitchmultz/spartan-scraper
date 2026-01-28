@@ -279,6 +279,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Clear or delete crawl states
+      description: |
+        Deletes a specific crawl state if 'url' parameter is provided.
+        Clears all crawl states if no 'url' parameter is provided.
+      operationId: deleteCrawlStates
+      parameters:
+        - in: query
+          name: url
+          schema:
+            type: string
+          description: URL of the crawl state to delete. If omitted, all states are cleared.
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/scrape:
     post:
       summary: Scrape a single page

@@ -62,6 +62,59 @@ func RunCrawlStates(ctx context.Context, cfg config.Config, args []string) int {
 		}
 		return 0
 
+	case "delete":
+		fs := flag.NewFlagSet("crawl-states delete", flag.ExitOnError)
+		url := fs.String("url", "", "URL of the crawl state to delete (required)")
+		_ = fs.Parse(args[1:])
+
+		if *url == "" {
+			fmt.Fprintln(os.Stderr, "Error: --url is required")
+			return 1
+		}
+
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+
+		if err := st.DeleteCrawlState(ctx, *url); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fmt.Printf("Deleted crawl state for: %s\n", *url)
+		return 0
+
+	case "clear":
+		fs := flag.NewFlagSet("crawl-states clear", flag.ExitOnError)
+		force := fs.Bool("force", false, "Force clear without confirmation")
+		_ = fs.Parse(args[1:])
+
+		if !*force {
+			fmt.Print("Are you sure you want to clear ALL crawl states? (y/N): ")
+			var response string
+			_, err := fmt.Scanln(&response)
+			if err != nil || (response != "y" && response != "Y") {
+				fmt.Println("Aborted.")
+				return 0
+			}
+		}
+
+		st, err := store.Open(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer st.Close()
+
+		if err := st.DeleteAllCrawlStates(ctx); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fmt.Println("Cleared all crawl states.")
+		return 0
+
 	default:
 		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", args[0])
 		return 1
@@ -74,9 +127,12 @@ func printCrawlStatesHelp() {
 
 Subcommands:
   list    List crawl states (incremental tracking)
+  delete  Delete a specific crawl state by URL
+  clear   Clear all crawl states
 
 Examples:
   spartan crawl-states list
-  spartan crawl-states list --limit 50
+  spartan crawl-states delete --url "https://example.com"
+  spartan crawl-states clear --force
 `)
 }

@@ -11,11 +11,17 @@ import (
 )
 
 func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleCrawlStatesList(w, r)
+	case http.MethodDelete:
+		s.handleCrawlStatesDelete(w, r)
+	default:
 		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
-		return
 	}
+}
 
+func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	limit := parseIntParam(query.Get("limit"), 100)
 	offset := parseIntParam(query.Get("offset"), 0)
@@ -28,4 +34,22 @@ func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, map[string]interface{}{"crawlStates": states})
+}
+
+func (s *Server) handleCrawlStatesDelete(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+
+	if url != "" {
+		if err := s.store.DeleteCrawlState(r.Context(), url); err != nil {
+			writeError(w, err)
+			return
+		}
+	} else {
+		if err := s.store.DeleteAllCrawlStates(r.Context()); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+
+	writeJSON(w, StatusResponse{Status: "ok"})
 }

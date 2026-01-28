@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func TestHandleCrawlStates(t *testing.T) {
@@ -95,5 +96,54 @@ func TestHandleCrawlStatesPagination(t *testing.T) {
 	crawlStates = response["crawlStates"].([]interface{})
 	if len(crawlStates) != 2 {
 		t.Errorf("expected 2 crawl states with offset 3, got %d", len(crawlStates))
+	}
+}
+
+func TestHandleCrawlStatesDelete(t *testing.T) {
+	ctx := context.Background()
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Insert test data
+	urls := []string{"https://example.com/1", "https://example.com/2"}
+	for _, u := range urls {
+		state := model.CrawlState{
+			URL:         u,
+			LastScraped: time.Now(),
+		}
+		if err := srv.store.UpsertCrawlState(ctx, state); err != nil {
+			t.Fatalf("failed to insert crawl state: %v", err)
+		}
+	}
+
+	// Test delete single
+	req := httptest.NewRequest("DELETE", "/v1/crawl-states?url=https://example.com/1", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	states, _ := srv.store.ListCrawlStates(ctx, store.ListCrawlStatesOptions{})
+	if len(states) != 1 {
+		t.Errorf("expected 1 crawl state after deletion, got %d", len(states))
+	}
+	if states[0].URL != "https://example.com/2" {
+		t.Errorf("expected URL https://example.com/2 to remain, got %s", states[0].URL)
+	}
+
+	// Test clear all
+	req = httptest.NewRequest("DELETE", "/v1/crawl-states", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	states, _ = srv.store.ListCrawlStates(ctx, store.ListCrawlStatesOptions{})
+	if len(states) != 0 {
+		t.Errorf("expected 0 crawl states after clear, got %d", len(states))
 	}
 }

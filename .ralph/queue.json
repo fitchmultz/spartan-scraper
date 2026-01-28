@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0095",
-      "status": "todo",
-      "title": "Add API endpoints and CLI commands to manage (clear/delete) crawl states",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "ux"
-      ],
-      "scope": [
-        "internal/api",
-        "internal/cli"
-      ],
-      "evidence": [
-        "There is no way to clear or delete specific crawl states via API or CLI",
-        "Users cannot easily reset incremental tracking for a specific URL"
-      ],
-      "plan": [
-        "Add DELETE /v1/crawl-states/{url} and DELETE /v1/crawl-states (bulk) endpoints",
-        "Implement 'spartan crawl-states delete' command",
-        "Update OpenAPI spec to include new management endpoints"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0100",
       "status": "todo",
       "title": "Conduct E2E test robustness audit and fix potential flakiness",

@@ -26,6 +26,11 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+// StatusResponse represents a generic success response.
+type StatusResponse struct {
+	Status string `json:"status"`
+}
+
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`

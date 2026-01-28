@@ -129,11 +129,13 @@ type Store struct {
 	dataDir string
 
 	// Prepared statements
-	insertJobStmt        *sql.Stmt
-	updateJobStatusStmt  *sql.Stmt
-	getJobStmt           *sql.Stmt
-	getCrawlStateStmt    *sql.Stmt
-	upsertCrawlStateStmt *sql.Stmt
+	insertJobStmt            *sql.Stmt
+	updateJobStatusStmt      *sql.Stmt
+	getJobStmt               *sql.Stmt
+	getCrawlStateStmt        *sql.Stmt
+	upsertCrawlStateStmt     *sql.Stmt
+	deleteCrawlStateStmt     *sql.Stmt
+	deleteAllCrawlStatesStmt *sql.Stmt
 }
 
 func Open(dataDir string) (*Store, error) {
@@ -197,6 +199,16 @@ func (s *Store) prepareStatements() error {
 			last_scraped = excluded.last_scraped`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare upsertCrawlStateStmt: %w", err)
+	}
+
+	s.deleteCrawlStateStmt, err = s.db.Prepare(`delete from crawl_states where url = ?`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare deleteCrawlStateStmt: %w", err)
+	}
+
+	s.deleteAllCrawlStatesStmt, err = s.db.Prepare(`delete from crawl_states`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare deleteAllCrawlStatesStmt: %w", err)
 	}
 
 	return nil
@@ -362,6 +374,18 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 	return err
 }
 
+// DeleteCrawlState removes a specific crawl state by URL.
+func (s *Store) DeleteCrawlState(ctx context.Context, url string) error {
+	_, err := s.deleteCrawlStateStmt.ExecContext(ctx, url)
+	return err
+}
+
+// DeleteAllCrawlStates removes all crawl states from the store.
+func (s *Store) DeleteAllCrawlStates(ctx context.Context) error {
+	_, err := s.deleteAllCrawlStatesStmt.ExecContext(ctx)
+	return err
+}
+
 // ListCrawlStates returns all crawl states, ordered by last_scraped DESC.
 // If no options are provided, it uses safe defaults (limit 100, offset 0).
 func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions) ([]model.CrawlState, error) {
@@ -439,6 +463,12 @@ func (s *Store) Close() error {
 	}
 	if s.upsertCrawlStateStmt != nil {
 		s.upsertCrawlStateStmt.Close()
+	}
+	if s.deleteCrawlStateStmt != nil {
+		s.deleteCrawlStateStmt.Close()
+	}
+	if s.deleteAllCrawlStatesStmt != nil {
+		s.deleteAllCrawlStatesStmt.Close()
 	}
 
 	return s.db.Close()
