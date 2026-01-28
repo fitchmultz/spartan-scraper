@@ -103,7 +103,10 @@ BIND_ADDR=0.0.0.0 ./bin/spartan server
 make web-dev
 ```
 
-Open `http://localhost:5173` for the UI (the API is proxied to `PORT` from `.env`).
+Open `http://localhost:5173` for the UI.
+
+The dev server proxies API requests to `http://localhost:8741` by default.
+If you change the backend `PORT` in the root `.env`, you must also update `VITE_API_BASE_URL` in `web/.env` to match.
 
 ## Architecture at a glance
 
