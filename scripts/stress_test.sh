@@ -47,7 +47,41 @@ Examples:
 Notes:
   - Uses real targets only. No mocks.
   - Uses CLI + API + MCP + scheduler + exporter.
+
+Prerequisites:
+  - go (1.25+)
+  - pnpm
+  - node
+  - curl
+  - sed
 USAGE
+}
+
+check_prereqs() {
+  local missing=()
+  for cmd in go pnpm node curl sed; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing+=("$cmd")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Error: Missing required tools: ${missing[*]}"
+    echo "Please install them before running this script."
+    exit 1
+  fi
+}
+
+parse_json_field() {
+  local field="$1"
+  if command -v jq >/dev/null 2>&1; then
+    # Use jq if available (safer, standard)
+    # The // "" ensures we output an empty string instead of "null" if the field is missing
+    jq -r ".$field // \"\""
+  else
+    # Fallback to node (part of project dev deps)
+    node -e "const fs=require('fs'); try { const d=JSON.parse(fs.readFileSync(0, 'utf-8')); console.log(d['$field']||''); } catch(e){}"
+  fi
 }
 
 DATA_DIR="$DATA_DIR_DEFAULT"
@@ -94,6 +128,8 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown arg: $1"; usage; exit 1 ;;
   esac
  done
+
+check_prereqs
 
 mkdir -p "$OUT_DIR"
 
@@ -153,7 +189,7 @@ wait_job_api() {
   local deadline=$((SECONDS + WAIT_TIMEOUT_SECS))
   while true; do
     local status
-    status=$(curl -fsS "http://127.0.0.1:8741/v1/jobs/${job_id}" | python -c 'import json,sys;print(json.load(sys.stdin).get("status",""))')
+    status=$(curl -fsS "http://127.0.0.1:8741/v1/jobs/${job_id}" | parse_json_field "status")
     if [[ "$status" == "succeeded" ]]; then
       return 0
     fi
@@ -189,19 +225,19 @@ RESEARCH_URLS=$(IFS=,; echo "${TARGETS[*]}")
 ./bin/spartan research --query "$RESEARCH_QUERY" --urls "$RESEARCH_URLS" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/research.jsonl" >/dev/null
 
 SCRAPE_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/scrape" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-SCRAPE_JOB_ID=$(echo "$SCRAPE_JOB" | python -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+SCRAPE_JOB_ID=$(echo "$SCRAPE_JOB" | parse_json_field "id")
 wait_job_api "$SCRAPE_JOB_ID"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${SCRAPE_JOB_ID}" >"$OUT_DIR/api-job.json"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${SCRAPE_JOB_ID}/results" >"$OUT_DIR/api-results.json"
 
 CRAWL_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/crawl" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-CRAWL_JOB_ID=$(echo "$CRAWL_JOB" | python -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+CRAWL_JOB_ID=$(echo "$CRAWL_JOB" | parse_json_field "id")
 wait_job_api "$CRAWL_JOB_ID"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${CRAWL_JOB_ID}" >"$OUT_DIR/api-crawl-job.json"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${CRAWL_JOB_ID}/results" >"$OUT_DIR/api-crawl-results.json"
 
 RESEARCH_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/research" -H "Content-Type: application/json" -d "{\"query\":\"${RESEARCH_QUERY}\",\"urls\":[\"${TARGETS[0]}\",\"${TARGETS[1]}\"] ,\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-RESEARCH_JOB_ID=$(echo "$RESEARCH_JOB" | python -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+RESEARCH_JOB_ID=$(echo "$RESEARCH_JOB" | parse_json_field "id")
 wait_job_api "$RESEARCH_JOB_ID"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${RESEARCH_JOB_ID}" >"$OUT_DIR/api-research-job.json"
 curl -fsS "http://127.0.0.1:8741/v1/jobs/${RESEARCH_JOB_ID}/results" >"$OUT_DIR/api-research-results.json"

@@ -1,0 +1,1 @@
+{"id":"2208fbd4-01c5-4298-91b6-18246cec7d67","kind":"crawl","status":"succeeded","createdAt":"2026-01-28T09:59:07.643812-07:00","updatedAt":"2026-01-28T09:59:07.689267-07:00","params":{"auth":"[REDACTED]","extract":{},"headless":false,"incremental":false,"maxDepth":1,"maxPages":1,"pipeline":{},"playwright":false,"timeout":10,"url":"https://example.com"},"error":""}

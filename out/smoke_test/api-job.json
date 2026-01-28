@@ -1,0 +1,1 @@
+{"id":"391147fb-51f6-4d8f-88ad-5d703a501df7","kind":"scrape","status":"succeeded","createdAt":"2026-01-28T09:59:06.560922-07:00","updatedAt":"2026-01-28T09:59:06.600949-07:00","params":{"auth":"[REDACTED]","extract":{},"headless":false,"incremental":false,"pipeline":{},"playwright":false,"timeout":10,"url":"https://example.com"},"error":""}
