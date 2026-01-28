@@ -30,19 +30,49 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if job.ResultPath == "" {
-		writeError(w, apperrors.NotFound("no results"))
-		return
-	}
 
-	info, err := os.Stat(job.ResultPath)
-	if err != nil {
-		writeError(w, apperrors.NotFound("no results"))
+	switch job.Status {
+	case model.StatusQueued:
+		writeError(w, apperrors.Validation("job is queued and has no results yet"))
 		return
-	}
-	if info.Size() == 0 {
-		writeError(w, apperrors.NotFound("no results"))
+	case model.StatusRunning:
+		writeError(w, apperrors.Validation("job is still running and has no results yet"))
 		return
+	case model.StatusFailed:
+		writeError(w, apperrors.Validation("job failed and produced no results"))
+		return
+	case model.StatusCanceled:
+		writeError(w, apperrors.Validation("job was canceled and produced no results"))
+		return
+	case model.StatusSucceeded:
+		if job.ResultPath == "" {
+			writeError(w, apperrors.NotFound("job succeeded but no result path was recorded"))
+			return
+		}
+
+		info, err := os.Stat(job.ResultPath)
+		if err != nil {
+			writeError(w, apperrors.NotFound("job succeeded but result file is missing"))
+			return
+		}
+		if info.Size() == 0 {
+			writeError(w, apperrors.NotFound("job succeeded but result file is empty"))
+			return
+		}
+	default:
+		if job.ResultPath == "" {
+			writeError(w, apperrors.NotFound("no results"))
+			return
+		}
+		info, err := os.Stat(job.ResultPath)
+		if err != nil {
+			writeError(w, apperrors.NotFound("no results"))
+			return
+		}
+		if info.Size() == 0 {
+			writeError(w, apperrors.NotFound("no results"))
+			return
+		}
 	}
 
 	format := r.URL.Query().Get("format")

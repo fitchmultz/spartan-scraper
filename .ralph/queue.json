@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0099",
-      "status": "todo",
-      "title": "Improve error granularity for job results (missing vs empty vs processing)",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "api"
-      ],
-      "scope": [
-        "internal/api/job_results.go"
-      ],
-      "evidence": [
-        "handleJobResults returns 404 \"no results\" for several distinct failure modes (missing file, empty file, etc.)",
-        "Users cannot distinguish between a job that hasn't produced results yet and one that finished with no data"
-      ],
-      "plan": [
-        "Update handleJobResults to return more specific error messages based on job status and file state",
-        "Distinguish between 'results not ready', 'results empty', and 'job failed without results'"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0091",
       "status": "todo",
       "title": "Implement memory-efficient streaming for CSV crawl results export",

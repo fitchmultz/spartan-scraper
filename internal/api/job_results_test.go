@@ -14,8 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestHandleJobResultsNotFound(t *testing.T) {
@@ -63,8 +65,121 @@ func TestHandleJobResultsNoResults(t *testing.T) {
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusNotFound {
-		t.Errorf("expected status %v for job with no results, got %v", http.StatusNotFound, status)
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected status %v for job with no results, got %v", http.StatusBadRequest, status)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse error response: %v", err)
+	}
+	msg, _ := resp["error"].(string)
+	isQueued := strings.Contains(msg, "job is queued and has no results yet")
+	isRunning := strings.Contains(msg, "job is still running and has no results yet")
+	if !isQueued && !isRunning {
+		t.Errorf("expected error message to indicate queued or running, got %q", msg)
+	}
+}
+
+func TestHandleJobResultsGranularErrors(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name           string
+		status         model.Status
+		setupFile      func(jobID string) string
+		expectedStatus int
+		expectedMsg    string
+	}{
+		{
+			name:           "queued",
+			status:         model.StatusQueued,
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "job is queued and has no results yet",
+		},
+		{
+			name:           "running",
+			status:         model.StatusRunning,
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "job is still running and has no results yet",
+		},
+		{
+			name:           "failed",
+			status:         model.StatusFailed,
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "job failed and produced no results",
+		},
+		{
+			name:           "canceled",
+			status:         model.StatusCanceled,
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "job was canceled and produced no results",
+		},
+		{
+			name:           "succeeded - no result path",
+			status:         model.StatusSucceeded,
+			setupFile:      func(jobID string) string { return "" },
+			expectedStatus: http.StatusNotFound,
+			expectedMsg:    "job succeeded but no result path was recorded",
+		},
+		{
+			name:           "succeeded - file missing",
+			status:         model.StatusSucceeded,
+			setupFile:      func(jobID string) string { return "/nonexistent/path/results.jsonl" },
+			expectedStatus: http.StatusNotFound,
+			expectedMsg:    "job succeeded but result file is missing",
+		},
+		{
+			name:   "succeeded - file empty",
+			status: model.StatusSucceeded,
+			setupFile: func(jobID string) string {
+				path := filepath.Join(t.TempDir(), "empty.jsonl")
+				os.WriteFile(path, []byte(""), 0644)
+				return path
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedMsg:    "job succeeded but result file is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a job directly in store
+			jobID := "test-job-" + strings.ReplaceAll(tt.name, " ", "-")
+			job := model.Job{
+				ID:        jobID,
+				Kind:      model.KindScrape,
+				Status:    tt.status,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if tt.setupFile != nil {
+				job.ResultPath = tt.setupFile(jobID)
+			}
+
+			if err := srv.store.Create(ctx, job); err != nil {
+				t.Fatalf("failed to create job: %v", err)
+			}
+
+			req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("expected status %v, got %v", tt.expectedStatus, status)
+			}
+
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("failed to parse error response: %v", err)
+			}
+			if msg, ok := resp["error"].(string); !ok || !strings.Contains(msg, tt.expectedMsg) {
+				t.Errorf("expected error message to contain %q, got %q", tt.expectedMsg, msg)
+			}
+		})
 	}
 }
 
@@ -151,6 +266,9 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 			if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
 				t.Fatalf("failed to update job result_path: %v", err)
 			}
+			if err := st.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+				t.Fatalf("failed to update job status: %v", err)
+			}
 
 			req = httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
 			rr = httptest.NewRecorder()
@@ -217,6 +335,9 @@ func TestHandleJobResultsWithFormats(t *testing.T) {
 
 			if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
 				t.Fatalf("failed to update job result_path: %v", err)
+			}
+			if err := st.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+				t.Fatalf("failed to update job status: %v", err)
 			}
 
 			req = httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=%s", jobID, format), nil)
@@ -292,6 +413,9 @@ func TestHandleJobResultsInvalidFormat(t *testing.T) {
 	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
 		t.Fatalf("failed to update result path: %v", err)
 	}
+	if err := st.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+		t.Fatalf("failed to update status: %v", err)
+	}
 
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=xml", nil)
 	rr = httptest.NewRecorder()
@@ -351,6 +475,9 @@ func TestHandleJobResultsNoFormatParameter(t *testing.T) {
 	if err := st.UpdateResultPath(ctx, jobID, resultPath); err != nil {
 		t.Fatalf("failed to update result path: %v", err)
 	}
+	if err := st.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+		t.Fatalf("failed to update status: %v", err)
+	}
 
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results", nil)
 	rr = httptest.NewRecorder()
@@ -409,6 +536,9 @@ func TestHandleJobResultsWithPagination(t *testing.T) {
 
 	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
 		t.Fatalf("failed to update result path: %v", err)
+	}
+	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+		t.Fatalf("failed to update status: %v", err)
 	}
 
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=50&offset=0", nil)
