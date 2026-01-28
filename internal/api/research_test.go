@@ -33,16 +33,49 @@ func TestHandleResearchValidation(t *testing.T) {
 	tests := []struct {
 		name           string
 		body           string
+		contentType    string
 		expectedStatus int
 	}{
 		{
+			name:           "missing content-type",
+			body:           `{"query": "test"}`,
+			contentType:    "",
+			expectedStatus: http.StatusUnsupportedMediaType,
+		},
+		{
+			name:           "invalid json",
+			body:           `{"query": "test"`,
+			contentType:    "application/json",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "missing query",
+			body:           `{}`,
+			contentType:    "application/json",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
 			name:           "invalid url in urls list",
 			body:           `{"query": "test", "urls": ["ftp://example.com"]}`,
+			contentType:    "application/json",
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "empty url in urls list",
 			body:           `{"query": "test", "urls": ["", "https://example.com"]}`,
+			contentType:    "application/json",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid url host in urls list",
+			body:           `{"query": "test", "urls": ["https://"]}`,
+			contentType:    "application/json",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid auth profile",
+			body:           `{"query": "test", "authProfile": "invalid name!"}`,
+			contentType:    "application/json",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -50,12 +83,18 @@ func TestHandleResearchValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", "/v1/research", strings.NewReader(tt.body))
-			req.Header.Set("Content-Type", "application/json")
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
 
 			if status := rr.Code; status != tt.expectedStatus {
 				t.Errorf("handler returned wrong status code: got %v want %v", status, tt.expectedStatus)
+			}
+
+			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %v", ct)
 			}
 
 			var resp map[string]interface{}

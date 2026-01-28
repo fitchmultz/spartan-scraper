@@ -173,6 +173,109 @@ func TestHandleJobsNoStatusFilter(t *testing.T) {
 	}
 }
 
+func TestHandleJobsPagination(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create 10 jobs
+	for i := 0; i < 10; i++ {
+		newJob := model.Job{
+			ID:        fmt.Sprintf("pagination-job-%d", i),
+			Kind:      model.KindScrape,
+			Status:    model.StatusQueued,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Params:    map[string]interface{}{"url": "https://example.com"},
+		}
+		if err := srv.store.Create(context.Background(), newJob); err != nil {
+			t.Fatalf("failed to create job: %v", err)
+		}
+	}
+
+	tests := []struct {
+		name          string
+		query         string
+		expectedCount int
+	}{
+		{"limit 5", "?limit=5", 5},
+		{"limit 2", "?limit=2", 2},
+		{"offset 8", "?offset=8", 2},
+		{"limit 5 offset 8", "?limit=5&offset=8", 2},
+		{"invalid limit", "?limit=abc", 10}, // Should default to 100, but we only have 10
+		{"negative limit", "?limit=-1", 10}, // Should default to 100
+		{"invalid offset", "?offset=abc", 10},
+		{"negative offset", "?offset=-5", 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/v1/jobs"+tt.query, nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Errorf("expected status 200, got %v", status)
+			}
+
+			var resp map[string]interface{}
+			json.Unmarshal(rr.Body.Bytes(), &resp)
+			jobsList := resp["jobs"].([]interface{})
+			if len(jobsList) != tt.expectedCount {
+				t.Errorf("expected %d jobs, got %d", tt.expectedCount, len(jobsList))
+			}
+		})
+	}
+}
+
+func TestHandleJobRouting(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		method         string
+		path           string
+		expectedStatus int
+	}{
+		{
+			name:           "missing id",
+			method:         "GET",
+			path:           "/v1/jobs/",
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "unexpected trailing segment",
+			method:         "GET",
+			path:           "/v1/jobs/some-id/invalid",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "method not allowed on base",
+			method:         "POST",
+			path:           "/v1/jobs",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:           "method not allowed on id",
+			method:         "POST",
+			path:           "/v1/jobs/some-id",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("%s: expected status %v, got %v", tt.name, tt.expectedStatus, status)
+			}
+		})
+	}
+}
+
 func TestHandleJobForceDelete(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

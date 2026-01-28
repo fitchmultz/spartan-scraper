@@ -527,8 +527,50 @@ func TestHandleJobResultsWithPagination(t *testing.T) {
 		t.Errorf("expected 200 for json format, got %v", status)
 	}
 
-	totalCountStr = rr.Header().Get("X-Total-Count")
-	if totalCountStr != "" {
+	if ct := rr.Header().Get("X-Total-Count"); ct != "" {
 		t.Error("expected no X-Total-Count header for non-jsonl format")
+	}
+}
+
+func TestHandleJobResultsRouting(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		method         string
+		path           string
+		expectedStatus int
+	}{
+		{
+			name:           "malformed path double slash",
+			method:         "GET",
+			path:           "/v1/jobs//results",
+			expectedStatus: http.StatusMovedPermanently, // ServeMux redirects // to /
+		},
+		{
+			name:           "missing id segment",
+			method:         "GET",
+			path:           "/v1/jobs/results",
+			expectedStatus: http.StatusNotFound, // results is treated as ID if it doesn't match /results
+		},
+		{
+			name:           "method not allowed",
+			method:         "POST",
+			path:           "/v1/jobs/some-id/results",
+			expectedStatus: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("%s: expected status %v, got %v", tt.name, tt.expectedStatus, status)
+			}
+		})
 	}
 }

@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0102",
-      "status": "todo",
-      "title": "Expand API unit test coverage for edge case routing and error states",
-      "priority": "medium",
-      "tags": [
-        "testing",
-        "api"
-      ],
-      "scope": [
-        "internal/api"
-      ],
-      "evidence": [
-        "Current API tests focus on happy paths",
-        "Edge cases like trailing slashes, invalid JSON payloads, and parameter boundaries are under-tested"
-      ],
-      "plan": [
-        "Add unit tests for handleJob and handleJobResults with malformed paths",
-        "Add tests for input validation on all POST/PUT endpoints",
-        "Ensure all apperrors Kind mappings are verified in tests"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0099",
       "status": "todo",
       "title": "Improve error granularity for job results (missing vs empty vs processing)",
