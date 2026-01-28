@@ -169,3 +169,19 @@ func contentTypeForExtension(ext string) string {
 		return ""
 	}
 }
+
+// extractID extracts the ID from a URL path given the resource name.
+// It splits the path by "/" and returns the segment immediately following the resource name.
+// If the segment is empty or does not exist, it returns an empty string.
+func extractID(path, resource string) string {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if part == resource && i+1 < len(parts) {
+			id := parts[i+1]
+			if id != "" {
+				return id
+			}
+		}
+	}
+	return ""
+}

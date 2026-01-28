@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0089",
-      "status": "todo",
-      "title": "Fix fragile job ID extraction in API handlers (trailing slash issue)",
-      "priority": "high",
-      "tags": [
-        "api",
-        "bug"
-      ],
-      "scope": [
-        "internal/api/jobs.go",
-        "internal/api/job_results.go"
-      ],
-      "evidence": [
-        "filepath.Base(\"/v1/jobs/abc/results/\") returns \"results\" instead of \"abc\"",
-        "Trailing slashes in URLs cause incorrect ID resolution in handleJob and handleJobResults"
-      ],
-      "plan": [
-        "Create utility function in internal/api/util.go for robust ID extraction from URL paths",
-        "Update handleJob and handleJobResults to use the new utility",
-        "Add unit tests covering paths with and without trailing slashes"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0102",
       "status": "todo",
       "title": "Expand API unit test coverage for edge case routing and error states",

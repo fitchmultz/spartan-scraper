@@ -6,7 +6,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -129,9 +128,8 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimSuffix(r.URL.Path, "/")
-	id := filepath.Base(path)
-	if id == "" || id == "schedules" {
+	id := extractID(r.URL.Path, "schedules")
+	if id == "" {
 		writeError(w, apperrors.Validation("id required"))
 		return
 	}

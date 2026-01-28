@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -29,8 +28,8 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
-	name := filepath.Base(r.URL.Path)
-	if name == "" || name == "profiles" {
+	name := extractID(r.URL.Path, "profiles")
+	if name == "" {
 		writeError(w, apperrors.Validation("name required"))
 		return
 	}

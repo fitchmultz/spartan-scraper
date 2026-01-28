@@ -33,3 +33,33 @@ func TestContentTypeForExtension(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractID(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		resource string
+		expected string
+	}{
+		{name: "simple job id", path: "/v1/jobs/abc", resource: "jobs", expected: "abc"},
+		{name: "job id with trailing slash", path: "/v1/jobs/abc/", resource: "jobs", expected: "abc"},
+		{name: "job id with results suffix", path: "/v1/jobs/abc/results", resource: "jobs", expected: "abc"},
+		{name: "job id with results and trailing slash", path: "/v1/jobs/abc/results/", resource: "jobs", expected: "abc"},
+		{name: "auth profile profile name", path: "/v1/auth/profiles/my-profile", resource: "profiles", expected: "my-profile"},
+		{name: "auth profile with trailing slash", path: "/v1/auth/profiles/my-profile/", resource: "profiles", expected: "my-profile"},
+		{name: "empty id", path: "/v1/jobs/", resource: "jobs", expected: ""},
+		{name: "missing id", path: "/v1/jobs", resource: "jobs", expected: ""},
+		{name: "unknown resource", path: "/unknown/abc", resource: "jobs", expected: ""},
+		{name: "nested resource", path: "/v1/orgs/o1/jobs/j1", resource: "orgs", expected: "o1"},
+		{name: "nested resource 2", path: "/v1/orgs/o1/jobs/j1", resource: "jobs", expected: "j1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractID(tt.path, tt.resource)
+			if result != tt.expected {
+				t.Errorf("extractID(%q, %q) = %q, want %q", tt.path, tt.resource, result, tt.expected)
+			}
+		})
+	}
+}

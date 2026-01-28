@@ -6,7 +6,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -49,12 +48,12 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	if strings.HasSuffix(path, "/results") {
+	if strings.HasSuffix(strings.TrimSuffix(path, "/"), "/results") {
 		s.handleJobResults(w, r)
 		return
 	}
-	id := filepath.Base(path)
-	if id == "" || id == "jobs" {
+	id := extractID(path, "jobs")
+	if id == "" {
 		writeError(w, apperrors.Validation("id required"))
 		return
 	}

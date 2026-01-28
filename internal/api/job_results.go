@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
@@ -17,7 +16,7 @@ import (
 )
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
-	id := filepath.Base(strings.TrimSuffix(r.URL.Path, "/results"))
+	id := extractID(r.URL.Path, "jobs")
 	if id == "" {
 		writeError(w, apperrors.Validation("id required"))
 		return
