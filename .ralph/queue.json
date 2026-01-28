@@ -3,7 +3,7 @@
   "tasks": [
     {
       "id": "RQ-0081",
-      "status": "todo",
+      "status": "doing",
       "title": "Sync root `.env` with `.env.example` (MAX_RESPONSE_BYTES and other config drift)",
       "priority": "medium",
       "tags": [
@@ -29,7 +29,7 @@
       "notes": [],
       "request": "scan finding",
       "created_at": "2026-01-27T16:55:31Z",
-      "updated_at": "2026-01-27T16:55:31Z",
+      "updated_at": "2026-01-28T14:10:57.880620000Z",
       "depends_on": [],
       "custom_fields": {}
     },
