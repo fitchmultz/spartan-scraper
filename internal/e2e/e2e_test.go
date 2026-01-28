@@ -12,10 +12,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
 var spartanPath string
@@ -46,6 +50,14 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	_ = os.RemoveAll(tmpDir)
 	os.Exit(code)
+}
+
+func Test00Preflight(t *testing.T) {
+	t.Log("Checking browser availability...")
+	usePlaywright := os.Getenv("USE_PLAYWRIGHT") == "1"
+	if err := fetch.CheckBrowserAvailability(usePlaywright); err != nil {
+		t.Fatalf("Pre-flight browser check failed: %v. Ensure Chromedp/Playwright is installed.", err)
+	}
 }
 
 func TestCLIHelp(t *testing.T) {
@@ -89,14 +101,9 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srvCmd := exec.CommandContext(ctx, spartanPath, "server")
-	srvCmd.Dir = projectRoot
-	srvCmd.Env = env
-	srvCmd.Stdout = io.Discard
-	srvCmd.Stderr = os.Stderr
-	if err := srvCmd.Start(); err != nil {
-		t.Fatalf("start server: %v", err)
-	}
+	srvCmd, cleanup := startProcess(ctx, t, env, projectRoot, spartanPath, "server")
+	defer cleanup()
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	waitForHealth(t, client, port)
 
@@ -159,7 +166,15 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 
 func runOK(t *testing.T, env []string, args ...string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	if err := run(t, env, args...); err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
+func run(t *testing.T, env []string, args ...string) error {
+	t.Helper()
+	timeout := 120 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, spartanPath, args...)
@@ -168,12 +183,86 @@ func runOK(t *testing.T, env []string, args ...string) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
+
+	t.Logf("Running: %s %s", spartanPath, strings.Join(args, " "))
 	if err := cmd.Run(); err != nil {
+		output := out.String()
 		if ctx.Err() == context.DeadlineExceeded {
-			t.Fatalf("command timed out after 120s: %v\n%s", err, out.String())
+			return fmt.Errorf("command timed out after %v: %v\n--- OUTPUT ---\n%s\n--------------", timeout, err, lastLines(output, 20))
 		}
-		t.Fatalf("command failed: %v\n%s", err, out.String())
+		return fmt.Errorf("command failed: %v\n--- OUTPUT ---\n%s\n--------------", err, output)
 	}
+	return nil
+}
+
+func startProcess(ctx context.Context, t *testing.T, env []string, dir string, name string, args ...string) (*exec.Cmd, func()) {
+	t.Helper()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = os.Stderr
+
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
+
+	t.Logf("Starting process: %s %s in %s", name, strings.Join(args, " "), dir)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("failed to start process %s %v: %v", name, args, err)
+	}
+
+	cleanup := func() {
+		if cmd.Process == nil {
+			return
+		}
+		if runtime.GOOS != "windows" {
+			// Kill the entire process group
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		} else {
+			_ = cmd.Process.Kill()
+		}
+		_ = cmd.Wait()
+	}
+
+	return cmd, cleanup
+}
+
+func runUntilContains(t *testing.T, env []string, outPath string, needle string, attempts int, args ...string) {
+	t.Helper()
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		t.Logf("Attempt %d/%d to find %q in %s", i+1, attempts, needle, outPath)
+		if err := run(t, env, args...); err != nil {
+			lastErr = err
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		data, err := os.ReadFile(outPath)
+		if err != nil {
+			lastErr = err
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		text := string(data)
+		if strings.Contains(text, needle) {
+			return
+		}
+		lastErr = fmt.Errorf("missing %q in %s\n--- OUTPUT ---\n%s\n--------------", needle, outPath, text)
+		time.Sleep(2 * time.Second)
+	}
+	if lastErr != nil {
+		t.Fatalf("verification failed after %d attempts: %v", attempts, lastErr)
+	}
+	t.Fatalf("verification failed")
+}
+
+func lastLines(s string, n int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) <= n {
+		return s
+	}
+	return "... (truncated) ...\n" + strings.Join(lines[len(lines)-n:], "\n")
 }
 
 func runMCP(t *testing.T, env []string, lines []string) string {
@@ -184,6 +273,10 @@ func runMCP(t *testing.T, env []string, lines []string) string {
 	cmd := exec.CommandContext(ctx, spartanPath, "mcp")
 	cmd.Dir = projectRoot
 	cmd.Env = append(os.Environ(), env...)
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatalf("stdin: %v", err)
@@ -210,12 +303,26 @@ func runMCP(t *testing.T, env []string, lines []string) string {
 	if err != nil {
 		t.Fatalf("read stdout: %v", err)
 	}
-	if err := cmd.Wait(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			t.Fatalf("mcp timed out: %v", err)
+
+	waitDone := make(chan error, 1)
+	go func() {
+		waitDone <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-waitDone:
+		if err != nil {
+			t.Fatalf("mcp failed: %v", err)
 		}
-		t.Fatalf("mcp failed: %v", err)
+	case <-ctx.Done():
+		if runtime.GOOS != "windows" {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		} else {
+			_ = cmd.Process.Kill()
+		}
+		t.Fatalf("mcp timed out")
 	}
+
 	return string(out)
 }
 

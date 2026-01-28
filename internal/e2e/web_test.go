@@ -6,12 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -26,47 +23,8 @@ func TestWebPreview(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "pnpm", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", strconv.Itoa(port))
-	cmd.Dir = filepath.Join(projectRoot, "web")
-	cmd.Env = append(os.Environ(), "BROWSER=none")
-	cmd.Stdout = io.Discard
-	cmd.Stderr = os.Stderr
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start web preview: %v", err)
-	}
-	defer func() {
-		cancel()
-
-		waitDone := make(chan error, 1)
-		go func() {
-			waitDone <- cmd.Wait()
-		}()
-
-		select {
-		case <-waitDone:
-			return
-		case <-time.After(3 * time.Second):
-			if cmd.Process == nil {
-				return
-			}
-			if runtime.GOOS != "windows" {
-				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			} else {
-				_ = cmd.Process.Kill()
-			}
-		}
-
-		select {
-		case <-waitDone:
-			return
-		case <-time.After(3 * time.Second):
-			return
-		}
-	}()
+	_, cleanup := startProcess(ctx, t, []string{"BROWSER=none"}, filepath.Join(projectRoot, "web"), "pnpm", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", strconv.Itoa(port))
+	defer cleanup()
 
 	client := &http.Client{Timeout: 2 * time.Second}
 	waitForPreview(t, client, port)

@@ -1,12 +1,8 @@
 package e2e
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 )
 
 func TestExternalAuthTargets(t *testing.T) {
@@ -29,7 +25,8 @@ func TestExternalAuthTargets(t *testing.T) {
 		"--login-pass", "SuperSecretPassword!",
 	)
 	herokuOut := filepath.Join(outDir, "herokuapp.json")
-	runOK(t, env, "scrape",
+	runUntilContains(t, env, herokuOut, "Secure Area", 3,
+		"scrape",
 		"--url", "https://the-internet.herokuapp.com/secure",
 		"--headless",
 		"--auth-profile", "herokuapp",
@@ -38,7 +35,6 @@ func TestExternalAuthTargets(t *testing.T) {
 		"--timeout", "30",
 		"--out", herokuOut,
 	)
-	assertJSONContains(t, herokuOut, "Secure Area")
 
 	runOK(t, env, "auth", "set",
 		"--name", "expandtesting",
@@ -50,7 +46,8 @@ func TestExternalAuthTargets(t *testing.T) {
 		"--login-pass", "SuperSecretPassword!",
 	)
 	expandOut := filepath.Join(outDir, "expandtesting.json")
-	runOK(t, env, "scrape",
+	runUntilContains(t, env, expandOut, "Secure Area", 3,
+		"scrape",
 		"--url", "https://practice.expandtesting.com/secure",
 		"--headless",
 		"--playwright",
@@ -60,10 +57,9 @@ func TestExternalAuthTargets(t *testing.T) {
 		"--timeout", "30",
 		"--out", expandOut,
 	)
-	assertJSONContains(t, expandOut, "Secure Area")
 
 	httpbinOut := filepath.Join(outDir, "httpbin-basic.json")
-	runScrapeUntilContains(t, env, httpbinOut, "authorized", 3,
+	runUntilContains(t, env, httpbinOut, "authorized", 3,
 		"scrape",
 		"--url", "https://httpbin.dev/basic-auth/user/passwd",
 		"--auth-basic", "user:passwd",
@@ -72,28 +68,4 @@ func TestExternalAuthTargets(t *testing.T) {
 		"--timeout", "30",
 		"--out", httpbinOut,
 	)
-}
-
-func runScrapeUntilContains(t *testing.T, env []string, outPath string, needle string, attempts int, args ...string) {
-	t.Helper()
-	var lastErr error
-	for i := 0; i < attempts; i++ {
-		runOK(t, env, args...)
-		data, err := os.ReadFile(outPath)
-		if err != nil {
-			lastErr = err
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		text := string(data)
-		if strings.Contains(text, needle) {
-			return
-		}
-		lastErr = fmt.Errorf("missing %q in %s", needle, strings.TrimSpace(text))
-		time.Sleep(500 * time.Millisecond)
-	}
-	if lastErr != nil {
-		t.Fatalf("scrape verification failed: %v", lastErr)
-	}
-	t.Fatalf("scrape verification failed")
 }

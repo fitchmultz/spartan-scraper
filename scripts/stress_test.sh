@@ -70,6 +70,13 @@ check_prereqs() {
     echo "Please install them before running this script."
     exit 1
   fi
+
+  echo "Checking browser availability..."
+  # Force headless for the check to ensure we actually test browser presence
+  if ! ./bin/spartan scrape --url "https://example.com" --headless $PLAYWRIGHT_FLAG --timeout 10 >/dev/null 2>&1; then
+     echo "Warning: Headless browser check failed. Tests might fail if they require a browser."
+     echo "Run with --headless --use-playwright to test specific configurations."
+  fi
 }
 
 parse_json_field() {
@@ -129,6 +136,19 @@ while [[ $# -gt 0 ]]; do
   esac
  done
 
+# Need flags for check_prereqs
+HEADLESS_FLAG=""
+if [[ "$FORCE_HEADLESS" == "1" ]]; then
+  HEADLESS_FLAG="--headless"
+fi
+PLAYWRIGHT_FLAG=""
+if [[ "$USE_PLAYWRIGHT" == "1" ]]; then
+  PLAYWRIGHT_FLAG="--playwright"
+fi
+
+# Build first so spartan binary exists for check_prereqs
+make build >/dev/null
+
 check_prereqs
 
 mkdir -p "$OUT_DIR"
@@ -154,8 +174,6 @@ export MAX_CONCURRENCY="$CONCURRENCY"
 export REQUEST_TIMEOUT_SECONDS="$TIMEOUT_SECS"
 export USE_PLAYWRIGHT="$USE_PLAYWRIGHT"
 
-make build >/dev/null
-
 HEADLESS_JSON="false"
 if [[ "$FORCE_HEADLESS" == "1" ]]; then
   HEADLESS_JSON="true"
@@ -165,38 +183,68 @@ if [[ "$USE_PLAYWRIGHT" == "1" ]]; then
   PLAYWRIGHT_JSON="true"
 fi
 
-PLAYWRIGHT_FLAG=""
-if [[ "$USE_PLAYWRIGHT" == "1" ]]; then
-  PLAYWRIGHT_FLAG="--playwright"
-fi
-HEADLESS_FLAG=""
-if [[ "$FORCE_HEADLESS" == "1" ]]; then
-  HEADLESS_FLAG="--headless"
-fi
-
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 cleanup() {
+  echo "Cleaning up..."
   if [[ -n "${SERVER_PID:-}" ]]; then
+    # Use pkill -P to kill child processes (like chrome) if supported,
+    # or just kill the process group if we had started it with one.
+    # Since we didn't start it with a process group in bash easily,
+    # we'll just kill the server and hope it cleans up its children (it should on SIGTERM).
     kill "$SERVER_PID" >/dev/null 2>&1 || true
+    # Wait for server to exit
+    wait "$SERVER_PID" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
 wait_job_api() {
   local job_id="$1"
+  local description="${2:-job $job_id}"
   local deadline=$((SECONDS + WAIT_TIMEOUT_SECS))
+  echo "Waiting for $description to complete..."
   while true; do
+    local output
+    output=$(curl -fsS "http://127.0.0.1:8741/v1/jobs/${job_id}" 2>&1) || {
+      echo "Error fetching job status: $output"
+      return 1
+    }
     local status
-    status=$(curl -fsS "http://127.0.0.1:8741/v1/jobs/${job_id}" | parse_json_field "status")
+    status=$(echo "$output" | parse_json_field "status")
     if [[ "$status" == "succeeded" ]]; then
+      echo "$description succeeded."
       return 0
     fi
     if [[ "$status" == "failed" ]]; then
+      local err
+      err=$(echo "$output" | parse_json_field "error")
+      echo "$description failed: $err"
+      return 1
+    fi
+    if [[ "$status" == "canceled" ]]; then
+      echo "$description was canceled."
       return 1
     fi
     if [[ "$WAIT_TIMEOUT_SECS" != "0" && "$SECONDS" -ge "$deadline" ]]; then
+      echo "Timeout waiting for $description after ${WAIT_TIMEOUT_SECS}s"
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+wait_for_health() {
+  local deadline=$((SECONDS + 30))
+  echo "Waiting for server to become healthy..."
+  while true; do
+    if curl -fsS "http://127.0.0.1:8741/healthz" >/dev/null 2>&1; then
+      echo "Server is healthy."
+      return 0
+    fi
+    if [[ "$SECONDS" -ge "$deadline" ]]; then
+      echo "Timeout waiting for server health"
       return 1
     fi
     sleep 1
@@ -206,12 +254,10 @@ wait_job_api() {
 ./bin/spartan server >"$LOG_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 
-for _ in {1..20}; do
-  if curl -fsS "http://127.0.0.1:8741/healthz" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 0.5
-done
+wait_for_health || {
+  echo "Server failed to start. See $LOG_DIR/server.log"
+  exit 1
+}
 
 for target in "${TARGETS[@]}"; do
   ./bin/spartan scrape --url "$target" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/scrape-$(echo "$target" | sed 's#https\?://##;s#[/:]#_#g').json" >/dev/null
