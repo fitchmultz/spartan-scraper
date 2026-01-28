@@ -5,6 +5,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
@@ -12,6 +13,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	res := HealthResponse{
 		Status:     "ok",
+		Version:    buildinfo.Version,
 		Components: make(map[string]ComponentStatus),
 	}
 	healthy := true

@@ -1,34 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0101",
-      "status": "todo",
-      "title": "Ensure consistent version reporting across CLI binary, help, and API",
-      "priority": "low",
-      "tags": [
-        "ux",
-        "cleanliness"
-      ],
-      "scope": [
-        "internal/buildinfo",
-        "internal/cli",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "Version info is defined in openapi.yaml and buildinfo, but not explicitly verified for consistency",
-        "CLI help menu doesn't show the dynamic build version"
-      ],
-      "plan": [
-        "Update CLI help template to include version from buildinfo",
-        "Add a test to ensure openapi.yaml version matches internal version"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

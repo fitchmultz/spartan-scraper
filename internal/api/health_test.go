@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
 )
 
 func TestHealth(t *testing.T) {
@@ -24,6 +26,10 @@ func TestHealth(t *testing.T) {
 
 	if !strings.Contains(rr.Body.String(), `"status":"ok"`) {
 		t.Errorf("handler returned unexpected body: got %v", rr.Body.String())
+	}
+	expectedVersion := `"version":"` + buildinfo.Version + `"`
+	if !strings.Contains(rr.Body.String(), expectedVersion) {
+		t.Errorf("handler missing or incorrect version: got %v, want %s", rr.Body.String(), expectedVersion)
 	}
 	if !strings.Contains(rr.Body.String(), `"database"`) {
 		t.Errorf("handler missing database status: got %v", rr.Body.String())

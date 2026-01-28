@@ -221,6 +221,7 @@ export type JobList = {
 
 export type HealthResponse = {
     status?: string;
+    version?: string;
     components?: {
         [key: string]: ComponentStatus;
     };

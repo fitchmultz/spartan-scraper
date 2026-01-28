@@ -12,13 +12,15 @@
 // - Help text is static and intended for terminal output.
 package cli
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
+)
 
 func printHelp() {
-	fmt.Print(`Spartan Scraper
-
-Usage:
-  spartan <command> [options]
+	fmt.Printf("Spartan Scraper v%s\n\nUsage:\n", buildinfo.Version)
+	fmt.Print(`  spartan <command> [options]
 
 Commands:
   scrape       Scrape a single page
@@ -54,16 +56,16 @@ Examples:
   spartan templates list
   spartan crawl-states list
   spartan crawl-states list --limit 10
-   spartan export --job-id <id> --format md --out ./out/report.md
-   spartan schedule add --kind scrape --interval 3600 --url https://example.com
-   spartan schedule list
-   spartan schedule delete --id <id>
-   spartan jobs list
-   spartan jobs cancel <id>
-   spartan health
-   spartan mcp
-   spartan server
-   spartan tui
+  spartan export --job-id <id> --format md --out ./out/report.md
+  spartan schedule add --kind scrape --interval 3600 --url https://example.com
+  spartan schedule list
+  spartan schedule delete --id <id>
+  spartan jobs list
+  spartan jobs cancel <id>
+  spartan health
+  spartan mcp
+  spartan server
+  spartan tui
 
 Use "spartan <command> --help" for command-specific flags.
 `)

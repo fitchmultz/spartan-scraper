@@ -18,6 +18,7 @@ type ComponentStatus struct {
 // HealthResponse represents the overall health of the system.
 type HealthResponse struct {
 	Status     string                     `json:"status"`
+	Version    string                     `json:"version"`
 	Components map[string]ComponentStatus `json:"components"`
 }
 
