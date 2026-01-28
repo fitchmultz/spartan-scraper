@@ -7,5 +7,7 @@ out/stress/
 .ralph/lock
 .ralph/cache
 scripts/.test-tmp/
-.ralph
 !.ralph/queue.json
+.ralph/done.json
+.ralph/config.json
+.ralph/README.md

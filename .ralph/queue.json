@@ -1,0 +1,432 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0096",
+      "status": "doing",
+      "title": "Optimize job store performance with indexes on status and created_at",
+      "priority": "high",
+      "tags": [
+        "performance",
+        "database",
+        "sqlite"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "Store.init in internal/store/store.go creates 'jobs' and 'crawl_states' tables without any secondary indexes.",
+        "ListByStatus filters by 'status' and orders by 'created_at DESC', which requires a full table scan and sort.",
+        "ListOpts (used by List) orders by 'created_at DESC', also requiring a full scan for sorting.",
+        "ListCrawlStates orders by 'last_scraped DESC', which will degrade as the number of tracked URLs grows."
+      ],
+      "plan": [
+        "Modify Store.init in internal/store/store.go to create indexes using 'CREATE INDEX IF NOT EXISTS'.",
+        "Add idx_jobs_status_created on jobs(status, created_at) to optimize filtered listings.",
+        "Add idx_jobs_created on jobs(created_at) to optimize default job listings.",
+        "Add idx_crawl_states_last_scraped on crawl_states(last_scraped) to optimize crawl state listings.",
+        "Verify index usage by running 'EXPLAIN QUERY PLAN' on the relevant queries in a test case.",
+        "Add a benchmark or performance test in internal/store/store_test.go to measure improvement with 10k+ records."
+      ],
+      "notes": [
+        "SQLite indexes are bidirectional, but 'DESC' can be specified if we want to be explicit.",
+        "Composite index on (status, created_at) is most efficient for ListByStatus."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:10:16.434173000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0088",
+      "status": "todo",
+      "title": "Add KindMethodNotAllowed to apperrors and unify API error handling",
+      "priority": "high",
+      "tags": [
+        "api",
+        "errors"
+      ],
+      "scope": [
+        "internal/apperrors",
+        "internal/api"
+      ],
+      "evidence": [
+        "Inconsistent use of writeJSONError and writeError in internal/api/jobs.go",
+        "apperrors package is missing a specific Kind for 405 Method Not Allowed"
+      ],
+      "plan": [
+        "Add KindMethodNotAllowed to internal/apperrors",
+        "Update writeError in internal/api/util.go to handle KindMethodNotAllowed (405)",
+        "Replace direct writeJSONError calls with writeError(w, apperrors.New(KindMethodNotAllowed, ...)) in all handlers"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0089",
+      "status": "todo",
+      "title": "Fix fragile job ID extraction in API handlers (trailing slash issue)",
+      "priority": "high",
+      "tags": [
+        "api",
+        "bug"
+      ],
+      "scope": [
+        "internal/api/jobs.go",
+        "internal/api/job_results.go"
+      ],
+      "evidence": [
+        "filepath.Base(\"/v1/jobs/abc/results/\") returns \"results\" instead of \"abc\"",
+        "Trailing slashes in URLs cause incorrect ID resolution in handleJob and handleJobResults"
+      ],
+      "plan": [
+        "Create utility function in internal/api/util.go for robust ID extraction from URL paths",
+        "Update handleJob and handleJobResults to use the new utility",
+        "Add unit tests covering paths with and without trailing slashes"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0102",
+      "status": "todo",
+      "title": "Expand API unit test coverage for edge case routing and error states",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "api"
+      ],
+      "scope": [
+        "internal/api"
+      ],
+      "evidence": [
+        "Current API tests focus on happy paths",
+        "Edge cases like trailing slashes, invalid JSON payloads, and parameter boundaries are under-tested"
+      ],
+      "plan": [
+        "Add unit tests for handleJob and handleJobResults with malformed paths",
+        "Add tests for input validation on all POST/PUT endpoints",
+        "Ensure all apperrors Kind mappings are verified in tests"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0099",
+      "status": "todo",
+      "title": "Improve error granularity for job results (missing vs empty vs processing)",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "api"
+      ],
+      "scope": [
+        "internal/api/job_results.go"
+      ],
+      "evidence": [
+        "handleJobResults returns 404 \"no results\" for several distinct failure modes (missing file, empty file, etc.)",
+        "Users cannot distinguish between a job that hasn't produced results yet and one that finished with no data"
+      ],
+      "plan": [
+        "Update handleJobResults to return more specific error messages based on job status and file state",
+        "Distinguish between 'results not ready', 'results empty', and 'job failed without results'"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0091",
+      "status": "todo",
+      "title": "Implement memory-efficient streaming for CSV crawl results export",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "exporter"
+      ],
+      "scope": [
+        "internal/exporter/csv.go"
+      ],
+      "evidence": [
+        "writeCrawlCSV in internal/exporter/csv.go loads all results into memory to determine unique field headers",
+        "This will OOM for very large crawl result sets"
+      ],
+      "plan": [
+        "Change exportCSVStream to perform a two-pass scan on the result file (pass 1: collect headers, pass 2: write rows)",
+        "Or use a fixed set of common headers plus dynamic fields if possible"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0090",
+      "status": "todo",
+      "title": "Cache template registry in extraction pipeline to avoid repeated disk I/O",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "refactor"
+      ],
+      "scope": [
+        "internal/extract"
+      ],
+      "evidence": [
+        "extract.Execute calls LoadTemplateRegistry on every invocation, reading extract_templates.json from disk",
+        "Large crawls will suffer performance degradation due to redundant file I/O"
+      ],
+      "plan": [
+        "Modify Execute to accept an optional TemplateRegistry",
+        "Implement a thread-safe singleton or cached registry in the Manager",
+        "Update jobs.run to pass the cached registry to the extraction logic"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0093",
+      "status": "todo",
+      "title": "Implement browser health monitoring and recovery for PlaywrightFetcher",
+      "priority": "medium",
+      "tags": [
+        "reliability",
+        "fetcher"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go"
+      ],
+      "evidence": [
+        "PlaywrightFetcher shares a single browser instance across all calls",
+        "If the browser process dies or hangs, all subsequent fetches will fail"
+      ],
+      "plan": [
+        "Add a health check to PlaywrightFetcher before using the cached browser",
+        "Implement automatic recovery (re-initialization) if the browser is detected as unhealthy",
+        "Add circuit breaker or timeout to avoid blocking on a hung browser"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0092",
+      "status": "todo",
+      "title": "Optimize health check by making Playwright availability check lighter",
+      "priority": "medium",
+      "tags": [
+        "performance",
+        "health"
+      ],
+      "scope": [
+        "internal/fetch/fetcher.go"
+      ],
+      "evidence": [
+        "checkPlaywrightAvailability calls playwright.Run() on every health check",
+        "This is resource intensive and can slow down health monitoring"
+      ],
+      "plan": [
+        "Implement a lighter check for Playwright (e.g. checking for binary/driver presence only)",
+        "Cache the result of the playwright.Run() check with a TTL"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0095",
+      "status": "todo",
+      "title": "Add API endpoints and CLI commands to manage (clear/delete) crawl states",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "ux"
+      ],
+      "scope": [
+        "internal/api",
+        "internal/cli"
+      ],
+      "evidence": [
+        "There is no way to clear or delete specific crawl states via API or CLI",
+        "Users cannot easily reset incremental tracking for a specific URL"
+      ],
+      "plan": [
+        "Add DELETE /v1/crawl-states/{url} and DELETE /v1/crawl-states (bulk) endpoints",
+        "Implement 'spartan crawl-states delete' command",
+        "Update OpenAPI spec to include new management endpoints"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0100",
+      "status": "todo",
+      "title": "Conduct E2E test robustness audit and fix potential flakiness",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "reliability"
+      ],
+      "scope": [
+        "internal/e2e"
+      ],
+      "evidence": [
+        "AGENTS.md mentions retry logic for flaky E2E tests, suggesting known instability",
+        "No explicit timeout or resource cleanup verification in current E2E test files"
+      ],
+      "plan": [
+        "Audit internal/e2e tests for common flakiness patterns (race conditions, timing dependencies)",
+        "Improve cleanup of test artifacts and browser processes after E2E runs"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0094",
+      "status": "todo",
+      "title": "Enhance CrawlState with metadata (depth, source job ID) for better tracking",
+      "priority": "low",
+      "tags": [
+        "design",
+        "incremental"
+      ],
+      "scope": [
+        "internal/model/state.go",
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "CrawlState currently only tracks ETag, LastModified, Hash, and LastScraped",
+        "Missing context about which job last updated the state or at what depth it was found"
+      ],
+      "plan": [
+        "Update model.CrawlState and DB schema to include metadata fields (jobID, depth)",
+        "Update Store.UpsertCrawlState to persist the new fields",
+        "Update crawl logic to pass metadata when saving state"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0097",
+      "status": "todo",
+      "title": "Remove redundant secret redaction in API utility functions",
+      "priority": "low",
+      "tags": [
+        "refactor",
+        "cleanliness"
+      ],
+      "scope": [
+        "internal/api/util.go"
+      ],
+      "evidence": [
+        "writeError calls SafeMessage(err) which redacts secrets",
+        "writeJSONError (called by writeError) also calls RedactString(message), performing double redaction"
+      ],
+      "plan": [
+        "Refactor writeJSONError to take a pre-redacted message or move redaction to a single entry point",
+        "Ensure consistent application of redaction without unnecessary overhead"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0098",
+      "status": "todo",
+      "title": "Update Makefile clean target to include openapi-ts error logs",
+      "priority": "low",
+      "tags": [
+        "dx",
+        "cleanliness"
+      ],
+      "scope": [
+        "Makefile"
+      ],
+      "evidence": [
+        "web/ folder contains numerous openapi-ts-error-*.log files",
+        "make clean does not currently remove these files"
+      ],
+      "plan": [
+        "Add 'rm -f web/openapi-ts-error-*.log' to the clean target in Makefile"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0101",
+      "status": "todo",
+      "title": "Ensure consistent version reporting across CLI binary, help, and API",
+      "priority": "low",
+      "tags": [
+        "ux",
+        "cleanliness"
+      ],
+      "scope": [
+        "internal/buildinfo",
+        "internal/cli",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Version info is defined in openapi.yaml and buildinfo, but not explicitly verified for consistency",
+        "CLI help menu doesn't show the dynamic build version"
+      ],
+      "plan": [
+        "Update CLI help template to include version from buildinfo",
+        "Add a test to ensure openapi.yaml version matches internal version"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-28T18:00:24Z",
+      "updated_at": "2026-01-28T18:00:24Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
+}
