@@ -331,12 +331,15 @@ No additional tools (ripgrep, perl, etc.) are required for `make generate`.
 - `SERVER_IDLE_TIMEOUT_SECONDS` (default `120`)
 - `DATA_DIR`
 - `USER_AGENT`
+- `LOG_LEVEL` (default `info`)
+- `LOG_FORMAT` (default `text`)
 - `MAX_CONCURRENCY`
 - `REQUEST_TIMEOUT_SECONDS`
 - `RATE_LIMIT_QPS`
 - `RATE_LIMIT_BURST`
 - `MAX_RETRIES`
 - `RETRY_BASE_MS`
+- `MAX_RESPONSE_BYTES` (default `10485760`)
 - `USE_PLAYWRIGHT`
 - Auth overrides:
   - `AUTH_BASIC`
