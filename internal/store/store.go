@@ -218,6 +218,9 @@ func (s *Store) init() error {
 			result_path text,
 			error text
 		);
+		create index if not exists idx_jobs_status_created on jobs(status, created_at desc);
+		create index if not exists idx_jobs_created on jobs(created_at desc);
+
 		create table if not exists crawl_states (
 			url text primary key,
 			etag text,
@@ -225,6 +228,7 @@ func (s *Store) init() error {
 			content_hash text,
 			last_scraped text
 		);
+		create index if not exists idx_crawl_states_last_scraped on crawl_states(last_scraped desc);
 	`)
 	return err
 }

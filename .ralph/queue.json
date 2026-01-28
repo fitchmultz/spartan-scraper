@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0096",
-      "status": "doing",
-      "title": "Optimize job store performance with indexes on status and created_at",
-      "priority": "high",
-      "tags": [
-        "performance",
-        "database",
-        "sqlite"
-      ],
-      "scope": [
-        "internal/store/store.go"
-      ],
-      "evidence": [
-        "Store.init in internal/store/store.go creates 'jobs' and 'crawl_states' tables without any secondary indexes.",
-        "ListByStatus filters by 'status' and orders by 'created_at DESC', which requires a full table scan and sort.",
-        "ListOpts (used by List) orders by 'created_at DESC', also requiring a full scan for sorting.",
-        "ListCrawlStates orders by 'last_scraped DESC', which will degrade as the number of tracked URLs grows."
-      ],
-      "plan": [
-        "Modify Store.init in internal/store/store.go to create indexes using 'CREATE INDEX IF NOT EXISTS'.",
-        "Add idx_jobs_status_created on jobs(status, created_at) to optimize filtered listings.",
-        "Add idx_jobs_created on jobs(created_at) to optimize default job listings.",
-        "Add idx_crawl_states_last_scraped on crawl_states(last_scraped) to optimize crawl state listings.",
-        "Verify index usage by running 'EXPLAIN QUERY PLAN' on the relevant queries in a test case.",
-        "Add a benchmark or performance test in internal/store/store_test.go to measure improvement with 10k+ records."
-      ],
-      "notes": [
-        "SQLite indexes are bidirectional, but 'DESC' can be specified if we want to be explicit.",
-        "Composite index on (status, created_at) is most efficient for ListByStatus."
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:10:16.434173000Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0088",
       "status": "todo",
       "title": "Add KindMethodNotAllowed to apperrors and unify API error handling",
