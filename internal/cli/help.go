@@ -1,7 +1,15 @@
-// Package cli provides top-level help text for Spartan Scraper.
+// Package cli provides the top-level help text and documentation for Spartan Scraper.
 //
-// It does NOT implement command routing (that's in cli.Run) or command
-// handlers (those live in internal/cli/* domain packages).
+// Responsibilities:
+// - Print top-level help text to stdout.
+// - List available commands and provide usage examples.
+//
+// Does NOT handle:
+// - Command routing or execution logic.
+// - Help text for individual subcommands.
+//
+// Invariants/Assumptions:
+// - Help text is static and intended for terminal output.
 package cli
 
 import "fmt"
@@ -26,6 +34,7 @@ Commands:
   jobs         Manage jobs (list, get, cancel)
   health       Check system health
   tui          Launch terminal UI
+  version      Print version info
 
 Examples:
   spartan scrape --url https://example.com --out ./out/example.json

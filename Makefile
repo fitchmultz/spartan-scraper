@@ -9,6 +9,15 @@ DATA_DIR := .data
 XDG_BIN_HOME ?= $(HOME)/.local/bin
 INSTALL_DIR ?= $(XDG_BIN_HOME)
 
+# Build-time variables
+VERSION ?= 0.1.0
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=$(VERSION) \
+           -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=$(COMMIT) \
+           -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=$(DATE)"
+
 .PHONY: install update lint type-check format clean test test-ci generate build ci web-dev
 
 install:
@@ -60,7 +69,7 @@ generate:
 
 build:
 	mkdir -p $(BIN_DIR)
-	go build -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
+	go build $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
 	@echo "Installing $(APP_NAME) to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)

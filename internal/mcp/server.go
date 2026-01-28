@@ -1,6 +1,17 @@
 // Package mcp implements a Model Context Protocol (MCP) server for Spartan Scraper.
-// It provides JSON-RPC based tools for scraping, crawling, and research operations
-// that can be consumed by MCP-compatible clients.
+//
+// Responsibilities:
+// - Implement a JSON-RPC 2.0 based server over stdio.
+// - Expose Spartan capabilities (scrape, crawl, research) as MCP tools.
+// - Manage lifecycle and state for MCP sessions.
+//
+// Does NOT handle:
+// - Implementation of the scraping or crawling logic itself.
+// - Authentication/Authorization beyond what Spartan handles internally.
+//
+// Invariants/Assumptions:
+// - Communicates over stdin/stdout as defined by the MCP stdio transport.
+// - Expects a valid Spartan configuration and initialized services.
 package mcp
 
 import (
@@ -14,6 +25,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -140,7 +152,7 @@ func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		case "initialize":
 			_ = encoder.Encode(response{ID: id, Result: map[string]interface{}{
 				"name":    "spartan-scraper-mcp",
-				"version": "0.1.0",
+				"version": buildinfo.Version,
 			}})
 		case "tools/list":
 			_ = encoder.Encode(response{ID: id, Result: map[string]interface{}{"tools": s.toolsList()}})

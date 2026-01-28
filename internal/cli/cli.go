@@ -1,6 +1,17 @@
-// Package cli provides Spartan Scraper command-line interface router.
+// Package cli provides the Spartan Scraper command-line interface router.
 //
-// It does NOT implement command handlers; those live in internal/cli/* domain packages.
+// Responsibilities:
+// - Route top-level commands to their respective handlers.
+// - Handle signal interrupts (SIGINT, SIGTERM) for graceful shutdown.
+// - Provide basic global flag parsing (e.g., version, help).
+//
+// Does NOT handle:
+// - Implementation of specific command logic (subcommands).
+// - Complex argument parsing (delegated to subcommands).
+//
+// Invariants/Assumptions:
+// - Assumes os.Args is available and has at least one element (program name).
+// - Expects a valid context and configuration for command routing.
 package cli
 
 import (
@@ -58,6 +69,13 @@ func Run(ctx context.Context) int {
 		return server.RunHealth(ctx, cfg, os.Args[2:])
 	case "tui":
 		return server.RunTUI(ctx, cfg, os.Args[2:])
+
+	case "version", "--version", "-v":
+		if err := RunVersion(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			return 1
+		}
+		return 0
 
 	case "help", "--help", "-h":
 		printHelp()
