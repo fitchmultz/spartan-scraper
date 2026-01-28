@@ -7,3 +7,4 @@ out/stress/
 .ralph/lock
 .ralph/cache
 scripts/.test-tmp/
+.ralph
