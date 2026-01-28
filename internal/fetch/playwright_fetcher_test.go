@@ -422,3 +422,62 @@ func TestIsBlockedType(t *testing.T) {
 		})
 	}
 }
+
+// TestPlaywrightFetcher_RecoveryAfterCrash verifies that the fetcher can detect
+// a disconnected browser and automatically recover by re-initializing.
+func TestPlaywrightFetcher_RecoveryAfterCrash(t *testing.T) {
+	f := &PlaywrightFetcher{}
+	ctx := context.Background()
+
+	// 1. Initialize
+	err := f.ensureInitialized(ctx, true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	f.mu.RLock()
+	firstBrowser := f.browser
+	f.mu.RUnlock()
+
+	if firstBrowser == nil {
+		t.Fatal("expected browser instance to be non-nil")
+	}
+	if !firstBrowser.IsConnected() {
+		t.Fatal("expected browser to be connected after initialization")
+	}
+
+	// 2. Simulate crash by closing the browser manually
+	err = firstBrowser.Close()
+	if err != nil {
+		t.Fatalf("failed to close browser: %v", err)
+	}
+
+	if firstBrowser.IsConnected() {
+		t.Fatal("expected browser to be disconnected after manual close")
+	}
+
+	// 3. Call ensureInitialized again - should trigger recovery
+	err = f.ensureInitialized(ctx, true)
+	if err != nil {
+		t.Fatalf("ensureInitialized failed during recovery: %v", err)
+	}
+
+	f.mu.RLock()
+	secondBrowser := f.browser
+	f.mu.RUnlock()
+
+	if secondBrowser == nil {
+		t.Fatal("expected new browser instance to be non-nil")
+	}
+	if !secondBrowser.IsConnected() {
+		t.Fatal("expected browser to be connected after recovery")
+	}
+
+	if secondBrowser == firstBrowser {
+		t.Fatal("expected a new browser instance after recovery")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}

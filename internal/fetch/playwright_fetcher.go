@@ -83,9 +83,15 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	// If already initialized with same headless setting, we're good
+	// If already initialized with same headless setting, perform health check
 	if f.initialized && f.headless == headless {
-		return nil
+		if f.browser != nil && f.browser.IsConnected() {
+			return nil
+		}
+		slog.Warn("Playwright browser disconnected or crashed, attempting recovery")
+		if err := f.cleanup(); err != nil {
+			slog.Warn("cleanup during browser recovery failed", "error", err)
+		}
 	}
 
 	// Clean up existing if headless setting changed
@@ -96,11 +102,38 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 		}
 	}
 
+	// Setup initialization context with timeout if not already present
+	initCtx := ctx
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		initCtx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+	}
+
+	// Helper to check context cancellation during init
+	checkCtx := func() error {
+		select {
+		case <-initCtx.Done():
+			return initCtx.Err()
+		default:
+			return nil
+		}
+	}
+
+	if err := checkCtx(); err != nil {
+		return err
+	}
+
 	// Initialize Playwright
 	slog.Debug("initializing Playwright")
 	pw, err := playwright.Run()
 	if err != nil {
 		slog.Error("failed to run Playwright", "error", err)
+		return err
+	}
+
+	if err := checkCtx(); err != nil {
+		pw.Stop()
 		return err
 	}
 

@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0093",
-      "status": "todo",
-      "title": "Implement browser health monitoring and recovery for PlaywrightFetcher",
-      "priority": "medium",
-      "tags": [
-        "reliability",
-        "fetcher"
-      ],
-      "scope": [
-        "internal/fetch/playwright_fetcher.go"
-      ],
-      "evidence": [
-        "PlaywrightFetcher shares a single browser instance across all calls",
-        "If the browser process dies or hangs, all subsequent fetches will fail"
-      ],
-      "plan": [
-        "Add a health check to PlaywrightFetcher before using the cached browser",
-        "Implement automatic recovery (re-initialization) if the browser is detected as unhealthy",
-        "Add circuit breaker or timeout to avoid blocking on a hung browser"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0092",
       "status": "todo",
       "title": "Optimize health check by making Playwright availability check lighter",
