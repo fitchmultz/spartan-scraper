@@ -50,6 +50,10 @@ func Run(ctx context.Context) int {
 
 	case "auth":
 		return manage.RunAuth(ctx, cfg, os.Args[2:])
+	case "render-profiles":
+		return manage.RunRenderProfiles(ctx, cfg, os.Args[2:])
+	case "pipeline-js":
+		return manage.RunPipelineJS(ctx, cfg, os.Args[2:])
 	case "export":
 		return manage.RunExport(ctx, cfg, os.Args[2:])
 	case "schedule":

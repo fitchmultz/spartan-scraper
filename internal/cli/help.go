@@ -25,6 +25,8 @@ Commands:
   crawl        Crawl a website
   research     Deep research across multiple sources
   auth         Manage auth vault and profiles
+  render-profiles List render profiles
+  pipeline-js  List pipeline JavaScript scripts
   templates    List extraction templates
   crawl-states List crawl states (incremental tracking)
   export       Export job results (jsonl, json, md, csv)
@@ -47,6 +49,8 @@ Examples:
   spartan auth resolve --url https://example.com --profile acme
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
+  spartan render-profiles list
+  spartan pipeline-js list
   spartan templates list
   spartan crawl-states list
   spartan crawl-states list --limit 10

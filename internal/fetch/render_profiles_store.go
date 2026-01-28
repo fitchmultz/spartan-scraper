@@ -59,6 +59,16 @@ func (s *RenderProfileStore) Reload() error {
 	return nil
 }
 
+// Profiles returns a copy of all loaded profiles.
+func (s *RenderProfileStore) Profiles() []RenderProfile {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make([]RenderProfile, len(s.profiles))
+	copy(out, s.profiles)
+	return out
+}
+
 // ReloadIfChanged checks file modification time and reloads if necessary.
 func (s *RenderProfileStore) ReloadIfChanged() error {
 	s.mu.RLock()

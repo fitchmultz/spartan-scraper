@@ -11,6 +11,8 @@ Global entry points:
 - `spartan crawl`
 - `spartan research`
 - `spartan auth`
+- `spartan render-profiles`
+- `spartan pipeline-js`
 - `spartan templates`
 - `spartan crawl-states`
 - `spartan export`
@@ -64,6 +66,18 @@ spartan research --query "<text>" --urls <url1,url2,...> [--max-depth <n>] [--ma
 ```
 
 Auth flags match `scrape`.
+
+### render-profiles
+
+List configured render profiles.
+
+  - `spartan render-profiles list`
+
+### pipeline-js
+
+List configured pipeline JavaScript scripts.
+
+  - `spartan pipeline-js list`
 
 ### auth
 
@@ -145,6 +159,9 @@ spartan crawl-states list [--limit <n>]
 
 ### Render Profiles
 
+List configured render profiles:
+- `spartan render-profiles list`
+
 To customize rendering behavior per site (e.g., forcing headless, increasing timeouts, blocking resources), create a `render_profiles.json` in your `DATA_DIR` (default `.data`).
 
 **Schema example (`.data/render_profiles.json`):**
@@ -186,6 +203,9 @@ Optional pipeline flags (repeatable):
 These map to the standardized plugin interface in `internal/pipeline`.
 
 ### JS per-target scripts (headless)
+
+List configured pipeline JavaScript scripts:
+- `spartan pipeline-js list`
 
 Place `pipeline_js.json` in your `DATA_DIR` (default `.data`):
 
