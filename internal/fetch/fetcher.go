@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -23,7 +24,9 @@ var (
 	playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
 		return playwright.Run(options...)
 	}
-	currentOS = runtime.GOOS
+	currentOS      = runtime.GOOS
+	playwrightOnce = &sync.Once{}
+	playwrightErr  error
 )
 
 type Fetcher interface {
@@ -56,6 +59,13 @@ func checkChromeAvailability() error {
 }
 
 func checkPlaywrightAvailability() error {
+	playwrightOnce.Do(func() {
+		playwrightErr = performPlaywrightAvailabilityCheck()
+	})
+	return playwrightErr
+}
+
+func performPlaywrightAvailabilityCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

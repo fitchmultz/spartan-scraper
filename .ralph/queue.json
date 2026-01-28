@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0092",
-      "status": "todo",
-      "title": "Optimize health check by making Playwright availability check lighter",
-      "priority": "medium",
-      "tags": [
-        "performance",
-        "health"
-      ],
-      "scope": [
-        "internal/fetch/fetcher.go"
-      ],
-      "evidence": [
-        "checkPlaywrightAvailability calls playwright.Run() on every health check",
-        "This is resource intensive and can slow down health monitoring"
-      ],
-      "plan": [
-        "Implement a lighter check for Playwright (e.g. checking for binary/driver presence only)",
-        "Cache the result of the playwright.Run() check with a TTL"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0095",
       "status": "todo",
       "title": "Add API endpoints and CLI commands to manage (clear/delete) crawl states",

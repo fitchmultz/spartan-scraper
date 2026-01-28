@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -112,6 +113,8 @@ func TestCheckBrowserAvailability_Playwright(t *testing.T) {
 		{
 			name: "Playwright drivers not installed",
 			setupMock: func() {
+				playwrightOnce = &sync.Once{}
+				playwrightErr = nil
 				playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
 					return nil, errors.New("exec: playwright: executable file not found")
 				}
@@ -127,6 +130,8 @@ func TestCheckBrowserAvailability_Playwright(t *testing.T) {
 		{
 			name: "Playwright timeout",
 			setupMock: func() {
+				playwrightOnce = &sync.Once{}
+				playwrightErr = nil
 				playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
 					time.Sleep(11 * time.Second)
 					return nil, errors.New("should timeout first")
@@ -456,6 +461,8 @@ func TestCheckPlaywrightAvailability(t *testing.T) {
 		{
 			name: "Playwright not available",
 			setupMock: func() {
+				playwrightOnce = &sync.Once{}
+				playwrightErr = nil
 				playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
 					return nil, errors.New("playwright: executable not found")
 				}
@@ -480,6 +487,45 @@ func TestCheckPlaywrightAvailability(t *testing.T) {
 				t.Errorf("checkPlaywrightAvailability() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestCheckPlaywrightAvailability_Caching(t *testing.T) {
+	callCount := 0
+	playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
+		callCount++
+		return nil, errors.New("not found")
+	}
+	defer func() {
+		playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
+			return playwright.Run(options...)
+		}
+	}()
+
+	// Reset cache
+	playwrightOnce = &sync.Once{}
+	playwrightErr = nil
+
+	// First call
+	err1 := checkPlaywrightAvailability()
+	if err1 == nil {
+		t.Error("expected error on first call")
+	}
+	if callCount != 1 {
+		t.Errorf("expected 1 call to playwrightRun, got %d", callCount)
+	}
+
+	// Second call
+	err2 := checkPlaywrightAvailability()
+	if err2 == nil {
+		t.Error("expected error on second call")
+	}
+	if callCount != 1 {
+		t.Errorf("expected call count to remain 1, got %d", callCount)
+	}
+
+	if err1 != err2 {
+		t.Errorf("expected same error, got %v and %v", err1, err2)
 	}
 }
 
