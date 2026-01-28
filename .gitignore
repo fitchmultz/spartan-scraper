@@ -8,3 +8,4 @@ out/stress/
 .ralph/cache
 scripts/.test-tmp/
 .ralph
+!.ralph/queue.json
