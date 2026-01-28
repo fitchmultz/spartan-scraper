@@ -309,6 +309,14 @@ export type CrawlState = {
      * Timestamp of last scrape
      */
     lastScraped: string;
+    /**
+     * Depth at which this URL was found during crawl
+     */
+    depth?: number;
+    /**
+     * ID of the job that last scraped this URL
+     */
+    jobId?: string;
 };
 
 export type GetHealthzData = {

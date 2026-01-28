@@ -1301,3 +1301,9 @@ components:
           type: string
           format: date-time
           description: Timestamp of last scrape
+        depth:
+          type: integer
+          description: Depth at which this URL was found during crawl
+        jobId:
+          type: string
+          description: ID of the job that last scraped this URL

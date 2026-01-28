@@ -201,18 +201,20 @@ func (s *Store) prepareStatements() error {
 		return fmt.Errorf("failed to prepare getJobStmt: %w", err)
 	}
 
-	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped from crawl_states where url = ?`)
+	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped, depth, job_id from crawl_states where url = ?`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare getCrawlStateStmt: %w", err)
 	}
 
-	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped)
-		values (?, ?, ?, ?, ?)
+	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id)
+		values (?, ?, ?, ?, ?, ?, ?)
 		on conflict(url) do update set
 			etag = excluded.etag,
 			last_modified = excluded.last_modified,
 			content_hash = excluded.content_hash,
-			last_scraped = excluded.last_scraped`)
+			last_scraped = excluded.last_scraped,
+			depth = excluded.depth,
+			job_id = excluded.job_id`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare upsertCrawlStateStmt: %w", err)
 	}
@@ -254,11 +256,21 @@ func (s *Store) init() error {
 			etag text,
 			last_modified text,
 			content_hash text,
-			last_scraped text
+			last_scraped text,
+			depth integer,
+			job_id text
 		);
 		create index if not exists idx_crawl_states_last_scraped on crawl_states(last_scraped desc);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Add missing columns if they don't exist (poor man's migration)
+	_, _ = s.db.Exec("alter table crawl_states add column depth integer")
+	_, _ = s.db.Exec("alter table crawl_states add column job_id text")
+
+	return nil
 }
 
 func (s *Store) Create(ctx context.Context, job model.Job) error {
@@ -362,7 +374,7 @@ func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState
 	row := s.getCrawlStateStmt.QueryRowContext(ctx, url)
 	var state model.CrawlState
 	var lastScraped string
-	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped); err != nil {
+	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped, &state.Depth, &state.JobID); err != nil {
 		if err == sql.ErrNoRows {
 			return model.CrawlState{}, nil
 		}
@@ -386,6 +398,8 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 		state.LastModified,
 		state.ContentHash,
 		state.LastScraped.Format(time.RFC3339Nano),
+		state.Depth,
+		state.JobID,
 	)
 	return err
 }
@@ -407,7 +421,7 @@ func (s *Store) DeleteAllCrawlStates(ctx context.Context) error {
 func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions) ([]model.CrawlState, error) {
 	opts = opts.Defaults()
 	rows, err := s.db.QueryContext(ctx,
-		`select url, etag, last_modified, content_hash, last_scraped
+		`select url, etag, last_modified, content_hash, last_scraped, depth, job_id
 		 from crawl_states order by last_scraped desc limit ? offset ?`,
 		opts.Limit, opts.Offset)
 	if err != nil {
@@ -420,7 +434,7 @@ func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions
 		var state model.CrawlState
 		var lastScraped string
 		if err := rows.Scan(&state.URL, &state.ETag, &state.LastModified,
-			&state.ContentHash, &lastScraped); err != nil {
+			&state.ContentHash, &lastScraped, &state.Depth, &state.JobID); err != nil {
 			return nil, err
 		}
 		if lastScraped != "" {

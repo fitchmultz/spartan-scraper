@@ -227,6 +227,8 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			// Update LastScraped timestamp
 			if req.Incremental && req.Store != nil {
 				state.LastScraped = time.Now()
+				state.Depth = item.Depth
+				state.JobID = req.RequestID
 				if err := req.Store.UpsertCrawlState(ctx, state); err != nil {
 					slog.Error("failed to update crawl state", "url", apperrors.SanitizeURL(item.URL), "error", err)
 				}
@@ -286,6 +288,8 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 				LastModified: res.LastModified,
 				ContentHash:  currentHash,
 				LastScraped:  time.Now(),
+				Depth:        item.Depth,
+				JobID:        req.RequestID,
 			}
 			if err := req.Store.UpsertCrawlState(ctx, newState); err != nil {
 				slog.Error("failed to update crawl state", "url", apperrors.SanitizeURL(item.URL), "error", err)

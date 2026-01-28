@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0094",
-      "status": "todo",
-      "title": "Enhance CrawlState with metadata (depth, source job ID) for better tracking",
-      "priority": "low",
-      "tags": [
-        "design",
-        "incremental"
-      ],
-      "scope": [
-        "internal/model/state.go",
-        "internal/store/store.go"
-      ],
-      "evidence": [
-        "CrawlState currently only tracks ETag, LastModified, Hash, and LastScraped",
-        "Missing context about which job last updated the state or at what depth it was found"
-      ],
-      "plan": [
-        "Update model.CrawlState and DB schema to include metadata fields (jobID, depth)",
-        "Update Store.UpsertCrawlState to persist the new fields",
-        "Update crawl logic to pass metadata when saving state"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0097",
       "status": "todo",
       "title": "Remove redundant secret redaction in API utility functions",

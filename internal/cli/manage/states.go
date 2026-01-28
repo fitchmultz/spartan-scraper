@@ -50,14 +50,15 @@ func RunCrawlStates(ctx context.Context, cfg config.Config, args []string) int {
 			return 0
 		}
 
-		fmt.Println("URL\tETag\tLast-Modified\tHash\tLast-Scraped")
+		fmt.Println("URL\tDepth\tJobID\tETag\tLast-Modified\tHash\tLast-Scraped")
 		for _, state := range states {
 			lastScraped := "never"
 			if !state.LastScraped.IsZero() {
 				lastScraped = state.LastScraped.Format(time.RFC3339)
 			}
-			fmt.Printf("%s\t%s\t%s\t%s\t%s\n",
-				state.URL, state.ETag, state.LastModified,
+			fmt.Printf("%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+				state.URL, state.Depth, state.JobID,
+				state.ETag, state.LastModified,
 				state.ContentHash, lastScraped)
 		}
 		return 0

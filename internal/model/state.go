@@ -11,4 +11,6 @@ type CrawlState struct {
 	LastModified string    `json:"lastModified"`
 	ContentHash  string    `json:"contentHash"`
 	LastScraped  time.Time `json:"lastScraped"`
+	Depth        int       `json:"depth"`
+	JobID        string    `json:"jobId"`
 }

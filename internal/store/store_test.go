@@ -73,6 +73,8 @@ func TestStoreCrawlState(t *testing.T) {
 		URL:         "http://example.com",
 		ETag:        "tag",
 		LastScraped: time.Now(),
+		Depth:       1,
+		JobID:       "test-job",
 	}
 
 	if err := s.UpsertCrawlState(ctx, state); err != nil {
@@ -83,7 +85,7 @@ func TestStoreCrawlState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCrawlState failed: %v", err)
 	}
-	if got.URL != state.URL || got.ETag != state.ETag {
+	if got.URL != state.URL || got.ETag != state.ETag || got.Depth != state.Depth || got.JobID != state.JobID {
 		t.Errorf("GetCrawlState returned unexpected state: %+v", got)
 	}
 
@@ -505,6 +507,8 @@ func TestListCrawlStates(t *testing.T) {
 			LastModified: "Mon, 01 Jan 2026 00:00:00 GMT",
 			ContentHash:  "hash1",
 			LastScraped:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			Depth:        1,
+			JobID:        "job1",
 		},
 		{
 			URL:          "https://example.com/page2",
@@ -512,6 +516,8 @@ func TestListCrawlStates(t *testing.T) {
 			LastModified: "Tue, 02 Jan 2026 00:00:00 GMT",
 			ContentHash:  "hash2",
 			LastScraped:  time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+			Depth:        2,
+			JobID:        "job2",
 		},
 	}
 
@@ -535,6 +541,12 @@ func TestListCrawlStates(t *testing.T) {
 	// Verify ordering (most recent first)
 	if listed[0].URL != "https://example.com/page2" {
 		t.Errorf("expected page2 first, got %s", listed[0].URL)
+	}
+	if listed[0].Depth != 2 || listed[0].JobID != "job2" {
+		t.Errorf("expected Depth 2 and JobID job2, got %d and %s", listed[0].Depth, listed[0].JobID)
+	}
+	if listed[1].Depth != 1 || listed[1].JobID != "job1" {
+		t.Errorf("expected Depth 1 and JobID job1, got %d and %s", listed[1].Depth, listed[1].JobID)
 	}
 }
 
