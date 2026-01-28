@@ -10,13 +10,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	vault, err := auth.LoadVault(s.cfg.DataDir)
@@ -30,13 +31,13 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	if name == "" || name == "profiles" {
-		writeJSONError(w, http.StatusBadRequest, "name required")
+		writeError(w, apperrors.Validation("name required"))
 		return
 	}
 	switch r.Method {
 	case http.MethodPut:
 		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+			writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -44,18 +45,18 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&profile); err != nil {
-			writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+			writeError(w, apperrors.Validation("invalid json: "+err.Error()))
 			return
 		}
 		if profile.Name == "" {
 			profile.Name = name
 		}
 		if profile.Name != name {
-			writeJSONError(w, http.StatusBadRequest, "profile name mismatch")
+			writeError(w, apperrors.Validation("profile name mismatch"))
 			return
 		}
 		if err := validate.ValidateAuthProfileName(profile.Name); err != nil {
-			writeJSONError(w, http.StatusBadRequest, err.Error())
+			writeError(w, apperrors.Validation(err.Error()))
 			return
 		}
 		if err := auth.UpsertProfile(s.cfg.DataDir, profile); err != nil {
@@ -65,22 +66,22 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, profile)
 	case http.MethodDelete:
 		if err := auth.DeleteProfile(s.cfg.DataDir, name); err != nil {
-			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			writeError(w, err)
 			return
 		}
 		writeJSON(w, map[string]string{"status": "ok"})
 	default:
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 	}
 }
 
 func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+		writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -90,7 +91,7 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&payload); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+		writeError(w, apperrors.Validation("invalid json: "+err.Error()))
 		return
 	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
@@ -106,11 +107,11 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+		writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -120,7 +121,7 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&payload); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+		writeError(w, apperrors.Validation("invalid json: "+err.Error()))
 		return
 	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {

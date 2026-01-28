@@ -19,11 +19,11 @@ import (
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	id := filepath.Base(strings.TrimSuffix(r.URL.Path, "/results"))
 	if id == "" {
-		writeJSONError(w, http.StatusBadRequest, "id required")
+		writeError(w, apperrors.Validation("id required"))
 		return
 	}
 	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	job, err := s.store.Get(r.Context(), id)

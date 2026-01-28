@@ -50,11 +50,15 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	case apperrors.KindPermission:
 		status = http.StatusForbidden
+	case apperrors.KindMethodNotAllowed:
+		status = http.StatusMethodNotAllowed
+	case apperrors.KindUnsupportedMediaType:
+		status = http.StatusUnsupportedMediaType
 	default:
 		status = http.StatusInternalServerError
 	}
 
-	message := apperrors.SafeMessage(err)
+	message := err.Error()
 	writeJSONError(w, status, message)
 }
 

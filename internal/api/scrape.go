@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -17,11 +18,11 @@ import (
 
 func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+		writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -29,11 +30,11 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeError(w, apperrors.Validation(err.Error()))
 		return
 	}
 	if req.URL == "" {
-		writeJSONError(w, http.StatusBadRequest, "url is required")
+		writeError(w, apperrors.Validation("url is required"))
 		return
 	}
 	opts := validate.JobValidationOpts{

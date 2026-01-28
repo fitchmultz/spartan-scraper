@@ -8,17 +8,38 @@ import (
 )
 
 func TestKindOfAndIsKind(t *testing.T) {
-	base := Validation("bad input")
-	wrapped := fmt.Errorf("outer: %w", base)
+	tests := []struct {
+		name string
+		err  error
+		kind Kind
+	}{
+		{"Validation", Validation("bad input"), KindValidation},
+		{"NotFound", NotFound("not found"), KindNotFound},
+		{"Permission", Permission("denied"), KindPermission},
+		{"Internal", Internal("failed"), KindInternal},
+		{"MethodNotAllowed", MethodNotAllowed("bad method"), KindMethodNotAllowed},
+		{"UnsupportedMediaType", UnsupportedMediaType("bad media"), KindUnsupportedMediaType},
+		{"Generic", errors.New("generic"), KindInternal},
+	}
 
-	if got := KindOf(wrapped); got != KindValidation {
-		t.Fatalf("KindOf() = %s, want %s", got, KindValidation)
-	}
-	if !IsKind(wrapped, KindValidation) {
-		t.Fatalf("IsKind(validation) = false, want true")
-	}
-	if IsKind(wrapped, KindNotFound) {
-		t.Fatalf("IsKind(not_found) = true, want false")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wrapped := fmt.Errorf("outer: %w", tt.err)
+			if got := KindOf(wrapped); got != tt.kind {
+				t.Fatalf("KindOf() = %s, want %s", got, tt.kind)
+			}
+			// IsKind only returns true if an apperrors.Error with that kind is in the chain.
+			// Generic errors don't have it, even if KindOf returns KindInternal.
+			if tt.name != "Generic" {
+				if !IsKind(wrapped, tt.kind) {
+					t.Fatalf("IsKind(%s) = false, want true", tt.kind)
+				}
+			} else {
+				if IsKind(wrapped, tt.kind) {
+					t.Fatalf("IsKind(%s) = true, want false for generic error", tt.kind)
+				}
+			}
+		})
 	}
 }
 

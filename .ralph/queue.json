@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0088",
-      "status": "todo",
-      "title": "Add KindMethodNotAllowed to apperrors and unify API error handling",
-      "priority": "high",
-      "tags": [
-        "api",
-        "errors"
-      ],
-      "scope": [
-        "internal/apperrors",
-        "internal/api"
-      ],
-      "evidence": [
-        "Inconsistent use of writeJSONError and writeError in internal/api/jobs.go",
-        "apperrors package is missing a specific Kind for 405 Method Not Allowed"
-      ],
-      "plan": [
-        "Add KindMethodNotAllowed to internal/apperrors",
-        "Update writeError in internal/api/util.go to handle KindMethodNotAllowed (405)",
-        "Replace direct writeJSONError calls with writeError(w, apperrors.New(KindMethodNotAllowed, ...)) in all handlers"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-28T18:00:24Z",
-      "updated_at": "2026-01-28T18:00:24Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0089",
       "status": "todo",
       "title": "Fix fragile job ID extraction in API handlers (trailing slash issue)",

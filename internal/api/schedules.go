@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
@@ -36,7 +37,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost {
 		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeJSONError(w, http.StatusUnsupportedMediaType, "content-type must be application/json")
+			writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -44,19 +45,19 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&req); err != nil {
-			writeJSONError(w, http.StatusBadRequest, "invalid json: "+err.Error())
+			writeError(w, apperrors.Validation("invalid json: "+err.Error()))
 			return
 		}
 		if req.Kind == "" {
-			writeJSONError(w, http.StatusBadRequest, "kind is required")
+			writeError(w, apperrors.Validation("kind is required"))
 			return
 		}
 		if req.IntervalSeconds <= 0 {
-			writeJSONError(w, http.StatusBadRequest, "intervalSeconds must be positive")
+			writeError(w, apperrors.Validation("intervalSeconds must be positive"))
 			return
 		}
 		if req.Kind != "scrape" && req.Kind != "crawl" && req.Kind != "research" {
-			writeJSONError(w, http.StatusBadRequest, "kind must be scrape, crawl, or research")
+			writeError(w, apperrors.Validation("kind must be scrape, crawl, or research"))
 			return
 		}
 
@@ -124,18 +125,18 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+	writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSuffix(r.URL.Path, "/")
 	id := filepath.Base(path)
 	if id == "" || id == "schedules" {
-		writeJSONError(w, http.StatusBadRequest, "id required")
+		writeError(w, apperrors.Validation("id required"))
 		return
 	}
 	if r.Method != http.MethodDelete {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if err := scheduler.Delete(s.cfg.DataDir, id); err != nil {

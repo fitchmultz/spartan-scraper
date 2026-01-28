@@ -6,12 +6,13 @@ package api
 import (
 	"net/http"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 

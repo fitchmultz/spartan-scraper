@@ -8,10 +8,12 @@ import (
 type Kind string
 
 const (
-	KindValidation Kind = "validation"
-	KindNotFound   Kind = "not_found"
-	KindPermission Kind = "permission"
-	KindInternal   Kind = "internal"
+	KindValidation           Kind = "validation"
+	KindNotFound             Kind = "not_found"
+	KindPermission           Kind = "permission"
+	KindInternal             Kind = "internal"
+	KindMethodNotAllowed     Kind = "method_not_allowed"
+	KindUnsupportedMediaType Kind = "unsupported_media_type"
 )
 
 // Error wraps an underlying error with a Kind and a safe, user-facing message.
@@ -79,7 +81,9 @@ func IsKind(err error, kind Kind) bool {
 	return errors.As(err, &e) && e.Kind == kind
 }
 
-func Validation(msg string) error { return New(KindValidation, msg) }
-func NotFound(msg string) error   { return New(KindNotFound, msg) }
-func Permission(msg string) error { return New(KindPermission, msg) }
-func Internal(msg string) error   { return New(KindInternal, msg) }
+func Validation(msg string) error           { return New(KindValidation, msg) }
+func NotFound(msg string) error             { return New(KindNotFound, msg) }
+func Permission(msg string) error           { return New(KindPermission, msg) }
+func Internal(msg string) error             { return New(KindInternal, msg) }
+func MethodNotAllowed(msg string) error     { return New(KindMethodNotAllowed, msg) }
+func UnsupportedMediaType(msg string) error { return New(KindUnsupportedMediaType, msg) }

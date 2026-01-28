@@ -16,7 +16,7 @@ import (
 
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	query := r.URL.Query()
@@ -55,7 +55,7 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	}
 	id := filepath.Base(path)
 	if id == "" || id == "jobs" {
-		writeJSONError(w, http.StatusBadRequest, "id required")
+		writeError(w, apperrors.Validation("id required"))
 		return
 	}
 	switch r.Method {
@@ -81,6 +81,6 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]string{"status": "canceled"})
 		}
 	default:
-		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
 	}
 }
