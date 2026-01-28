@@ -69,5 +69,9 @@ build:
 
 ci: install generate format type-check lint build test-ci
 
+ci-slow: build
+	./scripts/stress_test.sh
+	go test -v ./internal/e2e/...
+
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev

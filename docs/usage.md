@@ -360,10 +360,16 @@ Jobs stored under `DATA_DIR/jobs/<id>/results.jsonl`.
 
 ## CI Coverage
 
-`make ci` runs unit + end-to-end coverage across:
+`make ci` (Fast/Local) runs unit + integration coverage across:
 - CLI (all subcommands, help, auth profiles, export)
 - API (scrape/crawl/research/jobs/results)
 - MCP (tools list + scrape_page)
 - Scheduler (job creation via interval)
-- Web (TypeScript build + preview smoke test)
-- External auth targets (public demo sites + httpbin basic auth)
+- Web (TypeScript build + unit tests)
+
+`make ci-slow` (Stress/Network) executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`), which validate:
+- Real-world targets (no mocks)
+- Full end-to-end workflows (CLI → API → Worker → Exporter)
+- External auth targets and headless behaviors
+- Web preview smoke test
+

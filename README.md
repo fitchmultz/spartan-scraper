@@ -143,5 +143,6 @@ Pinned in `.tool-versions`:
 ## Local CI
 
 ```bash
-make ci
+make ci       # Fast local gate (unit/integration, mocks, lint, type-check)
+make ci-slow  # Stress test against real targets (network required)
 ```
