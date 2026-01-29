@@ -29,6 +29,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
@@ -398,6 +399,9 @@ func TestHandleJobExport(t *testing.T) {
 		if err == nil {
 			t.Error("expected error for invalid format")
 		}
+		if !apperrors.IsKind(err, apperrors.KindValidation) {
+			t.Errorf("expected KindValidation, got %v", err)
+		}
 	})
 
 	t.Run("export job without results", func(t *testing.T) {
@@ -430,6 +434,9 @@ func TestHandleJobExport(t *testing.T) {
 		_, err := srv.handleToolCall(ctx, base)
 		if err == nil {
 			t.Error("expected error for non-existent job")
+		}
+		if !apperrors.IsKind(err, apperrors.KindNotFound) {
+			t.Errorf("expected KindNotFound, got %v", err)
 		}
 	})
 }
@@ -513,6 +520,9 @@ func TestHandleJobStatus(t *testing.T) {
 		_, err := srv.handleToolCall(ctx, base)
 		if err == nil {
 			t.Error("expected error for non-existent job")
+		}
+		if !apperrors.IsKind(err, apperrors.KindNotFound) {
+			t.Errorf("expected KindNotFound, got %v", err)
 		}
 	})
 
@@ -618,6 +628,9 @@ func TestHandleJobResults(t *testing.T) {
 		_, err := srv.handleToolCall(ctx, base)
 		if err == nil {
 			t.Error("expected error for non-existent job")
+		}
+		if !apperrors.IsKind(err, apperrors.KindNotFound) {
+			t.Errorf("expected KindNotFound, got %v", err)
 		}
 	})
 

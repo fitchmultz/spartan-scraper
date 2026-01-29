@@ -475,22 +475,22 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		job, err := s.store.Get(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("job not found: %w", err)
+			return nil, apperrors.Wrap(apperrors.KindNotFound, "job not found", err)
 		}
 		if job.ResultPath == "" {
 			return nil, apperrors.NotFound("job has no results")
 		}
 		rawBytes, err := os.ReadFile(job.ResultPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read result file: %w", err)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
 		}
 		exported, err := exporter.Export(job, rawBytes, format)
 		if err != nil {
-			return nil, fmt.Errorf("failed to export job: %w", err)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to export job", err)
 		}
 		return exported, nil
 	default:
-		return nil, fmt.Errorf("unknown tool: %s", params.Name)
+		return nil, apperrors.Validation(fmt.Sprintf("unknown tool: %s", params.Name))
 	}
 }
 

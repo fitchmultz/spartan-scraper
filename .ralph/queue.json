@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0129",
-      "status": "todo",
-      "title": "Normalize MCP tool errors to apperrors kinds",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "mcp",
-        "api"
-      ],
-      "scope": [
-        "internal/mcp/server.go"
-      ],
-      "evidence": [
-        "internal/mcp/server.go job_export returns fmt.Errorf(\"job not found\")/\"failed to read result file\"/\"failed to export job\".",
-        "internal/mcp/server.go default case returns fmt.Errorf(\"unknown tool: %s\")."
-      ],
-      "plan": [
-        "Classify job_export errors with apperrors.NotFound/Validation/Internal as appropriate.",
-        "Classify unknown tool errors with apperrors.Validation or apperrors.NotFound per MCP contract.",
-        "Update MCP tests to assert error kinds and messages are stable."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0130",
       "status": "todo",
       "title": "Use apperrors for store parse/prepare failures",
