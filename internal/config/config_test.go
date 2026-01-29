@@ -56,6 +56,83 @@ func TestGetenvBool(t *testing.T) {
 	}
 }
 
+func TestGetenvInt_InvalidValue(t *testing.T) {
+	os.Setenv("TEST_INT_INVALID", "not-a-number")
+	defer os.Unsetenv("TEST_INT_INVALID")
+
+	result := getenvInt("TEST_INT_INVALID", 10)
+
+	if result != 10 {
+		t.Errorf("getenvInt with invalid value should return fallback 10, got %d", result)
+	}
+}
+
+func TestGetenvInt_ValidValue(t *testing.T) {
+	os.Setenv("TEST_INT_VALID", "123")
+	defer os.Unsetenv("TEST_INT_VALID")
+
+	result := getenvInt("TEST_INT_VALID", 10)
+
+	if result != 123 {
+		t.Errorf("getenvInt with valid value should return 123, got %d", result)
+	}
+}
+
+func TestGetenvInt64_InvalidValue(t *testing.T) {
+	os.Setenv("TEST_INT64_INVALID", "xyz")
+	defer os.Unsetenv("TEST_INT64_INVALID")
+
+	result := getenvInt64("TEST_INT64_INVALID", 42)
+
+	if result != 42 {
+		t.Errorf("getenvInt64 with invalid value should return fallback 42, got %d", result)
+	}
+}
+
+func TestGetenvInt64_ValidValue(t *testing.T) {
+	os.Setenv("TEST_INT64_VALID", "9876543210")
+	defer os.Unsetenv("TEST_INT64_VALID")
+
+	result := getenvInt64("TEST_INT64_VALID", 0)
+
+	if result != 9876543210 {
+		t.Errorf("getenvInt64 with valid value should return 9876543210, got %d", result)
+	}
+}
+
+func TestGetenvBool_InvalidValue(t *testing.T) {
+	os.Setenv("TEST_BOOL_INVALID", "maybe")
+	defer os.Unsetenv("TEST_BOOL_INVALID")
+
+	result := getenvBool("TEST_BOOL_INVALID", true)
+
+	if result != true {
+		t.Errorf("getenvBool with invalid value should return fallback true, got %t", result)
+	}
+}
+
+func TestGetenvBool_ValidValues(t *testing.T) {
+	trueValues := []string{"1", "true", "yes", "y", "TRUE", "YES", "Y"}
+	for _, val := range trueValues {
+		os.Setenv("TEST_BOOL_TRUE", val)
+		result := getenvBool("TEST_BOOL_TRUE", false)
+		if result != true {
+			t.Errorf("getenvBool(%q) should return true, got %t", val, result)
+		}
+	}
+
+	falseValues := []string{"0", "false", "no", "n", "FALSE", "NO", "N"}
+	for _, val := range falseValues {
+		os.Setenv("TEST_BOOL_FALSE", val)
+		result := getenvBool("TEST_BOOL_FALSE", true)
+		if result != false {
+			t.Errorf("getenvBool(%q) should return false, got %t", val, result)
+		}
+	}
+	os.Unsetenv("TEST_BOOL_TRUE")
+	os.Unsetenv("TEST_BOOL_FALSE")
+}
+
 func TestNormalizeAuthKeySuffix(t *testing.T) {
 	tests := []struct {
 		input    string

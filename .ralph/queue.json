@@ -2,32 +2,29 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0124",
+      "id": "RQ-0125",
       "status": "todo",
-      "title": "Add config validation warnings for invalid env vars",
-      "priority": "low",
+      "title": "List current task queue contents",
+      "priority": "medium",
       "tags": [
-        "ux",
-        "config",
-        "validation",
-        "go"
+        "cli",
+        "queue",
+        "info"
       ],
       "scope": [
-        "internal/config/config.go"
+        "ralph queue list"
       ],
       "evidence": [
-        "config.go:78-103 - No validation warnings for invalid env vars",
-        "Invalid values silently fall back to defaults without warning the user"
+        "user request: list"
       ],
       "plan": [
-        "Add warning logs for invalid environment variable values",
-        "Include the invalid value and what default is being used",
-        "Help users catch configuration typos"
+        "Run 'ralph queue list' to display current queue contents",
+        "Optionally format output for better readability"
       ],
       "notes": [],
-      "request": "scan finding: invalid env vars silently use defaults",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
+      "request": "list",
+      "created_at": "2026-01-29T10:46:44Z",
+      "updated_at": "2026-01-29T10:46:44Z",
       "depends_on": [],
       "custom_fields": {}
     }

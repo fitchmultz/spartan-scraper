@@ -203,6 +203,7 @@ func getenvInt(key string, fallback int) int {
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %d)\n", key, value, fallback)
 		return fallback
 	}
 	return parsed
@@ -215,6 +216,7 @@ func getenvInt64(key string, fallback int64) int64 {
 	}
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %d)\n", key, value, fallback)
 		return fallback
 	}
 	return parsed
@@ -231,6 +233,7 @@ func getenvBool(key string, fallback bool) bool {
 	case "0", "false", "no", "n":
 		return false
 	default:
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %t)\n", key, value, fallback)
 		return fallback
 	}
 }
