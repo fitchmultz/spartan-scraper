@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0123",
-      "status": "todo",
-      "title": "Fix path redaction regex being overly aggressive",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "errors",
-        "logging",
-        "go"
-      ],
-      "scope": [
-        "internal/apperrors/sanitize.go"
-      ],
-      "evidence": [
-        "sanitize.go:22-33 - Path redaction regex is overly aggressive",
-        "Legitimate URL paths like /api/v1/users get redacted, making debugging harder"
-      ],
-      "plan": [
-        "Refine regex to only redact sensitive paths (auth, tokens, keys, secrets)",
-        "Add tests for common legitimate paths that should NOT be redacted",
-        "Balance security with debuggability"
-      ],
-      "notes": [],
-      "request": "scan finding: path redaction too aggressive hurts debugging",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0124",
       "status": "todo",
       "title": "Add config validation warnings for invalid env vars",
