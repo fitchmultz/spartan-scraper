@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0120",
-      "status": "todo",
-      "title": "Fix OpenAPI spec default timeout mismatch with implementation",
-      "priority": "medium",
-      "tags": [
-        "bug",
-        "api",
-        "openapi",
-        "spec"
-      ],
-      "scope": [
-        "api/openapi.yaml",
-        "internal/api/scrape.go"
-      ],
-      "evidence": [
-        "openapi.yaml:1014-1042 - ScrapeRequest schema allows timeoutSeconds 5-300 with default 30",
-        "API handler uses manager.DefaultTimeoutSeconds() when 0, which may differ from schema default"
-      ],
-      "plan": [
-        "Ensure OpenAPI default matches implementation default",
-        "Document any intentional differences",
-        "Add test to verify defaults are consistent"
-      ],
-      "notes": [],
-      "request": "scan finding: OpenAPI spec default timeout may not match implementation",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0121",
       "status": "todo",
       "title": "Fix ResearchRequest incremental field not implemented",
