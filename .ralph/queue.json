@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0112",
-      "status": "todo",
-      "title": "Add timeout to MCP waitForJob to prevent infinite loops",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "mcp",
-        "infinite-loop",
-        "go"
-      ],
-      "scope": [
-        "internal/mcp/server.go"
-      ],
-      "evidence": [
-        "mcp/server.go:498-518 - waitForJob busy-loops with 200ms sleep",
-        "No timeout or max iterations could cause infinite loops if job gets stuck in 'running' state"
-      ],
-      "plan": [
-        "Add context with timeout to waitForJob",
-        "Set reasonable max wait time (e.g., 5 minutes)",
-        "Return error on timeout instead of infinite loop"
-      ],
-      "notes": [],
-      "request": "scan finding: waitForJob can infinite loop if job stuck",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0113",
       "status": "todo",
       "title": "Fix retry logic to only retry retryable errors",

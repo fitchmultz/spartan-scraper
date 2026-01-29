@@ -313,7 +313,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
@@ -365,7 +365,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
@@ -424,7 +424,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
@@ -495,9 +495,44 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	}
 }
 
-func waitForJob(ctx context.Context, store *store.Store, id string) error {
+func loadResult(ctx context.Context, store *store.Store, id string) (string, error) {
+	job, err := store.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if job.ResultPath == "" {
+		return "", apperrors.NotFound("no result path")
+	}
+	data, err := os.ReadFile(job.ResultPath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// jobStore defines the minimal interface needed by waitForJob.
+// This interface enables testing without requiring a full store implementation.
+type jobStore interface {
+	Get(ctx context.Context, id string) (model.Job, error)
+}
+
+// waitForJob polls the job store until the job reaches a terminal state (succeeded/failed) or times out.
+//
+// Does NOT handle:
+// - Job execution or state transitions - those are managed by the job worker pool
+// - Retry logic or job restarts - the function only polls and returns
+//
+// Invariants:
+// - Polls every 200ms until the job completes
+// - Has an independent timeout timer that cannot be cancelled by the caller's context
+// - Respects context cancellation/deadline if shorter than the explicit timeout
+// - Returns apperrors.Internal on timeout or job failure
+// - Propagates store errors directly
+func waitForJob(ctx context.Context, store jobStore, id string, timeoutSeconds int) error {
 	pollInterval := 200 * time.Millisecond
+	timeoutDuration := time.Duration(timeoutSeconds) * time.Second
 	timer := time.NewTimer(pollInterval)
+	timeoutTimer := time.After(timeoutDuration)
 	defer timer.Stop()
 
 	for {
@@ -519,23 +554,10 @@ func waitForJob(ctx context.Context, store *store.Store, id string) error {
 			return ctx.Err()
 		case <-timer.C:
 			timer.Reset(pollInterval)
+		case <-timeoutTimer:
+			return apperrors.Internal(fmt.Sprintf("job timed out after %d seconds", timeoutSeconds))
 		}
 	}
-}
-
-func loadResult(ctx context.Context, store *store.Store, id string) (string, error) {
-	job, err := store.Get(ctx, id)
-	if err != nil {
-		return "", err
-	}
-	if job.ResultPath == "" {
-		return "", apperrors.NotFound("no result path")
-	}
-	data, err := os.ReadFile(job.ResultPath)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
 }
 
 func getString(args map[string]interface{}, key string) string {
