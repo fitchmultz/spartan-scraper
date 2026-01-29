@@ -115,3 +115,38 @@ func TestRun(t *testing.T) {
 		t.Errorf("missing expected URLs in results: %v", found)
 	}
 }
+
+func TestWaitGroupOnFullChannel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Root</h1></body></html>`)
+	})
+
+	for i := 1; i <= 20; i++ {
+		i := i
+		mux.HandleFunc(fmt.Sprintf("/p%d", i), func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, `<html><body><h1>Page %d</h1></body></html>`, i)
+		})
+	}
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	req := Request{
+		URL:         srv.URL,
+		MaxDepth:    1,
+		MaxPages:    20,
+		Concurrency: 4,
+		Timeout:     5 * time.Second,
+		DataDir:     t.TempDir(),
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("expected 1 result (only root), got %d", len(results))
+	}
+}

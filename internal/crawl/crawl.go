@@ -346,14 +346,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		visitedMu.Unlock()
 
 		slog.Debug("enqueuing crawl task", "url", apperrors.SanitizeURL(url), "depth", depth)
-		wg.Add(1)
 		select {
 		case tasks <- task{URL: url, Depth: depth}:
+			wg.Add(1)
 		default:
 			slog.Warn("crawl task channel full", "url", apperrors.SanitizeURL(url))
-			wg.Done()
 		case <-ctx.Done():
-			wg.Done()
 		}
 	}
 

@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0111",
-      "status": "todo",
-      "title": "Fix crawl enqueue WaitGroup mismatch on full channel",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "concurrency",
-        "crawl",
-        "go"
-      ],
-      "scope": [
-        "internal/crawl/crawl.go"
-      ],
-      "evidence": [
-        "crawl.go:350-357 - enqueue uses select with default that calls wg.Done() on channel full",
-        "If tasks channel is full, wg.Done() is called but no work is enqueued, causing mismatch where WaitGroup decrements without corresponding work"
-      ],
-      "plan": [
-        "Restructure enqueue to only call wg.Done() after successful channel send",
-        "Or use wg.Add(1) only after successful send",
-        "Add tests for channel full scenarios"
-      ],
-      "notes": [],
-      "request": "scan finding: WaitGroup mismatch when channel is full",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0112",
       "status": "todo",
       "title": "Add timeout to MCP waitForJob to prevent infinite loops",
