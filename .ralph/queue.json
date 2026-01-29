@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0147",
-      "status": "todo",
-      "title": "Refactor internal/mcp package to reduce file sizes",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "mcp"
-      ],
-      "scope": [
-        "internal/mcp/server.go",
-        "internal/mcp/job_management_test.go"
-      ],
-      "evidence": [
-        "internal/mcp/server.go is 667 LOC, approaching the 700 LOC threshold.",
-        "internal/mcp/job_management_test.go is 669 LOC, approaching the 700 LOC threshold.",
-        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
-      ],
-      "plan": [
-        "Analyze server.go to identify logical separation points (e.g., server initialization, request handling, job management).",
-        "Split server.go into smaller source files with clear, focused responsibilities.",
-        "Analyze job_management_test.go to identify logical groupings and split into smaller test files.",
-        "Ensure all functionality and tests are preserved.",
-        "Run make ci to verify the changes don't break anything."
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0148",
       "status": "todo",
       "title": "Refactor internal/research/research.go into smaller modules",
