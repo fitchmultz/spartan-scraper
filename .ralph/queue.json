@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0136",
-      "status": "todo",
-      "title": "Add tests for CLI scrape/crawl/research commands",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "cli"
-      ],
-      "scope": [
-        "internal/cli/scrape"
-      ],
-      "evidence": [
-        "internal/cli/scrape contains command handlers but no *_test.go files."
-      ],
-      "plan": [
-        "Add tests that exercise flag parsing and required-argument validation.",
-        "Cover error paths for invalid extract config and validation failures.",
-        "Use temp dirs/mocks for store/manager dependencies as needed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0137",
       "status": "todo",
       "title": "Add --help + examples (and docstring) to scripts/strip_openapi_todos.test.mjs",
