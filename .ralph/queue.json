@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0150",
-      "status": "todo",
-      "title": "Split internal/auth/types_test.go into smaller test files",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "tests",
-        "auth"
-      ],
-      "scope": [
-        "internal/auth/types_test.go"
-      ],
-      "evidence": [
-        "internal/auth/types_test.go is 648 LOC, exceeding the 400 LOC heuristic.",
-        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
-      ],
-      "plan": [
-        "Analyze types_test.go to identify logical groupings (e.g., by auth operation, validation logic).",
-        "Split into smaller test files with clear, focused responsibilities.",
-        "Ensure all tests are preserved and run successfully after split.",
-        "Run make ci to verify the changes don't break anything."
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0151",
       "status": "todo",
       "title": "Refactor web/src App.tsx and App.test.tsx into smaller components",
