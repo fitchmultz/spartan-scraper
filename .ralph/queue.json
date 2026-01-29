@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0121",
-      "status": "todo",
-      "title": "Fix ResearchRequest incremental field not implemented",
-      "priority": "medium",
-      "tags": [
-        "bug",
-        "api",
-        "research",
-        "go"
-      ],
-      "scope": [
-        "api/openapi.yaml",
-        "internal/research/research.go"
-      ],
-      "evidence": [
-        "openapi.yaml:1119-1126 - ResearchRequest has 'incremental' field",
-        "research.go - Research implementation doesn't use incremental crawling"
-      ],
-      "plan": [
-        "Either implement incremental research support",
-        "Or remove incremental field from ResearchRequest schema if not supported",
-        "Ensure API contract matches implementation"
-      ],
-      "notes": [],
-      "request": "scan finding: ResearchRequest incremental field not implemented",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0122",
       "status": "todo",
       "title": "Add Playwright installation guidance to error messages",

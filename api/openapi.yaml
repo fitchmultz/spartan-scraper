@@ -1121,9 +1121,6 @@ components:
           default: 30
           minimum: 5
           maximum: 300
-        incremental:
-          type: boolean
-          default: false
     Job:
       type: object
       required:

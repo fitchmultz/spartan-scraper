@@ -51,11 +51,6 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incremental := false
-	if req.Incremental != nil {
-		incremental = *req.Incremental
-	}
-
 	extractOpts := extract.ExtractOptions{}
 	if req.Extract != nil {
 		extractOpts = *req.Extract
@@ -97,7 +92,6 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		TimeoutSeconds: timeout,
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
-		Incremental:    incremental,
 		RequestID:      requestID,
 	}
 	job, err := s.manager.CreateJob(r.Context(), spec)

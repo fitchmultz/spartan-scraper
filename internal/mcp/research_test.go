@@ -9,8 +9,7 @@
 //
 // Invariants:
 // - research tool accepts optional pipeline options (defaults to empty)
-// - research tool accepts optional incremental flag (defaults to false)
-// - Schema must include preProcessors, postProcessors, transformers, incremental fields
+// - Schema must include preProcessors, postProcessors, transformers fields
 package mcp
 
 import (
@@ -42,7 +41,6 @@ func TestResearchWithEmptyPipelineOptions(t *testing.T) {
 		30,
 		extract.ExtractOptions{},
 		pipeline.Options{},
-		false,
 		"",
 	)
 	if err != nil {
@@ -54,10 +52,6 @@ func TestResearchWithEmptyPipelineOptions(t *testing.T) {
 		len(pipelineOpts.PostProcessors) != 0 ||
 		len(pipelineOpts.Transformers) != 0 {
 		t.Error("expected empty pipeline options")
-	}
-	inc, _ := job.Params["incremental"].(bool)
-	if inc {
-		t.Error("expected incremental to be false")
 	}
 }
 
@@ -78,7 +72,7 @@ func TestResearchSchema(t *testing.T) {
 	}
 	schema := researchTool.InputSchema
 	props, _ := schema["properties"].(map[string]interface{})
-	for _, field := range []string{"preProcessors", "postProcessors", "transformers", "incremental"} {
+	for _, field := range []string{"preProcessors", "postProcessors", "transformers"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}

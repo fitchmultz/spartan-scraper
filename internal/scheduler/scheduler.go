@@ -247,7 +247,7 @@ func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedul
 		TimeoutSeconds: intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()),
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
-		Incremental:    boolParam(schedule.Params, "incremental"),
+		Incremental:    schedule.Kind != model.KindResearch && boolParam(schedule.Params, "incremental"),
 	}
 
 	job, err := manager.CreateJob(ctx, spec)

@@ -209,7 +209,6 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		extractOpts = decodeExtract(job.Params["extract"])
 		var pipelineOpts pipeline.Options
 		pipelineOpts = decodePipeline(job.Params["pipeline"])
-		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(jobCtx, research.Request{
 			Query:            query,
 			RequestID:        getJobRequestID(job),
@@ -229,7 +228,6 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			RetryBase:        m.retryBase,
 			MaxResponseBytes: m.maxResponseBytes,
 			DataDir:          m.dataDir,
-			Incremental:      incremental,
 			Store:            m.store,
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,

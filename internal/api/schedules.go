@@ -99,7 +99,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		if req.Pipeline != nil {
 			params["pipeline"] = *req.Pipeline
 		}
-		if req.Incremental != nil {
+		if req.Incremental != nil && req.Kind != "research" {
 			params["incremental"] = *req.Incremental
 		}
 

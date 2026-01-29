@@ -194,7 +194,7 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "research",
 			Description: "Deep research across multiple sources",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "preProcessors": "array", "postProcessors": "array", "transformers": "array"}),
 		},
 		{
 			Name:        "job_status",
@@ -415,7 +415,6 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			TimeoutSeconds: timeout,
 			Extract:        extractOpts,
 			Pipeline:       pipelineOpts,
-			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {

@@ -398,16 +398,6 @@ func TestIncrementalModePersistence(t *testing.T) {
 			wantResult: true,
 		},
 		{
-			name: "research with incremental enabled",
-			kind: model.KindResearch,
-			params: map[string]interface{}{
-				"query":       "test",
-				"urls":        []string{"https://example.com"},
-				"incremental": true,
-			},
-			wantResult: true,
-		},
-		{
 			name: "scrape with incremental disabled",
 			kind: model.KindScrape,
 			params: map[string]interface{}{

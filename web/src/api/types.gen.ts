@@ -194,7 +194,6 @@ export type ResearchRequest = {
     extract?: ExtractOptions;
     pipeline?: PipelineOptions;
     timeoutSeconds?: number;
-    incremental?: boolean;
 };
 
 export type Job = {

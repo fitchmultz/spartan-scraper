@@ -223,7 +223,6 @@ export function buildResearchRequest(
   preProcessors: string,
   postProcessors: string,
   transformers: string,
-  incremental: boolean,
 ): ResearchRequest {
   return {
     query,
@@ -237,7 +236,6 @@ export function buildResearchRequest(
     auth,
     extract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
-    incremental: incremental || undefined,
   };
 }
 

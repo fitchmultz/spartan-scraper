@@ -46,7 +46,6 @@ type Request struct {
 	RetryBase        time.Duration
 	MaxResponseBytes int64
 	DataDir          string
-	Incremental      bool
 	Store            scrape.CrawlStateStore
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
@@ -116,7 +115,6 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				RetryBase:        req.RetryBase,
 				MaxResponseBytes: req.MaxResponseBytes,
 				DataDir:          req.DataDir,
-				Incremental:      req.Incremental,
 				Store:            req.Store,
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,
@@ -154,7 +152,6 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				RetryBase:        req.RetryBase,
 				MaxResponseBytes: req.MaxResponseBytes,
 				DataDir:          req.DataDir,
-				Incremental:      req.Incremental,
 				Store:            req.Store,
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,

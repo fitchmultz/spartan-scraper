@@ -63,8 +63,6 @@ interface ResearchFormProps {
   setPostProcessors: (value: string) => void;
   transformers: string;
   setTransformers: (value: string) => void;
-  incremental: boolean;
-  setIncremental: (value: boolean) => void;
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").ResearchRequest) => Promise<void>;
   loading: boolean;
@@ -113,8 +111,6 @@ export function ResearchForm({
   setPostProcessors,
   transformers,
   setTransformers,
-  incremental,
-  setIncremental,
   profiles,
   onSubmit,
   loading,
@@ -159,7 +155,6 @@ export function ResearchForm({
       preProcessors,
       postProcessors,
       transformers,
-      incremental,
     );
     await onSubmit(request);
   };
@@ -268,8 +263,6 @@ export function ResearchForm({
         setPostProcessors={setPostProcessors}
         transformers={transformers}
         setTransformers={setTransformers}
-        incremental={incremental}
-        setIncremental={setIncremental}
         inputPrefix="research"
       />
       <div style={{ marginTop: 16, display: "flex", gap: 12 }}>

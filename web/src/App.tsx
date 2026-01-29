@@ -643,8 +643,6 @@ export function App() {
           setPostProcessors={setPostProcessors}
           transformers={transformers}
           setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
           profiles={profiles}
           onSubmit={handleSubmitResearch}
           loading={loading}

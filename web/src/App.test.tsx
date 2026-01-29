@@ -375,7 +375,6 @@ describe("buildResearchRequest with pipeline options", () => {
       "sanitize,cleanup",
       "",
       "csv-export",
-      true,
     );
 
     expect(request).toMatchObject({
@@ -386,7 +385,6 @@ describe("buildResearchRequest with pipeline options", () => {
         postProcessors: undefined,
         transformers: ["csv-export"],
       },
-      incremental: true,
     });
   });
 });

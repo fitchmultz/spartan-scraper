@@ -141,9 +141,6 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	if !strings.Contains(mcpOut, `"transformers"`) {
 		t.Fatalf("expected transformers in tools schema")
 	}
-	if !strings.Contains(mcpOut, `"incremental"`) {
-		t.Fatalf("expected incremental in tools schema")
-	}
 
 	mcpCallOut := runMCP(t, env, []string{
 		`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com","preProcessors":["prep1","prep2"],"postProcessors":["post1"],"transformers":["trans1"],"incremental":true}}}`,

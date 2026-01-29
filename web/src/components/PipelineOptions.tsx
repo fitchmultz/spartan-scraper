@@ -20,8 +20,8 @@ interface PipelineOptionsProps {
   setPostProcessors: (value: string) => void;
   transformers: string;
   setTransformers: (value: string) => void;
-  incremental: boolean;
-  setIncremental: (value: boolean) => void;
+  incremental?: boolean;
+  setIncremental?: (value: boolean) => void;
   inputPrefix: string;
 }
 
@@ -111,14 +111,16 @@ export function PipelineOptions({
             onChange={(event) => setTransformers(event.target.value)}
             placeholder="json-clean, csv-export"
           />
-          <label style={{ marginTop: 12 }}>
-            <input
-              type="checkbox"
-              checked={incremental}
-              onChange={(event) => setIncremental(event.target.checked)}
-            />{" "}
-            Incremental (ETag/Hash tracking)
-          </label>
+          {incremental !== undefined && setIncremental && (
+            <label style={{ marginTop: 12 }}>
+              <input
+                type="checkbox"
+                checked={incremental}
+                onChange={(event) => setIncremental(event.target.checked)}
+              />{" "}
+              Incremental (ETag/Hash tracking)
+            </label>
+          )}
         </div>
       </details>
     </>

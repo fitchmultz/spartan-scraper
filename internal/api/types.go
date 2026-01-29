@@ -75,7 +75,6 @@ type ResearchRequest struct {
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
 	Pipeline       *pipeline.Options       `json:"pipeline"`
-	Incremental    *bool                   `json:"incremental"`
 }
 
 // ScheduleRequest represents a request to add a scheduled job.

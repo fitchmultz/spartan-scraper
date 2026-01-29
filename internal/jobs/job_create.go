@@ -71,7 +71,7 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 }
 
 // CreateResearchJob creates and persists a new research job.
-func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string) (model.Job, error) {
+func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, requestID string) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -79,18 +79,17 @@ func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []st
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
-			"query":       query,
-			"urls":        urls,
-			"maxDepth":    maxDepth,
-			"maxPages":    maxPages,
-			"headless":    headless,
-			"playwright":  usePlaywright,
-			"auth":        auth,
-			"extract":     extractOpts,
-			"pipeline":    pipelineOpts,
-			"timeout":     timeoutSeconds,
-			"incremental": incremental,
-			"requestID":   requestID,
+			"query":      query,
+			"urls":       urls,
+			"maxDepth":   maxDepth,
+			"maxPages":   maxPages,
+			"headless":   headless,
+			"playwright": usePlaywright,
+			"auth":       auth,
+			"extract":    extractOpts,
+			"pipeline":   pipelineOpts,
+			"timeout":    timeoutSeconds,
+			"requestID":  requestID,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -115,7 +114,7 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 	case model.KindCrawl:
 		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID)
 	case model.KindResearch:
-		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID)
+		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID)
 	default:
 		return model.Job{}, fmt.Errorf("unknown job kind: %s", spec.Kind)
 	}
