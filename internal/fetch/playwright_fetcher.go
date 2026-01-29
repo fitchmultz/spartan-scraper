@@ -128,8 +128,11 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 	slog.Debug("initializing Playwright")
 	pw, err := playwright.Run()
 	if err != nil {
-		slog.Error("failed to run Playwright", "error", err)
-		return err
+		return apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to initialize Playwright: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps' (see README.md for details)",
+			err,
+		)
 	}
 
 	if err := checkCtx(); err != nil {
@@ -143,9 +146,12 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 		Headless: playwright.Bool(headless),
 	})
 	if err != nil {
-		slog.Error("failed to launch browser", "error", err)
 		pw.Stop()
-		return err
+		return apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to launch Playwright browser: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps' (see README.md for details)",
+			err,
+		)
 	}
 
 	f.pw = pw

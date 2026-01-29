@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0122",
-      "status": "todo",
-      "title": "Add Playwright installation guidance to error messages",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "fetch",
-        "playwright",
-        "go"
-      ],
-      "scope": [
-        "internal/fetch/playwright_fetcher.go"
-      ],
-      "evidence": [
-        "playwright_fetcher.go:129-133,142-148 - Playwright initialization errors don't provide actionable guidance",
-        "Users get generic 'failed to run Playwright' without instructions on how to install drivers"
-      ],
-      "plan": [
-        "Add specific error messages for missing Playwright installation",
-        "Include installation command in error: 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps'",
-        "Add link to documentation"
-      ],
-      "notes": [],
-      "request": "scan finding: Playwright errors lack installation guidance",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0123",
       "status": "todo",
       "title": "Fix path redaction regex being overly aggressive",
