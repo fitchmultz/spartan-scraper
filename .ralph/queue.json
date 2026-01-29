@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0149",
-      "status": "todo",
-      "title": "Refactor internal/ui/tui/tui.go into smaller modules",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "ui"
-      ],
-      "scope": [
-        "internal/ui/tui/tui.go"
-      ],
-      "evidence": [
-        "internal/ui/tui/tui.go is 617 LOC, exceeding the 400 LOC heuristic.",
-        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
-      ],
-      "plan": [
-        "Analyze tui.go to identify logical separation points (e.g., view rendering, event handling, state management).",
-        "Split into smaller source files with clear, focused responsibilities.",
-        "Ensure all functionality is preserved.",
-        "Run make ci to verify the changes don't break anything."
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0150",
       "status": "todo",
       "title": "Split internal/auth/types_test.go into smaller test files",
