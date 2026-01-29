@@ -1,4 +1,449 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0126",
+      "status": "todo",
+      "title": "Redact job error messages before storing and surfacing",
+      "priority": "high",
+      "tags": [
+        "security",
+        "errors",
+        "jobs",
+        "cli",
+        "mcp"
+      ],
+      "scope": [
+        "internal/jobs/job_run.go",
+        "internal/cli/common/results.go",
+        "internal/mcp/server.go"
+      ],
+      "evidence": [
+        "internal/jobs/job_run.go updateStatusWithTimeout stores err.Error() into job status via UpdateStatus.",
+        "internal/cli/common/results.go waitForJob formats job.Error directly into apperrors.Internal messages.",
+        "internal/mcp/server.go waitForJob builds fmt.Errorf(\"job failed: %s\", job.Error) without redaction."
+      ],
+      "plan": [
+        "Redact job error strings with apperrors.SafeMessage before persisting to job.Error.",
+        "Update CLI/MCP waitForJob error construction to use sanitized job.Error values.",
+        "Add tests that assert secrets/paths are redacted in stored and surfaced job errors."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0127",
+      "status": "todo",
+      "title": "Fix MCP waitForJob timeout=0 semantics and status constants",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "mcp",
+        "jobs"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/mcp/waitforjob_test.go",
+        "internal/model/job.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go waitForJob uses time.After(time.Duration(timeoutSeconds)*time.Second) with no guard for timeoutSeconds==0.",
+        "internal/validate/validate.go ValidateTimeout treats 0 as valid default, so timeout=0 can reach waitForJob.",
+        "internal/mcp/server.go waitForJob compares status strings \"succeeded\"/\"failed\" instead of model.Status constants."
+      ],
+      "plan": [
+        "Treat timeoutSeconds <= 0 as no timeout (skip time.After, rely on context cancellation).",
+        "Switch waitForJob status comparisons to model.StatusSucceeded/StatusFailed constants.",
+        "Add tests for timeoutSeconds=0 and ensure existing waitForJob tests still pass."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0128",
+      "status": "todo",
+      "title": "Align JobSpec.Validate with validate.ValidateJob semantics",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "validation",
+        "jobs"
+      ],
+      "scope": [
+        "internal/jobs/spec.go",
+        "internal/validate/request.go",
+        "internal/cli/scrape/scrape.go"
+      ],
+      "evidence": [
+        "internal/jobs/spec.go Validate rejects TimeoutSeconds <= 0 and does not validate MaxDepth/MaxPages/URLs beyond presence.",
+        "internal/validate/request.go documents \"0 means default\" for MaxDepth/MaxPages/Timeout and validates URL formats.",
+        "internal/cli/scrape/scrape.go runs validate.ValidateJob before CreateJob, so --timeout 0 passes validation but CreateJob fails."
+      ],
+      "plan": [
+        "Update JobSpec.Validate to use validate.ValidateJob-style rules (0 allowed, validate maxDepth/maxPages/URLs).",
+        "Remove timeout>0 hard check or make it consistent with defaulting behavior.",
+        "Add/adjust tests to cover timeout=0, invalid maxDepth/maxPages, and invalid URLs."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0129",
+      "status": "todo",
+      "title": "Normalize MCP tool errors to apperrors kinds",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "mcp",
+        "api"
+      ],
+      "scope": [
+        "internal/mcp/server.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go job_export returns fmt.Errorf(\"job not found\")/\"failed to read result file\"/\"failed to export job\".",
+        "internal/mcp/server.go default case returns fmt.Errorf(\"unknown tool: %s\")."
+      ],
+      "plan": [
+        "Classify job_export errors with apperrors.NotFound/Validation/Internal as appropriate.",
+        "Classify unknown tool errors with apperrors.Validation or apperrors.NotFound per MCP contract.",
+        "Update MCP tests to assert error kinds and messages are stable."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0130",
+      "status": "todo",
+      "title": "Use apperrors for store parse/prepare failures",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "store",
+        "api"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "internal/store/store.go returns fmt.Errorf for created_at/updated_at parse failures and params unmarshal errors.",
+        "internal/store/store.go returns fmt.Errorf for prepare statement failures in Open."
+      ],
+      "plan": [
+        "Wrap store failures with apperrors.Internal (and preserve original error via Wrap).",
+        "Ensure user-facing surfaces use apperrors.SafeMessage for logging where needed.",
+        "Update store tests to assert error kinds for parse and prepare failures."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0131",
+      "status": "todo",
+      "title": "Classify scheduler errors with apperrors",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "scheduler"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go"
+      ],
+      "evidence": [
+        "internal/scheduler/scheduler.go returns fmt.Errorf for file watcher creation and schedule load failures.",
+        "internal/scheduler/scheduler.go enqueue wraps auth resolution with fmt.Errorf(\"failed to resolve auth\")."
+      ],
+      "plan": [
+        "Replace fmt.Errorf with apperrors.Wrap/Validation/Internal as appropriate.",
+        "Add tests for scheduler error kinds (watcher failure, auth resolution failure).",
+        "Ensure scheduler callers surface apperrors.SafeMessage where needed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0132",
+      "status": "todo",
+      "title": "Use apperrors for auth profile merge errors",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "auth"
+      ],
+      "scope": [
+        "internal/auth/merge.go"
+      ],
+      "evidence": [
+        "internal/auth/merge.go returns errors.New(\"profile name is required\") and fmt.Errorf for cycle/not found cases."
+      ],
+      "plan": [
+        "Replace raw errors with apperrors.Validation for invalid input and apperrors.NotFound for missing profiles.",
+        "Wrap cycle detection errors with apperrors.Validation or apperrors.Internal per desired API behavior.",
+        "Update auth merge tests to assert error kinds and messages."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0133",
+      "status": "todo",
+      "title": "Classify scrape output pipeline errors",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "scrape",
+        "pipeline"
+      ],
+      "scope": [
+        "internal/scrape/scrape.go"
+      ],
+      "evidence": [
+        "internal/scrape/scrape.go applyScrapeOutputPipeline returns fmt.Errorf for marshal errors and pipeline output type mismatches."
+      ],
+      "plan": [
+        "Wrap marshal/type mismatch errors with apperrors.Internal and safe messages.",
+        "Add tests for pipeline output type mismatch behavior.",
+        "Ensure callers propagate the classified errors correctly."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0134",
+      "status": "todo",
+      "title": "Classify research output pipeline errors and handle marshal failures",
+      "priority": "medium",
+      "tags": [
+        "errors",
+        "research",
+        "pipeline"
+      ],
+      "scope": [
+        "internal/research/research.go"
+      ],
+      "evidence": [
+        "internal/research/research.go applyResearchOutputPipeline ignores json.Marshal errors (raw, _ := json.Marshal(result)).",
+        "internal/research/research.go returns fmt.Errorf for pipeline output type mismatch."
+      ],
+      "plan": [
+        "Check and handle json.Marshal errors, returning apperrors.Internal with safe message.",
+        "Wrap output type mismatch with apperrors.Internal.",
+        "Add tests covering marshal failure path and type mismatch."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0135",
+      "status": "todo",
+      "title": "Add tests for internal/cli/common helpers",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "cli"
+      ],
+      "scope": [
+        "internal/cli/common"
+      ],
+      "evidence": [
+        "internal/cli/common contains auth/flags/helpers but no *_test.go files."
+      ],
+      "plan": [
+        "Add unit tests for StringSliceFlag.ToMap parsing and header/cookie parsing.",
+        "Add tests for BuildTokens and ParseTokenKind edge cases.",
+        "Ensure tests cover failure/empty input handling."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0136",
+      "status": "todo",
+      "title": "Add tests for CLI scrape/crawl/research commands",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "cli"
+      ],
+      "scope": [
+        "internal/cli/scrape"
+      ],
+      "evidence": [
+        "internal/cli/scrape contains command handlers but no *_test.go files."
+      ],
+      "plan": [
+        "Add tests that exercise flag parsing and required-argument validation.",
+        "Cover error paths for invalid extract config and validation failures.",
+        "Use temp dirs/mocks for store/manager dependencies as needed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0137",
+      "status": "todo",
+      "title": "Add --help + examples (and docstring) to scripts/strip_openapi_todos.test.mjs",
+      "priority": "medium",
+      "tags": [
+        "scripts",
+        "docs",
+        "tests"
+      ],
+      "scope": [
+        "scripts/strip_openapi_todos.test.mjs"
+      ],
+      "evidence": [
+        "scripts/strip_openapi_todos.test.mjs has a shebang and is executable but does not implement --help or usage output.",
+        "scripts/strip_openapi_todos.test.mjs lacks a top-of-file docstring describing its purpose and non-goals."
+      ],
+      "plan": [
+        "Add a module docstring describing the test runner's responsibility, non-goals, and assumptions.",
+        "Implement --help/-h output with usage and examples (or drop executable bit if it's not meant to be run directly).",
+        "Add a small smoke test to ensure --help exits successfully."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0138",
+      "status": "todo",
+      "title": "Wire strip_openapi_todos script tests into CI",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "ci",
+        "scripts"
+      ],
+      "scope": [
+        "Makefile",
+        "scripts/strip_openapi_todos.test.mjs",
+        "web/package.json"
+      ],
+      "evidence": [
+        "Makefile test/test-ci targets only run go test and web tests; scripts/strip_openapi_todos.test.mjs is not invoked.",
+        "web/package.json has no script that runs scripts/strip_openapi_todos.test.mjs."
+      ],
+      "plan": [
+        "Add a script target (pnpm or Makefile) to run scripts/strip_openapi_todos.test.mjs.",
+        "Ensure make test and make test-ci include the script test without adding long-running steps.",
+        "Update docs if a new command is added."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0139",
+      "status": "todo",
+      "title": "Add module docstrings to apperrors files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "style"
+      ],
+      "scope": [
+        "internal/apperrors/apperrors.go",
+        "internal/apperrors/sanitize.go",
+        "internal/apperrors/sentinels.go"
+      ],
+      "evidence": [
+        "internal/apperrors/apperrors.go begins with `package apperrors` and has no file-level docstring.",
+        "internal/apperrors/sanitize.go and internal/apperrors/sentinels.go also start with package declarations without docstrings."
+      ],
+      "plan": [
+        "Add top-of-file docstrings describing responsibilities, non-goals, and invariants.",
+        "Ensure docstrings align with AGENTS.md requirements for every code file.",
+        "Run gofmt/formatters after updates."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0140",
+      "status": "todo",
+      "title": "Add module docstrings to jobs and manage CLI files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "style"
+      ],
+      "scope": [
+        "internal/jobs/job_create.go",
+        "internal/jobs/job_run.go",
+        "internal/jobs/helpers.go",
+        "internal/cli/manage/pipeline_js_mgmt.go",
+        "internal/cli/manage/render_profiles.go"
+      ],
+      "evidence": [
+        "internal/jobs/job_create.go, job_run.go, and helpers.go start with package declarations without file-level docstrings.",
+        "internal/cli/manage/pipeline_js_mgmt.go and render_profiles.go start with package declarations without docstrings."
+      ],
+      "plan": [
+        "Add file docstrings documenting responsibility, non-goals, and invariants for each listed file.",
+        "Keep docstrings concise and aligned with AGENTS.md expectations.",
+        "Run gofmt if needed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T14:30:35Z",
+      "updated_at": "2026-01-29T14:30:35Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
