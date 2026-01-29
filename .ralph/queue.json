@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0139",
-      "status": "todo",
-      "title": "Add module docstrings to apperrors files",
-      "priority": "low",
-      "tags": [
-        "docs",
-        "style"
-      ],
-      "scope": [
-        "internal/apperrors/apperrors.go",
-        "internal/apperrors/sanitize.go",
-        "internal/apperrors/sentinels.go"
-      ],
-      "evidence": [
-        "internal/apperrors/apperrors.go begins with `package apperrors` and has no file-level docstring.",
-        "internal/apperrors/sanitize.go and internal/apperrors/sentinels.go also start with package declarations without docstrings."
-      ],
-      "plan": [
-        "Add top-of-file docstrings describing responsibilities, non-goals, and invariants.",
-        "Ensure docstrings align with AGENTS.md requirements for every code file.",
-        "Run gofmt/formatters after updates."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0140",
       "status": "todo",
       "title": "Add module docstrings to jobs and manage CLI files",

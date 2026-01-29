@@ -1,5 +1,34 @@
 package apperrors
 
+// Package apperrors provides utilities for redacting sensitive information from error messages and URLs.
+//
+// This package defines:
+// - RedactString(): Removes obvious secret-looking substrings and filesystem paths
+// - SafeMessage(): Returns a redacted, user-facing message for any error
+// - SanitizeURL(): Removes query parameters, fragments, and userinfo from URLs
+//
+// This package is responsible for:
+// - Preventing accidental exposure of secrets in logs and user-facing error messages
+// - Detecting and redacting common secret patterns (tokens, API keys, passwords)
+// - Redacting filesystem paths that may contain user-specific information
+//
+// This package does NOT handle:
+// - Complete secret detection (cannot catch all possible secrets)
+// - Context-aware redaction (e.g., custom secrets per tenant)
+// - Structured redaction of complex data structures
+//
+// Invariants:
+// - RedactString() returns the original string if no patterns match
+// - SafeMessage() returns an empty string for nil errors
+// - SanitizeURL() returns the original string unchanged if URL parsing fails
+// - All redaction functions are safe to call on empty or malformed input
+//
+// Supported redaction patterns:
+// - Authorization tokens (Bearer, Basic)
+// - Key-value secrets (password=, token=, api_key=, etc.)
+// - JSON fields ("password":"...", "apiKey":"...", etc.)
+// - Filesystem paths (Unix and Windows, including file:// URLs)
+
 import (
 	"net/url"
 	"regexp"

@@ -1,5 +1,30 @@
 package apperrors
 
+// Package apperrors provides classified error handling infrastructure.
+//
+// This package defines:
+// - Kind types for coarse-grained error classification (validation, not_found, permission, internal, etc.)
+// - Error struct that wraps underlying errors with a Kind and a safe, user-facing message
+// - Factory functions (New, Wrap, WithKind) for creating classified errors
+// - Helper functions (Validation, NotFound, Permission, Internal, etc.) for quick error creation
+// - Inspection functions (KindOf, IsKind) for checking error types
+//
+// This package is responsible for:
+// - Separating user-facing messages from debugging information
+// - Preventing accidental exposure of sensitive details in error messages
+// - Providing a consistent error classification system for HTTP status mapping
+//
+// This package does NOT handle:
+// - Logging or error reporting (use SafeMessage() from sanitize.go for user-facing output)
+// - HTTP response formatting (use writeError() from internal/api/util.go)
+// - Error localization or i18n
+//
+// Invariants:
+// - Error.Error() returns only Msg if set, never appends Err.Error() (prevents secret leaks)
+// - Err is always preserved via Unwrap() for debugging and errors.Is()/errors.As()
+// - KindOf() returns KindInternal as a safe default if no Kind is found
+// - IsKind() and KindOf() traverse the error chain using errors.As()
+
 import (
 	"errors"
 )
