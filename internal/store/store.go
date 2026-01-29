@@ -236,6 +236,39 @@ func (s *Store) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
+// columnExists returns true if the specified column exists in the given table.
+// Uses PRAGMA table_info to query schema information.
+func columnExists(db *sql.DB, tableName, columnName string) (bool, error) {
+	query := fmt.Sprintf("PRAGMA table_info(%s)", tableName)
+	rows, err := db.Query(query)
+	if err != nil {
+		return false, apperrors.Wrap(apperrors.KindInternal,
+			fmt.Sprintf("failed to query table schema for %s", tableName), err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, datatype string
+		var notnull, pk int
+		var dfltValue sql.NullString
+		if err := rows.Scan(&cid, &name, &datatype, &notnull, &dfltValue, &pk); err != nil {
+			return false, apperrors.Wrap(apperrors.KindInternal,
+				"failed to scan table_info row", err)
+		}
+		if name == columnName {
+			return true, nil
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return false, apperrors.Wrap(apperrors.KindInternal,
+			"error iterating table_info results", err)
+	}
+
+	return false, nil
+}
+
 func (s *Store) init() error {
 	_, err := s.db.Exec(`
 		create table if not exists jobs (
@@ -266,9 +299,33 @@ func (s *Store) init() error {
 		return err
 	}
 
-	// Add missing columns if they don't exist (poor man's migration)
-	_, _ = s.db.Exec("alter table crawl_states add column depth integer")
-	_, _ = s.db.Exec("alter table crawl_states add column job_id text")
+	// Migration: add depth and job_id columns to crawl_states if they don't exist
+	// These columns were added in a later version; existing databases need migration.
+	depthExists, err := columnExists(s.db, "crawl_states", "depth")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for depth column migration", err)
+	}
+	if !depthExists {
+		_, err = s.db.Exec("alter table crawl_states add column depth integer")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add depth column to crawl_states", err)
+		}
+	}
+
+	jobIDExists, err := columnExists(s.db, "crawl_states", "job_id")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for job_id column migration", err)
+	}
+	if !jobIDExists {
+		_, err = s.db.Exec("alter table crawl_states add column job_id text")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add job_id column to crawl_states", err)
+		}
+	}
 
 	return nil
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestStoreJobs(t *testing.T) {
@@ -682,5 +685,166 @@ func TestStoreCountCrawlStates(t *testing.T) {
 	}
 	if count != 3 {
 		t.Errorf("expected 3 crawl states, got %d", count)
+	}
+}
+
+func TestMigrationFreshDatabase(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	// Verify both columns exist after init on fresh database
+	depthExists, err := columnExists(s.db, "crawl_states", "depth")
+	if err != nil {
+		t.Fatalf("columnExists(depth) failed: %v", err)
+	}
+	if !depthExists {
+		t.Error("depth column should exist after init")
+	}
+
+	jobIDExists, err := columnExists(s.db, "crawl_states", "job_id")
+	if err != nil {
+		t.Fatalf("columnExists(job_id) failed: %v", err)
+	}
+	if !jobIDExists {
+		t.Error("job_id column should exist after init")
+	}
+
+	// Verify columns work correctly with insert/query
+	ctx := context.Background()
+	state := model.CrawlState{
+		URL:          "http://example.com",
+		ETag:         "tag",
+		LastModified: "Mon, 01 Jan 2026 00:00:00 GMT",
+		ContentHash:  "hash",
+		LastScraped:  time.Now(),
+		Depth:        2,
+		JobID:        "test-job",
+	}
+
+	if err := s.UpsertCrawlState(ctx, state); err != nil {
+		t.Fatalf("UpsertCrawlState failed: %v", err)
+	}
+
+	got, err := s.GetCrawlState(ctx, "http://example.com")
+	if err != nil {
+		t.Fatalf("GetCrawlState failed: %v", err)
+	}
+	if got.Depth != 2 {
+		t.Errorf("expected Depth 2, got %d", got.Depth)
+	}
+	if got.JobID != "test-job" {
+		t.Errorf("expected JobID test-job, got %s", got.JobID)
+	}
+}
+
+func TestMigrationIdempotent(t *testing.T) {
+	dataDir := t.TempDir()
+
+	// First open - creates fresh database with columns
+	s1, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("First Open failed: %v", err)
+	}
+
+	// Insert data
+	ctx := context.Background()
+	state := model.CrawlState{
+		URL:         "http://example.com",
+		ETag:        "tag1",
+		LastScraped: time.Now(),
+		Depth:       3,
+		JobID:       "job-1",
+	}
+	if err := s1.UpsertCrawlState(ctx, state); err != nil {
+		t.Fatalf("UpsertCrawlState failed: %v", err)
+	}
+	s1.Close()
+
+	// Second open - re-init should not fail (idempotent)
+	s2, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Second Open failed: %v", err)
+	}
+	defer s2.Close()
+
+	// Verify columns still exist and work
+	depthExists, err := columnExists(s2.db, "crawl_states", "depth")
+	if err != nil {
+		t.Fatalf("columnExists(depth) failed on reopen: %v", err)
+	}
+	if !depthExists {
+		t.Error("depth column should still exist after reopen")
+	}
+
+	jobIDExists, err := columnExists(s2.db, "crawl_states", "job_id")
+	if err != nil {
+		t.Fatalf("columnExists(job_id) failed on reopen: %v", err)
+	}
+	if !jobIDExists {
+		t.Error("job_id column should still exist after reopen")
+	}
+
+	// Verify data is still intact
+	got, err := s2.GetCrawlState(ctx, "http://example.com")
+	if err != nil {
+		t.Fatalf("GetCrawlState failed after reopen: %v", err)
+	}
+	if got.Depth != 3 {
+		t.Errorf("expected Depth 3 after reopen, got %d", got.Depth)
+	}
+	if got.JobID != "job-1" {
+		t.Errorf("expected JobID job-1 after reopen, got %s", got.JobID)
+	}
+}
+
+func TestMigrationAlterFailure(t *testing.T) {
+	dataDir := t.TempDir()
+	dbPath := filepath.Join(dataDir, "jobs.db")
+
+	// Create initial database without the new columns
+	// We'll manually create the old schema to simulate migration
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open failed: %v", err)
+	}
+	_, err = db.Exec(`
+		create table jobs (
+			id text primary key,
+			kind text not null,
+			status text not null,
+			created_at text not null,
+			updated_at text not null,
+			params text,
+			result_path text,
+			error text
+		);
+
+		create table crawl_states (
+			url text primary key,
+			etag text,
+			last_modified text,
+			content_hash text,
+			last_scraped text
+		);
+	`)
+	if err != nil {
+		t.Fatalf("Failed to create old schema: %v", err)
+	}
+	db.Close()
+
+	// Make database read-only to simulate ALTER TABLE failure
+	if err := os.Chmod(dbPath, 0o444); err != nil {
+		t.Fatalf("Failed to make database read-only: %v", err)
+	}
+	defer os.Chmod(dbPath, 0o644) // Restore permissions
+
+	// Open should fail during migration when ALTER TABLE fails
+	_, err = Open(dataDir)
+	if err == nil {
+		t.Error("Open should return error when ALTER TABLE fails")
 	}
 }
