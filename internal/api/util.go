@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
@@ -183,4 +185,62 @@ func extractID(path, resource string) string {
 		}
 	}
 	return ""
+}
+
+// recoveryMiddleware recovers from panics in handlers and returns a 500 response.
+// It logs the panic with stack trace.
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				stack := debug.Stack()
+				slog.Error("panic recovered",
+					"method", r.Method,
+					"path", r.URL.Path,
+					"panic", fmt.Sprintf("%v", rec),
+					"stack", string(stack),
+				)
+				writeError(w, apperrors.Internal("internal server error"))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// loggingMiddleware logs incoming requests and responses with duration and status code.
+// It uses structured logging with slog for consistent log format.
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		slog.Info("request started",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"query", r.URL.RawQuery,
+			"remote_addr", r.RemoteAddr,
+		)
+
+		next.ServeHTTP(lrw, r)
+
+		duration := time.Since(start)
+		slog.Info("request completed",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", lrw.statusCode,
+			"duration_ms", duration.Milliseconds(),
+		)
+	})
+}
+
+// loggingResponseWriter wraps http.ResponseWriter to capture the status code.
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
 }

@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0114",
-      "status": "todo",
-      "title": "Add centralized middleware chain to API server",
-      "priority": "high",
-      "tags": [
-        "design",
-        "api",
-        "middleware",
-        "go"
-      ],
-      "scope": [
-        "internal/api/server.go"
-      ],
-      "evidence": [
-        "server.go:24-41 - Route handlers registered without middleware chain",
-        "No centralized logging, recovery, or metrics middleware - panics in handlers will crash the server"
-      ],
-      "plan": [
-        "Create middleware chain with logging, recovery, and metrics",
-        "Add panic recovery middleware to prevent server crashes",
-        "Add request logging middleware",
-        "Apply middleware to all routes"
-      ],
-      "notes": [],
-      "request": "scan finding: no middleware chain for cross-cutting concerns",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0115",
       "status": "todo",
       "title": "Fix adaptive fetcher RenderProfileStore loaded on every request",

@@ -1,9 +1,12 @@
 // Package api provides unit tests for utility functions.
-// Tests contentTypeForExtension helper function.
+// Tests contentTypeForExtension helper function and middleware.
 // Does NOT test API handlers or integration behavior.
 package api
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -62,4 +65,104 @@ func TestExtractID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecoveryMiddleware(t *testing.T) {
+	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("test panic")
+	})
+
+	handler := recoveryMiddleware(panicHandler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	assertNotPanics(t, func() {
+		handler.ServeHTTP(rr, req)
+	})
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", status)
+	}
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "\"error\"") {
+		t.Errorf("expected error response, got: %s", body)
+	}
+}
+
+func TestRecoveryMiddlewareNormalHandler(t *testing.T) {
+	normalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	handler := recoveryMiddleware(normalHandler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", status)
+	}
+
+	if body := rr.Body.String(); body != "ok" {
+		t.Errorf("expected body 'ok', got: %s", body)
+	}
+}
+
+func TestLoggingMiddleware(t *testing.T) {
+	normalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("created"))
+	})
+
+	handler := loggingMiddleware(normalHandler)
+
+	req := httptest.NewRequest("POST", "/test?foo=bar", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", status)
+	}
+
+	if body := rr.Body.String(); body != "created" {
+		t.Errorf("expected body 'created', got: %s", body)
+	}
+}
+
+func TestMiddlewareChain(t *testing.T) {
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	})
+
+	handler := loggingMiddleware(recoveryMiddleware(finalHandler))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", status)
+	}
+
+	if body := rr.Body.String(); body != "success" {
+		t.Errorf("expected body 'success', got: %s", body)
+	}
+}
+
+func assertNotPanics(t *testing.T, f func()) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("expected no panic, got %v", r)
+		}
+	}()
+	f()
 }

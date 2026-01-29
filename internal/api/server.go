@@ -37,5 +37,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
 	mux.HandleFunc("/v1/templates", s.handleTemplates)
 	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
-	return mux
+
+	handler := loggingMiddleware(recoveryMiddleware(mux))
+	return handler
 }
