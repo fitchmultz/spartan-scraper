@@ -2,6 +2,405 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0141",
+      "status": "doing",
+      "title": "Split internal/extract/types_test.go into smaller test files",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tests",
+        "extract"
+      ],
+      "scope": [
+        "internal/extract/types_test.go"
+      ],
+      "evidence": [
+        "internal/extract/types_test.go is 1049 LOC, exceeding the 1000 LOC threshold.",
+        "AGENTS.md states files exceeding ~1000 LOC are presumed to be mis-scoped and MUST be split unless proven otherwise.",
+        "File contains 12 main test functions testing different types: FieldValue, ExtractOptions, Template, SelectorRule, JSONLDRule, RegexRule, NormalizeSpec, Extracted, NormalizedDocument, ValidationResult, Schema, and TemplateRegistry."
+      ],
+      "plan": [
+        "Analyze the 12 test functions in types_test.go to group by related types (e.g., rule types, document types, template types).",
+        "Split into 3-4 smaller test files with clear, focused responsibilities (e.g., types_fields_test.go, types_rules_test.go, types_documents_test.go, types_templates_test.go).",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:39:20.030221000Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0142",
+      "status": "todo",
+      "title": "Split internal/store/store_test.go into smaller test files",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tests",
+        "store"
+      ],
+      "scope": [
+        "internal/store/store_test.go"
+      ],
+      "evidence": [
+        "internal/store/store_test.go is 1044 LOC, exceeding the 1000 LOC threshold.",
+        "AGENTS.md states files exceeding ~1000 LOC are presumed to be mis-scoped and MUST be split unless proven otherwise."
+      ],
+      "plan": [
+        "Analyze the test structure in store_test.go to identify logical groupings (e.g., by store operation or data type).",
+        "Split into smaller test files with clear, focused responsibilities (e.g., store_jobs_test.go, store_crawls_test.go, etc.).",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0143",
+      "status": "todo",
+      "title": "Split internal/extract test files into smaller focused test suites",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tests",
+        "extract"
+      ],
+      "scope": [
+        "internal/extract/jsonld_test.go",
+        "internal/extract/normalize_test.go",
+        "internal/extract/schema_test.go"
+      ],
+      "evidence": [
+        "internal/extract/jsonld_test.go is 889 LOC, exceeding the 700 LOC threshold.",
+        "internal/extract/normalize_test.go is 805 LOC, exceeding the 700 LOC threshold.",
+        "internal/extract/schema_test.go is 729 LOC, exceeding the 700 LOC threshold.",
+        "AGENTS.md states files exceeding ~700 LOC REQUIRE explicit justification in the thread explaining why cohesion is still intact."
+      ],
+      "plan": [
+        "Analyze each test file to identify logical groupings and test responsibilities.",
+        "Split each file into smaller test files with clear, focused responsibilities.",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0144",
+      "status": "todo",
+      "title": "Refactor internal/scheduler package to reduce file sizes",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "scheduler"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/scheduler_test.go"
+      ],
+      "evidence": [
+        "internal/scheduler/scheduler_test.go is 949 LOC, exceeding the 700 LOC threshold.",
+        "internal/scheduler/scheduler.go is 655 LOC, approaching the 700 LOC threshold.",
+        "AGENTS.md states files exceeding ~700 LOC REQUIRE explicit justification in the thread explaining why cohesion is still intact."
+      ],
+      "plan": [
+        "Analyze scheduler.go to identify logical separation points (e.g., job scheduling logic, state management, etc.).",
+        "Split scheduler.go into smaller source files with clear, focused responsibilities.",
+        "Analyze scheduler_test.go to identify logical groupings and split into smaller test files.",
+        "Ensure all functionality and tests are preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0145",
+      "status": "todo",
+      "title": "Split internal/api/job_results_test.go into smaller test files",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tests",
+        "api"
+      ],
+      "scope": [
+        "internal/api/job_results_test.go"
+      ],
+      "evidence": [
+        "internal/api/job_results_test.go is 706 LOC, exceeding the 700 LOC threshold.",
+        "AGENTS.md states files exceeding ~700 LOC REQUIRE explicit justification in the thread explaining why cohesion is still intact."
+      ],
+      "plan": [
+        "Analyze job_results_test.go to identify logical groupings (e.g., by result format, pagination, etc.).",
+        "Split into smaller test files with clear, focused responsibilities.",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0146",
+      "status": "todo",
+      "title": "Split internal/jobs/manager_test.go into smaller test files",
+      "priority": "high",
+      "tags": [
+        "refactor",
+        "tests",
+        "jobs"
+      ],
+      "scope": [
+        "internal/jobs/manager_test.go"
+      ],
+      "evidence": [
+        "internal/jobs/manager_test.go is 705 LOC, exceeding the 700 LOC threshold.",
+        "AGENTS.md states files exceeding ~700 LOC REQUIRE explicit justification in the thread explaining why cohesion is still intact."
+      ],
+      "plan": [
+        "Analyze manager_test.go to identify logical groupings (e.g., by job lifecycle stage, error handling, etc.).",
+        "Split into smaller test files with clear, focused responsibilities.",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0147",
+      "status": "todo",
+      "title": "Refactor internal/mcp package to reduce file sizes",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "mcp"
+      ],
+      "scope": [
+        "internal/mcp/server.go",
+        "internal/mcp/job_management_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/server.go is 667 LOC, approaching the 700 LOC threshold.",
+        "internal/mcp/job_management_test.go is 669 LOC, approaching the 700 LOC threshold.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze server.go to identify logical separation points (e.g., server initialization, request handling, job management).",
+        "Split server.go into smaller source files with clear, focused responsibilities.",
+        "Analyze job_management_test.go to identify logical groupings and split into smaller test files.",
+        "Ensure all functionality and tests are preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0148",
+      "status": "todo",
+      "title": "Refactor internal/research/research.go into smaller modules",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "research"
+      ],
+      "scope": [
+        "internal/research/research.go"
+      ],
+      "evidence": [
+        "internal/research/research.go is 624 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze research.go to identify logical separation points (e.g., research orchestration, pipeline handling, result aggregation).",
+        "Split into smaller source files with clear, focused responsibilities.",
+        "Ensure all functionality is preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0149",
+      "status": "todo",
+      "title": "Refactor internal/ui/tui/tui.go into smaller modules",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "ui"
+      ],
+      "scope": [
+        "internal/ui/tui/tui.go"
+      ],
+      "evidence": [
+        "internal/ui/tui/tui.go is 617 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze tui.go to identify logical separation points (e.g., view rendering, event handling, state management).",
+        "Split into smaller source files with clear, focused responsibilities.",
+        "Ensure all functionality is preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0150",
+      "status": "todo",
+      "title": "Split internal/auth/types_test.go into smaller test files",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "tests",
+        "auth"
+      ],
+      "scope": [
+        "internal/auth/types_test.go"
+      ],
+      "evidence": [
+        "internal/auth/types_test.go is 648 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze types_test.go to identify logical groupings (e.g., by auth operation, validation logic).",
+        "Split into smaller test files with clear, focused responsibilities.",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0151",
+      "status": "todo",
+      "title": "Refactor web/src App.tsx and App.test.tsx into smaller components",
+      "priority": "medium",
+      "tags": [
+        "refactor",
+        "web",
+        "typescript"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/App.test.tsx"
+      ],
+      "evidence": [
+        "web/src/App.tsx is 699 LOC, exceeding the 400 LOC heuristic.",
+        "web/src/App.test.tsx is 665 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze App.tsx to identify logical component separation points.",
+        "Extract child components into separate files with clear, focused responsibilities.",
+        "Update App.test.tsx to reflect the new component structure or split into smaller test files.",
+        "Ensure all functionality is preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0152",
+      "status": "todo",
+      "title": "Refactor internal/config/log_test.go into smaller test files",
+      "priority": "low",
+      "tags": [
+        "refactor",
+        "tests",
+        "config"
+      ],
+      "scope": [
+        "internal/config/log_test.go"
+      ],
+      "evidence": [
+        "internal/config/log_test.go is 605 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze log_test.go to identify logical groupings (e.g., by log level, format, configuration).",
+        "Split into smaller test files with clear, focused responsibilities.",
+        "Ensure all tests are preserved and run successfully after split.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0153",
+      "status": "todo",
+      "title": "Refactor internal/store/store.go into smaller modules",
+      "priority": "low",
+      "tags": [
+        "refactor",
+        "store"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "internal/store/store.go is 585 LOC, exceeding the 400 LOC heuristic.",
+        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
+      ],
+      "plan": [
+        "Analyze store.go to identify logical separation points (e.g., job storage, crawl storage, query methods).",
+        "Split into smaller source files with clear, focused responsibilities.",
+        "Ensure all functionality is preserved.",
+        "Run make ci to verify the changes don't break anything."
+      ],
+      "notes": [],
+      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
+      "created_at": "2026-01-29T17:35:26Z",
+      "updated_at": "2026-01-29T17:35:26Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0134",
       "status": "todo",
       "title": "Classify research output pipeline errors and handle marshal failures",
