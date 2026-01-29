@@ -1,32 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0125",
-      "status": "todo",
-      "title": "List current task queue contents",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "queue",
-        "info"
-      ],
-      "scope": [
-        "ralph queue list"
-      ],
-      "evidence": [
-        "user request: list"
-      ],
-      "plan": [
-        "Run 'ralph queue list' to display current queue contents",
-        "Optionally format output for better readability"
-      ],
-      "notes": [],
-      "request": "list",
-      "created_at": "2026-01-29T10:46:44Z",
-      "updated_at": "2026-01-29T10:46:44Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }
