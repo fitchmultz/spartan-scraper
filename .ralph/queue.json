@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0151",
-      "status": "todo",
-      "title": "Refactor web/src App.tsx and App.test.tsx into smaller components",
-      "priority": "medium",
-      "tags": [
-        "refactor",
-        "web",
-        "typescript"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "web/src/App.test.tsx"
-      ],
-      "evidence": [
-        "web/src/App.tsx is 699 LOC, exceeding the 400 LOC heuristic.",
-        "web/src/App.test.tsx is 665 LOC, exceeding the 400 LOC heuristic.",
-        "AGENTS.md states individual source files SHOULD remain under ~400 LOC as a heuristic."
-      ],
-      "plan": [
-        "Analyze App.tsx to identify logical component separation points.",
-        "Extract child components into separate files with clear, focused responsibilities.",
-        "Update App.test.tsx to reflect the new component structure or split into smaller test files.",
-        "Ensure all functionality is preserved.",
-        "Run make ci to verify the changes don't break anything."
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0152",
       "status": "todo",
       "title": "Refactor internal/config/log_test.go into smaller test files",

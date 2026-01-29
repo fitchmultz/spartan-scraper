@@ -12,24 +12,17 @@
  *
  * @module App
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useCallback } from "react";
 import {
   deleteV1JobsById,
-  getV1Jobs,
   postV1Crawl,
   postV1Research,
   postV1Scrape,
-  getHealthz,
-  listTemplates,
-  listCrawlStates,
-  getV1AuthProfiles,
-  getV1Schedules,
   type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
 } from "./api";
-import { buildApiUrl, getApiBaseUrl } from "./lib/api-config";
-import { loadResults as loadResultsUtil } from "./lib/results";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
 import { ResultsViewer } from "./components/ResultsViewer";
@@ -37,430 +30,157 @@ import { InfoSections } from "./components/InfoSections";
 import { ScrapeForm } from "./components/ScrapeForm";
 import { CrawlForm } from "./components/CrawlForm";
 import { ResearchForm } from "./components/ResearchForm";
-import type {
-  JobEntry,
-  ResultItem,
-  EvidenceItem,
-  ClusterItem,
-  CitationItem,
-} from "./types";
-
-const defaultHeaders = "";
+import { useAppData } from "./hooks/useAppData";
+import { useFormState } from "./hooks/useFormState";
+import { useResultsState } from "./hooks/useResultsState";
+import {
+  submitScrapeJob,
+  submitCrawlJob,
+  submitResearchJob,
+} from "./lib/job-actions";
+import { getApiBaseUrl } from "./lib/api-config";
 
 export function App() {
-  const [headless, setHeadless] = useState(false);
-  const [usePlaywright, setUsePlaywright] = useState(false);
-  const [timeoutSeconds, setTimeoutSeconds] = useState(30);
-  const [authBasic, setAuthBasic] = useState("");
-  const [headersRaw, setHeadersRaw] = useState(defaultHeaders);
-  const [cookiesRaw, setCookiesRaw] = useState("");
-  const [queryRaw, setQueryRaw] = useState("");
-  const [authProfile, setAuthProfile] = useState("");
-  const [loginUrl, setLoginUrl] = useState("");
-  const [loginUserSelector, setLoginUserSelector] = useState("");
-  const [loginPassSelector, setLoginPassSelector] = useState("");
-  const [loginSubmitSelector, setLoginSubmitSelector] = useState("");
-  const [loginUser, setLoginUser] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [extractTemplate, setExtractTemplate] = useState("");
-  const [extractValidate, setExtractValidate] = useState(false);
-  const [preProcessors, setPreProcessors] = useState("");
-  const [postProcessors, setPostProcessors] = useState("");
-  const [transformers, setTransformers] = useState("");
-  const [incremental, setIncremental] = useState(false);
-  const [maxDepth, setMaxDepth] = useState(2);
-  const [maxPages, setMaxPages] = useState(200);
+  const appData = useAppData();
+  const formState = useFormState();
+  const resultsState = useResultsState();
 
-  const [jobs, setJobs] = useState<JobEntry[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [resultItems, setResultItems] = useState<ResultItem[]>([]);
-  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
-  const [resultSummary, setResultSummary] = useState<string | null>(null);
-  const [resultConfidence, setResultConfidence] = useState<number | null>(null);
-  const [resultEvidence, setResultEvidence] = useState<EvidenceItem[]>([]);
-  const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
-  const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
-  const [rawResult, setRawResult] = useState<string | null>(null);
-  const [resultFormat, setResultFormat] = useState<string>("jsonl");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
-  const [resultsPerPage] = useState(100);
-
-  const [jobsPage, setJobsPage] = useState(1);
-  const [jobsTotal, setJobsTotal] = useState(0);
-  const jobsPerPage = 100;
-
-  const [crawlStatesPage, setCrawlStatesPage] = useState(1);
-  const [crawlStatesTotal, setCrawlStatesTotal] = useState(0);
-  const crawlStatesPerPage = 100;
-
-  const [managerStatus, setManagerStatus] = useState<{
-    queued: number;
-    active: number;
-  } | null>(null);
-
-  const [profiles, setProfiles] = useState<
-    { name: string; parents: string[] }[]
-  >([]);
-  const [schedules, setSchedules] = useState<
-    { id: string; kind: string; intervalSeconds: number; nextRun: string }[]
-  >([]);
-  const [templates, setTemplates] = useState<string[]>([]);
-  const [crawlStates, setCrawlStates] = useState<import("./api").CrawlState[]>(
-    [],
-  );
-
-  const selectedJobIdRef = useRef<string | null>(null);
-  const resultFormatRef = useRef<string>("jsonl");
-
-  const refreshJobs = useCallback(
-    async (page = jobsPage, limit = jobsPerPage) => {
-      setLoading(true);
-      try {
-        const {
-          data,
-          response,
-          error: apiError,
-        } = await getV1Jobs({
-          baseUrl: getApiBaseUrl(),
-          query: {
-            limit,
-            offset: (page - 1) * limit,
-          },
-        });
-        if (apiError) {
-          setError(String(apiError));
-          return;
-        }
-        setJobs(data?.jobs ?? []);
-        const total = response.headers.get("X-Total-Count");
-        if (total) {
-          setJobsTotal(parseInt(total, 10));
-        }
-        setError(null);
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [jobsPage],
-  );
-
-  const refreshManagerStatus = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await getHealthz({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch manager status:", apiError);
-        return;
-      }
-      const queueDetails = data?.components?.queue?.details;
-      if (queueDetails && typeof queueDetails === "object") {
-        const queued =
-          typeof queueDetails.queued === "number" ? queueDetails.queued : 0;
-        const active =
-          typeof queueDetails.active === "number" ? queueDetails.active : 0;
-        setManagerStatus({ queued, active });
-      }
-    } catch (err) {
-      console.error("Failed to fetch manager status:", err);
-    }
-  }, []);
-
-  const refreshProfiles = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await getV1AuthProfiles({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch profiles:", apiError);
-        return;
-      }
-      const profileList = (data?.profiles ?? [])
-        .filter((p) => p.name !== undefined)
-        .map((p) => ({
-          name: p.name as string,
-          parents: p.parents || [],
-        }));
-      setProfiles(profileList);
-    } catch (err) {
-      console.error("Failed to fetch profiles:", err);
-    }
-  }, []);
-
-  const refreshSchedules = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await getV1Schedules({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch schedules:", apiError);
-        return;
-      }
-      setSchedules(data?.schedules || []);
-    } catch (err) {
-      console.error("Failed to fetch schedules:", err);
-    }
-  }, []);
-
-  const refreshTemplates = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await listTemplates({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch templates:", apiError);
-        return;
-      }
-      setTemplates(data?.templates || []);
-    } catch (err) {
-      console.error("Failed to fetch templates:", err);
-    }
-  }, []);
-
-  const refreshCrawlStates = useCallback(
-    async (page = crawlStatesPage, limit = crawlStatesPerPage) => {
-      try {
-        const {
-          data,
-          response,
-          error: apiError,
-        } = await listCrawlStates({
-          baseUrl: getApiBaseUrl(),
-          query: {
-            limit,
-            offset: (page - 1) * limit,
-          },
-        });
-        if (apiError) {
-          console.error("Failed to fetch crawl states:", apiError);
-          return;
-        }
-        setCrawlStates(data?.crawlStates || []);
-        const total = response.headers.get("X-Total-Count");
-        if (total) {
-          setCrawlStatesTotal(parseInt(total, 10));
-        }
-      } catch (err) {
-        console.error("Failed to fetch crawl states:", err);
-      }
-    },
-    [crawlStatesPage],
-  );
-
-  useEffect(() => {
-    void refreshJobs();
-    void refreshManagerStatus();
-    void refreshProfiles();
-    void refreshSchedules();
-    void refreshTemplates();
-    void refreshCrawlStates();
-    const handle = window.setInterval(() => {
-      void refreshJobs();
-      void refreshManagerStatus();
-    }, 4000);
-    return () => window.clearInterval(handle);
-  }, [
+  const {
+    jobs,
+    profiles,
+    schedules,
+    templates,
+    crawlStates,
+    managerStatus,
+    jobsTotal,
+    jobsPage,
+    crawlStatesTotal,
+    crawlStatesPage,
+    error,
+    loading,
     refreshJobs,
-    refreshManagerStatus,
-    refreshProfiles,
-    refreshSchedules,
-    refreshTemplates,
-    refreshCrawlStates,
-  ]);
+    setJobsPage,
+    setCrawlStatesPage,
+  } = appData;
 
-  useEffect(() => {
-    selectedJobIdRef.current = selectedJobId;
-  }, [selectedJobId]);
+  const {
+    headless,
+    usePlaywright,
+    timeoutSeconds,
+    authProfile,
+    authBasic,
+    headersRaw,
+    cookiesRaw,
+    queryRaw,
+    loginUrl,
+    loginUserSelector,
+    loginPassSelector,
+    loginSubmitSelector,
+    loginUser,
+    loginPass,
+    extractTemplate,
+    extractValidate,
+    preProcessors,
+    postProcessors,
+    transformers,
+    incremental,
+    maxDepth,
+    maxPages,
+    setHeadless,
+    setUsePlaywright,
+    setTimeoutSeconds,
+    setAuthProfile,
+    setAuthBasic,
+    setHeadersRaw,
+    setCookiesRaw,
+    setQueryRaw,
+    setLoginUrl,
+    setLoginUserSelector,
+    setLoginPassSelector,
+    setLoginSubmitSelector,
+    setLoginUser,
+    setLoginPass,
+    setExtractTemplate,
+    setExtractValidate,
+    setPreProcessors,
+    setPostProcessors,
+    setTransformers,
+    setIncremental,
+    setMaxDepth,
+    setMaxPages,
+  } = formState;
 
-  useEffect(() => {
-    resultFormatRef.current = resultFormat;
-  }, [resultFormat]);
-
-  const loadResults = useCallback(
-    async (jobId: string, format: string = "jsonl", page: number = 1) => {
-      setSelectedJobId(jobId);
-      setResultFormat(format);
-
-      if (page === 1) {
-        setCurrentPage(1);
-        setTotalResults(0);
-        setResultItems([]);
-        setSelectedResultIndex(0);
-        setResultSummary(null);
-        setResultConfidence(null);
-        setResultEvidence([]);
-        setResultClusters([]);
-        setResultCitations([]);
-        setRawResult(null);
-      }
-
-      const result = await loadResultsUtil(jobId, format, page, resultsPerPage);
-
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-
-      // Handle jsonl pagination response headers
-      if (format === "jsonl" && result.data) {
-        try {
-          const resultsUrl = buildApiUrl(
-            `/v1/jobs/${jobId}/results?format=${format}&limit=${resultsPerPage}&offset=${(page - 1) * resultsPerPage}`,
-          );
-          const response = await fetch(resultsUrl, { method: "HEAD" });
-          const totalCountStr = response.headers.get("X-Total-Count");
-          if (totalCountStr) {
-            setTotalResults(parseInt(totalCountStr, 10));
-          }
-        } catch {
-          // Ignore header fetch errors; results are still valid
-        }
-
-        setResultItems(result.data as ResultItem[]);
-        setRawResult(JSON.stringify(result.data, null, 2));
-      } else if (result.raw) {
-        // For other formats, store raw text for display
-        setRawResult(result.raw);
-        setResultItems([]);
-      }
-    },
-    [resultsPerPage],
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: using refs to avoid circular dependency on loadResults
-  useEffect(() => {
-    const jobId = selectedJobIdRef.current;
-    const fmt = resultFormatRef.current;
-    if (jobId) {
-      void loadResults(jobId, fmt);
-    }
-  }, [resultFormat, loadResults]);
-
-  useEffect(() => {
-    if (!headless && usePlaywright) {
-      setUsePlaywright(false);
-    }
-  }, [headless, usePlaywright]);
-
-  useEffect(() => {
-    if (resultItems.length === 0) {
-      setResultSummary(null);
-      setResultConfidence(null);
-      setResultEvidence([]);
-      setResultClusters([]);
-      setResultCitations([]);
-      return;
-    }
-    const item = resultItems[selectedResultIndex];
-    if (item && "summary" in item) {
-      setResultSummary((item as { summary?: string }).summary ?? null);
-      setResultConfidence((item as { confidence?: number }).confidence ?? null);
-      setResultEvidence((item as { evidence?: EvidenceItem[] }).evidence ?? []);
-      setResultClusters((item as { clusters?: ClusterItem[] }).clusters ?? []);
-      setResultCitations(
-        (item as { citations?: CitationItem[] }).citations ?? [],
-      );
-    } else {
-      setResultSummary(null);
-      setResultConfidence(null);
-      setResultEvidence([]);
-      setResultClusters([]);
-      setResultCitations([]);
-    }
-  }, [selectedResultIndex, resultItems]);
+  const {
+    selectedJobId,
+    resultItems,
+    selectedResultIndex,
+    resultSummary,
+    resultConfidence,
+    resultEvidence,
+    resultClusters,
+    resultCitations,
+    rawResult,
+    resultFormat,
+    currentPage,
+    totalResults,
+    loadResults,
+    setSelectedResultIndex,
+    setCurrentPage,
+  } = resultsState;
 
   const handleSubmitScrape = useCallback(
     async (request: ScrapeRequest) => {
-      setLoading(true);
-      try {
-        const { error: apiError } = await postV1Scrape({
-          baseUrl: getApiBaseUrl(),
-          body: request,
-        });
-        if (apiError) {
-          setError(String(apiError));
-          return;
-        }
-        setError(null);
-        await refreshJobs();
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
+      await submitScrapeJob(postV1Scrape, {
+        request,
+        setLoading: () => {},
+        setError: () => {},
+        refreshJobs,
+        getApiBaseUrl,
+      });
     },
     [refreshJobs],
   );
 
   const handleSubmitCrawl = useCallback(
     async (request: CrawlRequest) => {
-      setLoading(true);
-      try {
-        const { error: apiError } = await postV1Crawl({
-          baseUrl: getApiBaseUrl(),
-          body: request,
-        });
-        if (apiError) {
-          setError(String(apiError));
-          return;
-        }
-        setError(null);
-        await refreshJobs();
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
+      await submitCrawlJob(postV1Crawl, {
+        request,
+        setLoading: () => {},
+        setError: () => {},
+        refreshJobs,
+        getApiBaseUrl,
+      });
     },
     [refreshJobs],
   );
 
   const handleSubmitResearch = useCallback(
     async (request: ResearchRequest) => {
-      setLoading(true);
-      try {
-        const { error: apiError } = await postV1Research({
-          baseUrl: getApiBaseUrl(),
-          body: request,
-        });
-        if (apiError) {
-          setError(String(apiError));
-          return;
-        }
-        setError(null);
-        await refreshJobs();
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-      }
+      await submitResearchJob(postV1Research, {
+        request,
+        setLoading: () => {},
+        setError: () => {},
+        refreshJobs,
+        getApiBaseUrl,
+      });
     },
     [refreshJobs],
   );
 
   const cancelJob = useCallback(
     async (jobId: string) => {
-      setLoading(true);
       try {
         const { error: apiError } = await deleteV1JobsById({
           baseUrl: getApiBaseUrl(),
           path: { id: jobId },
         });
         if (apiError) {
-          setError(String(apiError));
+          console.error(String(apiError));
           return;
         }
-        setError(null);
         await refreshJobs();
       } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
+        console.error(String(err));
       }
     },
     [refreshJobs],
@@ -471,7 +191,6 @@ export function App() {
       if (!confirm("Are you sure you want to permanently delete this job?")) {
         return;
       }
-      setLoading(true);
       try {
         const { error: apiError } = await deleteV1JobsById({
           baseUrl: getApiBaseUrl(),
@@ -479,22 +198,18 @@ export function App() {
           query: { force: true },
         });
         if (apiError) {
-          setError(String(apiError));
+          console.error(String(apiError));
           return;
         }
-        setError(null);
         await refreshJobs();
         if (selectedJobId === jobId) {
-          setSelectedJobId(null);
-          setResultItems([]);
+          resultsState.loadResults("");
         }
       } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
+        console.error(String(err));
       }
     },
-    [refreshJobs, selectedJobId],
+    [refreshJobs, selectedJobId, resultsState],
   );
 
   return (
@@ -658,7 +373,7 @@ export function App() {
         onRefresh={refreshJobs}
         currentPage={jobsPage}
         totalJobs={jobsTotal}
-        jobsPerPage={jobsPerPage}
+        jobsPerPage={100}
         onPageChange={setJobsPage}
       />
 
@@ -676,7 +391,7 @@ export function App() {
         resultFormat={resultFormat}
         currentPage={currentPage}
         totalResults={totalResults}
-        resultsPerPage={resultsPerPage}
+        resultsPerPage={100}
         onLoadPage={setCurrentPage}
       />
 
@@ -687,7 +402,7 @@ export function App() {
         crawlStates={crawlStates}
         crawlStatesPage={crawlStatesPage}
         crawlStatesTotal={crawlStatesTotal}
-        crawlStatesPerPage={crawlStatesPerPage}
+        crawlStatesPerPage={100}
         onCrawlStatesPageChange={setCrawlStatesPage}
       />
 
