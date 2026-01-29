@@ -2,34 +2,31 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0144",
+      "id": "RQ-0154",
       "status": "todo",
-      "title": "Refactor internal/scheduler package to reduce file sizes",
-      "priority": "high",
+      "title": "Add list command to CLI",
+      "priority": "medium",
       "tags": [
-        "refactor",
-        "scheduler"
+        "cli",
+        "feature"
       ],
       "scope": [
-        "internal/scheduler/scheduler.go",
-        "internal/scheduler/scheduler_test.go"
+        "cmd/spartan",
+        "internal/cli"
       ],
       "evidence": [
-        "internal/scheduler/scheduler_test.go is 949 LOC, exceeding the 700 LOC threshold.",
-        "internal/scheduler/scheduler.go is 655 LOC, approaching the 700 LOC threshold.",
-        "AGENTS.md states files exceeding ~700 LOC REQUIRE explicit justification in the thread explaining why cohesion is still intact."
+        "User request: 'list'"
       ],
       "plan": [
-        "Analyze scheduler.go to identify logical separation points (e.g., job scheduling logic, state management, etc.).",
-        "Split scheduler.go into smaller source files with clear, focused responsibilities.",
-        "Analyze scheduler_test.go to identify logical groupings and split into smaller test files.",
-        "Ensure all functionality and tests are preserved.",
-        "Run make ci to verify the changes don't break anything."
+        "Clarify what entities should be listed (jobs, crawls, results, etc.).",
+        "Implement list command with appropriate flags and output format.",
+        "Add tests for the list command.",
+        "Run make ci to verify changes."
       ],
       "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
+      "request": "list",
+      "created_at": "2026-01-29T18:50:00Z",
+      "updated_at": "2026-01-29T18:50:00Z",
       "depends_on": [],
       "custom_fields": {}
     },
