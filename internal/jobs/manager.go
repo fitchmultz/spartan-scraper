@@ -144,11 +144,11 @@ func (m *Manager) Start(ctx context.Context) {
 					// Drain the queue before returning using a fresh context
 					// to avoid running jobs with a canceled context
 					drainCtx, drainCancel := context.WithTimeout(context.Background(), 30*time.Second)
-					defer drainCancel()
 					for {
 						select {
 						case job, ok := <-m.queue:
 							if !ok {
+								drainCancel()
 								return
 							}
 							slog.Debug("worker picked up job (draining)", "workerID", workerID, "jobID", job.ID, "kind", job.Kind)
@@ -156,6 +156,7 @@ func (m *Manager) Start(ctx context.Context) {
 								slog.Error("job failed during drain", "jobID", job.ID, "error", err)
 							}
 						default:
+							drainCancel()
 							return
 						}
 					}

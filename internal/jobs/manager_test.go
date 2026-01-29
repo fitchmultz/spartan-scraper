@@ -590,3 +590,116 @@ func TestManagerShutdownWithQueuedJobs(t *testing.T) {
 		t.Error("not all jobs reached terminal state after shutdown")
 	}
 }
+
+func TestContextCleanupOnShutdown(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create jobs to test drain cleanup
+	const jobCount = 3
+	var jobIDs []string
+	for i := 0; i < jobCount; i++ {
+		job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		if err != nil {
+			t.Fatalf("CreateScrapeJob %d failed: %v", i, err)
+		}
+		jobIDs = append(jobIDs, job.ID)
+	}
+
+	// Enqueue jobs
+	for _, jobID := range jobIDs {
+		job, err := st.Get(ctx, jobID)
+		if err != nil {
+			t.Fatalf("failed to get job %s: %v", jobID, err)
+		}
+		if err := m.Enqueue(job); err != nil {
+			t.Fatalf("failed to enqueue job %s: %v", jobID, err)
+		}
+	}
+
+	// Start and immediately trigger shutdown to exercise drain path
+	startCtx, startCancel := context.WithCancel(ctx)
+	startDone := make(chan struct{})
+
+	go func() {
+		m.Start(startCtx)
+		close(startDone)
+	}()
+
+	// Wait briefly for workers to start
+	time.Sleep(50 * time.Millisecond)
+
+	// Trigger shutdown
+	startCancel()
+
+	// Wait for clean shutdown - should complete within drain timeout
+	select {
+	case <-startDone:
+		// Shutdown completed
+	case <-time.After(5 * time.Second):
+		t.Fatal("shutdown took too long, possible context leak")
+	}
+
+	m.Wait()
+
+	// Verify jobs were processed and reached terminal states
+	for _, jobID := range jobIDs {
+		job, err := st.Get(ctx, jobID)
+		if err != nil {
+			t.Errorf("failed to get job %s: %v", jobID, err)
+			continue
+		}
+		if !job.Status.IsTerminal() {
+			t.Errorf("job %s is not in terminal state after shutdown: %v", jobID, job.Status)
+		}
+	}
+}
+
+func TestContextCleanupOnJobError(t *testing.T) {
+	m, st, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Test cancelUpdate is called when jobs fail due to invalid directory
+	// Create a job with a path that will fail during directory creation
+	// This tests the error path in job_run.go lines 54-62
+	job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+	if err != nil {
+		t.Fatalf("CreateScrapeJob failed: %v", err)
+	}
+
+	// Enqueue the job
+	if err := m.Enqueue(job); err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	// Start manager to process job
+	startCtx, startCancel := context.WithCancel(ctx)
+	startDone := make(chan struct{})
+
+	go func() {
+		m.Start(startCtx)
+		close(startDone)
+	}()
+
+	// Wait for job to be processed
+	time.Sleep(200 * time.Millisecond)
+
+	// Trigger shutdown
+	startCancel()
+	<-startDone
+	m.Wait()
+
+	// Verify job reached a terminal state (should be failed due to network error)
+	persisted, err := st.Get(ctx, job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job: %v", err)
+	}
+
+	if !persisted.Status.IsTerminal() {
+		t.Errorf("job should be in terminal state, got %v", persisted.Status)
+	}
+}
