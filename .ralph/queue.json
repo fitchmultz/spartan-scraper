@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0108",
-      "status": "todo",
-      "title": "Fix HTTP fetcher cookie jar recreation on retry",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "fetch",
-        "auth",
-        "go"
-      ],
-      "scope": [
-        "internal/fetch/http_fetcher.go"
-      ],
-      "evidence": [
-        "http_fetcher.go:55-59 - New cookie jar created on every retry attempt",
-        "This loses cookies from previous attempts, breaking stateful authentication flows that rely on session cookies"
-      ],
-      "plan": [
-        "Move cookie jar creation outside the retry loop",
-        "Ensure cookie jar persists across retry attempts",
-        "Add test for cookie preservation during retries"
-      ],
-      "notes": [],
-      "request": "scan finding: cookie jar recreation breaks session persistence on retry",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0109",
       "status": "todo",
       "title": "Fix chromedp waitForNetworkIdle timer creation bug",

@@ -40,6 +40,16 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		baseDelay = 300 * time.Millisecond
 	}
 
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return Result{}, fmt.Errorf("failed to create cookie jar: %w", err)
+	}
+
+	client := &http.Client{
+		Timeout: req.Timeout,
+		Jar:     jar,
+	}
+
 	for attempt := 0; attempt <= retries; attempt++ {
 		if attempt > 0 {
 			slog.Debug("retrying HTTP fetch", "url", apperrors.SanitizeURL(req.URL), "attempt", attempt)
@@ -50,12 +60,6 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if err := req.Limiter.Wait(ctx, req.URL); err != nil {
 				return Result{}, err
 			}
-		}
-
-		jar, _ := cookiejar.New(nil)
-		client := &http.Client{
-			Timeout: req.Timeout,
-			Jar:     jar,
 		}
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)

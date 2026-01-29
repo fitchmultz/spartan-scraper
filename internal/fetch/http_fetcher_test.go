@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -289,5 +290,66 @@ func TestHTTPFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
 	// Assert: server should not have been called (defensive check)
 	if serverCalled {
 		t.Error("server was called despite cancelled context")
+	}
+}
+
+// TestHTTPFetch_CookiesPersistAcrossRetries verifies that cookies set by the
+// server during a retry attempt are preserved and sent in subsequent retries.
+//
+// This test documents the fix for RQ-0108: the cookie jar is now created once
+// before the retry loop, preserving session cookies across retry attempts.
+// ChromedpFetcher and PlaywrightFetcher create new browser contexts on each
+// retry (by design), so this issue only affects HTTPFetcher.
+func TestHTTPFetch_CookiesPersistAcrossRetries(t *testing.T) {
+	var attempt int32
+	var cookieReceived atomic.Bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		currentAttempt := atomic.AddInt32(&attempt, 1) - 1
+
+		if currentAttempt == 0 {
+			// First attempt: set cookie and return retryable error
+			http.SetCookie(w, &http.Cookie{
+				Name:  "session",
+				Value: "retry-test-123",
+				Path:  "/",
+			})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// Second attempt: check cookie was sent
+		cookie, err := r.Cookie("session")
+		if err == nil && cookie.Value == "retry-test-123" {
+			cookieReceived.Store(true)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("success"))
+			return
+		}
+
+		t.Errorf("cookie not received on retry: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	fetcher := &HTTPFetcher{}
+	req := Request{
+		URL:        server.URL,
+		Timeout:    5 * time.Second,
+		MaxRetries: 1,
+	}
+
+	result, err := fetcher.Fetch(context.TODO(), req)
+
+	if err != nil {
+		t.Fatalf("expected success, got error: %v", err)
+	}
+
+	if result.Status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", result.Status)
+	}
+
+	if !cookieReceived.Load() {
+		t.Error("cookie was not sent on retry attempt")
 	}
 }
