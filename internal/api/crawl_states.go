@@ -59,5 +59,5 @@ func (s *Server) handleCrawlStatesDelete(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	writeJSON(w, StatusResponse{Status: "ok"})
+	writeJSON(w, StatusResponse{Status: "ok", RequestID: contextRequestID(r.Context())})
 }

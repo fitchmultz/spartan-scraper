@@ -18,6 +18,13 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/scrape"
 )
 
+func getJobRequestID(job model.Job) string {
+	if reqID, ok := job.Params["requestID"].(string); ok && reqID != "" {
+		return reqID
+	}
+	return job.ID
+}
+
 func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, errorMsg string, timeout time.Duration) {
 	updateCtx, cancelUpdate := context.WithTimeout(context.Background(), timeout)
 	if err := m.store.UpdateStatus(updateCtx, jobID, status, errorMsg); err != nil {
@@ -27,7 +34,7 @@ func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, err
 }
 
 func (m *Manager) run(ctx context.Context, job model.Job) error {
-	slog.Info("running job", "jobID", job.ID, "kind", job.Kind)
+	slog.Info("running job", "jobID", job.ID, "kind", job.Kind, "request_id", getJobRequestID(job))
 
 	latest, err := m.store.Get(ctx, job.ID)
 	if err == nil && latest.Status.IsTerminal() {
@@ -76,7 +83,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	switch job.Kind {
 	case model.KindScrape:
 		url, _ := job.Params["url"].(string)
-		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(url))
+		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "request_id", getJobRequestID(job))
 		headless, _ := job.Params["headless"].(bool)
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
@@ -89,7 +96,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := scrape.Run(jobCtx, scrape.Request{
 			URL:              url,
-			RequestID:        job.ID,
+			RequestID:        getJobRequestID(job),
 			Headless:         headless,
 			UsePlaywright:    usePlaywright,
 			Auth:             auth,
@@ -129,7 +136,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		}
 	case model.KindCrawl:
 		url, _ := job.Params["url"].(string)
-		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(url))
+		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "request_id", getJobRequestID(job))
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
 		headless, _ := job.Params["headless"].(bool)
@@ -144,7 +151,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		results, err := crawl.Run(jobCtx, crawl.Request{
 			URL:              url,
-			RequestID:        job.ID,
+			RequestID:        getJobRequestID(job),
 			MaxDepth:         maxDepth,
 			MaxPages:         maxPages,
 			Concurrency:      m.maxConcurrency,
@@ -189,7 +196,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		}
 	case model.KindResearch:
 		query, _ := job.Params["query"].(string)
-		slog.Info("processing research job", "jobID", job.ID, "query", query)
+		slog.Info("processing research job", "jobID", job.ID, "query", query, "request_id", getJobRequestID(job))
 		urls := toStringSlice(job.Params["urls"])
 		maxDepth := toInt(job.Params["maxDepth"], 2)
 		maxPages := toInt(job.Params["maxPages"], 200)
@@ -205,7 +212,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		incremental := toBool(job.Params["incremental"], false)
 		result, err := research.Run(jobCtx, research.Request{
 			Query:            query,
-			RequestID:        job.ID,
+			RequestID:        getJobRequestID(job),
 			URLs:             urls,
 			MaxDepth:         maxDepth,
 			MaxPages:         maxPages,

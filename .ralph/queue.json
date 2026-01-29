@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0117",
-      "status": "todo",
-      "title": "Add API request ID propagation for tracing",
-      "priority": "high",
-      "tags": [
-        "design",
-        "api",
-        "observability",
-        "go"
-      ],
-      "scope": [
-        "internal/api/types.go",
-        "internal/api/*.go"
-      ],
-      "evidence": [
-        "api/types.go - No request ID propagation for tracing",
-        "Requests through API can't be traced through to job execution, making debugging difficult"
-      ],
-      "plan": [
-        "Add X-Request-ID header support",
-        "Propagate request ID through to job execution context",
-        "Log request ID in all related operations"
-      ],
-      "notes": [],
-      "request": "scan finding: no request tracing through API to jobs",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0118",
       "status": "todo",
       "title": "Fix API error responses not logged server-side",

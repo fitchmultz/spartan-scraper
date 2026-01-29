@@ -44,6 +44,7 @@ func TestCrawlSiteWithPartialPipelineOptions(t *testing.T) {
 			PreProcessors: []string{"only-prep"},
 		},
 		false,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateCrawlJob failed: %v", err)

@@ -78,6 +78,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	requestID := contextRequestID(r.Context())
 	spec := jobs.JobSpec{
 		Kind:           model.KindCrawl,
 		URL:            req.URL,
@@ -90,6 +91,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
 		Incremental:    incremental,
+		RequestID:      requestID,
 	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {

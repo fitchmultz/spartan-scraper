@@ -24,12 +24,14 @@ type HealthResponse struct {
 
 // ErrorResponse represents a standard error response.
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Error     string `json:"error"`
+	RequestID string `json:"requestId,omitempty"`
 }
 
 // StatusResponse represents a generic success response.
 type StatusResponse struct {
-	Status string `json:"status"`
+	Status    string `json:"status"`
+	RequestID string `json:"requestId,omitempty"`
 }
 
 // ScrapeRequest represents a request to scrape a single page.

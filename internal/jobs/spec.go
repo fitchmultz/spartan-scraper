@@ -30,6 +30,7 @@ type JobSpec struct {
 	Extract        extract.ExtractOptions
 	Pipeline       pipeline.Options
 	Incremental    bool
+	RequestID      string
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.

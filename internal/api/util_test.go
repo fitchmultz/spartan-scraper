@@ -4,8 +4,10 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -165,4 +167,167 @@ func assertNotPanics(t *testing.T, f func()) {
 		}
 	}()
 	f()
+}
+
+func TestGetRequestID(t *testing.T) {
+	tests := []struct {
+		name          string
+		headerValue   string
+		expectNewUUID bool
+	}{
+		{
+			name:          "with custom request id header",
+			headerValue:   "custom-request-id-123",
+			expectNewUUID: false,
+		},
+		{
+			name:          "without request id header",
+			headerValue:   "",
+			expectNewUUID: true,
+		},
+		{
+			name:          "with empty request id header",
+			headerValue:   "",
+			expectNewUUID: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/test", nil)
+			if tt.headerValue != "" {
+				req.Header.Set("X-Request-ID", tt.headerValue)
+			}
+
+			reqID := getRequestID(req)
+
+			if tt.expectNewUUID {
+				uuidRegex := regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`)
+				if !uuidRegex.MatchString(reqID) {
+					t.Errorf("expected UUID v4 format, got %q", reqID)
+				}
+			} else {
+				if reqID != tt.headerValue {
+					t.Errorf("getRequestID() = %q, want %q", reqID, tt.headerValue)
+				}
+			}
+		})
+	}
+}
+
+func TestContextRequestID(t *testing.T) {
+	tests := []struct {
+		name     string
+		setupCtx func() context.Context
+		expected string
+	}{
+		{
+			name: "with request id in context",
+			setupCtx: func() context.Context {
+				return context.WithValue(context.Background(), requestIDKey, "test-request-id")
+			},
+			expected: "test-request-id",
+		},
+		{
+			name: "without request id in context",
+			setupCtx: func() context.Context {
+				return context.Background()
+			},
+			expected: "",
+		},
+		{
+			name: "with non-string value in context",
+			setupCtx: func() context.Context {
+				return context.WithValue(context.Background(), requestIDKey, 123)
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqID := contextRequestID(tt.setupCtx())
+			if reqID != tt.expected {
+				t.Errorf("contextRequestID() = %q, want %q", reqID, tt.expected)
+			}
+		})
+	}
+}
+
+func TestRequestIDMiddleware(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqID := contextRequestID(r.Context())
+		if reqID != "" {
+			w.Header().Set("X-Request-ID-From-Context", reqID)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	middleware := requestIDMiddleware(handler)
+
+	t.Run("with custom request id header", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.Header.Set("X-Request-ID", "custom-id-123")
+		rr := httptest.NewRecorder()
+
+		middleware.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("expected status 200, got %d", status)
+		}
+
+		if reqID := rr.Header().Get("X-Request-ID"); reqID != "custom-id-123" {
+			t.Errorf("X-Request-ID header = %q, want %q", reqID, "custom-id-123")
+		}
+
+		if reqID := rr.Header().Get("X-Request-ID-From-Context"); reqID != "custom-id-123" {
+			t.Errorf("request ID not propagated to context: %q, want %q", reqID, "custom-id-123")
+		}
+	})
+
+	t.Run("without request id header", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/test", nil)
+		rr := httptest.NewRecorder()
+
+		middleware.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("expected status 200, got %d", status)
+		}
+
+		reqID := rr.Header().Get("X-Request-ID")
+		if reqID == "" {
+			t.Error("X-Request-ID header should be generated when not provided")
+		}
+
+		if reqID := rr.Header().Get("X-Request-ID-From-Context"); reqID == "" {
+			t.Error("request ID not propagated to context")
+		}
+	})
+}
+
+func TestLoggingMiddlewareWithRequestID(t *testing.T) {
+	normalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("created"))
+	})
+
+	handler := requestIDMiddleware(loggingMiddleware(normalHandler))
+
+	t.Run("with request id", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/test?foo=bar", nil)
+		req.Header.Set("X-Request-ID", "test-req-123")
+		rr := httptest.NewRecorder()
+
+		handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusCreated {
+			t.Errorf("expected status 201, got %d", status)
+		}
+
+		if reqID := rr.Header().Get("X-Request-ID"); reqID != "test-req-123" {
+			t.Errorf("X-Request-ID header = %q, want %q", reqID, "test-req-123")
+		}
+	})
 }

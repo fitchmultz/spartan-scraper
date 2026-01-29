@@ -45,6 +45,7 @@ func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 			Transformers:   []string{"trans1", "trans2", "trans3"},
 		},
 		true,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)

@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -16,9 +17,38 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/google/uuid"
 )
 
 const maxRequestBodySize = 1024 * 1024
+
+var requestIDKey = &struct{}{}
+
+func getRequestID(r *http.Request) string {
+	if reqID := r.Header.Get("X-Request-ID"); reqID != "" {
+		return reqID
+	}
+	return uuid.New().String()
+}
+
+func contextRequestID(ctx context.Context) string {
+	if id, ok := ctx.Value(requestIDKey).(string); ok {
+		return id
+	}
+	return ""
+}
+
+type requestIDResponseWriter struct {
+	http.ResponseWriter
+	requestID string
+}
+
+func (rw *requestIDResponseWriter) WriteHeader(code int) {
+	if rw.requestID != "" {
+		rw.Header().Set("X-Request-ID", rw.requestID)
+	}
+	rw.ResponseWriter.WriteHeader(code)
+}
 
 func writeJSON(w http.ResponseWriter, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -27,13 +57,22 @@ func writeJSON(w http.ResponseWriter, payload interface{}) {
 	}
 }
 
-func writeJSONError(w http.ResponseWriter, status int, message string) {
+func writeJSONError(w http.ResponseWriter, status int, message string, requestID string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	errResp := ErrorResponse{Error: message}
+	errResp := ErrorResponse{Error: message, RequestID: requestID}
 	if err := json.NewEncoder(w).Encode(errResp); err != nil {
 		slog.Error("failed to encode json error response", "error", err)
 	}
+}
+
+func requestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqID := getRequestID(r)
+		ctx := context.WithValue(r.Context(), requestIDKey, reqID)
+		rw := &requestIDResponseWriter{ResponseWriter: w, requestID: reqID}
+		next.ServeHTTP(rw, r.WithContext(ctx))
+	})
 }
 
 // writeError maps error kinds to appropriate HTTP status codes and writes the response.
@@ -60,7 +99,11 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 
 	message := apperrors.SafeMessage(err)
-	writeJSONError(w, status, message)
+	var requestID string
+	if rw, ok := w.(*requestIDResponseWriter); ok {
+		requestID = rw.requestID
+	}
+	writeJSONError(w, status, message, requestID)
 }
 
 func parseIntParam(s string, defaultVal int) int {
@@ -214,12 +257,14 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		reqID := contextRequestID(r.Context())
 
 		slog.Info("request started",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"query", r.URL.RawQuery,
 			"remote_addr", r.RemoteAddr,
+			"request_id", reqID,
 		)
 
 		next.ServeHTTP(lrw, r)
@@ -230,6 +275,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			"path", r.URL.Path,
 			"status", lrw.statusCode,
 			"duration_ms", duration.Milliseconds(),
+			"request_id", reqID,
 		)
 	})
 }

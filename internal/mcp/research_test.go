@@ -43,6 +43,7 @@ func TestResearchWithEmptyPipelineOptions(t *testing.T) {
 		extract.ExtractOptions{},
 		pipeline.Options{},
 		false,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateResearchJob failed: %v", err)

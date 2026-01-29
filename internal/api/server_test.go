@@ -1,7 +1,6 @@
 // Package api provides cross-cutting integration tests for REST API server.
 // These tests verify API-wide behaviors such as request validation consistency
 // and zero value handling across multiple endpoints.
-// Handler-specific tests are in files like scrape_test.go, crawl_test.go, etc.
 package api
 
 import (

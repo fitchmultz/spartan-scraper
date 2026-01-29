@@ -78,11 +78,11 @@ func TestHandleJobList(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("list all jobs", func(t *testing.T) {
-		_, err := srv.manager.CreateScrapeJob(ctx, "http://example.com/1", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		_, err := srv.manager.CreateScrapeJob(ctx, "http://example.com/1", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
-		_, err = srv.manager.CreateScrapeJob(ctx, "http://example.com/2", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		_, err = srv.manager.CreateScrapeJob(ctx, "http://example.com/2", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -116,7 +116,7 @@ func TestHandleJobList(t *testing.T) {
 
 	t.Run("list with limit and offset", func(t *testing.T) {
 		for i := 0; i < 5; i++ {
-			_, err := srv.manager.CreateScrapeJob(ctx, fmt.Sprintf("http://example.com/%d", i), false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+			_, err := srv.manager.CreateScrapeJob(ctx, fmt.Sprintf("http://example.com/%d", i), false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 			if err != nil {
 				t.Fatalf("CreateScrapeJob failed: %v", err)
 			}
@@ -188,7 +188,7 @@ func TestHandleJobCancel(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("cancel queued job", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -296,7 +296,7 @@ func TestHandleJobExport(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("export job as jsonl", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -334,7 +334,7 @@ func TestHandleJobExport(t *testing.T) {
 	})
 
 	t.Run("export job with default format", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -372,7 +372,7 @@ func TestHandleJobExport(t *testing.T) {
 	})
 
 	t.Run("export job with invalid format", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -401,7 +401,7 @@ func TestHandleJobExport(t *testing.T) {
 	})
 
 	t.Run("export job without results", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -473,7 +473,7 @@ func TestHandleJobStatus(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("get job status", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -570,7 +570,7 @@ func TestHandleJobResults(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("get job results", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
@@ -636,7 +636,7 @@ func TestHandleJobResults(t *testing.T) {
 	})
 
 	t.Run("get results of job without results", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false)
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
