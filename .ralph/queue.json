@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0133",
-      "status": "todo",
-      "title": "Classify scrape output pipeline errors",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "scrape",
-        "pipeline"
-      ],
-      "scope": [
-        "internal/scrape/scrape.go"
-      ],
-      "evidence": [
-        "internal/scrape/scrape.go applyScrapeOutputPipeline returns fmt.Errorf for marshal errors and pipeline output type mismatches."
-      ],
-      "plan": [
-        "Wrap marshal/type mismatch errors with apperrors.Internal and safe messages.",
-        "Add tests for pipeline output type mismatch behavior.",
-        "Ensure callers propagate the classified errors correctly."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0134",
       "status": "todo",
       "title": "Classify research output pipeline errors and handle marshal failures",

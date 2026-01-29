@@ -9,10 +9,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -280,7 +280,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 func applyScrapeOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
 	raw, err := json.Marshal(result)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed to marshal result: %w", err)
+		return Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to marshal scrape result", err)
 	}
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,
@@ -319,7 +319,7 @@ func applyScrapeOutputPipeline(ctx context.Context, registry *pipeline.Registry,
 	}
 	typed, ok := out.Structured.(Result)
 	if !ok {
-		return Result{}, fmt.Errorf("pipeline output type mismatch for scrape")
+		return Result{}, apperrors.Internal("pipeline output type mismatch for scrape")
 	}
 	return typed, nil
 }
