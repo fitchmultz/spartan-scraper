@@ -2,10 +2,13 @@ package common
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
@@ -230,5 +233,80 @@ func TestWaitForJob_ErrorWithBearerToken(t *testing.T) {
 
 	if strings.Contains(errMsg, "Bearer abc") || strings.Contains(errMsg, "Bearer xyz") {
 		t.Errorf("error message contains unredacted token: %s", errMsg)
+	}
+}
+
+func TestCopyResults_Success(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	resultPath := filepath.Join(dataDir, "result.json")
+	resultContent := `{"results": ["test"]}`
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+
+	jobID := "test-job-copy"
+	job := model.Job{
+		ID:         jobID,
+		Kind:       model.KindScrape,
+		Status:     model.StatusSucceeded,
+		ResultPath: resultPath,
+	}
+
+	if err := st.Create(context.Background(), job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	outPath := filepath.Join(dataDir, "output.json")
+	err = copyResults(context.Background(), st, jobID, outPath)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+
+	if string(content) != resultContent {
+		t.Errorf("expected content %q, got %q", resultContent, string(content))
+	}
+}
+
+func TestCopyResults_NoResultPath(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	jobID := "test-job-no-result"
+	job := model.Job{
+		ID:         jobID,
+		Kind:       model.KindScrape,
+		Status:     model.StatusSucceeded,
+		ResultPath: "",
+	}
+
+	if err := st.Create(context.Background(), job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	outPath := filepath.Join(dataDir, "output.json")
+	err = copyResults(context.Background(), st, jobID, outPath)
+
+	if err == nil {
+		t.Fatal("expected error for missing result path, got nil")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindNotFound) {
+		t.Errorf("expected KindNotFound, got %v", apperrors.KindOf(err))
 	}
 }

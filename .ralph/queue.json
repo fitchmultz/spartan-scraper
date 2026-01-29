@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0135",
-      "status": "todo",
-      "title": "Add tests for internal/cli/common helpers",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "cli"
-      ],
-      "scope": [
-        "internal/cli/common"
-      ],
-      "evidence": [
-        "internal/cli/common contains auth/flags/helpers but no *_test.go files."
-      ],
-      "plan": [
-        "Add unit tests for StringSliceFlag.ToMap parsing and header/cookie parsing.",
-        "Add tests for BuildTokens and ParseTokenKind edge cases.",
-        "Ensure tests cover failure/empty input handling."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0136",
       "status": "todo",
       "title": "Add tests for CLI scrape/crawl/research commands",
