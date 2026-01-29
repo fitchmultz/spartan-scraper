@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0116",
-      "status": "todo",
-      "title": "Fix scheduler loading all schedules from disk every second",
-      "priority": "high",
-      "tags": [
-        "performance",
-        "scheduler",
-        "io",
-        "go"
-      ],
-      "scope": [
-        "internal/scheduler/scheduler.go"
-      ],
-      "evidence": [
-        "scheduler.go:43-80 - Scheduler loads all schedules from disk every second",
-        "File I/O every second is inefficient; should use in-memory cache with file watching"
-      ],
-      "plan": [
-        "Load schedules once at startup",
-        "Use file watcher for changes instead of polling",
-        "Or add TTL cache to reduce I/O frequency"
-      ],
-      "notes": [],
-      "request": "scan finding: scheduler polls disk every second",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0117",
       "status": "todo",
       "title": "Add API request ID propagation for tracing",

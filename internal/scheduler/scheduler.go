@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -40,7 +42,134 @@ type scheduleStore struct {
 	Schedules []Schedule `json:"schedules"`
 }
 
+// cachedScheduler manages in-memory schedule cache with file watching for automatic reloads.
+// It ensures schedules are loaded once at startup and only re-read from disk when changed.
+type cachedScheduler struct {
+	dataDir   string
+	manager   *jobs.Manager
+	mu        sync.RWMutex
+	schedules []Schedule
+	watcher   *fsnotify.Watcher
+	reloadCh  chan struct{}
+	doneCh    chan struct{}
+}
+
+// NewCachedScheduler creates a new cached scheduler with file watching enabled.
+// It loads schedules once at startup and watches for changes to the schedules file.
+func NewCachedScheduler(dataDir string, manager *jobs.Manager) (*cachedScheduler, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file watcher: %w", err)
+	}
+
+	cs := &cachedScheduler{
+		dataDir:  dataDir,
+		manager:  manager,
+		watcher:  watcher,
+		reloadCh: make(chan struct{}, 1),
+		doneCh:   make(chan struct{}),
+	}
+
+	if err := cs.loadSchedules(); err != nil {
+		watcher.Close()
+		return nil, fmt.Errorf("failed to load initial schedules: %w", err)
+	}
+
+	schedulesDir := filepath.Dir(schedulesPath(dataDir))
+	if err := watcher.Add(schedulesDir); err != nil {
+		watcher.Close()
+		return nil, fmt.Errorf("failed to watch schedules directory: %w", err)
+	}
+
+	return cs, nil
+}
+
+// loadSchedules reloads schedules from disk and updates the in-memory cache.
+// It is safe to call concurrently.
+func (cs *cachedScheduler) loadSchedules() error {
+	schedules, err := LoadAll(cs.dataDir)
+	if err != nil {
+		return err
+	}
+
+	cs.mu.Lock()
+	cs.schedules = schedules
+	cs.mu.Unlock()
+	return nil
+}
+
+// startWatcher begins watching the schedules file for changes and triggers reloads.
+// It runs in a goroutine until ctx is canceled.
+func (cs *cachedScheduler) startWatcher(ctx context.Context) {
+	schedulesFilePath := schedulesPath(cs.dataDir)
+
+	go func() {
+		defer close(cs.doneCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case event, ok := <-cs.watcher.Events:
+				if !ok {
+					return
+				}
+
+				if filepath.Clean(event.Name) == schedulesFilePath {
+					if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
+						select {
+						case cs.reloadCh <- struct{}{}:
+						default:
+						}
+					}
+				}
+
+			case err, ok := <-cs.watcher.Errors:
+				if !ok {
+					return
+				}
+				slog.Error("scheduler file watcher error", "error", err)
+			}
+		}
+	}()
+}
+
+// reloadLoop handles schedule reloads triggered by file watcher or periodic fallback.
+// Debounces rapid file changes and falls back to periodic reloads every 5 seconds.
+func (cs *cachedScheduler) reloadLoop(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case <-cs.reloadCh:
+			if err := cs.loadSchedules(); err != nil {
+				slog.Error("failed to reload schedules from disk", "error", err)
+			}
+
+		case <-ticker.C:
+			if err := cs.loadSchedules(); err != nil {
+				slog.Error("failed to reload schedules (fallback)", "error", err)
+			}
+		}
+	}
+}
+
 func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
+	cs, err := NewCachedScheduler(dataDir, manager)
+	if err != nil {
+		return fmt.Errorf("failed to create cached scheduler: %w", err)
+	}
+	defer cs.watcher.Close()
+
+	cs.startWatcher(ctx)
+
+	go cs.reloadLoop(ctx)
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -48,18 +177,21 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 		select {
 		case <-ctx.Done():
 			return nil
+
 		case <-ticker.C:
-			schedules, err := LoadAll(dataDir)
-			if err != nil {
-				continue
-			}
-			changed := false
 			now := time.Now()
+
+			cs.mu.RLock()
+			schedules := make([]Schedule, len(cs.schedules))
+			copy(schedules, cs.schedules)
+			cs.mu.RUnlock()
+
+			changed := false
 			for i := range schedules {
 				if schedules[i].NextRun.After(now) {
 					continue
 				}
-				err := enqueue(ctx, manager, dataDir, schedules[i])
+				err := enqueue(ctx, cs.manager, cs.dataDir, schedules[i])
 				if err == nil {
 					schedules[i].NextRun = now.Add(time.Duration(schedules[i].IntervalSeconds) * time.Second)
 					changed = true
@@ -71,9 +203,14 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 					)
 				}
 			}
+
 			if changed {
-				if err := SaveAll(dataDir, schedules); err != nil {
+				if err := SaveAll(cs.dataDir, schedules); err != nil {
 					slog.Error("failed to save schedules", "error", err)
+				} else {
+					cs.mu.Lock()
+					cs.schedules = schedules
+					cs.mu.Unlock()
 				}
 			}
 		}
