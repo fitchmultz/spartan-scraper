@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0142",
-      "status": "todo",
-      "title": "Split internal/store/store_test.go into smaller test files",
-      "priority": "high",
-      "tags": [
-        "refactor",
-        "tests",
-        "store"
-      ],
-      "scope": [
-        "internal/store/store_test.go"
-      ],
-      "evidence": [
-        "internal/store/store_test.go is 1044 LOC, exceeding the 1000 LOC threshold.",
-        "AGENTS.md states files exceeding ~1000 LOC are presumed to be mis-scoped and MUST be split unless proven otherwise."
-      ],
-      "plan": [
-        "Analyze the test structure in store_test.go to identify logical groupings (e.g., by store operation or data type).",
-        "Split into smaller test files with clear, focused responsibilities (e.g., store_jobs_test.go, store_crawls_test.go, etc.).",
-        "Ensure all tests are preserved and run successfully after split.",
-        "Run make ci to verify the changes don't break anything."
-      ],
-      "notes": [],
-      "request": "Identify large files with large LOC and create a task to have each file refactored into smaller files. Group closely related files by directory/module patterns for batching within a single task but do not overload any single task.",
-      "created_at": "2026-01-29T17:35:26Z",
-      "updated_at": "2026-01-29T17:35:26Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0143",
       "status": "todo",
       "title": "Split internal/extract test files into smaller focused test suites",
