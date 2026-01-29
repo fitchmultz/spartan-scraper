@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0107",
-      "status": "todo",
-      "title": "Fix bool pointer pattern ignoring explicit false values",
-      "priority": "critical",
-      "tags": [
-        "bug",
-        "api",
-        "logic-error",
-        "go"
-      ],
-      "scope": [
-        "internal/api/scrape.go",
-        "internal/api/crawl.go",
-        "internal/scheduler/scheduler.go"
-      ],
-      "evidence": [
-        "scrape.go:70 - usePlaywright uses manager.DefaultUsePlaywright() as fallback, but req.Playwright pointer check doesn't distinguish 'not provided' from 'explicitly false'",
-        "crawl.go - Same issue with playwright flag handling",
-        "scheduler.go:107 - boolParamDefault(params, 'playwright', manager.DefaultUsePlaywright()) overrides explicit false in params"
-      ],
-      "plan": [
-        "Create helper function to distinguish between nil pointer and explicit false",
-        "Update scrape.go to respect explicit false values",
-        "Update crawl.go to respect explicit false values",
-        "Update scheduler.go boolParamDefault to check if param exists vs is true",
-        "Add tests for explicit false value handling"
-      ],
-      "notes": [],
-      "request": "scan finding: bool pointer pattern treats explicit false as 'not provided'",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0108",
       "status": "todo",
       "title": "Fix HTTP fetcher cookie jar recreation on retry",

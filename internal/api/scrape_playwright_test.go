@@ -1,0 +1,74 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestHandleScrapePlaywright(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	tests := []struct {
+		name             string
+		body             string
+		expectPlaywright bool
+	}{
+		{
+			name:             "playwright nil (omitted) - uses default",
+			body:             `{"url": "https://example.com"}`,
+			expectPlaywright: srv.manager.DefaultUsePlaywright(),
+		},
+		{
+			name:             "playwright explicitly false",
+			body:             `{"url": "https://example.com", "playwright": false}`,
+			expectPlaywright: false,
+		},
+		{
+			name:             "playwright explicitly true",
+			body:             `{"url": "https://example.com", "playwright": true}`,
+			expectPlaywright: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Fatalf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+			}
+
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("failed to parse JSON response: %v", err)
+			}
+
+			jobID, ok := resp["id"].(string)
+			if !ok {
+				t.Fatalf("expected job ID in response, got: %v", resp)
+			}
+
+			job, err := srv.store.Get(context.Background(), jobID)
+			if err != nil {
+				t.Fatalf("failed to get job: %v", err)
+			}
+
+			playwright, ok := job.Params["playwright"].(bool)
+			if !ok {
+				t.Fatalf("expected bool 'playwright' param, got %v", job.Params["playwright"])
+			}
+
+			if playwright != tt.expectPlaywright {
+				t.Errorf("playwright = %v, want %v", playwright, tt.expectPlaywright)
+			}
+		})
+	}
+}
