@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"path/filepath"
 	"time"
@@ -25,10 +26,11 @@ func getJobRequestID(job model.Job) string {
 	return job.ID
 }
 
-func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, errorMsg string, timeout time.Duration) {
+func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, err error, timeout time.Duration) {
 	updateCtx, cancelUpdate := context.WithTimeout(context.Background(), timeout)
-	if err := m.store.UpdateStatus(updateCtx, jobID, status, errorMsg); err != nil {
-		slog.Error("failed to update job status", "jobID", jobID, "status", status, "error", err)
+	errorMsg := apperrors.SafeMessage(err)
+	if updateErr := m.store.UpdateStatus(updateCtx, jobID, status, errorMsg); updateErr != nil {
+		slog.Error("failed to update job status", "jobID", jobID, "status", status, "error", updateErr)
 	}
 	cancelUpdate()
 }
@@ -68,14 +70,14 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	resultDir := filepath.Dir(job.ResultPath)
 	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		slog.Error("failed to create result directory", "jobID", job.ID, "error", err)
-		m.updateStatusWithTimeout(job.ID, model.StatusFailed, err.Error(), 2*time.Second)
+		m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
 		return err
 	}
 
 	file, err := fsutil.CreateSecure(job.ResultPath)
 	if err != nil {
 		slog.Error("failed to create result file", "jobID", job.ID, "error", err)
-		m.updateStatusWithTimeout(job.ID, model.StatusFailed, err.Error(), 2*time.Second)
+		m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
 		return err
 	}
 	defer file.Close()
@@ -118,11 +120,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during scrape", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, "canceled by user", 5*time.Second)
+				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
 				return nil
 			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err.Error(), 2*time.Second)
+			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -176,11 +178,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during crawl", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, "canceled by user", 5*time.Second)
+				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
 				return nil
 			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err.Error(), 2*time.Second)
+			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
 			return err
 		}
 		for _, item := range results {
@@ -236,11 +238,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during research", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, "canceled by user", 5*time.Second)
+				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
 				return nil
 			}
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err.Error(), 2*time.Second)
+			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -254,7 +256,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		}
 	default:
 		slog.Error("unknown job kind", "jobID", job.ID, "kind", job.Kind)
-		m.updateStatusWithTimeout(job.ID, model.StatusFailed, "unknown job kind", 2*time.Second)
+		m.updateStatusWithTimeout(job.ID, model.StatusFailed, apperrors.Internal("unknown job kind"), 2*time.Second)
 		return apperrors.Internal("unknown job kind")
 	}
 

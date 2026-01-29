@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0126",
-      "status": "todo",
-      "title": "Redact job error messages before storing and surfacing",
-      "priority": "high",
-      "tags": [
-        "security",
-        "errors",
-        "jobs",
-        "cli",
-        "mcp"
-      ],
-      "scope": [
-        "internal/jobs/job_run.go",
-        "internal/cli/common/results.go",
-        "internal/mcp/server.go"
-      ],
-      "evidence": [
-        "internal/jobs/job_run.go updateStatusWithTimeout stores err.Error() into job status via UpdateStatus.",
-        "internal/cli/common/results.go waitForJob formats job.Error directly into apperrors.Internal messages.",
-        "internal/mcp/server.go waitForJob builds fmt.Errorf(\"job failed: %s\", job.Error) without redaction."
-      ],
-      "plan": [
-        "Redact job error strings with apperrors.SafeMessage before persisting to job.Error.",
-        "Update CLI/MCP waitForJob error construction to use sanitized job.Error values.",
-        "Add tests that assert secrets/paths are redacted in stored and surfaced job errors."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0127",
       "status": "todo",
       "title": "Fix MCP waitForJob timeout=0 semantics and status constants",
