@@ -4,13 +4,17 @@
 // It does NOT handle authentication execution.
 package auth
 
+// This file provides profile merging logic, recursively combining parent profiles
+// into child profiles with proper cycle detection.
+// It does NOT handle vault persistence or profile CRUD operations (see vault.go).
+
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"sort"
 	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
@@ -63,17 +67,17 @@ func Resolve(dataDir string, in ResolveInput) (ResolvedAuth, error) {
 
 func MergeProfiles(vault Vault, name string, visited map[string]bool) (Profile, error) {
 	if strings.TrimSpace(name) == "" {
-		return Profile{}, errors.New("profile name is required")
+		return Profile{}, apperrors.Validation("profile name is required")
 	}
 	if visited[name] {
-		return Profile{}, fmt.Errorf("auth profile cycle detected: %s", name)
+		return Profile{}, apperrors.Validation(fmt.Sprintf("auth profile cycle detected: %s", name))
 	}
 	visited[name] = true
 	defer delete(visited, name)
 
 	profile, found := findProfile(vault, name)
 	if !found {
-		return Profile{}, fmt.Errorf("auth profile not found: %s", name)
+		return Profile{}, apperrors.NotFound(fmt.Sprintf("profile not found: %s", name))
 	}
 
 	merged := Profile{}

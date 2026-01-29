@@ -2,33 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0132",
-      "status": "todo",
-      "title": "Use apperrors for auth profile merge errors",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "auth"
-      ],
-      "scope": [
-        "internal/auth/merge.go"
-      ],
-      "evidence": [
-        "internal/auth/merge.go returns errors.New(\"profile name is required\") and fmt.Errorf for cycle/not found cases."
-      ],
-      "plan": [
-        "Replace raw errors with apperrors.Validation for invalid input and apperrors.NotFound for missing profiles.",
-        "Wrap cycle detection errors with apperrors.Validation or apperrors.Internal per desired API behavior.",
-        "Update auth merge tests to assert error kinds and messages."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0133",
       "status": "todo",
       "title": "Classify scrape output pipeline errors",

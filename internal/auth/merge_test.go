@@ -2,8 +2,9 @@ package auth
 
 import (
 	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func TestMergeProfiles(t *testing.T) {
@@ -56,10 +57,17 @@ func TestMergeProfiles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			merged, err := MergeProfiles(vault, tt.profile, map[string]bool{})
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("MergeProfiles() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr {
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("MergeProfiles() expected error, got nil")
+				}
+				if !apperrors.IsKind(err, apperrors.KindValidation) && !apperrors.IsKind(err, apperrors.KindNotFound) {
+					t.Fatalf("MergeProfiles() error kind = %v, expected Validation or NotFound, got: %v", apperrors.KindOf(err), err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("MergeProfiles() unexpected error = %v", err)
+				}
 				headers := map[string]string{}
 				for _, h := range merged.Headers {
 					headers[h.Key] = h.Value
@@ -80,8 +88,11 @@ func TestMergeProfilesCycle(t *testing.T) {
 		},
 	}
 	_, err := MergeProfiles(vault, "a", map[string]bool{})
-	if err == nil || !strings.Contains(err.Error(), "cycle") {
-		t.Errorf("expected cycle error, got %v", err)
+	if err == nil {
+		t.Errorf("expected cycle error, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Errorf("expected Validation kind for cycle error, got %v", apperrors.KindOf(err))
 	}
 }
 
