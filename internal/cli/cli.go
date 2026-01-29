@@ -30,7 +30,11 @@ import (
 // Run executes CLI application. It parses command-line arguments and
 // routes to appropriate subcommand. It returns an exit code.
 func Run(ctx context.Context) int {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		return 1
+	}
 	config.InitLogger(cfg)
 	if len(os.Args) < 2 {
 		printHelp()

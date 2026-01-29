@@ -2,22 +2,32 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func TestLoad(t *testing.T) {
-	// Clear env vars that might interfere
+	dataDir := t.TempDir()
 	os.Unsetenv("PORT")
-	os.Unsetenv("DATA_DIR")
+	os.Setenv("DATA_DIR", dataDir)
 
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
 	if cfg.Port != "8741" {
 		t.Errorf("expected default port 8741, got %s", cfg.Port)
 	}
 
 	os.Setenv("PORT", "9999")
-	cfg = Load()
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
 	if cfg.Port != "9999" {
 		t.Errorf("expected port 9999, got %s", cfg.Port)
 	}
@@ -84,11 +94,14 @@ func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	setEnv("PORT", "8741")
 	setEnv("DATA_DIR", dataDir)
 
-	// Force AuthOverrides to have non-nil maps so the test exercises map reads too.
+	// Force AuthOverrides to have non-nil maps so that the test exercises map reads too.
 	setEnv("AUTH_HEADER_X__API__KEY", "abc123")
 	setEnv("AUTH_COOKIE_SESSION", "sess123")
 
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
 
 	const goroutines = 64
 	const iterations = 2000
@@ -128,4 +141,118 @@ func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestValidateDataDir_Success(t *testing.T) {
+	dataDir := t.TempDir()
+	err := validateDataDir(dataDir)
+	if err != nil {
+		t.Fatalf("validateDataDir(%q) failed: %v", dataDir, err)
+	}
+}
+
+func TestValidateDataDir_ReadOnlyDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping read-only directory test on Windows")
+	}
+
+	dataDir := t.TempDir()
+
+	// Make directory read-only
+	if err := os.Chmod(dataDir, 0o444); err != nil {
+		t.Fatalf("failed to make directory read-only: %v", err)
+	}
+
+	// Restore permissions in cleanup
+	t.Cleanup(func() {
+		_ = os.Chmod(dataDir, 0o755)
+	})
+
+	err := validateDataDir(dataDir)
+	if err == nil {
+		t.Fatal("expected error for read-only directory, got nil")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindPermission) {
+		t.Errorf("expected KindPermission error, got: %v", err)
+	}
+}
+
+func TestValidateDataDir_NonExistentPath(t *testing.T) {
+	// validateDataDir creates the directory if it doesn't exist,
+	// so this test verifies that it successfully creates nested paths.
+	nonExistentPath := filepath.Join(t.TempDir(), "nonexistent", "nested", "path")
+
+	err := validateDataDir(nonExistentPath)
+	if err != nil {
+		t.Fatalf("validateDataDir(%q) failed: %v", nonExistentPath, err)
+	}
+
+	// Verify the directory was created
+	if _, err := os.Stat(nonExistentPath); err != nil {
+		t.Fatalf("directory was not created: %v", err)
+	}
+}
+
+func TestLoad_WithInvalidDataDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping read-only directory test on Windows")
+	}
+
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+
+	// Make directory read-only
+	if err := os.Chmod(dataDir, 0o444); err != nil {
+		t.Fatalf("failed to make directory read-only: %v", err)
+	}
+
+	// Restore permissions in cleanup
+	t.Cleanup(func() {
+		_ = os.Chmod(dataDir, 0o755)
+	})
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for read-only DATA_DIR, got nil")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindPermission) {
+		t.Errorf("expected KindPermission error, got: %v", err)
+	}
+}
+
+func TestLoad_WithValidDataDir(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.DataDir != dataDir {
+		t.Errorf("expected DataDir %q, got %q", dataDir, cfg.DataDir)
+	}
+}
+
+func TestLoad_CreatesDirectoryIfNeeded(t *testing.T) {
+	parentDir := t.TempDir()
+	nonExistentDataDir := filepath.Join(parentDir, "newdata", "nested")
+
+	t.Setenv("DATA_DIR", nonExistentDataDir)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.DataDir != nonExistentDataDir {
+		t.Errorf("expected DataDir %q, got %q", nonExistentDataDir, cfg.DataDir)
+	}
+
+	// Verify directory was created
+	if _, err := os.Stat(nonExistentDataDir); err != nil {
+		t.Fatalf("directory was not created: %v", err)
+	}
 }

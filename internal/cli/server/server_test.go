@@ -11,6 +11,7 @@ import (
 func TestServer_DefaultBindingIsLocalhost(t *testing.T) {
 	t.Setenv("BIND_ADDR", "")
 	t.Setenv("PORT", "8741")
+	t.Setenv("DATA_DIR", t.TempDir())
 
 	// Ensure defaults apply (no accidental inheritance from developer env).
 	t.Setenv("SERVER_READ_HEADER_TIMEOUT_SECONDS", "")
@@ -18,7 +19,10 @@ func TestServer_DefaultBindingIsLocalhost(t *testing.T) {
 	t.Setenv("SERVER_WRITE_TIMEOUT_SECONDS", "")
 	t.Setenv("SERVER_IDLE_TIMEOUT_SECONDS", "")
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load() failed: %v", err)
+	}
 	if cfg.BindAddr != "127.0.0.1" {
 		t.Fatalf("expected default BindAddr 127.0.0.1, got %q", cfg.BindAddr)
 	}
@@ -32,6 +36,7 @@ func TestServer_DefaultBindingIsLocalhost(t *testing.T) {
 func TestServer_TimeoutsAreNonZeroAndSane(t *testing.T) {
 	t.Setenv("BIND_ADDR", "")
 	t.Setenv("PORT", "8741")
+	t.Setenv("DATA_DIR", t.TempDir())
 
 	// Force fallback defaults.
 	t.Setenv("SERVER_READ_HEADER_TIMEOUT_SECONDS", "")
@@ -39,7 +44,10 @@ func TestServer_TimeoutsAreNonZeroAndSane(t *testing.T) {
 	t.Setenv("SERVER_WRITE_TIMEOUT_SECONDS", "")
 	t.Setenv("SERVER_IDLE_TIMEOUT_SECONDS", "")
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load() failed: %v", err)
+	}
 	srv := newHTTPServer(cfg, http.NewServeMux())
 
 	if srv.ReadHeaderTimeout <= 0 {
@@ -78,6 +86,7 @@ func TestServer_TimeoutsAreNonZeroAndSane(t *testing.T) {
 func TestServer_CanOptInToBindAllInterfaces(t *testing.T) {
 	t.Setenv("BIND_ADDR", "0.0.0.0")
 	t.Setenv("PORT", "9999")
+	t.Setenv("DATA_DIR", t.TempDir())
 
 	// Set explicit values to ensure they are used.
 	t.Setenv("SERVER_READ_HEADER_TIMEOUT_SECONDS", "11")
@@ -85,7 +94,10 @@ func TestServer_CanOptInToBindAllInterfaces(t *testing.T) {
 	t.Setenv("SERVER_WRITE_TIMEOUT_SECONDS", "61")
 	t.Setenv("SERVER_IDLE_TIMEOUT_SECONDS", "121")
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load() failed: %v", err)
+	}
 	if cfg.BindAddr != "0.0.0.0" {
 		t.Fatalf("expected BindAddr %q, got %q", "0.0.0.0", cfg.BindAddr)
 	}

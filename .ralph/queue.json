@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0119",
-      "status": "todo",
-      "title": "Add DataDir writable validation at startup",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "config",
-        "validation",
-        "go"
-      ],
-      "scope": [
-        "internal/config/config.go"
-      ],
-      "evidence": [
-        "config.go:78-103 - No validation that DataDir is writable",
-        "If DATA_DIR points to read-only location, app fails at runtime during first write"
-      ],
-      "plan": [
-        "Add write permission check during config validation",
-        "Attempt test file write to verify permissions",
-        "Fail fast with clear error message if not writable"
-      ],
-      "notes": [],
-      "request": "scan finding: no validation that data directory is writable",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0120",
       "status": "todo",
       "title": "Fix OpenAPI spec default timeout mismatch with implementation",

@@ -20,10 +20,13 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/joho/godotenv"
 )
@@ -75,9 +78,13 @@ type Config struct {
 //
 // Load does not maintain any singleton/global Config instance; it simply returns a value.
 // The returned Config is treated as immutable after loading.
-func Load() Config {
+//
+// Returns an error if the data directory cannot be created or is not writable.
+// Uses apperrors.KindPermission for writability issues.
+func Load() (Config, error) {
 	_ = godotenv.Load()
-	return Config{
+	dataDir := getenv("DATA_DIR", ".data")
+	cfg := Config{
 		Port:     getenv("PORT", "8741"),
 		BindAddr: getenv("BIND_ADDR", "127.0.0.1"),
 
@@ -86,7 +93,7 @@ func Load() Config {
 		ServerWriteTimeoutSecs:      getenvInt("SERVER_WRITE_TIMEOUT_SECONDS", 60),
 		ServerIdleTimeoutSecs:       getenvInt("SERVER_IDLE_TIMEOUT_SECONDS", 120),
 
-		DataDir:            getenv("DATA_DIR", ".data"),
+		DataDir:            dataDir,
 		UserAgent:          getenv("USER_AGENT", "SpartanScraper/0.1 (+https://local)"),
 		MaxConcurrency:     getenvInt("MAX_CONCURRENCY", 4),
 		RequestTimeoutSecs: getenvInt("REQUEST_TIMEOUT_SECONDS", 30),
@@ -100,6 +107,29 @@ func Load() Config {
 		LogLevel:           getenv("LOG_LEVEL", "info"),
 		LogFormat:          getenv("LOG_FORMAT", "text"),
 	}
+
+	if err := validateDataDir(cfg.DataDir); err != nil {
+		return Config{}, err
+	}
+
+	return cfg, nil
+}
+
+func validateDataDir(dataDir string) error {
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return apperrors.Wrap(apperrors.KindPermission,
+			fmt.Sprintf("failed to create data directory %s", dataDir), err)
+	}
+
+	testFile := filepath.Join(dataDir, ".write-test")
+	if err := os.WriteFile(testFile, []byte("write test"), 0o600); err != nil {
+		return apperrors.Wrap(apperrors.KindPermission,
+			fmt.Sprintf("data directory %s is not writable", dataDir), err)
+	}
+
+	_ = os.Remove(testFile)
+
+	return nil
 }
 
 func loadAuthOverrides() EnvOverrides {
