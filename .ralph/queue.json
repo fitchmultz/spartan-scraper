@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0134",
-      "status": "todo",
-      "title": "Classify research output pipeline errors and handle marshal failures",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "research",
-        "pipeline"
-      ],
-      "scope": [
-        "internal/research/research.go"
-      ],
-      "evidence": [
-        "internal/research/research.go applyResearchOutputPipeline ignores json.Marshal errors (raw, _ := json.Marshal(result)).",
-        "internal/research/research.go returns fmt.Errorf for pipeline output type mismatch."
-      ],
-      "plan": [
-        "Check and handle json.Marshal errors, returning apperrors.Internal with safe message.",
-        "Wrap output type mismatch with apperrors.Internal.",
-        "Add tests covering marshal failure path and type mismatch."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0135",
       "status": "todo",
       "title": "Add tests for internal/cli/common helpers",

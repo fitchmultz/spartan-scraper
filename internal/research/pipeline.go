@@ -4,15 +4,18 @@ package research
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 // applyResearchOutputPipeline applies pipeline hooks to research results.
 func applyResearchOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result Result) (Result, error) {
-	raw, _ := json.Marshal(result)
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to marshal research result", err)
+	}
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,
 		Kind:       string(model.KindResearch),
@@ -50,7 +53,7 @@ func applyResearchOutputPipeline(ctx context.Context, registry *pipeline.Registr
 	}
 	typed, ok := out.Structured.(Result)
 	if !ok {
-		return Result{}, fmt.Errorf("pipeline output type mismatch for research")
+		return Result{}, apperrors.Internal("pipeline output type mismatch for research")
 	}
 	return typed, nil
 }

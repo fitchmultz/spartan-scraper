@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -453,7 +452,7 @@ func sameHost(base *url.URL, raw string) bool {
 func applyCrawlOutputPipeline(ctx context.Context, registry *pipeline.Registry, baseCtx pipeline.HookContext, result PageResult) (PageResult, error) {
 	raw, err := json.Marshal(result)
 	if err != nil {
-		return PageResult{}, fmt.Errorf("failed to marshal result: %w", err)
+		return PageResult{}, apperrors.Wrap(apperrors.KindInternal, "failed to marshal result", err)
 	}
 	input := pipeline.OutputInput{
 		Target:     baseCtx.Target,
@@ -492,7 +491,7 @@ func applyCrawlOutputPipeline(ctx context.Context, registry *pipeline.Registry, 
 	}
 	typed, ok := out.Structured.(PageResult)
 	if !ok {
-		return PageResult{}, fmt.Errorf("pipeline output type mismatch for crawl")
+		return PageResult{}, apperrors.Internal("pipeline output type mismatch for crawl")
 	}
 	return typed, nil
 }
