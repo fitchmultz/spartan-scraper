@@ -108,15 +108,15 @@ func (s *Store) ListByStatus(ctx context.Context, status model.Status, opts List
 		var parseErr error
 		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
 		if parseErr != nil {
-			return nil, fmt.Errorf("failed to parse created_at for job %s: %w", job.ID, parseErr)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", parseErr)
 		}
 		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
 		if parseErr != nil {
-			return nil, fmt.Errorf("failed to parse updated_at for job %s: %w", job.ID, parseErr)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", parseErr)
 		}
 		if params != "" {
 			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal params for job %s: %w", job.ID, err)
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
 			}
 		}
 		results = append(results, job)
@@ -188,22 +188,22 @@ func (s *Store) prepareStatements() error {
 	s.insertJobStmt, err = s.db.Prepare(`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
 			values (?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare insertJobStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare insert job statement", err)
 	}
 
 	s.updateJobStatusStmt, err = s.db.Prepare(`update jobs set status = ?, updated_at = ?, error = ? where id = ?`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare updateJobStatusStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update job status statement", err)
 	}
 
 	s.getJobStmt, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare getJobStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get job statement", err)
 	}
 
 	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped, depth, job_id from crawl_states where url = ?`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare getCrawlStateStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get crawl state statement", err)
 	}
 
 	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id)
@@ -216,17 +216,17 @@ func (s *Store) prepareStatements() error {
 			depth = excluded.depth,
 			job_id = excluded.job_id`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare upsertCrawlStateStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare upsert crawl state statement", err)
 	}
 
 	s.deleteCrawlStateStmt, err = s.db.Prepare(`delete from crawl_states where url = ?`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare deleteCrawlStateStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete crawl state statement", err)
 	}
 
 	s.deleteAllCrawlStatesStmt, err = s.db.Prepare(`delete from crawl_states`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare deleteAllCrawlStatesStmt: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete all crawl states statement", err)
 	}
 
 	return nil
@@ -333,7 +333,7 @@ func (s *Store) init() error {
 func (s *Store) Create(ctx context.Context, job model.Job) error {
 	params, err := json.Marshal(job.Params)
 	if err != nil {
-		return fmt.Errorf("failed to marshal job params: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to marshal job params", err)
 	}
 	_, err = s.insertJobStmt.ExecContext(
 		ctx,
@@ -374,15 +374,15 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 	var err error
 	job.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("failed to parse created_at: %w", err)
+		return model.Job{}, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", err)
 	}
 	job.UpdatedAt, err = time.Parse(time.RFC3339Nano, updatedAt)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("failed to parse updated_at: %w", err)
+		return model.Job{}, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", err)
 	}
 	if params != "" {
 		if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
-			return model.Job{}, fmt.Errorf("failed to unmarshal params: %w", err)
+			return model.Job{}, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
 		}
 	}
 	return job, nil
@@ -411,15 +411,15 @@ func (s *Store) ListOpts(ctx context.Context, opts ListOptions) ([]model.Job, er
 		var parseErr error
 		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
 		if parseErr != nil {
-			return nil, fmt.Errorf("failed to parse created_at for job %s: %w", job.ID, parseErr)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", parseErr)
 		}
 		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
 		if parseErr != nil {
-			return nil, fmt.Errorf("failed to parse updated_at for job %s: %w", job.ID, parseErr)
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", parseErr)
 		}
 		if params != "" {
 			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal params for job %s: %w", job.ID, err)
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
 			}
 		}
 		results = append(results, job)
@@ -441,7 +441,7 @@ func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState
 		var err error
 		state.LastScraped, err = time.Parse(time.RFC3339Nano, lastScraped)
 		if err != nil {
-			return model.CrawlState{}, fmt.Errorf("failed to parse last_scraped: %w", err)
+			return model.CrawlState{}, apperrors.Wrap(apperrors.KindInternal, "failed to parse crawl state last_scraped", err)
 		}
 	}
 	return state, nil
@@ -498,7 +498,7 @@ func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions
 			var parseErr error
 			state.LastScraped, parseErr = time.Parse(time.RFC3339Nano, lastScraped)
 			if parseErr != nil {
-				return nil, fmt.Errorf("failed to parse last_scraped for URL %s: %w", state.URL, parseErr)
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse crawl state last_scraped", parseErr)
 			}
 		}
 		results = append(results, state)

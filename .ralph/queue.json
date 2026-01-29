@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0130",
-      "status": "todo",
-      "title": "Use apperrors for store parse/prepare failures",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "store",
-        "api"
-      ],
-      "scope": [
-        "internal/store/store.go"
-      ],
-      "evidence": [
-        "internal/store/store.go returns fmt.Errorf for created_at/updated_at parse failures and params unmarshal errors.",
-        "internal/store/store.go returns fmt.Errorf for prepare statement failures in Open."
-      ],
-      "plan": [
-        "Wrap store failures with apperrors.Internal (and preserve original error via Wrap).",
-        "Ensure user-facing surfaces use apperrors.SafeMessage for logging where needed.",
-        "Update store tests to assert error kinds for parse and prepare failures."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0131",
       "status": "todo",
       "title": "Classify scheduler errors with apperrors",

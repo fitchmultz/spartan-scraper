@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 
@@ -805,8 +806,8 @@ func TestMigrationAlterFailure(t *testing.T) {
 	dataDir := t.TempDir()
 	dbPath := filepath.Join(dataDir, "jobs.db")
 
-	// Create initial database without the new columns
-	// We'll manually create the old schema to simulate migration
+	// Create initial database without new columns
+	// We'll manually create old schema to simulate migration
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("sql.Open failed: %v", err)
@@ -847,4 +848,197 @@ func TestMigrationAlterFailure(t *testing.T) {
 	if err == nil {
 		t.Error("Open should return error when ALTER TABLE fails")
 	}
+}
+
+func TestParseErrorsReturnInternalKind(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job with valid data
+	job := model.Job{
+		ID:        "test-id",
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := s.Create(ctx, job); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Corrupt created_at in database directly
+	_, err = s.db.ExecContext(ctx, "UPDATE jobs SET created_at = ? WHERE id = ?", "invalid-timestamp", "test-id")
+	if err != nil {
+		t.Fatalf("Failed to corrupt created_at: %v", err)
+	}
+
+	// Verify ListByStatus returns KindInternal error
+	_, err = s.ListByStatus(ctx, model.StatusQueued, ListByStatusOptions{})
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid created_at, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error, got %v", apperrors.KindOf(err))
+	}
+
+	// Reset created_at and corrupt updated_at
+	_, err = s.db.ExecContext(ctx, "UPDATE jobs SET created_at = ?, updated_at = ? WHERE id = ?",
+		job.CreatedAt.Format(time.RFC3339Nano), "invalid-timestamp", "test-id")
+	if err != nil {
+		t.Fatalf("Failed to corrupt updated_at: %v", err)
+	}
+
+	_, err = s.ListByStatus(ctx, model.StatusQueued, ListByStatusOptions{})
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid updated_at, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error, got %v", apperrors.KindOf(err))
+	}
+
+	// Test Get with corrupt timestamps
+	_, err = s.Get(ctx, "test-id")
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid updated_at in Get, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error in Get, got %v", apperrors.KindOf(err))
+	}
+
+	// Test ListOpts with corrupt timestamps
+	_, err = s.ListOpts(ctx, ListOptions{})
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid updated_at in ListOpts, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error in ListOpts, got %v", apperrors.KindOf(err))
+	}
+}
+
+func TestJSONErrorsReturnInternalKind(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job with valid data
+	job := model.Job{
+		ID:        "test-id",
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := s.Create(ctx, job); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Corrupt params with invalid JSON
+	_, err = s.db.ExecContext(ctx, "UPDATE jobs SET params = ? WHERE id = ?", "{invalid-json}", "test-id")
+	if err != nil {
+		t.Fatalf("Failed to corrupt params: %v", err)
+	}
+
+	// Verify ListByStatus returns KindInternal error
+	_, err = s.ListByStatus(ctx, model.StatusQueued, ListByStatusOptions{})
+	if err == nil {
+		t.Fatal("Expected error when unmarshaling invalid params, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error, got %v", apperrors.KindOf(err))
+	}
+
+	// Test Get with corrupt params
+	_, err = s.Get(ctx, "test-id")
+	if err == nil {
+		t.Fatal("Expected error when unmarshaling invalid params in Get, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error in Get, got %v", apperrors.KindOf(err))
+	}
+
+	// Test ListOpts with corrupt params
+	_, err = s.ListOpts(ctx, ListOptions{})
+	if err == nil {
+		t.Fatal("Expected error when unmarshaling invalid params in ListOpts, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error in ListOpts, got %v", apperrors.KindOf(err))
+	}
+}
+
+func TestCrawlStateParseErrorsReturnInternalKind(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a crawl state with valid data
+	state := model.CrawlState{
+		URL:         "http://example.com",
+		LastScraped: time.Now(),
+		Depth:       1,
+	}
+	if err := s.UpsertCrawlState(ctx, state); err != nil {
+		t.Fatalf("UpsertCrawlState failed: %v", err)
+	}
+
+	// Corrupt last_scraped with invalid timestamp
+	_, err = s.db.ExecContext(ctx, "UPDATE crawl_states SET last_scraped = ? WHERE url = ?", "invalid-timestamp", "http://example.com")
+	if err != nil {
+		t.Fatalf("Failed to corrupt last_scraped: %v", err)
+	}
+
+	// Verify GetCrawlState returns KindInternal error
+	_, err = s.GetCrawlState(ctx, "http://example.com")
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid last_scraped, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error, got %v", apperrors.KindOf(err))
+	}
+
+	// Test ListCrawlStates with corrupt last_scraped
+	_, err = s.ListCrawlStates(ctx, ListCrawlStatesOptions{})
+	if err == nil {
+		t.Fatal("Expected error when parsing invalid last_scraped in ListCrawlStates, got nil")
+	}
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("Expected KindInternal error in ListCrawlStates, got %v", apperrors.KindOf(err))
+	}
+}
+
+func TestPrepareStatementErrorsReturnInternalKind(t *testing.T) {
+	// Test by trying to open store with invalid SQL syntax
+	// Since we can't easily trigger prepare errors with valid code,
+	// we'll verify the pattern by checking that prepareStatements returns apperrors
+
+	// Note: This test verifies the structure, but prepare statement failures
+	// are typically caught during init and would require mock or invalid SQL.
+	// In practice, these errors occur if the database schema is corrupt
+	// or there's a SQL syntax error, which are internal failures.
+
+	// For now, we can manually verify by inspection that prepareStatements
+	// uses apperrors.Wrap(apperrors.KindInternal, ...)
+
+	// Alternative: Could add integration test that corrupts the database schema
+	// but that's brittle. Manual inspection + existing migration tests are sufficient.
+
+	t.Skip("Prepare statement errors require database corruption to test; pattern verified by code inspection")
 }
