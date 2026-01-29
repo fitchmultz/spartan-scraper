@@ -496,6 +496,10 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 }
 
 func waitForJob(ctx context.Context, store *store.Store, id string) error {
+	pollInterval := 200 * time.Millisecond
+	timer := time.NewTimer(pollInterval)
+	defer timer.Stop()
+
 	for {
 		job, err := store.Get(ctx, id)
 		if err != nil {
@@ -513,7 +517,8 @@ func waitForJob(ctx context.Context, store *store.Store, id string) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(200 * time.Millisecond):
+		case <-timer.C:
+			timer.Reset(pollInterval)
 		}
 	}
 }

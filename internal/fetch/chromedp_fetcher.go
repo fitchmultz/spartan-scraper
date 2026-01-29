@@ -297,6 +297,9 @@ func (f *ChromedpFetcher) waitForNetworkIdle(ctx context.Context, policy RenderW
 
 	chromedp.ListenTarget(ctx, tracker.onEvent)
 
+	timer := time.NewTimer(time.Duration(quietMs) * time.Millisecond)
+	defer timer.Stop()
+
 	select {
 	case <-tracker.done:
 		duration := time.Since(start)
@@ -304,7 +307,7 @@ func (f *ChromedpFetcher) waitForNetworkIdle(ctx context.Context, policy RenderW
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(time.Duration(quietMs) * time.Millisecond):
+	case <-timer.C:
 		if atomic.LoadInt32(&tracker.firstSeen) == 0 {
 			slog.Debug("no network events received, assuming already idle")
 			return nil

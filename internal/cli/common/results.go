@@ -48,6 +48,10 @@ func HandleJobResult(ctx context.Context, st *store.Store, job model.Job, wait b
 
 func waitForJob(ctx context.Context, st *store.Store, id string, timeout time.Duration) error {
 	start := time.Now()
+	pollInterval := 250 * time.Millisecond
+	timer := time.NewTimer(pollInterval)
+	defer timer.Stop()
+
 	for {
 		if timeout > 0 && time.Since(start) > timeout {
 			return apperrors.Internal(fmt.Sprintf("wait timeout after %s", timeout))
@@ -68,7 +72,8 @@ func waitForJob(ctx context.Context, st *store.Store, id string, timeout time.Du
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(250 * time.Millisecond):
+		case <-timer.C:
+			timer.Reset(pollInterval)
 		}
 	}
 }

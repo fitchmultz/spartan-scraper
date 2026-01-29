@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0109",
-      "status": "todo",
-      "title": "Fix chromedp waitForNetworkIdle timer creation bug",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "fetch",
-        "chromedp",
-        "go"
-      ],
-      "scope": [
-        "internal/fetch/chromedp_fetcher.go"
-      ],
-      "evidence": [
-        "chromedp_fetcher.go:307 - time.After in waitForNetworkIdle creates a new timer on every call",
-        "This is in a select statement; the timer should be created once before the select, not inside the case"
-      ],
-      "plan": [
-        "Move time.After call outside the select statement",
-        "Ensure timer is created once per wait invocation",
-        "Verify timeout behavior works correctly"
-      ],
-      "notes": [],
-      "request": "scan finding: time.After in select creates new timer on every iteration",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0110",
       "status": "todo",
       "title": "Fix store migration silent error ignoring",
