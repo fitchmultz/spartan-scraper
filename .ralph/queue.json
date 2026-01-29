@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0128",
-      "status": "todo",
-      "title": "Align JobSpec.Validate with validate.ValidateJob semantics",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "validation",
-        "jobs"
-      ],
-      "scope": [
-        "internal/jobs/spec.go",
-        "internal/validate/request.go",
-        "internal/cli/scrape/scrape.go"
-      ],
-      "evidence": [
-        "internal/jobs/spec.go Validate rejects TimeoutSeconds <= 0 and does not validate MaxDepth/MaxPages/URLs beyond presence.",
-        "internal/validate/request.go documents \"0 means default\" for MaxDepth/MaxPages/Timeout and validates URL formats.",
-        "internal/cli/scrape/scrape.go runs validate.ValidateJob before CreateJob, so --timeout 0 passes validation but CreateJob fails."
-      ],
-      "plan": [
-        "Update JobSpec.Validate to use validate.ValidateJob-style rules (0 allowed, validate maxDepth/maxPages/URLs).",
-        "Remove timeout>0 hard check or make it consistent with defaulting behavior.",
-        "Add/adjust tests to cover timeout=0, invalid maxDepth/maxPages, and invalid URLs."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0129",
       "status": "todo",
       "title": "Normalize MCP tool errors to apperrors kinds",

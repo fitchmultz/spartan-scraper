@@ -11,6 +11,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 // JobSpec defines all parameters for creating any kind of job.
@@ -38,25 +39,43 @@ type JobSpec struct {
 func (s JobSpec) Validate() error {
 	switch s.Kind {
 	case model.KindScrape:
-		if s.URL == "" {
-			return apperrors.Validation("url is required for scrape jobs")
+		if err := validate.ValidateURL(s.URL); err != nil {
+			return err
+		}
+		if err := validate.ValidateTimeout(s.TimeoutSeconds); err != nil {
+			return err
 		}
 	case model.KindCrawl:
-		if s.URL == "" {
-			return apperrors.Validation("url is required for crawl jobs")
+		if err := validate.ValidateURL(s.URL); err != nil {
+			return err
+		}
+		if err := validate.ValidateMaxDepth(s.MaxDepth); err != nil {
+			return err
+		}
+		if err := validate.ValidateMaxPages(s.MaxPages); err != nil {
+			return err
+		}
+		if err := validate.ValidateTimeout(s.TimeoutSeconds); err != nil {
+			return err
 		}
 	case model.KindResearch:
 		if s.Query == "" {
 			return apperrors.Validation("query is required for research jobs")
 		}
-		if len(s.URLs) == 0 {
-			return apperrors.Validation("urls is required for research jobs")
+		if err := validate.ValidateURLs(s.URLs); err != nil {
+			return err
+		}
+		if err := validate.ValidateMaxDepth(s.MaxDepth); err != nil {
+			return err
+		}
+		if err := validate.ValidateMaxPages(s.MaxPages); err != nil {
+			return err
+		}
+		if err := validate.ValidateTimeout(s.TimeoutSeconds); err != nil {
+			return err
 		}
 	default:
 		return apperrors.Validation(fmt.Sprintf("unknown job kind: %s", s.Kind))
-	}
-	if s.TimeoutSeconds <= 0 {
-		return apperrors.Validation("timeout must be > 0")
 	}
 	return nil
 }
