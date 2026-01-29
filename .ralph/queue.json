@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0113",
-      "status": "todo",
-      "title": "Fix retry logic to only retry retryable errors",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "fetch",
-        "retry-logic",
-        "go"
-      ],
-      "scope": [
-        "internal/fetch/retry.go"
-      ],
-      "evidence": [
-        "retry.go:23 - shouldRetry returns true for ALL errors",
-        "Function returns true if any error exists, not just specific retryable errors, causing infinite retry loops on permanent failures"
-      ],
-      "plan": [
-        "Identify retryable vs non-retryable error types",
-        "Update shouldRetry to only return true for retryable errors (network timeouts, 5xx, etc.)",
-        "Return false for permanent failures (4xx client errors, invalid URLs, etc.)"
-      ],
-      "notes": [],
-      "request": "scan finding: retry logic retries all errors including permanent failures",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0114",
       "status": "todo",
       "title": "Add centralized middleware chain to API server",

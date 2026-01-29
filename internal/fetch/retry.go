@@ -4,30 +4,66 @@
 package fetch
 
 import (
+	"context"
 	"errors"
 	"math"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func shouldRetry(err error, status int) bool {
-	if err != nil {
-		if errors.Is(err, net.ErrClosed) {
-			return true
-		}
-		if strings.Contains(err.Error(), "timeout") {
-			return true
-		}
-		return true
-	}
 	if status == 429 {
 		return true
 	}
 	if status >= 500 && status < 600 {
 		return true
 	}
+
+	if err != nil {
+		if errors.Is(err, apperrors.ErrInvalidURLScheme) {
+			return false
+		}
+		if errors.Is(err, apperrors.ErrInvalidURLHost) {
+			return false
+		}
+
+		var dnsErr *net.DNSError
+		if errors.As(err, &dnsErr) {
+			if dnsErr.IsNotFound {
+				return false
+			}
+			if dnsErr.IsTimeout {
+				return true
+			}
+			return false
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			return true
+		}
+
+		var netErr net.Error
+		if errors.As(err, &netErr) {
+			if netErr.Timeout() {
+				return true
+			}
+		}
+
+		if errors.Is(err, net.ErrClosed) {
+			return true
+		}
+
+		if strings.Contains(err.Error(), "timeout") {
+			return true
+		}
+
+		return false
+	}
+
 	return false
 }
 

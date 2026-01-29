@@ -1,11 +1,14 @@
 package fetch
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func TestShouldRetry(t *testing.T) {
@@ -28,10 +31,10 @@ func TestShouldRetry(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:   "other errors retry",
+			name:   "other errors do not retry",
 			err:    errors.New("some error"),
 			status: 0,
-			want:   true,
+			want:   false,
 		},
 		{
 			name:   "success status does not retry",
@@ -92,6 +95,75 @@ func TestShouldRetry(t *testing.T) {
 			err:    nil,
 			status: 404,
 			want:   false,
+		},
+		{
+			name:   "context deadline exceeded retries",
+			err:    context.DeadlineExceeded,
+			status: 0,
+			want:   true,
+		},
+		{
+			name: "DNS NXDOMAIN does not retry",
+			err: &net.DNSError{
+				Err:        "no such host",
+				Name:       "nonexistent.example.com",
+				IsNotFound: true,
+			},
+			status: 0,
+			want:   false,
+		},
+		{
+			name: "DNS timeout retries",
+			err: &net.DNSError{
+				Err:       "lookup nonexistent.example.com on 127.0.0.53:53: read udp 127.0.0.1:12345->127.0.0.53:53: i/o timeout",
+				Name:      "nonexistent.example.com",
+				IsTimeout: true,
+			},
+			status: 0,
+			want:   true,
+		},
+		{
+			name:   "invalid URL scheme does not retry",
+			err:    apperrors.ErrInvalidURLScheme,
+			status: 0,
+			want:   false,
+		},
+		{
+			name:   "invalid URL host does not retry",
+			err:    apperrors.ErrInvalidURLHost,
+			status: 0,
+			want:   false,
+		},
+		{
+			name: "connection refused does not retry",
+			err: &net.OpError{
+				Err: errors.New("connect: connection refused"),
+				Op:  "dial",
+			},
+			status: 0,
+			want:   false,
+		},
+		{
+			name: "no such host (DNS lookup failed) does not retry",
+			err: &net.OpError{
+				Err: &net.DNSError{
+					Err:        "no such host",
+					Name:       "invalid-host-name",
+					IsNotFound: true,
+				},
+				Op: "dial",
+			},
+			status: 0,
+			want:   false,
+		},
+		{
+			name: "net.Error with Timeout flag retries",
+			err: &net.OpError{
+				Err: errors.New("i/o timeout"),
+				Op:  "read",
+			},
+			status: 0,
+			want:   true,
 		},
 	}
 
