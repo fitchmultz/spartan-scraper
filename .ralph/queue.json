@@ -2,34 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0131",
-      "status": "todo",
-      "title": "Classify scheduler errors with apperrors",
-      "priority": "medium",
-      "tags": [
-        "errors",
-        "scheduler"
-      ],
-      "scope": [
-        "internal/scheduler/scheduler.go"
-      ],
-      "evidence": [
-        "internal/scheduler/scheduler.go returns fmt.Errorf for file watcher creation and schedule load failures.",
-        "internal/scheduler/scheduler.go enqueue wraps auth resolution with fmt.Errorf(\"failed to resolve auth\")."
-      ],
-      "plan": [
-        "Replace fmt.Errorf with apperrors.Wrap/Validation/Internal as appropriate.",
-        "Add tests for scheduler error kinds (watcher failure, auth resolution failure).",
-        "Ensure scheduler callers surface apperrors.SafeMessage where needed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0132",
       "status": "todo",
       "title": "Use apperrors for auth profile merge errors",

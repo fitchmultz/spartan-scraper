@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -100,11 +101,14 @@ func TestEnqueueAuthResolutionFailure(t *testing.T) {
 			if err == nil {
 				t.Errorf("expected error for invalid auth profile, got nil")
 			}
+			if !apperrors.IsKind(err, apperrors.KindInternal) {
+				t.Errorf("error kind = %v, want %v", apperrors.KindOf(err), apperrors.KindInternal)
+			}
 			if !strings.Contains(err.Error(), "failed to resolve auth") {
 				t.Errorf("error message should mention auth resolution failure: %v", err)
 			}
-			if !strings.Contains(err.Error(), tt.schedule.ID) {
-				t.Errorf("error message should include schedule ID %s: %v", tt.schedule.ID, err)
+			if strings.Contains(apperrors.SafeMessage(err), tt.schedule.ID) {
+				t.Errorf("safe message should not include schedule ID %s", tt.schedule.ID)
 			}
 		})
 	}
@@ -300,6 +304,9 @@ func TestScheduleValidation(t *testing.T) {
 			}
 
 			if tt.wantErr {
+				if !apperrors.IsKind(err, apperrors.KindValidation) {
+					t.Errorf("error kind = %v, want %v", apperrors.KindOf(err), apperrors.KindValidation)
+				}
 				list, _ := List(testDataDir)
 				for _, s := range list {
 					if s.Kind == tt.schedule.Kind {
@@ -834,4 +841,109 @@ func TestCachedSchedulerFileWatcher(t *testing.T) {
 	if scheduleCount != 1 {
 		t.Errorf("expected 1 schedule after file change, got %d", scheduleCount)
 	}
+}
+
+func TestSchedulerErrorKinds(t *testing.T) {
+	tests := []struct {
+		name     string
+		testFunc func(*testing.T) error
+		wantKind apperrors.Kind
+	}{
+		{
+			name: "invalid scrape validation returns KindValidation",
+			testFunc: func(t *testing.T) error {
+				dataDir := t.TempDir()
+				schedule := Schedule{
+					Kind:            model.KindScrape,
+					IntervalSeconds: 60,
+					Params:          map[string]interface{}{"url": "ftp://invalid.com"},
+				}
+				_, err := Add(dataDir, schedule)
+				return err
+			},
+			wantKind: apperrors.KindValidation,
+		},
+		{
+			name: "invalid crawl validation returns KindValidation",
+			testFunc: func(t *testing.T) error {
+				dataDir := t.TempDir()
+				schedule := Schedule{
+					Kind:            model.KindCrawl,
+					IntervalSeconds: 60,
+					Params: map[string]interface{}{
+						"url":      "https://example.com",
+						"maxDepth": 11,
+					},
+				}
+				_, err := Add(dataDir, schedule)
+				return err
+			},
+			wantKind: apperrors.KindValidation,
+		},
+		{
+			name: "invalid research validation returns KindValidation",
+			testFunc: func(t *testing.T) error {
+				dataDir := t.TempDir()
+				schedule := Schedule{
+					Kind:            model.KindResearch,
+					IntervalSeconds: 60,
+					Params:          map[string]interface{}{"query": ""},
+				}
+				_, err := Add(dataDir, schedule)
+				return err
+			},
+			wantKind: apperrors.KindValidation,
+		},
+		{
+			name: "invalid auth resolution returns KindInternal",
+			testFunc: func(t *testing.T) error {
+				dataDir := t.TempDir()
+				manager, _, cleanup := setupTestManager(t)
+				defer cleanup()
+				schedule := Schedule{
+					ID:              "test-id",
+					Kind:            model.KindScrape,
+					IntervalSeconds: 60,
+					Params: map[string]interface{}{
+						"url":         "https://example.com",
+						"authProfile": "non-existent-profile",
+					},
+				}
+				return enqueue(context.Background(), manager, dataDir, schedule)
+			},
+			wantKind: apperrors.KindInternal,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.testFunc(t)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !apperrors.IsKind(err, tt.wantKind) {
+				t.Errorf("error kind = %v, want %v", apperrors.KindOf(err), tt.wantKind)
+			}
+		})
+	}
+}
+
+func TestSchedulerWatcherErrors(t *testing.T) {
+	dataDir := t.TempDir()
+
+	manager, _, cleanup := setupTestManager(t)
+	defer cleanup()
+
+	cs, err := NewCachedScheduler(dataDir, manager)
+	if err != nil {
+		t.Fatalf("NewCachedScheduler failed: %v", err)
+	}
+	defer cs.watcher.Close()
+
+	cs.mu.RLock()
+	if len(cs.schedules) != 0 {
+		cs.mu.RUnlock()
+		t.Errorf("expected 0 schedules, got %d", len(cs.schedules))
+	}
+	cs.mu.RUnlock()
 }

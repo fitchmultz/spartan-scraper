@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -59,7 +58,7 @@ type cachedScheduler struct {
 func NewCachedScheduler(dataDir string, manager *jobs.Manager) (*cachedScheduler, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file watcher: %w", err)
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to create file watcher", err)
 	}
 
 	cs := &cachedScheduler{
@@ -72,13 +71,13 @@ func NewCachedScheduler(dataDir string, manager *jobs.Manager) (*cachedScheduler
 
 	if err := cs.loadSchedules(); err != nil {
 		watcher.Close()
-		return nil, fmt.Errorf("failed to load initial schedules: %w", err)
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to load initial schedules", err)
 	}
 
 	schedulesDir := filepath.Dir(schedulesPath(dataDir))
 	if err := watcher.Add(schedulesDir); err != nil {
 		watcher.Close()
-		return nil, fmt.Errorf("failed to watch schedules directory: %w", err)
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to watch schedules directory", err)
 	}
 
 	return cs, nil
@@ -162,7 +161,7 @@ func (cs *cachedScheduler) reloadLoop(ctx context.Context) {
 func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 	cs, err := NewCachedScheduler(dataDir, manager)
 	if err != nil {
-		return fmt.Errorf("failed to create cached scheduler: %w", err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to create cached scheduler", err)
 	}
 	defer cs.watcher.Close()
 
@@ -231,7 +230,7 @@ func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedul
 
 	authOptions, err := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
 	if err != nil {
-		return fmt.Errorf("failed to resolve auth for schedule %s: %w", schedule.ID, err)
+		return apperrors.Wrap(apperrors.KindInternal, "failed to resolve auth for schedule", err)
 	}
 
 	spec := jobs.JobSpec{
@@ -421,7 +420,7 @@ func validateScheduleParams(schedule Schedule) error {
 			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
 		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
-			return fmt.Errorf("invalid scrape schedule: %w", err)
+			return apperrors.Wrap(apperrors.KindValidation, "invalid scrape schedule", err)
 		}
 	case model.KindCrawl:
 		opts := validate.JobValidationOpts{
@@ -432,7 +431,7 @@ func validateScheduleParams(schedule Schedule) error {
 			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
 		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
-			return fmt.Errorf("invalid crawl schedule: %w", err)
+			return apperrors.Wrap(apperrors.KindValidation, "invalid crawl schedule", err)
 		}
 	case model.KindResearch:
 		opts := validate.JobValidationOpts{
@@ -444,7 +443,7 @@ func validateScheduleParams(schedule Schedule) error {
 			AuthProfile: stringParam(schedule.Params, "authProfile"),
 		}
 		if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
-			return fmt.Errorf("invalid research schedule: %w", err)
+			return apperrors.Wrap(apperrors.KindValidation, "invalid research schedule", err)
 		}
 	default:
 		return apperrors.Validation("unknown schedule kind")
