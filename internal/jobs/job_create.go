@@ -1,5 +1,23 @@
 package jobs
 
+// Package jobs provides job creation and persistence logic for scrape, crawl, and research jobs.
+// This file contains Manager methods that create and persist job records with appropriate
+// metadata and parameter storage.
+//
+// Responsibilities:
+// - Creating scrape, crawl, and research job records
+// - Storing job parameters in a structured format
+// - Setting result file paths for job output
+//
+// This file does NOT:
+// - Execute jobs (see job_run.go)
+// - Perform validation beyond what Manager.CreateJob enforces
+//
+// Invariants:
+// - All jobs are created with StatusQueued
+// - ResultPath is always set under DATA_DIR/jobs/{id}/results.jsonl
+// - Job IDs are generated as UUID strings
+
 import (
 	"context"
 	"fmt"

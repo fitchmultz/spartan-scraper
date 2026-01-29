@@ -1,5 +1,21 @@
 package manage
 
+// Package manage provides CLI subcommands for managing render profiles.
+// This file implements the `spartan render-profiles` command that lists configured profiles.
+//
+// Responsibilities:
+// - Loading and listing render profiles from DATA_DIR
+// - Providing help text for the render-profiles subcommand
+//
+// This file does NOT:
+// - Create, update, or delete render profiles
+// - Validate render profile configuration
+//
+// Invariants:
+// - Profiles are loaded from DATA_DIR/render_profiles.json via fetch.NewRenderProfileStore
+// - Subcommands return exit codes: 0 for success, 1 for errors
+// - Help is displayed for unknown subcommands or when explicitly requested
+
 import (
 	"context"
 	"fmt"

@@ -1,37 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0140",
-      "status": "todo",
-      "title": "Add module docstrings to jobs and manage CLI files",
-      "priority": "low",
-      "tags": [
-        "docs",
-        "style"
-      ],
-      "scope": [
-        "internal/jobs/job_create.go",
-        "internal/jobs/job_run.go",
-        "internal/jobs/helpers.go",
-        "internal/cli/manage/pipeline_js_mgmt.go",
-        "internal/cli/manage/render_profiles.go"
-      ],
-      "evidence": [
-        "internal/jobs/job_create.go, job_run.go, and helpers.go start with package declarations without file-level docstrings.",
-        "internal/cli/manage/pipeline_js_mgmt.go and render_profiles.go start with package declarations without docstrings."
-      ],
-      "plan": [
-        "Add file docstrings documenting responsibility, non-goals, and invariants for each listed file.",
-        "Keep docstrings concise and aligned with AGENTS.md expectations.",
-        "Run gofmt if needed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

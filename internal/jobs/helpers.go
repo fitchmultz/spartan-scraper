@@ -1,5 +1,24 @@
 package jobs
 
+// Package jobs provides helper functions for parameter decoding and type conversion.
+// This file contains utility functions that decode job parameters from map[string]interface{}
+// storage into strongly-typed Go structs used by job execution.
+//
+// Responsibilities:
+// - Decoding AuthOptions from stored parameters
+// - Decoding ExtractOptions from stored parameters
+// - Decoding PipelineOptions from stored parameters
+// - Type-safe conversions with fallback values (toInt, toBool, toStringSlice)
+//
+// This file does NOT:
+// - Perform validation beyond type checking
+// - Handle business logic or parameter constraints
+//
+// Invariants:
+// - All decode functions return empty structs on failure (never panic)
+// - Type conversion helpers return explicit fallback values for invalid inputs
+// - Nested maps (headers, cookies, query) are flattened safely
+
 import (
 	"encoding/json"
 

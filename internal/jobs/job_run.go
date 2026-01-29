@@ -1,5 +1,26 @@
 package jobs
 
+// Package jobs provides job execution lifecycle management.
+// This file contains the core job execution logic that dispatches to scrape, crawl,
+// or research packages based on job kind.
+//
+// Responsibilities:
+// - Managing job status transitions (queued → running → succeeded/failed/canceled)
+// - Creating result directories and files
+// - Executing jobs with appropriate context and cancellation handling
+// - Writing results to JSONL output files
+//
+// This file does NOT:
+// - Create jobs (see job_create.go)
+// - Implement scraping/crawling/research logic (delegated to respective packages)
+// - Handle job queueing or scheduling (managed by Manager's worker pool)
+//
+// Invariants:
+// - Job status updates are retried with background context on primary context cancellation
+// - Result directories are created securely before writing
+// - Active jobs are tracked for cancellation support
+// - All errors are sanitized via apperrors before storage
+
 import (
 	"context"
 	"encoding/json"
