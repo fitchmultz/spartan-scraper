@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,4 +124,103 @@ func TestWriteErrorWithRequestID(t *testing.T) {
 	if rr.Header().Get("X-Request-ID") != "test-req-id-123" {
 		t.Errorf("expected X-Request-ID header %q, got %q", "test-req-id-123", rr.Header().Get("X-Request-ID"))
 	}
+}
+
+func TestWriteErrorLogging(t *testing.T) {
+	var logBuf bytes.Buffer
+	handler := slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelError})
+	logger := slog.New(handler)
+
+	oldDefault := slog.Default()
+	slog.SetDefault(logger)
+	defer slog.SetDefault(oldDefault)
+
+	tests := []struct {
+		name         string
+		err          error
+		expectedKind string
+		expectedMsg  string
+	}{
+		{
+			name:         "Validation error",
+			err:          apperrors.Validation("invalid input"),
+			expectedKind: string(apperrors.KindValidation),
+			expectedMsg:  "invalid input",
+		},
+		{
+			name:         "Error with redacted secrets",
+			err:          apperrors.Validation("failed with token=secret123"),
+			expectedKind: string(apperrors.KindValidation),
+			expectedMsg:  "failed with token=[REDACTED]",
+		},
+		{
+			name:         "NotFound error",
+			err:          apperrors.NotFound("resource not found"),
+			expectedKind: string(apperrors.KindNotFound),
+			expectedMsg:  "resource not found",
+		},
+		{
+			name:         "Permission error",
+			err:          apperrors.Permission("access denied"),
+			expectedKind: string(apperrors.KindPermission),
+			expectedMsg:  "access denied",
+		},
+		{
+			name:         "MethodNotAllowed error",
+			err:          apperrors.MethodNotAllowed("bad method"),
+			expectedKind: string(apperrors.KindMethodNotAllowed),
+			expectedMsg:  "bad method",
+		},
+		{
+			name:         "UnsupportedMediaType error",
+			err:          apperrors.UnsupportedMediaType("bad media"),
+			expectedKind: string(apperrors.KindUnsupportedMediaType),
+			expectedMsg:  "bad media",
+		},
+		{
+			name:         "Internal error",
+			err:          apperrors.Internal("something failed"),
+			expectedKind: string(apperrors.KindInternal),
+			expectedMsg:  "something failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logBuf.Reset()
+
+			w := httptest.NewRecorder()
+			writeError(w, tt.err)
+
+			logOutput := logBuf.String()
+			if logOutput == "" {
+				t.Error("expected log output, got empty string")
+			}
+
+			if !strings.Contains(logOutput, "error_kind="+tt.expectedKind) {
+				t.Errorf("log missing error_kind=%s, got: %s", tt.expectedKind, logOutput)
+			}
+			if !strings.Contains(logOutput, `error_message="`+tt.expectedMsg+`"`) {
+				t.Errorf("log missing error_message=%s, got: %s", tt.expectedMsg, logOutput)
+			}
+			if !strings.Contains(logOutput, "request_id=") {
+				t.Error("log missing request_id field")
+			}
+			if !strings.Contains(logOutput, "api error") {
+				t.Error("log missing 'api error' message")
+			}
+		})
+	}
+
+	t.Run("Nil error should not log", func(t *testing.T) {
+		logBuf.Reset()
+
+		w := httptest.NewRecorder()
+		writeError(w, nil)
+
+		logOutput := logBuf.String()
+		if logOutput != "" {
+			t.Errorf("expected no log output for nil error, got: %s", logOutput)
+		}
+	})
 }

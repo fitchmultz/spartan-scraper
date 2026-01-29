@@ -103,6 +103,13 @@ func writeError(w http.ResponseWriter, err error) {
 	if rw, ok := w.(*requestIDResponseWriter); ok {
 		requestID = rw.requestID
 	}
+
+	slog.Error("api error",
+		"error_kind", apperrors.KindOf(err),
+		"error_message", message,
+		"request_id", requestID,
+	)
+
 	writeJSONError(w, status, message, requestID)
 }
 

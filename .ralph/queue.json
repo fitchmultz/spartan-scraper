@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0118",
-      "status": "todo",
-      "title": "Fix API error responses not logged server-side",
-      "priority": "high",
-      "tags": [
-        "ux",
-        "api",
-        "observability",
-        "go"
-      ],
-      "scope": [
-        "internal/api/util.go"
-      ],
-      "evidence": [
-        "util.go:28-35 - writeJSONError doesn't log errors",
-        "API errors are sent to client but not logged server-side, making debugging difficult"
-      ],
-      "plan": [
-        "Add error logging before sending response to client",
-        "Include request context in log entries",
-        "Respect apperrors.SafeMessage for client-facing messages while logging full details"
-      ],
-      "notes": [],
-      "request": "scan finding: API errors not logged server-side",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0119",
       "status": "todo",
       "title": "Add DataDir writable validation at startup",
