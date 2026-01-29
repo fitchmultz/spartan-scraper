@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0138",
-      "status": "todo",
-      "title": "Wire strip_openapi_todos script tests into CI",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "ci",
-        "scripts"
-      ],
-      "scope": [
-        "Makefile",
-        "scripts/strip_openapi_todos.test.mjs",
-        "web/package.json"
-      ],
-      "evidence": [
-        "Makefile test/test-ci targets only run go test and web tests; scripts/strip_openapi_todos.test.mjs is not invoked.",
-        "web/package.json has no script that runs scripts/strip_openapi_todos.test.mjs."
-      ],
-      "plan": [
-        "Add a script target (pnpm or Makefile) to run scripts/strip_openapi_todos.test.mjs.",
-        "Ensure make test and make test-ci include the script test without adding long-running steps.",
-        "Update docs if a new command is added."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0139",
       "status": "todo",
       "title": "Add module docstrings to apperrors files",

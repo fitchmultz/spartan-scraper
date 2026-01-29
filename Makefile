@@ -62,6 +62,7 @@ test:
 
 test-ci:
 	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 5m
+	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	cd $(WEB_DIR) && CI=1 pnpm run test
 
 generate:
