@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0154",
-      "status": "todo",
-      "title": "Add list command to CLI",
-      "priority": "medium",
-      "tags": [
-        "cli",
-        "feature"
-      ],
-      "scope": [
-        "cmd/spartan",
-        "internal/cli"
-      ],
-      "evidence": [
-        "User request: 'list'"
-      ],
-      "plan": [
-        "Clarify what entities should be listed (jobs, crawls, results, etc.).",
-        "Implement list command with appropriate flags and output format.",
-        "Add tests for the list command.",
-        "Run make ci to verify changes."
-      ],
-      "notes": [],
-      "request": "list",
-      "created_at": "2026-01-29T18:50:00Z",
-      "updated_at": "2026-01-29T18:50:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0145",
       "status": "todo",
       "title": "Split internal/api/job_results_test.go into smaller test files",
