@@ -2,35 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0137",
-      "status": "todo",
-      "title": "Add --help + examples (and docstring) to scripts/strip_openapi_todos.test.mjs",
-      "priority": "medium",
-      "tags": [
-        "scripts",
-        "docs",
-        "tests"
-      ],
-      "scope": [
-        "scripts/strip_openapi_todos.test.mjs"
-      ],
-      "evidence": [
-        "scripts/strip_openapi_todos.test.mjs has a shebang and is executable but does not implement --help or usage output.",
-        "scripts/strip_openapi_todos.test.mjs lacks a top-of-file docstring describing its purpose and non-goals."
-      ],
-      "plan": [
-        "Add a module docstring describing the test runner's responsibility, non-goals, and assumptions.",
-        "Implement --help/-h output with usage and examples (or drop executable bit if it's not meant to be run directly).",
-        "Add a small smoke test to ensure --help exits successfully."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0138",
       "status": "todo",
       "title": "Wire strip_openapi_todos script tests into CI",
