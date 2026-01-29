@@ -1,4 +1,621 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0105",
+      "status": "todo",
+      "title": "Fix defer-in-loop context leaks in job_run.go and manager.go",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "concurrency",
+        "resource-leak",
+        "go"
+      ],
+      "scope": [
+        "internal/jobs/job_run.go",
+        "internal/jobs/manager.go"
+      ],
+      "evidence": [
+        "job_run.go:56-57,67-68,115-116 - defer cancelUpdate() inside error handling blocks defers until function exit, not block exit",
+        "manager.go:147 - defer drainCancel() inside loop defers until worker goroutine exits, causing resource accumulation",
+        "In Go, defer executes when the FUNCTION returns, not when the block exits - these defers inside if blocks will not execute immediately"
+      ],
+      "plan": [
+        "Change defer cancelUpdate() to explicit cancelUpdate() calls in job_run.go error handling blocks",
+        "Change defer drainCancel() to explicit drainCancel() call at end of loop iteration in manager.go",
+        "Verify no other defer-in-loop or defer-in-conditional patterns exist in codebase",
+        "Add tests to verify proper cleanup on error paths"
+      ],
+      "notes": [],
+      "request": "scan finding: defer statements inside loops and conditionals causing resource leaks",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0106",
+      "status": "todo",
+      "title": "Add panic recovery to all goroutines",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "concurrency",
+        "reliability",
+        "go"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/crawl/crawl.go",
+        "cmd/spartan/main.go"
+      ],
+      "evidence": [
+        "manager.go:176-196 - Checkpoint goroutine has no panic recovery, panic will crash entire server",
+        "crawl.go:362-407 - Worker goroutines have no panic recovery, panic in one worker crashes entire crawl",
+        "main.go:12-14 - No panic recovery in main, panics crash with stack trace instead of graceful error"
+      ],
+      "plan": [
+        "Add defer/recover pattern to checkpoint goroutine in manager.go",
+        "Add defer/recover pattern to worker goroutines in crawl.go",
+        "Add panic recovery in main.go with graceful error logging",
+        "Ensure recovered panics are logged with stack trace for debugging"
+      ],
+      "notes": [],
+      "request": "scan finding: missing panic recovery in goroutines can crash server",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0107",
+      "status": "todo",
+      "title": "Fix bool pointer pattern ignoring explicit false values",
+      "priority": "critical",
+      "tags": [
+        "bug",
+        "api",
+        "logic-error",
+        "go"
+      ],
+      "scope": [
+        "internal/api/scrape.go",
+        "internal/api/crawl.go",
+        "internal/scheduler/scheduler.go"
+      ],
+      "evidence": [
+        "scrape.go:70 - usePlaywright uses manager.DefaultUsePlaywright() as fallback, but req.Playwright pointer check doesn't distinguish 'not provided' from 'explicitly false'",
+        "crawl.go - Same issue with playwright flag handling",
+        "scheduler.go:107 - boolParamDefault(params, 'playwright', manager.DefaultUsePlaywright()) overrides explicit false in params"
+      ],
+      "plan": [
+        "Create helper function to distinguish between nil pointer and explicit false",
+        "Update scrape.go to respect explicit false values",
+        "Update crawl.go to respect explicit false values",
+        "Update scheduler.go boolParamDefault to check if param exists vs is true",
+        "Add tests for explicit false value handling"
+      ],
+      "notes": [],
+      "request": "scan finding: bool pointer pattern treats explicit false as 'not provided'",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0108",
+      "status": "todo",
+      "title": "Fix HTTP fetcher cookie jar recreation on retry",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "fetch",
+        "auth",
+        "go"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go"
+      ],
+      "evidence": [
+        "http_fetcher.go:55-59 - New cookie jar created on every retry attempt",
+        "This loses cookies from previous attempts, breaking stateful authentication flows that rely on session cookies"
+      ],
+      "plan": [
+        "Move cookie jar creation outside the retry loop",
+        "Ensure cookie jar persists across retry attempts",
+        "Add test for cookie preservation during retries"
+      ],
+      "notes": [],
+      "request": "scan finding: cookie jar recreation breaks session persistence on retry",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0109",
+      "status": "todo",
+      "title": "Fix chromedp waitForNetworkIdle timer creation bug",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "fetch",
+        "chromedp",
+        "go"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go"
+      ],
+      "evidence": [
+        "chromedp_fetcher.go:307 - time.After in waitForNetworkIdle creates a new timer on every call",
+        "This is in a select statement; the timer should be created once before the select, not inside the case"
+      ],
+      "plan": [
+        "Move time.After call outside the select statement",
+        "Ensure timer is created once per wait invocation",
+        "Verify timeout behavior works correctly"
+      ],
+      "notes": [],
+      "request": "scan finding: time.After in select creates new timer on every iteration",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0110",
+      "status": "todo",
+      "title": "Fix store migration silent error ignoring",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "database",
+        "reliability",
+        "go"
+      ],
+      "scope": [
+        "internal/store/store.go"
+      ],
+      "evidence": [
+        "store.go:269-271 - Migration columns added with '_, _ = s.db.Exec()' ignoring errors",
+        "If migrations fail, code silently continues, potentially causing runtime errors when accessing new columns"
+      ],
+      "plan": [
+        "Properly handle migration errors instead of ignoring with '_'",
+        "Fail fast on migration errors with clear error messages",
+        "Add migration version tracking to prevent partial migration states"
+      ],
+      "notes": [],
+      "request": "scan finding: migration errors silently ignored",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0111",
+      "status": "todo",
+      "title": "Fix crawl enqueue WaitGroup mismatch on full channel",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "concurrency",
+        "crawl",
+        "go"
+      ],
+      "scope": [
+        "internal/crawl/crawl.go"
+      ],
+      "evidence": [
+        "crawl.go:350-357 - enqueue uses select with default that calls wg.Done() on channel full",
+        "If tasks channel is full, wg.Done() is called but no work is enqueued, causing mismatch where WaitGroup decrements without corresponding work"
+      ],
+      "plan": [
+        "Restructure enqueue to only call wg.Done() after successful channel send",
+        "Or use wg.Add(1) only after successful send",
+        "Add tests for channel full scenarios"
+      ],
+      "notes": [],
+      "request": "scan finding: WaitGroup mismatch when channel is full",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0112",
+      "status": "todo",
+      "title": "Add timeout to MCP waitForJob to prevent infinite loops",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "mcp",
+        "infinite-loop",
+        "go"
+      ],
+      "scope": [
+        "internal/mcp/server.go"
+      ],
+      "evidence": [
+        "mcp/server.go:498-518 - waitForJob busy-loops with 200ms sleep",
+        "No timeout or max iterations could cause infinite loops if job gets stuck in 'running' state"
+      ],
+      "plan": [
+        "Add context with timeout to waitForJob",
+        "Set reasonable max wait time (e.g., 5 minutes)",
+        "Return error on timeout instead of infinite loop"
+      ],
+      "notes": [],
+      "request": "scan finding: waitForJob can infinite loop if job stuck",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0113",
+      "status": "todo",
+      "title": "Fix retry logic to only retry retryable errors",
+      "priority": "high",
+      "tags": [
+        "bug",
+        "fetch",
+        "retry-logic",
+        "go"
+      ],
+      "scope": [
+        "internal/fetch/retry.go"
+      ],
+      "evidence": [
+        "retry.go:23 - shouldRetry returns true for ALL errors",
+        "Function returns true if any error exists, not just specific retryable errors, causing infinite retry loops on permanent failures"
+      ],
+      "plan": [
+        "Identify retryable vs non-retryable error types",
+        "Update shouldRetry to only return true for retryable errors (network timeouts, 5xx, etc.)",
+        "Return false for permanent failures (4xx client errors, invalid URLs, etc.)"
+      ],
+      "notes": [],
+      "request": "scan finding: retry logic retries all errors including permanent failures",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0114",
+      "status": "todo",
+      "title": "Add centralized middleware chain to API server",
+      "priority": "high",
+      "tags": [
+        "design",
+        "api",
+        "middleware",
+        "go"
+      ],
+      "scope": [
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "server.go:24-41 - Route handlers registered without middleware chain",
+        "No centralized logging, recovery, or metrics middleware - panics in handlers will crash the server"
+      ],
+      "plan": [
+        "Create middleware chain with logging, recovery, and metrics",
+        "Add panic recovery middleware to prevent server crashes",
+        "Add request logging middleware",
+        "Apply middleware to all routes"
+      ],
+      "notes": [],
+      "request": "scan finding: no middleware chain for cross-cutting concerns",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0115",
+      "status": "todo",
+      "title": "Fix adaptive fetcher RenderProfileStore loaded on every request",
+      "priority": "high",
+      "tags": [
+        "performance",
+        "fetch",
+        "caching",
+        "go"
+      ],
+      "scope": [
+        "internal/fetch/adaptive_fetcher.go"
+      ],
+      "evidence": [
+        "adaptive_fetcher.go:40-48 - RenderProfileStore loaded on every Fetch call",
+        "Creates new store instance per request, causing repeated file I/O for same data - should be cached"
+      ],
+      "plan": [
+        "Cache RenderProfileStore at fetcher level",
+        "Add file watching or TTL for cache invalidation",
+        "Measure performance improvement"
+      ],
+      "notes": [],
+      "request": "scan finding: RenderProfileStore recreated on every request",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0116",
+      "status": "todo",
+      "title": "Fix scheduler loading all schedules from disk every second",
+      "priority": "high",
+      "tags": [
+        "performance",
+        "scheduler",
+        "io",
+        "go"
+      ],
+      "scope": [
+        "internal/scheduler/scheduler.go"
+      ],
+      "evidence": [
+        "scheduler.go:43-80 - Scheduler loads all schedules from disk every second",
+        "File I/O every second is inefficient; should use in-memory cache with file watching"
+      ],
+      "plan": [
+        "Load schedules once at startup",
+        "Use file watcher for changes instead of polling",
+        "Or add TTL cache to reduce I/O frequency"
+      ],
+      "notes": [],
+      "request": "scan finding: scheduler polls disk every second",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0117",
+      "status": "todo",
+      "title": "Add API request ID propagation for tracing",
+      "priority": "high",
+      "tags": [
+        "design",
+        "api",
+        "observability",
+        "go"
+      ],
+      "scope": [
+        "internal/api/types.go",
+        "internal/api/*.go"
+      ],
+      "evidence": [
+        "api/types.go - No request ID propagation for tracing",
+        "Requests through API can't be traced through to job execution, making debugging difficult"
+      ],
+      "plan": [
+        "Add X-Request-ID header support",
+        "Propagate request ID through to job execution context",
+        "Log request ID in all related operations"
+      ],
+      "notes": [],
+      "request": "scan finding: no request tracing through API to jobs",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0118",
+      "status": "todo",
+      "title": "Fix API error responses not logged server-side",
+      "priority": "high",
+      "tags": [
+        "ux",
+        "api",
+        "observability",
+        "go"
+      ],
+      "scope": [
+        "internal/api/util.go"
+      ],
+      "evidence": [
+        "util.go:28-35 - writeJSONError doesn't log errors",
+        "API errors are sent to client but not logged server-side, making debugging difficult"
+      ],
+      "plan": [
+        "Add error logging before sending response to client",
+        "Include request context in log entries",
+        "Respect apperrors.SafeMessage for client-facing messages while logging full details"
+      ],
+      "notes": [],
+      "request": "scan finding: API errors not logged server-side",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0119",
+      "status": "todo",
+      "title": "Add DataDir writable validation at startup",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "config",
+        "validation",
+        "go"
+      ],
+      "scope": [
+        "internal/config/config.go"
+      ],
+      "evidence": [
+        "config.go:78-103 - No validation that DataDir is writable",
+        "If DATA_DIR points to read-only location, app fails at runtime during first write"
+      ],
+      "plan": [
+        "Add write permission check during config validation",
+        "Attempt test file write to verify permissions",
+        "Fail fast with clear error message if not writable"
+      ],
+      "notes": [],
+      "request": "scan finding: no validation that data directory is writable",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0120",
+      "status": "todo",
+      "title": "Fix OpenAPI spec default timeout mismatch with implementation",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "api",
+        "openapi",
+        "spec"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "internal/api/scrape.go"
+      ],
+      "evidence": [
+        "openapi.yaml:1014-1042 - ScrapeRequest schema allows timeoutSeconds 5-300 with default 30",
+        "API handler uses manager.DefaultTimeoutSeconds() when 0, which may differ from schema default"
+      ],
+      "plan": [
+        "Ensure OpenAPI default matches implementation default",
+        "Document any intentional differences",
+        "Add test to verify defaults are consistent"
+      ],
+      "notes": [],
+      "request": "scan finding: OpenAPI spec default timeout may not match implementation",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0121",
+      "status": "todo",
+      "title": "Fix ResearchRequest incremental field not implemented",
+      "priority": "medium",
+      "tags": [
+        "bug",
+        "api",
+        "research",
+        "go"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "internal/research/research.go"
+      ],
+      "evidence": [
+        "openapi.yaml:1119-1126 - ResearchRequest has 'incremental' field",
+        "research.go - Research implementation doesn't use incremental crawling"
+      ],
+      "plan": [
+        "Either implement incremental research support",
+        "Or remove incremental field from ResearchRequest schema if not supported",
+        "Ensure API contract matches implementation"
+      ],
+      "notes": [],
+      "request": "scan finding: ResearchRequest incremental field not implemented",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0122",
+      "status": "todo",
+      "title": "Add Playwright installation guidance to error messages",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "fetch",
+        "playwright",
+        "go"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go"
+      ],
+      "evidence": [
+        "playwright_fetcher.go:129-133,142-148 - Playwright initialization errors don't provide actionable guidance",
+        "Users get generic 'failed to run Playwright' without instructions on how to install drivers"
+      ],
+      "plan": [
+        "Add specific error messages for missing Playwright installation",
+        "Include installation command in error: 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps'",
+        "Add link to documentation"
+      ],
+      "notes": [],
+      "request": "scan finding: Playwright errors lack installation guidance",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0123",
+      "status": "todo",
+      "title": "Fix path redaction regex being overly aggressive",
+      "priority": "medium",
+      "tags": [
+        "ux",
+        "errors",
+        "logging",
+        "go"
+      ],
+      "scope": [
+        "internal/apperrors/sanitize.go"
+      ],
+      "evidence": [
+        "sanitize.go:22-33 - Path redaction regex is overly aggressive",
+        "Legitimate URL paths like /api/v1/users get redacted, making debugging harder"
+      ],
+      "plan": [
+        "Refine regex to only redact sensitive paths (auth, tokens, keys, secrets)",
+        "Add tests for common legitimate paths that should NOT be redacted",
+        "Balance security with debuggability"
+      ],
+      "notes": [],
+      "request": "scan finding: path redaction too aggressive hurts debugging",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0124",
+      "status": "todo",
+      "title": "Add config validation warnings for invalid env vars",
+      "priority": "low",
+      "tags": [
+        "ux",
+        "config",
+        "validation",
+        "go"
+      ],
+      "scope": [
+        "internal/config/config.go"
+      ],
+      "evidence": [
+        "config.go:78-103 - No validation warnings for invalid env vars",
+        "Invalid values silently fall back to defaults without warning the user"
+      ],
+      "plan": [
+        "Add warning logs for invalid environment variable values",
+        "Include the invalid value and what default is being used",
+        "Help users catch configuration typos"
+      ],
+      "notes": [],
+      "request": "scan finding: invalid env vars silently use defaults",
+      "created_at": "2026-01-28T00:00:00Z",
+      "updated_at": "2026-01-28T00:00:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
