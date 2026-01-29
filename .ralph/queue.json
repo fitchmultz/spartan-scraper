@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0127",
-      "status": "todo",
-      "title": "Fix MCP waitForJob timeout=0 semantics and status constants",
-      "priority": "high",
-      "tags": [
-        "bug",
-        "mcp",
-        "jobs"
-      ],
-      "scope": [
-        "internal/mcp/server.go",
-        "internal/mcp/waitforjob_test.go",
-        "internal/model/job.go"
-      ],
-      "evidence": [
-        "internal/mcp/server.go waitForJob uses time.After(time.Duration(timeoutSeconds)*time.Second) with no guard for timeoutSeconds==0.",
-        "internal/validate/validate.go ValidateTimeout treats 0 as valid default, so timeout=0 can reach waitForJob.",
-        "internal/mcp/server.go waitForJob compares status strings \"succeeded\"/\"failed\" instead of model.Status constants."
-      ],
-      "plan": [
-        "Treat timeoutSeconds <= 0 as no timeout (skip time.After, rely on context cancellation).",
-        "Switch waitForJob status comparisons to model.StatusSucceeded/StatusFailed constants.",
-        "Add tests for timeoutSeconds=0 and ensure existing waitForJob tests still pass."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T14:30:35Z",
-      "updated_at": "2026-01-29T14:30:35Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0128",
       "status": "todo",
       "title": "Align JobSpec.Validate with validate.ValidateJob semantics",

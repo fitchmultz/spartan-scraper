@@ -224,3 +224,36 @@ func TestWaitForJob_FailedWithoutError(t *testing.T) {
 		t.Fatalf("expected error message '%s', got '%s'", expectedMsg, err.Error())
 	}
 }
+
+func TestWaitForJob_TimeoutZero(t *testing.T) {
+	store := &mockStore{jobs: make(map[string]model.Job)}
+	jobID := "test-job-8"
+	store.jobs[jobID] = model.Job{ID: jobID, Status: model.StatusRunning}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := waitForJob(ctx, store, jobID, 0)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected context cancellation error, got nil")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+
+	if elapsed < 200*time.Millisecond {
+		t.Fatalf("expected waitForJob to wait indefinitely until context cancel, got %v", elapsed)
+	}
+
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("expected context cancellation to happen quickly, took %v", elapsed)
+	}
+}

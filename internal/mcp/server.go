@@ -529,10 +529,14 @@ type jobStore interface {
 // - Propagates store errors directly
 func waitForJob(ctx context.Context, store jobStore, id string, timeoutSeconds int) error {
 	pollInterval := 200 * time.Millisecond
-	timeoutDuration := time.Duration(timeoutSeconds) * time.Second
 	timer := time.NewTimer(pollInterval)
-	timeoutTimer := time.After(timeoutDuration)
 	defer timer.Stop()
+
+	var timeoutTimer <-chan time.Time
+	if timeoutSeconds > 0 {
+		timeoutDuration := time.Duration(timeoutSeconds) * time.Second
+		timeoutTimer = time.After(timeoutDuration)
+	}
 
 	for {
 		job, err := store.Get(ctx, id)
@@ -540,9 +544,9 @@ func waitForJob(ctx context.Context, store jobStore, id string, timeoutSeconds i
 			return err
 		}
 		switch job.Status {
-		case "succeeded":
+		case model.StatusSucceeded:
 			return nil
-		case "failed":
+		case model.StatusFailed:
 			if job.Error != "" {
 				return fmt.Errorf("job failed: %s", job.Error)
 			}
