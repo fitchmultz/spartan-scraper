@@ -33,8 +33,8 @@ type Fetcher interface {
 	Fetch(ctx context.Context, req Request) (Result, error)
 }
 
-func NewFetcher() Fetcher {
-	return NewAdaptiveFetcher()
+func NewFetcher(dataDir string) Fetcher {
+	return NewAdaptiveFetcher(dataDir)
 }
 
 var (

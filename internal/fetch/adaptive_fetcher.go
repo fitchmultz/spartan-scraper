@@ -17,31 +17,26 @@ type AdaptiveFetcher struct {
 	pw    *PlaywrightFetcher
 }
 
-func NewAdaptiveFetcher() *AdaptiveFetcher {
-	// Note: We don't have access to dataDir here easily unless passed in.
-	// But the fetcher instance itself is transient-ish or stateless.
-	// Actually, request has DataDir. We can load store on demand or cache it.
-	// For efficiency, we should cache stores by DataDir or assume one global DataDir for the process?
-	// The Request struct has DataDir. We will maintain a map of stores or just open one per request (store handles caching ideally).
-	// RenderProfileStore is designed to be lightweight/cached.
-	// For simplicity in this iteration: We'll create store on the fly or manage it inside Fetch if needed.
-	// BUT, strict performance says don't re-read file every time.
-	// We will use a shared global cache or similar if needed, but for now NewRenderProfileStore is fast enough if called once per batch.
-	// Wait, NewFetcher is called once per job? No, scrape.Run calls it.
-	// We'll trust RenderProfileStore's optimization (stat check).
-
+func NewAdaptiveFetcher(dataDir string) *AdaptiveFetcher {
 	return &AdaptiveFetcher{
-		http: &HTTPFetcher{},
-		cdp:  &ChromedpFetcher{},
-		pw:   &PlaywrightFetcher{},
+		store: NewRenderProfileStore(dataDir),
+		http:  &HTTPFetcher{},
+		cdp:   &ChromedpFetcher{},
+		pw:    &PlaywrightFetcher{},
 	}
 }
 
 func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	slog.Debug("adaptive fetch start", "url", apperrors.SanitizeURL(req.URL))
-	// 1. Load Profile
-	store := NewRenderProfileStore(req.DataDir)
-	profPtr, found, err := store.MatchURL(req.URL)
+
+	// 1. Reload profiles if file changed (cache invalidation)
+	if err := f.store.ReloadIfChanged(); err != nil {
+		slog.Error("failed to reload render profile store", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		return Result{}, err
+	}
+
+	// 2. Match URL against profiles
+	profPtr, found, err := f.store.MatchURL(req.URL)
 	if err != nil {
 		slog.Error("failed to match URL in render profile store", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err

@@ -160,7 +160,7 @@ func TestMergeRenderProfile(t *testing.T) {
 }
 
 func TestAdaptiveFetcher_New(t *testing.T) {
-	f := NewAdaptiveFetcher()
+	f := NewAdaptiveFetcher(".testdata")
 	if f == nil {
 		t.Fatal("NewAdaptiveFetcher() returned nil")
 	}
@@ -173,10 +173,13 @@ func TestAdaptiveFetcher_New(t *testing.T) {
 	if f.pw == nil {
 		t.Error("expected playwright fetcher to be initialized")
 	}
+	if f.store == nil {
+		t.Error("expected render profile store to be initialized")
+	}
 }
 
 func TestAdaptiveFetcher_Close(t *testing.T) {
-	f := NewAdaptiveFetcher()
+	f := NewAdaptiveFetcher(".testdata")
 	err := f.Close()
 	if err != nil {
 		t.Errorf("Close() unexpected error: %v", err)

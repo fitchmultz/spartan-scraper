@@ -91,7 +91,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		}
 	}
 
-	fetcher := fetch.NewFetcher()
+	fetcher := fetch.NewFetcher(req.DataDir)
 
 	fetchReq := fetch.Request{
 		URL:              req.URL,

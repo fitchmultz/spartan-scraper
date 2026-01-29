@@ -102,7 +102,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		return nil, err
 	}
 
-	fetcher := fetch.NewFetcher()
+	fetcher := fetch.NewFetcher(req.DataDir)
 
 	type task struct {
 		URL   string

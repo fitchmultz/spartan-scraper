@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0115",
-      "status": "todo",
-      "title": "Fix adaptive fetcher RenderProfileStore loaded on every request",
-      "priority": "high",
-      "tags": [
-        "performance",
-        "fetch",
-        "caching",
-        "go"
-      ],
-      "scope": [
-        "internal/fetch/adaptive_fetcher.go"
-      ],
-      "evidence": [
-        "adaptive_fetcher.go:40-48 - RenderProfileStore loaded on every Fetch call",
-        "Creates new store instance per request, causing repeated file I/O for same data - should be cached"
-      ],
-      "plan": [
-        "Cache RenderProfileStore at fetcher level",
-        "Add file watching or TTL for cache invalidation",
-        "Measure performance improvement"
-      ],
-      "notes": [],
-      "request": "scan finding: RenderProfileStore recreated on every request",
-      "created_at": "2026-01-28T00:00:00Z",
-      "updated_at": "2026-01-28T00:00:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0116",
       "status": "todo",
       "title": "Fix scheduler loading all schedules from disk every second",
