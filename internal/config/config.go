@@ -93,6 +93,15 @@ type Config struct {
 
 	// Batch configuration
 	MaxBatchSize int // MAX_BATCH_SIZE env var
+
+	// Adaptive rate limiting configuration
+	AdaptiveRateLimit        bool    // ADAPTIVE_RATE_LIMIT env var
+	AdaptiveMinQPS           float64 // ADAPTIVE_MIN_QPS env var
+	AdaptiveMaxQPS           float64 // ADAPTIVE_MAX_QPS env var
+	AdaptiveIncreaseQPS      float64 // ADAPTIVE_INCREASE_QPS env var
+	AdaptiveDecreaseFactor   float64 // ADAPTIVE_DECREASE_FACTOR env var
+	AdaptiveSuccessThreshold int     // ADAPTIVE_SUCCESS_THRESHOLD env var
+	AdaptiveCooldownMs       int     // ADAPTIVE_COOLDOWN_MS env var
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -152,13 +161,75 @@ func Load() (Config, error) {
 
 		// Batch configuration
 		MaxBatchSize: getenvInt("MAX_BATCH_SIZE", 100),
+
+		// Adaptive rate limiting configuration
+		AdaptiveRateLimit:        getenvBool("ADAPTIVE_RATE_LIMIT", false),
+		AdaptiveMinQPS:           getenvFloat64("ADAPTIVE_MIN_QPS", 0.1),
+		AdaptiveMaxQPS:           getenvFloat64("ADAPTIVE_MAX_QPS", float64(getenvInt("RATE_LIMIT_QPS", 2))),
+		AdaptiveIncreaseQPS:      getenvFloat64("ADAPTIVE_INCREASE_QPS", 0.5),
+		AdaptiveDecreaseFactor:   getenvFloat64("ADAPTIVE_DECREASE_FACTOR", 0.5),
+		AdaptiveSuccessThreshold: getenvInt("ADAPTIVE_SUCCESS_THRESHOLD", 5),
+		AdaptiveCooldownMs:       getenvInt("ADAPTIVE_COOLDOWN_MS", 1000),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {
 		return Config{}, err
 	}
 
+	cfg = validateAndFixAdaptiveConfig(cfg)
+
 	return cfg, nil
+}
+
+// validateAndFixAdaptiveConfig ensures adaptive rate limiting configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixAdaptiveConfig(cfg Config) Config {
+	if !cfg.AdaptiveRateLimit {
+		return cfg
+	}
+
+	// Ensure MinQPS <= MaxQPS
+	if cfg.AdaptiveMinQPS > cfg.AdaptiveMaxQPS {
+		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MIN_QPS (%.2f) > ADAPTIVE_MAX_QPS (%.2f), swapping values\n",
+			cfg.AdaptiveMinQPS, cfg.AdaptiveMaxQPS)
+		cfg.AdaptiveMinQPS, cfg.AdaptiveMaxQPS = cfg.AdaptiveMaxQPS, cfg.AdaptiveMinQPS
+	}
+
+	// Ensure MinQPS is positive and finite
+	if cfg.AdaptiveMinQPS <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MIN_QPS must be positive, using default 0.1\n")
+		cfg.AdaptiveMinQPS = 0.1
+	}
+
+	// Ensure MaxQPS is positive and finite
+	if cfg.AdaptiveMaxQPS <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MAX_QPS must be positive, using RATE_LIMIT_QPS\n")
+		cfg.AdaptiveMaxQPS = float64(cfg.RateLimitQPS)
+	}
+
+	// Ensure decrease factor is in valid range (0, 1)
+	if cfg.AdaptiveDecreaseFactor <= 0 || cfg.AdaptiveDecreaseFactor >= 1 {
+		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_DECREASE_FACTOR must be in (0, 1), using default 0.5\n")
+		cfg.AdaptiveDecreaseFactor = 0.5
+	}
+
+	// Ensure increase amount is positive
+	if cfg.AdaptiveIncreaseQPS <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_INCREASE_QPS must be positive, using default 0.5\n")
+		cfg.AdaptiveIncreaseQPS = 0.5
+	}
+
+	// Ensure success threshold is positive
+	if cfg.AdaptiveSuccessThreshold <= 0 {
+		cfg.AdaptiveSuccessThreshold = 5
+	}
+
+	// Ensure cooldown is non-negative
+	if cfg.AdaptiveCooldownMs < 0 {
+		cfg.AdaptiveCooldownMs = 1000
+	}
+
+	return cfg
 }
 
 func validateDataDir(dataDir string) error {
@@ -282,4 +353,17 @@ func getenvBool(key string, fallback bool) bool {
 		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %t)\n", key, value, fallback)
 		return fallback
 	}
+}
+
+func getenvFloat64(key string, fallback float64) float64 {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %f)\n", key, value, fallback)
+		return fallback
+	}
+	return parsed
 }

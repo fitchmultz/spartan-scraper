@@ -5,6 +5,7 @@ package fetch
 
 import (
 	"context"
+	"log/slog"
 	"net/url"
 	"sync"
 	"time"
@@ -18,6 +19,27 @@ type HostStatus struct {
 	QPS         float64
 	Burst       int
 	LastRequest time.Time
+	// Adaptive rate limiting fields
+	CurrentQPS           float64 // actual QPS after adaptation
+	AdaptiveEnabled      bool
+	ConsecutiveSuccesses int
+	Consecutive429s      int
+	InCooldown           bool
+	CooldownUntil        time.Time
+}
+
+// AdaptiveConfig controls the behavior of adaptive rate limiting.
+// When enabled, the limiter dynamically adjusts QPS per host based on
+// server responses (429 status codes, Retry-After headers) and successful
+// request patterns using an additive increase/multiplicative decrease algorithm.
+type AdaptiveConfig struct {
+	Enabled                bool
+	MinQPS                 rate.Limit    // floor (e.g., 0.1 = 1 req per 10s)
+	MaxQPS                 rate.Limit    // ceiling (initial QPS)
+	AdditiveIncrease       rate.Limit    // QPS to add on success (e.g., 0.5)
+	MultiplicativeDecrease float64       // factor to multiply on 429 (e.g., 0.5 = halve)
+	SuccessThreshold       int           // consecutive successes before increase
+	CooldownPeriod         time.Duration // minimum time between adjustments
 }
 
 // HostLimiter manages per-host rate limiters
@@ -29,6 +51,9 @@ type HostLimiter struct {
 
 	// Extended tracking for metrics
 	hostInfo map[string]*hostLimiterInfo
+
+	// Adaptive rate limiting configuration (nil if disabled)
+	adaptive *AdaptiveConfig
 }
 
 type hostLimiterInfo struct {
@@ -36,9 +61,25 @@ type hostLimiterInfo struct {
 	lastRequest time.Time
 	qps         rate.Limit // per-host QPS (may differ from global)
 	burst       int        // per-host burst (may differ from global)
+	// Adaptive rate limiting state
+	currentQPS           rate.Limit // dynamically adjusted QPS
+	consecutiveSuccesses int        // for additive increase
+	consecutive429s      int        // for multiplicative decrease
+	lastRateAdjustment   time.Time  // prevent thrashing
+	cooldownUntil        time.Time  // Retry-After cooldown
 }
 
 func NewHostLimiter(qps int, burst int) *HostLimiter {
+	return newHostLimiterWithAdaptive(qps, burst, nil)
+}
+
+// NewAdaptiveHostLimiter creates a HostLimiter with adaptive rate limiting enabled.
+// The limiter will dynamically adjust QPS per host based on server responses.
+func NewAdaptiveHostLimiter(qps int, burst int, cfg *AdaptiveConfig) *HostLimiter {
+	return newHostLimiterWithAdaptive(qps, burst, cfg)
+}
+
+func newHostLimiterWithAdaptive(qps int, burst int, cfg *AdaptiveConfig) *HostLimiter {
 	limit := rate.Limit(qps)
 	if qps <= 0 {
 		limit = rate.Inf
@@ -46,11 +87,35 @@ func NewHostLimiter(qps int, burst int) *HostLimiter {
 	if burst <= 0 {
 		burst = 1
 	}
+
+	// Set up adaptive config defaults if provided
+	if cfg != nil {
+		if cfg.MinQPS <= 0 {
+			cfg.MinQPS = 0.1 // 1 req per 10 seconds minimum
+		}
+		if cfg.MaxQPS <= 0 {
+			cfg.MaxQPS = limit
+		}
+		if cfg.AdditiveIncrease <= 0 {
+			cfg.AdditiveIncrease = 0.5 // add 0.5 QPS per increase
+		}
+		if cfg.MultiplicativeDecrease <= 0 {
+			cfg.MultiplicativeDecrease = 0.5 // halve the rate
+		}
+		if cfg.SuccessThreshold <= 0 {
+			cfg.SuccessThreshold = 5 // 5 consecutive successes before increase
+		}
+		if cfg.CooldownPeriod <= 0 {
+			cfg.CooldownPeriod = time.Second // 1 second between adjustments
+		}
+	}
+
 	return &HostLimiter{
 		qps:      limit,
 		burst:    burst,
 		byHost:   map[string]*rate.Limiter{},
 		hostInfo: map[string]*hostLimiterInfo{},
+		adaptive: cfg,
 	}
 }
 
@@ -63,7 +128,13 @@ func (h *HostLimiter) Wait(ctx context.Context, rawURL string) error {
 // WaitWithRates waits for the rate limiter for the given URL with optional per-host rates.
 // If profileQPS or profileBurst are 0, the global defaults are used.
 func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQPS int, profileBurst int) error {
-	if h == nil || h.qps == rate.Inf {
+	if h == nil {
+		return nil
+	}
+
+	// When global QPS is unlimited but adaptive mode is enabled, we still need to
+	// enforce adaptive rate limits. Skip early return if adaptive is enabled.
+	if h.qps == rate.Inf && !h.IsAdaptiveEnabled() {
 		return nil
 	}
 	parsed, err := url.Parse(rawURL)
@@ -75,15 +146,44 @@ func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQ
 		return nil
 	}
 
+	// Check for cooldown period (adaptive rate limiting)
+	if waitTime := h.getCooldownWaitTime(host); waitTime > 0 {
+		select {
+		case <-time.After(waitTime):
+			// Continue after cooldown
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	limiter := h.getLimiterWithRates(host, profileQPS, profileBurst)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
 	err = limiter.Wait(ctx)
 	if err == nil {
 		h.recordRequest(host)
 	}
 	return err
+}
+
+// getCooldownWaitTime returns the remaining cooldown time for a host, or 0 if no cooldown.
+func (h *HostLimiter) getCooldownWaitTime(host string) time.Duration {
+	if h == nil || h.adaptive == nil || !h.adaptive.Enabled {
+		return 0
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	info, ok := h.hostInfo[host]
+	if !ok {
+		return 0
+	}
+
+	now := time.Now()
+	if now.Before(info.cooldownUntil) {
+		return info.cooldownUntil.Sub(now)
+	}
+	return 0
 }
 
 // getLimiterWithRates returns a limiter for the host, creating one if needed.
@@ -110,12 +210,22 @@ func (h *HostLimiter) getLimiterWithRates(host string, qps int, burst int) *rate
 	}
 
 	limiter := rate.NewLimiter(limit, burst)
-	h.byHost[host] = limiter
-	h.hostInfo[host] = &hostLimiterInfo{
+	info := &hostLimiterInfo{
 		limiter: limiter,
 		qps:     limit,
 		burst:   burst,
 	}
+
+	// Initialize adaptive state if adaptive mode is enabled
+	if h.adaptive != nil && h.adaptive.Enabled {
+		info.currentQPS = limit
+		if limit == rate.Inf {
+			info.currentQPS = h.adaptive.MaxQPS
+		}
+	}
+
+	h.byHost[host] = limiter
+	h.hostInfo[host] = info
 	return limiter
 }
 
@@ -145,12 +255,25 @@ func (h *HostLimiter) GetHostStatus() []HostStatus {
 		if info.qps == rate.Inf {
 			qps = 0 // 0 indicates unlimited
 		}
-		result = append(result, HostStatus{
+
+		status := HostStatus{
 			Host:        host,
 			QPS:         qps,
 			Burst:       info.burst,
 			LastRequest: info.lastRequest,
-		})
+		}
+
+		// Add adaptive fields if adaptive mode is enabled
+		if h.adaptive != nil && h.adaptive.Enabled {
+			status.AdaptiveEnabled = true
+			status.CurrentQPS = float64(info.currentQPS)
+			status.ConsecutiveSuccesses = info.consecutiveSuccesses
+			status.Consecutive429s = info.consecutive429s
+			status.InCooldown = time.Now().Before(info.cooldownUntil)
+			status.CooldownUntil = info.cooldownUntil
+		}
+
+		result = append(result, status)
 	}
 	return result
 }
@@ -173,4 +296,116 @@ func (h *HostLimiter) GetQPS() float64 {
 // GetBurst returns the configured burst
 func (h *HostLimiter) GetBurst() int {
 	return h.burst
+}
+
+// RecordSuccess reports a successful request (2xx/3xx status) for the given host.
+// When adaptive rate limiting is enabled, this may increase the QPS for the host
+// after a threshold of consecutive successes is reached.
+func (h *HostLimiter) RecordSuccess(host string) {
+	if h == nil || h.adaptive == nil || !h.adaptive.Enabled {
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	info, ok := h.hostInfo[host]
+	if !ok {
+		return
+	}
+
+	// Check cooldown period
+	if time.Since(info.lastRateAdjustment) < h.adaptive.CooldownPeriod {
+		return
+	}
+
+	info.consecutiveSuccesses++
+	info.consecutive429s = 0 // reset 429 counter on success
+
+	// Check if we've reached the threshold for increasing rate
+	if info.consecutiveSuccesses >= h.adaptive.SuccessThreshold {
+		oldQPS := info.currentQPS
+		newQPS := oldQPS + h.adaptive.AdditiveIncrease
+
+		// Cap at max QPS
+		if newQPS > h.adaptive.MaxQPS {
+			newQPS = h.adaptive.MaxQPS
+		}
+
+		if newQPS != oldQPS {
+			h.adjustQPSLocked(host, info, newQPS)
+			slog.Info("Rate limit increased", "host", host, "oldQPS", oldQPS, "newQPS", newQPS, "consecutiveSuccesses", info.consecutiveSuccesses)
+		}
+		info.consecutiveSuccesses = 0
+	}
+}
+
+// RecordRateLimit reports a 429 response for the given host with an optional
+// Retry-After duration. When adaptive rate limiting is enabled, this will
+// decrease the QPS for the host and optionally set a cooldown period.
+func (h *HostLimiter) RecordRateLimit(host string, retryAfter time.Duration) {
+	if h == nil || h.adaptive == nil || !h.adaptive.Enabled {
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	info, ok := h.hostInfo[host]
+	if !ok {
+		return
+	}
+
+	// ALWAYS update counters on 429, even during cooldown (critical for AIMD correctness)
+	info.consecutive429s++
+	info.consecutiveSuccesses = 0 // reset success counter on 429
+
+	// Set cooldown from Retry-After header (always respected, even during adjustment cooldown)
+	if retryAfter > 0 {
+		info.cooldownUntil = time.Now().Add(retryAfter)
+		slog.Info("Host entering cooldown", "host", host, "duration", retryAfter, "source", "Retry-After")
+	}
+
+	// Check cooldown period for rate adjustments (but counters are already updated above)
+	if time.Since(info.lastRateAdjustment) < h.adaptive.CooldownPeriod {
+		return
+	}
+
+	oldQPS := info.currentQPS
+	newQPS := rate.Limit(float64(oldQPS) * h.adaptive.MultiplicativeDecrease)
+
+	// Ensure we don't go below minimum
+	if newQPS < h.adaptive.MinQPS {
+		newQPS = h.adaptive.MinQPS
+	}
+
+	if newQPS != oldQPS {
+		h.adjustQPSLocked(host, info, newQPS)
+		slog.Info("Rate limit decreased", "host", host, "oldQPS", oldQPS, "newQPS", newQPS, "consecutive429s", info.consecutive429s)
+	}
+}
+
+// adjustQPSLocked updates the rate limiter with a new QPS.
+// Must be called with h.mu held.
+func (h *HostLimiter) adjustQPSLocked(host string, info *hostLimiterInfo, newQPS rate.Limit) {
+	info.currentQPS = newQPS
+	info.lastRateAdjustment = time.Now()
+
+	// Use SetLimitAt to dynamically adjust the rate without resetting the token bucket.
+	// This preserves existing tokens and prevents "free burst" after rate decreases.
+	info.limiter.SetLimitAt(time.Now(), newQPS)
+}
+
+// IsAdaptiveEnabled returns true if adaptive rate limiting is enabled.
+func (h *HostLimiter) IsAdaptiveEnabled() bool {
+	return h != nil && h.adaptive != nil && h.adaptive.Enabled
+}
+
+// GetAdaptiveConfig returns a copy of the adaptive configuration, or nil if not enabled.
+func (h *HostLimiter) GetAdaptiveConfig() *AdaptiveConfig {
+	if h == nil || h.adaptive == nil {
+		return nil
+	}
+	cfg := *h.adaptive
+	return &cfg
 }

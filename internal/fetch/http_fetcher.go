@@ -29,6 +29,11 @@ import (
 // and response size limits. See fetcher.go for the Fetcher interface definition.
 type HTTPFetcher struct{}
 
+// isSuccessStatus returns true for 2xx and 3xx status codes (excluding 304 which is handled separately)
+func isSuccessStatus(status int) bool {
+	return status >= 200 && status < 400
+}
+
 // sleepWithContext sleeps for the given duration or until the context is cancelled.
 // Returns ctx.Err() if cancelled, nil otherwise.
 func sleepWithContext(ctx context.Context, d time.Duration) error {
@@ -232,11 +237,23 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			continue
 		}
 
+		// Report 429 to adaptive rate limiter if enabled (regardless of whether we'll retry)
+		if resp.StatusCode == http.StatusTooManyRequests && req.Limiter != nil && req.Limiter.IsAdaptiveEnabled() {
+			if parsedURL, err := url.Parse(req.URL); err == nil && parsedURL.Host != "" {
+				delay := readRetryAfter(resp)
+				if delay <= 0 {
+					delay = backoff(baseDelay, attempt)
+				}
+				req.Limiter.RecordRateLimit(parsedURL.Host, delay)
+			}
+		}
+
 		if shouldRetry(nil, resp.StatusCode) && attempt < retries {
 			delay := readRetryAfter(resp)
 			if delay <= 0 {
 				delay = backoff(baseDelay, attempt)
 			}
+
 			slog.Debug("retrying HTTP request based on status code", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode, "attempt", attempt, "delay", delay)
 			if err := sleepWithContext(ctx, delay); err != nil {
 				return Result{}, err
@@ -244,7 +261,15 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			continue
 		}
 
-		slog.Debug("HTTP fetch success", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode)
+		slog.Debug("HTTP fetch complete", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode)
+
+		// Report success to adaptive rate limiter only for successful responses (2xx/3xx)
+		if req.Limiter != nil && req.Limiter.IsAdaptiveEnabled() && isSuccessStatus(resp.StatusCode) {
+			if parsedURL, err := url.Parse(req.URL); err == nil && parsedURL.Host != "" {
+				req.Limiter.RecordSuccess(parsedURL.Host)
+			}
+		}
+
 		return Result{
 			URL:       req.URL,
 			Status:    resp.StatusCode,
