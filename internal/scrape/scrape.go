@@ -47,6 +47,8 @@ type Request struct {
 	MetricsCallback fetch.MetricsCallback
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
+	ProxyPool *fetch.ProxyPool
 }
 
 // Result contains the outcome of a scrape operation.
@@ -100,9 +102,17 @@ func Run(ctx context.Context, req Request) (Result, error) {
 
 	var fetcher fetch.Fetcher
 	if req.MetricsCallback != nil {
-		fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+		if req.ProxyPool != nil {
+			fetcher = fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
+		} else {
+			fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+		}
 	} else {
-		fetcher = fetch.NewFetcher(req.DataDir)
+		if req.ProxyPool != nil {
+			fetcher = fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
+		} else {
+			fetcher = fetch.NewFetcher(req.DataDir)
+		}
 	}
 
 	fetchReq := fetch.Request{

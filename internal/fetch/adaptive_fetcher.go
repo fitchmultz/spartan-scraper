@@ -17,6 +17,7 @@ type AdaptiveFetcher struct {
 	cdp             *ChromedpFetcher
 	pw              *PlaywrightFetcher
 	metricsCallback MetricsCallback
+	proxyPool       *ProxyPool
 }
 
 func NewAdaptiveFetcher(dataDir string) *AdaptiveFetcher {
@@ -26,6 +27,14 @@ func NewAdaptiveFetcher(dataDir string) *AdaptiveFetcher {
 		cdp:   &ChromedpFetcher{},
 		pw:    &PlaywrightFetcher{},
 	}
+}
+
+// SetProxyPool sets the proxy pool for all underlying fetchers.
+func (f *AdaptiveFetcher) SetProxyPool(pool *ProxyPool) {
+	f.proxyPool = pool
+	f.http.SetProxyPool(pool)
+	f.cdp.SetProxyPool(pool)
+	f.pw.SetProxyPool(pool)
 }
 
 func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error) {

@@ -27,7 +27,14 @@ import (
 // HTTPFetcher implements content fetching using the standard library http.Client.
 // Provides retry logic, rate limiting, authentication, conditional requests,
 // and response size limits. See fetcher.go for the Fetcher interface definition.
-type HTTPFetcher struct{}
+type HTTPFetcher struct {
+	proxyPool *ProxyPool
+}
+
+// SetProxyPool sets the proxy pool for this fetcher.
+func (f *HTTPFetcher) SetProxyPool(pool *ProxyPool) {
+	f.proxyPool = pool
+}
 
 // isSuccessStatus returns true for 2xx and 3xx status codes (excluding 304 which is handled separately)
 func isSuccessStatus(status int) bool {
@@ -82,10 +89,34 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		Proxy: http.ProxyFromEnvironment, // Default: use env vars
 	}
 
-	// If proxy explicitly configured, override
+	// Track selected proxy for metrics
+	var selectedProxy *ProxyEntry
+
+	// If proxy pool is configured and no explicit proxy, select from pool
+	if f.proxyPool != nil && (req.Auth.Proxy == nil || req.Auth.Proxy.URL == "") {
+		hints := ProxySelectionHints{}
+		if req.Auth.ProxyHints != nil {
+			hints = *req.Auth.ProxyHints
+		}
+
+		proxy, err := f.proxyPool.Select(hints)
+		if err != nil {
+			slog.Warn("failed to select proxy from pool", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		} else {
+			selectedProxy = &proxy
+			proxyConfig := proxy.ToProxyConfig()
+			req.Auth.Proxy = &proxyConfig
+			slog.Debug("selected proxy from pool", "url", apperrors.SanitizeURL(req.URL), "proxy_id", proxy.ID)
+		}
+	}
+
+	// If proxy explicitly configured (or selected from pool), apply it
 	if req.Auth.Proxy != nil && req.Auth.Proxy.URL != "" {
 		proxyURL, err := url.Parse(req.Auth.Proxy.URL)
 		if err != nil {
+			if selectedProxy != nil {
+				f.proxyPool.RecordFailure(selectedProxy.ID, err)
+			}
 			return Result{}, fmt.Errorf("invalid proxy URL: %w", err)
 		}
 
@@ -93,6 +124,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		if strings.HasPrefix(strings.ToLower(req.Auth.Proxy.URL), "socks5://") {
 			dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
 			if err != nil {
+				if selectedProxy != nil {
+					f.proxyPool.RecordFailure(selectedProxy.ID, err)
+				}
 				return Result{}, fmt.Errorf("failed to create SOCKS5 dialer: %w", err)
 			}
 			transport.DialContext = dialer.(proxy.ContextDialer).DialContext
@@ -184,6 +218,10 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if resp != nil {
 				_ = resp.Body.Close()
 			}
+			// Record proxy failure on final attempt
+			if selectedProxy != nil && f.proxyPool != nil && (attempt >= retries || !shouldRetry(err, 0)) {
+				f.proxyPool.RecordFailure(selectedProxy.ID, err)
+			}
 			if attempt >= retries || !shouldRetry(err, 0) {
 				return Result{}, err
 			}
@@ -267,6 +305,15 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		if req.Limiter != nil && req.Limiter.IsAdaptiveEnabled() && isSuccessStatus(resp.StatusCode) {
 			if parsedURL, err := url.Parse(req.URL); err == nil && parsedURL.Host != "" {
 				req.Limiter.RecordSuccess(parsedURL.Host)
+			}
+		}
+
+		// Record proxy pool metrics
+		if selectedProxy != nil && f.proxyPool != nil {
+			if isSuccessStatus(resp.StatusCode) {
+				f.proxyPool.RecordSuccess(selectedProxy.ID, 0) // Latency not measured for HTTP
+			} else if resp.StatusCode >= 500 {
+				f.proxyPool.RecordFailure(selectedProxy.ID, fmt.Errorf("HTTP %d", resp.StatusCode))
 			}
 		}
 

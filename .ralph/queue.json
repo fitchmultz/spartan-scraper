@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0204",
-      "status": "todo",
-      "title": "Implement proxy rotation and proxy pool management",
-      "priority": "high",
-      "tags": [
-        "proxy",
-        "scaling",
-        "networking"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "internal/config/"
-      ],
-      "evidence": [
-        "Only single proxy URL supported in config (PROXY_URL)",
-        "No proxy rotation for high-volume crawling",
-        "No proxy health checking or failover"
-      ],
-      "plan": [
-        "Create proxy pool configuration format (YAML/JSON)",
-        "Add proxy rotation strategies (round-robin, random, least-used)",
-        "Implement proxy health checks with automatic exclusion",
-        "Add geographic proxy selection",
-        "Support proxy authentication per proxy",
-        "Add proxy usage metrics and reporting"
-      ],
-      "notes": [],
-      "request": "scan finding: proxy rotation gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0205",
       "status": "todo",
       "title": "Add OAuth 2.0 and OIDC authentication flow support",

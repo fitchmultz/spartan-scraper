@@ -38,6 +38,8 @@ type Request struct {
 	TemplateRegistry *extract.TemplateRegistry
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
+	ProxyPool *fetch.ProxyPool
 }
 
 // Evidence represents a single piece of gathered evidence with computed metrics.

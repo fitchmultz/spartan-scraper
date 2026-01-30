@@ -56,6 +56,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				JSRegistry:       req.JSRegistry,
 				TemplateRegistry: req.TemplateRegistry,
 				Screenshot:       req.Screenshot,
+				ProxyPool:        req.ProxyPool,
 			})
 			if err != nil {
 				if ctx.Err() != nil {
@@ -99,6 +100,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				JSRegistry:       req.JSRegistry,
 				TemplateRegistry: req.TemplateRegistry,
 				Screenshot:       req.Screenshot,
+				ProxyPool:        req.ProxyPool,
 			})
 			if err != nil {
 				if ctx.Err() != nil {

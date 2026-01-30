@@ -245,6 +245,11 @@ type AuthOptions struct {
 	LoginUser           string            `json:"loginUser,omitempty"`
 	LoginPass           string            `json:"loginPass,omitempty"`
 	Proxy               *ProxyConfig      `json:"proxy,omitempty"`
+	// ProxyPool enables proxy pool selection. When set, the pool will be used
+	// to select a proxy based on the configured rotation strategy.
+	ProxyPool string `json:"proxyPool,omitempty"`
+	// ProxyHints provides hints for proxy selection when using a proxy pool.
+	ProxyHints *ProxySelectionHints `json:"proxyHints,omitempty"`
 }
 
 type Request struct {

@@ -55,6 +55,27 @@ func NewFetcherWithMetrics(dataDir string, callback MetricsCallback) FetcherWith
 	return af
 }
 
+// NewFetcherWithProxyPool creates a new fetcher with proxy pool support.
+func NewFetcherWithProxyPool(dataDir string, pool *ProxyPool) Fetcher {
+	af := NewAdaptiveFetcher(dataDir)
+	if pool != nil {
+		af.SetProxyPool(pool)
+	}
+	return af
+}
+
+// NewFetcherWithMetricsAndProxyPool creates a new fetcher with both metrics and proxy pool support.
+func NewFetcherWithMetricsAndProxyPool(dataDir string, callback MetricsCallback, pool *ProxyPool) FetcherWithMetrics {
+	af := NewAdaptiveFetcher(dataDir)
+	if callback != nil {
+		af.SetMetricsCallback(callback)
+	}
+	if pool != nil {
+		af.SetProxyPool(pool)
+	}
+	return af
+}
+
 var (
 	ErrChromeNotFound     = apperrors.ErrChromeNotFound
 	ErrPlaywrightNotReady = apperrors.ErrPlaywrightNotReady

@@ -26,6 +26,12 @@ type PlaywrightFetcher struct {
 	browser     playwright.Browser
 	initialized bool
 	headless    bool
+	proxyPool   *ProxyPool
+}
+
+// SetProxyPool sets the proxy pool for this fetcher.
+func (f *PlaywrightFetcher) SetProxyPool(pool *ProxyPool) {
+	f.proxyPool = pool
 }
 
 // playwrightInterceptor captures network requests and responses for API scraping.
@@ -402,7 +408,28 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		}
 	}
 
-	// Add proxy configuration if provided
+	// Track selected proxy for metrics
+	var selectedProxy *ProxyEntry
+
+	// If proxy pool is configured and no explicit proxy, select from pool
+	if f.proxyPool != nil && (req.Auth.Proxy == nil || req.Auth.Proxy.URL == "") {
+		hints := ProxySelectionHints{}
+		if req.Auth.ProxyHints != nil {
+			hints = *req.Auth.ProxyHints
+		}
+
+		proxy, err := f.proxyPool.Select(hints)
+		if err != nil {
+			slog.Warn("failed to select proxy from pool", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		} else {
+			selectedProxy = &proxy
+			proxyConfig := proxy.ToProxyConfig()
+			req.Auth.Proxy = &proxyConfig
+			slog.Debug("selected proxy from pool", "url", apperrors.SanitizeURL(req.URL), "proxy_id", proxy.ID)
+		}
+	}
+
+	// Add proxy configuration if provided (either explicit or from pool)
 	if req.Auth.Proxy != nil && req.Auth.Proxy.URL != "" {
 		proxyOpts := playwright.Proxy{
 			Server: req.Auth.Proxy.URL,
@@ -642,6 +669,15 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	if interceptor != nil {
 		interceptedData = interceptor.getEntries()
 		slog.Debug("network interception complete", "url", apperrors.SanitizeURL(req.URL), "entriesCaptured", len(interceptedData))
+	}
+
+	// Record proxy pool metrics
+	if selectedProxy != nil && f.proxyPool != nil {
+		if statusCode >= 200 && statusCode < 400 {
+			f.proxyPool.RecordSuccess(selectedProxy.ID, 0)
+		} else if statusCode >= 500 {
+			f.proxyPool.RecordFailure(selectedProxy.ID, fmt.Errorf("HTTP %d", statusCode))
+		}
 	}
 
 	return Result{

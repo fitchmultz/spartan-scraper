@@ -187,6 +187,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			TemplateRegistry: m.templateRegistry,
 			MetricsCallback:  m.metricsCallback,
 			Screenshot:       screenshot,
+			ProxyPool:        m.proxyPool,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -271,6 +272,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			RobotsCache:      robotsCache,
 			SkipDuplicates:   skipDuplicates,
 			SimHashThreshold: simHashThreshold,
+			ProxyPool:        m.proxyPool,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -335,6 +337,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
 			Screenshot:       researchScreenshot,
+			ProxyPool:        m.proxyPool,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

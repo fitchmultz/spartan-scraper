@@ -75,6 +75,8 @@ type Request struct {
 	// SimHashThreshold is the maximum Hamming distance for content to be considered a duplicate.
 	// Default is 3. Lower values require more similarity (0 = exact match).
 	SimHashThreshold int
+	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
+	ProxyPool *fetch.ProxyPool
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -143,9 +145,17 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 
 	var fetcher fetch.Fetcher
 	if req.MetricsCallback != nil {
-		fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+		if req.ProxyPool != nil {
+			fetcher = fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
+		} else {
+			fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+		}
 	} else {
-		fetcher = fetch.NewFetcher(req.DataDir)
+		if req.ProxyPool != nil {
+			fetcher = fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
+		} else {
+			fetcher = fetch.NewFetcher(req.DataDir)
+		}
 	}
 
 	type task struct {

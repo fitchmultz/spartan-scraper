@@ -42,6 +42,7 @@ type Manager struct {
 	subscribersMu     sync.RWMutex
 	metricsCallback   func(duration time.Duration, success bool, fetcherType, url string)
 	webhookDispatcher *webhook.Dispatcher
+	proxyPool         *fetch.ProxyPool
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -343,4 +344,18 @@ func (m *Manager) CancelJob(ctx context.Context, id string) error {
 	}
 
 	return m.store.UpdateStatus(ctx, id, model.StatusCanceled, "canceled by user")
+}
+
+// SetProxyPool sets the proxy pool for the manager.
+func (m *Manager) SetProxyPool(pool *fetch.ProxyPool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.proxyPool = pool
+}
+
+// GetProxyPool returns the current proxy pool, or nil if not set.
+func (m *Manager) GetProxyPool() *fetch.ProxyPool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.proxyPool
 }
