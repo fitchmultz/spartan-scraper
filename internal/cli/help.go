@@ -32,6 +32,8 @@ Commands:
   templates    List extraction templates
   crawl-states List crawl states (incremental tracking)
   retention    Manage data retention and cleanup
+  backup       Create and manage backups
+  restore      Restore from a backup archive
   watch        Watch content for changes
   export       Export job results (jsonl, json, md, csv)
   schedule     Manage scheduled jobs
@@ -60,6 +62,12 @@ Examples:
   spartan crawl-states list --limit 10
   spartan retention status
   spartan retention cleanup --dry-run
+  spartan backup create
+  spartan backup create -o /backups
+  spartan backup create --exclude-jobs
+  spartan backup list
+  spartan restore --from spartan-backup-20240115-120000.tar.gz
+  spartan restore --from backup.tar.gz --dry-run
   spartan watch add --url https://example.com --interval 3600
   spartan watch add --url https://example.com --selector "#price" --webhook https://hooks.slack.com/...
   spartan watch list
