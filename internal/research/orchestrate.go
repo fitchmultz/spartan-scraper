@@ -21,7 +21,12 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	items := make([]Evidence, 0)
 	queryTokens := tokenize(req.Query)
 
+	var successCount, failCount int
 	for _, target := range req.URLs {
+		if ctx.Err() != nil {
+			return Result{}, apperrors.Wrap(apperrors.KindInternal, "research cancelled", ctx.Err())
+		}
+
 		if strings.TrimSpace(target) == "" {
 			continue
 		}
@@ -52,9 +57,14 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				TemplateRegistry: req.TemplateRegistry,
 			})
 			if err != nil {
+				if ctx.Err() != nil {
+					return Result{}, apperrors.Wrap(apperrors.KindInternal, "research cancelled", ctx.Err())
+				}
 				slog.Error("research crawl failed", "url", apperrors.SanitizeURL(target), "error", err)
+				failCount++
 				continue
 			}
+			successCount++
 			for _, page := range pages {
 				if page.Status == 304 {
 					continue
@@ -89,9 +99,14 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				TemplateRegistry: req.TemplateRegistry,
 			})
 			if err != nil {
+				if ctx.Err() != nil {
+					return Result{}, apperrors.Wrap(apperrors.KindInternal, "research cancelled", ctx.Err())
+				}
 				slog.Error("research scrape failed", "url", apperrors.SanitizeURL(target), "error", err)
+				failCount++
 				continue
 			}
+			successCount++
 			if res.Status != 304 {
 				items = append(items, Evidence{
 					URL:     res.URL,
@@ -103,7 +118,11 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		}
 	}
 
-	slog.Info("research gathering complete", "evidenceCount", len(items))
+	if successCount == 0 && failCount > 0 {
+		return Result{}, apperrors.Internal("all research targets failed")
+	}
+
+	slog.Info("research gathering complete", "evidenceCount", len(items), "successCount", successCount, "failCount", failCount)
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Score > items[j].Score
 	})

@@ -87,3 +87,90 @@ func TestRun(t *testing.T) {
 		t.Errorf("expected summary, got empty")
 	}
 }
+
+func TestRunContextCancellation(t *testing.T) {
+	// Create a server that delays responses
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		fmt.Fprint(w, `<html><body><h1>Results for test</h1><p>This is a test page with evidence.</p></body></html>`)
+	}))
+	defer srv.Close()
+
+	// Create a cancellable context
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start the research in a goroutine and cancel after a short delay
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	req := Request{
+		Query:    "test evidence",
+		URLs:     []string{srv.URL, srv.URL, srv.URL},
+		MaxDepth: 0,
+		Timeout:  5 * time.Second,
+		DataDir:  t.TempDir(),
+	}
+
+	_, err := Run(ctx, req)
+	if err == nil {
+		t.Fatal("expected error due to context cancellation, got nil")
+	}
+
+	// Verify it's a context cancellation error
+	if ctx.Err() == nil {
+		t.Error("expected context to be cancelled")
+	}
+}
+
+func TestRunAllTargetsFail(t *testing.T) {
+	// Use invalid URLs that will cause connection errors
+	req := Request{
+		Query:    "test evidence",
+		URLs:     []string{"http://localhost:1", "http://localhost:2"},
+		MaxDepth: 0,
+		Timeout:  1 * time.Second,
+		DataDir:  t.TempDir(),
+	}
+
+	_, err := Run(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error when all targets fail, got nil")
+	}
+
+	expectedMsg := "all research targets failed"
+	if err.Error() != expectedMsg {
+		t.Errorf("expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+func TestRunPartialFailure(t *testing.T) {
+	// Create two servers: one that succeeds, one that fails
+	successSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Success</h1><p>This is successful evidence.</p></body></html>`)
+	}))
+	defer successSrv.Close()
+
+	failSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer failSrv.Close()
+
+	req := Request{
+		Query:    "test evidence",
+		URLs:     []string{failSrv.URL, successSrv.URL, failSrv.URL},
+		MaxDepth: 0,
+		Timeout:  5 * time.Second,
+		DataDir:  t.TempDir(),
+	}
+
+	result, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("expected no error with partial failure, got %v", err)
+	}
+
+	if len(result.Evidence) == 0 {
+		t.Error("expected evidence from successful target, got none")
+	}
+}
