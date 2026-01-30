@@ -120,7 +120,13 @@ docs/                 # Documentation (usage, architecture, landscape)
 
 ### Robots.txt
 
-- **Ignored by design** — do not add compliance logic without explicit user request
+- **Ignored by default** — robots.txt compliance is opt-in via `--respect-robots` flag or `RESPECT_ROBOTS_TXT=true` env var
+- When enabled, the crawler will:
+  - Fetch and parse robots.txt for each host
+  - Respect Allow/Disallow rules for the configured User-Agent
+  - Apply Crawl-Delay if specified
+  - Cache robots.txt per host with 1-hour TTL
+  - Fail-open (allow crawl) if robots.txt fetch fails
 
 ### Error Handling
 

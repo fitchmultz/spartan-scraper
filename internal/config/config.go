@@ -102,6 +102,9 @@ type Config struct {
 	AdaptiveDecreaseFactor   float64 // ADAPTIVE_DECREASE_FACTOR env var
 	AdaptiveSuccessThreshold int     // ADAPTIVE_SUCCESS_THRESHOLD env var
 	AdaptiveCooldownMs       int     // ADAPTIVE_COOLDOWN_MS env var
+
+	// Robots.txt compliance
+	RespectRobotsTxt bool // RESPECT_ROBOTS_TXT env var (default: false)
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -170,6 +173,9 @@ func Load() (Config, error) {
 		AdaptiveDecreaseFactor:   getenvFloat64("ADAPTIVE_DECREASE_FACTOR", 0.5),
 		AdaptiveSuccessThreshold: getenvInt("ADAPTIVE_SUCCESS_THRESHOLD", 5),
 		AdaptiveCooldownMs:       getenvInt("ADAPTIVE_COOLDOWN_MS", 1000),
+
+		// Robots.txt compliance
+		RespectRobotsTxt: getenvBool("RESPECT_ROBOTS_TXT", false),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {

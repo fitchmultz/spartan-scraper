@@ -30,6 +30,7 @@ func RunCrawl(ctx context.Context, cfg config.Config, args []string) int {
 	sitemapOnly := fs.Bool("sitemap-only", false, "Only crawl URLs from sitemap, not the root URL")
 	include := fs.String("include", "", "Comma-separated URL path patterns to include (glob syntax, e.g., /blog/**,/products/*)")
 	exclude := fs.String("exclude", "", "Comma-separated URL path patterns to exclude (glob syntax, e.g., /admin/*,/api/**)")
+	respectRobots := fs.Bool("respect-robots", false, "Respect robots.txt files (default: false)")
 	cf := common.RegisterCommonFlags(fs, cfg)
 
 	fs.Usage = func() {
@@ -44,6 +45,7 @@ Examples:
   spartan crawl --url https://example.com --sitemap-url https://example.com/sitemap.xml --sitemap-only
   spartan crawl --url https://example.com --include "/blog/**,/products/*"
   spartan crawl --url https://example.com --exclude "/admin/*,/api/**"
+  spartan crawl --url https://example.com --respect-robots
 
 Options:
 `)
@@ -105,22 +107,23 @@ Options:
 	}
 
 	spec := jobs.JobSpec{
-		Kind:            model.KindCrawl,
-		URL:             *url,
-		MaxDepth:        *maxDepth,
-		MaxPages:        *maxPages,
-		Headless:        *cf.Headless,
-		UsePlaywright:   *cf.Playwright,
-		Auth:            authOptions,
-		TimeoutSeconds:  *cf.Timeout,
-		Extract:         extractOpts,
-		Pipeline:        pipelineOpts,
-		Incremental:     *cf.Incremental,
-		SitemapURL:      *sitemapURL,
-		SitemapOnly:     *sitemapOnly,
-		IncludePatterns: parsePatternList(*include),
-		ExcludePatterns: parsePatternList(*exclude),
-		Device:          device,
+		Kind:             model.KindCrawl,
+		URL:              *url,
+		MaxDepth:         *maxDepth,
+		MaxPages:         *maxPages,
+		Headless:         *cf.Headless,
+		UsePlaywright:    *cf.Playwright,
+		Auth:             authOptions,
+		TimeoutSeconds:   *cf.Timeout,
+		Extract:          extractOpts,
+		Pipeline:         pipelineOpts,
+		Incremental:      *cf.Incremental,
+		SitemapURL:       *sitemapURL,
+		SitemapOnly:      *sitemapOnly,
+		IncludePatterns:  parsePatternList(*include),
+		ExcludePatterns:  parsePatternList(*exclude),
+		Device:           device,
+		RespectRobotsTxt: *respectRobots,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

@@ -18,32 +18,33 @@ import (
 // It unifies the parameter sets for scrape, crawl, and research jobs,
 // allowing callers to use a single CreateJob method instead of kind-specific methods.
 type JobSpec struct {
-	Kind            model.Kind
-	URL             string
-	Method          string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
-	Body            []byte // Request body for POST/PUT/PATCH
-	ContentType     string // Content-Type header for request body
-	Query           string
-	URLs            []string
-	MaxDepth        int
-	MaxPages        int
-	Headless        bool
-	UsePlaywright   bool
-	Auth            fetch.AuthOptions
-	TimeoutSeconds  int
-	Extract         extract.ExtractOptions
-	Pipeline        pipeline.Options
-	Incremental     bool
-	RequestID       string
-	SitemapURL      string                  // Optional sitemap.xml URL for URL discovery
-	SitemapOnly     bool                    // If true, only crawl URLs from sitemap, not the root URL
-	WebhookURL      string                  // Optional webhook URL for job notifications
-	WebhookEvents   []string                // Events to trigger webhook (default: ["completed"])
-	WebhookSecret   string                  // Optional HMAC secret for webhook signatures
-	IncludePatterns []string                // URL path patterns to include (glob syntax, e.g., /blog/**)
-	ExcludePatterns []string                // URL path patterns to exclude (glob syntax, e.g., /admin/*)
-	Screenshot      *fetch.ScreenshotConfig // Optional screenshot capture configuration
-	Device          *fetch.DeviceEmulation  // Optional device emulation for mobile/responsive content
+	Kind             model.Kind
+	URL              string
+	Method           string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+	Body             []byte // Request body for POST/PUT/PATCH
+	ContentType      string // Content-Type header for request body
+	Query            string
+	URLs             []string
+	MaxDepth         int
+	MaxPages         int
+	Headless         bool
+	UsePlaywright    bool
+	Auth             fetch.AuthOptions
+	TimeoutSeconds   int
+	Extract          extract.ExtractOptions
+	Pipeline         pipeline.Options
+	Incremental      bool
+	RequestID        string
+	SitemapURL       string                  // Optional sitemap.xml URL for URL discovery
+	SitemapOnly      bool                    // If true, only crawl URLs from sitemap, not the root URL
+	WebhookURL       string                  // Optional webhook URL for job notifications
+	WebhookEvents    []string                // Events to trigger webhook (default: ["completed"])
+	WebhookSecret    string                  // Optional HMAC secret for webhook signatures
+	IncludePatterns  []string                // URL path patterns to include (glob syntax, e.g., /blog/**)
+	ExcludePatterns  []string                // URL path patterns to exclude (glob syntax, e.g., /admin/*)
+	Screenshot       *fetch.ScreenshotConfig // Optional screenshot capture configuration
+	Device           *fetch.DeviceEmulation  // Optional device emulation for mobile/responsive content
+	RespectRobotsTxt bool                    // Respect robots.txt files (default: false)
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.

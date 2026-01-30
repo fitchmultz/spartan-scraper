@@ -1,43 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0200",
-      "status": "todo",
-      "title": "Implement optional robots.txt compliance",
-      "priority": "low",
-      "tags": [
-        "crawl",
-        "robots.txt",
-        "politeness",
-        "seo"
-      ],
-      "scope": [
-        "internal/crawl/crawl.go",
-        "internal/crawl/robots.go",
-        "internal/config/config.go"
-      ],
-      "evidence": [
-        "AGENTS.md explicitly states 'Robots.txt: Ignored by design'",
-        "No robots.txt parsing or checking in codebase",
-        "Some users need polite crawling for compliance"
-      ],
-      "plan": [
-        "Create internal/crawl/robots.go with robots.txt parser",
-        "Implement user-agent matching and rule evaluation",
-        "Add CrawlDelay support for rate limiting",
-        "Add --respect-robots flag (default: false)",
-        "Add RESPECT_ROBOTS env var",
-        "Cache robots.txt per host to avoid repeated fetches",
-        "Log when URLs are skipped due to robots.txt",
-        "Write tests for robots.txt parsing"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

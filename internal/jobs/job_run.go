@@ -229,6 +229,14 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		includePatterns := toStringSlice(job.Params["includePatterns"])
 		excludePatterns := toStringSlice(job.Params["excludePatterns"])
 		screenshot := decodeScreenshot(job.Params["screenshot"])
+		respectRobotsTxt := toBool(job.Params["respectRobotsTxt"], false)
+
+		// Create robots cache if enabled
+		var robotsCache *crawl.Cache
+		if respectRobotsTxt {
+			robotsCache = crawl.NewCache(nil, time.Hour)
+		}
+
 		results, err := crawl.Run(jobCtx, crawl.Request{
 			URL:              url,
 			RequestID:        getJobRequestID(job),
@@ -258,6 +266,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			IncludePatterns:  includePatterns,
 			ExcludePatterns:  excludePatterns,
 			Screenshot:       screenshot,
+			RobotsCache:      robotsCache,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

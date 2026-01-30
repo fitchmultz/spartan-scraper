@@ -65,6 +65,9 @@ type Request struct {
 	ExcludePatterns []string
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// RobotsCache is an optional cache for robots.txt compliance checking.
+	// If nil, robots.txt is not checked.
+	RobotsCache *Cache
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -372,6 +375,17 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		if err != nil {
 			slog.Debug("skipping invalid URL", "url", apperrors.SanitizeURL(rawURL), "error", err)
 			return
+		}
+
+		// Check robots.txt if cache is provided
+		if req.RobotsCache != nil {
+			allowed, err := req.RobotsCache.IsAllowed(rawURL, req.UserAgent)
+			if err != nil {
+				slog.Debug("robots.txt check failed, allowing URL", "url", apperrors.SanitizeURL(rawURL), "error", err)
+			} else if !allowed {
+				slog.Info("skipping URL blocked by robots.txt", "url", apperrors.SanitizeURL(rawURL))
+				return
+			}
 		}
 
 		// Apply pattern filtering (skip root URL - it's always allowed)

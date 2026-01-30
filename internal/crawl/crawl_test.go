@@ -362,3 +362,97 @@ func TestRun_WithExcludePatterns(t *testing.T) {
 		t.Errorf("expected /admin/settings to NOT be in results")
 	}
 }
+
+func TestRun_WithRobotsTxt(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/allowed">Allowed</a><a href="/blocked">Blocked</a></body></html>`)
+	})
+	mux.HandleFunc("/allowed", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Allowed Page</h1></body></html>`)
+	})
+	mux.HandleFunc("/blocked", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Blocked Page</h1></body></html>`)
+	})
+	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `User-agent: *
+Disallow: /blocked
+`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Create robots cache
+	robotsCache := NewCache(srv.Client(), time.Hour)
+
+	req := Request{
+		URL:         srv.URL,
+		MaxDepth:    2,
+		MaxPages:    10,
+		Concurrency: 2,
+		Timeout:     5 * time.Second,
+		DataDir:     t.TempDir(),
+		RobotsCache: robotsCache,
+		UserAgent:   "TestBot",
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	found := map[string]bool{}
+	for _, r := range results {
+		found[r.URL] = true
+	}
+
+	// Root should be included
+	if !found[srv.URL] {
+		t.Errorf("expected root URL to be in results")
+	}
+
+	// /allowed should be included
+	if !found[srv.URL+"/allowed"] {
+		t.Errorf("expected /allowed to be in results")
+	}
+
+	// /blocked should NOT be included (blocked by robots.txt)
+	if found[srv.URL+"/blocked"] {
+		t.Errorf("expected /blocked to NOT be in results (blocked by robots.txt)")
+	}
+}
+
+func TestRun_WithoutRobotsTxt(t *testing.T) {
+	// Test that crawl works normally without robots.txt cache
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/page1">Page 1</a></body></html>`)
+	})
+	mux.HandleFunc("/page1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// No robots cache - should crawl all URLs
+	req := Request{
+		URL:         srv.URL,
+		MaxDepth:    2,
+		MaxPages:    10,
+		Concurrency: 2,
+		Timeout:     5 * time.Second,
+		DataDir:     t.TempDir(),
+		// RobotsCache is nil
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
+}
