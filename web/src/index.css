@@ -1,6 +1,19 @@
+/**
+ * Spartan Scraper Web UI - Global Styles
+ *
+ * Defines CSS custom properties for light/dark themes, layout utilities,
+ * form elements, and component styling. Uses data-theme attribute for
+ * theme scoping with automatic system preference detection fallback.
+ *
+ * @module index.css
+ */
+
+/* Base variables (dark theme as default to match existing design) */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   font-family: "Space Grotesk", system-ui, sans-serif;
+
+  /* Dark theme colors (default) */
   --bg: #0b0b0d;
   --bg-alt: #17171c;
   --panel: #1d1f26;
@@ -12,8 +25,54 @@
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
+/* Light theme override via data attribute */
+[data-theme="light"] {
+  --bg: #fafafa;
+  --bg-alt: #f0f0f5;
+  --panel: #ffffff;
+  --accent: #e5a000;
+  --accent-strong: #d46a00;
+  --text: #1a1a1f;
+  --muted: #6b6b7b;
+  --stroke: rgba(0, 0, 0, 0.08);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+}
+
+/* System preference fallback (when no data-theme is set) */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fafafa;
+    --bg-alt: #f0f0f5;
+    --panel: #ffffff;
+    --accent: #e5a000;
+    --accent-strong: #d46a00;
+    --text: #1a1a1f;
+    --muted: #6b6b7b;
+    --stroke: rgba(0, 0, 0, 0.08);
+    --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  }
+}
+
 * {
   box-sizing: border-box;
+}
+
+/* Smooth theme transitions for all theme-aware properties */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Disable transitions for elements that shouldn't animate */
+.skeleton,
+.skeleton * {
+  /* biome-ignore lint/complexity/noImportantStyles: intentional override for skeleton loading state */
+  transition: none !important;
 }
 
 body {
@@ -24,6 +83,23 @@ body {
     radial-gradient(900px circle at 80% 0%, #1b2a3a 0%, transparent 55%),
     var(--bg);
   color: var(--text);
+}
+
+/* Light theme body background gradients */
+[data-theme="light"] body {
+  background:
+    radial-gradient(1200px circle at 15% -10%, #fff8e7 0%, transparent 60%),
+    radial-gradient(900px circle at 80% 0%, #e8f4fc 0%, transparent 55%),
+    var(--bg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) body {
+    background:
+      radial-gradient(1200px circle at 15% -10%, #fff8e7 0%, transparent 60%),
+      radial-gradient(900px circle at 80% 0%, #e8f4fc 0%, transparent 55%),
+      var(--bg);
+  }
 }
 
 #root {
@@ -76,6 +152,16 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+[data-theme="light"] .kicker {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .kicker {
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
 .stats {
   display: grid;
   gap: 12px;
@@ -83,6 +169,16 @@ body {
   border-radius: 18px;
   background: rgba(15, 17, 21, 0.7);
   border: 1px solid var(--stroke);
+}
+
+[data-theme="light"] .stats {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .stats {
+    background: rgba(255, 255, 255, 0.7);
+  }
 }
 
 .stats h3 {
@@ -126,6 +222,22 @@ textarea {
   font-family: inherit;
 }
 
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) input,
+  :root:not([data-theme]) select,
+  :root:not([data-theme]) textarea {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+}
+
 input[type="checkbox"] {
   width: auto;
 }
@@ -161,6 +273,16 @@ button.secondary {
   color: #ffb3b3;
 }
 
+[data-theme="light"] .error {
+  color: #c53030;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .error {
+    color: #c53030;
+  }
+}
+
 .job-item {
   padding: 12px 16px;
   border-radius: 14px;
@@ -173,6 +295,18 @@ button.secondary {
   gap: 4px;
 }
 
+[data-theme="light"] .job-item {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .job-item {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+}
+
 pre {
   white-space: pre-wrap;
   word-break: break-word;
@@ -180,6 +314,16 @@ pre {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--stroke);
+}
+
+[data-theme="light"] pre {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) pre {
+    background: rgba(0, 0, 0, 0.04);
+  }
 }
 
 .badge {
@@ -209,6 +353,39 @@ pre {
   color: #ffe7a1;
 }
 
+/* Light theme badge adjustments */
+[data-theme="light"] .badge.success {
+  background: rgba(0, 201, 130, 0.12);
+  color: #0d8a5e;
+}
+
+[data-theme="light"] .badge.failed {
+  background: rgba(220, 50, 50, 0.12);
+  color: #c53030;
+}
+
+[data-theme="light"] .badge.running {
+  background: rgba(229, 160, 0, 0.15);
+  color: #b38600;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .badge.success {
+    background: rgba(0, 201, 130, 0.12);
+    color: #0d8a5e;
+  }
+
+  :root:not([data-theme]) .badge.failed {
+    background: rgba(220, 50, 50, 0.12);
+    color: #c53030;
+  }
+
+  :root:not([data-theme]) .badge.running {
+    background: rgba(229, 160, 0, 0.15);
+    color: #b38600;
+  }
+}
+
 .footer {
   color: var(--muted);
   font-size: 0.85rem;
@@ -229,6 +406,18 @@ button:disabled {
   border-radius: 12px;
   background: rgba(12, 12, 16, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .result-navigation {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .result-navigation {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
 }
 
 .result-counter {
@@ -273,6 +462,39 @@ button:disabled {
 .result-item.selected {
   background: rgba(255, 183, 0, 0.15);
   border-color: rgba(255, 183, 0, 0.5);
+}
+
+/* Light theme result items */
+[data-theme="light"] .result-item {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .result-item:hover {
+  background: rgba(229, 160, 0, 0.08);
+  border-color: rgba(229, 160, 0, 0.25);
+}
+
+[data-theme="light"] .result-item.selected {
+  background: rgba(229, 160, 0, 0.12);
+  border-color: rgba(229, 160, 0, 0.4);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .result-item {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  :root:not([data-theme]) .result-item:hover {
+    background: rgba(229, 160, 0, 0.08);
+    border-color: rgba(229, 160, 0, 0.25);
+  }
+
+  :root:not([data-theme]) .result-item.selected {
+    background: rgba(229, 160, 0, 0.12);
+    border-color: rgba(229, 160, 0, 0.4);
+  }
 }
 
 .result-item-header {
@@ -341,6 +563,18 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+[data-theme="light"] .pagination-jump input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .pagination-jump input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+}
+
 .pagination-controls button {
   padding: 6px 12px;
   background: var(--accent);
@@ -360,4 +594,53 @@ button:disabled {
 
 .pagination-controls button:not(:disabled):hover {
   background: var(--accent-strong);
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-alt) 25%,
+    var(--panel) 50%,
+    var(--bg-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::after,
+  *::before {
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    transition-duration: 0.01ms !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background: var(--bg-alt);
+  }
 }

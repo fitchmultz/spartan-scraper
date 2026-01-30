@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0175",
-      "status": "todo",
-      "title": "Design and implement dark mode + polished visual design for Web UI",
-      "priority": "high",
-      "tags": [
-        "ux",
-        "web",
-        "design",
-        "modern",
-        "awesome"
-      ],
-      "scope": [
-        "web/src/styles/",
-        "web/src/App.tsx",
-        "web/src/components/*.tsx"
-      ],
-      "evidence": [
-        "Current Web UI uses basic default styling without a cohesive design system.",
-        "No dark mode support - expected in modern applications.",
-        "Form layouts are dense and overwhelming for new users.",
-        "Missing visual hierarchy and consistent spacing scale."
-      ],
-      "plan": [
-        "Create CSS custom properties (variables) for light/dark themes.",
-        "Implement automatic theme detection from system preferences with manual toggle.",
-        "Design and apply consistent spacing scale (4px/8px/16px/24px/32px).",
-        "Add smooth transitions and micro-interactions (hover states, focus rings).",
-        "Implement card-based layout with subtle shadows and rounded corners.",
-        "Add loading skeletons and shimmer effects for better perceived performance.",
-        "Ensure WCAG 2.1 AA accessibility compliance (contrast, focus states)."
-      ],
-      "notes": [
-        "Consider CSS-in-JS or Tailwind for maintainability",
-        "Use CSS prefers-color-scheme for system detection",
-        "Test on mobile devices for responsive design"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0176",
       "status": "todo",
       "title": "Add keyboard shortcuts and command palette to Web UI",

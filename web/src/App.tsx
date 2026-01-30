@@ -33,6 +33,7 @@ import { ResearchForm } from "./components/ResearchForm";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
 import { useResultsState } from "./hooks/useResultsState";
+import { useTheme } from "./hooks/useTheme";
 import {
   submitScrapeJob,
   submitCrawlJob,
@@ -44,6 +45,7 @@ export function App() {
   const appData = useAppData();
   const formState = useFormState();
   const resultsState = useResultsState();
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
 
   const {
     jobs,
@@ -221,6 +223,10 @@ export function App() {
         jobsCount={jobs.length}
         headless={headless}
         usePlaywright={usePlaywright}
+        theme={theme}
+        resolvedTheme={resolvedTheme}
+        onThemeChange={setTheme}
+        onThemeToggle={toggleTheme}
       />
 
       <section className="grid">

@@ -8,12 +8,19 @@
  * @module Hero
  */
 
+import { ThemeToggle } from "./ThemeToggle";
+import type { Theme, ResolvedTheme } from "../hooks/useTheme";
+
 interface HeroProps {
   loading: boolean;
   managerStatus: { queued: number; active: number } | null;
   jobsCount: number;
   headless: boolean;
   usePlaywright: boolean;
+  theme: Theme;
+  resolvedTheme: ResolvedTheme;
+  onThemeChange: (theme: Theme) => void;
+  onThemeToggle: () => void;
 }
 
 export function Hero({
@@ -22,6 +29,10 @@ export function Hero({
   jobsCount,
   headless,
   usePlaywright,
+  theme,
+  resolvedTheme,
+  onThemeChange,
+  onThemeToggle,
 }: HeroProps) {
   return (
     <section className="hero">
@@ -34,7 +45,22 @@ export function Hero({
         </p>
       </div>
       <div className="stats">
-        <h3>Live Signals</h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>Live Signals</h3>
+          <ThemeToggle
+            theme={theme}
+            resolvedTheme={resolvedTheme}
+            onThemeChange={onThemeChange}
+            onToggle={onThemeToggle}
+          />
+        </div>
         <div>{loading ? "Refreshing…" : "Standing by"}</div>
         {managerStatus !== null ? (
           <>
