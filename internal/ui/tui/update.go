@@ -10,8 +10,40 @@ import (
 )
 
 func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	// Handle spinner tick
+	if m.showHelp {
+		// Update help model when visible
+		helpModel, cmd := m.help.Update(msg)
+		m.help = helpModel
+		cmds = append(cmds, cmd)
+	}
+
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		if m.width > 40 {
+			m.progress.Width = min(60, m.width-40) // Responsive progress bar
+		}
+		return m, nil
+
 	case tea.KeyMsg:
+		// Global help toggle (works in any mode)
+		if msg.String() == "?" {
+			m.showHelp = !m.showHelp
+			return m, nil
+		}
+
+		if m.showHelp {
+			// Any key closes help modal except ?
+			if msg.String() != "?" {
+				m.showHelp = false
+				return m, nil
+			}
+		}
+
 		if m.viewMode == "detail" {
 			switch msg.String() {
 			case "escape", "q":
@@ -41,11 +73,12 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fetchTemplates(m.ctx, m.store),
 				fetchCrawlStates(m.ctx, m.store),
 			)
-		case "up":
+		// Vim-style navigation (add alongside existing arrow keys)
+		case "k", "up":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case "down":
+		case "j", "down":
 			if m.cursor < len(m.jobs)-1 {
 				m.cursor++
 			}
@@ -55,7 +88,8 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewMode = "detail"
 				return m, fetchJobDetail(m.ctx, m.store, m.selectedJob.ID)
 			}
-		case "left":
+		// Vim-style pagination
+		case "h", "left":
 			if m.pageOffset > 0 {
 				newOffset := m.pageOffset - m.pageLimit
 				if newOffset < 0 {
@@ -65,7 +99,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				return m, fetchJobs(m.ctx, m.store, m.statusFilter, m.pageLimit, m.pageOffset)
 			}
-		case "right":
+		case "l", "right":
 			m.pageOffset += m.pageLimit
 			m.cursor = 0
 			return m, fetchJobs(m.ctx, m.store, m.statusFilter, m.pageLimit, m.pageOffset)
@@ -203,5 +237,13 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.success = msg.message
 		return m, fetchJobs(m.ctx, m.store, m.statusFilter, m.pageLimit, m.pageOffset)
 	}
-	return m, nil
+
+	// Update spinner
+	if m.tab == "jobs" && m.viewMode == "list" {
+		newSpinner, cmd := m.spinner.Update(msg)
+		m.spinner = newSpinner
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }

@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
@@ -22,6 +23,7 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.1 // indirect
+	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.11.4 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.14 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect

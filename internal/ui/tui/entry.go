@@ -23,8 +23,16 @@ func RunWithOptions(ctx context.Context, store *store.Store, manager *jobs.Manag
 		}
 		return 0
 	}
-	m := appModel{ctx: ctx, store: store, manager: manager, tab: "jobs", pageLimit: 20}
-	p := tea.NewProgram(m)
+	m := appModel{
+		ctx:       ctx,
+		store:     store,
+		manager:   manager,
+		tab:       "jobs",
+		pageLimit: 20,
+		width:     100, // Default width
+		height:    30,  // Default height
+	}
+	p := tea.NewProgram(m, tea.WithAltScreen()) // Use alt screen for cleaner UI
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 		return 1
@@ -33,7 +41,7 @@ func RunWithOptions(ctx context.Context, store *store.Store, manager *jobs.Manag
 }
 
 func Smoke(ctx context.Context, store *store.Store) error {
-	m := appModel{ctx: ctx, store: store, tab: "jobs", pageLimit: 20}
+	m := appModel{ctx: ctx, store: store, tab: "jobs", pageLimit: 20, width: 100, height: 30}
 
 	msg := fetchJobs(ctx, store, m.statusFilter, m.pageLimit, m.pageOffset)()
 	if jobMsg, ok := msg.(jobsMsg); ok {

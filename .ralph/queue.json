@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0173",
-      "status": "todo",
-      "title": "Modernize TUI with rich Bubble Tea components and real-time progress",
-      "priority": "high",
-      "tags": [
-        "ux",
-        "tui",
-        "modern",
-        "awesome"
-      ],
-      "scope": [
-        "internal/ui/tui/*.go",
-        "go.mod"
-      ],
-      "evidence": [
-        "Current TUI is minimal with basic list view only.",
-        "No real-time progress indicators for running jobs.",
-        "No visual distinction between job states (queued/running/succeeded/failed).",
-        "Missing keyboard shortcuts and help view."
-      ],
-      "plan": [
-        "Add lipgloss styling with modern color palette and borders.",
-        "Implement tabbed navigation: Jobs | Profiles | Schedules | Templates | Crawl States.",
-        "Add real-time progress bars for running crawl/research jobs with pages processed counter.",
-        "Add detailed job view with expandable sections for logs, errors, and results preview.",
-        "Implement vim-style keybindings (j/k navigation, q quit, ? help) with contextual help bar.",
-        "Add subtle animations for state transitions and job completions."
-      ],
-      "notes": [
-        "Use charmbracelet/lipgloss for styling",
-        "Use charmbracelet/bubbles for progress bars and tables",
-        "Keep TUI lightweight - no external terminal requirements"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0174",
       "status": "todo",
       "title": "Add WebSocket support for real-time job updates in Web UI",

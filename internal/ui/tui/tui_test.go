@@ -3,9 +3,11 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -153,5 +155,130 @@ func TestTUICancelJob(t *testing.T) {
 	}
 	if updated.Status != model.StatusCanceled {
 		t.Errorf("expected status canceled, got %s", updated.Status)
+	}
+}
+
+// Test vim-style navigation
+func TestTUIVimNavigation(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	// Create test jobs
+	for i := 0; i < 5; i++ {
+		job := model.Job{
+			ID:         fmt.Sprintf("job-%d", i),
+			Kind:       model.KindScrape,
+			Status:     model.StatusSucceeded,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+			Params:     map[string]interface{}{},
+			ResultPath: "",
+		}
+		if err := st.Create(ctx, job); err != nil {
+			t.Fatalf("failed to create job: %v", err)
+		}
+	}
+
+	// Fetch jobs to populate model
+	msg := fetchJobs(ctx, st, nil, 20, 0)()
+	jobsMsg, ok := msg.(jobsMsg)
+	if !ok {
+		t.Fatalf("expected jobsMsg, got %T", msg)
+	}
+
+	// Test model with vim navigation
+	m := appModel{
+		ctx:       ctx,
+		store:     st,
+		tab:       "jobs",
+		pageLimit: 20,
+		cursor:    0,
+		jobs:      jobsMsg.jobs,
+		fullJobs:  jobsMsg.fullJobs,
+		width:     100,
+		height:    30,
+	}
+
+	// Simulate 'j' key (down)
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if newModel, ok := newM.(appModel); ok {
+		if newModel.cursor != 1 {
+			t.Errorf("expected cursor to move to 1 with 'j', got %d", newModel.cursor)
+		}
+	}
+
+	// Simulate 'k' key (up)
+	m.cursor = 2
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if newModel, ok := newM.(appModel); ok {
+		if newModel.cursor != 1 {
+			t.Errorf("expected cursor to move to 1 with 'k', got %d", newModel.cursor)
+		}
+	}
+}
+
+// Test help modal toggle
+func TestTUIHelpModal(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	m := appModel{
+		ctx:       ctx,
+		store:     st,
+		tab:       "jobs",
+		pageLimit: 20,
+		showHelp:  false,
+		width:     100,
+		height:    30,
+	}
+
+	// Toggle help on with '?'
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	if newModel, ok := newM.(appModel); ok {
+		if !newModel.showHelp {
+			t.Error("expected help modal to be shown after '?' key")
+		}
+	}
+
+	// Toggle help off with '?'
+	m.showHelp = true
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	if newModel, ok := newM.(appModel); ok {
+		if newModel.showHelp {
+			t.Error("expected help modal to be hidden after second '?' key")
+		}
+	}
+}
+
+// Test status badge rendering
+func TestStatusBadgeRendering(t *testing.T) {
+	tests := []struct {
+		status model.Status
+		want   string // Should contain the status name
+	}{
+		{model.StatusQueued, "queued"},
+		{model.StatusRunning, "running"},
+		{model.StatusSucceeded, "succeeded"},
+		{model.StatusFailed, "failed"},
+		{model.StatusCanceled, "canceled"},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			badge := RenderStatusBadge(tt.status)
+			if !strings.Contains(strings.ToLower(badge), tt.want) {
+				t.Errorf("RenderStatusBadge(%s) = %s, should contain %s", tt.status, badge, tt.want)
+			}
+		})
 	}
 }
