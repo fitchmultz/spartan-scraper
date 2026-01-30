@@ -602,9 +602,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv, xlsx, parquet, har, postgres, mysql, mongodb, s3, gcs, azure]
+            enum: [jsonl, json, md, csv, xlsx, parquet, har, pdf, postgres, mysql, mongodb, s3, gcs, azure]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, pdf generates PDF document, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
         - in: query
           name: limit
           schema:

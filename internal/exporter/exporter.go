@@ -53,6 +53,8 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 		return exportParquetStream(job, r, w)
 	case "har":
 		return exportHARStream(job, r, w)
+	case "pdf":
+		return exportPDFStream(job, r, w)
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}
@@ -77,6 +79,8 @@ func ExportStreamWithDatabase(job model.Job, r io.Reader, format string, w io.Wr
 		return exportParquetStream(job, r, w)
 	case "har":
 		return exportHARStream(job, r, w)
+	case "pdf":
+		return exportPDFStream(job, r, w)
 	case "postgres":
 		if dbCfg == nil {
 			return apperrors.Validation("database config required for postgres export")

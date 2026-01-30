@@ -1834,9 +1834,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, pdf generates PDF document, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'postgres' | 'mysql' | 'mongodb' | 's3' | 'gcs' | 'azure';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'pdf' | 'postgres' | 'mysql' | 'mongodb' | 's3' | 'gcs' | 'azure';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */
