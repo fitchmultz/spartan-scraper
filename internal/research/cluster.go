@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/fitchmultz/spartan-scraper/internal/simhash"
 )
 
 // clusterEvidence clusters evidence items by simhash similarity.
@@ -24,7 +26,7 @@ func clusterEvidence(items []Evidence, maxDistance int, minSize int) ([]Evidence
 		placed := false
 		for i := range clusters {
 			for _, member := range clusters[i].evidence {
-				if hammingDistance(item.SimHash, member.SimHash) <= maxDistance {
+				if simhash.HammingDistance(item.SimHash, member.SimHash) <= maxDistance {
 					clusters[i].evidence = append(clusters[i].evidence, item)
 					placed = true
 					break

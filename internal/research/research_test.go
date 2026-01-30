@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/simhash"
 )
 
 func TestTokenize(t *testing.T) {
@@ -31,12 +33,12 @@ func TestTokenize(t *testing.T) {
 }
 
 func TestSimHash(t *testing.T) {
-	h1 := computeSimHash("this is a test")
-	h2 := computeSimHash("this is another test")
-	h3 := computeSimHash("completely different text")
+	h1 := simhash.Compute("this is a test")
+	h2 := simhash.Compute("this is another test")
+	h3 := simhash.Compute("completely different text")
 
-	d12 := hammingDistance(h1, h2)
-	d13 := hammingDistance(h1, h3)
+	d12 := simhash.HammingDistance(h1, h2)
+	d13 := simhash.HammingDistance(h1, h3)
 
 	if d12 >= d13 {
 		t.Errorf("expected similar text to have smaller hamming distance: d12=%d, d13=%d", d12, d13)
@@ -45,9 +47,9 @@ func TestSimHash(t *testing.T) {
 
 func TestDedupEvidence(t *testing.T) {
 	items := []Evidence{
-		{URL: "u1", SimHash: computeSimHash("duplicate text")},
-		{URL: "u2", SimHash: computeSimHash("duplicate text")},
-		{URL: "u3", SimHash: computeSimHash("unique text")},
+		{URL: "u1", SimHash: simhash.Compute("duplicate text")},
+		{URL: "u2", SimHash: simhash.Compute("duplicate text")},
+		{URL: "u3", SimHash: simhash.Compute("unique text")},
 	}
 
 	deduped := dedupEvidence(items, 3)

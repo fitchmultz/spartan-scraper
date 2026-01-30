@@ -1,7 +1,7 @@
 // Package crawl provides functionality for crawling multiple pages of a website.
 // It implements a concurrent crawler that respects depth and page limits,
-// avoids cycles by tracking visited URLs, and supports incremental crawling
-// using ETags and content hashes.
+// avoids cycles by tracking visited URLs, supports incremental crawling
+// using ETags and content hashes, and detects near-duplicate content using simhash.
 package crawl
 
 import (
@@ -21,6 +21,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/simhash"
 )
 
 // Request represents a website crawl request.
@@ -68,6 +69,12 @@ type Request struct {
 	// RobotsCache is an optional cache for robots.txt compliance checking.
 	// If nil, robots.txt is not checked.
 	RobotsCache *Cache
+	// SkipDuplicates enables near-duplicate content detection during crawling.
+	// When enabled, pages with content similar to already-crawled pages are marked as duplicates.
+	SkipDuplicates bool
+	// SimHashThreshold is the maximum Hamming distance for content to be considered a duplicate.
+	// Default is 3. Lower values require more similarity (0 = exact match).
+	SimHashThreshold int
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -78,14 +85,16 @@ type CrawlStateStore interface {
 
 // PageResult represents the scraping result for a single page during a crawl.
 type PageResult struct {
-	URL        string                     `json:"url"`
-	Status     int                        `json:"status"`
-	Title      string                     `json:"title"`
-	Text       string                     `json:"text"`
-	Links      []string                   `json:"links"`
-	Metadata   extract.Result             `json:"metadata"` // Legacy
-	Extracted  extract.Extracted          `json:"extracted"`
-	Normalized extract.NormalizedDocument `json:"normalized"`
+	URL         string                     `json:"url"`
+	Status      int                        `json:"status"`
+	Title       string                     `json:"title"`
+	Text        string                     `json:"text"`
+	Links       []string                   `json:"links"`
+	Metadata    extract.Result             `json:"metadata"` // Legacy
+	Extracted   extract.Extracted          `json:"extracted"`
+	Normalized  extract.NormalizedDocument `json:"normalized"`
+	SimHash     uint64                     `json:"simhash"`               // Content fingerprint for duplicate detection
+	DuplicateOf string                     `json:"duplicateOf,omitempty"` // URL of original page if this is a duplicate
 }
 
 // Run executes a crawl request. It concurrently fetches and processes pages
@@ -100,6 +109,9 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	}
 	if req.Concurrency <= 0 {
 		req.Concurrency = 4
+	}
+	if req.SimHashThreshold < 0 {
+		req.SimHashThreshold = 3 // default threshold
 	}
 
 	registry := req.Registry
@@ -140,6 +152,10 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		URL   string
 		Depth int
 	}
+
+	// Simhash index for duplicate detection
+	var simhashMu sync.Mutex
+	seenSimHashes := make(map[uint64]string) // simhash -> URL mapping
 
 	processPage := func(item task) (PageResult, bool, bool) {
 		slog.Debug("processing crawl page", "url", apperrors.SanitizeURL(item.URL), "depth", item.Depth)
@@ -329,6 +345,10 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			}
 		}
 
+		// Compute simhash for content deduplication
+		contentText := strings.TrimSpace(output.Normalized.Title + " " + output.Normalized.Text)
+		pageSimHash := simhash.Compute(contentText)
+
 		result := PageResult{
 			URL:    item.URL,
 			Status: res.Status,
@@ -343,6 +363,32 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			},
 			Extracted:  output.Extracted,
 			Normalized: output.Normalized,
+			SimHash:    pageSimHash,
+		}
+
+		// Check for near-duplicate content if enabled
+		if req.SkipDuplicates && pageSimHash != 0 {
+			simhashMu.Lock()
+			isDuplicate := false
+			var originalURL string
+
+			// Check against all seen simhashes
+			for seenHash, seenURL := range seenSimHashes {
+				if simhash.HammingDistance(pageSimHash, seenHash) <= req.SimHashThreshold {
+					isDuplicate = true
+					originalURL = seenURL
+					break
+				}
+			}
+
+			if isDuplicate {
+				result.DuplicateOf = originalURL
+				slog.Info("found duplicate content", "url", apperrors.SanitizeURL(item.URL), "duplicateOf", apperrors.SanitizeURL(originalURL), "simhash", pageSimHash)
+			} else {
+				// Add to seen index
+				seenSimHashes[pageSimHash] = item.URL
+			}
+			simhashMu.Unlock()
 		}
 
 		finalResult, err := applyCrawlOutputPipeline(ctx, registry, baseCtx, result)

@@ -31,6 +31,8 @@ func RunCrawl(ctx context.Context, cfg config.Config, args []string) int {
 	include := fs.String("include", "", "Comma-separated URL path patterns to include (glob syntax, e.g., /blog/**,/products/*)")
 	exclude := fs.String("exclude", "", "Comma-separated URL path patterns to exclude (glob syntax, e.g., /admin/*,/api/**)")
 	respectRobots := fs.Bool("respect-robots", false, "Respect robots.txt files (default: false)")
+	skipDuplicates := fs.Bool("skip-duplicates", false, "Skip pages with near-duplicate content")
+	simHashThreshold := fs.Int("simhash-threshold", 3, "Hamming distance threshold for duplicate detection (0=exact match)")
 	cf := common.RegisterCommonFlags(fs, cfg)
 
 	fs.Usage = func() {
@@ -46,6 +48,8 @@ Examples:
   spartan crawl --url https://example.com --include "/blog/**,/products/*"
   spartan crawl --url https://example.com --exclude "/admin/*,/api/**"
   spartan crawl --url https://example.com --respect-robots
+  spartan crawl --url https://example.com --skip-duplicates
+  spartan crawl --url https://example.com --skip-duplicates --simhash-threshold 2
 
 Options:
 `)
@@ -124,6 +128,8 @@ Options:
 		ExcludePatterns:  parsePatternList(*exclude),
 		Device:           device,
 		RespectRobotsTxt: *respectRobots,
+		SkipDuplicates:   *skipDuplicates,
+		SimHashThreshold: *simHashThreshold,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

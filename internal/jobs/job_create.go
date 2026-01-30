@@ -181,5 +181,14 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 		job.Params["screenshot"] = spec.Screenshot
 	}
 
+	// Add crawl-specific params
+	if spec.Kind == model.KindCrawl {
+		job.Params["includePatterns"] = spec.IncludePatterns
+		job.Params["excludePatterns"] = spec.ExcludePatterns
+		job.Params["respectRobotsTxt"] = spec.RespectRobotsTxt
+		job.Params["skipDuplicates"] = spec.SkipDuplicates
+		job.Params["simHashThreshold"] = spec.SimHashThreshold
+	}
+
 	return job, nil
 }

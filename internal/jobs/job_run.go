@@ -230,6 +230,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		excludePatterns := toStringSlice(job.Params["excludePatterns"])
 		screenshot := decodeScreenshot(job.Params["screenshot"])
 		respectRobotsTxt := toBool(job.Params["respectRobotsTxt"], false)
+		skipDuplicates := toBool(job.Params["skipDuplicates"], false)
+		simHashThreshold := toInt(job.Params["simHashThreshold"], 3)
 
 		// Create robots cache if enabled
 		var robotsCache *crawl.Cache
@@ -267,6 +269,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			ExcludePatterns:  excludePatterns,
 			Screenshot:       screenshot,
 			RobotsCache:      robotsCache,
+			SkipDuplicates:   skipDuplicates,
+			SimHashThreshold: simHashThreshold,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

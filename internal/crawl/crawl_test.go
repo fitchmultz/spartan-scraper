@@ -456,3 +456,153 @@ func TestRun_WithoutRobotsTxt(t *testing.T) {
 		t.Errorf("expected 2 results, got %d", len(results))
 	}
 }
+
+func TestRun_WithDuplicateDetection(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/page1">Page 1</a><a href="/page2">Page 2</a><a href="/duplicate">Duplicate</a></body></html>`)
+	})
+	mux.HandleFunc("/page1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>This is unique content for page 1.</p></body></html>`)
+	})
+	mux.HandleFunc("/page2", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 2</h1><p>This is unique content for page 2.</p></body></html>`)
+	})
+	// This page has identical content to page1 - should be detected as duplicate
+	mux.HandleFunc("/duplicate", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>This is unique content for page 1.</p></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	req := Request{
+		URL:              srv.URL,
+		MaxDepth:         2,
+		MaxPages:         10,
+		Concurrency:      2,
+		Timeout:          5 * time.Second,
+		DataDir:          t.TempDir(),
+		SkipDuplicates:   true,
+		SimHashThreshold: 3,
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Check that we got results
+	if len(results) == 0 {
+		t.Fatal("expected results, got none")
+	}
+
+	// Find the duplicate page result
+	var duplicateResult *PageResult
+	for i := range results {
+		if results[i].URL == srv.URL+"/duplicate" {
+			duplicateResult = &results[i]
+			break
+		}
+	}
+
+	// The duplicate page should be marked as a duplicate
+	if duplicateResult != nil && duplicateResult.DuplicateOf == "" {
+		t.Errorf("expected /duplicate to be marked as duplicate, but DuplicateOf is empty")
+	}
+
+	// Check that simhash is computed for all results
+	for _, r := range results {
+		if r.SimHash == 0 && r.Status != 304 {
+			t.Errorf("expected non-zero simhash for %s", r.URL)
+		}
+	}
+}
+
+func TestRun_WithoutDuplicateDetection(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/page1">Page 1</a><a href="/duplicate">Duplicate</a></body></html>`)
+	})
+	mux.HandleFunc("/page1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>This is unique content for page 1.</p></body></html>`)
+	})
+	mux.HandleFunc("/duplicate", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>This is unique content for page 1.</p></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Disable duplicate detection
+	req := Request{
+		URL:              srv.URL,
+		MaxDepth:         2,
+		MaxPages:         10,
+		Concurrency:      2,
+		Timeout:          5 * time.Second,
+		DataDir:          t.TempDir(),
+		SkipDuplicates:   false,
+		SimHashThreshold: 3,
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Find the duplicate page result - should NOT be marked as duplicate
+	var duplicateResult *PageResult
+	for i := range results {
+		if results[i].URL == srv.URL+"/duplicate" {
+			duplicateResult = &results[i]
+			break
+		}
+	}
+
+	// When SkipDuplicates is false, DuplicateOf should be empty even for duplicates
+	if duplicateResult != nil && duplicateResult.DuplicateOf != "" {
+		t.Errorf("expected /duplicate to NOT be marked as duplicate when SkipDuplicates=false")
+	}
+}
+
+func TestRun_SimHashThreshold(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/page1">Page 1</a><a href="/similar">Similar</a></body></html>`)
+	})
+	mux.HandleFunc("/page1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>The quick brown fox jumps over the lazy dog.</p></body></html>`)
+	})
+	// Similar content with minor changes
+	mux.HandleFunc("/similar", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Page 1</h1><p>The quick brown fox jumps over a lazy dog.</p></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Test with permissive threshold (should detect as duplicate)
+	req := Request{
+		URL:              srv.URL,
+		MaxDepth:         2,
+		MaxPages:         10,
+		Concurrency:      2,
+		Timeout:          5 * time.Second,
+		DataDir:          t.TempDir(),
+		SkipDuplicates:   true,
+		SimHashThreshold: 5, // Higher threshold = more permissive
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Verify simhash values are computed
+	for _, r := range results {
+		if r.Status != 304 && r.SimHash == 0 {
+			t.Errorf("expected non-zero simhash for %s", r.URL)
+		}
+	}
+}

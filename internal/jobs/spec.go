@@ -45,6 +45,8 @@ type JobSpec struct {
 	Screenshot       *fetch.ScreenshotConfig // Optional screenshot capture configuration
 	Device           *fetch.DeviceEmulation  // Optional device emulation for mobile/responsive content
 	RespectRobotsTxt bool                    // Respect robots.txt files (default: false)
+	SkipDuplicates   bool                    // Skip pages with near-duplicate content (default: false)
+	SimHashThreshold int                     // Hamming distance threshold for duplicate detection (default: 3)
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.
