@@ -56,3 +56,42 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}
 }
+
+// ExportStreamWithDatabase exports job results to the specified format.
+// For database formats (postgres, mysql, mongodb), the writer is ignored and data is written
+// directly to the configured database. For file-based formats, behaves like ExportStream.
+func ExportStreamWithDatabase(job model.Job, r io.Reader, format string, w io.Writer, dbCfg *DatabaseExportConfig) error {
+	switch format {
+	case "json":
+		return exportJSONStream(job, r, w)
+	case "jsonl":
+		return exportJSONLStream(r, w)
+	case "md":
+		return exportMarkdownStream(job, r, w)
+	case "csv":
+		return exportCSVStream(job, r, w)
+	case "xlsx":
+		return exportXLSXStream(job, r, w)
+	case "parquet":
+		return exportParquetStream(job, r, w)
+	case "har":
+		return exportHARStream(job, r, w)
+	case "postgres":
+		if dbCfg == nil {
+			return apperrors.Validation("database config required for postgres export")
+		}
+		return exportPostgresStream(job, r, *dbCfg)
+	case "mysql":
+		if dbCfg == nil {
+			return apperrors.Validation("database config required for mysql export")
+		}
+		return exportMySQLStream(job, r, *dbCfg)
+	case "mongodb":
+		if dbCfg == nil {
+			return apperrors.Validation("database config required for mongodb export")
+		}
+		return exportMongoDBStream(job, r, *dbCfg)
+	default:
+		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
+	}
+}

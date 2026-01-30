@@ -1426,9 +1426,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'postgres' | 'mysql' | 'mongodb';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */
@@ -1437,6 +1437,22 @@ export type GetV1JobsByIdResultsData = {
          * Number of result items to skip before returning results (applies only to jsonl format)
          */
         offset?: number;
+        /**
+         * Database connection string (can also use SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL env vars)
+         */
+        dbConnectionString?: string;
+        /**
+         * Target table/collection name (defaults to job kind + timestamp)
+         */
+        dbTable?: string;
+        /**
+         * Insert mode - insert (default) or upsert (update existing)
+         */
+        dbMode?: 'insert' | 'upsert';
+        /**
+         * Column/field to use as unique key for upsert operations (required when dbMode=upsert)
+         */
+        dbUpsertKey?: string;
     };
     url: '/v1/jobs/{id}/results';
 };

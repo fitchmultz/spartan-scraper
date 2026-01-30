@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0193",
-      "status": "todo",
-      "title": "Add database export targets (PostgreSQL, MySQL, MongoDB)",
-      "priority": "medium",
-      "tags": [
-        "export",
-        "database",
-        "integration",
-        "data"
-      ],
-      "scope": [
-        "internal/exporter/exporter.go",
-        "internal/exporter/database.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "All exporters write to local files only",
-        "No database connection or export capability",
-        "Users must manually import files into databases"
-      ],
-      "plan": [
-        "Create internal/exporter/database.go with database exporters",
-        "Implement PostgreSQL exporter with bulk insert",
-        "Implement MySQL exporter with prepared statements",
-        "Implement MongoDB exporter with document batches",
-        "Add connection string configuration",
-        "Support table/collection creation with schema inference",
-        "Add upsert vs insert mode options",
-        "Update OpenAPI spec with database export options",
-        "Write tests with testcontainers"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0194",
       "status": "todo",
       "title": "Implement cloud storage export (S3, GCS, Azure Blob)",

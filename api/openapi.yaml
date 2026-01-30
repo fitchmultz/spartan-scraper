@@ -602,9 +602,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv, xlsx, parquet, har]
+            enum: [jsonl, json, md, csv, xlsx, parquet, har, postgres, mysql, mongodb]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database)
         - in: query
           name: limit
           schema:
@@ -620,6 +620,28 @@ paths:
             default: 0
             minimum: 0
           description: Number of result items to skip before returning results (applies only to jsonl format)
+        - in: query
+          name: dbConnectionString
+          schema:
+            type: string
+          description: Database connection string (can also use SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL env vars)
+        - in: query
+          name: dbTable
+          schema:
+            type: string
+          description: Target table/collection name (defaults to job kind + timestamp)
+        - in: query
+          name: dbMode
+          schema:
+            type: string
+            enum: [insert, upsert]
+            default: insert
+          description: Insert mode - insert (default) or upsert (update existing)
+        - in: query
+          name: dbUpsertKey
+          schema:
+            type: string
+          description: Column/field to use as unique key for upsert operations (required when dbMode=upsert)
       responses:
         '200':
           description: Results in requested format
