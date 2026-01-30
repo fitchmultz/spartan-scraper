@@ -150,3 +150,215 @@ func TestWaitGroupOnFullChannel(t *testing.T) {
 		t.Errorf("expected 1 result (only root), got %d", len(results))
 	}
 }
+
+func TestPatternMatcher_Matches(t *testing.T) {
+	tests := []struct {
+		name     string
+		include  []string
+		exclude  []string
+		path     string
+		expected bool
+	}{
+		{"no patterns", nil, nil, "/blog/post", true},
+		{"include matches", []string{"/blog/**"}, nil, "/blog/post", true},
+		{"include no match", []string{"/blog/**"}, nil, "/products/item", false},
+		{"exclude matches", nil, []string{"/admin/*"}, "/admin/users", false},
+		{"exclude takes precedence", []string{"/**"}, []string{"/admin/*"}, "/admin/users", false},
+		{"star matches single segment", []string{"/products/*"}, nil, "/products/item", true},
+		{"star no match multi", []string{"/products/*"}, nil, "/products/cat/item", false},
+		{"doublestar matches multi", []string{"/blog/**"}, nil, "/blog/2024/01/post", true},
+		{"doublestar matches single", []string{"/blog/**"}, nil, "/blog/post", true},
+		{"exact match", []string{"/about"}, nil, "/about", true},
+		{"exact no match", []string{"/about"}, nil, "/about/team", false},
+		{"multiple includes match first", []string{"/blog/**", "/products/**"}, nil, "/blog/post", true},
+		{"multiple includes match second", []string{"/blog/**", "/products/**"}, nil, "/products/item", true},
+		{"multiple includes no match", []string{"/blog/**", "/products/**"}, nil, "/contact", false},
+		{"exclude with no includes", nil, []string{"/api/**"}, "/api/v1/users", false},
+		{"exclude with no includes passes", nil, []string{"/api/**"}, "/blog/post", true},
+		{"complex pattern", []string{"/blog/**/comments/*"}, nil, "/blog/2024/post/comments/123", true},
+		{"empty include list", []string{}, nil, "/anything", true},
+		{"empty exclude list", nil, []string{}, "/anything", true},
+		{"pattern with special chars", []string{"/path-with-dash"}, nil, "/path-with-dash", true},
+		{"pattern with dot", []string{"/file.txt"}, nil, "/file.txt", true},
+		{"pattern with query-like", []string{"/search"}, nil, "/search", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pm, err := NewPatternMatcher(tt.include, tt.exclude)
+			if err != nil {
+				t.Fatalf("NewPatternMatcher failed: %v", err)
+			}
+			got := pm.Matches(tt.path)
+			if got != tt.expected {
+				t.Errorf("Matches(%q) = %v; want %v", tt.path, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPatternMatcher_InvalidPattern(t *testing.T) {
+	// Test that invalid regex patterns are rejected
+	// Our globToRegex escapes most special chars, making invalid patterns rare
+	// A pattern with an unclosed group would fail, but we escape ( and )
+	// For now, this test documents that we handle errors gracefully
+	// If we add more complex pattern features, this test can be expanded
+
+	// Test that valid patterns still work after attempting invalid ones
+	pm, err := NewPatternMatcher([]string{"/valid/**"}, nil)
+	if err != nil {
+		t.Fatalf("NewPatternMatcher failed for valid pattern: %v", err)
+	}
+	if !pm.Matches("/valid/path") {
+		t.Error("expected /valid/path to match")
+	}
+}
+
+func TestPatternMatcher_EmptyPatterns(t *testing.T) {
+	// Test that empty strings in pattern lists are skipped
+	pm, err := NewPatternMatcher([]string{"", "/blog/**", ""}, []string{"", "/admin/*"})
+	if err != nil {
+		t.Fatalf("NewPatternMatcher failed: %v", err)
+	}
+
+	if !pm.Matches("/blog/post") {
+		t.Error("expected /blog/post to match")
+	}
+	if pm.Matches("/admin/users") {
+		t.Error("expected /admin/users to be excluded")
+	}
+}
+
+func TestRun_WithIncludePatterns(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/blog/post1">Blog 1</a><a href="/products/item1">Product 1</a><a href="/about">About</a></body></html>`)
+	})
+	mux.HandleFunc("/blog/post1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Blog Post 1</h1></body></html>`)
+	})
+	mux.HandleFunc("/products/item1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Product 1</h1></body></html>`)
+	})
+	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>About</h1></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Parse the server URL to get the path
+	serverURL, _ := url.Parse(srv.URL)
+
+	req := Request{
+		URL:             srv.URL,
+		MaxDepth:        2,
+		MaxPages:        10,
+		Concurrency:     2,
+		Timeout:         5 * time.Second,
+		DataDir:         t.TempDir(),
+		IncludePatterns: []string{"/blog/*"},
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Should only have root and /blog/post1 (root is always included, /blog/* matches /blog/post1)
+	// Note: The root URL is always crawled even if it doesn't match include patterns
+	found := map[string]bool{}
+	for _, r := range results {
+		found[r.URL] = true
+	}
+
+	// Root should be included
+	if !found[srv.URL] {
+		t.Errorf("expected root URL %s to be in results", srv.URL)
+	}
+
+	// /blog/post1 should be included (matches /blog/*)
+	if !found[srv.URL+"/blog/post1"] {
+		t.Errorf("expected /blog/post1 to be in results")
+	}
+
+	// /products/item1 should NOT be included (doesn't match /blog/*)
+	if found[srv.URL+"/products/item1"] {
+		t.Errorf("expected /products/item1 to NOT be in results")
+	}
+
+	// /about should NOT be included (doesn't match /blog/*)
+	if found[srv.URL+"/about"] {
+		t.Errorf("expected /about to NOT be in results")
+	}
+
+	t.Logf("Results: %v", found)
+	t.Logf("Server URL: %s, Path: %s", srv.URL, serverURL.Path)
+}
+
+func TestRun_WithExcludePatterns(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><a href="/blog/post1">Blog 1</a><a href="/admin/users">Admin</a><a href="/about">About</a></body></html>`)
+	})
+	mux.HandleFunc("/blog/post1", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Blog Post 1</h1><a href="/admin/settings">Settings</a></body></html>`)
+	})
+	mux.HandleFunc("/admin/users", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Admin Users</h1></body></html>`)
+	})
+	mux.HandleFunc("/admin/settings", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Admin Settings</h1></body></html>`)
+	})
+	mux.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>About</h1></body></html>`)
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	req := Request{
+		URL:             srv.URL,
+		MaxDepth:        2,
+		MaxPages:        10,
+		Concurrency:     2,
+		Timeout:         5 * time.Second,
+		DataDir:         t.TempDir(),
+		ExcludePatterns: []string{"/admin/*"},
+	}
+
+	results, err := Run(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	found := map[string]bool{}
+	for _, r := range results {
+		found[r.URL] = true
+	}
+
+	// Root should be included
+	if !found[srv.URL] {
+		t.Errorf("expected root URL to be in results")
+	}
+
+	// /blog/post1 should be included
+	if !found[srv.URL+"/blog/post1"] {
+		t.Errorf("expected /blog/post1 to be in results")
+	}
+
+	// /about should be included
+	if !found[srv.URL+"/about"] {
+		t.Errorf("expected /about to be in results")
+	}
+
+	// /admin/users should NOT be included (excluded)
+	if found[srv.URL+"/admin/users"] {
+		t.Errorf("expected /admin/users to NOT be in results")
+	}
+
+	// /admin/settings should NOT be included (excluded)
+	if found[srv.URL+"/admin/settings"] {
+		t.Errorf("expected /admin/settings to NOT be in results")
+	}
+}

@@ -63,6 +63,9 @@ export interface PresetConfig {
   webhookUrl?: string;
   webhookEvents?: string[];
   webhookSecret?: string;
+  // Pattern filtering options
+  includePatterns?: string;
+  excludePatterns?: string;
 }
 
 /**

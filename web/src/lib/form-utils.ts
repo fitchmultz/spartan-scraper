@@ -87,6 +87,17 @@ export function parseProcessors(raw: string): string[] | undefined {
   return processors.length ? processors : undefined;
 }
 
+export function parsePatternList(raw: string): string[] | undefined {
+  if (!raw.trim()) {
+    return undefined;
+  }
+  const patterns = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return patterns.length ? patterns : undefined;
+}
+
 export function buildAuth(
   basic: string,
   headers?: Record<string, string>,
@@ -215,6 +226,8 @@ export function buildCrawlRequest(
   sitemapURL?: string,
   sitemapOnly?: boolean,
   webhook?: WebhookConfig,
+  includePatterns?: string[],
+  excludePatterns?: string[],
 ): CrawlRequest {
   return {
     url,
@@ -231,6 +244,8 @@ export function buildCrawlRequest(
     sitemapURL: sitemapURL || undefined,
     sitemapOnly: sitemapOnly || undefined,
     webhook,
+    includePatterns,
+    excludePatterns,
   };
 }
 

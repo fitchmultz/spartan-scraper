@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
@@ -26,6 +27,8 @@ func RunCrawl(ctx context.Context, cfg config.Config, args []string) int {
 	maxPages := fs.Int("max-pages", 200, "Max pages to crawl")
 	sitemapURL := fs.String("sitemap-url", "", "Optional URL to sitemap.xml for URL discovery")
 	sitemapOnly := fs.Bool("sitemap-only", false, "Only crawl URLs from sitemap, not the root URL")
+	include := fs.String("include", "", "Comma-separated URL path patterns to include (glob syntax, e.g., /blog/**,/products/*)")
+	exclude := fs.String("exclude", "", "Comma-separated URL path patterns to exclude (glob syntax, e.g., /admin/*,/api/**)")
 	cf := common.RegisterCommonFlags(fs, cfg)
 
 	fs.Usage = func() {
@@ -38,6 +41,8 @@ Examples:
   spartan crawl --url https://example.com --pre-processor redact --transformer json-clean
   spartan crawl --url https://example.com --sitemap-url https://example.com/sitemap.xml
   spartan crawl --url https://example.com --sitemap-url https://example.com/sitemap.xml --sitemap-only
+  spartan crawl --url https://example.com --include "/blog/**,/products/*"
+  spartan crawl --url https://example.com --exclude "/admin/*,/api/**"
 
 Options:
 `)
@@ -89,19 +94,21 @@ Options:
 	}
 
 	spec := jobs.JobSpec{
-		Kind:           model.KindCrawl,
-		URL:            *url,
-		MaxDepth:       *maxDepth,
-		MaxPages:       *maxPages,
-		Headless:       *cf.Headless,
-		UsePlaywright:  *cf.Playwright,
-		Auth:           authOptions,
-		TimeoutSeconds: *cf.Timeout,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
-		Incremental:    *cf.Incremental,
-		SitemapURL:     *sitemapURL,
-		SitemapOnly:    *sitemapOnly,
+		Kind:            model.KindCrawl,
+		URL:             *url,
+		MaxDepth:        *maxDepth,
+		MaxPages:        *maxPages,
+		Headless:        *cf.Headless,
+		UsePlaywright:   *cf.Playwright,
+		Auth:            authOptions,
+		TimeoutSeconds:  *cf.Timeout,
+		Extract:         extractOpts,
+		Pipeline:        pipelineOpts,
+		Incremental:     *cf.Incremental,
+		SitemapURL:      *sitemapURL,
+		SitemapOnly:     *sitemapOnly,
+		IncludePatterns: parsePatternList(*include),
+		ExcludePatterns: parsePatternList(*exclude),
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {
@@ -116,4 +123,17 @@ Options:
 	waitTimeout := time.Duration(*cf.WaitTimeout) * time.Second
 	wait := *cf.Wait || *cf.Out != ""
 	return common.HandleJobResult(ctx, st, job, wait, waitTimeout, *cf.Out)
+}
+
+// parsePatternList parses a comma-separated string into a slice of trimmed strings.
+// Returns nil if the input is empty.
+func parsePatternList(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }

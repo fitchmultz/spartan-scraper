@@ -268,6 +268,14 @@ export type CrawlRequest = {
      * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
      */
     sitemapOnly?: boolean;
+    /**
+     * URL path patterns to include (glob syntax, e.g., /blog**). If specified, only matching URLs are crawled.
+     */
+    includePatterns?: Array<string>;
+    /**
+     * URL path patterns to exclude (glob syntax, e.g., /admin*). Excluded URLs take precedence over included ones.
+     */
+    excludePatterns?: Array<string>;
     webhook?: WebhookConfig;
 };
 

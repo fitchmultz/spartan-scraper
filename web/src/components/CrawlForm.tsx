@@ -23,6 +23,7 @@ import {
   buildAuth,
   buildCrawlRequest,
   buildWebhookConfig,
+  parsePatternList,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
@@ -150,6 +151,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const [maxPages, setMaxPages] = useState(200);
     const [sitemapURL, setSitemapURL] = useState("");
     const [sitemapOnly, setSitemapOnly] = useState(false);
+    const [includePatterns, setIncludePatterns] = useState("");
+    const [excludePatterns, setExcludePatterns] = useState("");
 
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -191,6 +194,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         sitemapURL,
         sitemapOnly,
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        parsePatternList(includePatterns),
+        parsePatternList(excludePatterns),
       );
       await onSubmit(request);
     }, [
@@ -222,6 +227,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       webhookUrl,
       webhookEvents,
       webhookSecret,
+      includePatterns,
+      excludePatterns,
       onSubmit,
     ]);
 
@@ -256,6 +263,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        includePatterns,
+        excludePatterns,
       }),
       [
         crawlUrl,
@@ -286,6 +295,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        includePatterns,
+        excludePatterns,
       ],
     );
 
@@ -332,6 +343,30 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           />
           Sitemap only (don't crawl root URL)
         </label>
+        <label htmlFor="include-patterns" style={{ marginTop: 12 }}>
+          Include Patterns (optional)
+        </label>
+        <input
+          id="include-patterns"
+          value={includePatterns}
+          onChange={(event) => setIncludePatterns(event.target.value)}
+          placeholder="/blog/**, /products/*"
+        />
+        <small>
+          Comma-separated glob patterns. Only matching URLs will be crawled.
+        </small>
+        <label htmlFor="exclude-patterns" style={{ marginTop: 12 }}>
+          Exclude Patterns (optional)
+        </label>
+        <input
+          id="exclude-patterns"
+          value={excludePatterns}
+          onChange={(event) => setExcludePatterns(event.target.value)}
+          placeholder="/admin/*, /api/**"
+        />
+        <small>
+          Comma-separated glob patterns. Matching URLs will be skipped.
+        </small>
         <div className="row" style={{ marginTop: 12 }}>
           <label>
             Max depth

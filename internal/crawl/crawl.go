@@ -55,6 +55,14 @@ type Request struct {
 	// SitemapOnly indicates whether to only crawl URLs from the sitemap.
 	// If false (default), the root URL is also crawled plus sitemap URLs.
 	SitemapOnly bool
+	// IncludePatterns are glob patterns for URL paths to include.
+	// If specified, only URLs matching at least one pattern are crawled.
+	// Supports * (matches any chars except /) and ** (matches any chars including /).
+	IncludePatterns []string
+	// ExcludePatterns are glob patterns for URL paths to exclude.
+	// Excluded URLs take precedence over included ones.
+	// Supports * (matches any chars except /) and ** (matches any chars including /).
+	ExcludePatterns []string
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -107,6 +115,13 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	if err != nil {
 		slog.Error("failed to parse start URL", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return nil, err
+	}
+
+	// Compile pattern matcher for URL filtering
+	patternMatcher, err := NewPatternMatcher(req.IncludePatterns, req.ExcludePatterns)
+	if err != nil {
+		slog.Error("failed to compile URL patterns", "error", err)
+		return nil, apperrors.Wrap(apperrors.KindValidation, "invalid URL pattern", err)
 	}
 
 	var fetcher fetch.Fetcher
@@ -344,11 +359,27 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	enqueue := func(url string, depth int) {
+	enqueue := func(rawURL string, depth int) {
 		if atomic.LoadInt32(&processed) >= int32(req.MaxPages) {
 			return
 		}
-		norm := normalizeURL(url)
+
+		// Parse URL to get path for pattern matching
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			slog.Debug("skipping invalid URL", "url", apperrors.SanitizeURL(rawURL), "error", err)
+			return
+		}
+
+		// Apply pattern filtering (skip root URL - it's always allowed)
+		if parsedURL.Path != "" && parsedURL.Path != "/" {
+			if !patternMatcher.Matches(parsedURL.Path) {
+				slog.Debug("skipping URL due to pattern filter", "url", apperrors.SanitizeURL(rawURL), "path", parsedURL.Path)
+				return
+			}
+		}
+
+		norm := normalizeURL(rawURL)
 		visitedMu.Lock()
 		if visited[norm] {
 			visitedMu.Unlock()
@@ -357,12 +388,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		visited[norm] = true
 		visitedMu.Unlock()
 
-		slog.Debug("enqueuing crawl task", "url", apperrors.SanitizeURL(url), "depth", depth)
+		slog.Debug("enqueuing crawl task", "url", apperrors.SanitizeURL(rawURL), "depth", depth)
 		select {
-		case tasks <- task{URL: url, Depth: depth}:
+		case tasks <- task{URL: rawURL, Depth: depth}:
 			wg.Add(1)
 		default:
-			slog.Warn("crawl task channel full", "url", apperrors.SanitizeURL(url))
+			slog.Warn("crawl task channel full", "url", apperrors.SanitizeURL(rawURL))
 		case <-ctx.Done():
 		}
 	}
