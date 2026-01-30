@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
@@ -160,7 +161,8 @@ func TestCachedSchedulerRun(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- Run(ctx, dataDir, manager)
+		cfg := config.Config{DataDir: dataDir}
+		errCh <- Run(ctx, dataDir, manager, cfg)
 	}()
 
 	time.Sleep(1500 * time.Millisecond)

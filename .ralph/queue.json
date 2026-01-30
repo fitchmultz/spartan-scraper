@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0203",
-      "status": "todo",
-      "title": "Add data retention policies and automatic cleanup",
-      "priority": "high",
-      "tags": [
-        "data-management",
-        "retention",
-        "storage"
-      ],
-      "scope": [
-        "internal/store/",
-        "internal/scheduler/",
-        "internal/config/"
-      ],
-      "evidence": [
-        "No automatic cleanup of old jobs or results",
-        "DATA_DIR grows indefinitely without manual intervention",
-        "No retention configuration in config.go"
-      ],
-      "plan": [
-        "Add retention policy config (max_age, max_count, max_size)",
-        "Implement cleanup job in scheduler",
-        "Add archive-before-delete option (export to S3, etc.)",
-        "Create 'spartan cleanup' manual command",
-        "Add retention per job type (scrape vs crawl vs research)",
-        "Add dry-run mode for testing retention policies"
-      ],
-      "notes": [],
-      "request": "scan finding: retention policy gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0204",
       "status": "todo",
       "title": "Implement proxy rotation and proxy pool management",

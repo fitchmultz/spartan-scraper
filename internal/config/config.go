@@ -105,6 +105,15 @@ type Config struct {
 
 	// Robots.txt compliance
 	RespectRobotsTxt bool // RESPECT_ROBOTS_TXT env var (default: false)
+
+	// Data retention configuration
+	RetentionEnabled              bool // RETENTION_ENABLED env var (default: false)
+	RetentionJobDays              int  // RETENTION_JOB_DAYS env var (default: 30, 0 = unlimited)
+	RetentionCrawlStateDays       int  // RETENTION_CRAWL_STATE_DAYS env var (default: 90, 0 = unlimited)
+	RetentionMaxJobs              int  // RETENTION_MAX_JOBS env var (default: 10000, 0 = unlimited)
+	RetentionMaxStorageGB         int  // RETENTION_MAX_STORAGE_GB env var (default: 10, 0 = unlimited)
+	RetentionCleanupIntervalHours int  // RETENTION_CLEANUP_INTERVAL_HOURS env var (default: 24)
+	RetentionDryRunDefault        bool // RETENTION_DRY_RUN_DEFAULT env var (default: false)
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -176,6 +185,15 @@ func Load() (Config, error) {
 
 		// Robots.txt compliance
 		RespectRobotsTxt: getenvBool("RESPECT_ROBOTS_TXT", false),
+
+		// Data retention configuration
+		RetentionEnabled:              getenvBool("RETENTION_ENABLED", false),
+		RetentionJobDays:              getenvInt("RETENTION_JOB_DAYS", 30),
+		RetentionCrawlStateDays:       getenvInt("RETENTION_CRAWL_STATE_DAYS", 90),
+		RetentionMaxJobs:              getenvInt("RETENTION_MAX_JOBS", 10000),
+		RetentionMaxStorageGB:         getenvInt("RETENTION_MAX_STORAGE_GB", 10),
+		RetentionCleanupIntervalHours: getenvInt("RETENTION_CLEANUP_INTERVAL_HOURS", 24),
+		RetentionDryRunDefault:        getenvBool("RETENTION_DRY_RUN_DEFAULT", false),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {
@@ -183,6 +201,7 @@ func Load() (Config, error) {
 	}
 
 	cfg = validateAndFixAdaptiveConfig(cfg)
+	cfg = validateAndFixRetentionConfig(cfg)
 
 	return cfg, nil
 }
@@ -233,6 +252,42 @@ func validateAndFixAdaptiveConfig(cfg Config) Config {
 	// Ensure cooldown is non-negative
 	if cfg.AdaptiveCooldownMs < 0 {
 		cfg.AdaptiveCooldownMs = 1000
+	}
+
+	return cfg
+}
+
+// validateAndFixRetentionConfig ensures retention configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixRetentionConfig(cfg Config) Config {
+	// Ensure non-negative values
+	if cfg.RetentionJobDays < 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_JOB_DAYS must be non-negative, using 0 (unlimited)\n")
+		cfg.RetentionJobDays = 0
+	}
+	if cfg.RetentionCrawlStateDays < 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_CRAWL_STATE_DAYS must be non-negative, using 0 (unlimited)\n")
+		cfg.RetentionCrawlStateDays = 0
+	}
+	if cfg.RetentionMaxJobs < 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_MAX_JOBS must be non-negative, using 0 (unlimited)\n")
+		cfg.RetentionMaxJobs = 0
+	}
+	if cfg.RetentionMaxStorageGB < 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_MAX_STORAGE_GB must be non-negative, using 0 (unlimited)\n")
+		cfg.RetentionMaxStorageGB = 0
+	}
+	if cfg.RetentionCleanupIntervalHours <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_CLEANUP_INTERVAL_HOURS must be positive, using default 24\n")
+		cfg.RetentionCleanupIntervalHours = 24
+	}
+
+	// Log warning if retention is disabled but limits are set
+	if !cfg.RetentionEnabled {
+		hasLimits := cfg.RetentionJobDays > 0 || cfg.RetentionMaxJobs > 0 || cfg.RetentionMaxStorageGB > 0
+		if hasLimits {
+			fmt.Fprintf(os.Stderr, "[WARN] Retention limits are set but RETENTION_ENABLED is false; cleanup will not run automatically\n")
+		}
 	}
 
 	return cfg

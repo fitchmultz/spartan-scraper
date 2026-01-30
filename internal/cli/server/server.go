@@ -43,7 +43,7 @@ Notes:
 
 	manager := common.InitJobManager(serverCtx, cfg, st)
 	go func() {
-		if err := scheduler.Run(serverCtx, cfg.DataDir, manager); err != nil {
+		if err := scheduler.Run(serverCtx, cfg.DataDir, manager, cfg); err != nil {
 			slog.Error("scheduler error", "error", err)
 		}
 	}()

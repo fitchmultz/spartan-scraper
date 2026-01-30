@@ -5,17 +5,20 @@
 // - Checking schedules and enqueuing jobs when NextRun is due
 // - Updating NextRun after successful job enqueue
 // - Building JobSpec from schedule parameters for job creation
+// - Running periodic retention cleanup based on configuration
 //
 // This file does NOT handle:
 // - Schedule persistence (storage.go does this)
 // - File watching for hot reloads (watcher.go does this)
 // - In-memory schedule caching (cached_scheduler.go does this)
+// - Retention policy evaluation (retention package does this)
 //
 // Invariants:
 // - Ticker polls every 1 second for schedule evaluation
 // - Schedules are copied under RLock before processing
 // - NextRun is updated only after successful job enqueue
 // - Uses jobs.Manager for job creation and enqueueing
+// - Retention cleanup runs on configured interval (default 24h)
 package scheduler
 
 import (
@@ -25,11 +28,14 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/retention"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
-func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
+func Run(ctx context.Context, dataDir string, manager *jobs.Manager, cfg config.Config) error {
 	cs, err := NewCachedScheduler(dataDir, manager)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to create cached scheduler", err)
@@ -42,6 +48,15 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	// Setup retention cleanup ticker
+	var cleanupTicker *time.Ticker
+	var cleanupChan <-chan time.Time
+	if cfg.RetentionEnabled && cfg.RetentionCleanupIntervalHours > 0 {
+		cleanupTicker = time.NewTicker(time.Duration(cfg.RetentionCleanupIntervalHours) * time.Hour)
+		cleanupChan = cleanupTicker.C
+		defer cleanupTicker.Stop()
+	}
 
 	for {
 		select {
@@ -83,7 +98,43 @@ func Run(ctx context.Context, dataDir string, manager *jobs.Manager) error {
 					cs.mu.Unlock()
 				}
 			}
+
+		case <-cleanupChan:
+			if cfg.RetentionEnabled {
+				runRetentionCleanup(ctx, dataDir, cfg)
+			}
 		}
+	}
+}
+
+// runRetentionCleanup executes the retention cleanup process.
+func runRetentionCleanup(ctx context.Context, dataDir string, cfg config.Config) {
+	slog.Info("running scheduled retention cleanup")
+
+	st, err := store.Open(dataDir)
+	if err != nil {
+		slog.Error("failed to open store for retention cleanup", "error", err)
+		return
+	}
+	defer st.Close()
+
+	engine := retention.NewEngine(st, cfg)
+
+	result, err := engine.RunCleanup(ctx, retention.CleanupOptions{DryRun: false})
+	if err != nil {
+		slog.Error("retention cleanup failed", "error", err)
+		return
+	}
+
+	slog.Info("retention cleanup completed",
+		"jobsDeleted", result.JobsDeleted,
+		"crawlStatesDeleted", result.CrawlStatesDeleted,
+		"spaceReclaimedMB", result.SpaceReclaimedMB,
+		"duration", result.Duration,
+	)
+
+	if len(result.Errors) > 0 {
+		slog.Warn("retention cleanup completed with errors", "errorCount", len(result.Errors))
 	}
 }
 

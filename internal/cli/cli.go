@@ -66,6 +66,8 @@ func Run(ctx context.Context) int {
 		return manage.RunTemplates(ctx, cfg, os.Args[2:])
 	case "crawl-states":
 		return manage.RunCrawlStates(ctx, cfg, os.Args[2:])
+	case "retention":
+		return manage.RunRetention(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
 	case "watch":
