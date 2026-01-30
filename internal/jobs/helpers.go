@@ -191,3 +191,24 @@ func decodePipeline(value interface{}) pipeline.Options {
 	}
 	return opts
 }
+
+func decodeScreenshot(value interface{}) *fetch.ScreenshotConfig {
+	if value == nil {
+		return nil
+	}
+	if cfg, ok := value.(*fetch.ScreenshotConfig); ok {
+		return cfg
+	}
+	if cfg, ok := value.(fetch.ScreenshotConfig); ok {
+		return &cfg
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	var cfg fetch.ScreenshotConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil
+	}
+	return &cfg
+}

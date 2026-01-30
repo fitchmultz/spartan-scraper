@@ -93,6 +93,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
 		RequestID:      requestID,
+		Screenshot:     req.Screenshot,
 	}
 	if req.Webhook != nil {
 		spec.WebhookURL = req.Webhook.URL

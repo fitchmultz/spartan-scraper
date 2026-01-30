@@ -6,8 +6,11 @@ package fetch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -401,14 +404,28 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		return Result{}, err
 	}
 
+	// Capture screenshot if requested
+	var screenshotPath string
+	if req.Screenshot != nil && req.Screenshot.Enabled {
+		path, err := f.captureScreenshot(page, req, req.DataDir)
+		if err != nil {
+			// Log warning but don't fail the fetch if screenshot fails
+			slog.Warn("screenshot capture failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		} else {
+			screenshotPath = path
+			slog.Debug("screenshot captured", "url", apperrors.SanitizeURL(req.URL), "path", screenshotPath)
+		}
+	}
+
 	return Result{
-		URL:          req.URL,
-		Status:       statusCode,
-		HTML:         content,
-		FetchedAt:    time.Now(),
-		Engine:       RenderEnginePlaywright,
-		ETag:         "", // Headless browsers don't easily expose response headers without complex interception.
-		LastModified: "",
+		URL:            req.URL,
+		Status:         statusCode,
+		HTML:           content,
+		FetchedAt:      time.Now(),
+		Engine:         RenderEnginePlaywright,
+		ETag:           "", // Headless browsers don't easily expose response headers without complex interception.
+		LastModified:   "",
+		ScreenshotPath: screenshotPath,
 	}, nil
 }
 
@@ -488,4 +505,55 @@ func isBlockedType(resType string, blockType BlockedResourceType) bool {
 			resType == "other"
 	}
 	return false
+}
+
+// captureScreenshot captures a screenshot of the current page using Playwright.
+// It returns the path to the saved screenshot file.
+func (f *PlaywrightFetcher) captureScreenshot(page playwright.Page, req Request, dataDir string) (string, error) {
+	if req.Screenshot == nil || !req.Screenshot.Enabled {
+		return "", nil
+	}
+
+	// Generate screenshot filename
+	screenshotDir := filepath.Join(dataDir, "screenshots")
+	if err := os.MkdirAll(screenshotDir, 0o700); err != nil {
+		return "", fmt.Errorf("failed to create screenshots directory: %w", err)
+	}
+
+	timestamp := time.Now().UnixMilli()
+	ext := "png"
+	format := playwright.ScreenshotTypePng
+	if req.Screenshot.Format == ScreenshotFormatJPEG {
+		ext = "jpg"
+		format = playwright.ScreenshotTypeJpeg
+	}
+	filename := fmt.Sprintf("playwright_%d_%d.%s", timestamp, req.Screenshot.Quality, ext)
+	path := filepath.Join(screenshotDir, filename)
+
+	// Set viewport if custom dimensions provided
+	if req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
+		if err := page.SetViewportSize(req.Screenshot.Width, req.Screenshot.Height); err != nil {
+			return "", fmt.Errorf("failed to set viewport: %w", err)
+		}
+	}
+
+	// Build screenshot options
+	opts := playwright.PageScreenshotOptions{
+		Path:     &path,
+		FullPage: &req.Screenshot.FullPage,
+		Type:     format,
+	}
+
+	// Add quality for JPEG
+	if req.Screenshot.Format == ScreenshotFormatJPEG && req.Screenshot.Quality > 0 {
+		quality := req.Screenshot.Quality
+		opts.Quality = &quality
+	}
+
+	// Capture screenshot
+	if _, err := page.Screenshot(opts); err != nil {
+		return "", fmt.Errorf("failed to capture screenshot: %w", err)
+	}
+
+	return path, nil
 }

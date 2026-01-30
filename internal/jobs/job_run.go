@@ -155,6 +155,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		var pipelineOpts pipeline.Options
 		pipelineOpts = decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
+		screenshot := decodeScreenshot(job.Params["screenshot"])
 		result, err := scrape.Run(jobCtx, scrape.Request{
 			URL:              url,
 			RequestID:        getJobRequestID(job),
@@ -176,6 +177,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
 			MetricsCallback:  m.metricsCallback,
+			Screenshot:       screenshot,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -215,6 +217,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		sitemapOnly := toBool(job.Params["sitemapOnly"], false)
 		includePatterns := toStringSlice(job.Params["includePatterns"])
 		excludePatterns := toStringSlice(job.Params["excludePatterns"])
+		screenshot := decodeScreenshot(job.Params["screenshot"])
 		results, err := crawl.Run(jobCtx, crawl.Request{
 			URL:              url,
 			RequestID:        getJobRequestID(job),
@@ -243,6 +246,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			SitemapOnly:      sitemapOnly,
 			IncludePatterns:  includePatterns,
 			ExcludePatterns:  excludePatterns,
+			Screenshot:       screenshot,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -280,6 +284,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		extractOpts = decodeExtract(job.Params["extract"])
 		var pipelineOpts pipeline.Options
 		pipelineOpts = decodePipeline(job.Params["pipeline"])
+		researchScreenshot := decodeScreenshot(job.Params["screenshot"])
 		result, err := research.Run(jobCtx, research.Request{
 			Query:            query,
 			RequestID:        getJobRequestID(job),
@@ -303,6 +308,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
+			Screenshot:       researchScreenshot,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

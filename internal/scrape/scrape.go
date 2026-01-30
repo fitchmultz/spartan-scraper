@@ -42,6 +42,8 @@ type Request struct {
 	TemplateRegistry *extract.TemplateRegistry
 	// MetricsCallback is called for each fetch operation to record metrics.
 	MetricsCallback fetch.MetricsCallback
+	// Screenshot config for headless fetchers (chromedp, playwright).
+	Screenshot *fetch.ScreenshotConfig
 }
 
 // Result contains the outcome of a scrape operation.
@@ -114,6 +116,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		DataDir:          req.DataDir,
 		IfNoneMatch:      ifNoneMatch,
 		IfModifiedSince:  ifModifiedSince,
+		Screenshot:       req.Screenshot,
 	}
 
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindScrape))

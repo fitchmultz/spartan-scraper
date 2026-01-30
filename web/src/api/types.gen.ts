@@ -145,6 +145,36 @@ export type ProxyConfig = {
     password?: string;
 };
 
+/**
+ * Screenshot capture configuration for headless fetchers (chromedp, playwright). Ignored for HTTP fetcher.
+ */
+export type ScreenshotConfig = {
+    /**
+     * Whether to capture a screenshot of the page
+     */
+    enabled?: boolean;
+    /**
+     * Capture full page or just viewport
+     */
+    fullPage?: boolean;
+    /**
+     * Screenshot image format
+     */
+    format?: 'png' | 'jpeg';
+    /**
+     * JPEG quality (1-100), ignored for PNG
+     */
+    quality?: number;
+    /**
+     * Viewport width in pixels (0 = use default)
+     */
+    width?: number;
+    /**
+     * Viewport height in pixels (0 = use default)
+     */
+    height?: number;
+};
+
 export type AuthOptions = {
     /**
      * Basic auth in user:pass form
@@ -245,6 +275,7 @@ export type ScrapeRequest = {
     incremental?: boolean;
     proxy?: ProxyConfig;
     webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
 };
 
 export type CrawlRequest = {
@@ -277,6 +308,7 @@ export type CrawlRequest = {
      */
     excludePatterns?: Array<string>;
     webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
 };
 
 export type ResearchRequest = {
@@ -293,6 +325,7 @@ export type ResearchRequest = {
     timeoutSeconds?: number;
     proxy?: ProxyConfig;
     webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
 };
 
 export type Job = {
@@ -311,6 +344,10 @@ export type Job = {
      * Error message if job failed. Secrets and filesystem paths are redacted.
      */
     error?: string;
+    /**
+     * Path to the screenshot file if screenshot capture was enabled
+     */
+    screenshotPath?: string;
 };
 
 export type JobList = {

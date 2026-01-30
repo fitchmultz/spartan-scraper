@@ -36,6 +36,8 @@ type Request struct {
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
 	TemplateRegistry *extract.TemplateRegistry
+	// Screenshot config for headless fetchers (chromedp, playwright).
+	Screenshot *fetch.ScreenshotConfig
 }
 
 // Evidence represents a single piece of gathered evidence with computed metrics.

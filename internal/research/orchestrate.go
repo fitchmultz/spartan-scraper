@@ -55,6 +55,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,
 				TemplateRegistry: req.TemplateRegistry,
+				Screenshot:       req.Screenshot,
 			})
 			if err != nil {
 				if ctx.Err() != nil {
@@ -97,6 +98,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				Registry:         req.Registry,
 				JSRegistry:       req.JSRegistry,
 				TemplateRegistry: req.TemplateRegistry,
+				Screenshot:       req.Screenshot,
 			})
 			if err != nil {
 				if ctx.Err() != nil {

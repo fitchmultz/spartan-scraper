@@ -26,6 +26,24 @@ const (
 	BlockedResourceOther      BlockedResourceType = "other"
 )
 
+type ScreenshotFormat string
+
+const (
+	ScreenshotFormatPNG  ScreenshotFormat = "png"
+	ScreenshotFormatJPEG ScreenshotFormat = "jpeg"
+)
+
+// ScreenshotConfig defines screenshot capture options for headless fetchers.
+// Screenshots are only applicable to chromedp and playwright engines, not HTTP fetcher.
+type ScreenshotConfig struct {
+	Enabled  bool             `json:"enabled"`           // Whether to capture screenshot
+	FullPage bool             `json:"fullPage"`          // Capture full page or just viewport
+	Format   ScreenshotFormat `json:"format"`            // png or jpeg
+	Quality  int              `json:"quality,omitempty"` // JPEG quality (1-100), ignored for PNG
+	Width    int              `json:"width,omitempty"`   // Viewport width (0 = default)
+	Height   int              `json:"height,omitempty"`  // Viewport height (0 = default)
+}
+
 type RenderWaitMode string
 
 const (
@@ -86,9 +104,10 @@ type RenderProfile struct {
 	// Overrides default JS-heavy threshold for this host (0..1). 0 means use global default.
 	JSHeavyThreshold float64 `json:"jsHeavyThreshold,omitempty"`
 
-	Block    RenderBlockPolicy   `json:"block,omitempty"`
-	Wait     RenderWaitPolicy    `json:"wait,omitempty"`
-	Timeouts RenderTimeoutPolicy `json:"timeouts,omitempty"`
+	Block      RenderBlockPolicy   `json:"block,omitempty"`
+	Wait       RenderWaitPolicy    `json:"wait,omitempty"`
+	Timeouts   RenderTimeoutPolicy `json:"timeouts,omitempty"`
+	Screenshot ScreenshotConfig    `json:"screenshot,omitempty"`
 }
 
 type RenderProfilesFile struct {
@@ -136,23 +155,25 @@ type Request struct {
 	Limiter          *HostLimiter
 	MaxRetries       int
 	RetryBaseDelay   time.Duration
-	MaxResponseBytes int64    `json:"maxResponseBytes,omitempty"`
-	IfNoneMatch      string   `json:"-"`
-	IfModifiedSince  string   `json:"-"`
-	DataDir          string   `json:"-"`
-	PreNavJS         []string `json:"-"`
-	PostNavJS        []string `json:"-"`
-	WaitSelectors    []string `json:"-"`
+	MaxResponseBytes int64             `json:"maxResponseBytes,omitempty"`
+	IfNoneMatch      string            `json:"-"`
+	IfModifiedSince  string            `json:"-"`
+	DataDir          string            `json:"-"`
+	PreNavJS         []string          `json:"-"`
+	PostNavJS        []string          `json:"-"`
+	WaitSelectors    []string          `json:"-"`
+	Screenshot       *ScreenshotConfig `json:"screenshot"`
 }
 
 type Result struct {
-	URL          string
-	Status       int
-	HTML         string
-	FetchedAt    time.Time
-	ETag         string       `json:"-"`
-	LastModified string       `json:"-"`
-	Engine       RenderEngine `json:"-"` // New field
+	URL            string
+	Status         int
+	HTML           string
+	FetchedAt      time.Time
+	ETag           string       `json:"-"`
+	LastModified   string       `json:"-"`
+	Engine         RenderEngine `json:"-"`
+	ScreenshotPath string       `json:"screenshotPath,omitempty"` // Path to saved screenshot file
 }
 
 // ApplyAuthQuery applies authentication query parameters to a URL.

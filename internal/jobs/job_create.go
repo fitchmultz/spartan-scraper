@@ -155,14 +155,28 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 		return model.Job{}, fmt.Errorf("invalid job spec: %w", err)
 	}
 
+	var job model.Job
+	var err error
+
 	switch spec.Kind {
 	case model.KindScrape:
-		return m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
+		job, err = m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindCrawl:
-		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
+		job, err = m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindResearch:
-		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
+		job, err = m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	default:
 		return model.Job{}, fmt.Errorf("unknown job kind: %s", spec.Kind)
 	}
+
+	if err != nil {
+		return model.Job{}, err
+	}
+
+	// Add screenshot config if provided
+	if spec.Screenshot != nil {
+		job.Params["screenshot"] = spec.Screenshot
+	}
+
+	return job, nil
 }

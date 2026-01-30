@@ -63,6 +63,8 @@ type Request struct {
 	// Excluded URLs take precedence over included ones.
 	// Supports * (matches any chars except /) and ** (matches any chars including /).
 	ExcludePatterns []string
+	// Screenshot config for headless fetchers (chromedp, playwright).
+	Screenshot *fetch.ScreenshotConfig
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -166,6 +168,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			DataDir:          req.DataDir,
 			IfNoneMatch:      ifNoneMatch,
 			IfModifiedSince:  ifModifiedSince,
+			Screenshot:       req.Screenshot,
 		}
 
 		target := pipeline.NewTarget(fetchReq.URL, string(model.KindCrawl))

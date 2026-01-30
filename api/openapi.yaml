@@ -1110,6 +1110,35 @@ components:
           type: string
           description: Password for proxy authentication
           format: password
+    ScreenshotConfig:
+      type: object
+      description: Screenshot capture configuration for headless fetchers (chromedp, playwright). Ignored for HTTP fetcher.
+      properties:
+        enabled:
+          type: boolean
+          default: false
+          description: Whether to capture a screenshot of the page
+        fullPage:
+          type: boolean
+          default: false
+          description: Capture full page or just viewport
+        format:
+          type: string
+          enum: [png, jpeg]
+          default: png
+          description: Screenshot image format
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 80
+          description: JPEG quality (1-100), ignored for PNG
+        width:
+          type: integer
+          description: Viewport width in pixels (0 = use default)
+        height:
+          type: integer
+          description: Viewport height in pixels (0 = use default)
     AuthOptions:
       type: object
       properties:
@@ -1234,6 +1263,8 @@ components:
           $ref: '#/components/schemas/ProxyConfig'
         webhook:
           $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
     CrawlRequest:
       type: object
       required: [url]
@@ -1296,6 +1327,8 @@ components:
           description: URL path patterns to exclude (glob syntax, e.g., /admin/*). Excluded URLs take precedence over included ones.
         webhook:
           $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1341,6 +1374,8 @@ components:
           $ref: '#/components/schemas/ProxyConfig'
         webhook:
           $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
     Job:
       type: object
       required:
@@ -1370,6 +1405,9 @@ components:
         error:
           type: string
           description: Error message if job failed. Secrets and filesystem paths are redacted.
+        screenshotPath:
+          type: string
+          description: Path to the screenshot file if screenshot capture was enabled
     JobList:
       type: object
       properties:

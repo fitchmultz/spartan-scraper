@@ -53,6 +53,7 @@ type ScrapeRequest struct {
 	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
+	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
 }
 
 // CrawlRequest represents a request to crawl a website.
@@ -71,6 +72,7 @@ type CrawlRequest struct {
 	SitemapURL     string                  `json:"sitemapURL,omitempty"`
 	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
+	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
 }
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
@@ -87,6 +89,7 @@ type ResearchRequest struct {
 	Extract        *extract.ExtractOptions `json:"extract"`
 	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
+	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
 }
 
 // ScheduleRequest represents a request to add a scheduled job.

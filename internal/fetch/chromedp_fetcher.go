@@ -6,8 +6,11 @@ package fetch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -287,14 +290,28 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 		slog.Debug("using captured status", "url", apperrors.SanitizeURL(req.URL), "status", status)
 	}
 
+	// Capture screenshot if requested
+	var screenshotPath string
+	if req.Screenshot != nil && req.Screenshot.Enabled {
+		path, err := f.captureScreenshot(ctx, req, req.DataDir)
+		if err != nil {
+			// Log warning but don't fail the fetch if screenshot fails
+			slog.Warn("screenshot capture failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		} else {
+			screenshotPath = path
+			slog.Debug("screenshot captured", "url", apperrors.SanitizeURL(req.URL), "path", screenshotPath)
+		}
+	}
+
 	return Result{
-		URL:          req.URL,
-		Status:       status,
-		HTML:         html,
-		FetchedAt:    time.Now(),
-		Engine:       RenderEngineChromedp,
-		ETag:         "", // Headless browsers don't easily expose response headers without complex interception
-		LastModified: "",
+		URL:            req.URL,
+		Status:         status,
+		HTML:           html,
+		FetchedAt:      time.Now(),
+		Engine:         RenderEngineChromedp,
+		ETag:           "", // Headless browsers don't easily expose response headers without complex interception
+		LastModified:   "",
+		ScreenshotPath: screenshotPath,
 	}, nil
 }
 
@@ -570,4 +587,53 @@ func isAbortErr(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "net::ERR_ABORTED")
+}
+
+// captureScreenshot captures a screenshot of the current page using chromedp.
+// It returns the path to the saved screenshot file.
+func (f *ChromedpFetcher) captureScreenshot(ctx context.Context, req Request, dataDir string) (string, error) {
+	if req.Screenshot == nil || !req.Screenshot.Enabled {
+		return "", nil
+	}
+
+	// Generate screenshot filename
+	screenshotDir := filepath.Join(dataDir, "screenshots")
+	if err := os.MkdirAll(screenshotDir, 0o700); err != nil {
+		return "", fmt.Errorf("failed to create screenshots directory: %w", err)
+	}
+
+	timestamp := time.Now().UnixMilli()
+	ext := "png"
+	if req.Screenshot.Format == ScreenshotFormatJPEG {
+		ext = "jpg"
+	}
+	filename := fmt.Sprintf("chromedp_%d_%d.%s", timestamp, req.Screenshot.Quality, ext)
+	path := filepath.Join(screenshotDir, filename)
+
+	// Set viewport if custom dimensions provided
+	if req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
+		width := int64(req.Screenshot.Width)
+		height := int64(req.Screenshot.Height)
+		if err := chromedp.Run(ctx, chromedp.EmulateViewport(width, height)); err != nil {
+			return "", fmt.Errorf("failed to set viewport: %w", err)
+		}
+	}
+
+	var buf []byte
+	if req.Screenshot.FullPage {
+		if err := chromedp.Run(ctx, chromedp.FullScreenshot(&buf, req.Screenshot.Quality)); err != nil {
+			return "", fmt.Errorf("failed to capture full page screenshot: %w", err)
+		}
+	} else {
+		if err := chromedp.Run(ctx, chromedp.CaptureScreenshot(&buf)); err != nil {
+			return "", fmt.Errorf("failed to capture screenshot: %w", err)
+		}
+	}
+
+	// Write screenshot to file
+	if err := os.WriteFile(path, buf, 0o600); err != nil {
+		return "", fmt.Errorf("failed to write screenshot file: %w", err)
+	}
+
+	return path, nil
 }
