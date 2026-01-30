@@ -5,22 +5,51 @@ package extract
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 )
 
+// SchemaFormat identifies which schema format is used for validation.
+type SchemaFormat string
+
+const (
+	SchemaFormatCustom     SchemaFormat = "custom"
+	SchemaFormatJSONSchema SchemaFormat = "jsonschema"
+)
+
+// Sentinel errors for validation and rejection handling.
+var (
+	ErrValidationFailed = errors.New("validation failed")
+	ErrDocumentSkipped  = errors.New("document skipped due to validation failure")
+)
+
+// RejectionPolicy determines how to handle validation failures.
+type RejectionPolicy string
+
+const (
+	RejectPolicyNone  RejectionPolicy = "none"  // Store validation result only (default)
+	RejectPolicySkip  RejectionPolicy = "skip"  // Skip invalid documents entirely
+	RejectPolicyEmpty RejectionPolicy = "empty" // Return empty document with validation errors
+	RejectPolicyError RejectionPolicy = "error" // Return error on validation failure
+)
+
 type ExtractOptions struct {
-	Template string    `json:"template,omitempty"`
-	Inline   *Template `json:"inline,omitempty"`
-	Validate bool      `json:"validate,omitempty"`
+	Template        string          `json:"template,omitempty"`
+	Inline          *Template       `json:"inline,omitempty"`
+	Validate        bool            `json:"validate,omitempty"`
+	RejectionPolicy RejectionPolicy `json:"rejectionPolicy,omitempty"`
 }
 
 type Template struct {
-	Name      string         `json:"name"`
-	Selectors []SelectorRule `json:"selectors,omitempty"`
-	JSONLD    []JSONLDRule   `json:"jsonld,omitempty"`
-	Regex     []RegexRule    `json:"regex,omitempty"`
-	Schema    *Schema        `json:"schema,omitempty"`
-	Normalize NormalizeSpec  `json:"normalize,omitempty"`
+	Name            string          `json:"name"`
+	Version         string          `json:"version,omitempty"`
+	SchemaVersion   string          `json:"schemaVersion,omitempty"`
+	Selectors       []SelectorRule  `json:"selectors,omitempty"`
+	JSONLD          []JSONLDRule    `json:"jsonld,omitempty"`
+	Regex           []RegexRule     `json:"regex,omitempty"`
+	Schema          *Schema         `json:"schema,omitempty"`
+	Normalize       NormalizeSpec   `json:"normalize,omitzero"`
+	RejectionPolicy RejectionPolicy `json:"rejectionPolicy,omitempty"`
 }
 
 type SelectorRule struct {
@@ -137,7 +166,8 @@ const (
 )
 
 type Schema struct {
-	Type                 SchemaType         `json:"type"`
+	Format               SchemaFormat       `json:"format,omitempty"` // "custom" (default) or "jsonschema"
+	Type                 SchemaType         `json:"type,omitempty"`
 	Required             []string           `json:"required,omitempty"`
 	Properties           map[string]*Schema `json:"properties,omitempty"`
 	Items                *Schema            `json:"items,omitempty"`
@@ -148,6 +178,8 @@ type Schema struct {
 	Minimum              *float64           `json:"minimum,omitempty"`
 	Maximum              *float64           `json:"maximum,omitempty"`
 	AdditionalProperties bool               `json:"additionalProperties,omitempty"`
+	// JSONSchema holds the raw JSON Schema document when Format is "jsonschema"
+	JSONSchema map[string]any `json:"jsonSchema,omitempty"`
 }
 
 // NewObjectFieldValue creates a FieldValue containing a nested object.
@@ -170,4 +202,24 @@ type TemplateRegistry struct {
 
 type TemplateFile struct {
 	Templates []Template `json:"templates"`
+}
+
+// MigrationRule defines a transformation from one schema version to another.
+type MigrationRule struct {
+	FromVersion string `json:"fromVersion"`
+	ToVersion   string `json:"toVersion"`
+	Transform   string `json:"transform,omitempty"` // JavaScript or JSONata expression
+}
+
+// SchemaVersionInfo tracks version metadata for a template.
+type SchemaVersionInfo struct {
+	Version        string          `json:"version,omitempty"`        // Semantic version of the template
+	SchemaVersion  string          `json:"schemaVersion,omitempty"`  // JSON Schema version (e.g., "2020-12")
+	MigrationRules []MigrationRule `json:"migrationRules,omitempty"` // Rules for migrating between versions
+}
+
+// ExtractOptionsVersioning contains options for schema version migration.
+type ExtractOptionsVersioning struct {
+	MigrateVersion bool   `json:"migrateVersion,omitempty"` // Auto-migrate if version mismatch
+	TargetVersion  string `json:"targetVersion,omitempty"`  // Target version to migrate to
 }

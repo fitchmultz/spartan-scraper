@@ -15,7 +15,19 @@ import (
 
 const maxValidationDepth = 10
 
+// ValidateDocument validates a document against a schema.
+// It routes to the appropriate validator based on the schema format.
 func ValidateDocument(doc NormalizedDocument, schema *Schema) ValidationResult {
+	if schema == nil {
+		return ValidationResult{Valid: true}
+	}
+
+	// Route to JSON Schema validator if format is jsonschema
+	if schema.Format == SchemaFormatJSONSchema {
+		return ValidateJSONSchema(doc, schema)
+	}
+
+	// Default to custom schema validation
 	return validateDocumentWithDepth(doc, schema, 0)
 }
 

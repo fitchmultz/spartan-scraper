@@ -3,6 +3,10 @@
 // normalization and schema validation of the extracted results.
 package extract
 
+import (
+	"errors"
+)
+
 // Result is the legacy extraction result.
 type Result struct {
 	Title       string   `json:"title"`
@@ -38,7 +42,24 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 
 	if input.Options.Validate && tmpl.Schema != nil {
 		validation := ValidateDocument(normalized, tmpl.Schema)
-		normalized.Validation = validation
+
+		// Get effective rejection policy
+		policy := GetEffectiveRejectionPolicy(input.Options, tmpl)
+
+		// Apply rejection policy
+		result := ApplyRejectionPolicy(normalized, validation, policy)
+
+		// Handle rejection result
+		if result.Error != nil {
+			return ExecuteOutput{}, result.Error
+		}
+
+		if result.Skip {
+			// Document was skipped due to validation failure
+			return ExecuteOutput{}, errors.Join(ErrDocumentSkipped, ErrValidationFailed)
+		}
+
+		normalized = result.Document
 	}
 
 	return ExecuteOutput{
