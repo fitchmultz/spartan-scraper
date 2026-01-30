@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
@@ -172,5 +174,23 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	if err := exporter.ExportStream(job, f, format, w); err != nil {
 		writeError(w, r, err)
 		return
+	}
+
+	// Dispatch export.completed webhook event
+	if s.webhookDispatcher != nil {
+		webhookCfg := job.ExtractWebhookConfig()
+		if webhookCfg != nil && webhook.ShouldSendEvent(webhook.EventExportCompleted, "", webhookCfg.Events) {
+			payload := webhook.Payload{
+				EventID:      fmt.Sprintf("%s-export-%s", job.ID, format),
+				EventType:    webhook.EventExportCompleted,
+				Timestamp:    time.Now(),
+				JobID:        job.ID,
+				JobKind:      string(job.Kind),
+				Status:       string(job.Status),
+				ExportFormat: format,
+				ExportPath:   job.ResultPath,
+			}
+			s.webhookDispatcher.Dispatch(r.Context(), webhookCfg.URL, payload, webhookCfg.Secret)
+		}
 	}
 }

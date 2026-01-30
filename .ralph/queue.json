@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0211",
-      "status": "todo",
-      "title": "Expand webhook event types and add granular notifications",
-      "priority": "medium",
-      "tags": [
-        "webhooks",
-        "notifications",
-        "api"
-      ],
-      "scope": [
-        "internal/webhook/",
-        "internal/jobs/"
-      ],
-      "evidence": [
-        "Only basic events: created, started, completed, failed",
-        "No page-level events for crawls",
-        "No retry or export completion events"
-      ],
-      "plan": [
-        "Add 'page_crawled' event with page metadata",
-        "Add 'retry_attempted' event",
-        "Add 'export_completed' event",
-        "Add 'content_changed' event for monitoring",
-        "Support webhook event filtering/subscription",
-        "Add webhook delivery logs and retry status"
-      ],
-      "notes": [],
-      "request": "scan finding: webhook events gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0212",
       "status": "todo",
       "title": "Add more device emulation presets and custom device config",

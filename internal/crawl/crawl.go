@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/simhash"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // Request represents a website crawl request.
@@ -77,6 +79,13 @@ type Request struct {
 	SimHashThreshold int
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
+	// WebhookDispatcher is an optional dispatcher for page crawled events.
+	// If nil, no webhook events are dispatched.
+	WebhookDispatcher interface {
+		Dispatch(ctx context.Context, url string, payload webhook.Payload, secret string)
+	}
+	// WebhookConfig holds webhook configuration for the crawl.
+	WebhookConfig *model.WebhookConfig
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -417,6 +426,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	var visitedMu sync.Mutex
 	visited := map[string]bool{}
 	var processed int32
+	var pageSeqNum int32
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -518,8 +528,11 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 						continue
 					}
 
+					seqNum := atomic.AddInt32(&pageSeqNum, 1)
 					if atomic.AddInt32(&processed, 1) <= int32(req.MaxPages) {
 						results <- res
+						// Dispatch webhook event for this page
+						req.dispatchPageEvent(ctx, res, item.Depth, int(seqNum))
 					} else {
 						wg.Done()
 						continue
@@ -561,6 +574,33 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	}
 
 	return collected, nil
+}
+
+// dispatchPageEvent sends a webhook notification for a crawled page.
+func (req *Request) dispatchPageEvent(ctx context.Context, result PageResult, depth int, seqNum int) {
+	if req.WebhookDispatcher == nil || req.WebhookConfig == nil {
+		return
+	}
+	if !webhook.ShouldSendEvent(webhook.EventPageCrawled, "", req.WebhookConfig.Events) {
+		return
+	}
+
+	payload := webhook.Payload{
+		EventID:     fmt.Sprintf("%s-page-%d", req.RequestID, seqNum),
+		EventType:   webhook.EventPageCrawled,
+		Timestamp:   time.Now(),
+		JobID:       req.RequestID,
+		JobKind:     string(model.KindCrawl),
+		PageURL:     result.URL,
+		PageStatus:  result.Status,
+		PageTitle:   result.Title,
+		PageDepth:   depth,
+		IsDuplicate: result.DuplicateOf != "",
+		DuplicateOf: result.DuplicateOf,
+		CrawlSeqNum: seqNum,
+	}
+
+	req.WebhookDispatcher.Dispatch(ctx, req.WebhookConfig.URL, payload, req.WebhookConfig.Secret)
 }
 
 func normalizeURL(raw string) string {

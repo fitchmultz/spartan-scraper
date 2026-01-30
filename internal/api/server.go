@@ -4,6 +4,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,11 +17,12 @@ import (
 )
 
 type Server struct {
-	manager          *jobs.Manager
-	store            *store.Store
-	cfg              config.Config
-	wsHub            *Hub
-	metricsCollector *MetricsCollector
+	manager           *jobs.Manager
+	store             *store.Store
+	cfg               config.Config
+	wsHub             *Hub
+	metricsCollector  *MetricsCollector
+	webhookDispatcher *webhook.Dispatcher
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
@@ -46,13 +48,20 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 
 	// Initialize webhook dispatcher if configured
 	if cfg.Webhook.Enabled || cfg.Webhook.Secret != "" {
-		dispatcher := webhook.NewDispatcher(webhook.Config{
+		// Create webhook store for delivery tracking
+		webhookStore := webhook.NewStore(cfg.DataDir)
+		if err := webhookStore.Load(); err != nil {
+			slog.Warn("failed to load webhook delivery store", "error", err)
+		}
+
+		dispatcher := webhook.NewDispatcherWithStore(webhook.Config{
 			Secret:     cfg.Webhook.Secret,
 			MaxRetries: cfg.Webhook.MaxRetries,
 			BaseDelay:  cfg.Webhook.BaseDelay,
 			MaxDelay:   cfg.Webhook.MaxDelay,
 			Timeout:    cfg.Webhook.Timeout,
-		})
+		}, webhookStore)
+		s.webhookDispatcher = dispatcher
 		s.manager.SetWebhookDispatcher(dispatcher)
 	}
 
@@ -141,6 +150,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/chains/", s.handleChain)
 	mux.HandleFunc("/v1/proxy-pool/status", s.handleProxyPoolStatus)
 	mux.HandleFunc("/v1/transform/validate", s.handleValidateTransform)
+	mux.HandleFunc("/v1/webhooks/deliveries", s.handleWebhookDeliveries)
+	mux.HandleFunc("/v1/webhooks/deliveries/", s.handleWebhookDeliveryDetail)
 
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

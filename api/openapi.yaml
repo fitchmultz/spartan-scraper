@@ -1785,6 +1785,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/webhooks/deliveries:
+    get:
+      summary: List webhook delivery records
+      description: Get a list of webhook delivery records with optional filtering by job ID
+      tags:
+        - Webhooks
+      parameters:
+        - name: job_id
+          in: query
+          schema:
+            type: string
+          description: Filter deliveries by job ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of records to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: List of webhook delivery records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryListResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/webhooks/deliveries/{id}:
+    get:
+      summary: Get a single webhook delivery record
+      description: Get detailed information about a specific webhook delivery
+      tags:
+        - Webhooks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Delivery record ID
+      responses:
+        '200':
+          description: Webhook delivery record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryRecord'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2298,7 +2376,7 @@ components:
           description: "Events to subscribe to (default: ['completed'])"
           items:
             type: string
-            enum: [completed, failed, canceled, started, all]
+            enum: [completed, failed, canceled, started, created, succeeded, content_changed, page_crawled, retry_attempted, export_completed, all]
         secret:
           type: string
           description: HMAC-SHA256 secret for signature verification
@@ -2312,7 +2390,7 @@ components:
           description: Unique identifier for this event
         eventType:
           type: string
-          enum: [job.created, job.started, job.completed]
+          enum: [job.created, job.started, job.completed, content.changed, page.crawled, retry.attempted, export.completed]
           description: Type of event that triggered this webhook
         timestamp:
           type: string
@@ -2342,6 +2420,74 @@ components:
           type: string
           format: date-time
           description: Timestamp when job completed (for completed events)
+        # Content change fields (for content.changed events)
+        url:
+          type: string
+          description: URL where content changed
+        previousHash:
+          type: string
+          description: Previous content hash
+        currentHash:
+          type: string
+          description: Current content hash
+        diffText:
+          type: string
+          description: Text diff of changes
+        diffHtml:
+          type: string
+          description: HTML diff of changes
+        selector:
+          type: string
+          description: CSS selector for tracked element
+        # Page crawled fields (for page.crawled events)
+        pageUrl:
+          type: string
+          description: URL of crawled page
+        pageStatus:
+          type: integer
+          description: HTTP status code of crawled page
+        pageTitle:
+          type: string
+          description: Title of crawled page
+        pageDepth:
+          type: integer
+          description: Crawl depth of the page
+        isDuplicate:
+          type: boolean
+          description: Whether this page is a duplicate
+        duplicateOf:
+          type: string
+          description: URL of original page if this is a duplicate
+        crawlSeqNum:
+          type: integer
+          description: Sequence number in crawl order
+        # Retry attempted fields (for retry.attempted events)
+        attemptNumber:
+          type: integer
+          description: Current retry attempt number
+        maxAttempts:
+          type: integer
+          description: Maximum number of retry attempts
+        retryError:
+          type: string
+          description: Error that triggered the retry
+        fetcherType:
+          type: string
+          description: Type of fetcher being used
+        # Export completed fields (for export.completed events)
+        exportFormat:
+          type: string
+          description: Export format (json, csv, etc.)
+        exportPath:
+          type: string
+          description: Path to exported file
+        recordCount:
+          type: integer
+          description: Number of records exported
+        exportSize:
+          type: integer
+          format: int64
+          description: Size of exported file in bytes
     ScrapeRequest:
       type: object
       required: [url]
@@ -3670,3 +3816,58 @@ components:
         message:
           type: string
           description: Human-readable validation message
+    WebhookDeliveryRecord:
+      type: object
+      description: A webhook delivery record tracking delivery attempts
+      properties:
+        id:
+          type: string
+          description: Unique delivery record identifier
+        eventId:
+          type: string
+          description: ID of the event being delivered
+        eventType:
+          type: string
+          description: Type of event (job.created, page.crawled, etc.)
+        jobId:
+          type: string
+          description: ID of the job related to this event
+        url:
+          type: string
+          description: Webhook URL that was called
+        status:
+          type: string
+          enum: [pending, delivered, failed]
+          description: Current delivery status
+        attempts:
+          type: integer
+          description: Number of delivery attempts made
+        lastError:
+          type: string
+          description: Last error message if delivery failed
+        createdAt:
+          type: string
+          format: date-time
+          description: When the delivery record was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the delivery record was last updated
+        deliveredAt:
+          type: string
+          format: date-time
+          description: When the delivery was successful (if applicable)
+        responseCode:
+          type: integer
+          description: HTTP response code from the last attempt
+    WebhookDeliveryListResponse:
+      type: object
+      description: Response containing a list of webhook delivery records
+      properties:
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookDeliveryRecord'
+        total:
+          type: integer
+          description: Total number of delivery records

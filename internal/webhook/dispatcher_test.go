@@ -369,6 +369,41 @@ func TestShouldSendEvent(t *testing.T) {
 			configuredEvents: []string{"completed", "started"},
 			want:             false,
 		},
+		{
+			name:             "page_crawled event matches",
+			eventType:        EventPageCrawled,
+			status:           "",
+			configuredEvents: []string{"page_crawled"},
+			want:             true,
+		},
+		{
+			name:             "page_crawled event does not match other filters",
+			eventType:        EventPageCrawled,
+			status:           "",
+			configuredEvents: []string{"completed", "started"},
+			want:             false,
+		},
+		{
+			name:             "retry_attempted event matches",
+			eventType:        EventRetryAttempted,
+			status:           "",
+			configuredEvents: []string{"retry_attempted"},
+			want:             true,
+		},
+		{
+			name:             "export_completed event matches",
+			eventType:        EventExportCompleted,
+			status:           "",
+			configuredEvents: []string{"export_completed"},
+			want:             true,
+		},
+		{
+			name:             "all includes new event types",
+			eventType:        EventPageCrawled,
+			status:           "",
+			configuredEvents: []string{"all"},
+			want:             true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -418,7 +418,7 @@ export type WebhookConfig = {
     /**
      * Events to subscribe to (default: ['completed'])
      */
-    events?: Array<'completed' | 'failed' | 'canceled' | 'started' | 'all'>;
+    events?: Array<'completed' | 'failed' | 'canceled' | 'started' | 'created' | 'succeeded' | 'content_changed' | 'page_crawled' | 'retry_attempted' | 'export_completed' | 'all'>;
     /**
      * HMAC-SHA256 secret for signature verification
      */
@@ -436,7 +436,7 @@ export type WebhookPayload = {
     /**
      * Type of event that triggered this webhook
      */
-    eventType?: 'job.created' | 'job.started' | 'job.completed';
+    eventType?: 'job.created' | 'job.started' | 'job.completed' | 'content.changed' | 'page.crawled' | 'retry.attempted' | 'export.completed';
     /**
      * ISO 8601 timestamp of the event
      */
@@ -469,6 +469,90 @@ export type WebhookPayload = {
      * Timestamp when job completed (for completed events)
      */
     completedAt?: string;
+    /**
+     * URL where content changed
+     */
+    url?: string;
+    /**
+     * Previous content hash
+     */
+    previousHash?: string;
+    /**
+     * Current content hash
+     */
+    currentHash?: string;
+    /**
+     * Text diff of changes
+     */
+    diffText?: string;
+    /**
+     * HTML diff of changes
+     */
+    diffHtml?: string;
+    /**
+     * CSS selector for tracked element
+     */
+    selector?: string;
+    /**
+     * URL of crawled page
+     */
+    pageUrl?: string;
+    /**
+     * HTTP status code of crawled page
+     */
+    pageStatus?: number;
+    /**
+     * Title of crawled page
+     */
+    pageTitle?: string;
+    /**
+     * Crawl depth of the page
+     */
+    pageDepth?: number;
+    /**
+     * Whether this page is a duplicate
+     */
+    isDuplicate?: boolean;
+    /**
+     * URL of original page if this is a duplicate
+     */
+    duplicateOf?: string;
+    /**
+     * Sequence number in crawl order
+     */
+    crawlSeqNum?: number;
+    /**
+     * Current retry attempt number
+     */
+    attemptNumber?: number;
+    /**
+     * Maximum number of retry attempts
+     */
+    maxAttempts?: number;
+    /**
+     * Error that triggered the retry
+     */
+    retryError?: string;
+    /**
+     * Type of fetcher being used
+     */
+    fetcherType?: string;
+    /**
+     * Export format (json, csv, etc.)
+     */
+    exportFormat?: string;
+    /**
+     * Path to exported file
+     */
+    exportPath?: string;
+    /**
+     * Number of records exported
+     */
+    recordCount?: number;
+    /**
+     * Size of exported file in bytes
+     */
+    exportSize?: number;
 };
 
 export type ScrapeRequest = {
@@ -1630,6 +1714,71 @@ export type TransformValidateResponse = {
      * Human-readable validation message
      */
     message?: string;
+};
+
+/**
+ * A webhook delivery record tracking delivery attempts
+ */
+export type WebhookDeliveryRecord = {
+    /**
+     * Unique delivery record identifier
+     */
+    id?: string;
+    /**
+     * ID of the event being delivered
+     */
+    eventId?: string;
+    /**
+     * Type of event (job.created, page.crawled, etc.)
+     */
+    eventType?: string;
+    /**
+     * ID of the job related to this event
+     */
+    jobId?: string;
+    /**
+     * Webhook URL that was called
+     */
+    url?: string;
+    /**
+     * Current delivery status
+     */
+    status?: 'pending' | 'delivered' | 'failed';
+    /**
+     * Number of delivery attempts made
+     */
+    attempts?: number;
+    /**
+     * Last error message if delivery failed
+     */
+    lastError?: string;
+    /**
+     * When the delivery record was created
+     */
+    createdAt?: string;
+    /**
+     * When the delivery record was last updated
+     */
+    updatedAt?: string;
+    /**
+     * When the delivery was successful (if applicable)
+     */
+    deliveredAt?: string;
+    /**
+     * HTTP response code from the last attempt
+     */
+    responseCode?: number;
+};
+
+/**
+ * Response containing a list of webhook delivery records
+ */
+export type WebhookDeliveryListResponse = {
+    deliveries?: Array<WebhookDeliveryRecord>;
+    /**
+     * Total number of delivery records
+     */
+    total?: number;
 };
 
 export type GetHealthzData = {
@@ -3228,3 +3377,79 @@ export type SubmitChainResponses = {
 };
 
 export type SubmitChainResponse = SubmitChainResponses[keyof SubmitChainResponses];
+
+export type GetV1WebhooksDeliveriesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter deliveries by job ID
+         */
+        job_id?: string;
+        /**
+         * Maximum number of records to return
+         */
+        limit?: number;
+        /**
+         * Number of records to skip
+         */
+        offset?: number;
+    };
+    url: '/v1/webhooks/deliveries';
+};
+
+export type GetV1WebhooksDeliveriesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1WebhooksDeliveriesError = GetV1WebhooksDeliveriesErrors[keyof GetV1WebhooksDeliveriesErrors];
+
+export type GetV1WebhooksDeliveriesResponses = {
+    /**
+     * List of webhook delivery records
+     */
+    200: WebhookDeliveryListResponse;
+};
+
+export type GetV1WebhooksDeliveriesResponse = GetV1WebhooksDeliveriesResponses[keyof GetV1WebhooksDeliveriesResponses];
+
+export type GetV1WebhooksDeliveriesByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Delivery record ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/webhooks/deliveries/{id}';
+};
+
+export type GetV1WebhooksDeliveriesByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1WebhooksDeliveriesByIdError = GetV1WebhooksDeliveriesByIdErrors[keyof GetV1WebhooksDeliveriesByIdErrors];
+
+export type GetV1WebhooksDeliveriesByIdResponses = {
+    /**
+     * Webhook delivery record
+     */
+    200: WebhookDeliveryRecord;
+};
+
+export type GetV1WebhooksDeliveriesByIdResponse = GetV1WebhooksDeliveriesByIdResponses[keyof GetV1WebhooksDeliveriesByIdResponses];
