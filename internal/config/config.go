@@ -90,6 +90,9 @@ type Config struct {
 
 	// API Authentication
 	APIAuthEnabled bool // API_AUTH_ENABLED env var
+
+	// Batch configuration
+	MaxBatchSize int // MAX_BATCH_SIZE env var
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -146,6 +149,9 @@ func Load() (Config, error) {
 
 		// API Authentication
 		APIAuthEnabled: getenvBool("API_AUTH_ENABLED", false),
+
+		// Batch configuration
+		MaxBatchSize: getenvInt("MAX_BATCH_SIZE", 100),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {

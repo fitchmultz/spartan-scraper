@@ -869,6 +869,269 @@ export type InterceptedResponse = {
     timestamp?: string;
 };
 
+/**
+ * A single job within a batch request
+ */
+export type BatchJobRequest = {
+    /**
+     * URL to scrape/crawl/research
+     */
+    url: string;
+    /**
+     * HTTP method for the request
+     */
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+    /**
+     * Request body for POST/PUT/PATCH requests
+     */
+    body?: string;
+    /**
+     * Content-Type header for the request body
+     */
+    contentType?: string;
+    /**
+     * Additional headers to include in the request
+     */
+    headers?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * Request to create multiple scrape jobs
+ */
+export type BatchScrapeRequest = {
+    /**
+     * List of jobs to create (1-100)
+     */
+    jobs: Array<BatchJobRequest>;
+    /**
+     * Output format for results
+     */
+    outputFormat?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
+    /**
+     * Template name for extraction (e.g., "article", "product")
+     */
+    extractionName?: string;
+    /**
+     * Extraction mode
+     */
+    extractionMode?: string;
+    /**
+     * Use headless browser
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp
+     */
+    playwright?: boolean;
+    /**
+     * Request timeout in seconds
+     */
+    timeoutSeconds?: number;
+    /**
+     * Named auth profile to use
+     */
+    authProfile?: string;
+    auth?: AuthOptions;
+    extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
+    /**
+     * Enable incremental scraping
+     */
+    incremental?: boolean;
+    webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
+};
+
+/**
+ * Request to create multiple crawl jobs
+ */
+export type BatchCrawlRequest = {
+    /**
+     * List of jobs to create (1-100)
+     */
+    jobs: Array<BatchJobRequest>;
+    /**
+     * Maximum crawl depth
+     */
+    maxDepth?: number;
+    /**
+     * Maximum pages to crawl per job
+     */
+    maxPages?: number;
+    /**
+     * Use headless browser
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp
+     */
+    playwright?: boolean;
+    /**
+     * Request timeout in seconds
+     */
+    timeoutSeconds?: number;
+    /**
+     * Named auth profile to use
+     */
+    authProfile?: string;
+    auth?: AuthOptions;
+    extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
+    /**
+     * Enable incremental crawling
+     */
+    incremental?: boolean;
+    /**
+     * Optional sitemap URL for seed URLs
+     */
+    sitemapURL?: string;
+    /**
+     * Only crawl sitemap URLs
+     */
+    sitemapOnly?: boolean;
+    webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
+};
+
+/**
+ * Request to create multiple research jobs
+ */
+export type BatchResearchRequest = {
+    /**
+     * List of jobs to create (1-100)
+     */
+    jobs: Array<BatchJobRequest>;
+    /**
+     * Research query string
+     */
+    query: string;
+    /**
+     * Maximum research depth
+     */
+    maxDepth?: number;
+    /**
+     * Maximum pages to research per job
+     */
+    maxPages?: number;
+    /**
+     * Use headless browser
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp
+     */
+    playwright?: boolean;
+    /**
+     * Request timeout in seconds
+     */
+    timeoutSeconds?: number;
+    /**
+     * Named auth profile to use
+     */
+    authProfile?: string;
+    auth?: AuthOptions;
+    extract?: ExtractOptions;
+    pipeline?: PipelineOptions;
+    webhook?: WebhookConfig;
+    screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
+};
+
+/**
+ * Response after creating a batch
+ */
+export type BatchResponse = {
+    /**
+     * Unique batch identifier
+     */
+    id: string;
+    /**
+     * Type of jobs in the batch
+     */
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Current batch status
+     */
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial' | 'canceled';
+    /**
+     * Number of jobs in the batch
+     */
+    jobCount: number;
+    /**
+     * Jobs created in this batch
+     */
+    jobs: Array<Job>;
+    /**
+     * When the batch was created
+     */
+    createdAt: string;
+};
+
+/**
+ * Aggregated job statistics for a batch
+ */
+export type BatchJobStats = {
+    /**
+     * Number of queued jobs
+     */
+    queued: number;
+    /**
+     * Number of running jobs
+     */
+    running: number;
+    /**
+     * Number of succeeded jobs
+     */
+    succeeded: number;
+    /**
+     * Number of failed jobs
+     */
+    failed: number;
+    /**
+     * Number of canceled jobs
+     */
+    canceled: number;
+};
+
+/**
+ * Detailed batch status with statistics
+ */
+export type BatchStatusResponse = {
+    /**
+     * Unique batch identifier
+     */
+    id: string;
+    /**
+     * Type of jobs in the batch
+     */
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Current batch status
+     */
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial' | 'canceled';
+    /**
+     * Number of jobs in the batch
+     */
+    jobCount: number;
+    stats: BatchJobStats;
+    /**
+     * Individual jobs (included when include_jobs=true)
+     */
+    jobs?: Array<Job>;
+    /**
+     * When the batch was created
+     */
+    createdAt: string;
+    /**
+     * When the batch was last updated
+     */
+    updatedAt: string;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -1508,6 +1771,214 @@ export type GetV1JobsByIdResultsResponses = {
 };
 
 export type GetV1JobsByIdResultsResponse = GetV1JobsByIdResultsResponses[keyof GetV1JobsByIdResultsResponses];
+
+export type PostV1JobsBatchScrapeData = {
+    body: BatchScrapeRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/jobs/batch/scrape';
+};
+
+export type PostV1JobsBatchScrapeErrors = {
+    /**
+     * Bad Request (invalid batch size or URLs)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1JobsBatchScrapeError = PostV1JobsBatchScrapeErrors[keyof PostV1JobsBatchScrapeErrors];
+
+export type PostV1JobsBatchScrapeResponses = {
+    /**
+     * Batch created successfully
+     */
+    201: BatchResponse;
+};
+
+export type PostV1JobsBatchScrapeResponse = PostV1JobsBatchScrapeResponses[keyof PostV1JobsBatchScrapeResponses];
+
+export type PostV1JobsBatchCrawlData = {
+    body: BatchCrawlRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/jobs/batch/crawl';
+};
+
+export type PostV1JobsBatchCrawlErrors = {
+    /**
+     * Bad Request (invalid batch size or URLs)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1JobsBatchCrawlError = PostV1JobsBatchCrawlErrors[keyof PostV1JobsBatchCrawlErrors];
+
+export type PostV1JobsBatchCrawlResponses = {
+    /**
+     * Batch created successfully
+     */
+    201: BatchResponse;
+};
+
+export type PostV1JobsBatchCrawlResponse = PostV1JobsBatchCrawlResponses[keyof PostV1JobsBatchCrawlResponses];
+
+export type PostV1JobsBatchResearchData = {
+    body: BatchResearchRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/jobs/batch/research';
+};
+
+export type PostV1JobsBatchResearchErrors = {
+    /**
+     * Bad Request (invalid batch size or URLs)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1JobsBatchResearchError = PostV1JobsBatchResearchErrors[keyof PostV1JobsBatchResearchErrors];
+
+export type PostV1JobsBatchResearchResponses = {
+    /**
+     * Batch created successfully
+     */
+    201: BatchResponse;
+};
+
+export type PostV1JobsBatchResearchResponse = PostV1JobsBatchResearchResponses[keyof PostV1JobsBatchResearchResponses];
+
+export type DeleteV1JobsBatchByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Batch ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/jobs/batch/{id}';
+};
+
+export type DeleteV1JobsBatchByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Batch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1JobsBatchByIdError = DeleteV1JobsBatchByIdErrors[keyof DeleteV1JobsBatchByIdErrors];
+
+export type DeleteV1JobsBatchByIdResponses = {
+    /**
+     * Batch canceled successfully
+     */
+    204: void;
+};
+
+export type DeleteV1JobsBatchByIdResponse = DeleteV1JobsBatchByIdResponses[keyof DeleteV1JobsBatchByIdResponses];
+
+export type GetV1JobsBatchByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Batch ID
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Include individual job details in the response
+         */
+        include_jobs?: boolean;
+        /**
+         * Maximum number of jobs to return (when include_jobs=true)
+         */
+        limit?: number;
+        /**
+         * Number of jobs to skip (when include_jobs=true)
+         */
+        offset?: number;
+    };
+    url: '/v1/jobs/batch/{id}';
+};
+
+export type GetV1JobsBatchByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Batch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1JobsBatchByIdError = GetV1JobsBatchByIdErrors[keyof GetV1JobsBatchByIdErrors];
+
+export type GetV1JobsBatchByIdResponses = {
+    /**
+     * Batch status retrieved successfully
+     */
+    200: BatchStatusResponse;
+};
+
+export type GetV1JobsBatchByIdResponse = GetV1JobsBatchByIdResponses[keyof GetV1JobsBatchByIdResponses];
 
 export type GetV1SchedulesData = {
     body?: never;

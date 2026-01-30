@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0195",
-      "status": "todo",
-      "title": "Add batch job submission API",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "batch",
-        "performance",
-        "jobs"
-      ],
-      "scope": [
-        "internal/api/jobs.go",
-        "internal/jobs/manager.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "API only supports single job creation per request",
-        "No batch endpoint for submitting multiple URLs",
-        "Inefficient for users who need to scrape many URLs at once"
-      ],
-      "plan": [
-        "Add POST /jobs/batch endpoint",
-        "Create BatchJobRequest with []JobSpec",
-        "Implement parallel job creation in manager",
-        "Return batch ID and individual job IDs",
-        "Add batch status endpoint GET /jobs/batch/{id}",
-        "Support batch cancellation",
-        "Update OpenAPI spec with batch endpoints",
-        "Add batch submission UI to web",
-        "Write tests for batch operations"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0196",
       "status": "todo",
       "title": "Implement job dependencies and chaining",

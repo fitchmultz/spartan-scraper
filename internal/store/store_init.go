@@ -205,6 +205,41 @@ func (s *Store) init() error {
 		}
 	}
 
+	// Initialize batch tables
+	if err := s.initBatchTables(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initBatchTables creates the batch-related tables if they don't exist.
+// This is called during store initialization.
+func (s *Store) initBatchTables() error {
+	_, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS batches (
+			id TEXT PRIMARY KEY,
+			kind TEXT NOT NULL,
+			status TEXT NOT NULL,
+			job_count INTEGER NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_batches_status ON batches(status);
+		CREATE INDEX IF NOT EXISTS idx_batches_created ON batches(created_at DESC);
+
+		CREATE TABLE IF NOT EXISTS batch_jobs (
+			batch_id TEXT NOT NULL,
+			job_id TEXT NOT NULL PRIMARY KEY,
+			idx INTEGER NOT NULL,
+			FOREIGN KEY (batch_id) REFERENCES batches(id) ON DELETE CASCADE,
+			FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+		);
+		CREATE INDEX IF NOT EXISTS idx_batch_jobs_batch_id ON batch_jobs(batch_id);
+	`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to create batch tables", err)
+	}
 	return nil
 }
 

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -201,6 +201,73 @@ export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Opt
 export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, GetV1JobsByIdResultsErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/jobs/{id}/results',
+    ...options
+});
+
+/**
+ * Create a batch of scrape jobs
+ *
+ * Submit multiple URLs to be scraped in a single batch operation
+ */
+export const postV1JobsBatchScrape = <ThrowOnError extends boolean = false>(options: Options<PostV1JobsBatchScrapeData, ThrowOnError>) => (options.client ?? client).post<PostV1JobsBatchScrapeResponses, PostV1JobsBatchScrapeErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/batch/scrape',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Create a batch of crawl jobs
+ *
+ * Submit multiple URLs to be crawled in a single batch operation
+ */
+export const postV1JobsBatchCrawl = <ThrowOnError extends boolean = false>(options: Options<PostV1JobsBatchCrawlData, ThrowOnError>) => (options.client ?? client).post<PostV1JobsBatchCrawlResponses, PostV1JobsBatchCrawlErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/batch/crawl',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Create a batch of research jobs
+ *
+ * Submit multiple URLs for research queries in a single batch operation
+ */
+export const postV1JobsBatchResearch = <ThrowOnError extends boolean = false>(options: Options<PostV1JobsBatchResearchData, ThrowOnError>) => (options.client ?? client).post<PostV1JobsBatchResearchResponses, PostV1JobsBatchResearchErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/batch/research',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Cancel a batch
+ *
+ * Cancel all non-terminal jobs in a batch
+ */
+export const deleteV1JobsBatchById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsBatchByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsBatchByIdResponses, DeleteV1JobsBatchByIdErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/batch/{id}',
+    ...options
+});
+
+/**
+ * Get batch status
+ *
+ * Retrieve the status of a batch including aggregated job statistics
+ */
+export const getV1JobsBatchById = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsBatchByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsBatchByIdResponses, GetV1JobsBatchByIdErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/batch/{id}',
     ...options
 });
 

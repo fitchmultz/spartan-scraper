@@ -718,6 +718,229 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/batch/scrape:
+    post:
+      summary: Create a batch of scrape jobs
+      description: Submit multiple URLs to be scraped in a single batch operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchScrapeRequest'
+      responses:
+        '201':
+          description: Batch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          description: Bad Request (invalid batch size or URLs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/batch/crawl:
+    post:
+      summary: Create a batch of crawl jobs
+      description: Submit multiple URLs to be crawled in a single batch operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCrawlRequest'
+      responses:
+        '201':
+          description: Batch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          description: Bad Request (invalid batch size or URLs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/batch/research:
+    post:
+      summary: Create a batch of research jobs
+      description: Submit multiple URLs for research queries in a single batch operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchResearchRequest'
+      responses:
+        '201':
+          description: Batch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '400':
+          description: Bad Request (invalid batch size or URLs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/batch/{id}:
+    get:
+      summary: Get batch status
+      description: Retrieve the status of a batch including aggregated job statistics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Batch ID
+        - in: query
+          name: include_jobs
+          schema:
+            type: boolean
+            default: false
+          description: Include individual job details in the response
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of jobs to return (when include_jobs=true)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of jobs to skip (when include_jobs=true)
+      responses:
+        '200':
+          description: Batch status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchStatusResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Cancel a batch
+      description: Cancel all non-terminal jobs in a batch
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Batch ID
+      responses:
+        '204':
+          description: Batch canceled successfully
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/schedules:
     get:
       summary: List schedules
@@ -2059,3 +2282,290 @@ components:
           type: string
           format: date-time
           description: When response was received
+    BatchJobRequest:
+      type: object
+      description: A single job within a batch request
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to scrape/crawl/research
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+          default: GET
+          description: HTTP method for the request
+        body:
+          type: string
+          description: Request body for POST/PUT/PATCH requests
+        contentType:
+          type: string
+          description: Content-Type header for the request body
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional headers to include in the request
+    BatchScrapeRequest:
+      type: object
+      description: Request to create multiple scrape jobs
+      required: [jobs]
+      properties:
+        jobs:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/BatchJobRequest'
+          description: List of jobs to create (1-100)
+        outputFormat:
+          type: string
+          enum: [jsonl, json, md, csv, xlsx, parquet, har]
+          default: jsonl
+          description: Output format for results
+        extractionName:
+          type: string
+          description: Template name for extraction (e.g., "article", "product")
+        extractionMode:
+          type: string
+          description: Extraction mode
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser
+        playwright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of Chromedp
+        timeoutSeconds:
+          type: integer
+          default: 30
+          minimum: 5
+          maximum: 300
+          description: Request timeout in seconds
+        authProfile:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Named auth profile to use
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
+        incremental:
+          type: boolean
+          default: false
+          description: Enable incremental scraping
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
+    BatchCrawlRequest:
+      type: object
+      description: Request to create multiple crawl jobs
+      required: [jobs]
+      properties:
+        jobs:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/BatchJobRequest'
+          description: List of jobs to create (1-100)
+        maxDepth:
+          type: integer
+          default: 2
+          minimum: 1
+          maximum: 10
+          description: Maximum crawl depth
+        maxPages:
+          type: integer
+          default: 200
+          minimum: 1
+          maximum: 10000
+          description: Maximum pages to crawl per job
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser
+        playwright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of Chromedp
+        timeoutSeconds:
+          type: integer
+          default: 30
+          minimum: 5
+          maximum: 300
+          description: Request timeout in seconds
+        authProfile:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Named auth profile to use
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
+        incremental:
+          type: boolean
+          default: false
+          description: Enable incremental crawling
+        sitemapURL:
+          type: string
+          format: uri
+          description: Optional sitemap URL for seed URLs
+        sitemapOnly:
+          type: boolean
+          default: false
+          description: Only crawl sitemap URLs
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
+    BatchResearchRequest:
+      type: object
+      description: Request to create multiple research jobs
+      required: [jobs, query]
+      properties:
+        jobs:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/BatchJobRequest'
+          description: List of jobs to create (1-100)
+        query:
+          type: string
+          description: Research query string
+        maxDepth:
+          type: integer
+          default: 2
+          minimum: 1
+          maximum: 10
+          description: Maximum research depth
+        maxPages:
+          type: integer
+          default: 200
+          minimum: 1
+          maximum: 10000
+          description: Maximum pages to research per job
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser
+        playwright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of Chromedp
+        timeoutSeconds:
+          type: integer
+          default: 30
+          minimum: 5
+          maximum: 300
+          description: Request timeout in seconds
+        authProfile:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Named auth profile to use
+        auth:
+          $ref: '#/components/schemas/AuthOptions'
+        extract:
+          $ref: '#/components/schemas/ExtractOptions'
+        pipeline:
+          $ref: '#/components/schemas/PipelineOptions'
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
+    BatchResponse:
+      type: object
+      description: Response after creating a batch
+      required: [id, kind, status, jobCount, jobs, createdAt]
+      properties:
+        id:
+          type: string
+          description: Unique batch identifier
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+          description: Type of jobs in the batch
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, partial, canceled]
+          description: Current batch status
+        jobCount:
+          type: integer
+          description: Number of jobs in the batch
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+          description: Jobs created in this batch
+        createdAt:
+          type: string
+          format: date-time
+          description: When the batch was created
+    BatchJobStats:
+      type: object
+      description: Aggregated job statistics for a batch
+      required: [queued, running, succeeded, failed, canceled]
+      properties:
+        queued:
+          type: integer
+          description: Number of queued jobs
+        running:
+          type: integer
+          description: Number of running jobs
+        succeeded:
+          type: integer
+          description: Number of succeeded jobs
+        failed:
+          type: integer
+          description: Number of failed jobs
+        canceled:
+          type: integer
+          description: Number of canceled jobs
+    BatchStatusResponse:
+      type: object
+      description: Detailed batch status with statistics
+      required: [id, kind, status, jobCount, stats, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: Unique batch identifier
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+          description: Type of jobs in the batch
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, partial, canceled]
+          description: Current batch status
+        jobCount:
+          type: integer
+          description: Number of jobs in the batch
+        stats:
+          $ref: '#/components/schemas/BatchJobStats'
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+          description: Individual jobs (included when include_jobs=true)
+        createdAt:
+          type: string
+          format: date-time
+          description: When the batch was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the batch was last updated
