@@ -37,6 +37,7 @@ var sensitiveParamKeysExact = []string{
 	"secret",
 	"credential",
 	"authorization",
+	"proxy",
 }
 
 // sensitiveParamKeysSuffix contains key suffixes that indicate sensitive data.

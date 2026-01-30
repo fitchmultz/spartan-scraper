@@ -5,16 +5,19 @@ package fetch
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"golang.org/x/net/proxy"
 )
 
 // HTTPFetcher implements content fetching using the standard library http.Client.
@@ -56,9 +59,45 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("failed to create cookie jar: %w", err)
 	}
 
+	// Configure transport with proxy support
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment, // Default: use env vars
+	}
+
+	// If proxy explicitly configured, override
+	if req.Auth.Proxy != nil && req.Auth.Proxy.URL != "" {
+		proxyURL, err := url.Parse(req.Auth.Proxy.URL)
+		if err != nil {
+			return Result{}, fmt.Errorf("invalid proxy URL: %w", err)
+		}
+
+		// Handle SOCKS5 proxies
+		if strings.HasPrefix(strings.ToLower(req.Auth.Proxy.URL), "socks5://") {
+			dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+			if err != nil {
+				return Result{}, fmt.Errorf("failed to create SOCKS5 dialer: %w", err)
+			}
+			transport.DialContext = dialer.(proxy.ContextDialer).DialContext
+		} else {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+
+		// Set proxy authentication if provided
+		if req.Auth.Proxy.Username != "" {
+			transport.ProxyConnectHeader = http.Header{
+				"Proxy-Authorization": []string{
+					"Basic " + base64.StdEncoding.EncodeToString(
+						[]byte(req.Auth.Proxy.Username+":"+req.Auth.Proxy.Password),
+					),
+				},
+			}
+		}
+	}
+
 	client := &http.Client{
-		Timeout: req.Timeout,
-		Jar:     jar,
+		Timeout:   req.Timeout,
+		Jar:       jar,
+		Transport: transport,
 	}
 
 	for attempt := 0; attempt <= retries; attempt++ {

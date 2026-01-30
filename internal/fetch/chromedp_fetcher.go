@@ -101,6 +101,23 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 	if req.UserAgent != "" {
 		allocatorOpts = append(allocatorOpts, chromedp.UserAgent(req.UserAgent))
 	}
+
+	// Add proxy configuration if provided
+	if req.Auth.Proxy != nil && req.Auth.Proxy.URL != "" {
+		// For authenticated proxies, embed credentials in the URL
+		proxyURL := req.Auth.Proxy.URL
+		if req.Auth.Proxy.Username != "" {
+			parsedURL, err := url.Parse(req.Auth.Proxy.URL)
+			if err == nil {
+				// Reconstruct URL with credentials
+				userInfo := url.UserPassword(req.Auth.Proxy.Username, req.Auth.Proxy.Password)
+				parsedURL.User = userInfo
+				proxyURL = parsedURL.String()
+			}
+		}
+		allocatorOpts = append(allocatorOpts, chromedp.ProxyServer(proxyURL))
+	}
+
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(parentCtx, allocatorOpts...)
 	defer cancelAlloc()
 

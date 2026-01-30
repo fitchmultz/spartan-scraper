@@ -166,7 +166,14 @@ func resolveAuthForRequest(cfg config.Config, url string, profile string, overri
 	if err != nil {
 		return fetch.AuthOptions{}, err
 	}
-	return auth.ToFetchOptions(resolved), nil
+	authOptions := auth.ToFetchOptions(resolved)
+
+	// Pass through proxy configuration from API request
+	if override != nil && override.Proxy != nil {
+		authOptions.Proxy = override.Proxy
+	}
+
+	return authOptions, nil
 }
 
 func toHeaderKVs(headers map[string]string) []auth.HeaderKV {

@@ -105,6 +105,13 @@ type JSHeaviness struct {
 	FrameworkSignals int `json:"frameworkSignals"`
 }
 
+// ProxyConfig defines proxy settings for fetch operations.
+type ProxyConfig struct {
+	URL      string `json:"url,omitempty"`      // Proxy URL (http://, https://, socks5://)
+	Username string `json:"username,omitempty"` // Username for proxy authentication
+	Password string `json:"password,omitempty"` // Password for proxy authentication
+}
+
 type AuthOptions struct {
 	Basic               string            `json:"basic,omitempty"`
 	Headers             map[string]string `json:"headers,omitempty"`
@@ -116,6 +123,7 @@ type AuthOptions struct {
 	LoginSubmitSelector string            `json:"loginSubmitSelector,omitempty"`
 	LoginUser           string            `json:"loginUser,omitempty"`
 	LoginPass           string            `json:"loginPass,omitempty"`
+	Proxy               *ProxyConfig      `json:"proxy,omitempty"`
 }
 
 type Request struct {

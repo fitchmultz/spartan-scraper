@@ -1085,6 +1085,20 @@ components:
       properties:
         status:
           type: string
+    ProxyConfig:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Proxy URL (http://, https://, socks5://)
+        username:
+          type: string
+          description: Username for proxy authentication
+        password:
+          type: string
+          description: Password for proxy authentication
+          format: password
     AuthOptions:
       type: object
       properties:
@@ -1117,6 +1131,8 @@ components:
           type: string
         loginPass:
           type: string
+        proxy:
+          $ref: '#/components/schemas/ProxyConfig'
     ScrapeRequest:
       type: object
       required: [url]
@@ -1147,6 +1163,8 @@ components:
         incremental:
           type: boolean
           default: false
+        proxy:
+          $ref: '#/components/schemas/ProxyConfig'
     CrawlRequest:
       type: object
       required: [url]
@@ -1187,6 +1205,8 @@ components:
         incremental:
           type: boolean
           default: false
+        proxy:
+          $ref: '#/components/schemas/ProxyConfig'
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1228,6 +1248,8 @@ components:
           default: 30
           minimum: 5
           maximum: 300
+        proxy:
+          $ref: '#/components/schemas/ProxyConfig'
     Job:
       type: object
       required:
@@ -1373,6 +1395,8 @@ components:
         incremental:
           type: boolean
           default: false
+        proxy:
+          $ref: '#/components/schemas/ProxyConfig'
     ScheduleListResponse:
       type: object
       properties:

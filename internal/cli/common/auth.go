@@ -138,5 +138,37 @@ func ResolveAuthFromCommonFlags(cfg config.Config, url string, cf *CommonFlags) 
 			Password:       *cf.LoginPass,
 		}),
 	}
-	return ResolveAuthForRequest(cfg, url, *cf.ProfileName, authOverrides)
+
+	// Resolve auth first
+	authOptions, err := ResolveAuthForRequest(cfg, url, *cf.ProfileName, authOverrides)
+	if err != nil {
+		return fetch.AuthOptions{}, err
+	}
+
+	// Add proxy configuration from CLI flags or environment variables
+	// CLI flags take precedence over env vars
+	proxyURL := *cf.ProxyURL
+	if proxyURL == "" {
+		proxyURL = cfg.ProxyURL
+	}
+
+	if proxyURL != "" {
+		proxyUsername := *cf.ProxyUsername
+		if proxyUsername == "" {
+			proxyUsername = cfg.ProxyUsername
+		}
+
+		proxyPassword := *cf.ProxyPassword
+		if proxyPassword == "" {
+			proxyPassword = cfg.ProxyPassword
+		}
+
+		authOptions.Proxy = &fetch.ProxyConfig{
+			URL:      proxyURL,
+			Username: proxyUsername,
+			Password: proxyPassword,
+		}
+	}
+
+	return authOptions, nil
 }

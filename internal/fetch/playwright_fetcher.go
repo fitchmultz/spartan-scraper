@@ -222,6 +222,18 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		}
 	}
 
+	// Add proxy configuration if provided
+	if req.Auth.Proxy != nil && req.Auth.Proxy.URL != "" {
+		proxyOpts := playwright.Proxy{
+			Server: req.Auth.Proxy.URL,
+		}
+		if req.Auth.Proxy.Username != "" {
+			proxyOpts.Username = &req.Auth.Proxy.Username
+			proxyOpts.Password = &req.Auth.Proxy.Password
+		}
+		ctxOptions.Proxy = &proxyOpts
+	}
+
 	slog.Debug("creating browser context", "url", apperrors.SanitizeURL(req.URL))
 	browserCtx, err := browser.NewContext(ctxOptions)
 	if err != nil {

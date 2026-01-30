@@ -130,6 +130,21 @@ export type StatusResponse = {
     status?: string;
 };
 
+export type ProxyConfig = {
+    /**
+     * Proxy URL (http://, https://, socks5://)
+     */
+    url?: string;
+    /**
+     * Username for proxy authentication
+     */
+    username?: string;
+    /**
+     * Password for proxy authentication
+     */
+    password?: string;
+};
+
 export type AuthOptions = {
     /**
      * Basic auth in user:pass form
@@ -154,6 +169,7 @@ export type AuthOptions = {
     loginSubmitSelector?: string;
     loginUser?: string;
     loginPass?: string;
+    proxy?: ProxyConfig;
 };
 
 export type ScrapeRequest = {
@@ -166,6 +182,7 @@ export type ScrapeRequest = {
     pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     incremental?: boolean;
+    proxy?: ProxyConfig;
 };
 
 export type CrawlRequest = {
@@ -180,6 +197,7 @@ export type CrawlRequest = {
     pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     incremental?: boolean;
+    proxy?: ProxyConfig;
 };
 
 export type ResearchRequest = {
@@ -194,6 +212,7 @@ export type ResearchRequest = {
     extract?: ExtractOptions;
     pipeline?: PipelineOptions;
     timeoutSeconds?: number;
+    proxy?: ProxyConfig;
 };
 
 export type Job = {
@@ -282,6 +301,7 @@ export type ScheduleRequest = {
     extract?: ExtractOptions;
     pipeline?: PipelineOptions;
     incremental?: boolean;
+    proxy?: ProxyConfig;
 };
 
 export type ScheduleListResponse = {

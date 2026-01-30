@@ -93,6 +93,11 @@ type CommonFlags struct {
 
 	// Incremental flag
 	Incremental *bool
+
+	// Proxy flags
+	ProxyURL      *string
+	ProxyUsername *string
+	ProxyPassword *string
 }
 
 // BrowserFlags are used by schedule add.
@@ -173,6 +178,11 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		ProfileName: fs.String("auth-profile", "", "Auth profile name"),
 
 		Incremental: fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)"),
+
+		// Proxy flags
+		ProxyURL:      fs.String("proxy", "", "Proxy URL (http://, https://, socks5://)"),
+		ProxyUsername: fs.String("proxy-username", "", "Proxy username"),
+		ProxyPassword: fs.String("proxy-password", "", "Proxy password"),
 	}
 
 	fs.Var(&cf.PreProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")

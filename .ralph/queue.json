@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0181",
-      "status": "todo",
-      "title": "Implement HTTP/HTTPS/SOCKS proxy support for fetch operations",
-      "priority": "high",
-      "tags": [
-        "network",
-        "fetch",
-        "proxy",
-        "infrastructure"
-      ],
-      "scope": [
-        "internal/fetch/types.go",
-        "internal/fetch/http_fetcher.go",
-        "internal/fetch/chromedp_fetcher.go",
-        "internal/fetch/playwright_fetcher.go",
-        "internal/config/config.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "Search for 'proxy' in codebase only finds vite dev server proxy config, not fetch proxy support",
-        "No proxy configuration in RenderProfile or Request types",
-        "Competitors like Firecrawl and ScrapeGraph support proxy rotation"
-      ],
-      "plan": [
-        "Add proxy configuration fields to RenderProfile and Request types",
-        "Implement proxy transport for HTTP fetcher using golang.org/x/net/proxy",
-        "Add proxy support to Chromedp fetcher via chromedp.ProxyServer option",
-        "Add proxy support to Playwright fetcher via browser.NewContext with proxy",
-        "Add PROXY_URL, PROXY_USERNAME, PROXY_PASSWORD env vars to config",
-        "Update OpenAPI spec with proxy configuration schema",
-        "Add --proxy flag to CLI scrape/crawl commands",
-        "Write tests for proxy functionality"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0182",
       "status": "todo",
       "title": "Add sitemap.xml parsing for URL discovery",

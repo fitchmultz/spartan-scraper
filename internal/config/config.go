@@ -68,6 +68,11 @@ type Config struct {
 	AuthOverrides      EnvOverrides
 	LogLevel           string
 	LogFormat          string
+
+	// Proxy configuration
+	ProxyURL      string
+	ProxyUsername string
+	ProxyPassword string
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -106,6 +111,11 @@ func Load() (Config, error) {
 		AuthOverrides:      loadAuthOverrides(),
 		LogLevel:           getenv("LOG_LEVEL", "info"),
 		LogFormat:          getenv("LOG_FORMAT", "text"),
+
+		// Proxy configuration
+		ProxyURL:      getenv("PROXY_URL", ""),
+		ProxyUsername: getenv("PROXY_USERNAME", ""),
+		ProxyPassword: getenv("PROXY_PASSWORD", ""),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {
