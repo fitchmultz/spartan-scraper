@@ -1472,3 +1472,241 @@ func TestHostLimiter_GetCircuitBreaker(t *testing.T) {
 		}
 	})
 }
+
+// UpdateRateLimitInfo tests
+
+func TestHostLimiter_UpdateRateLimitInfo(t *testing.T) {
+	t.Run("nil limiter does not panic", func(t *testing.T) {
+		var l *HostLimiter
+		info := RateLimitInfo{Limit: 100, Remaining: 50}
+		l.UpdateRateLimitInfo("example.com", info) // Should not panic
+	})
+
+	t.Run("non-adaptive limiter does nothing", func(t *testing.T) {
+		l := NewHostLimiter(10, 10)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		info := RateLimitInfo{Limit: 100, Remaining: 50}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		// No adaptive state should exist
+		if l.adaptive != nil {
+			t.Error("expected no adaptive config for non-adaptive limiter")
+		}
+	})
+
+	t.Run("server limit adjusts current QPS downward", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Server says limit is 10, we should adjust to 80% of that (8)
+		info := RateLimitInfo{Limit: 10, Remaining: 5}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.currentQPS != 8 {
+			t.Errorf("expected currentQPS 8 (80%% of 10), got %v", hostInfo.currentQPS)
+		}
+	})
+
+	t.Run("server limit higher than current is ignored", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(10, 10, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Server says limit is 100, but we're at 10 - should not jump immediately
+		info := RateLimitInfo{Limit: 100, Remaining: 90}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.currentQPS != 10 {
+			t.Errorf("expected currentQPS to stay at 10, got %v", hostInfo.currentQPS)
+		}
+	})
+
+	t.Run("reset time with low remaining sets cooldown", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		resetTime := time.Now().Add(5 * time.Minute)
+		// Low remaining (5% = 5/100) should trigger cooldown
+		info := RateLimitInfo{Limit: 100, Remaining: 5, Reset: resetTime}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.cooldownUntil.Before(resetTime.Add(-time.Second)) {
+			t.Errorf("expected cooldownUntil to be set to reset time, got %v", hostInfo.cooldownUntil)
+		}
+	})
+
+	t.Run("low remaining enters cooldown until reset", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		resetTime := time.Now().Add(10 * time.Minute)
+		// Only 5% remaining (5 out of 100)
+		info := RateLimitInfo{Limit: 100, Remaining: 5, Reset: resetTime}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.cooldownUntil.Before(resetTime.Add(-time.Second)) {
+			t.Errorf("expected cooldown until reset due to low remaining, got %v", hostInfo.cooldownUntil)
+		}
+	})
+
+	t.Run("high remaining does not enter cooldown", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		resetTime := time.Now().Add(10 * time.Minute)
+		// 50% remaining - should not trigger cooldown
+		info := RateLimitInfo{Limit: 100, Remaining: 50, Reset: resetTime}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		// Cooldown should not be extended by low remaining
+		if !hostInfo.cooldownUntil.IsZero() && hostInfo.cooldownUntil.After(time.Now().Add(time.Second)) {
+			t.Errorf("expected no cooldown for high remaining, got %v", hostInfo.cooldownUntil)
+		}
+	})
+
+	t.Run("respects min QPS floor", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  5,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Server says limit is 1, but min QPS is 5 - should stay at 5
+		info := RateLimitInfo{Limit: 1, Remaining: 0}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.currentQPS != 5 {
+			t.Errorf("expected currentQPS to respect min floor of 5, got %v", hostInfo.currentQPS)
+		}
+	})
+
+	t.Run("respects max QPS ceiling", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  10,
+		}
+		l := NewAdaptiveHostLimiter(5, 5, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Server says limit is 1000, but max QPS is 10 - should not exceed 10
+		// (though we also don't increase significantly from server data alone)
+		info := RateLimitInfo{Limit: 1000, Remaining: 500}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		// Should not exceed max QPS
+		if hostInfo.currentQPS > 10 {
+			t.Errorf("expected currentQPS to respect max ceiling of 10, got %v", hostInfo.currentQPS)
+		}
+	})
+
+	t.Run("unknown host does nothing", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+
+		// Don't create limiter for this host first
+		info := RateLimitInfo{Limit: 10, Remaining: 5}
+		l.UpdateRateLimitInfo("unknown.example.com", info)
+
+		// Should not create an entry
+		if _, ok := l.hostInfo["unknown.example.com"]; ok {
+			t.Error("expected no host info for unknown host")
+		}
+	})
+
+	t.Run("past reset time is ignored", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Reset time in the past
+		resetTime := time.Now().Add(-5 * time.Minute)
+		info := RateLimitInfo{Limit: 100, Remaining: 0, Reset: resetTime}
+		l.UpdateRateLimitInfo("example.com", info)
+
+		hostInfo := l.hostInfo["example.com"]
+		// Should not set cooldown for past reset time
+		if hostInfo.cooldownUntil.After(time.Now()) {
+			t.Error("expected no cooldown for past reset time")
+		}
+	})
+
+	t.Run("concurrent updates are safe", func(t *testing.T) {
+		cfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  100,
+		}
+		l := NewAdaptiveHostLimiter(50, 50, cfg)
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		var wg sync.WaitGroup
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func(remaining int) {
+				defer wg.Done()
+				info := RateLimitInfo{Limit: 100, Remaining: remaining}
+				l.UpdateRateLimitInfo("example.com", info)
+			}(i)
+		}
+		wg.Wait()
+
+		// Should not panic and state should be valid
+		hostInfo := l.hostInfo["example.com"]
+		if hostInfo.currentQPS < cfg.MinQPS || hostInfo.currentQPS > cfg.MaxQPS {
+			t.Errorf("QPS %v out of bounds [%v, %v]", hostInfo.currentQPS, cfg.MinQPS, cfg.MaxQPS)
+		}
+	})
+}

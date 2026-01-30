@@ -1,0 +1,100 @@
+go mod download
+cd web && pnpm install
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 497ms using pnpm v10.28.0
+cd web && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
+[90m@hey-api/openapi-ts v0.90.10[39m
+
+[90m[Job 1] [39m⏳ [36mGenerating from 1 input:[39m
+[90m[Job 1] [39m[36m  [1] [39m../api/openapi.yaml
+[90m[Job 1] [39m[32m✅ Done![39m Your output is in [96m/Users/mitchfultz/Projects/spartan-scraper/web/src/api[39m
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/strip_openapi_todos.mjs --path web/src/api
+gofmt -w ./cmd ./internal
+cd web && pnpm exec biome format . --write
+Formatted 62 files in 31ms. No fixes applied.
+cd web && pnpm exec tsc --noEmit
+go vet ./...
+cd web && pnpm exec biome lint .
+Checked 63 files in 43ms. No fixes applied.
+Found 7 warnings.
+mkdir -p bin
+go build -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=0.1.0 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=618de73 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=2026-01-30T21:44:02Z" -o bin/spartan ./cmd/spartan
+cd web && pnpm run build
+
+> spartan-scraper-web@0.1.0 build /Users/mitchfultz/Projects/spartan-scraper/web
+> tsc -p tsconfig.json && vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 170 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.72 kB │ gzip:   0.40 kB
+dist/assets/index-CVIa0Yhm.css   30.34 kB │ gzip:   5.46 kB
+dist/assets/index-C4nZPUNC.js   500.14 kB │ gzip: 149.15 kB
+✓ built in 857ms
+Installing spartan to /Users/mitchfultz/.local/bin...
+Installed: /Users/mitchfultz/.local/bin/spartan
+CI=1 go test $(go list ./... | grep -v /e2e) -p=1 -timeout 5m
+?   	github.com/fitchmultz/spartan-scraper/cmd/spartan	[no test files]
+ok  	github.com/fitchmultz/spartan-scraper/internal/api	0.366s
+ok  	github.com/fitchmultz/spartan-scraper/internal/apperrors	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/auth	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/buildinfo	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli	0.039s
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/common	0.071s
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/manage	0.065s
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/scrape	0.074s
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/server	0.040s
+ok  	github.com/fitchmultz/spartan-scraper/internal/config	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/crawl	0.084s
+ok  	github.com/fitchmultz/spartan-scraper/internal/diff	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/exporter	4.116s
+ok  	github.com/fitchmultz/spartan-scraper/internal/extract	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/fetch	34.355s
+ok  	github.com/fitchmultz/spartan-scraper/internal/fsutil	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/jobs	1.566s
+ok  	github.com/fitchmultz/spartan-scraper/internal/mcp	3.354s
+ok  	github.com/fitchmultz/spartan-scraper/internal/model	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/pipeline	0.017s
+ok  	github.com/fitchmultz/spartan-scraper/internal/research	0.124s
+ok  	github.com/fitchmultz/spartan-scraper/internal/retention	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/scheduler	1.676s
+ok  	github.com/fitchmultz/spartan-scraper/internal/scrape	0.015s
+ok  	github.com/fitchmultz/spartan-scraper/internal/simhash	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/store	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/ui/tui	0.039s
+ok  	github.com/fitchmultz/spartan-scraper/internal/validate	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/watch	0.228s
+ok  	github.com/fitchmultz/spartan-scraper/internal/webhook	(cached)
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/strip_openapi_todos.test.mjs
+✓ Script removes TODO lines from files
+✓ Script preserves non-TODO lines
+✓ Script handles directory recursively
+✓ Script processes .ts and .mts files only
+✓ Script handles files with no TODOs
+✓ Script displays help on --help flag
+
+Tests: 6 passed, 0 failed
+cd web && CI=1 pnpm run test
+
+> spartan-scraper-web@0.1.0 test /Users/mitchfultz/Projects/spartan-scraper/web
+> vitest
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/mitchfultz/Projects/spartan-scraper/web[39m
+
+ [32m✓[39m src/lib/api-config.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/auth-parsers.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/lib/form-utils.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/job-actions.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/lib/results.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/hooks/useTheme.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[32m91 passed[39m[22m[90m (91)[39m
+[2m   Start at [22m 14:45:24
+[2m   Duration [22m 1.30s[2m (transform 365ms, setup 711ms, import 424ms, tests 38ms, environment 4.96s)[22m
+

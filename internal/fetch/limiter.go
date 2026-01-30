@@ -433,13 +433,74 @@ func (h *HostLimiter) RecordRateLimit(host string, retryAfter time.Duration) {
 
 // adjustQPSLocked updates the rate limiter with a new QPS.
 // Must be called with h.mu held.
-func (h *HostLimiter) adjustQPSLocked(host string, info *hostLimiterInfo, newQPS rate.Limit) {
+func (h *HostLimiter) adjustQPSLocked(_ string, info *hostLimiterInfo, newQPS rate.Limit) {
 	info.currentQPS = newQPS
 	info.lastRateAdjustment = time.Now()
 
 	// Use SetLimitAt to dynamically adjust the rate without resetting the token bucket.
 	// This preserves existing tokens and prevents "free burst" after rate decreases.
 	info.limiter.SetLimitAt(time.Now(), newQPS)
+}
+
+// UpdateRateLimitInfo updates the limiter based on server-provided rate limit headers.
+// This allows the limiter to respect server-provided rate limits instead of
+// relying solely on adaptive AIMD behavior.
+//
+// Behavior:
+//   - If info.Limit > 0, adjusts currentQPS to respect the server's limit
+//   - If info.Remaining is low (< 10%), enters cooldown until reset time
+//   - If info.Reset is in the future and remaining is low, respects that reset time
+func (h *HostLimiter) UpdateRateLimitInfo(host string, info RateLimitInfo) {
+	if h == nil || h.adaptive == nil || !h.adaptive.Enabled {
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	hostInfo, ok := h.hostInfo[host]
+	if !ok {
+		return
+	}
+
+	now := time.Now()
+
+	// If remaining is very low (< 10%), enter cooldown until reset
+	if info.Limit > 0 && info.Remaining >= 0 {
+		usagePercent := float64(info.Limit-info.Remaining) / float64(info.Limit) * 100
+		if usagePercent >= 90 && !info.Reset.IsZero() && info.Reset.After(now) {
+			if info.Reset.After(hostInfo.cooldownUntil) {
+				hostInfo.cooldownUntil = info.Reset
+				slog.Info("Rate limit nearly exhausted, entering cooldown", "host", host, "remaining", info.Remaining, "limit", info.Limit)
+			}
+		}
+	}
+
+	// Adjust QPS based on server-provided limit (with some buffer)
+	// We use 80% of the server's limit to provide a safety margin
+	if info.Limit > 0 {
+		targetQPS := rate.Limit(float64(info.Limit) * 0.8)
+
+		// Clamp target to adaptive bounds
+		if targetQPS < h.adaptive.MinQPS {
+			targetQPS = h.adaptive.MinQPS
+		}
+		if targetQPS > h.adaptive.MaxQPS {
+			targetQPS = h.adaptive.MaxQPS
+		}
+
+		// Only adjust downward aggressively; adjust upward conservatively
+		currentQPS := hostInfo.currentQPS
+		if targetQPS < currentQPS {
+			// Server limit is lower than our current rate - respect it immediately
+			h.adjustQPSLocked(host, hostInfo, targetQPS)
+			slog.Info("Rate limit adjusted to server limit", "host", host, "oldQPS", currentQPS, "newQPS", targetQPS, "serverLimit", info.Limit)
+		} else if targetQPS > currentQPS*1.5 {
+			// Server limit is significantly higher - allow gradual increase
+			// but don't jump immediately (let AIMD handle gradual increase)
+			slog.Debug("Server rate limit higher than current", "host", host, "currentQPS", currentQPS, "serverLimit", info.Limit)
+		}
+	}
 }
 
 // IsAdaptiveEnabled returns true if adaptive rate limiting is enabled.

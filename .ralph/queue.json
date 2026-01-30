@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0210",
-      "status": "todo",
-      "title": "Add RateLimit header and Retry-After compliance",
-      "priority": "medium",
-      "tags": [
-        "rate-limiting",
-        "http",
-        "compliance"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "internal/crawl/"
-      ],
-      "evidence": [
-        "Adaptive rate limiting exists but doesn't parse RateLimit headers",
-        "No Retry-After header compliance",
-        "Rate limiting is response-time based only"
-      ],
-      "plan": [
-        "Parse RateLimit headers (RFC 6585, RFC 9440)",
-        "Implement Retry-After compliance",
-        "Add 429 Too Many Requests handling",
-        "Support X-RateLimit-* header variants",
-        "Add rate limit metrics and reporting"
-      ],
-      "notes": [],
-      "request": "scan finding: rate limit header gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0211",
       "status": "todo",
       "title": "Expand webhook event types and add granular notifications",

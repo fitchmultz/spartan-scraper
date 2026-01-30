@@ -372,6 +372,9 @@ type Result struct {
 	Engine          RenderEngine       `json:"-"`
 	ScreenshotPath  string             `json:"screenshotPath,omitempty"`  // Path to saved screenshot file
 	InterceptedData []InterceptedEntry `json:"interceptedData,omitempty"` // Captured network activity
+	// RateLimit contains parsed rate limit information from response headers.
+	// Populated when the server returns RateLimit (RFC 9440) or X-RateLimit-* headers.
+	RateLimit *RateLimitInfo `json:"rateLimit,omitempty"`
 }
 
 // ApplyAuthQuery applies authentication query parameters to a URL.

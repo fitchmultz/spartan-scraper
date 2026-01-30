@@ -343,13 +343,24 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 		}
 
-		return Result{
+		result := Result{
 			URL:       req.URL,
 			Status:    resp.StatusCode,
 			HTML:      string(body),
 			FetchedAt: time.Now(),
 			Engine:    RenderEngineHTTP,
-		}, nil
+		}
+
+		// Extract rate limit information from response headers
+		if rlInfo, ok := ExtractRateLimitInfo(resp.Header); ok {
+			result.RateLimit = &rlInfo
+			// Update adaptive rate limiter with server-provided limit if available
+			if req.Limiter != nil && host != "" && req.Limiter.IsAdaptiveEnabled() {
+				req.Limiter.UpdateRateLimitInfo(host, rlInfo)
+			}
+		}
+
+		return result, nil
 	}
 
 	slog.Error("HTTP fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
