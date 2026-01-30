@@ -25,6 +25,7 @@ import {
   buildResearchRequest,
   parseUrlList,
 } from "../lib/form-utils";
+import type { PresetConfig } from "../types/presets";
 
 export interface ResearchFormRef {
   /** Submit the form programmatically */
@@ -33,6 +34,8 @@ export interface ResearchFormRef {
   getQuery: () => string;
   /** Set the query value */
   setQuery: (query: string) => void;
+  /** Get the current configuration as a preset */
+  getConfig: () => PresetConfig;
 }
 
 interface ResearchFormProps {
@@ -203,11 +206,66 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       onSubmit,
     ]);
 
+    // Build config from current form state
+    const getConfig = useCallback(
+      (): PresetConfig => ({
+        query: researchQuery,
+        urls: researchUrls,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        maxDepth,
+        maxPages,
+      }),
+      [
+        researchQuery,
+        researchUrls,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        maxDepth,
+        maxPages,
+      ],
+    );
+
     // Expose imperative handle for external submission
     useImperativeHandle(ref, () => ({
       submit: handleSubmit,
       getQuery: () => researchQuery,
       setQuery: (query: string) => setResearchQuery(query),
+      getConfig,
     }));
 
     return (

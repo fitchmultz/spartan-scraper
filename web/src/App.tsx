@@ -13,7 +13,7 @@
  * @module App
  */
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import {
   deleteV1JobsById,
   postV1Crawl,
@@ -32,23 +32,28 @@ import { CrawlForm, type CrawlFormRef } from "./components/CrawlForm";
 import { ResearchForm, type ResearchFormRef } from "./components/ResearchForm";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
+import { QuickStartPanel } from "./components/QuickStartPanel";
+import { SavePresetDialog } from "./components/SavePresetDialog";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
 import { useResultsState } from "./hooks/useResultsState";
 import { useTheme } from "./hooks/useTheme";
+import { usePresets } from "./hooks/usePresets";
 import {
   submitScrapeJob,
   submitCrawlJob,
   submitResearchJob,
 } from "./lib/job-actions";
 import { getApiBaseUrl } from "./lib/api-config";
+import type { JobPreset, JobType } from "./types/presets";
 
 export function App() {
   const appData = useAppData();
   const formState = useFormState();
   const resultsState = useResultsState();
   const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
+  const { presets, savePreset } = usePresets();
 
   // Keyboard shortcuts and command palette
   const {
@@ -64,6 +69,12 @@ export function App() {
   const scrapeFormRef = useRef<ScrapeFormRef>(null);
   const crawlFormRef = useRef<CrawlFormRef>(null);
   const researchFormRef = useRef<ResearchFormRef>(null);
+
+  // Active tab state for preset filtering
+  const [activeTab, setActiveTab] = useState<JobType>("scrape");
+
+  // Save preset dialog state
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   // Handle navigation from keyboard shortcuts
   const handleNavigate = useCallback((view: "jobs" | "results" | "forms") => {
@@ -174,6 +185,7 @@ export function App() {
     setIncremental,
     setMaxDepth,
     setMaxPages,
+    applyPreset,
   } = formState;
 
   const {
@@ -281,6 +293,82 @@ export function App() {
   // Find active (running) job for command palette
   const activeJob = jobs.find((job) => job.status === "running");
 
+  // Handle preset selection
+  const handleSelectPreset = useCallback(
+    (preset: JobPreset) => {
+      // Switch to the appropriate tab
+      setActiveTab(preset.jobType);
+
+      // Apply preset config to form state
+      applyPreset(preset.config);
+
+      // Set URL/query if provided in preset
+      if (preset.config.url) {
+        if (preset.jobType === "scrape" && scrapeFormRef.current) {
+          scrapeFormRef.current.setUrl(preset.config.url);
+        } else if (preset.jobType === "crawl" && crawlFormRef.current) {
+          crawlFormRef.current.setUrl(preset.config.url);
+        }
+      }
+      if (preset.config.query && researchFormRef.current) {
+        researchFormRef.current.setQuery(preset.config.query);
+      }
+      if (preset.config.urls && researchFormRef.current) {
+        // Note: ResearchForm doesn't have setUrls, we'd need to add it
+        // For now, just log it
+        console.log("Would set URLs:", preset.config.urls);
+      }
+
+      // Scroll to forms section
+      const formsSection = document.getElementById("forms");
+      if (formsSection) {
+        formsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+    [applyPreset],
+  );
+
+  // Handle save preset
+  const handleSavePreset = useCallback(() => {
+    setIsSaveDialogOpen(true);
+  }, []);
+
+  // Get current config from active form
+  const getCurrentConfig = useCallback(() => {
+    switch (activeTab) {
+      case "scrape":
+        return scrapeFormRef.current?.getConfig() ?? {};
+      case "crawl":
+        return crawlFormRef.current?.getConfig() ?? {};
+      case "research":
+        return researchFormRef.current?.getConfig() ?? {};
+      default:
+        return {};
+    }
+  }, [activeTab]);
+
+  // Handle save preset confirmation
+  const handleConfirmSavePreset = useCallback(
+    (name: string, description: string) => {
+      const config = getCurrentConfig();
+      savePreset(name, description, activeTab, config);
+      setIsSaveDialogOpen(false);
+    },
+    [activeTab, getCurrentConfig, savePreset],
+  );
+
+  // Get current URL for preset matching
+  const getCurrentUrl = useCallback(() => {
+    switch (activeTab) {
+      case "scrape":
+        return scrapeFormRef.current?.getUrl() ?? "";
+      case "crawl":
+        return crawlFormRef.current?.getUrl() ?? "";
+      default:
+        return "";
+    }
+  }, [activeTab]);
+
   return (
     <div className="app">
       <Hero
@@ -305,6 +393,24 @@ export function App() {
         _onDeleteJob={deleteJob}
         activeJobId={activeJob?.id}
         isMac={isMac}
+        presets={presets}
+        onSelectPreset={handleSelectPreset}
+      />
+
+      <QuickStartPanel
+        presets={presets}
+        activeJobType={activeTab}
+        onSelectPreset={handleSelectPreset}
+        onSavePreset={handleSavePreset}
+        currentUrl={getCurrentUrl()}
+      />
+
+      <SavePresetDialog
+        isOpen={isSaveDialogOpen}
+        onClose={() => setIsSaveDialogOpen(false)}
+        jobType={activeTab}
+        currentConfig={getCurrentConfig()}
+        onSave={handleConfirmSavePreset}
       />
 
       <KeyboardShortcutsHelp

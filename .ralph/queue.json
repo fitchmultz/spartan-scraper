@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0177",
-      "status": "todo",
-      "title": "Implement job templates and quick-start presets in UI",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "web",
-        "productivity",
-        "awesome"
-      ],
-      "scope": [
-        "web/src/components/QuickStartPanel.tsx (new)",
-        "web/src/components/ScrapeForm.tsx",
-        "web/src/components/CrawlForm.tsx",
-        "web/src/components/ResearchForm.tsx"
-      ],
-      "evidence": [
-        "New users don't know optimal settings for different site types.",
-        "Repetitive form filling for common scenarios (SPA scrape, API documentation crawl).",
-        "No guidance on when to use headless vs HTTP, Playwright vs Chromedp."
-      ],
-      "plan": [
-        "Create preset configurations for common scenarios: Single Page, SPA, Full Site Crawl, API Docs.",
-        "Add QuickStartPanel with visual cards for each preset showing estimated time and requirements.",
-        "Include smart defaults: auto-enable headless for SPAs, suggest Playwright for React apps.",
-        "Add URL-based auto-detection hints (e.g., 'This looks like a Next.js site - enable headless?').",
-        "Allow users to save their own presets to localStorage."
-      ],
-      "notes": [
-        "Presets should include: name, description, icon, pre-filled form values",
-        "Consider popular site patterns: GitHub, Medium, e-commerce, documentation sites"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0178",
       "status": "todo",
       "title": "Add visual results explorer with tree view and diff support",

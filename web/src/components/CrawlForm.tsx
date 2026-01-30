@@ -23,6 +23,7 @@ import {
   buildAuth,
   buildCrawlRequest,
 } from "../lib/form-utils";
+import type { PresetConfig } from "../types/presets";
 
 export interface CrawlFormRef {
   /** Submit the form programmatically */
@@ -31,6 +32,8 @@ export interface CrawlFormRef {
   getUrl: () => string;
   /** Set the URL value */
   setUrl: (url: string) => void;
+  /** Get the current configuration as a preset */
+  getConfig: () => PresetConfig;
 }
 
 interface CrawlFormProps {
@@ -198,11 +201,66 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       onSubmit,
     ]);
 
+    // Build config from current form state
+    const getConfig = useCallback(
+      (): PresetConfig => ({
+        url: crawlUrl,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        incremental,
+        maxDepth,
+        maxPages,
+      }),
+      [
+        crawlUrl,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        incremental,
+        maxDepth,
+        maxPages,
+      ],
+    );
+
     // Expose imperative handle for external submission
     useImperativeHandle(ref, () => ({
       submit: handleSubmit,
       getUrl: () => crawlUrl,
       setUrl: (url: string) => setCrawlUrl(url),
+      getConfig,
     }));
 
     return (

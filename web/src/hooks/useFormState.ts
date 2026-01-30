@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import type { PresetConfig } from "../types/presets";
 
 const DEFAULT_HEADERS = "";
 
@@ -60,6 +61,8 @@ export interface FormActions {
   setIncremental: (value: boolean) => void;
   setMaxDepth: (value: number) => void;
   setMaxPages: (value: number) => void;
+  /** Apply a preset configuration to the form state */
+  applyPreset: (config: PresetConfig) => void;
 }
 
 const INITIAL_STATE: FormState = {
@@ -184,6 +187,58 @@ export function useFormState(): FormState & FormActions {
     }
   }, [state.headless, state.usePlaywright]);
 
+  const applyPreset = useCallback((config: PresetConfig) => {
+    setState((prev) => ({
+      ...prev,
+      ...(config.headless !== undefined && { headless: config.headless }),
+      ...(config.usePlaywright !== undefined && {
+        usePlaywright: config.usePlaywright,
+      }),
+      ...(config.timeoutSeconds !== undefined && {
+        timeoutSeconds: config.timeoutSeconds,
+      }),
+      ...(config.authProfile !== undefined && {
+        authProfile: config.authProfile,
+      }),
+      ...(config.authBasic !== undefined && { authBasic: config.authBasic }),
+      ...(config.headersRaw !== undefined && { headersRaw: config.headersRaw }),
+      ...(config.cookiesRaw !== undefined && { cookiesRaw: config.cookiesRaw }),
+      ...(config.queryRaw !== undefined && { queryRaw: config.queryRaw }),
+      ...(config.loginUrl !== undefined && { loginUrl: config.loginUrl }),
+      ...(config.loginUserSelector !== undefined && {
+        loginUserSelector: config.loginUserSelector,
+      }),
+      ...(config.loginPassSelector !== undefined && {
+        loginPassSelector: config.loginPassSelector,
+      }),
+      ...(config.loginSubmitSelector !== undefined && {
+        loginSubmitSelector: config.loginSubmitSelector,
+      }),
+      ...(config.loginUser !== undefined && { loginUser: config.loginUser }),
+      ...(config.loginPass !== undefined && { loginPass: config.loginPass }),
+      ...(config.extractTemplate !== undefined && {
+        extractTemplate: config.extractTemplate,
+      }),
+      ...(config.extractValidate !== undefined && {
+        extractValidate: config.extractValidate,
+      }),
+      ...(config.preProcessors !== undefined && {
+        preProcessors: config.preProcessors,
+      }),
+      ...(config.postProcessors !== undefined && {
+        postProcessors: config.postProcessors,
+      }),
+      ...(config.transformers !== undefined && {
+        transformers: config.transformers,
+      }),
+      ...(config.incremental !== undefined && {
+        incremental: config.incremental,
+      }),
+      ...(config.maxDepth !== undefined && { maxDepth: config.maxDepth }),
+      ...(config.maxPages !== undefined && { maxPages: config.maxPages }),
+    }));
+  }, []);
+
   return {
     ...state,
     setHeadless,
@@ -208,5 +263,6 @@ export function useFormState(): FormState & FormActions {
     setIncremental,
     setMaxDepth,
     setMaxPages,
+    applyPreset,
   };
 }

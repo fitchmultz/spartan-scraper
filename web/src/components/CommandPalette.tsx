@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Command } from "cmdk";
 import type { JobEntry } from "../types";
+import type { JobPreset } from "../types/presets";
 
 export type CommandPaletteProps = {
   /** Whether the palette is visible */
@@ -31,6 +32,10 @@ export type CommandPaletteProps = {
   activeJobId?: string;
   /** Platform indicator for shortcut display */
   isMac?: boolean;
+  /** Available presets to select from */
+  presets?: JobPreset[];
+  /** Callback when a preset is selected */
+  onSelectPreset?: (preset: JobPreset) => void;
 };
 
 type CommandItem = {
@@ -38,7 +43,7 @@ type CommandItem = {
   label: string;
   shortcut?: string;
   icon?: string;
-  group: "actions" | "navigation" | "jobs";
+  group: "actions" | "navigation" | "jobs" | "presets";
   disabled?: boolean;
   onSelect: () => void;
 };
@@ -78,6 +83,8 @@ export function CommandPalette({
   onCancelJob,
   activeJobId,
   isMac = false,
+  presets = [],
+  onSelectPreset,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
 
@@ -201,14 +208,40 @@ export function CommandPalette({
       });
     }
 
+    // Add presets (built-in first, then custom)
+    if (presets.length > 0 && onSelectPreset) {
+      const sortedPresets = [...presets].sort((a, b) => {
+        // Built-in first
+        if (a.isBuiltIn && !b.isBuiltIn) return -1;
+        if (!a.isBuiltIn && b.isBuiltIn) return 1;
+        // Then alphabetically
+        return a.name.localeCompare(b.name);
+      });
+
+      for (const preset of sortedPresets.slice(0, 20)) {
+        list.push({
+          id: `preset-${preset.id}`,
+          label: `${preset.name} (${preset.jobType})`,
+          icon: preset.icon,
+          group: "presets",
+          onSelect: () => {
+            onSelectPreset(preset);
+            onClose();
+          },
+        });
+      }
+    }
+
     return list;
   }, [
     jobs,
+    presets,
     activeJobId,
     isMac,
     onNavigate,
     onSubmitForm,
     onCancelJob,
+    onSelectPreset,
     onClose,
   ]);
 
@@ -310,6 +343,35 @@ export function CommandPalette({
                 </Command.Item>
               ))}
           </Command.Group>
+
+          {/* Presets Group */}
+          {presets.length > 0 && (
+            <Command.Group
+              heading={
+                <span className="command-palette-group-header">Presets</span>
+              }
+              className="command-palette-group"
+            >
+              {commands
+                .filter((c) => c.group === "presets")
+                .map((command) => (
+                  <Command.Item
+                    key={command.id}
+                    value={command.label}
+                    disabled={command.disabled}
+                    onSelect={command.onSelect}
+                    className="command-palette-item"
+                  >
+                    <span className="command-palette-item-icon">
+                      {command.icon}
+                    </span>
+                    <span className="command-palette-item-label">
+                      {command.label}
+                    </span>
+                  </Command.Item>
+                ))}
+            </Command.Group>
+          )}
 
           {/* Jobs Group */}
           {jobs.length > 0 && (

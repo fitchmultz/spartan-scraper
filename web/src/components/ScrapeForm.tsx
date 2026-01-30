@@ -23,6 +23,7 @@ import {
   buildAuth,
   buildScrapeRequest,
 } from "../lib/form-utils";
+import type { PresetConfig } from "../types/presets";
 
 export interface ScrapeFormRef {
   /** Submit the form programmatically */
@@ -31,6 +32,8 @@ export interface ScrapeFormRef {
   getUrl: () => string;
   /** Set the URL value */
   setUrl: (url: string) => void;
+  /** Get the current configuration as a preset */
+  getConfig: () => PresetConfig;
 }
 
 interface ScrapeFormProps {
@@ -192,11 +195,62 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       onSubmit,
     ]);
 
+    // Build config from current form state
+    const getConfig = useCallback(
+      (): PresetConfig => ({
+        url: scrapeUrl,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        incremental,
+      }),
+      [
+        scrapeUrl,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile,
+        authBasic,
+        headersRaw,
+        cookiesRaw,
+        queryRaw,
+        loginUrl,
+        loginUserSelector,
+        loginPassSelector,
+        loginSubmitSelector,
+        loginUser,
+        loginPass,
+        extractTemplate,
+        extractValidate,
+        preProcessors,
+        postProcessors,
+        transformers,
+        incremental,
+      ],
+    );
+
     // Expose imperative handle for external submission
     useImperativeHandle(ref, () => ({
       submit: handleSubmit,
       getUrl: () => scrapeUrl,
       setUrl: (url: string) => setScrapeUrl(url),
+      getConfig,
     }));
 
     return (
