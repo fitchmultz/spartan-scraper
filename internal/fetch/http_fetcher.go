@@ -22,6 +22,17 @@ import (
 // and response size limits. See fetcher.go for the Fetcher interface definition.
 type HTTPFetcher struct{}
 
+// sleepWithContext sleeps for the given duration or until the context is cancelled.
+// Returns ctx.Err() if cancelled, nil otherwise.
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	select {
+	case <-time.After(d):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // Fetch performs a standard HTTP GET request to retrieve the content of a URL.
 // It supports retries, rate limiting, and basic/token authentication.
 func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
@@ -104,7 +115,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 			delay := backoff(baseDelay, attempt)
 			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-			time.Sleep(delay)
+			if err := sleepWithContext(ctx, delay); err != nil {
+				return Result{}, err
+			}
 			continue
 		}
 
@@ -144,7 +157,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 			delay := backoff(baseDelay, attempt)
 			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-			time.Sleep(delay)
+			if err := sleepWithContext(ctx, delay); err != nil {
+				return Result{}, err
+			}
 			continue
 		}
 
@@ -154,7 +169,9 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 				delay = backoff(baseDelay, attempt)
 			}
 			slog.Debug("retrying HTTP request based on status code", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode, "attempt", attempt, "delay", delay)
-			time.Sleep(delay)
+			if err := sleepWithContext(ctx, delay); err != nil {
+				return Result{}, err
+			}
 			continue
 		}
 

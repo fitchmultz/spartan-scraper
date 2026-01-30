@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0158",
-      "status": "todo",
-      "title": "Make HTTP fetch retry backoff honor context cancellation",
-      "priority": "medium",
-      "tags": [
-        "fetch",
-        "reliability",
-        "context"
-      ],
-      "scope": [
-        "internal/fetch/http_fetcher.go",
-        "internal/fetch/http_fetcher_test.go"
-      ],
-      "evidence": [
-        "internal/fetch/http_fetcher.go uses time.Sleep(delay) during retry backoff without checking ctx.Done, so canceled requests still sleep.",
-        "Retries continue even if the caller has already canceled the context."
-      ],
-      "plan": [
-        "Replace time.Sleep with a select on time.After vs ctx.Done to exit early.",
-        "Return a wrapped ctx error when cancellation occurs mid-backoff.",
-        "Add tests verifying cancellation stops retries promptly."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T23:18:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0159",
       "status": "todo",
       "title": "Return validation errors for invalid pagination params",
