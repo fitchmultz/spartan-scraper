@@ -544,6 +544,7 @@ type AuthOptions struct {
 	LoginSubmitSelector string            `json:"loginSubmitSelector,omitempty"`
 	LoginUser           string            `json:"loginUser,omitempty"`
 	LoginPass           string            `json:"loginPass,omitempty"`
+	LoginAutoDetect     bool              `json:"loginAutoDetect,omitempty"`
 	Proxy               *ProxyConfig      `json:"proxy,omitempty"`
 	// ProxyPool enables proxy pool selection. When set, the pool will be used
 	// to select a proxy based on the configured rotation strategy.

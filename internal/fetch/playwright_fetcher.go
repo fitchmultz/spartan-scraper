@@ -554,17 +554,48 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 
 	if req.Auth.LoginURL != "" {
 		slog.Info("performing headless login", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL))
+
+		// Auto-detect form fields if enabled
+		userSelector := req.Auth.LoginUserSelector
+		passSelector := req.Auth.LoginPassSelector
+		submitSelector := req.Auth.LoginSubmitSelector
+
+		if req.Auth.LoginAutoDetect {
+			detected, err := f.detectLoginForm(page, req.Auth.LoginURL, timeoutFloat)
+			if err != nil {
+				return Result{}, fmt.Errorf("failed to detect login form: %w", err)
+			}
+			if detected == nil {
+				return Result{}, errors.New("could not detect login form on page")
+			}
+
+			userSelector = detected.UserField.Selector
+			passSelector = detected.PassField.Selector
+			submitSelector = detected.SubmitField.Selector
+
+			slog.Info("login form auto-detected",
+				"userSelector", userSelector,
+				"passSelector", passSelector,
+				"submitSelector", submitSelector,
+				"confidence", detected.Score)
+		}
+
+		// Validate selectors are present
+		if userSelector == "" || passSelector == "" || submitSelector == "" {
+			return Result{}, errors.New("login selectors are required (provide manually or use auto-detect)")
+		}
+
 		if _, err = page.Goto(req.Auth.LoginURL, playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
 			slog.Error("login page navigation failed", "url", apperrors.SanitizeURL(req.URL), "loginURL", apperrors.SanitizeURL(req.Auth.LoginURL), "error", err)
 			return Result{}, err
 		}
-		if err = page.Fill(req.Auth.LoginUserSelector, req.Auth.LoginUser); err != nil {
+		if err = page.Fill(userSelector, req.Auth.LoginUser); err != nil {
 			return Result{}, err
 		}
-		if err = page.Fill(req.Auth.LoginPassSelector, req.Auth.LoginPass); err != nil {
+		if err = page.Fill(passSelector, req.Auth.LoginPass); err != nil {
 			return Result{}, err
 		}
-		if err = page.Click(req.Auth.LoginSubmitSelector); err != nil {
+		if err = page.Click(submitSelector); err != nil {
 			return Result{}, err
 		}
 		if err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded, Timeout: &timeoutFloat}); err != nil {
@@ -911,4 +942,34 @@ func (f *PlaywrightFetcher) extractAndSaveSession(browserCtx playwright.BrowserC
 
 	slog.Info("saved session cookies", "sessionID", req.SessionID, "domain", sess.Domain, "count", len(sessionCookies))
 	return nil
+}
+
+// detectLoginForm uses form detection to analyze the login page and find form fields.
+func (f *PlaywrightFetcher) detectLoginForm(page playwright.Page, loginURL string, timeoutFloat float64) (*DetectedForm, error) {
+	waitUntil := playwright.WaitUntilStateCommit
+
+	// Navigate to login page
+	if _, err := page.Goto(loginURL, playwright.PageGotoOptions{Timeout: &timeoutFloat, WaitUntil: waitUntil}); err != nil {
+		return nil, err
+	}
+
+	// Wait for body to be ready
+	if err := page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded}); err != nil {
+		return nil, err
+	}
+
+	// Extract page HTML
+	html, err := page.Content()
+	if err != nil {
+		return nil, err
+	}
+
+	// Use form detector
+	detector := NewFormDetector()
+	form, err := detector.DetectLoginForm(html)
+	if err != nil {
+		return nil, err
+	}
+
+	return form, nil
 }

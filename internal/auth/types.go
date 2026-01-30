@@ -76,6 +76,15 @@ type LoginFlow struct {
 	SubmitSelector string `json:"submitSelector,omitempty"`
 	Username       string `json:"username,omitempty"`
 	Password       string `json:"password,omitempty"`
+
+	// AutoDetect enables automatic form field detection.
+	// When true, the system will attempt to detect login form fields
+	// automatically without requiring manual CSS selector configuration.
+	AutoDetect bool `json:"autoDetect,omitempty"`
+
+	// ConfidenceScore indicates the confidence level of auto-detection (0.0-1.0).
+	// Only populated when AutoDetect is true.
+	ConfidenceScore float64 `json:"confidenceScore,omitempty"`
 }
 
 // OAuth2FlowType defines the OAuth 2.0 flow variant.

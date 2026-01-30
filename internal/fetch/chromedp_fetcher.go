@@ -874,9 +874,33 @@ func (rt *responseTracker) urlsMatch(a, b string) bool {
 }
 
 func (f *ChromedpFetcher) performLogin(ctx context.Context, auth AuthOptions) error {
-	if auth.LoginUserSelector == "" || auth.LoginPassSelector == "" || auth.LoginSubmitSelector == "" {
-		return errors.New("login selectors are required for headless login")
+	// If auto-detect is enabled, detect form fields first
+	if auth.LoginAutoDetect {
+		detected, err := f.detectLoginForm(ctx, auth.LoginURL)
+		if err != nil {
+			return fmt.Errorf("failed to detect login form: %w", err)
+		}
+		if detected == nil {
+			return errors.New("could not detect login form on page")
+		}
+
+		// Use detected selectors
+		auth.LoginUserSelector = detected.UserField.Selector
+		auth.LoginPassSelector = detected.PassField.Selector
+		auth.LoginSubmitSelector = detected.SubmitField.Selector
+
+		slog.Info("login form auto-detected",
+			"userSelector", auth.LoginUserSelector,
+			"passSelector", auth.LoginPassSelector,
+			"submitSelector", auth.LoginSubmitSelector,
+			"confidence", detected.Score)
 	}
+
+	// Validate selectors are present
+	if auth.LoginUserSelector == "" || auth.LoginPassSelector == "" || auth.LoginSubmitSelector == "" {
+		return errors.New("login selectors are required (provide manually or use auto-detect)")
+	}
+
 	return chromedp.Run(ctx,
 		chromedp.Navigate(auth.LoginURL),
 		chromedp.WaitVisible(auth.LoginUserSelector),
@@ -886,6 +910,34 @@ func (f *ChromedpFetcher) performLogin(ctx context.Context, auth AuthOptions) er
 		chromedp.WaitReady("body", chromedp.ByQuery),
 		chromedp.Sleep(500*time.Millisecond),
 	)
+}
+
+// detectLoginForm uses form detection to analyze the login page and find form fields.
+func (f *ChromedpFetcher) detectLoginForm(ctx context.Context, loginURL string) (*DetectedForm, error) {
+	// Navigate to login page
+	if err := chromedp.Run(ctx, chromedp.Navigate(loginURL)); err != nil {
+		return nil, err
+	}
+
+	// Wait for body to be ready
+	if err := chromedp.Run(ctx, chromedp.WaitReady("body", chromedp.ByQuery)); err != nil {
+		return nil, err
+	}
+
+	// Extract page HTML
+	var html string
+	if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &html)); err != nil {
+		return nil, err
+	}
+
+	// Use form detector
+	detector := NewFormDetector()
+	form, err := detector.DetectLoginForm(html)
+	if err != nil {
+		return nil, err
+	}
+
+	return form, nil
 }
 
 func (f *ChromedpFetcher) performWait(ctx context.Context, policy RenderWaitPolicy) error {

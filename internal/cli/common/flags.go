@@ -77,6 +77,7 @@ type CommonFlags struct {
 	LoginSubmitSelector *string
 	LoginUser           *string
 	LoginPass           *string
+	LoginAutoDetect     *bool
 
 	// Browser flags
 	Headless   *bool
@@ -145,6 +146,7 @@ type AuthFlags struct {
 	LoginSubmitSelector *string
 	LoginUser           *string
 	LoginPass           *string
+	LoginAutoDetect     *bool
 }
 
 func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
@@ -172,6 +174,7 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		LoginSubmitSelector: fs.String("login-submit-selector", "", "CSS selector for submit button"),
 		LoginUser:           fs.String("login-user", "", "Username for login"),
 		LoginPass:           fs.String("login-pass", "", "Password for login"),
+		LoginAutoDetect:     fs.Bool("login-auto-detect", false, "Auto-detect login form fields (requires --login-url)"),
 
 		Headless:   fs.Bool("headless", false, "Use headless browser"),
 		Playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
@@ -252,6 +255,7 @@ func RegisterAuthFlags(fs *flag.FlagSet) *AuthFlags {
 		LoginSubmitSelector: fs.String("login-submit-selector", "", "CSS selector for submit button"),
 		LoginUser:           fs.String("login-user", "", "Username for login"),
 		LoginPass:           fs.String("login-pass", "", "Password for login"),
+		LoginAutoDetect:     fs.Bool("login-auto-detect", false, "Auto-detect login form fields (requires --login-url)"),
 	}
 
 	fs.Var(&af.TokenValues, "token", "Token value (repeatable)")

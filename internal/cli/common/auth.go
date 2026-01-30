@@ -19,6 +19,7 @@ type LoginFlowInput struct {
 	SubmitSelector string
 	Username       string
 	Password       string
+	AutoDetect     bool
 }
 
 func BuildLoginFlow(input LoginFlowInput) *auth.LoginFlow {
@@ -27,7 +28,8 @@ func BuildLoginFlow(input LoginFlowInput) *auth.LoginFlow {
 		input.PassSelector == "" &&
 		input.SubmitSelector == "" &&
 		input.Username == "" &&
-		input.Password == "" {
+		input.Password == "" &&
+		!input.AutoDetect {
 		return nil
 	}
 	return &auth.LoginFlow{
@@ -37,6 +39,7 @@ func BuildLoginFlow(input LoginFlowInput) *auth.LoginFlow {
 		SubmitSelector: input.SubmitSelector,
 		Username:       input.Username,
 		Password:       input.Password,
+		AutoDetect:     input.AutoDetect,
 	}
 }
 
@@ -136,6 +139,7 @@ func ResolveAuthFromCommonFlags(cfg config.Config, url string, cf *CommonFlags) 
 			SubmitSelector: *cf.LoginSubmitSelector,
 			Username:       *cf.LoginUser,
 			Password:       *cf.LoginPass,
+			AutoDetect:     *cf.LoginAutoDetect,
 		}),
 	}
 

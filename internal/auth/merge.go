@@ -425,6 +425,8 @@ func mergeLogin(base *LoginFlow, overlay *LoginFlow) *LoginFlow {
 	if overlay.Password != "" {
 		out.Password = overlay.Password
 	}
+	// AutoDetect is a boolean flag, overlay takes precedence if explicitly set
+	out.AutoDetect = overlay.AutoDetect
 	return &out
 }
 
@@ -556,6 +558,7 @@ func ToFetchOptions(res ResolvedAuth) fetch.AuthOptions {
 		out.LoginSubmitSelector = res.Login.SubmitSelector
 		out.LoginUser = res.Login.Username
 		out.LoginPass = res.Login.Password
+		out.LoginAutoDetect = res.Login.AutoDetect
 	}
 	return out
 }

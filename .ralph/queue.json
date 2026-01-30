@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0213",
-      "status": "todo",
-      "title": "Implement automatic form detection and intelligent login",
-      "priority": "medium",
-      "tags": [
-        "auth",
-        "automation",
-        "ux"
-      ],
-      "scope": [
-        "internal/auth/",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "Login flows require manual CSS selector configuration",
-        "No automatic form field detection",
-        "No intelligent username/password field identification"
-      ],
-      "plan": [
-        "Add automatic form detection in pages",
-        "Implement intelligent field type detection",
-        "Add common login form pattern matching",
-        "Support auto-fill from auth profiles",
-        "Add login success/failure detection"
-      ],
-      "notes": [],
-      "request": "scan finding: form automation gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0214",
       "status": "todo",
       "title": "Add comprehensive analytics dashboard and reporting",
