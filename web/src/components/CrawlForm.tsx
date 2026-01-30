@@ -7,7 +7,13 @@
  *
  * @module CrawlForm
  */
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
@@ -17,6 +23,15 @@ import {
   buildAuth,
   buildCrawlRequest,
 } from "../lib/form-utils";
+
+export interface CrawlFormRef {
+  /** Submit the form programmatically */
+  submit: () => Promise<void>;
+  /** Get the current URL value */
+  getUrl: () => string;
+  /** Set the URL value */
+  setUrl: (url: string) => void;
+}
 
 interface CrawlFormProps {
   headless: boolean;
@@ -64,206 +79,247 @@ interface CrawlFormProps {
   loading: boolean;
 }
 
-export function CrawlForm({
-  headless,
-  setHeadless,
-  usePlaywright,
-  setUsePlaywright,
-  timeoutSeconds,
-  setTimeoutSeconds,
-  authProfile,
-  setAuthProfile,
-  authBasic,
-  setAuthBasic,
-  headersRaw,
-  setHeadersRaw,
-  cookiesRaw,
-  setCookiesRaw,
-  queryRaw,
-  setQueryRaw,
-  loginUrl,
-  setLoginUrl,
-  loginUserSelector,
-  setLoginUserSelector,
-  loginPassSelector,
-  setLoginPassSelector,
-  loginSubmitSelector,
-  setLoginSubmitSelector,
-  loginUser,
-  setLoginUser,
-  loginPass,
-  setLoginPass,
-  extractTemplate,
-  setExtractTemplate,
-  extractValidate,
-  setExtractValidate,
-  preProcessors,
-  setPreProcessors,
-  postProcessors,
-  setPostProcessors,
-  transformers,
-  setTransformers,
-  incremental,
-  setIncremental,
-  profiles,
-  onSubmit,
-  loading,
-}: CrawlFormProps) {
-  const [crawlUrl, setCrawlUrl] = useState("");
-  const [maxDepth, setMaxDepth] = useState(2);
-  const [maxPages, setMaxPages] = useState(200);
+export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
+  function CrawlForm(
+    {
+      headless,
+      setHeadless,
+      usePlaywright,
+      setUsePlaywright,
+      timeoutSeconds,
+      setTimeoutSeconds,
+      authProfile,
+      setAuthProfile,
+      authBasic,
+      setAuthBasic,
+      headersRaw,
+      setHeadersRaw,
+      cookiesRaw,
+      setCookiesRaw,
+      queryRaw,
+      setQueryRaw,
+      loginUrl,
+      setLoginUrl,
+      loginUserSelector,
+      setLoginUserSelector,
+      loginPassSelector,
+      setLoginPassSelector,
+      loginSubmitSelector,
+      setLoginSubmitSelector,
+      loginUser,
+      setLoginUser,
+      loginPass,
+      setLoginPass,
+      extractTemplate,
+      setExtractTemplate,
+      extractValidate,
+      setExtractValidate,
+      preProcessors,
+      setPreProcessors,
+      postProcessors,
+      setPostProcessors,
+      transformers,
+      setTransformers,
+      incremental,
+      setIncremental,
+      profiles,
+      onSubmit,
+      loading,
+    }: CrawlFormProps,
+    ref,
+  ) {
+    const [crawlUrl, setCrawlUrl] = useState("");
+    const [maxDepth, setMaxDepth] = useState(2);
+    const [maxPages, setMaxPages] = useState(200);
 
-  const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
-  const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
-  const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
+    const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
+    const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
+    const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
 
-  const handleSubmit = async () => {
-    if (!crawlUrl) {
-      alert("Crawl URL is required.");
-      return;
-    }
-    const request = buildCrawlRequest(
+    const handleSubmit = useCallback(async () => {
+      if (!crawlUrl) {
+        alert("Crawl URL is required.");
+        return;
+      }
+      const request = buildCrawlRequest(
+        crawlUrl,
+        maxDepth,
+        maxPages,
+        headless,
+        usePlaywright,
+        timeoutSeconds,
+        authProfile || undefined,
+        buildAuth(
+          authBasic,
+          headerMap,
+          cookieList,
+          queryMap,
+          loginUrl,
+          loginUserSelector,
+          loginPassSelector,
+          loginSubmitSelector,
+          loginUser,
+          loginPass,
+        ),
+        {
+          template: extractTemplate || undefined,
+          validate: extractValidate,
+        },
+        preProcessors,
+        postProcessors,
+        transformers,
+        incremental,
+      );
+      await onSubmit(request);
+    }, [
       crawlUrl,
       maxDepth,
       maxPages,
       headless,
       usePlaywright,
       timeoutSeconds,
-      authProfile || undefined,
-      buildAuth(
-        authBasic,
-        headerMap,
-        cookieList,
-        queryMap,
-        loginUrl,
-        loginUserSelector,
-        loginPassSelector,
-        loginSubmitSelector,
-        loginUser,
-        loginPass,
-      ),
-      {
-        template: extractTemplate || undefined,
-        validate: extractValidate,
-      },
+      authProfile,
+      authBasic,
+      headerMap,
+      cookieList,
+      queryMap,
+      loginUrl,
+      loginUserSelector,
+      loginPassSelector,
+      loginSubmitSelector,
+      loginUser,
+      loginPass,
+      extractTemplate,
+      extractValidate,
       preProcessors,
       postProcessors,
       transformers,
       incremental,
-    );
-    await onSubmit(request);
-  };
+      onSubmit,
+    ]);
 
-  return (
-    <div className="panel">
-      <h2>Crawl a Site</h2>
-      <label htmlFor="crawl-url">Root URL</label>
-      <input
-        id="crawl-url"
-        value={crawlUrl}
-        onChange={(event) => setCrawlUrl(event.target.value)}
-        placeholder="https://example.com"
-      />
-      <div className="row" style={{ marginTop: 12 }}>
-        <label>
-          Max depth
-          <input
-            type="number"
-            min={1}
-            value={maxDepth}
-            onChange={(event) => setMaxDepth(Number(event.target.value))}
-          />
-        </label>
-        <label>
-          Max pages
-          <input
-            type="number"
-            min={1}
-            value={maxPages}
-            onChange={(event) => setMaxPages(Number(event.target.value))}
-          />
-        </label>
+    // Expose imperative handle for external submission
+    useImperativeHandle(ref, () => ({
+      submit: handleSubmit,
+      getUrl: () => crawlUrl,
+      setUrl: (url: string) => setCrawlUrl(url),
+    }));
+
+    return (
+      <div className="panel">
+        <h2>Crawl a Site</h2>
+        <label htmlFor="crawl-url">Root URL</label>
+        <input
+          id="crawl-url"
+          value={crawlUrl}
+          onChange={(event) => setCrawlUrl(event.target.value)}
+          placeholder="https://example.com"
+        />
+        <div className="row" style={{ marginTop: 12 }}>
+          <label>
+            Max depth
+            <input
+              type="number"
+              min={1}
+              value={maxDepth}
+              onChange={(event) => setMaxDepth(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            Max pages
+            <input
+              type="number"
+              min={1}
+              value={maxPages}
+              onChange={(event) => setMaxPages(Number(event.target.value))}
+            />
+          </label>
+        </div>
+        <div className="row" style={{ marginTop: 12 }}>
+          <label>
+            <input
+              type="checkbox"
+              checked={headless}
+              onChange={(event) => setHeadless(event.target.checked)}
+            />{" "}
+            Headless
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={usePlaywright}
+              disabled={!headless}
+              onChange={(event) => setUsePlaywright(event.target.checked)}
+            />{" "}
+            Playwright
+          </label>
+          <label>
+            Timeout (s)
+            <input
+              type="number"
+              min={5}
+              value={timeoutSeconds}
+              onChange={(event) =>
+                setTimeoutSeconds(Number(event.target.value))
+              }
+            />
+          </label>
+        </div>
+        <AuthConfig
+          authProfile={authProfile}
+          setAuthProfile={setAuthProfile}
+          authBasic={authBasic}
+          setAuthBasic={setAuthBasic}
+          headersRaw={headersRaw}
+          setHeadersRaw={setHeadersRaw}
+          cookiesRaw={cookiesRaw}
+          setCookiesRaw={setCookiesRaw}
+          queryRaw={queryRaw}
+          setQueryRaw={setQueryRaw}
+          loginUrl={loginUrl}
+          setLoginUrl={setLoginUrl}
+          loginUserSelector={loginUserSelector}
+          setLoginUserSelector={setLoginUserSelector}
+          loginPassSelector={loginPassSelector}
+          setLoginPassSelector={setLoginPassSelector}
+          loginSubmitSelector={loginSubmitSelector}
+          setLoginSubmitSelector={setLoginSubmitSelector}
+          loginUser={loginUser}
+          setLoginUser={setLoginUser}
+          loginPass={loginPass}
+          setLoginPass={setLoginPass}
+          profiles={profiles}
+        />
+        <PipelineOptions
+          extractTemplate={extractTemplate}
+          setExtractTemplate={setExtractTemplate}
+          extractValidate={extractValidate}
+          setExtractValidate={setExtractValidate}
+          preProcessors={preProcessors}
+          setPreProcessors={setPreProcessors}
+          postProcessors={postProcessors}
+          setPostProcessors={setPostProcessors}
+          transformers={transformers}
+          setTransformers={setTransformers}
+          incremental={incremental}
+          setIncremental={setIncremental}
+          inputPrefix="crawl"
+        />
+        <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+          <button type="button" disabled={loading} onClick={handleSubmit}>
+            Launch Crawl
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setCrawlUrl("")}
+          >
+            Clear
+          </button>
+        </div>
       </div>
-      <div className="row" style={{ marginTop: 12 }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={headless}
-            onChange={(event) => setHeadless(event.target.checked)}
-          />{" "}
-          Headless
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={usePlaywright}
-            disabled={!headless}
-            onChange={(event) => setUsePlaywright(event.target.checked)}
-          />{" "}
-          Playwright
-        </label>
-        <label>
-          Timeout (s)
-          <input
-            type="number"
-            min={5}
-            value={timeoutSeconds}
-            onChange={(event) => setTimeoutSeconds(Number(event.target.value))}
-          />
-        </label>
-      </div>
-      <AuthConfig
-        authProfile={authProfile}
-        setAuthProfile={setAuthProfile}
-        authBasic={authBasic}
-        setAuthBasic={setAuthBasic}
-        headersRaw={headersRaw}
-        setHeadersRaw={setHeadersRaw}
-        cookiesRaw={cookiesRaw}
-        setCookiesRaw={setCookiesRaw}
-        queryRaw={queryRaw}
-        setQueryRaw={setQueryRaw}
-        loginUrl={loginUrl}
-        setLoginUrl={setLoginUrl}
-        loginUserSelector={loginUserSelector}
-        setLoginUserSelector={setLoginUserSelector}
-        loginPassSelector={loginPassSelector}
-        setLoginPassSelector={setLoginPassSelector}
-        loginSubmitSelector={loginSubmitSelector}
-        setLoginSubmitSelector={setLoginSubmitSelector}
-        loginUser={loginUser}
-        setLoginUser={setLoginUser}
-        loginPass={loginPass}
-        setLoginPass={setLoginPass}
-        profiles={profiles}
-      />
-      <PipelineOptions
-        extractTemplate={extractTemplate}
-        setExtractTemplate={setExtractTemplate}
-        extractValidate={extractValidate}
-        setExtractValidate={setExtractValidate}
-        preProcessors={preProcessors}
-        setPreProcessors={setPreProcessors}
-        postProcessors={postProcessors}
-        setPostProcessors={setPostProcessors}
-        transformers={transformers}
-        setTransformers={setTransformers}
-        incremental={incremental}
-        setIncremental={setIncremental}
-        inputPrefix="crawl"
-      />
-      <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-        <button type="button" disabled={loading} onClick={handleSubmit}>
-          Launch Crawl
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => setCrawlUrl("")}
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
-}
+    );
+  },
+);
+
+CrawlForm.displayName = "CrawlForm";

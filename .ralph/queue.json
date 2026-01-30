@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0176",
-      "status": "todo",
-      "title": "Add keyboard shortcuts and command palette to Web UI",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "web",
-        "productivity",
-        "modern",
-        "awesome"
-      ],
-      "scope": [
-        "web/src/hooks/useKeyboard.ts (new)",
-        "web/src/components/CommandPalette.tsx (new)",
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "Power users expect keyboard navigation for efficiency.",
-        "No quick way to jump between views or actions without mouse.",
-        "Command palette pattern is standard in modern apps (VS Code, Linear, etc)."
-      ],
-      "plan": [
-        "Implement useKeyboard hook for global shortcut handling (Cmd+K, Escape, etc).",
-        "Create CommandPalette component with fuzzy search for jobs, actions, and navigation.",
-        "Add contextual shortcuts: Ctrl/Cmd+Enter to submit forms, ? for help, / to search.",
-        "Show keyboard shortcut hints in tooltips and buttons.",
-        "Persist user preferences in localStorage."
-      ],
-      "notes": [
-        "Use cmdk or similar for command palette UI",
-        "Ensure shortcuts don't conflict with browser/OS defaults",
-        "Make shortcuts discoverable with a cheatsheet modal"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0177",
       "status": "todo",
       "title": "Implement job templates and quick-start presets in UI",
