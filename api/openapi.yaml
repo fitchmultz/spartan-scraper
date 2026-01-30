@@ -1143,6 +1143,201 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/chains:
+    get:
+      summary: List all job chains
+      description: Returns all defined job chains ordered by creation date (newest first)
+      operationId: listChains
+      responses:
+        '200':
+          description: List of chains
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChainListResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new job chain
+      description: Creates a named, reusable workflow definition
+      operationId: createChain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChainCreateRequest'
+      responses:
+        '201':
+          description: Chain created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobChain'
+        '400':
+          description: Bad Request (invalid chain definition)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/chains/{id}:
+    get:
+      summary: Get a chain by ID
+      description: Retrieve a specific chain definition
+      operationId: getChain
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Chain ID
+      responses:
+        '200':
+          description: Chain details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobChain'
+        '404':
+          description: Chain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a chain
+      description: Removes a chain definition. Only chains with no active jobs can be deleted.
+      operationId: deleteChain
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Chain ID
+      responses:
+        '204':
+          description: Chain deleted successfully
+        '400':
+          description: Bad Request (chain has active jobs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/chains/{id}/submit:
+    post:
+      summary: Submit/instantiate a chain
+      description: Creates jobs from a chain definition with optional parameter overrides
+      operationId: submitChain
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Chain ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChainSubmitRequest'
+      responses:
+        '201':
+          description: Chain submitted, jobs created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChainSubmitResponse'
+        '400':
+          description: Bad Request (invalid overrides)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1746,6 +1941,18 @@ components:
           items:
             $ref: '#/components/schemas/InterceptedEntry'
           description: Captured network activity if network interception was enabled
+        dependsOn:
+          type: array
+          items:
+            type: string
+          description: List of job IDs this job depends on
+        dependencyStatus:
+          type: string
+          enum: [pending, ready, failed]
+          description: Status of dependency resolution
+        chainId:
+          type: string
+          description: ID of the job chain this job belongs to, if any
     JobList:
       type: object
       properties:
@@ -2569,3 +2776,120 @@ components:
           type: string
           format: date-time
           description: When the batch was last updated
+    JobChain:
+      type: object
+      description: A named, reusable workflow definition
+      required: [id, name, definition, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: Unique chain identifier
+        name:
+          type: string
+          description: Human-readable chain name (unique)
+        description:
+          type: string
+          description: Optional chain description
+        definition:
+          $ref: '#/components/schemas/ChainDefinition'
+        createdAt:
+          type: string
+          format: date-time
+          description: When the chain was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the chain was last updated
+    ChainDefinition:
+      type: object
+      description: DAG structure defining the workflow
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          description: Job templates in the chain
+          items:
+            $ref: '#/components/schemas/ChainNode'
+        edges:
+          type: array
+          description: Dependency relationships between nodes
+          items:
+            $ref: '#/components/schemas/ChainEdge'
+    ChainNode:
+      type: object
+      description: A job template within a chain
+      required: [id, kind, params]
+      properties:
+        id:
+          type: string
+          description: Unique node identifier within the chain
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+          description: Type of job
+        params:
+          type: object
+          description: Job parameters template
+        metadata:
+          $ref: '#/components/schemas/ChainMetadata'
+    ChainEdge:
+      type: object
+      description: A dependency relationship between nodes (From must complete before To can start)
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          description: Source node ID (dependency)
+        to:
+          type: string
+          description: Target node ID (dependent)
+    ChainMetadata:
+      type: object
+      description: Human-readable metadata for a chain node
+      properties:
+        name:
+          type: string
+          description: Human-readable node name
+        description:
+          type: string
+          description: Node description
+    ChainListResponse:
+      type: object
+      description: List of job chains
+      required: [chains]
+      properties:
+        chains:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobChain'
+    ChainCreateRequest:
+      type: object
+      description: Request to create a new chain
+      required: [name, definition]
+      properties:
+        name:
+          type: string
+          description: Chain name (must be unique)
+        description:
+          type: string
+          description: Optional chain description
+        definition:
+          $ref: '#/components/schemas/ChainDefinition'
+    ChainSubmitRequest:
+      type: object
+      description: Request to submit/instantiate a chain
+      properties:
+        overrides:
+          type: object
+          description: Parameter overrides by node ID
+          additionalProperties:
+            type: object
+    ChainSubmitResponse:
+      type: object
+      description: Response after submitting a chain
+      required: [jobs]
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'

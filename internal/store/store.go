@@ -18,4 +18,17 @@ type Store struct {
 	upsertCrawlStateStmt     *sql.Stmt
 	deleteCrawlStateStmt     *sql.Stmt
 	deleteAllCrawlStatesStmt *sql.Stmt
+
+	// Chain statements
+	stmtCreateChain    *sql.Stmt
+	stmtGetChain       *sql.Stmt
+	stmtGetChainByName *sql.Stmt
+	stmtUpdateChain    *sql.Stmt
+	stmtDeleteChain    *sql.Stmt
+	stmtListChains     *sql.Stmt
+
+	// Dependency statements
+	stmtGetJobsByDependencyStatus *sql.Stmt
+	stmtUpdateDependencyStatus    *sql.Stmt
+	stmtGetDependentJobs          *sql.Stmt
 }

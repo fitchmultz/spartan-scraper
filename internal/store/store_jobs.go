@@ -38,6 +38,27 @@ func (s *Store) Create(ctx context.Context, job model.Job) error {
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to marshal job params", err)
 	}
+
+	// Marshal depends_on as JSON array
+	var dependsOnJSON string
+	if len(job.DependsOn) > 0 {
+		dependsOnBytes, err := json.Marshal(job.DependsOn)
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, "failed to marshal depends_on", err)
+		}
+		dependsOnJSON = string(dependsOnBytes)
+	}
+
+	// Set default dependency status
+	depStatus := job.DependencyStatus
+	if depStatus == "" {
+		if len(job.DependsOn) > 0 {
+			depStatus = model.DependencyStatusPending
+		} else {
+			depStatus = model.DependencyStatusReady
+		}
+	}
+
 	_, err = s.insertJobStmt.ExecContext(
 		ctx,
 		job.ID,
@@ -48,6 +69,9 @@ func (s *Store) Create(ctx context.Context, job model.Job) error {
 		string(params),
 		job.ResultPath,
 		job.Error,
+		dependsOnJSON,
+		string(depStatus),
+		job.ChainID,
 	)
 	return err
 }
@@ -72,12 +96,16 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 	var job model.Job
 	var createdAt, updatedAt string
 	var params string
-	if err := row.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
+	var dependsOnJSON string
+	var depStatusStr string
+
+	if err := row.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error, &dependsOnJSON, &depStatusStr, &job.ChainID); err != nil {
 		if err == sql.ErrNoRows || err.Error() == "sql: no rows in result set" {
 			return model.Job{}, apperrors.NotFound("job not found")
 		}
 		return model.Job{}, err
 	}
+
 	var err error
 	job.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)
 	if err != nil {
@@ -92,6 +120,15 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 			return model.Job{}, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
 		}
 	}
+	if dependsOnJSON != "" {
+		if err := json.Unmarshal([]byte(dependsOnJSON), &job.DependsOn); err != nil {
+			return model.Job{}, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal depends_on", err)
+		}
+	}
+	if depStatusStr != "" {
+		job.DependencyStatus = model.DependencyStatus(depStatusStr)
+	}
+
 	return job, nil
 }
 
@@ -234,4 +271,95 @@ func (s *Store) DeleteWithArtifacts(ctx context.Context, id string) error {
 func (s *Store) UpdateResultPath(ctx context.Context, id string, resultPath string) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE jobs SET result_path = ? WHERE id = ?", resultPath, id)
 	return err
+}
+
+// GetJobsByDependencyStatus returns jobs with the specified dependency status.
+func (s *Store) GetJobsByDependencyStatus(ctx context.Context, status model.DependencyStatus) ([]model.Job, error) {
+	rows, err := s.stmtGetJobsByDependencyStatus.QueryContext(ctx, string(status))
+	if err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to query jobs by dependency status", err)
+	}
+	defer rows.Close()
+
+	return s.scanJobsWithDependencies(rows)
+}
+
+// UpdateDependencyStatus updates only the dependency status field for a job.
+func (s *Store) UpdateDependencyStatus(ctx context.Context, jobID string, status model.DependencyStatus) error {
+	_, err := s.stmtUpdateDependencyStatus.ExecContext(ctx, string(status), jobID)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to update dependency status", err)
+	}
+	return nil
+}
+
+// GetDependentJobs returns jobs that depend on the given job ID.
+// Uses a LIKE query to find jobs where depends_on contains the job ID.
+func (s *Store) GetDependentJobs(ctx context.Context, jobID string) ([]model.Job, error) {
+	// Use JSON array pattern matching: %"jobID"%
+	pattern := `%"` + jobID + `"%`
+	rows, err := s.stmtGetDependentJobs.QueryContext(ctx, pattern)
+	if err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to query dependent jobs", err)
+	}
+	defer rows.Close()
+
+	return s.scanJobsWithDependencies(rows)
+}
+
+// GetJobsByChain returns all jobs belonging to a chain.
+func (s *Store) GetJobsByChain(ctx context.Context, chainID string) ([]model.Job, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id
+		 FROM jobs WHERE chain_id = ? ORDER BY created_at ASC`,
+		chainID)
+	if err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to query jobs by chain", err)
+	}
+	defer rows.Close()
+
+	return s.scanJobsWithDependencies(rows)
+}
+
+// scanJobsWithDependencies scans job rows including dependency fields.
+func (s *Store) scanJobsWithDependencies(rows *sql.Rows) ([]model.Job, error) {
+	var results []model.Job
+	for rows.Next() {
+		var job model.Job
+		var createdAt, updatedAt string
+		var params string
+		var dependsOnJSON string
+		var depStatusStr string
+
+		if err := rows.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error, &dependsOnJSON, &depStatusStr, &job.ChainID); err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to scan job row", err)
+		}
+
+		var parseErr error
+		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
+		if parseErr != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", parseErr)
+		}
+		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
+		if parseErr != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", parseErr)
+		}
+
+		if params != "" {
+			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
+			}
+		}
+		if dependsOnJSON != "" {
+			if err := json.Unmarshal([]byte(dependsOnJSON), &job.DependsOn); err != nil {
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal depends_on", err)
+			}
+		}
+		if depStatusStr != "" {
+			job.DependencyStatus = model.DependencyStatus(depStatusStr)
+		}
+
+		results = append(results, job)
+	}
+	return results, rows.Err()
 }

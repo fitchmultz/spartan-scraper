@@ -66,8 +66,8 @@ func Open(dataDir string) (*Store, error) {
 
 func (s *Store) prepareStatements() error {
 	var err error
-	s.insertJobStmt, err = s.db.Prepare(`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error)
-			values (?, ?, ?, ?, ?, ?, ?, ?)`)
+	s.insertJobStmt, err = s.db.Prepare(`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare insert job statement", err)
 	}
@@ -77,7 +77,7 @@ func (s *Store) prepareStatements() error {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update job status statement", err)
 	}
 
-	s.getJobStmt, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error from jobs where id = ?`)
+	s.getJobStmt, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where id = ?`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get job statement", err)
 	}
@@ -108,6 +108,53 @@ func (s *Store) prepareStatements() error {
 	s.deleteAllCrawlStatesStmt, err = s.db.Prepare(`delete from crawl_states`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete all crawl states statement", err)
+	}
+
+	// Chain statements
+	s.stmtCreateChain, err = s.db.Prepare(`insert into job_chains (id, name, description, definition, created_at, updated_at) values (?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare create chain statement", err)
+	}
+
+	s.stmtGetChain, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains where id = ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get chain statement", err)
+	}
+
+	s.stmtGetChainByName, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains where name = ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get chain by name statement", err)
+	}
+
+	s.stmtUpdateChain, err = s.db.Prepare(`update job_chains set name = ?, description = ?, definition = ?, updated_at = ? where id = ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update chain statement", err)
+	}
+
+	s.stmtDeleteChain, err = s.db.Prepare(`delete from job_chains where id = ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete chain statement", err)
+	}
+
+	s.stmtListChains, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains order by created_at desc`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare list chains statement", err)
+	}
+
+	// Dependency statements
+	s.stmtGetJobsByDependencyStatus, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where dependency_status = ? order by created_at desc`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get jobs by dependency status statement", err)
+	}
+
+	s.stmtUpdateDependencyStatus, err = s.db.Prepare(`update jobs set dependency_status = ? where id = ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update dependency status statement", err)
+	}
+
+	s.stmtGetDependentJobs, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on like ?`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get dependent jobs statement", err)
 	}
 
 	return nil
@@ -210,6 +257,11 @@ func (s *Store) init() error {
 		return err
 	}
 
+	// Initialize dependency and chain tables
+	if err := s.initDependencyTables(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -243,6 +295,71 @@ func (s *Store) initBatchTables() error {
 	return nil
 }
 
+// initDependencyTables creates the dependency and chain-related tables.
+// This is called during store initialization.
+func (s *Store) initDependencyTables() error {
+	// Add dependency columns to jobs table
+	dependsOnExists, err := columnExists(s.db, "jobs", "depends_on")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to check for depends_on column", err)
+	}
+	if !dependsOnExists {
+		_, err = s.db.Exec("ALTER TABLE jobs ADD COLUMN depends_on TEXT")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, "failed to add depends_on column", err)
+		}
+	}
+
+	depStatusExists, err := columnExists(s.db, "jobs", "dependency_status")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to check for dependency_status column", err)
+	}
+	if !depStatusExists {
+		_, err = s.db.Exec("ALTER TABLE jobs ADD COLUMN dependency_status TEXT DEFAULT 'ready'")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, "failed to add dependency_status column", err)
+		}
+	}
+
+	chainIDExists, err := columnExists(s.db, "jobs", "chain_id")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to check for chain_id column", err)
+	}
+	if !chainIDExists {
+		_, err = s.db.Exec("ALTER TABLE jobs ADD COLUMN chain_id TEXT")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, "failed to add chain_id column", err)
+		}
+	}
+
+	// Create job_chains table
+	_, err = s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS job_chains (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT,
+			definition TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_job_chains_name ON job_chains(name);
+	`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to create job_chains table", err)
+	}
+
+	// Create indexes for dependency lookups
+	_, err = s.db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_jobs_chain_id ON jobs(chain_id);
+		CREATE INDEX IF NOT EXISTS idx_jobs_dependency_status ON jobs(dependency_status);
+	`)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to create dependency indexes", err)
+	}
+
+	return nil
+}
+
 // Close closes the database connection and all prepared statements.
 // Attempts to checkpoint the WAL before closing.
 func (s *Store) Close() error {
@@ -268,6 +385,37 @@ func (s *Store) Close() error {
 	}
 	if s.deleteAllCrawlStatesStmt != nil {
 		s.deleteAllCrawlStatesStmt.Close()
+	}
+
+	// Close chain statements
+	if s.stmtCreateChain != nil {
+		s.stmtCreateChain.Close()
+	}
+	if s.stmtGetChain != nil {
+		s.stmtGetChain.Close()
+	}
+	if s.stmtGetChainByName != nil {
+		s.stmtGetChainByName.Close()
+	}
+	if s.stmtUpdateChain != nil {
+		s.stmtUpdateChain.Close()
+	}
+	if s.stmtDeleteChain != nil {
+		s.stmtDeleteChain.Close()
+	}
+	if s.stmtListChains != nil {
+		s.stmtListChains.Close()
+	}
+
+	// Close dependency statements
+	if s.stmtGetJobsByDependencyStatus != nil {
+		s.stmtGetJobsByDependencyStatus.Close()
+	}
+	if s.stmtUpdateDependencyStatus != nil {
+		s.stmtUpdateDependencyStatus.Close()
+	}
+	if s.stmtGetDependentJobs != nil {
+		s.stmtGetDependentJobs.Close()
 	}
 
 	return s.db.Close()

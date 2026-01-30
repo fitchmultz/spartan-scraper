@@ -107,34 +107,26 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 	}
 }
 
-// recoverQueuedJobs loads all queued jobs from the store and enqueues them.
+// recoverQueuedJobs loads all queued jobs that are ready from the store and enqueues them.
+// Only jobs with dependency_status = 'ready' are enqueued.
 func (m *Manager) recoverQueuedJobs(ctx context.Context) error {
 	var totalRecovered int
-	opts := store.ListByStatusOptions{Limit: 100}
 
-	for {
-		jobs, err := m.store.ListByStatus(ctx, model.StatusQueued, opts)
-		if err != nil {
-			return fmt.Errorf("failed to list queued jobs: %w", err)
+	// Get all queued jobs with ready dependency status
+	jobs, err := m.store.GetJobsByDependencyStatus(ctx, model.DependencyStatusReady)
+	if err != nil {
+		return fmt.Errorf("failed to list ready jobs: %w", err)
+	}
+
+	for _, job := range jobs {
+		if job.Status != model.StatusQueued {
+			continue
 		}
-
-		if len(jobs) == 0 {
-			break
-		}
-
-		slog.Info("recovering queued jobs", "count", len(jobs), "offset", opts.Offset)
-		for _, job := range jobs {
-			slog.Info("recovering queued job", "jobID", job.ID, "kind", job.Kind)
-			if err := m.Enqueue(job); err != nil {
-				slog.Error("failed to enqueue recovered job", "jobID", job.ID, "error", err)
-			} else {
-				totalRecovered++
-			}
-		}
-
-		opts.Offset += len(jobs)
-		if len(jobs) < opts.Limit {
-			break
+		slog.Info("recovering queued job", "jobID", job.ID, "kind", job.Kind)
+		if err := m.Enqueue(job); err != nil {
+			slog.Error("failed to enqueue recovered job", "jobID", job.ID, "error", err)
+		} else {
+			totalRecovered++
 		}
 	}
 

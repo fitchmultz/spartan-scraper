@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { CreateChainData, CreateChainErrors, CreateChainResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -392,4 +392,67 @@ export const getV1Ws = <ThrowOnError extends boolean = false>(options?: Options<
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/ws',
     ...options
+});
+
+/**
+ * List all job chains
+ *
+ * Returns all defined job chains ordered by creation date (newest first)
+ */
+export const listChains = <ThrowOnError extends boolean = false>(options?: Options<ListChainsData, ThrowOnError>) => (options?.client ?? client).get<ListChainsResponses, ListChainsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/chains',
+    ...options
+});
+
+/**
+ * Create a new job chain
+ *
+ * Creates a named, reusable workflow definition
+ */
+export const createChain = <ThrowOnError extends boolean = false>(options: Options<CreateChainData, ThrowOnError>) => (options.client ?? client).post<CreateChainResponses, CreateChainErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/chains',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a chain
+ *
+ * Removes a chain definition. Only chains with no active jobs can be deleted.
+ */
+export const deleteChain = <ThrowOnError extends boolean = false>(options: Options<DeleteChainData, ThrowOnError>) => (options.client ?? client).delete<DeleteChainResponses, DeleteChainErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/chains/{id}',
+    ...options
+});
+
+/**
+ * Get a chain by ID
+ *
+ * Retrieve a specific chain definition
+ */
+export const getChain = <ThrowOnError extends boolean = false>(options: Options<GetChainData, ThrowOnError>) => (options.client ?? client).get<GetChainResponses, GetChainErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/chains/{id}',
+    ...options
+});
+
+/**
+ * Submit/instantiate a chain
+ *
+ * Creates jobs from a chain definition with optional parameter overrides
+ */
+export const submitChain = <ThrowOnError extends boolean = false>(options: Options<SubmitChainData, ThrowOnError>) => (options.client ?? client).post<SubmitChainResponses, SubmitChainErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/chains/{id}/submit',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });

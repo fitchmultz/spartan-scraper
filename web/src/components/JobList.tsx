@@ -200,7 +200,41 @@ export function JobList({
                   {job.status}
                 </span>{" "}
                 {job.kind}
+                {job.dependencyStatus && job.dependencyStatus !== "ready" ? (
+                  <span
+                    className={`badge ${statusClass(job.dependencyStatus)}`}
+                    style={{ marginLeft: 8 }}
+                    title={
+                      job.dependencyStatus === "pending"
+                        ? "Waiting for dependencies"
+                        : "Dependency failed"
+                    }
+                  >
+                    deps: {job.dependencyStatus}
+                  </span>
+                ) : null}
+                {job.chainId ? (
+                  <span
+                    className="badge"
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: "#e0e7ff",
+                      color: "#4338ca",
+                    }}
+                    title={`Part of chain ${job.chainId}`}
+                  >
+                    chain
+                  </span>
+                ) : null}
               </div>
+              {job.dependsOn && job.dependsOn.length > 0 ? (
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  Depends on: {job.dependsOn.slice(0, 3).join(", ")}
+                  {job.dependsOn.length > 3
+                    ? ` +${job.dependsOn.length - 3} more`
+                    : ""}
+                </div>
+              ) : null}
               <div>Updated: {job.updatedAt}</div>
               {job.error ? <div>Error: {job.error}</div> : null}
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

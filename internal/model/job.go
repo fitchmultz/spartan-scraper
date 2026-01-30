@@ -9,6 +9,9 @@ type Kind string
 
 type Status string
 
+// DependencyStatus represents the state of a job's dependencies.
+type DependencyStatus string
+
 const (
 	KindScrape   Kind = "scrape"
 	KindCrawl    Kind = "crawl"
@@ -19,6 +22,13 @@ const (
 	StatusSucceeded Status = "succeeded"
 	StatusFailed    Status = "failed"
 	StatusCanceled  Status = "canceled"
+
+	// DependencyStatusPending indicates the job is waiting for dependencies to complete.
+	DependencyStatusPending DependencyStatus = "pending"
+	// DependencyStatusReady indicates all dependencies succeeded and the job can run.
+	DependencyStatusReady DependencyStatus = "ready"
+	// DependencyStatusFailed indicates one or more dependencies failed.
+	DependencyStatusFailed DependencyStatus = "failed"
 )
 
 var validStatuses = map[Status]bool{
@@ -27,6 +37,17 @@ var validStatuses = map[Status]bool{
 	StatusSucceeded: true,
 	StatusFailed:    true,
 	StatusCanceled:  true,
+}
+
+var validDependencyStatuses = map[DependencyStatus]bool{
+	DependencyStatusPending: true,
+	DependencyStatusReady:   true,
+	DependencyStatusFailed:  true,
+}
+
+// IsValid returns true if the dependency status is a recognized value.
+func (s DependencyStatus) IsValid() bool {
+	return validDependencyStatuses[s]
 }
 
 func (s Status) IsTerminal() bool {
@@ -80,13 +101,22 @@ func (j Job) ExtractWebhookConfig() *WebhookConfig {
 	return cfg
 }
 
+// Job represents a single scraping, crawling, or research task.
+//
+// Dependencies:
+//   - DependsOn contains job IDs that must complete successfully before this job runs.
+//   - DependencyStatus tracks whether dependencies are pending, ready, or failed.
+//   - ChainID optionally associates this job with a named workflow chain.
 type Job struct {
-	ID         string                 `json:"id"`
-	Kind       Kind                   `json:"kind"`
-	Status     Status                 `json:"status"`
-	CreatedAt  time.Time              `json:"createdAt"`
-	UpdatedAt  time.Time              `json:"updatedAt"`
-	Params     map[string]interface{} `json:"params"`
-	ResultPath string                 `json:"resultPath,omitempty"`
-	Error      string                 `json:"error"`
+	ID               string                 `json:"id"`
+	Kind             Kind                   `json:"kind"`
+	Status           Status                 `json:"status"`
+	CreatedAt        time.Time              `json:"createdAt"`
+	UpdatedAt        time.Time              `json:"updatedAt"`
+	Params           map[string]interface{} `json:"params"`
+	ResultPath       string                 `json:"resultPath,omitempty"`
+	Error            string                 `json:"error"`
+	DependsOn        []string               `json:"dependsOn,omitempty"`        // List of job IDs this job depends on
+	DependencyStatus DependencyStatus       `json:"dependencyStatus,omitempty"` // pending/ready/failed
+	ChainID          string                 `json:"chainId,omitempty"`          // Optional chain membership
 }

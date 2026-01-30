@@ -129,6 +129,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
 	mux.HandleFunc("/v1/metrics", s.handleMetrics)
 	mux.HandleFunc("/v1/ws", s.handleWebSocket)
+	mux.HandleFunc("/v1/chains", s.handleChains)
+	mux.HandleFunc("/v1/chains/", s.handleChain)
 
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

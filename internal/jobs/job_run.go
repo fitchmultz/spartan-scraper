@@ -192,10 +192,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during scrape", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
+				m.propagateFailure(context.Background(), job)
 				return nil
 			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -261,10 +263,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during crawl", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
+				m.propagateFailure(context.Background(), job)
 				return nil
 			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
 			return err
 		}
 		for _, item := range results {
@@ -323,10 +327,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during research", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
+				m.propagateFailure(context.Background(), job)
 				return nil
 			}
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -351,5 +357,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 
 	slog.Info("job succeeded", "jobID", job.ID)
 	m.updateStatusWithEvent(job, model.StatusRunning, model.StatusSucceeded, "")
+
+	// Resolve dependencies for jobs waiting on this one
+	m.resolveDependencies(ctx, job)
+
 	return nil
 }

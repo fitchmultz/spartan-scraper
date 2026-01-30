@@ -405,6 +405,18 @@ export type Job = {
      * Captured network activity if network interception was enabled
      */
     interceptedData?: Array<InterceptedEntry>;
+    /**
+     * List of job IDs this job depends on
+     */
+    dependsOn?: Array<string>;
+    /**
+     * Status of dependency resolution
+     */
+    dependencyStatus?: 'pending' | 'ready' | 'failed';
+    /**
+     * ID of the job chain this job belongs to, if any
+     */
+    chainId?: string;
 };
 
 export type JobList = {
@@ -1130,6 +1142,139 @@ export type BatchStatusResponse = {
      * When the batch was last updated
      */
     updatedAt: string;
+};
+
+/**
+ * A named, reusable workflow definition
+ */
+export type JobChain = {
+    /**
+     * Unique chain identifier
+     */
+    id: string;
+    /**
+     * Human-readable chain name (unique)
+     */
+    name: string;
+    /**
+     * Optional chain description
+     */
+    description?: string;
+    definition: ChainDefinition;
+    /**
+     * When the chain was created
+     */
+    createdAt: string;
+    /**
+     * When the chain was last updated
+     */
+    updatedAt: string;
+};
+
+/**
+ * DAG structure defining the workflow
+ */
+export type ChainDefinition = {
+    /**
+     * Job templates in the chain
+     */
+    nodes: Array<ChainNode>;
+    /**
+     * Dependency relationships between nodes
+     */
+    edges: Array<ChainEdge>;
+};
+
+/**
+ * A job template within a chain
+ */
+export type ChainNode = {
+    /**
+     * Unique node identifier within the chain
+     */
+    id: string;
+    /**
+     * Type of job
+     */
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Job parameters template
+     */
+    params: {
+        [key: string]: unknown;
+    };
+    metadata?: ChainMetadata;
+};
+
+/**
+ * A dependency relationship between nodes (From must complete before To can start)
+ */
+export type ChainEdge = {
+    /**
+     * Source node ID (dependency)
+     */
+    from: string;
+    /**
+     * Target node ID (dependent)
+     */
+    to: string;
+};
+
+/**
+ * Human-readable metadata for a chain node
+ */
+export type ChainMetadata = {
+    /**
+     * Human-readable node name
+     */
+    name?: string;
+    /**
+     * Node description
+     */
+    description?: string;
+};
+
+/**
+ * List of job chains
+ */
+export type ChainListResponse = {
+    chains: Array<JobChain>;
+};
+
+/**
+ * Request to create a new chain
+ */
+export type ChainCreateRequest = {
+    /**
+     * Chain name (must be unique)
+     */
+    name: string;
+    /**
+     * Optional chain description
+     */
+    description?: string;
+    definition: ChainDefinition;
+};
+
+/**
+ * Request to submit/instantiate a chain
+ */
+export type ChainSubmitRequest = {
+    /**
+     * Parameter overrides by node ID
+     */
+    overrides?: {
+        [key: string]: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+/**
+ * Response after submitting a chain
+ */
+export type ChainSubmitResponse = {
+    jobs: Array<Job>;
 };
 
 export type GetHealthzData = {
@@ -2125,3 +2270,195 @@ export type GetV1WsErrors = {
 };
 
 export type GetV1WsError = GetV1WsErrors[keyof GetV1WsErrors];
+
+export type ListChainsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/chains';
+};
+
+export type ListChainsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListChainsError = ListChainsErrors[keyof ListChainsErrors];
+
+export type ListChainsResponses = {
+    /**
+     * List of chains
+     */
+    200: ChainListResponse;
+};
+
+export type ListChainsResponse = ListChainsResponses[keyof ListChainsResponses];
+
+export type CreateChainData = {
+    body: ChainCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/chains';
+};
+
+export type CreateChainErrors = {
+    /**
+     * Bad Request (invalid chain definition)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateChainError = CreateChainErrors[keyof CreateChainErrors];
+
+export type CreateChainResponses = {
+    /**
+     * Chain created successfully
+     */
+    201: JobChain;
+};
+
+export type CreateChainResponse = CreateChainResponses[keyof CreateChainResponses];
+
+export type DeleteChainData = {
+    body?: never;
+    path: {
+        /**
+         * Chain ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/chains/{id}';
+};
+
+export type DeleteChainErrors = {
+    /**
+     * Bad Request (chain has active jobs)
+     */
+    400: ErrorResponse;
+    /**
+     * Chain not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteChainError = DeleteChainErrors[keyof DeleteChainErrors];
+
+export type DeleteChainResponses = {
+    /**
+     * Chain deleted successfully
+     */
+    204: void;
+};
+
+export type DeleteChainResponse = DeleteChainResponses[keyof DeleteChainResponses];
+
+export type GetChainData = {
+    body?: never;
+    path: {
+        /**
+         * Chain ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/chains/{id}';
+};
+
+export type GetChainErrors = {
+    /**
+     * Chain not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetChainError = GetChainErrors[keyof GetChainErrors];
+
+export type GetChainResponses = {
+    /**
+     * Chain details
+     */
+    200: JobChain;
+};
+
+export type GetChainResponse = GetChainResponses[keyof GetChainResponses];
+
+export type SubmitChainData = {
+    body?: ChainSubmitRequest;
+    path: {
+        /**
+         * Chain ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/chains/{id}/submit';
+};
+
+export type SubmitChainErrors = {
+    /**
+     * Bad Request (invalid overrides)
+     */
+    400: ErrorResponse;
+    /**
+     * Chain not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type SubmitChainError = SubmitChainErrors[keyof SubmitChainErrors];
+
+export type SubmitChainResponses = {
+    /**
+     * Chain submitted, jobs created
+     */
+    201: ChainSubmitResponse;
+};
+
+export type SubmitChainResponse = SubmitChainResponses[keyof SubmitChainResponses];
