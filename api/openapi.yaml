@@ -209,6 +209,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/sessions:
+    get:
+      summary: List saved sessions
+      operationId: listSessions
+      responses:
+        '200':
+          description: Sessions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create or update a session
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionInput'
+      responses:
+        '200':
+          description: Session saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/sessions/{id}:
+    get:
+      summary: Get session by ID
+      operationId: getSession
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a session
+      operationId: deleteSession
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Session deleted
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/templates:
     get:
       summary: List extraction templates
@@ -2893,3 +3021,106 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Job'
+    Session:
+      type: object
+      description: A persisted cookie session for authenticated scraping
+      required:
+        - id
+        - domain
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique session identifier
+        name:
+          type: string
+          description: Human-readable session name
+        domain:
+          type: string
+          description: Domain this session is for (e.g., "example.com")
+        cookies:
+          type: array
+          description: Persisted cookies for this session
+          items:
+            $ref: '#/components/schemas/SessionCookie'
+        created_at:
+          type: string
+          format: date-time
+          description: When the session was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the session was last updated
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional session expiration time
+    SessionCookie:
+      type: object
+      description: A cookie stored in a session
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Cookie name
+        value:
+          type: string
+          description: Cookie value
+        domain:
+          type: string
+          description: Cookie domain
+        path:
+          type: string
+          description: Cookie path
+        expires:
+          type: string
+          format: date-time
+          description: Cookie expiration time
+        secure:
+          type: boolean
+          description: Whether the cookie requires HTTPS
+        httpOnly:
+          type: boolean
+          description: Whether the cookie is HTTP-only
+        sameSite:
+          type: string
+          enum: [Strict, Lax, None]
+          description: SameSite attribute
+    SessionInput:
+      type: object
+      description: Input for creating or updating a session
+      required:
+        - id
+        - domain
+      properties:
+        id:
+          type: string
+          description: Unique session identifier
+        name:
+          type: string
+          description: Human-readable session name (defaults to id)
+        domain:
+          type: string
+          description: Domain this session is for
+        cookies:
+          type: array
+          description: Cookies to store in the session
+          items:
+            $ref: '#/components/schemas/SessionCookie'
+    SessionResponse:
+      type: object
+      description: Response containing a single session
+      properties:
+        session:
+          $ref: '#/components/schemas/Session'
+    SessionsResponse:
+      type: object
+      description: Response containing a list of sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'

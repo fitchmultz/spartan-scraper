@@ -1277,6 +1277,114 @@ export type ChainSubmitResponse = {
     jobs: Array<Job>;
 };
 
+/**
+ * A persisted cookie session for authenticated scraping
+ */
+export type Session = {
+    /**
+     * Unique session identifier
+     */
+    id: string;
+    /**
+     * Human-readable session name
+     */
+    name?: string;
+    /**
+     * Domain this session is for (e.g., "example.com")
+     */
+    domain: string;
+    /**
+     * Persisted cookies for this session
+     */
+    cookies?: Array<SessionCookie>;
+    /**
+     * When the session was created
+     */
+    created_at: string;
+    /**
+     * When the session was last updated
+     */
+    updated_at: string;
+    /**
+     * Optional session expiration time
+     */
+    expires_at?: string;
+};
+
+/**
+ * A cookie stored in a session
+ */
+export type SessionCookie = {
+    /**
+     * Cookie name
+     */
+    name: string;
+    /**
+     * Cookie value
+     */
+    value: string;
+    /**
+     * Cookie domain
+     */
+    domain?: string;
+    /**
+     * Cookie path
+     */
+    path?: string;
+    /**
+     * Cookie expiration time
+     */
+    expires?: string;
+    /**
+     * Whether the cookie requires HTTPS
+     */
+    secure?: boolean;
+    /**
+     * Whether the cookie is HTTP-only
+     */
+    httpOnly?: boolean;
+    /**
+     * SameSite attribute
+     */
+    sameSite?: 'Strict' | 'Lax' | 'None';
+};
+
+/**
+ * Input for creating or updating a session
+ */
+export type SessionInput = {
+    /**
+     * Unique session identifier
+     */
+    id: string;
+    /**
+     * Human-readable session name (defaults to id)
+     */
+    name?: string;
+    /**
+     * Domain this session is for
+     */
+    domain: string;
+    /**
+     * Cookies to store in the session
+     */
+    cookies?: Array<SessionCookie>;
+};
+
+/**
+ * Response containing a single session
+ */
+export type SessionResponse = {
+    session?: Session;
+};
+
+/**
+ * Response containing a list of sessions
+ */
+export type SessionsResponse = {
+    sessions?: Array<Session>;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -1474,6 +1582,142 @@ export type PostV1AuthExportResponses = {
 };
 
 export type PostV1AuthExportResponse = PostV1AuthExportResponses[keyof PostV1AuthExportResponses];
+
+export type ListSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/sessions';
+};
+
+export type ListSessionsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListSessionsError = ListSessionsErrors[keyof ListSessionsErrors];
+
+export type ListSessionsResponses = {
+    /**
+     * Sessions list
+     */
+    200: SessionsResponse;
+};
+
+export type ListSessionsResponse = ListSessionsResponses[keyof ListSessionsResponses];
+
+export type CreateSessionData = {
+    body: SessionInput;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/sessions';
+};
+
+export type CreateSessionErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateSessionError = CreateSessionErrors[keyof CreateSessionErrors];
+
+export type CreateSessionResponses = {
+    /**
+     * Session saved
+     */
+    200: SessionResponse;
+};
+
+export type CreateSessionResponse = CreateSessionResponses[keyof CreateSessionResponses];
+
+export type DeleteSessionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/auth/sessions/{id}';
+};
+
+export type DeleteSessionErrors = {
+    /**
+     * Session not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteSessionError = DeleteSessionErrors[keyof DeleteSessionErrors];
+
+export type DeleteSessionResponses = {
+    /**
+     * Session deleted
+     */
+    204: void;
+};
+
+export type DeleteSessionResponse = DeleteSessionResponses[keyof DeleteSessionResponses];
+
+export type GetSessionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/auth/sessions/{id}';
+};
+
+export type GetSessionErrors = {
+    /**
+     * Session not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetSessionError = GetSessionErrors[keyof GetSessionErrors];
+
+export type GetSessionResponses = {
+    /**
+     * Session details
+     */
+    200: SessionResponse;
+};
+
+export type GetSessionResponse = GetSessionResponses[keyof GetSessionResponses];
 
 export type ListTemplatesData = {
     body?: never;

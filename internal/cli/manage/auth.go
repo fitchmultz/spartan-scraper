@@ -305,6 +305,25 @@ func RunAuth(_ context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 
+	case "session":
+		if len(args) < 2 {
+			printAuthSessionHelp()
+			return 1
+		}
+		switch args[1] {
+		case "list":
+			return runSessionList(cfg)
+		case "get":
+			return runSessionGet(cfg, args[2:])
+		case "delete":
+			return runSessionDelete(cfg, args[2:])
+		case "save":
+			return runSessionSave(cfg, args[2:])
+		default:
+			printAuthSessionHelp()
+			return 1
+		}
+
 	default:
 		fmt.Fprintln(os.Stderr, "unknown auth subcommand:", args[0])
 		return 1
@@ -322,6 +341,7 @@ Subcommands:
   resolve
   vault
   apikey
+  session
 
 Examples:
   spartan auth list
@@ -332,6 +352,8 @@ Examples:
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
   spartan auth apikey generate --name "Production" --permissions read_write
+  spartan auth session list
+  spartan auth session save --id mysession --domain example.com --cookie "session=abc123"
 
 Use "spartan auth set --help" for full flags.
 `)
@@ -372,4 +394,131 @@ Use "spartan auth apikey generate --help" for full flags.
 
 func isHelpToken(s string) bool {
 	return s == "--help" || s == "-h" || s == "help"
+}
+
+func printAuthSessionHelp() {
+	fmt.Fprint(os.Stderr, `Usage:
+  spartan auth session <subcommand> [options]
+
+Subcommands:
+  list        List all saved sessions
+  get         Show session details
+  delete      Delete a session
+  save        Manually save a session with cookies
+
+Examples:
+  spartan auth session list
+  spartan auth session get --id mysession
+  spartan auth session delete --id mysession
+  spartan auth session save --id mysession --domain example.com --cookie "session=abc123"
+`)
+}
+
+func runSessionList(cfg config.Config) int {
+	store := auth.NewSessionStore(cfg.DataDir)
+	sessions, err := store.List()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	if len(sessions) == 0 {
+		fmt.Println("No sessions found.")
+		return 0
+	}
+
+	fmt.Printf("%-20s %-30s %-25s %-25s\n", "ID", "DOMAIN", "COOKIES", "UPDATED")
+	for _, s := range sessions {
+		fmt.Printf("%-20s %-30s %-25d %-25s\n",
+			s.ID,
+			s.Domain,
+			len(s.Cookies),
+			s.UpdatedAt.Format(time.RFC3339),
+		)
+	}
+	return 0
+}
+
+func runSessionGet(cfg config.Config, args []string) int {
+	fs := flag.NewFlagSet("auth session get", flag.ExitOnError)
+	id := fs.String("id", "", "Session ID")
+	_ = fs.Parse(args)
+
+	if *id == "" {
+		fmt.Fprintln(os.Stderr, "--id is required")
+		return 1
+	}
+
+	store := auth.NewSessionStore(cfg.DataDir)
+	session, found, err := store.Get(*id)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if !found {
+		fmt.Fprintf(os.Stderr, "session not found: %s\n", *id)
+		return 1
+	}
+
+	payload, _ := json.MarshalIndent(session, "", "  ")
+	fmt.Println(string(payload))
+	return 0
+}
+
+func runSessionDelete(cfg config.Config, args []string) int {
+	fs := flag.NewFlagSet("auth session delete", flag.ExitOnError)
+	id := fs.String("id", "", "Session ID")
+	_ = fs.Parse(args)
+
+	if *id == "" {
+		fmt.Fprintln(os.Stderr, "--id is required")
+		return 1
+	}
+
+	store := auth.NewSessionStore(cfg.DataDir)
+	if err := store.Delete(*id); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Println("deleted session", *id)
+	return 0
+}
+
+func runSessionSave(cfg config.Config, args []string) int {
+	fs := flag.NewFlagSet("auth session save", flag.ExitOnError)
+	id := fs.String("id", "", "Session ID (required)")
+	name := fs.String("name", "", "Session name (defaults to ID)")
+	domain := fs.String("domain", "", "Domain for session (required)")
+	cookies := common.StringSliceFlag{}
+	fs.Var(&cookies, "cookie", "Cookie value (repeatable, name=value)")
+	_ = fs.Parse(args)
+
+	if *id == "" {
+		fmt.Fprintln(os.Stderr, "--id is required")
+		return 1
+	}
+	if *domain == "" {
+		fmt.Fprintln(os.Stderr, "--domain is required")
+		return 1
+	}
+
+	authCookies := common.ToCookies([]string(cookies))
+
+	store := auth.NewSessionStore(cfg.DataDir)
+	session := auth.Session{
+		ID:      *id,
+		Name:    *name,
+		Domain:  *domain,
+		Cookies: authCookies,
+	}
+	if session.Name == "" {
+		session.Name = session.ID
+	}
+
+	if err := store.Upsert(session); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Println("saved session", *id)
+	return 0
 }

@@ -544,6 +544,13 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 			slog.Warn("wait for load state after login timed out", "url", apperrors.SanitizeURL(req.URL))
 		}
 		slog.Info("login complete", "url", apperrors.SanitizeURL(req.URL))
+
+		// Extract and save cookies if session ID is provided
+		if req.SessionID != "" && req.DataDir != "" {
+			if err := f.extractAndSaveSession(browserCtx, req); err != nil {
+				slog.Warn("failed to save session cookies", "sessionID", req.SessionID, "error", err)
+			}
+		}
 	}
 
 	if len(req.PreNavJS) > 0 {
@@ -826,4 +833,40 @@ func (f *PlaywrightFetcher) applyDeviceEmulation(opts *playwright.BrowserNewCont
 	if device.UserAgent != "" {
 		opts.UserAgent = &device.UserAgent
 	}
+}
+
+// extractAndSaveSession extracts cookies from the browser context and saves them as a session.
+func (f *PlaywrightFetcher) extractAndSaveSession(browserCtx playwright.BrowserContext, req Request) error {
+	cookies, err := browserCtx.Cookies()
+	if err != nil {
+		return fmt.Errorf("failed to get cookies: %w", err)
+	}
+
+	// Convert playwright.Cookie to sessionCookie
+	sessionCookies := make([]sessionCookie, 0, len(cookies))
+	for _, c := range cookies {
+		sessionCookies = append(sessionCookies, sessionCookie{
+			Name:     c.Name,
+			Value:    c.Value,
+			Domain:   c.Domain,
+			Path:     c.Path,
+			Secure:   c.Secure,
+			HttpOnly: c.HttpOnly,
+		})
+	}
+
+	// Save session
+	sess := session{
+		ID:      req.SessionID,
+		Name:    req.SessionID,
+		Domain:  extractDomain(req.URL),
+		Cookies: sessionCookies,
+	}
+
+	if err := saveSession(req.DataDir, sess); err != nil {
+		return fmt.Errorf("failed to save session: %w", err)
+	}
+
+	slog.Info("saved session cookies", "sessionID", req.SessionID, "domain", sess.Domain, "count", len(sessionCookies))
+	return nil
 }

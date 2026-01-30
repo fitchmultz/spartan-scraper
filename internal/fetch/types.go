@@ -257,6 +257,7 @@ type Request struct {
 	Headless         bool
 	UsePlaywright    bool
 	Auth             AuthOptions
+	SessionID        string // Reference to persisted session for cookie reuse
 	Limiter          *HostLimiter
 	MaxRetries       int
 	RetryBaseDelay   time.Duration

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -58,6 +61,15 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to create cookie jar: %w", err)
+	}
+
+	// Load session cookies if SessionID is provided
+	if req.SessionID != "" && req.DataDir != "" {
+		if err := applySessionToJar(jar, req.SessionID, req.DataDir, req.URL); err != nil {
+			slog.Warn("failed to apply session cookies", "sessionID", req.SessionID, "error", err)
+		} else {
+			slog.Debug("applied session cookies", "sessionID", req.SessionID)
+		}
 	}
 
 	// Configure transport with proxy support
@@ -244,4 +256,83 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 	slog.Error("HTTP fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
 	return Result{}, errors.New("max retries exceeded")
+}
+
+// sessionCookie represents a cookie stored in a session.
+type sessionCookie struct {
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Domain   string `json:"domain,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Secure   bool   `json:"secure,omitempty"`
+	HttpOnly bool   `json:"httpOnly,omitempty"`
+}
+
+// session represents a persisted cookie session for a domain.
+type session struct {
+	ID      string          `json:"id"`
+	Name    string          `json:"name"`
+	Domain  string          `json:"domain"`
+	Cookies []sessionCookie `json:"cookies"`
+}
+
+// applySessionToJar loads session cookies from disk and adds them to the cookie jar.
+func applySessionToJar(jar http.CookieJar, sessionID, dataDir, targetURL string) error {
+	sessions, err := loadSessions(dataDir)
+	if err != nil {
+		return err
+	}
+
+	var sess *session
+	for i := range sessions {
+		if sessions[i].ID == sessionID {
+			sess = &sessions[i]
+			break
+		}
+	}
+	if sess == nil {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	parsed, err := url.Parse(targetURL)
+	if err != nil {
+		return err
+	}
+
+	httpCookies := make([]*http.Cookie, 0, len(sess.Cookies))
+	for _, c := range sess.Cookies {
+		httpCookies = append(httpCookies, &http.Cookie{
+			Name:     c.Name,
+			Value:    c.Value,
+			Domain:   c.Domain,
+			Path:     c.Path,
+			Secure:   c.Secure,
+			HttpOnly: c.HttpOnly,
+		})
+	}
+
+	jar.SetCookies(parsed, httpCookies)
+	return nil
+}
+
+// loadSessions loads all sessions from the sessions.json file.
+func loadSessions(dataDir string) ([]session, error) {
+	if dataDir == "" {
+		dataDir = ".data"
+	}
+	path := filepath.Join(dataDir, "sessions.json")
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []session{}, nil
+		}
+		return nil, err
+	}
+
+	var sessions []session
+	if err := json.Unmarshal(data, &sessions); err != nil {
+		return nil, err
+	}
+	return sessions, nil
 }

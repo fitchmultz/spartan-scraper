@@ -5,6 +5,7 @@ package fetch
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -492,6 +493,13 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 			return Result{}, err
 		}
 		slog.Info("login complete", "url", apperrors.SanitizeURL(req.URL), "currentURL", apperrors.SanitizeURL(currentURL))
+
+		// Extract and save cookies if session ID is provided
+		if req.SessionID != "" && req.DataDir != "" {
+			if err := f.extractAndSaveSession(ctx, req); err != nil {
+				slog.Warn("failed to save session cookies", "sessionID", req.SessionID, "error", err)
+			}
+		}
 	}
 
 	if len(req.PreNavJS) > 0 {
@@ -1022,4 +1030,96 @@ func (f *ChromedpFetcher) applyDeviceEmulation(ctx context.Context, device *Devi
 	}
 
 	return nil
+}
+
+// extractAndSaveSession extracts cookies from the browser and saves them as a session.
+func (f *ChromedpFetcher) extractAndSaveSession(ctx context.Context, req Request) error {
+	var cookies []*network.Cookie
+	err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		var err error
+		cookies, err = network.GetCookies().Do(ctx)
+		return err
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to get cookies: %w", err)
+	}
+
+	// Convert network.Cookie to sessionCookie
+	sessionCookies := make([]sessionCookie, 0, len(cookies))
+	for _, c := range cookies {
+		sessionCookies = append(sessionCookies, sessionCookie{
+			Name:     c.Name,
+			Value:    c.Value,
+			Domain:   c.Domain,
+			Path:     c.Path,
+			Secure:   c.Secure,
+			HttpOnly: c.HTTPOnly,
+		})
+	}
+
+	// Save session
+	sess := session{
+		ID:      req.SessionID,
+		Name:    req.SessionID,
+		Domain:  extractDomain(req.URL),
+		Cookies: sessionCookies,
+	}
+
+	if err := saveSession(req.DataDir, sess); err != nil {
+		return fmt.Errorf("failed to save session: %w", err)
+	}
+
+	slog.Info("saved session cookies", "sessionID", req.SessionID, "domain", sess.Domain, "count", len(sessionCookies))
+	return nil
+}
+
+// saveSession saves a session to the sessions.json file.
+func saveSession(dataDir string, newSession session) error {
+	sessions, err := loadSessions(dataDir)
+	if err != nil {
+		return err
+	}
+
+	// Update existing or append new
+	found := false
+	for i := range sessions {
+		if sessions[i].ID == newSession.ID {
+			sessions[i] = newSession
+			found = true
+			break
+		}
+	}
+	if !found {
+		sessions = append(sessions, newSession)
+	}
+
+	return writeSessions(dataDir, sessions)
+}
+
+// writeSessions writes all sessions to the sessions.json file.
+func writeSessions(dataDir string, sessions []session) error {
+	if dataDir == "" {
+		dataDir = ".data"
+	}
+
+	// Ensure data directory exists
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return err
+	}
+
+	path := filepath.Join(dataDir, "sessions.json")
+	payload, err := json.MarshalIndent(sessions, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, payload, 0o600)
+}
+
+// extractDomain extracts the domain from a URL.
+func extractDomain(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	return parsed.Host
 }

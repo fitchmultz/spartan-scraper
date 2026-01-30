@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0198",
-      "status": "todo",
-      "title": "Implement cookie persistence and session management",
-      "priority": "low",
-      "tags": [
-        "auth",
-        "session",
-        "cookies",
-        "persistence"
-      ],
-      "scope": [
-        "internal/auth/vault.go",
-        "internal/fetch/types.go",
-        "internal/fetch/http_fetcher.go"
-      ],
-      "evidence": [
-        "HTTP fetcher uses in-memory cookie jar per request",
-        "No persistent cookie sessions across jobs",
-        "Must re-login for every scrape of authenticated sites"
-      ],
-      "plan": [
-        "Add SessionStore to auth vault for cookie persistence",
-        "Add SessionID field to Request and RenderProfile",
-        "Implement cookie jar serialization to JSON",
-        "Auto-save session after successful login",
-        "Add session list/get/delete CLI commands",
-        "Support session refresh with refresh tokens",
-        "Update OpenAPI spec with session options",
-        "Write tests for session persistence"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0199",
       "status": "todo",
       "title": "Add adaptive rate limiting based on server response",

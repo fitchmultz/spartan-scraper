@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -114,6 +115,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/auth/profiles/", s.handleAuthProfile)
 	mux.HandleFunc("/v1/auth/import", s.handleAuthImport)
 	mux.HandleFunc("/v1/auth/export", s.handleAuthExport)
+	mux.HandleFunc("/v1/auth/sessions", s.handleSessions)
+	mux.HandleFunc("/v1/auth/sessions/", s.handleSession)
 	mux.HandleFunc("/v1/scrape", s.handleScrape)
 	mux.HandleFunc("/v1/crawl", s.handleCrawl)
 	mux.HandleFunc("/v1/research", s.handleResearch)
@@ -158,4 +161,28 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Start goroutines for the client
 	go client.writePump()
 	go client.readPump()
+}
+
+// handleSessions handles requests to /v1/auth/sessions
+func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleListSessions(w, r)
+	case http.MethodPost:
+		s.handleCreateSession(w, r)
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
+}
+
+// handleSession handles requests to /v1/auth/sessions/{id}
+func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleGetSession(w, r)
+	case http.MethodDelete:
+		s.handleDeleteSession(w, r)
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
 }

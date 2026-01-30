@@ -46,10 +46,26 @@ type HeaderKV struct {
 }
 
 type Cookie struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Domain string `json:"domain,omitempty"`
-	Path   string `json:"path,omitempty"`
+	Name     string     `json:"name"`
+	Value    string     `json:"value"`
+	Domain   string     `json:"domain,omitempty"`
+	Path     string     `json:"path,omitempty"`
+	Expires  *time.Time `json:"expires,omitempty"`
+	Secure   bool       `json:"secure,omitempty"`
+	HttpOnly bool       `json:"httpOnly,omitempty"`
+	SameSite string     `json:"sameSite,omitempty"`
+}
+
+// Session represents a persisted cookie session for a domain.
+// Sessions store cookies from successful logins and can be reused across requests.
+type Session struct {
+	ID        string     `json:"id"`      // Unique session identifier (user-defined or auto-generated)
+	Name      string     `json:"name"`    // Human-readable name
+	Domain    string     `json:"domain"`  // Domain this session is for (e.g., "example.com")
+	Cookies   []Cookie   `json:"cookies"` // Persisted cookies
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"` // Optional session expiration
 }
 
 type LoginFlow struct {
