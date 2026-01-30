@@ -289,7 +289,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		slog.Info("request started",
 			"method", r.Method,
 			"path", r.URL.Path,
-			"query", r.URL.RawQuery,
+			"query", apperrors.RedactString(r.URL.RawQuery),
 			"remote_addr", r.RemoteAddr,
 			"request_id", reqID,
 		)

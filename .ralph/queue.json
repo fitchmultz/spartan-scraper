@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0156",
-      "status": "todo",
-      "title": "Redact query strings in API request logging",
-      "priority": "high",
-      "tags": [
-        "security",
-        "logging",
-        "api"
-      ],
-      "scope": [
-        "internal/api/util.go",
-        "internal/api/util_test.go"
-      ],
-      "evidence": [
-        "internal/api/util.go loggingMiddleware logs r.URL.RawQuery verbatim, which can include tokens or API keys.",
-        "apperrors.RedactString/SanitizeURL exists for redaction but is not used in request logging."
-      ],
-      "plan": [
-        "Log a sanitized URL (or redacted query string) instead of raw query parameters.",
-        "Use apperrors.RedactString or SanitizeURL consistently for request logs.",
-        "Add/update tests to confirm query secrets are redacted in logs."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T23:18:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0157",
       "status": "todo",
       "title": "Respect context cancellation in research orchestration",

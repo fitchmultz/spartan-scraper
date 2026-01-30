@@ -520,3 +520,110 @@ func TestGeneratedRequestIDPropagation(t *testing.T) {
 		t.Errorf("generated request ID should be valid UUID v4, got %q", responseReqID)
 	}
 }
+
+// TestLoggingMiddlewareRedactsQuerySecrets verifies that sensitive query parameters
+// are redacted in request logs to prevent secret leakage.
+func TestLoggingMiddlewareRedactsQuerySecrets(t *testing.T) {
+	tests := []struct {
+		name             string
+		query            string
+		shouldContain    []string // strings that should be in the redacted output
+		shouldNotContain []string // strings that should NOT be in the redacted output (secrets)
+	}{
+		{
+			name:             "token in query",
+			query:            "token=secret123&foo=bar",
+			shouldContain:    []string{"foo=bar", "[REDACTED]"},
+			shouldNotContain: []string{"secret123"},
+		},
+		{
+			name:             "api_key in query",
+			query:            "api_key=mykey456&baz=qux",
+			shouldContain:    []string{"baz=qux", "[REDACTED]"},
+			shouldNotContain: []string{"mykey456"},
+		},
+		{
+			name:             "password in query",
+			query:            "password=mypass789&user=admin",
+			shouldContain:    []string{"user=admin", "[REDACTED]"},
+			shouldNotContain: []string{"mypass789"},
+		},
+		{
+			name:             "multiple secrets in query",
+			query:            "token=abc&api_key=def&password=ghi&normal=value",
+			shouldContain:    []string{"normal=value", "[REDACTED]"},
+			shouldNotContain: []string{"abc", "def", "ghi"},
+		},
+		{
+			name:             "no secrets in query",
+			query:            "foo=bar&baz=qux",
+			shouldContain:    []string{"foo=bar", "baz=qux"},
+			shouldNotContain: []string{"[REDACTED]"},
+		},
+		{
+			name:             "empty query",
+			query:            "",
+			shouldContain:    []string{""},
+			shouldNotContain: []string{},
+		},
+		{
+			name:             "api-key with hyphen",
+			query:            "api-key=secretkey&other=value",
+			shouldContain:    []string{"other=value", "[REDACTED]"},
+			shouldNotContain: []string{"secretkey"},
+		},
+		{
+			name:             "secret in query",
+			query:            "secret=mysecret&data=info",
+			shouldContain:    []string{"data=info", "[REDACTED]"},
+			shouldNotContain: []string{"mysecret"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logBuf strings.Builder
+			handler := slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})
+			logger := slog.New(handler)
+
+			oldDefault := slog.Default()
+			slog.SetDefault(logger)
+			defer slog.SetDefault(oldDefault)
+
+			normalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			handlerChain := loggingMiddleware(normalHandler)
+
+			path := "/test"
+			if tt.query != "" {
+				path = path + "?" + tt.query
+			}
+			req := httptest.NewRequest("GET", path, nil)
+			rr := httptest.NewRecorder()
+
+			handlerChain.ServeHTTP(rr, req)
+
+			if status := rr.Code; status != http.StatusOK {
+				t.Errorf("expected status 200, got %d", status)
+			}
+
+			logOutput := logBuf.String()
+
+			// Check that expected strings are present
+			for _, s := range tt.shouldContain {
+				if s != "" && !strings.Contains(logOutput, s) {
+					t.Errorf("log output should contain %q, got: %s", s, logOutput)
+				}
+			}
+
+			// Check that secrets are NOT present
+			for _, s := range tt.shouldNotContain {
+				if strings.Contains(logOutput, s) {
+					t.Errorf("log output should NOT contain secret %q, got: %s", s, logOutput)
+				}
+			}
+		})
+	}
+}
