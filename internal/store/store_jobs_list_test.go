@@ -1,3 +1,6 @@
+// Package store provides tests for job listing and counting operations.
+// Tests cover ListOpts, ListByStatus, CountJobs, and pagination option defaults.
+// Does NOT test job CRUD, crawl states, or database migrations.
 package store
 
 import (

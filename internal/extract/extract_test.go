@@ -1,3 +1,6 @@
+// Package extract provides tests for the core extraction engine.
+// Tests cover template application, built-in template listing, and execution with custom registries.
+// Does NOT test JSON-LD parsing, normalization, or schema validation.
 package extract
 
 import (

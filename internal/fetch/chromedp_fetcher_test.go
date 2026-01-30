@@ -1,3 +1,6 @@
+// Package fetch provides tests for the Chromedp fetcher.
+// Tests cover network tracking, response tracking, URL matching, and context cancellation handling.
+// Does NOT test actual browser rendering or full fetch integration (skipped in short mode).
 package fetch
 
 import (

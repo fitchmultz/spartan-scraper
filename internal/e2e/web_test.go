@@ -1,3 +1,6 @@
+// Package e2e provides end-to-end integration tests for the web frontend preview.
+// Tests cover the built web assets being served correctly via Vite preview.
+// Does NOT test CLI commands, API workflows, or authentication mechanisms.
 package e2e
 
 import (

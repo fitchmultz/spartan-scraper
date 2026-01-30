@@ -1,3 +1,6 @@
+// Package auth provides tests for Profile type.
+// Tests cover JSON serialization of auth profiles with parents, headers, cookies.
+// Does NOT test profile resolution or inheritance merging.
 package auth
 
 import (

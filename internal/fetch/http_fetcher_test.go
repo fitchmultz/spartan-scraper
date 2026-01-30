@@ -1,3 +1,6 @@
+// Package fetch provides tests for the HTTP fetcher.
+// Tests cover response size limits, body closing, context cancellation, cookie persistence, and retry backoff.
+// Does NOT test actual network failures or TLS certificate handling.
 package fetch
 
 import (

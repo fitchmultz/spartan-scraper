@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * Strip TODO comment lines from generated OpenAPI TypeScript output.
+ *
+ * Usage:
+ *   node strip_openapi_todos.mjs --path <dir>
+ *
+ * Example:
+ *   node strip_openapi_todos.mjs --path web/src/api
+ */
+
 import fs from 'fs';
 import path from 'path';
 

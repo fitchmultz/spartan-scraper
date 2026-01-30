@@ -1,3 +1,6 @@
+// Package auth provides tests for vault import/export operations.
+// Tests cover path traversal protection and vault persistence.
+// Does NOT test profile resolution or auth merging.
 package auth
 
 import (

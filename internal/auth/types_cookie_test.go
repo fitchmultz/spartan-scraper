@@ -1,3 +1,6 @@
+// Package auth provides tests for Cookie type.
+// Tests cover JSON serialization of cookie fields.
+// Does NOT test cookie jar management or HTTP request building.
 package auth
 
 import (

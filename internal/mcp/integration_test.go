@@ -1,18 +1,7 @@
-// End-to-end integration tests for MCP tool execution.
-// Tests verify that handleToolCall correctly routes tool requests, parses arguments,
-// and creates jobs with the expected parameters. Tests cover scrape_page, crawl_site,
-// and research tools with various pipeline/incremental option combinations.
-//
-// Does NOT handle:
-// - Schema validation (covered in schema_test.go and tool-specific *_test.go files)
-// - Server lifecycle (covered in server_lifecycle_test.go)
-// - Job management operations (covered in job_management_test.go)
-//
-// Invariants:
-// - handleToolCall must parse tool names and arguments correctly
-// - Pipeline options must be converted from map[string]interface{} to pipeline.Options
-// - Incremental flag must be passed through as boolean
-// - Jobs must be created with the correct type (scrape, crawl, research)
+// Package mcp provides integration tests for MCP tool execution.
+// Tests cover handleToolCall routing, argument parsing, and job creation for scrape_page,
+// crawl_site, and research tools with pipeline/incremental options.
+// Does NOT test schema validation, server lifecycle, or job management operations.
 package mcp
 
 import (

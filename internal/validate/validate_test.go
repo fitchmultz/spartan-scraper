@@ -1,3 +1,6 @@
+// Package validate provides tests for individual field validation functions.
+// Tests cover URL, timeout, maxDepth, maxPages, and auth profile name validators.
+// Does NOT test job-level request validation (see request_test.go) or integration scenarios.
 package validate
 
 import (

@@ -1,3 +1,7 @@
+// Package e2e provides end-to-end integration tests for the core CLI, API, MCP, and scheduler workflows.
+// Tests cover CLI commands (scrape, crawl, research, auth, schedule, export), server API endpoints,
+// MCP stdio protocol, and TUI smoke tests using a compiled binary.
+// Does NOT test external authentication flows or web frontend preview.
 package e2e
 
 import (

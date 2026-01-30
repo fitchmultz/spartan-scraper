@@ -1,3 +1,6 @@
+// Package scheduler provides tests for schedule persistence of complex configurations.
+// Tests cover extraction configs, incremental mode, and auth overrides.
+// Does NOT test basic CRUD operations or schedule validation.
 package scheduler
 
 import (

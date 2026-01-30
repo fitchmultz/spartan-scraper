@@ -1,15 +1,6 @@
-// Tests for the research MCP tool.
-// Verifies job creation with empty/default pipeline options and validates the
-// tool's JSON schema definition.
-//
-// Does NOT handle:
-// - Actual research workflow execution
-// - Multi-source aggregation or result ranking
-// - Pipeline processor/transformer execution
-//
-// Invariants:
-// - research tool accepts optional pipeline options (defaults to empty)
-// - Schema must include preProcessors, postProcessors, transformers fields
+// Package mcp provides tests for the research MCP tool.
+// Tests cover job creation with empty/default pipeline options and JSON schema validation.
+// Does NOT test actual research workflow execution or multi-source aggregation.
 package mcp
 
 import (

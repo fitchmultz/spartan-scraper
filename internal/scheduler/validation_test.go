@@ -1,3 +1,6 @@
+// Package scheduler provides tests for schedule validation.
+// Tests cover validation for scrape, crawl, and research schedule kinds.
+// Does NOT test storage operations or job execution.
 package scheduler
 
 import (

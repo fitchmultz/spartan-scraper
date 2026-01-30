@@ -1,3 +1,6 @@
+// Package extract provides tests for template loading and resolution.
+// Tests cover registry loading from disk, template merging, built-in templates, and ResolveTemplate logic.
+// Does NOT test template application or extraction with templates.
 package extract
 
 import (

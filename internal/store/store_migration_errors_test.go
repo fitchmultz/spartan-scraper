@@ -1,3 +1,7 @@
+// Package store provides tests for database migrations and error handling.
+// Tests cover schema initialization, idempotent migrations, ALTER TABLE failures,
+// and error kind classification (KindInternal) for parse and JSON errors.
+// Does NOT test normal CRUD operations or happy-path queries.
 package store
 
 import (

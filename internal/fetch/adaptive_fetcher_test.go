@@ -1,3 +1,6 @@
+// Package fetch provides tests for the adaptive fetcher.
+// Tests cover default render profile creation, profile merging, and adaptive fetcher initialization.
+// Does NOT test actual fetching or browser interactions.
 package fetch
 
 import (

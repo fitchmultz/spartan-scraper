@@ -1,3 +1,6 @@
+// Package manage provides tests for the render profiles management CLI subcommand.
+// Tests cover listing render profiles from the data store.
+// Does NOT test add/remove/update operations or profile application.
 package manage
 
 import (

@@ -1,3 +1,6 @@
+// Package mcp provides tests for the job_list MCP tool.
+// Tests cover tool schema validation and job listing with pagination (limit/offset).
+// Does NOT test job creation or execution behavior.
 package mcp
 
 import (

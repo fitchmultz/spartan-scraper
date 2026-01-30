@@ -1,3 +1,7 @@
+// Package store provides tests for job CRUD operations.
+// Tests cover Create, Get, UpdateStatus, Delete, DeleteWithArtifacts,
+// and path traversal protection during artifact deletion.
+// Does NOT test job listing, pagination, or crawl state operations.
 package store
 
 import (

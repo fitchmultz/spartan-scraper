@@ -1,3 +1,6 @@
+// Package fetch provides tests for JavaScript heaviness detection.
+// Tests cover detection of JS-heavy pages via SPA indicators, framework markers, and noscript tags.
+// Does NOT test actual page rendering or dynamic content evaluation.
 package fetch
 
 import (

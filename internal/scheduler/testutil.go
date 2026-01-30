@@ -1,3 +1,18 @@
+// Package scheduler provides test utilities for scheduler tests.
+//
+// This file is responsible for:
+// - Providing setupTestManager helper for creating test job managers
+// - Creating temporary data directories for test isolation
+// - Initializing stores and managers with test defaults
+//
+// This file does NOT handle:
+// - Production use (test-only utilities)
+// - Test assertions or test cases
+//
+// Invariants:
+// - Creates temp dir via t.TempDir() for test isolation
+// - Cleanup function closes the store
+// - Uses test-specific timeouts and limits for faster tests
 package scheduler
 
 import (

@@ -1,3 +1,6 @@
+// Package fetch provides tests for the Playwright fetcher.
+// Tests cover singleton behavior, headless mode switching, concurrent safety, resource cleanup, and crash recovery.
+// Does NOT test actual page rendering when Playwright is not installed (skipped in that case).
 package fetch
 
 import (

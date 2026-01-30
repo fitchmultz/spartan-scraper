@@ -1,3 +1,6 @@
+// Package scheduler provides tests for the cached scheduler implementation.
+// Tests cover schedule caching, file watching, concurrent access, and job enqueueing.
+// Does NOT test schedule persistence or validation.
 package scheduler
 
 import (

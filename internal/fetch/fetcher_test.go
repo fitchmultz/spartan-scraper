@@ -1,3 +1,6 @@
+// Package fetch provides tests for browser availability detection and Chrome discovery.
+// Tests cover Chrome/Chromium detection on multiple platforms and Playwright availability checking.
+// Does NOT test actual browser operations or fetch execution.
 package fetch
 
 import (

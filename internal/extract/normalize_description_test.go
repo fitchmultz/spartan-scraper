@@ -1,3 +1,6 @@
+// Package extract provides tests for description normalization.
+// Tests cover DescriptionField mapping and fallback to 'description' field.
+// Does NOT test title or text normalization.
 package extract
 
 import (

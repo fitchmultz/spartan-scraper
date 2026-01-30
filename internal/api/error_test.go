@@ -1,3 +1,6 @@
+// Package api provides unit tests for error handling utilities.
+// Tests cover writeError helper for correct HTTP status codes and error classification.
+// Does NOT test API handler error responses (covered in other test files).
 package api
 
 import (

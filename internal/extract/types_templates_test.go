@@ -1,3 +1,6 @@
+// Package extract provides tests for template-related structs (ExtractOptions, Template, NormalizeSpec, Schema, TemplateRegistry).
+// Tests cover struct creation, field access, and JSON serialization.
+// Does NOT test template loading or extraction execution.
 package extract
 
 import (

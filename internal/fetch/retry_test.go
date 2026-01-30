@@ -1,3 +1,6 @@
+// Package fetch provides tests for retry logic and backoff strategies.
+// Tests cover retry eligibility for errors and status codes, exponential backoff, and Retry-After header parsing.
+// Does NOT test actual retry execution or circuit breaker patterns.
 package fetch
 
 import (

@@ -1,3 +1,6 @@
+// Package extract provides tests for text normalization.
+// Tests cover TextField mapping and fallback to extracted.Text.
+// Does NOT test title or description normalization.
 package extract
 
 import (

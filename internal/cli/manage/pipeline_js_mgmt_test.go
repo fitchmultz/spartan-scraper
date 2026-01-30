@@ -1,3 +1,6 @@
+// Package manage provides tests for the pipeline JavaScript management CLI subcommand.
+// Tests cover listing pipeline JS scripts from the data store.
+// Does NOT test add/remove/update operations or script execution.
 package manage
 
 import (

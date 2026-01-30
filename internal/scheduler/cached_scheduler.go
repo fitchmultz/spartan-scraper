@@ -1,3 +1,21 @@
+// Package scheduler provides an in-memory cache for schedules with file watching.
+//
+// This file is responsible for:
+// - Creating and initializing the cachedScheduler with file watcher
+// - Loading schedules from disk into memory on startup and reload
+// - Thread-safe access to schedule data via RWMutex
+// - Setting up fsnotify watcher on the schedules directory
+//
+// This file does NOT handle:
+// - Schedule validation (validation.go does this)
+// - Schedule execution (scheduler.go does this)
+// - File event handling logic (watcher.go does this)
+//
+// Invariants:
+// - All schedule access is protected by mu RWMutex
+// - Watcher is closed on any initialization error
+// - Schedules are loaded before watcher starts
+// - reloadCh is buffered (size 1) to prevent blocking
 package scheduler
 
 import (

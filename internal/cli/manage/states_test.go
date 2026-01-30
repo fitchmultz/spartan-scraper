@@ -1,3 +1,6 @@
+// Package manage provides tests for the crawl states management CLI subcommand.
+// Tests cover listing, deleting, and clearing crawl states from persistent storage.
+// Does NOT test concurrent access or integration with the crawler.
 package manage
 
 import (

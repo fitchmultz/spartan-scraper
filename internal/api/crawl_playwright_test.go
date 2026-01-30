@@ -1,3 +1,6 @@
+// Package api provides integration tests for crawl endpoint with Playwright option.
+// Tests cover Playwright flag behavior (nil, true, false) in crawl requests.
+// Does NOT test Playwright fetcher implementation (fetch package handles that).
 package api
 
 import (

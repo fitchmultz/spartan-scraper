@@ -1,3 +1,6 @@
+// Package auth provides tests for LoginFlow type.
+// Tests cover JSON serialization of login automation configuration.
+// Does NOT test actual login automation execution.
 package auth
 
 import (

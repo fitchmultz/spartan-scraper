@@ -1,3 +1,6 @@
+// Package auth provides tests for ResolveInput and EnvOverrides types.
+// Tests cover JSON serialization of resolution input structures.
+// Does NOT test actual profile resolution logic.
 package auth
 
 import (

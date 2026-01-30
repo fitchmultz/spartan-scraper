@@ -1,3 +1,23 @@
+// Package scheduler provides schedule persistence operations.
+//
+// This file is responsible for:
+// - Loading all schedules from JSON file storage
+// - Saving all schedules to JSON file storage
+// - Adding new schedules with ID generation and defaults
+// - Deleting schedules by ID
+// - Listing schedules sorted by next run time
+//
+// This file does NOT handle:
+// - Concurrent access (cachedScheduler handles this)
+// - Schedule validation (validation.go does this)
+// - Schedule execution (scheduler.go does this)
+//
+// Invariants:
+// - File path is derived from dataDir: <dataDir>/schedules.json
+// - Empty/missing file returns empty slice, not error
+// - IDs are generated via uuid.NewString() if empty
+// - IntervalSeconds defaults to 3600 if <= 0
+// - NextRun defaults to now + interval if zero
 package scheduler
 
 import (

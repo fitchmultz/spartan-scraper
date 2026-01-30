@@ -1,3 +1,6 @@
+// Package fetch provides tests for the render profile store.
+// Tests cover host pattern matching and profile loading from JSON configuration.
+// Does NOT test file system errors or concurrent store access.
 package fetch
 
 import (

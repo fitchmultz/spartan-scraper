@@ -1,3 +1,6 @@
+// Package auth provides tests for HeaderKV type.
+// Tests cover JSON serialization of header key-value pairs.
+// Does NOT test header resolution or HTTP request building.
 package auth
 
 import (

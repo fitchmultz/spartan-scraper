@@ -1,19 +1,8 @@
+// Package mcp provides tests for the waitForJob function.
+// Tests cover job status polling, terminal state handling, timeout, and context cancellation.
+// Does NOT test actual job execution, worker pool behavior, or job creation.
 package mcp
 
-// Tests for waitForJob function.
-// Verifies that waitForJob correctly polls job status, handles terminal states,
-// and respects both explicit timeout and context cancellation.
-//
-// Does NOT handle:
-// - Actual job execution or worker pool behavior
-// - Store implementation details beyond the Get method
-// - Job creation or scheduling
-//
-// Invariants:
-// - waitForJob uses independent timeout timer (time.After)
-// - Context cancellation/deadline takes precedence over explicit timeout
-// - Returns apperrors.Internal on timeout or job failure
-// - Polls every 200ms while waiting
 import (
 	"context"
 	"errors"

@@ -1,3 +1,6 @@
+// Package mcp provides tests for the job_export MCP tool.
+// Tests cover tool schema validation and result export in multiple formats (jsonl, json, md, csv).
+// Does NOT test actual scraping or crawling execution.
 package mcp
 
 import (

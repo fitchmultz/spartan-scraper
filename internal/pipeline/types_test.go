@@ -1,3 +1,7 @@
+// Package pipeline provides tests for pipeline types and utilities.
+// Tests cover HostFromURL parsing, Target creation, stage constants, Options JSON serialization,
+// and field accessors for FetchInput, ExtractInput, OutputInput, and HookContext.
+// Does NOT test integration with actual fetch/extract operations.
 package pipeline
 
 import (

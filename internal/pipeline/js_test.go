@@ -1,3 +1,7 @@
+// Package pipeline provides tests for JavaScript registry loading and matching.
+// Tests cover JSRegistry loading from JSON (valid, invalid, missing, empty), URL pattern matching
+// with wildcards, host matching logic, script selection by engine, and data directory defaults.
+// Does NOT test actual JavaScript execution in headless browsers.
 package pipeline
 
 import (

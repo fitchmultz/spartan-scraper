@@ -1,3 +1,6 @@
+// Package jobs provides tests for manager helper functions.
+// Tests cover toInt and toBool type conversion utilities.
+// Does NOT test manager lifecycle or job operations.
 package jobs
 
 import (

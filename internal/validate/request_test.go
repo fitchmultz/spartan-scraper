@@ -1,3 +1,6 @@
+// Package validate provides tests for job request validation across all job types.
+// Tests cover URL validation, timeout bounds, auth profile name validation, and job-specific rules for scrape, crawl, and research jobs.
+// Does NOT test individual field validators (see validate_test.go) or non-job validation logic.
 package validate
 
 import (

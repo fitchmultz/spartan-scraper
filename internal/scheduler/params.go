@@ -1,3 +1,20 @@
+// Package scheduler provides parameter extraction and loading for scheduled jobs.
+//
+// This file is responsible for:
+// - Extracting extract.ExtractOptions from schedule parameters
+// - Extracting pipeline.Options from schedule parameters
+// - Extracting fetch.AuthOptions from schedule parameters (with auth resolution)
+// - Type-safe parameter accessors (string, bool, int, string slice)
+//
+// This file does NOT handle:
+// - Parameter validation (validation.go does this)
+// - Schedule persistence or execution
+// - Direct auth vault access (uses auth.Resolve)
+//
+// Invariants:
+// - nil params return zero values for all types
+// - Auth resolution uses auth.Resolve with the provided dataDir
+// - Token kind defaults to Bearer if not recognized
 package scheduler
 
 import (

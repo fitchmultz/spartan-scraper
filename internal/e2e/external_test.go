@@ -1,3 +1,6 @@
+// Package e2e provides end-to-end integration tests for external authentication mechanisms.
+// Tests cover form-based login with Chromedp and Playwright, plus HTTP basic authentication.
+// Does NOT test internal job management, API workflows, or web frontend.
 package e2e
 
 import (

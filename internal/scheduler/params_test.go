@@ -1,3 +1,6 @@
+// Package scheduler provides tests for schedule parameter helpers.
+// Tests cover bool parameter extraction with fallback defaults.
+// Does NOT test parameter validation or other parameter types.
 package scheduler
 
 import (

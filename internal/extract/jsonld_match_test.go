@@ -1,3 +1,6 @@
+// Package extract provides tests for JSON-LD matching logic.
+// Tests cover type matching (single/array), case-insensitive matching, path traversal, and the All flag.
+// Does NOT test JSON-LD extraction from HTML.
 package extract
 
 import (

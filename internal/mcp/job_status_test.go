@@ -1,3 +1,6 @@
+// Package mcp provides tests for the job_status MCP tool.
+// Tests cover tool schema validation and job status retrieval by ID.
+// Does NOT test job state transitions or lifecycle management.
 package mcp
 
 import (

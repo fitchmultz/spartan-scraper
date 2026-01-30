@@ -1,3 +1,6 @@
+// Package fetch provides tests for the host-based rate limiter.
+// Tests cover limiter creation, per-host rate limiting, concurrency safety, and limiter caching.
+// Does NOT test distributed rate limiting or persistence across process restarts.
 package fetch
 
 import (

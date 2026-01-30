@@ -1,3 +1,6 @@
+// Package fetch provides tests for fetch types and utilities.
+// Tests cover authentication query parameter application to URLs.
+// Does NOT test request execution or response handling.
 package fetch
 
 import (

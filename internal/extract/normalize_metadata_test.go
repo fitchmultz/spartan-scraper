@@ -1,3 +1,6 @@
+// Package extract provides tests for metadata field normalization.
+// Tests cover single and multiple meta field mappings, first-value selection, and missing field handling.
+// Does NOT test title, description, or text normalization.
 package extract
 
 import (

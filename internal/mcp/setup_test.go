@@ -1,18 +1,6 @@
-// Common test helpers for MCP server tests.
-// Provides test server, configuration, and JSON marshaling utilities used across
-// all test files in the mcp package. These helpers create isolated test environments
-// with temporary directories for storage.
-//
-// Does NOT handle:
-// - Server lifecycle management (defer Close() is caller's responsibility)
-// - Cleanup of temporary directories (caller must use defer os.RemoveAll(tmpDir))
-// - Test-specific assertions or validation logic
-//
-// Invariants:
-// - testServer() returns a server with a temporary data directory
-// - testConfig() returns a config with safe defaults for testing (rate limiting, timeouts, etc.)
-// - Temporary directories are created in OS temp space with prefix "mcp-server-test-*"
-// - All test configs use concurrency=1 to avoid race conditions in tests
+// Package mcp provides common test helpers for MCP server tests.
+// Tests cover test server creation, configuration setup, and JSON marshaling utilities.
+// Does NOT handle server lifecycle management or test-specific assertions.
 package mcp
 
 import (

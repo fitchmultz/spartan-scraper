@@ -1,3 +1,6 @@
+// Package jobs provides tests for manager recovery of queued jobs.
+// Tests cover recovery of persisted queued jobs on manager startup.
+// Does NOT test recovery of running jobs or partial execution state.
 package jobs
 
 import (

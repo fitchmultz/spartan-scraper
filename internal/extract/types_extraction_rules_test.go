@@ -1,3 +1,6 @@
+// Package extract provides tests for extraction rule structs (SelectorRule, JSONLDRule, RegexRule).
+// Tests cover rule creation with various attributes and flags.
+// Does NOT test rule execution or matching.
 package extract
 
 import "testing"

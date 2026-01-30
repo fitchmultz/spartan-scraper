@@ -1,3 +1,6 @@
+// Package pipeline provides tests for output transformers.
+// Tests cover BaseTransformer default implementations for priority, enabled checks, and identity transform behavior.
+// Does NOT test actual transformation logic or custom transformer implementations.
 package pipeline
 
 import (

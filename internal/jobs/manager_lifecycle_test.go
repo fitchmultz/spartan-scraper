@@ -1,3 +1,6 @@
+// Package jobs provides tests for manager lifecycle operations.
+// Tests cover Start/Stop and graceful shutdown with queued jobs.
+// Does NOT test worker pool scaling or crash recovery.
 package jobs
 
 import (

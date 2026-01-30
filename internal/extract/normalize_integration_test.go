@@ -1,3 +1,6 @@
+// Package extract provides integration tests for the Normalize function.
+// Tests cover full normalization pipeline, missing fields, field preservation, and complex field handling.
+// Does NOT test individual field normalization in isolation.
 package extract
 
 import (

@@ -1,3 +1,6 @@
+// Package extract provides tests for JSON-LD helper functions.
+// Tests cover getPath navigation (simple, nested, through arrays) and extractStrings type conversion.
+// Does NOT test JSON-LD extraction or matching logic.
 package extract
 
 import (

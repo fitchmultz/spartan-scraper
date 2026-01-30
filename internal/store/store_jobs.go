@@ -1,3 +1,21 @@
+// Package store provides persistent storage for jobs and crawl states using SQLite.
+//
+// This file is responsible for:
+// - Job CRUD operations (Create, Get, UpdateStatus, Delete)
+// - Job listing with pagination and status filtering
+// - Job artifact deletion with path traversal protection
+// - Result path updates for completed jobs
+//
+// This file does NOT handle:
+// - Job execution (jobs package handles this)
+// - Crawl state operations (store_crawl_states.go handles this)
+// - Store initialization (store_init.go handles this)
+//
+// Invariants:
+// - Uses prepared statements for all database operations
+// - Job params are marshaled to JSON for storage
+// - Timestamps are stored as RFC3339Nano strings
+// - DeleteWithArtifacts validates paths to prevent traversal attacks
 package store
 
 import (

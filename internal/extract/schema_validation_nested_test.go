@@ -1,3 +1,6 @@
+// Package extract provides tests for nested object and array validation.
+// Tests cover nested objects, deeply nested paths, arrays of objects, and additionalProperties constraints.
+// Does NOT test basic scalar type validation.
 package extract
 
 import (

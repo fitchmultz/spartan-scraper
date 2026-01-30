@@ -1,16 +1,6 @@
-// Tests for the crawl_site MCP tool.
-// Verifies job creation with partial pipeline options and validates the tool's
-// JSON schema definition.
-//
-// Does NOT handle:
-// - Actual crawling execution or URL discovery
-// - Concurrent job processing or depth limiting
-// - Pipeline processor/transformer execution
-//
-// Invariants:
-// - crawl_site accepts optional pipeline options
-// - Partial pipeline options should default empty slices for unspecified fields
-// - Schema must include preProcessors, postProcessors, transformers, incremental fields
+// Package mcp provides tests for the crawl_site MCP tool.
+// Tests cover job creation with partial pipeline options and JSON schema validation.
+// Does NOT test actual crawling execution, URL discovery, or depth limiting.
 package mcp
 
 import (

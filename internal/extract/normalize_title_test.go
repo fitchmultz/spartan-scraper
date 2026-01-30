@@ -1,3 +1,6 @@
+// Package extract provides tests for title normalization.
+// Tests cover TitleField mapping and fallback to extracted.Title.
+// Does NOT test description or text normalization.
 package extract
 
 import (

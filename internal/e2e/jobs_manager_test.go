@@ -1,3 +1,6 @@
+// Package e2e provides end-to-end integration tests for the jobs manager recovery behavior.
+// Tests cover job recovery with pagination when restarting the manager with queued jobs.
+// Does NOT test CLI commands, API endpoints, or authentication flows.
 package e2e
 
 import (

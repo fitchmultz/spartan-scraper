@@ -1,3 +1,6 @@
+// Package extract provides tests for document type structs (FieldValue, Extracted, NormalizedDocument, ValidationResult).
+// Tests cover struct creation, field access, and JSON serialization.
+// Does NOT test extraction logic or validation behavior.
 package extract
 
 import (

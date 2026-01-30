@@ -1,3 +1,6 @@
+// Package jobs provides tests for job execution and error redaction.
+// Tests cover secret redaction in error messages (auth tokens, paths, key-value pairs, JSON secrets).
+// Does NOT test actual fetch/extract logic or successful job completion.
 package jobs
 
 import (

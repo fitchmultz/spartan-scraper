@@ -1,3 +1,6 @@
+// Package auth provides tests for TargetPreset type.
+// Tests cover JSON serialization of target presets with host patterns.
+// Does NOT test preset matching or profile resolution.
 package auth
 
 import (

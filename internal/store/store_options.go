@@ -1,3 +1,19 @@
+// Package store provides pagination options for store listing operations.
+//
+// This file is responsible for:
+// - Defining ListOptions for Store.ListOpts
+// - Defining ListByStatusOptions for Store.ListByStatus
+// - Defining ListCrawlStatesOptions for Store.ListCrawlStates
+// - Providing Defaults() methods with safe fallback values
+//
+// This file does NOT handle:
+// - Database operations
+// - Option validation beyond defaults
+//
+// Invariants:
+// - Limit defaults to 100 if not positive
+// - Limit is capped at 1000 maximum
+// - Offset defaults to 0 if negative
 package store
 
 // ListOptions specifies pagination parameters for Store.ListOpts.

@@ -1,3 +1,6 @@
+// Package extract provides tests for mixed scalar and nested field validation.
+// Tests cover documents with both scalar and nested object fields in the same schema.
+// Does NOT test deeply nested objects or arrays of objects.
 package extract
 
 import (

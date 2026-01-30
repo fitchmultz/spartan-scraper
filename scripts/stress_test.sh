@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+#
+# Stress-test Spartan Scraper using real targets (no mocks).
+#
+# Usage:
+#   stress_test.sh [options]
+#
+# Example:
+#   stress_test.sh --openai-docs --use-playwright --headless
+#
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

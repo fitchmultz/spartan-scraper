@@ -1,3 +1,6 @@
+// Package extract provides tests for basic schema validation.
+// Tests cover string, number, integer, array, and enum constraints including min/max bounds.
+// Does NOT test nested objects or mixed field types.
 package extract
 
 import (

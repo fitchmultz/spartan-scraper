@@ -1,3 +1,6 @@
+// Package extract provides tests for real-world JSON-LD schema parsing.
+// Tests cover Article, Product, and Organization schema types with realistic markup.
+// Does NOT test malformed JSON or edge cases.
 package extract
 
 import (

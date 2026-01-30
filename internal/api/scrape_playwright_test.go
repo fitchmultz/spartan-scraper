@@ -1,3 +1,6 @@
+// Package api provides integration tests for scrape endpoint with Playwright option.
+// Tests cover Playwright flag behavior (nil, true, false) in scrape requests.
+// Does NOT test Playwright fetcher implementation (fetch package handles that).
 package api
 
 import (

@@ -1,3 +1,6 @@
+// Package api provides integration tests for sensitive data redaction in job responses.
+// Tests cover redaction of cookies, tokens, and passwords in API responses.
+// Does NOT test auth resolution logic (auth package handles that).
 package api
 
 import (

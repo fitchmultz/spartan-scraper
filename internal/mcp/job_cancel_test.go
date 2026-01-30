@@ -1,3 +1,6 @@
+// Package mcp provides tests for the job_cancel MCP tool.
+// Tests cover tool schema validation and job cancellation behavior.
+// Does NOT test actual job execution or worker pool cancellation.
 package mcp
 
 import (

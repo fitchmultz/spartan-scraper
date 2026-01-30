@@ -1,3 +1,19 @@
+// Package scheduler provides schedule parameter validation.
+//
+// This file is responsible for:
+// - Validating schedule parameters based on schedule kind (scrape, crawl, research)
+// - Delegating to validate package for common validation logic
+// - Returning classified errors via apperrors package
+//
+// This file does NOT handle:
+// - Schedule persistence or storage
+// - Schedule execution
+// - Parameter extraction (params.go does this)
+//
+// Invariants:
+// - Returns apperrors.KindValidation for validation failures
+// - Uses validate.ValidateJob for common job validation
+// - Unknown schedule kinds return validation errors
 package scheduler
 
 import (

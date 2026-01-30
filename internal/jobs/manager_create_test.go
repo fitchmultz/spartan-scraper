@@ -1,3 +1,6 @@
+// Package jobs provides tests for job creation via the manager.
+// Tests cover creating scrape, crawl, and research jobs, plus validation errors.
+// Does NOT test job execution or persistence edge cases.
 package jobs
 
 import (

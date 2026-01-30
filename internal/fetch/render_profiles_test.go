@@ -1,3 +1,6 @@
+// Package fetch provides tests for render profile utilities.
+// Tests cover profile path generation and extended host pattern matching scenarios.
+// Does NOT test profile storage or retrieval.
 package fetch
 
 import (

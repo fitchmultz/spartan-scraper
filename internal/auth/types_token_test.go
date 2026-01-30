@@ -1,3 +1,6 @@
+// Package auth provides tests for Token type and TokenKind constants.
+// Tests cover JSON serialization and TokenKind string representations.
+// Does NOT test token resolution or auth merging.
 package auth
 
 import (

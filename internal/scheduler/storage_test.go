@@ -1,3 +1,6 @@
+// Package scheduler provides tests for schedule storage operations.
+// Tests cover Add, List, Delete, and LoadAll operations.
+// Does NOT test schedule validation or complex persistence scenarios.
 package scheduler
 
 import (

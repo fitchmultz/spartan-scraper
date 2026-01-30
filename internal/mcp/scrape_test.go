@@ -1,17 +1,7 @@
-// Tests for the scrape_page MCP tool.
-// Verifies job creation with pipeline options (preProcessors, postProcessors, transformers)
-// and incremental mode. Also validates the tool's JSON schema definition.
-//
-// Does NOT handle:
-// - Actual scraping execution (only job creation)
-// - HTTP request handling or content fetching
-// - Pipeline processor/transformer execution
-//
-// Invariants:
-// - scrape_page accepts optional pipeline options as arrays
-// - scrape_page accepts optional incremental flag as boolean
-// - All pipeline/incremental fields are optional in schema (not in required array)
-// - Job params must store pipeline.Options and incremental flag correctly
+// Package mcp provides tests for the scrape_page MCP tool.
+// Tests cover job creation with pipeline options (preProcessors, postProcessors, transformers)
+// and incremental mode, plus JSON schema validation.
+// Does NOT test actual scraping execution, HTTP handling, or content fetching.
 package mcp
 
 import (

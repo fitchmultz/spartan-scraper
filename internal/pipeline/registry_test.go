@@ -1,3 +1,6 @@
+// Package pipeline provides tests for the plugin registry.
+// Tests cover plugin registration, stage-based filtering, priority ordering, and the stageInList helper.
+// Does NOT test concurrent access or plugin lifecycle management.
 package pipeline
 
 import (

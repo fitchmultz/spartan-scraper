@@ -1,17 +1,6 @@
-// Tests for schema validation and helper functions.
-// Tests verify the getPipelineOptions helper function and ensure all tools
-// have valid schema definitions with required fields (name, description, inputSchema).
-//
-// Does NOT handle:
-// - Tool execution behavior
-// - Server lifecycle
-// - Job management operations
-//
-// Invariants:
-// - getPipelineOptions must handle nil args by returning empty pipeline.Options
-// - getPipelineOptions must extract preProcessors, postProcessors, transformers from args
-// - All tools must have non-empty name, description, and inputSchema fields
-// - Schema helper (schema()) must create valid JSON Schema with type, properties, required
+// Package mcp provides tests for schema validation and helper functions.
+// Tests cover getPipelineOptions helper and tool schema definitions (name, description, inputSchema).
+// Does NOT test tool execution behavior, server lifecycle, or job management operations.
 package mcp
 
 import (

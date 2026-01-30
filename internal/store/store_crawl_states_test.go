@@ -1,3 +1,7 @@
+// Package store provides tests for crawl state persistence operations.
+// Tests cover UpsertCrawlState, GetCrawlState, ListCrawlStates, CountCrawlStates,
+// and pagination options with default value handling.
+// Does NOT test job CRUD or database migration logic.
 package store
 
 import (

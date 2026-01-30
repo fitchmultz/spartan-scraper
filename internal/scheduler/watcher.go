@@ -1,3 +1,20 @@
+// Package scheduler provides file system watching and hot-reloading for schedules.
+//
+// This file is responsible for:
+// - Watching the schedules file for external changes (write, create, remove)
+// - Triggering reloads via channel when file changes are detected
+// - Fallback polling via ticker every 5 seconds
+// - Handling fsnotify errors gracefully
+//
+// This file does NOT handle:
+// - Schedule persistence (storage.go does this)
+// - Schedule loading logic (cached_scheduler.go does this)
+// - Schedule execution (scheduler.go does this)
+//
+// Invariants:
+// - Uses fsnotify.Watcher for file system events
+// - Non-blocking send on reloadCh with default case
+// - Context cancellation stops both watcher and reload loop
 package scheduler
 
 import (

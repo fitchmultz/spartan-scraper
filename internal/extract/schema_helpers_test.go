@@ -1,3 +1,6 @@
+// Package extract provides tests for schema validation helpers.
+// Tests cover NewObjectFieldValue creation and validation depth limits.
+// Does NOT test schema type validation or constraint checking.
 package extract
 
 import (

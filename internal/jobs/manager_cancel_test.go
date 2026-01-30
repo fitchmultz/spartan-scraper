@@ -1,3 +1,6 @@
+// Package jobs provides tests for job cancellation operations.
+// Tests cover canceling queued, running, and already-terminal jobs.
+// Does NOT test cancellation of non-existent jobs or concurrent cancel races.
 package jobs
 
 import (

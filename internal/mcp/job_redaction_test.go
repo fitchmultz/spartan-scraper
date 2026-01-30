@@ -1,3 +1,6 @@
+// Package mcp provides tests for sensitive data redaction in MCP tool responses.
+// Tests cover password, apiKey, token, Authorization header, and filesystem path redaction.
+// Does NOT test encryption or secure storage of credentials.
 package mcp
 
 import (

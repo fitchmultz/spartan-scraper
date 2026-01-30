@@ -1,3 +1,6 @@
+// Package jobs provides tests for context handling during job execution.
+// Tests cover context cancellation propagation and cleanup on shutdown.
+// Does NOT test context timeout scenarios or deadline exceeded handling.
 package jobs
 
 import (

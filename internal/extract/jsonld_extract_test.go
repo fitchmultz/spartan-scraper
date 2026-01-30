@@ -1,3 +1,6 @@
+// Package extract provides tests for JSON-LD extraction from HTML.
+// Tests cover single objects, arrays, @graph containers, multiple scripts, and edge cases (empty/whitespace/invalid).
+// Does NOT test JSON-LD matching rules or real-world schema parsing.
 package extract
 
 import (

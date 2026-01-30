@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0161",
-      "status": "todo",
-      "title": "Add file-level docstrings to all source and test files",
-      "priority": "low",
-      "tags": [
-        "docs",
-        "standards"
-      ],
-      "scope": [
-        "internal/apperrors/*.go",
-        "internal/jobs/*.go",
-        "internal/scheduler/*.go",
-        "internal/store/*.go",
-        "internal/cli/manage/*.go",
-        "internal/api/*_test.go",
-        "internal/auth/*_test.go",
-        "internal/extract/*_test.go",
-        "internal/fetch/*_test.go",
-        "internal/mcp/*_test.go",
-        "internal/e2e/*_test.go",
-        "internal/pipeline/*_test.go",
-        "internal/validate/*_test.go",
-        "web/src/**/*.test.ts",
-        "scripts/*"
-      ],
-      "evidence": [
-        "Multiple source and test files lack top-of-file docstrings describing responsibilities.",
-        "Repository policy requires file headers above package declarations."
-      ],
-      "plan": [
-        "Add file-level docstrings above package lines for all listed source files.",
-        "Add brief headers to all test files.",
-        "Run gofmt and biome format after edits."
-      ],
-      "notes": [
-        "Consolidated from RQ-0161 through RQ-0172"
-      ],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0173",
       "status": "todo",
       "title": "Modernize TUI with rich Bubble Tea components and real-time progress",

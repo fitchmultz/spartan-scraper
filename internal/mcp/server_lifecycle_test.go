@@ -1,16 +1,6 @@
-// Server lifecycle and shutdown behavior tests.
-// Tests verify that the MCP server properly manages goroutine lifecycles,
-// handles shutdown requests, and ensures idempotent close operations.
-//
-// Does NOT handle:
-// - Tool execution behavior (covered in integration_test.go)
-// - Tool schema validation (covered in schema_test.go)
-// - Job management operations (covered in job_management_test.go)
-//
-// Invariants:
-// - Server.Close() should stop all worker goroutines
-// - Close() should be idempotent (safe to call multiple times)
-// - Manager status should report 0 active jobs after Close()
+// Package mcp provides tests for MCP server lifecycle and shutdown behavior.
+// Tests cover goroutine lifecycle management, shutdown requests, and idempotent close operations.
+// Does NOT test tool execution behavior, schema validation, or job management operations.
 package mcp
 
 import (

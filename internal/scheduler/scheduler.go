@@ -1,3 +1,21 @@
+// Package scheduler provides the main scheduling loop for executing scheduled jobs.
+//
+// This file is responsible for:
+// - Running the main scheduler loop with 1-second ticker polling
+// - Checking schedules and enqueuing jobs when NextRun is due
+// - Updating NextRun after successful job enqueue
+// - Building JobSpec from schedule parameters for job creation
+//
+// This file does NOT handle:
+// - Schedule persistence (storage.go does this)
+// - File watching for hot reloads (watcher.go does this)
+// - In-memory schedule caching (cached_scheduler.go does this)
+//
+// Invariants:
+// - Ticker polls every 1 second for schedule evaluation
+// - Schedules are copied under RLock before processing
+// - NextRun is updated only after successful job enqueue
+// - Uses jobs.Manager for job creation and enqueueing
 package scheduler
 
 import (

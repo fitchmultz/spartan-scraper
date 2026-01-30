@@ -1,3 +1,7 @@
+// Package pipeline provides tests for the pipeline plugin interfaces.
+// Tests cover BasePlugin default implementations for all hook stages (PreFetch, PostFetch, PreExtract, PostExtract, PreOutput, PostOutput),
+// plugin stages, priority, and enabled behavior.
+// Does NOT test actual plugin implementations or hook execution order.
 package pipeline
 
 import (

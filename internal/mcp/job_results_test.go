@@ -1,3 +1,6 @@
+// Package mcp provides tests for the job_results MCP tool.
+// Tests cover tool schema validation and retrieval of job result files.
+// Does NOT test result parsing or content transformation.
 package mcp
 
 import (

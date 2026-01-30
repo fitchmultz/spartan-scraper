@@ -1,3 +1,6 @@
+// Package auth provides tests for Vault type.
+// Tests cover JSON serialization of vault structure with profiles and presets.
+// Does NOT test vault persistence operations.
 package auth
 
 import (

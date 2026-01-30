@@ -1,3 +1,6 @@
+// Package auth provides tests for profile merging and inheritance.
+// Tests cover parent-child profile resolution and field merging.
+// Does NOT test vault persistence or auth resolution to fetch options.
 package auth
 
 import (

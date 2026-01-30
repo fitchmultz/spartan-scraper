@@ -1,3 +1,21 @@
+// Package store provides persistent storage for crawl states used in deduplication.
+//
+// This file is responsible for:
+// - Crawl state CRUD operations (Get, Upsert, Delete)
+// - Crawl state listing with pagination
+// - Counting crawl states for monitoring
+// - SQLite UPSERT for efficient insert-or-update
+//
+// This file does NOT handle:
+// - Crawl logic or URL discovery (crawl package handles this)
+// - Job operations (store_jobs.go handles this)
+// - Store initialization (store_init.go handles this)
+//
+// Invariants:
+// - Returns empty state (not error) when crawl state not found
+// - Timestamps are stored as RFC3339Nano strings
+// - Uses prepared statements for all operations
+// - URL is the primary key for crawl states
 package store
 
 import (

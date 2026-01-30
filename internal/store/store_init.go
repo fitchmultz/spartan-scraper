@@ -1,3 +1,23 @@
+// Package store provides SQLite database initialization and connection management.
+//
+// This file is responsible for:
+// - Opening and initializing the SQLite database
+// - Running schema migrations (table creation, column additions)
+// - Preparing SQL statements for reuse
+// - Connection pool configuration (max conns, timeouts)
+// - WAL mode and checkpointing for durability
+// - Store lifecycle (Open, Close, Checkpoint)
+//
+// This file does NOT handle:
+// - Job CRUD operations (store_jobs.go handles this)
+// - Crawl state operations (store_crawl_states.go handles this)
+// - Business logic
+//
+// Invariants:
+// - Uses SQLite with WAL mode (journal_mode=WAL)
+// - Database file is jobs.db in the data directory
+// - All prepared statements are closed on Close()
+// - columnExists helper used for safe migrations
 package store
 
 import (
