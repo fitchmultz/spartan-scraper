@@ -25,7 +25,7 @@ import {
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
-import { ResultsViewer } from "./components/ResultsViewer";
+import { ResultsExplorer } from "./components/ResultsExplorer";
 import { InfoSections } from "./components/InfoSections";
 import { ScrapeForm, type ScrapeFormRef } from "./components/ScrapeForm";
 import { CrawlForm, type CrawlFormRef } from "./components/CrawlForm";
@@ -582,7 +582,7 @@ export function App() {
       </section>
 
       <section id="results">
-        <ResultsViewer
+        <ResultsExplorer
           jobId={selectedJobId}
           resultItems={resultItems}
           selectedResultIndex={selectedResultIndex}
@@ -598,6 +598,7 @@ export function App() {
           totalResults={totalResults}
           resultsPerPage={100}
           onLoadPage={setCurrentPage}
+          availableJobs={jobs}
         />
       </section>
 

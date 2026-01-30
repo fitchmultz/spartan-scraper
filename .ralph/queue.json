@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0178",
-      "status": "todo",
-      "title": "Add visual results explorer with tree view and diff support",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "web",
-        "data-viz",
-        "awesome"
-      ],
-      "scope": [
-        "web/src/components/ResultsExplorer.tsx (new)",
-        "web/src/components/ResultsViewer.tsx"
-      ],
-      "evidence": [
-        "Current results viewer is text-only JSON/JSONL display.",
-        "No visual hierarchy for crawl results (hundreds of pages).",
-        "Difficult to compare results between job runs.",
-        "No visualization of research clusters and citations."
-      ],
-      "plan": [
-        "Create hierarchical tree view for crawl results showing site structure.",
-        "Add collapsible sections for metadata, links, extracted content.",
-        "Implement diff view to compare two job results side-by-side.",
-        "Add research-specific visualization: evidence graph, confidence chart, cluster view.",
-        "Include export options directly from results view (download CSV, Markdown, JSON).",
-        "Add search/filter within results."
-      ],
-      "notes": [
-        "Use virtualized lists for large result sets (react-window)",
-        "Consider D3 or similar for research visualizations",
-        "Add copy-to-clipboard for individual fields"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0179",
       "status": "todo",
       "title": "Add onboarding flow and interactive tutorials",

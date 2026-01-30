@@ -4,6 +4,7 @@
  * Custom React hook for managing results loading, display, and pagination.
  * Handles result format switching, pagination, and extraction of detailed
  * result information (summary, confidence, evidence, clusters, citations).
+ * Supports tree view state, search/filter, and diff comparison state.
  *
  * @module useResultsState
  */
@@ -20,6 +21,9 @@ import { buildApiUrl } from "../lib/api-config";
 
 const RESULTS_PER_PAGE = 100;
 
+export type ViewMode = "explorer" | "tree" | "diff" | "visualize";
+export type StatusFilter = "all" | "success" | "error";
+
 export interface ResultsState {
   selectedJobId: string | null;
   resultItems: ResultItem[];
@@ -33,6 +37,13 @@ export interface ResultsState {
   resultFormat: string;
   currentPage: number;
   totalResults: number;
+  // Tree view state
+  viewMode: ViewMode;
+  treeExpandedIds: Set<string>;
+  treeSelectedId: string | null;
+  // Search/filter state
+  searchQuery: string;
+  statusFilter: StatusFilter;
 }
 
 export interface ResultsActions {
@@ -40,6 +51,16 @@ export interface ResultsActions {
   updateResultFormat: (format: string) => void;
   setSelectedResultIndex: (index: number) => void;
   setCurrentPage: (page: number) => void;
+  // Tree view actions
+  setViewMode: (mode: ViewMode) => void;
+  toggleTreeNode: (nodeId: string) => void;
+  expandAllTreeNodes: () => void;
+  collapseAllTreeNodes: () => void;
+  setTreeSelectedId: (id: string | null) => void;
+  // Search/filter actions
+  setSearchQuery: (query: string) => void;
+  setStatusFilter: (filter: StatusFilter) => void;
+  clearFilters: () => void;
 }
 
 export function useResultsState(): ResultsState & ResultsActions {
@@ -55,6 +76,17 @@ export function useResultsState(): ResultsState & ResultsActions {
   const [resultFormat, setResultFormat] = useState<string>("jsonl");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
+
+  // Tree view state
+  const [viewMode, setViewMode] = useState<ViewMode>("explorer");
+  const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [treeSelectedId, setTreeSelectedId] = useState<string | null>(null);
+
+  // Search/filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const selectedJobIdRef = useRef<string | null>(null);
 
@@ -116,6 +148,34 @@ export function useResultsState(): ResultsState & ResultsActions {
     setResultFormat(format);
   }, []);
 
+  // Tree view actions
+  const toggleTreeNode = useCallback((nodeId: string) => {
+    setTreeExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
+  const expandAllTreeNodes = useCallback(() => {
+    // This will be populated when tree nodes are available
+    setTreeExpandedIds(new Set());
+  }, []);
+
+  const collapseAllTreeNodes = useCallback(() => {
+    setTreeExpandedIds(new Set());
+  }, []);
+
+  // Search/filter actions
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setStatusFilter("all");
+  }, []);
+
   useEffect(() => {
     selectedJobIdRef.current = selectedJobId;
   }, [selectedJobId]);
@@ -166,9 +226,25 @@ export function useResultsState(): ResultsState & ResultsActions {
     resultFormat,
     currentPage,
     totalResults,
+    // Tree view state
+    viewMode,
+    treeExpandedIds,
+    treeSelectedId,
+    // Search/filter state
+    searchQuery,
+    statusFilter,
+    // Actions
     loadResults,
     updateResultFormat,
     setSelectedResultIndex,
     setCurrentPage,
+    setViewMode,
+    toggleTreeNode,
+    expandAllTreeNodes,
+    collapseAllTreeNodes,
+    setTreeSelectedId,
+    setSearchQuery,
+    setStatusFilter,
+    clearFilters,
   };
 }
