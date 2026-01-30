@@ -150,7 +150,7 @@ export async function loadResults(
     if (format === "jsonl") {
       const text = await response.text();
       return parseJsonlResults(text);
-    } else if (format === "xlsx") {
+    } else if (format === "xlsx" || format === "parquet") {
       // For binary formats, convert to base64 for transport
       const buffer = await response.arrayBuffer();
       const bytes = new Uint8Array(buffer);

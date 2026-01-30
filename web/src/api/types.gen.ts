@@ -1168,9 +1168,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */

@@ -602,9 +602,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv, xlsx]
+            enum: [jsonl, json, md, csv, xlsx, parquet]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics)
         - in: query
           name: limit
           schema:
@@ -641,6 +641,10 @@ paths:
             text/csv:
               schema:
                 type: string
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
         '400':
           description: Bad Request (invalid format)
           content:

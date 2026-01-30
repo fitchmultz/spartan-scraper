@@ -1,6 +1,6 @@
 // Package exporter provides functionality for exporting job results to various formats.
 //
-// This package supports JSON, JSONL, Markdown, and CSV output formats with both
+// This package supports JSON, JSONL, Markdown, CSV, XLSX, and Parquet output formats with both
 // buffered and streaming interfaces for memory-efficient processing of large results.
 //
 // Public API:
@@ -48,6 +48,8 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 		return exportCSVStream(job, r, w)
 	case "xlsx":
 		return exportXLSXStream(job, r, w)
+	case "parquet":
+		return exportParquetStream(job, r, w)
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}

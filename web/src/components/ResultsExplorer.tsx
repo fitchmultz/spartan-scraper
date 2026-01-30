@@ -257,7 +257,7 @@ export function ResultsExplorer({
 
   // Handle export
   const handleExport = useCallback(
-    async (format: "json" | "csv" | "md" | "xlsx") => {
+    async (format: "json" | "csv" | "md" | "xlsx" | "parquet") => {
       if (!jobId) return;
 
       setIsExporting(true);
@@ -273,7 +273,9 @@ export function ResultsExplorer({
               ? "text/csv"
               : format === "xlsx"
                 ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                : "text/markdown";
+                : format === "parquet"
+                  ? "application/octet-stream"
+                  : "text/markdown";
         const isBinary = result.isBinary || false;
         downloadFile(content, filename, mimeType, isBinary);
       } catch (err) {
@@ -443,6 +445,14 @@ export function ResultsExplorer({
               disabled={isExporting}
             >
               Export XLSX
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void handleExport("parquet")}
+              disabled={isExporting}
+            >
+              Export Parquet
             </button>
           </div>
         </div>
