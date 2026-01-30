@@ -127,7 +127,7 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 }
 
 func TestHandleJobResultsWithFormats(t *testing.T) {
-	formats := []string{"jsonl", "json", "md", "csv"}
+	formats := []string{"jsonl", "json", "md", "csv", "xlsx"}
 
 	for _, format := range formats {
 		t.Run("format_"+format, func(t *testing.T) {
@@ -189,6 +189,7 @@ func TestHandleJobResultsWithFormats(t *testing.T) {
 				"json":  "application/json",
 				"md":    "text/markdown; charset=utf-8",
 				"csv":   "text/csv; charset=utf-8",
+				"xlsx":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 			}
 			if ct := rr.Header().Get("Content-Type"); ct != expectedCT[format] {
 				t.Errorf("expected Content-Type %q, got %q", expectedCT[format], ct)

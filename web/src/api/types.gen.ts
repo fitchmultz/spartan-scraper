@@ -1059,9 +1059,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */

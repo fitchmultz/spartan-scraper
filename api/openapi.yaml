@@ -597,9 +597,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv]
+            enum: [jsonl, json, md, csv, xlsx]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet)
         - in: query
           name: limit
           schema:

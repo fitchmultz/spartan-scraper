@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0183",
-      "status": "todo",
-      "title": "Add Excel/XLSX export format",
-      "priority": "high",
-      "tags": [
-        "export",
-        "excel",
-        "xlsx",
-        "data"
-      ],
-      "scope": [
-        "internal/exporter/exporter.go",
-        "internal/exporter/xlsx.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "internal/exporter/exporter.go only supports: json, jsonl, md, csv",
-        "No Excel/XLSX support found in any exporter files",
-        "Excel is commonly requested for business users who need formatted data"
-      ],
-      "plan": [
-        "Add github.com/xuri/excelize/v2 dependency",
-        "Create internal/exporter/xlsx.go with XLSX exporter implementation",
-        "Support multi-sheet exports for complex crawl results",
-        "Add column width auto-sizing and header formatting",
-        "Add 'xlsx' case to exporter switch statement",
-        "Update OpenAPI spec format enum to include xlsx",
-        "Add XLSX download option to web UI",
-        "Write tests for XLSX export"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0184",
       "status": "todo",
       "title": "Implement webhook notifications for job completion",

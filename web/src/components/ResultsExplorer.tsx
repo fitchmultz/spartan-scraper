@@ -57,21 +57,17 @@ interface ResultsExplorerProps {
 }
 
 /**
- * Export results in various formats.
- */
-async function exportResults(
-  jobId: string,
-  format: "json" | "csv" | "md",
-): Promise<string> {
-  const result = await loadResults(jobId, format, 1, 1000);
-  return result.raw || "";
-}
-
-/**
  * Download content as a file.
  */
-function downloadFile(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
+function downloadFile(
+  content: string,
+  filename: string,
+  mimeType: string,
+  isBinary = false,
+) {
+  const blob = isBinary
+    ? new Blob([base64ToArrayBuffer(content)], { type: mimeType })
+    : new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -80,6 +76,18 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Convert base64 string to ArrayBuffer for binary downloads.
+ */
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 /**
@@ -249,12 +257,13 @@ export function ResultsExplorer({
 
   // Handle export
   const handleExport = useCallback(
-    async (format: "json" | "csv" | "md") => {
+    async (format: "json" | "csv" | "md" | "xlsx") => {
       if (!jobId) return;
 
       setIsExporting(true);
       try {
-        const content = await exportResults(jobId, format);
+        const result = await loadResults(jobId, format, 1, 1000);
+        const content = result.raw || "";
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         const filename = `results-${jobId}-${timestamp}.${format}`;
         const mimeType =
@@ -262,8 +271,11 @@ export function ResultsExplorer({
             ? "application/json"
             : format === "csv"
               ? "text/csv"
-              : "text/markdown";
-        downloadFile(content, filename, mimeType);
+              : format === "xlsx"
+                ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                : "text/markdown";
+        const isBinary = result.isBinary || false;
+        downloadFile(content, filename, mimeType, isBinary);
       } catch (err) {
         console.error("Export failed:", err);
       } finally {
@@ -423,6 +435,14 @@ export function ResultsExplorer({
               disabled={isExporting}
             >
               Export MD
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void handleExport("xlsx")}
+              disabled={isExporting}
+            >
+              Export XLSX
             </button>
           </div>
         </div>

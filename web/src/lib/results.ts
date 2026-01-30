@@ -16,6 +16,7 @@ export interface ResultsResponse {
   error?: string;
   data?: unknown[];
   raw?: string;
+  isBinary?: boolean;
 }
 
 /**
@@ -149,6 +150,16 @@ export async function loadResults(
     if (format === "jsonl") {
       const text = await response.text();
       return parseJsonlResults(text);
+    } else if (format === "xlsx") {
+      // For binary formats, convert to base64 for transport
+      const buffer = await response.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      return { raw: base64, isBinary: true };
     } else {
       // For other formats, just store raw text for display
       const text = await response.text();

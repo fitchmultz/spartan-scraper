@@ -46,6 +46,8 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 		return exportMarkdownStream(job, r, w)
 	case "csv":
 		return exportCSVStream(job, r, w)
+	case "xlsx":
+		return exportXLSXStream(job, r, w)
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}

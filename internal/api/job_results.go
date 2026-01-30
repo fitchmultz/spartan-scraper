@@ -80,9 +80,9 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		format = "jsonl"
 	}
 
-	validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
+	validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true, "xlsx": true}
 	if !validFormats[format] {
-		writeError(w, r, apperrors.Validation("invalid format: must be jsonl, json, md, or csv"))
+		writeError(w, r, apperrors.Validation("invalid format: must be jsonl, json, md, csv, or xlsx"))
 		return
 	}
 
@@ -163,6 +163,8 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	case "csv":
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	case "xlsx":
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	}
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, job.ID, format))
