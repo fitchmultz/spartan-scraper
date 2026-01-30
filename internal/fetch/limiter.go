@@ -34,6 +34,8 @@ type HostLimiter struct {
 type hostLimiterInfo struct {
 	limiter     *rate.Limiter
 	lastRequest time.Time
+	qps         rate.Limit // per-host QPS (may differ from global)
+	burst       int        // per-host burst (may differ from global)
 }
 
 func NewHostLimiter(qps int, burst int) *HostLimiter {
@@ -52,7 +54,15 @@ func NewHostLimiter(qps int, burst int) *HostLimiter {
 	}
 }
 
+// Wait waits for the rate limiter for the given URL using global default rates.
+// For per-host rate configuration, use WaitWithRates instead.
 func (h *HostLimiter) Wait(ctx context.Context, rawURL string) error {
+	return h.WaitWithRates(ctx, rawURL, 0, 0)
+}
+
+// WaitWithRates waits for the rate limiter for the given URL with optional per-host rates.
+// If profileQPS or profileBurst are 0, the global defaults are used.
+func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQPS int, profileBurst int) error {
 	if h == nil || h.qps == rate.Inf {
 		return nil
 	}
@@ -65,7 +75,7 @@ func (h *HostLimiter) Wait(ctx context.Context, rawURL string) error {
 		return nil
 	}
 
-	limiter := h.getLimiter(host)
+	limiter := h.getLimiterWithRates(host, profileQPS, profileBurst)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -76,18 +86,43 @@ func (h *HostLimiter) Wait(ctx context.Context, rawURL string) error {
 	return err
 }
 
-func (h *HostLimiter) getLimiter(host string) *rate.Limiter {
+// getLimiterWithRates returns a limiter for the host, creating one if needed.
+// If the host already has a limiter, it will be reused (rate changes only take
+// effect for new hosts or after restart).
+func (h *HostLimiter) getLimiterWithRates(host string, qps int, burst int) *rate.Limiter {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
 	if info, ok := h.hostInfo[host]; ok {
 		return info.limiter
 	}
-	limiter := rate.NewLimiter(h.qps, h.burst)
+
+	// Use provided rates or fall back to global defaults
+	limit := rate.Limit(qps)
+	if qps <= 0 {
+		limit = h.qps
+	}
+	if burst <= 0 {
+		burst = h.burst
+	}
+	if burst <= 0 {
+		burst = 1
+	}
+
+	limiter := rate.NewLimiter(limit, burst)
 	h.byHost[host] = limiter
 	h.hostInfo[host] = &hostLimiterInfo{
 		limiter: limiter,
+		qps:     limit,
+		burst:   burst,
 	}
 	return limiter
+}
+
+// getLimiter returns a limiter for the host using global default rates.
+// Deprecated: Use getLimiterWithRates for per-host rate configuration.
+func (h *HostLimiter) getLimiter(host string) *rate.Limiter {
+	return h.getLimiterWithRates(host, 0, 0)
 }
 
 // recordRequest updates the last request time for a host
@@ -106,10 +141,14 @@ func (h *HostLimiter) GetHostStatus() []HostStatus {
 
 	result := make([]HostStatus, 0, len(h.hostInfo))
 	for host, info := range h.hostInfo {
+		qps := float64(info.qps)
+		if info.qps == rate.Inf {
+			qps = 0 // 0 indicates unlimited
+		}
 		result = append(result, HostStatus{
 			Host:        host,
-			QPS:         float64(h.qps),
-			Burst:       h.burst,
+			QPS:         qps,
+			Burst:       info.burst,
 			LastRequest: info.lastRequest,
 		})
 	}

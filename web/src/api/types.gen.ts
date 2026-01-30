@@ -651,6 +651,83 @@ export type RateLimitStatus = {
     lastRequest?: number;
 };
 
+/**
+ * Render profile configuration for matching hosts
+ */
+export type RenderProfile = {
+    /**
+     * Unique profile name
+     */
+    name: string;
+    /**
+     * Host patterns to match (e.g., "example.com", "*.example.com")
+     */
+    hostPatterns: Array<string>;
+    /**
+     * Force specific rendering engine
+     */
+    forceEngine?: 'http' | 'chromedp' | 'playwright';
+    /**
+     * Skip HTTP probe and use headless engine
+     */
+    preferHeadless?: boolean;
+    /**
+     * Treat all pages as JS-heavy
+     */
+    assumeJsHeavy?: boolean;
+    /**
+     * Never use headless rendering
+     */
+    neverHeadless?: boolean;
+    /**
+     * JS heaviness threshold (0-1)
+     */
+    jsHeavyThreshold?: number;
+    /**
+     * Rate limit QPS for matching hosts (0 = use global default)
+     */
+    rateLimitQPS?: number;
+    /**
+     * Rate limit burst for matching hosts (0 = use global default)
+     */
+    rateLimitBurst?: number;
+    block?: {
+        resourceTypes?: Array<'image' | 'media' | 'font' | 'stylesheet' | 'other'>;
+        urlPatterns?: Array<string>;
+    };
+    wait?: {
+        mode?: 'dom_ready' | 'network_idle' | 'stability' | 'selector';
+        selector?: string;
+        networkIdleQuietMs?: number;
+        minTextLength?: number;
+        stabilityPollMs?: number;
+        stabilityIterations?: number;
+        extraSleepMs?: number;
+    };
+    timeouts?: {
+        maxRenderMs?: number;
+        scriptEvalMs?: number;
+        navigationMs?: number;
+    };
+    screenshot?: {
+        enabled?: boolean;
+        fullPage?: boolean;
+        format?: 'png' | 'jpeg';
+        quality?: number;
+        width?: number;
+        height?: number;
+    };
+    device?: {
+        name?: string;
+        viewportWidth?: number;
+        viewportHeight?: number;
+        deviceScaleFactor?: number;
+        userAgent?: string;
+        isMobile?: boolean;
+        hasTouch?: boolean;
+    };
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;

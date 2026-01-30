@@ -233,5 +233,11 @@ func mergeRenderProfile(base RenderProfile, override *RenderProfile) RenderProfi
 	if override.Timeouts.MaxRenderMs > 0 {
 		out.Timeouts = override.Timeouts
 	}
+	if override.RateLimitQPS > 0 {
+		out.RateLimitQPS = override.RateLimitQPS
+	}
+	if override.RateLimitBurst > 0 {
+		out.RateLimitBurst = override.RateLimitBurst
+	}
 	return out
 }

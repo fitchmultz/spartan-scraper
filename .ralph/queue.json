@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0190",
-      "status": "todo",
-      "title": "Implement per-host rate limiting",
-      "priority": "medium",
-      "tags": [
-        "rate-limit",
-        "crawl-politeness",
-        "performance",
-        "fetch"
-      ],
-      "scope": [
-        "internal/fetch/limiter.go",
-        "internal/fetch/types.go",
-        "internal/fetch/render_profiles.go"
-      ],
-      "evidence": [
-        "internal/fetch/limiter.go uses global QPS/burst for all hosts",
-        "Single RATE_LIMIT_QPS env var - no per-host configuration",
-        "Some sites need gentler crawling than others"
-      ],
-      "plan": [
-        "Add RateLimitQPS and RateLimitBurst fields to RenderProfile",
-        "Create per-host rate limiter registry in limiter.go",
-        "Use host-specific limiter when profile has custom rates",
-        "Fall back to global limiter for hosts without custom config",
-        "Support wildcards in host patterns (*.example.com)",
-        "Update render profile JSON schema",
-        "Add rate limit display to web UI",
-        "Write tests for per-host rate limiting"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0191",
       "status": "todo",
       "title": "Add request/response interception for API scraping",

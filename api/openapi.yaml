@@ -1765,3 +1765,114 @@ components:
           type: integer
           format: int64
           description: Unix timestamp of last request to this host
+    RenderProfile:
+      type: object
+      description: Render profile configuration for matching hosts
+      required:
+        - name
+        - hostPatterns
+      properties:
+        name:
+          type: string
+          description: Unique profile name
+        hostPatterns:
+          type: array
+          items:
+            type: string
+          description: Host patterns to match (e.g., "example.com", "*.example.com")
+        forceEngine:
+          type: string
+          enum: [http, chromedp, playwright]
+          description: Force specific rendering engine
+        preferHeadless:
+          type: boolean
+          description: Skip HTTP probe and use headless engine
+        assumeJsHeavy:
+          type: boolean
+          description: Treat all pages as JS-heavy
+        neverHeadless:
+          type: boolean
+          description: Never use headless rendering
+        jsHeavyThreshold:
+          type: number
+          format: float
+          description: JS heaviness threshold (0-1)
+        rateLimitQPS:
+          type: integer
+          description: Rate limit QPS for matching hosts (0 = use global default)
+        rateLimitBurst:
+          type: integer
+          description: Rate limit burst for matching hosts (0 = use global default)
+        block:
+          type: object
+          properties:
+            resourceTypes:
+              type: array
+              items:
+                type: string
+                enum: [image, media, font, stylesheet, other]
+            urlPatterns:
+              type: array
+              items:
+                type: string
+        wait:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [dom_ready, network_idle, stability, selector]
+            selector:
+              type: string
+            networkIdleQuietMs:
+              type: integer
+            minTextLength:
+              type: integer
+            stabilityPollMs:
+              type: integer
+            stabilityIterations:
+              type: integer
+            extraSleepMs:
+              type: integer
+        timeouts:
+          type: object
+          properties:
+            maxRenderMs:
+              type: integer
+            scriptEvalMs:
+              type: integer
+            navigationMs:
+              type: integer
+        screenshot:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            fullPage:
+              type: boolean
+            format:
+              type: string
+              enum: [png, jpeg]
+            quality:
+              type: integer
+            width:
+              type: integer
+            height:
+              type: integer
+        device:
+          type: object
+          properties:
+            name:
+              type: string
+            viewportWidth:
+              type: integer
+            viewportHeight:
+              type: integer
+            deviceScaleFactor:
+              type: number
+              format: float
+            userAgent:
+              type: string
+            isMobile:
+              type: boolean
+            hasTouch:
+              type: boolean

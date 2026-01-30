@@ -87,3 +87,69 @@ func TestRenderProfileStore(t *testing.T) {
 		t.Error("expected no match for other.com")
 	}
 }
+
+func TestRenderProfileStore_GetRateLimitsForURL(t *testing.T) {
+	tmp := t.TempDir()
+	jsonContent := `{
+		"profiles": [
+			{
+				"name": "slow-site",
+				"hostPatterns": ["slow.example.com"],
+				"rateLimitQPS": 1,
+				"rateLimitBurst": 2
+			},
+			{
+				"name": "fast-site",
+				"hostPatterns": ["fast.example.com"],
+				"rateLimitQPS": 100,
+				"rateLimitBurst": 100
+			},
+			{
+				"name": "no-rate-limit",
+				"hostPatterns": ["default.example.com"]
+			}
+		]
+	}`
+	path := filepath.Join(tmp, "render_profiles.json")
+	if err := os.WriteFile(path, []byte(jsonContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewRenderProfileStore(tmp)
+
+	// Test slow site with custom rate limits
+	qps, burst := store.GetRateLimitsForURL("https://slow.example.com/page")
+	if qps != 1 {
+		t.Errorf("expected QPS 1 for slow site, got %d", qps)
+	}
+	if burst != 2 {
+		t.Errorf("expected burst 2 for slow site, got %d", burst)
+	}
+
+	// Test fast site with custom rate limits
+	qps, burst = store.GetRateLimitsForURL("https://fast.example.com/page")
+	if qps != 100 {
+		t.Errorf("expected QPS 100 for fast site, got %d", qps)
+	}
+	if burst != 100 {
+		t.Errorf("expected burst 100 for fast site, got %d", burst)
+	}
+
+	// Test site without rate limits (should return 0, 0)
+	qps, burst = store.GetRateLimitsForURL("https://default.example.com/page")
+	if qps != 0 {
+		t.Errorf("expected QPS 0 for default site, got %d", qps)
+	}
+	if burst != 0 {
+		t.Errorf("expected burst 0 for default site, got %d", burst)
+	}
+
+	// Test non-matching URL (should return 0, 0)
+	qps, burst = store.GetRateLimitsForURL("https://unknown.com/page")
+	if qps != 0 {
+		t.Errorf("expected QPS 0 for unknown site, got %d", qps)
+	}
+	if burst != 0 {
+		t.Errorf("expected burst 0 for unknown site, got %d", burst)
+	}
+}

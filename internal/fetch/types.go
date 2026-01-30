@@ -201,6 +201,10 @@ type RenderProfile struct {
 	// Overrides default JS-heavy threshold for this host (0..1). 0 means use global default.
 	JSHeavyThreshold float64 `json:"jsHeavyThreshold,omitempty"`
 
+	// Rate limiting configuration for this profile (0 = use global defaults).
+	RateLimitQPS   int `json:"rateLimitQPS,omitempty"`
+	RateLimitBurst int `json:"rateLimitBurst,omitempty"`
+
 	Block      RenderBlockPolicy   `json:"block,omitempty"`
 	Wait       RenderWaitPolicy    `json:"wait,omitempty"`
 	Timeouts   RenderTimeoutPolicy `json:"timeouts,omitempty"`

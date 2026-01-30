@@ -140,6 +140,26 @@ func TestMergeRenderProfile(t *testing.T) {
 			},
 		},
 		{
+			name:     "rate limit QPS is applied",
+			base:     base,
+			override: &RenderProfile{RateLimitQPS: 5},
+			validate: func(t *testing.T, result RenderProfile) {
+				if result.RateLimitQPS != 5 {
+					t.Errorf("expected RateLimitQPS 5, got %d", result.RateLimitQPS)
+				}
+			},
+		},
+		{
+			name:     "rate limit burst is applied",
+			base:     base,
+			override: &RenderProfile{RateLimitBurst: 10},
+			validate: func(t *testing.T, result RenderProfile) {
+				if result.RateLimitBurst != 10 {
+					t.Errorf("expected RateLimitBurst 10, got %d", result.RateLimitBurst)
+				}
+			},
+		},
+		{
 			name:     "base values preserved when override empty",
 			base:     base,
 			override: &RenderProfile{Name: "test"},

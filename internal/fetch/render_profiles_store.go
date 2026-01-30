@@ -176,3 +176,13 @@ func isSpaceASCII(b byte) bool {
 		return false
 	}
 }
+
+// GetRateLimitsForURL returns the rate limit configuration for a given URL.
+// Returns (0, 0) if no matching profile or if profile has no rate limits set.
+func (s *RenderProfileStore) GetRateLimitsForURL(rawURL string) (qps int, burst int) {
+	profile, found, _ := s.MatchURL(rawURL)
+	if !found || profile == nil {
+		return 0, 0
+	}
+	return profile.RateLimitQPS, profile.RateLimitBurst
+}
