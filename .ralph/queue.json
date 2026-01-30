@@ -1,4 +1,708 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0201",
+      "status": "todo",
+      "title": "Add content deduplication during crawling",
+      "priority": "high",
+      "tags": [
+        "crawl",
+        "deduplication",
+        "performance"
+      ],
+      "scope": [
+        "internal/crawl/",
+        "internal/extract/"
+      ],
+      "evidence": [
+        "Research has simhash deduplication (internal/research/cluster.go) but crawling lacks content-level deduplication",
+        "CrawlState tracks ETags and content hashes but only for incremental crawling, not duplicate detection",
+        "No content hash comparison during crawl - same content on different URLs is processed multiple times"
+      ],
+      "plan": [
+        "Add content fingerprinting (simhash or minhash) to crawl worker",
+        "Store content hashes in crawl state with URL mapping",
+        "Add --skip-duplicates flag to crawl command",
+        "Update CrawlResult to include duplicate_of field",
+        "Add tests for duplicate detection"
+      ],
+      "notes": [],
+      "request": "scan finding: content deduplication gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0202",
+      "status": "todo",
+      "title": "Implement content change detection for monitoring",
+      "priority": "high",
+      "tags": [
+        "monitoring",
+        "change-detection",
+        "feature"
+      ],
+      "scope": [
+        "internal/scrape/",
+        "internal/store/",
+        "cmd/spartan/"
+      ],
+      "evidence": [
+        "No mechanism to detect when page content changes between scrapes",
+        "Store has crawl states but no diff/comparison functionality",
+        "No 'spartan watch' or monitoring command exists"
+      ],
+      "plan": [
+        "Add content fingerprint storage to job results",
+        "Create new 'watch' subcommand for periodic monitoring",
+        "Implement diff output (text and HTML) for changed content",
+        "Add webhook event for 'content_changed'",
+        "Support CSS selector-level change detection",
+        "Add notification integrations (email, slack, discord)"
+      ],
+      "notes": [],
+      "request": "scan finding: change detection gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0203",
+      "status": "todo",
+      "title": "Add data retention policies and automatic cleanup",
+      "priority": "high",
+      "tags": [
+        "data-management",
+        "retention",
+        "storage"
+      ],
+      "scope": [
+        "internal/store/",
+        "internal/scheduler/",
+        "internal/config/"
+      ],
+      "evidence": [
+        "No automatic cleanup of old jobs or results",
+        "DATA_DIR grows indefinitely without manual intervention",
+        "No retention configuration in config.go"
+      ],
+      "plan": [
+        "Add retention policy config (max_age, max_count, max_size)",
+        "Implement cleanup job in scheduler",
+        "Add archive-before-delete option (export to S3, etc.)",
+        "Create 'spartan cleanup' manual command",
+        "Add retention per job type (scrape vs crawl vs research)",
+        "Add dry-run mode for testing retention policies"
+      ],
+      "notes": [],
+      "request": "scan finding: retention policy gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0204",
+      "status": "todo",
+      "title": "Implement proxy rotation and proxy pool management",
+      "priority": "high",
+      "tags": [
+        "proxy",
+        "scaling",
+        "networking"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "internal/config/"
+      ],
+      "evidence": [
+        "Only single proxy URL supported in config (PROXY_URL)",
+        "No proxy rotation for high-volume crawling",
+        "No proxy health checking or failover"
+      ],
+      "plan": [
+        "Create proxy pool configuration format (YAML/JSON)",
+        "Add proxy rotation strategies (round-robin, random, least-used)",
+        "Implement proxy health checks with automatic exclusion",
+        "Add geographic proxy selection",
+        "Support proxy authentication per proxy",
+        "Add proxy usage metrics and reporting"
+      ],
+      "notes": [],
+      "request": "scan finding: proxy rotation gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0205",
+      "status": "todo",
+      "title": "Add OAuth 2.0 and OIDC authentication flow support",
+      "priority": "high",
+      "tags": [
+        "auth",
+        "oauth",
+        "security"
+      ],
+      "scope": [
+        "internal/auth/",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Auth supports static tokens but not OAuth 2.0 flows",
+        "No automatic token refresh mechanism",
+        "No OIDC discovery support"
+      ],
+      "plan": [
+        "Add OAuth 2.0 authorization code flow",
+        "Implement token refresh with automatic retry",
+        "Add OIDC discovery and configuration",
+        "Support PKCE for public clients",
+        "Add OAuth state parameter security",
+        "Create auth callback endpoint for web UI"
+      ],
+      "notes": [],
+      "request": "scan finding: OAuth 2.0 support gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0206",
+      "status": "todo",
+      "title": "Add JSON Schema validation for extracted data",
+      "priority": "medium",
+      "tags": [
+        "validation",
+        "schema",
+        "data-quality"
+      ],
+      "scope": [
+        "internal/extract/",
+        "internal/pipeline/"
+      ],
+      "evidence": [
+        "Extraction templates exist but no strict schema enforcement",
+        "No validation of extracted data structure",
+        "Pipeline has transformers but no validators"
+      ],
+      "plan": [
+        "Add JSON Schema support for extraction templates",
+        "Implement validation errors with path reporting",
+        "Add rejection policies (skip, empty, error)",
+        "Support custom validation rules",
+        "Add schema versioning for templates"
+      ],
+      "notes": [],
+      "request": "scan finding: schema validation gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0207",
+      "status": "todo",
+      "title": "Implement backup and restore commands",
+      "priority": "medium",
+      "tags": [
+        "backup",
+        "data-management",
+        "cli"
+      ],
+      "scope": [
+        "cmd/spartan/",
+        "internal/store/"
+      ],
+      "evidence": [
+        "No built-in backup/restore for data directory",
+        "No incremental backup support",
+        "Manual file copying required for migration"
+      ],
+      "plan": [
+        "Create 'spartan backup' command with incremental support",
+        "Create 'spartan restore' command with selective restore",
+        "Support multiple backends (local, S3, GCS)",
+        "Add backup compression and encryption",
+        "Implement scheduled backups via scheduler"
+      ],
+      "notes": [],
+      "request": "scan finding: backup/restore gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0208",
+      "status": "todo",
+      "title": "Add JMESPath/JSONata data transformation support",
+      "priority": "medium",
+      "tags": [
+        "transformation",
+        "pipeline",
+        "feature"
+      ],
+      "scope": [
+        "internal/pipeline/",
+        "internal/extract/"
+      ],
+      "evidence": [
+        "Pipeline transformers are limited to predefined operations",
+        "No complex query/transformation language for results",
+        "Users must post-process data externally"
+      ],
+      "plan": [
+        "Add JMESPath support for JSON transformation",
+        "Add JSONata as alternative transformation language",
+        "Integrate with pipeline post-extract hook",
+        "Add transformation preview in web UI",
+        "Document common transformation patterns"
+      ],
+      "notes": [],
+      "request": "scan finding: transformation language gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0209",
+      "status": "todo",
+      "title": "Implement circuit breaker and advanced retry strategies",
+      "priority": "medium",
+      "tags": [
+        "reliability",
+        "resilience",
+        "networking"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "internal/crawl/"
+      ],
+      "evidence": [
+        "Only exponential backoff retry is supported",
+        "No circuit breaker for failing hosts",
+        "No per-status-code retry configuration"
+      ],
+      "plan": [
+        "Implement circuit breaker pattern per host",
+        "Add configurable retry strategies per status code",
+        "Add jitter to retry delays",
+        "Support custom retry predicates",
+        "Add circuit breaker metrics and health status"
+      ],
+      "notes": [],
+      "request": "scan finding: retry strategy gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0210",
+      "status": "todo",
+      "title": "Add RateLimit header and Retry-After compliance",
+      "priority": "medium",
+      "tags": [
+        "rate-limiting",
+        "http",
+        "compliance"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "internal/crawl/"
+      ],
+      "evidence": [
+        "Adaptive rate limiting exists but doesn't parse RateLimit headers",
+        "No Retry-After header compliance",
+        "Rate limiting is response-time based only"
+      ],
+      "plan": [
+        "Parse RateLimit headers (RFC 6585, RFC 9440)",
+        "Implement Retry-After compliance",
+        "Add 429 Too Many Requests handling",
+        "Support X-RateLimit-* header variants",
+        "Add rate limit metrics and reporting"
+      ],
+      "notes": [],
+      "request": "scan finding: rate limit header gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0211",
+      "status": "todo",
+      "title": "Expand webhook event types and add granular notifications",
+      "priority": "medium",
+      "tags": [
+        "webhooks",
+        "notifications",
+        "api"
+      ],
+      "scope": [
+        "internal/webhook/",
+        "internal/jobs/"
+      ],
+      "evidence": [
+        "Only basic events: created, started, completed, failed",
+        "No page-level events for crawls",
+        "No retry or export completion events"
+      ],
+      "plan": [
+        "Add 'page_crawled' event with page metadata",
+        "Add 'retry_attempted' event",
+        "Add 'export_completed' event",
+        "Add 'content_changed' event for monitoring",
+        "Support webhook event filtering/subscription",
+        "Add webhook delivery logs and retry status"
+      ],
+      "notes": [],
+      "request": "scan finding: webhook events gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0212",
+      "status": "todo",
+      "title": "Add more device emulation presets and custom device config",
+      "priority": "medium",
+      "tags": [
+        "rendering",
+        "devices",
+        "headless"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "web/src/"
+      ],
+      "evidence": [
+        "Only 7 device presets available in render profiles",
+        "No custom device configuration",
+        "No viewport rotation support"
+      ],
+      "plan": [
+        "Expand device presets to 20+ common devices",
+        "Add custom device configuration (viewport, UA, DPR)",
+        "Support viewport rotation (portrait/landscape)",
+        "Add device category filtering (mobile, tablet, desktop)",
+        "Sync device list with Chrome DevTools"
+      ],
+      "notes": [],
+      "request": "scan finding: device emulation gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0213",
+      "status": "todo",
+      "title": "Implement automatic form detection and intelligent login",
+      "priority": "medium",
+      "tags": [
+        "auth",
+        "automation",
+        "ux"
+      ],
+      "scope": [
+        "internal/auth/",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "Login flows require manual CSS selector configuration",
+        "No automatic form field detection",
+        "No intelligent username/password field identification"
+      ],
+      "plan": [
+        "Add automatic form detection in pages",
+        "Implement intelligent field type detection",
+        "Add common login form pattern matching",
+        "Support auto-fill from auth profiles",
+        "Add login success/failure detection"
+      ],
+      "notes": [],
+      "request": "scan finding: form automation gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0214",
+      "status": "todo",
+      "title": "Add comprehensive analytics dashboard and reporting",
+      "priority": "low",
+      "tags": [
+        "analytics",
+        "reporting",
+        "web-ui"
+      ],
+      "scope": [
+        "web/src/",
+        "internal/api/"
+      ],
+      "evidence": [
+        "Basic metrics exist but limited visualization",
+        "No trend analysis or historical comparison",
+        "No scheduled reports or exportable dashboards"
+      ],
+      "plan": [
+        "Add trend charts for success rates over time",
+        "Implement domain/host performance comparison",
+        "Add scheduled report generation (PDF, email)",
+        "Create customizable dashboard widgets",
+        "Add exportable dashboard snapshots"
+      ],
+      "notes": [],
+      "request": "scan finding: analytics gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0215",
+      "status": "todo",
+      "title": "Add GraphQL API endpoint for flexible queries",
+      "priority": "low",
+      "tags": [
+        "api",
+        "graphql",
+        "feature"
+      ],
+      "scope": [
+        "internal/api/",
+        "api/"
+      ],
+      "evidence": [
+        "Only REST API available",
+        "No flexible querying for job results",
+        "Over-fetching/under-fetching common with REST"
+      ],
+      "plan": [
+        "Add GraphQL schema for jobs and results",
+        "Implement query resolvers with pagination",
+        "Add mutation support for job creation",
+        "Support GraphQL subscriptions for real-time updates",
+        "Add GraphQL playground in web UI"
+      ],
+      "notes": [],
+      "request": "scan finding: GraphQL API gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0216",
+      "status": "todo",
+      "title": "Implement extraction template A/B testing framework",
+      "priority": "low",
+      "tags": [
+        "testing",
+        "templates",
+        "feature"
+      ],
+      "scope": [
+        "internal/extract/",
+        "internal/pipeline/"
+      ],
+      "evidence": [
+        "No way to compare template effectiveness",
+        "No metrics on extraction success rates per template",
+        "Manual testing required for template improvements"
+      ],
+      "plan": [
+        "Add A/B test configuration for templates",
+        "Implement success metrics tracking",
+        "Add statistical significance calculation",
+        "Support automatic winner selection",
+        "Create template performance comparison UI"
+      ],
+      "notes": [],
+      "request": "scan finding: template testing gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0217",
+      "status": "todo",
+      "title": "Add request/response inspection and traffic replay",
+      "priority": "low",
+      "tags": [
+        "debugging",
+        "developer-experience",
+        "feature"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "web/src/",
+        "cmd/spartan/"
+      ],
+      "evidence": [
+        "HAR export exists but no real-time inspection",
+        "No traffic replay for debugging",
+        "Limited debugging tools for failed requests"
+      ],
+      "plan": [
+        "Add request/response capture to job results",
+        "Create traffic inspector UI in web frontend",
+        "Implement traffic replay command",
+        "Add request comparison (expected vs actual)",
+        "Support exporting captured traffic as HAR"
+      ],
+      "notes": [],
+      "request": "scan finding: traffic inspection gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0218",
+      "status": "todo",
+      "title": "Implement distributed crawling with Redis/RabbitMQ worker queues",
+      "priority": "low",
+      "tags": [
+        "scaling",
+        "distributed",
+        "architecture"
+      ],
+      "scope": [
+        "internal/jobs/",
+        "internal/crawl/",
+        "internal/config/"
+      ],
+      "evidence": [
+        "All crawling is single-node",
+        "No horizontal scaling support",
+        "In-memory job queue only"
+      ],
+      "plan": [
+        "Add Redis queue backend option",
+        "Add RabbitMQ queue backend option",
+        "Implement worker pool coordination",
+        "Add distributed crawl state synchronization",
+        "Support worker auto-scaling"
+      ],
+      "notes": [],
+      "request": "scan finding: distributed crawling gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0219",
+      "status": "todo",
+      "title": "Add CAPTCHA detection and solving service integration",
+      "priority": "low",
+      "tags": [
+        "automation",
+        "captcha",
+        "integration"
+      ],
+      "scope": [
+        "internal/fetch/",
+        "internal/crawl/"
+      ],
+      "evidence": [
+        "No CAPTCHA detection mechanism",
+        "No integration with solving services",
+        "Manual intervention required for CAPTCHA pages"
+      ],
+      "plan": [
+        "Add CAPTCHA detection (image, reCAPTCHA, hCaptcha)",
+        "Integrate with 2captcha/anti-captcha services",
+        "Add CAPTCHA solving retry logic",
+        "Support custom solving service endpoints",
+        "Add CAPTCHA detection metrics"
+      ],
+      "notes": [],
+      "request": "scan finding: CAPTCHA handling gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0220",
+      "status": "todo",
+      "title": "Add multi-user support and team workspaces",
+      "priority": "low",
+      "tags": [
+        "auth",
+        "multi-user",
+        "enterprise"
+      ],
+      "scope": [
+        "internal/auth/",
+        "internal/store/",
+        "web/src/"
+      ],
+      "evidence": [
+        "Web UI is single-user",
+        "No job sharing or collaboration",
+        "No user isolation in data storage"
+      ],
+      "plan": [
+        "Add user model and authentication",
+        "Implement workspace/organization concept",
+        "Add role-based access control (RBAC)",
+        "Support job sharing between users",
+        "Add audit logging for user actions"
+      ],
+      "notes": [],
+      "request": "scan finding: multi-user support gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0221",
+      "status": "todo",
+      "title": "Create browser extension for point-and-click template building",
+      "priority": "low",
+      "tags": [
+        "browser-extension",
+        "ux",
+        "templates"
+      ],
+      "scope": [
+        "web/src/",
+        "internal/extract/"
+      ],
+      "evidence": [
+        "No browser extension for quick scraping",
+        "Template creation requires manual CSS selector writing",
+        "No visual element selection tool"
+      ],
+      "plan": [
+        "Create Chrome extension manifest and popup",
+        "Implement element picker with highlight",
+        "Add template preview and test",
+        "Support exporting templates to spartan",
+        "Create Firefox extension variant"
+      ],
+      "notes": [],
+      "request": "scan finding: browser extension gap",
+      "created_at": "2026-01-30T15:12:56Z",
+      "updated_at": "2026-01-30T15:12:56Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
