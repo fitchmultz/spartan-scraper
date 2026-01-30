@@ -1426,9 +1426,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'postgres' | 'mysql' | 'mongodb';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'postgres' | 'mysql' | 'mongodb' | 's3' | 'gcs' | 'azure';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */
@@ -1453,6 +1453,30 @@ export type GetV1JobsByIdResultsData = {
          * Column/field to use as unique key for upsert operations (required when dbMode=upsert)
          */
         dbUpsertKey?: string;
+        /**
+         * Cloud storage provider (required for s3/gcs/azure formats)
+         */
+        cloudProvider?: 's3' | 'gcs' | 'azure';
+        /**
+         * Cloud storage bucket/container name (required when cloudProvider is set)
+         */
+        cloudBucket?: string;
+        /**
+         * Path template with {job_id}, {timestamp}, {kind}, {format} variables (default "{kind}/{timestamp}.{format}")
+         */
+        cloudPath?: string;
+        /**
+         * Cloud region (S3 only, optional - defaults to AWS_REGION env var or us-east-1)
+         */
+        cloudRegion?: string;
+        /**
+         * Storage class for S3 (optional - STANDARD, STANDARD_IA, GLACIER, etc.)
+         */
+        cloudStorageClass?: string;
+        /**
+         * Content format when using s3/gcs/azure export (default jsonl)
+         */
+        cloudFormat?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
     };
     url: '/v1/jobs/{id}/results';
 };

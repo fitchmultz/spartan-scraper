@@ -14,6 +14,7 @@ package exporter
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -91,7 +92,54 @@ func ExportStreamWithDatabase(job model.Job, r io.Reader, format string, w io.Wr
 			return apperrors.Validation("database config required for mongodb export")
 		}
 		return exportMongoDBStream(job, r, *dbCfg)
+	case "s3", "gcs", "azure":
+		return apperrors.Validation(fmt.Sprintf("use ExportStreamWithCloud for %s export", format))
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}
+}
+
+// ExportStreamWithCloud exports job results to the specified format.
+// For cloud formats (s3, gcs, azure) or when cloudCfg is provided, data is written
+// directly to the configured cloud storage bucket. For file-based formats without
+// cloud config, behaves like ExportStream.
+func ExportStreamWithCloud(job model.Job, r io.Reader, format string, w io.Writer, cloudCfg *CloudExportConfig) error {
+	// Handle cloud-native formats
+	switch format {
+	case "s3", "gcs", "azure":
+		if cloudCfg == nil {
+			return apperrors.Validation(fmt.Sprintf("cloud config required for %s export", format))
+		}
+		// Use content format from config or default to jsonl
+		contentFormat := cloudCfg.ContentFormat
+		if contentFormat == "" {
+			contentFormat = "jsonl"
+		}
+		return exportToCloud(context.Background(), job, r, contentFormat, *cloudCfg)
+	}
+
+	// For file-based formats, export to cloud if config provided
+	if cloudCfg != nil {
+		return exportToCloud(context.Background(), job, r, format, *cloudCfg)
+	}
+
+	// Fall through to regular export
+	return ExportStream(job, r, format, w)
+}
+
+// ExportStreamWithDatabaseAndCloud exports job results with support for both database and cloud targets.
+// Priority: cloud > database > local writer
+func ExportStreamWithDatabaseAndCloud(job model.Job, r io.Reader, format string, w io.Writer, dbCfg *DatabaseExportConfig, cloudCfg *CloudExportConfig) error {
+	// Cloud takes priority if configured
+	if cloudCfg != nil || IsCloudFormat(format) {
+		return ExportStreamWithCloud(job, r, format, w, cloudCfg)
+	}
+
+	// Database is next priority
+	if dbCfg != nil || IsDatabaseFormat(format) {
+		return ExportStreamWithDatabase(job, r, format, w, dbCfg)
+	}
+
+	// Fall through to local export
+	return ExportStream(job, r, format, w)
 }

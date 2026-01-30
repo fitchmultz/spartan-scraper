@@ -602,9 +602,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv, xlsx, parquet, har, postgres, mysql, mongodb]
+            enum: [jsonl, json, md, csv, xlsx, parquet, har, postgres, mysql, mongodb, s3, gcs, azure]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format, postgres/mysql/mongodb export directly to database, s3/gcs/azure export to cloud storage)
         - in: query
           name: limit
           schema:
@@ -642,6 +642,39 @@ paths:
           schema:
             type: string
           description: Column/field to use as unique key for upsert operations (required when dbMode=upsert)
+        - in: query
+          name: cloudProvider
+          schema:
+            type: string
+            enum: [s3, gcs, azure]
+          description: Cloud storage provider (required for s3/gcs/azure formats)
+        - in: query
+          name: cloudBucket
+          schema:
+            type: string
+          description: Cloud storage bucket/container name (required when cloudProvider is set)
+        - in: query
+          name: cloudPath
+          schema:
+            type: string
+          description: Path template with {job_id}, {timestamp}, {kind}, {format} variables (default "{kind}/{timestamp}.{format}")
+        - in: query
+          name: cloudRegion
+          schema:
+            type: string
+          description: Cloud region (S3 only, optional - defaults to AWS_REGION env var or us-east-1)
+        - in: query
+          name: cloudStorageClass
+          schema:
+            type: string
+          description: Storage class for S3 (optional - STANDARD, STANDARD_IA, GLACIER, etc.)
+        - in: query
+          name: cloudFormat
+          schema:
+            type: string
+            enum: [jsonl, json, md, csv, xlsx, parquet, har]
+            default: jsonl
+          description: Content format when using s3/gcs/azure export (default jsonl)
       responses:
         '200':
           description: Results in requested format

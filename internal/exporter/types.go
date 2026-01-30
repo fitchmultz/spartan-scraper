@@ -8,7 +8,83 @@
 // This file does NOT handle parsing or export logic - it only defines data structures.
 package exporter
 
-import "github.com/fitchmultz/spartan-scraper/internal/extract"
+import (
+	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+)
+
+// CloudExportConfig holds configuration for cloud storage exports.
+type CloudExportConfig struct {
+	// Provider: s3, gcs, or azure
+	Provider string `json:"provider,omitempty"`
+
+	// Bucket/container name
+	Bucket string `json:"bucket,omitempty"`
+
+	// Path template with variables: {job_id}, {timestamp}, {kind}, {format}
+	// Default: "{kind}/{timestamp}.{format}"
+	Path string `json:"path,omitempty"`
+
+	// Region for S3 (optional, defaults to AWS_REGION or us-east-1)
+	Region string `json:"region,omitempty"`
+
+	// Storage class for S3 (optional: STANDARD, STANDARD_IA, GLACIER, etc.)
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// Content format when using cloud export (jsonl, json, md, csv, xlsx, parquet, har)
+	// Default: jsonl
+	ContentFormat string `json:"contentFormat,omitempty"`
+
+	// Content type override (optional, auto-detected from format if not set)
+	ContentType string `json:"contentType,omitempty"`
+}
+
+// RenderPathTemplate substitutes variables in the path template.
+// Supported variables:
+//   - {job_id}: Job ID (e.g., "job-abc123")
+//   - {timestamp}: Current timestamp in format 20060102_150405
+//   - {kind}: Job kind (scrape, crawl, research)
+//   - {format}: Export format extension (jsonl, json, md, csv, xlsx, parquet, har)
+func RenderPathTemplate(template string, job model.Job, format string) string {
+	if template == "" {
+		template = "{kind}/{timestamp}.{format}"
+	}
+
+	timestamp := time.Now().Format("20060102_150405")
+
+	result := template
+	result = replaceAll(result, "{job_id}", job.ID)
+	result = replaceAll(result, "{timestamp}", timestamp)
+	result = replaceAll(result, "{kind}", string(job.Kind))
+	result = replaceAll(result, "{format}", format)
+
+	return result
+}
+
+// replaceAll replaces all occurrences of old with new in s.
+func replaceAll(s, old, new string) string {
+	// Simple string replacement - strings.ReplaceAll would be used
+	// but we implement manually to avoid import cycles if needed
+	result := s
+	for {
+		idx := 0
+		found := false
+		for i := 0; i <= len(result)-len(old); i++ {
+			if result[i:i+len(old)] == old {
+				idx = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			break
+		}
+		result = result[:idx] + new + result[idx+len(old):]
+	}
+	return result
+}
 
 // ScrapeResult represents a single page scrape result with extracted fields and metadata.
 type ScrapeResult struct {
