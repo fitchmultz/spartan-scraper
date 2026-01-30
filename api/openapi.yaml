@@ -4,10 +4,15 @@ info:
   version: 0.1.0
 servers:
   - url: http://localhost:8741
+
+security:
+  - ApiKeyAuth: []
+
 paths:
   /healthz:
     get:
       summary: Health check
+      security: []  # No authentication required for health check
       responses:
         '200':
           description: OK
@@ -857,6 +862,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication. Generate via CLI with `spartan auth apikey generate`.
   schemas:
     ExtractOptions:
       type: object

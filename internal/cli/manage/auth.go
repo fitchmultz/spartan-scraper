@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
@@ -204,6 +205,106 @@ func RunAuth(_ context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 
+	case "apikey":
+		if len(args) < 2 {
+			printAuthAPIKeyHelp()
+			return 1
+		}
+		switch args[1] {
+		case "generate":
+			fs := flag.NewFlagSet("auth apikey generate", flag.ExitOnError)
+			name := fs.String("name", "", "API key name (required)")
+			permissions := fs.String("permissions", "read_write", "Permissions: read_only or read_write")
+			expires := fs.String("expires", "", "Expiration date (RFC3339 format, e.g., 2025-12-31T23:59:59Z)")
+			_ = fs.Parse(args[2:])
+
+			if *name == "" {
+				fmt.Fprintln(os.Stderr, "--name is required")
+				return 1
+			}
+
+			var perm auth.APIKeyPermission
+			switch *permissions {
+			case "read_only":
+				perm = auth.APIKeyPermissionReadOnly
+			case "read_write":
+				perm = auth.APIKeyPermissionReadWrite
+			default:
+				fmt.Fprintln(os.Stderr, "--permissions must be 'read_only' or 'read_write'")
+				return 1
+			}
+
+			var expiresAt *time.Time
+			if *expires != "" {
+				parsed, err := time.Parse(time.RFC3339, *expires)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "invalid --expires format:", err)
+					return 1
+				}
+				expiresAt = &parsed
+			}
+
+			key, err := auth.GenerateAPIKey(cfg.DataDir, *name, perm, expiresAt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+
+			fmt.Println("Generated API key:", key)
+			fmt.Println("Store this key securely - it will not be shown again.")
+			return 0
+
+		case "list":
+			keys, err := auth.ListAPIKeys(cfg.DataDir)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+
+			if len(keys) == 0 {
+				fmt.Println("No API keys found.")
+				return 0
+			}
+
+			fmt.Printf("%-20s %-15s %-25s %-25s %-25s\n", "NAME", "PERMISSIONS", "KEY", "CREATED", "EXPIRES")
+			for _, k := range keys {
+				expiresStr := "never"
+				if k.ExpiresAt != nil {
+					expiresStr = k.ExpiresAt.Format(time.RFC3339)
+				}
+				fmt.Printf("%-20s %-15s %-25s %-25s %-25s\n",
+					k.Name,
+					k.Permissions,
+					k.Key,
+					k.CreatedAt.Format(time.RFC3339),
+					expiresStr,
+				)
+			}
+			return 0
+
+		case "revoke":
+			fs := flag.NewFlagSet("auth apikey revoke", flag.ExitOnError)
+			key := fs.String("key", "", "API key to revoke (required)")
+			_ = fs.Parse(args[2:])
+
+			if *key == "" {
+				fmt.Fprintln(os.Stderr, "--key is required")
+				return 1
+			}
+
+			if err := auth.RevokeAPIKey(cfg.DataDir, *key); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+
+			fmt.Println("API key revoked successfully.")
+			return 0
+
+		default:
+			printAuthAPIKeyHelp()
+			return 1
+		}
+
 	default:
 		fmt.Fprintln(os.Stderr, "unknown auth subcommand:", args[0])
 		return 1
@@ -220,6 +321,7 @@ Subcommands:
   delete
   resolve
   vault
+  apikey
 
 Examples:
   spartan auth list
@@ -229,6 +331,7 @@ Examples:
   spartan auth resolve --url https://example.com --profile acme
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
+  spartan auth apikey generate --name "Production" --permissions read_write
 
 Use "spartan auth set --help" for full flags.
 `)
@@ -245,6 +348,25 @@ Subcommands:
 Examples:
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
+`)
+}
+
+func printAuthAPIKeyHelp() {
+	fmt.Fprint(os.Stderr, `Usage:
+  spartan auth apikey <subcommand> [options]
+
+Subcommands:
+  generate    Create a new API key
+  list        List all API keys (key values hidden)
+  revoke      Revoke an API key
+
+Examples:
+  spartan auth apikey generate --name "Production" --permissions read_write
+  spartan auth apikey generate --name "ReadOnly" --permissions read_only --expires "2025-12-31T23:59:59Z"
+  spartan auth apikey list
+  spartan auth apikey revoke --key ss_abc123...
+
+Use "spartan auth apikey generate --help" for full flags.
 `)
 }
 

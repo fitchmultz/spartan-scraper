@@ -87,6 +87,9 @@ type Config struct {
 
 	// Webhook configuration
 	Webhook WebhookConfig
+
+	// API Authentication
+	APIAuthEnabled bool // API_AUTH_ENABLED env var
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -140,6 +143,9 @@ func Load() (Config, error) {
 			MaxDelay:   time.Duration(getenvInt("WEBHOOK_MAX_DELAY_MS", 30000)) * time.Millisecond,
 			Timeout:    time.Duration(getenvInt("WEBHOOK_TIMEOUT_MS", 30000)) * time.Millisecond,
 		},
+
+		// API Authentication
+		APIAuthEnabled: getenvBool("API_AUTH_ENABLED", false),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {

@@ -126,7 +126,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/metrics", s.handleMetrics)
 	mux.HandleFunc("/v1/ws", s.handleWebSocket)
 
+	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
+
+	// Add auth middleware if enabled or if bind address is not localhost
+	if s.cfg.APIAuthEnabled || !isLocalhost(s.cfg.BindAddr) {
+		handler = apiKeyAuthMiddleware(s.cfg, handler)
+	}
+
 	return handler
 }
 

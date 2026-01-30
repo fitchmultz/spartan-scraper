@@ -26,6 +26,7 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 		RetryBaseMs:        100,
 		UserAgent:          "SpartanTest/1.0",
 		Port:               "0",
+		BindAddr:           "127.0.0.1",
 	}
 
 	st, err := store.Open(dataDir)

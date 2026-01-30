@@ -4,6 +4,8 @@
 // It does NOT handle authentication execution.
 package auth
 
+import "time"
+
 type TokenKind string
 
 const (
@@ -11,6 +13,24 @@ const (
 	TokenBasic  TokenKind = "basic"
 	TokenApiKey TokenKind = "api_key"
 )
+
+// APIKeyPermission defines the access level for an API key
+type APIKeyPermission string
+
+const (
+	APIKeyPermissionReadOnly  APIKeyPermission = "read_only"
+	APIKeyPermissionReadWrite APIKeyPermission = "read_write"
+)
+
+// APIKey represents a server-side API key for authenticating API requests
+type APIKey struct {
+	Key         string           `json:"key"`         // The actual API key (prefixed with "ss_" for identification)
+	Name        string           `json:"name"`        // Human-readable name for the key
+	Permissions APIKeyPermission `json:"permissions"` // read_only or read_write
+	CreatedAt   time.Time        `json:"created_at"`
+	ExpiresAt   *time.Time       `json:"expires_at,omitempty"` // nil means no expiration
+	LastUsedAt  *time.Time       `json:"last_used_at,omitempty"`
+}
 
 type Token struct {
 	Kind   TokenKind `json:"kind"`

@@ -26,17 +26,26 @@ export const getHealthz = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * List auth profiles
  */
-export const getV1AuthProfiles = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuthProfilesData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuthProfilesResponses, GetV1AuthProfilesErrors, ThrowOnError>({ url: '/v1/auth/profiles', ...options });
+export const getV1AuthProfiles = <ThrowOnError extends boolean = false>(options?: Options<GetV1AuthProfilesData, ThrowOnError>) => (options?.client ?? client).get<GetV1AuthProfilesResponses, GetV1AuthProfilesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/profiles',
+    ...options
+});
 
 /**
  * Delete auth profile
  */
-export const deleteV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthProfilesByNameResponses, DeleteV1AuthProfilesByNameErrors, ThrowOnError>({ url: '/v1/auth/profiles/{name}', ...options });
+export const deleteV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1AuthProfilesByNameResponses, DeleteV1AuthProfilesByNameErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/profiles/{name}',
+    ...options
+});
 
 /**
  * Upsert auth profile
  */
 export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(options: Options<PutV1AuthProfilesByNameData, ThrowOnError>) => (options.client ?? client).put<PutV1AuthProfilesByNameResponses, PutV1AuthProfilesByNameErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/auth/profiles/{name}',
     ...options,
     headers: {
@@ -54,6 +63,7 @@ export const putV1AuthProfilesByName = <ThrowOnError extends boolean = false>(op
  *
  */
 export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthImportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthImportResponses, PostV1AuthImportErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/auth/import',
     ...options,
     headers: {
@@ -71,6 +81,7 @@ export const postV1AuthImport = <ThrowOnError extends boolean = false>(options: 
  *
  */
 export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: Options<PostV1AuthExportData, ThrowOnError>) => (options.client ?? client).post<PostV1AuthExportResponses, PostV1AuthExportErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/auth/export',
     ...options,
     headers: {
@@ -84,7 +95,11 @@ export const postV1AuthExport = <ThrowOnError extends boolean = false>(options: 
  *
  * Returns list of all available extraction templates (built-in + file-based)
  */
-export const listTemplates = <ThrowOnError extends boolean = false>(options?: Options<ListTemplatesData, ThrowOnError>) => (options?.client ?? client).get<ListTemplatesResponses, ListTemplatesErrors, ThrowOnError>({ url: '/v1/templates', ...options });
+export const listTemplates = <ThrowOnError extends boolean = false>(options?: Options<ListTemplatesData, ThrowOnError>) => (options?.client ?? client).get<ListTemplatesResponses, ListTemplatesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/templates',
+    ...options
+});
 
 /**
  * Clear or delete crawl states
@@ -93,19 +108,28 @@ export const listTemplates = <ThrowOnError extends boolean = false>(options?: Op
  * Clears all crawl states if no 'url' parameter is provided.
  *
  */
-export const deleteCrawlStates = <ThrowOnError extends boolean = false>(options?: Options<DeleteCrawlStatesData, ThrowOnError>) => (options?.client ?? client).delete<DeleteCrawlStatesResponses, DeleteCrawlStatesErrors, ThrowOnError>({ url: '/v1/crawl-states', ...options });
+export const deleteCrawlStates = <ThrowOnError extends boolean = false>(options?: Options<DeleteCrawlStatesData, ThrowOnError>) => (options?.client ?? client).delete<DeleteCrawlStatesResponses, DeleteCrawlStatesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/crawl-states',
+    ...options
+});
 
 /**
  * List crawl states
  *
  * Returns list of crawl states used for incremental tracking, ordered by last_scraped DESC
  */
-export const listCrawlStates = <ThrowOnError extends boolean = false>(options?: Options<ListCrawlStatesData, ThrowOnError>) => (options?.client ?? client).get<ListCrawlStatesResponses, ListCrawlStatesErrors, ThrowOnError>({ url: '/v1/crawl-states', ...options });
+export const listCrawlStates = <ThrowOnError extends boolean = false>(options?: Options<ListCrawlStatesData, ThrowOnError>) => (options?.client ?? client).get<ListCrawlStatesResponses, ListCrawlStatesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/crawl-states',
+    ...options
+});
 
 /**
  * Scrape a single page
  */
 export const postV1Scrape = <ThrowOnError extends boolean = false>(options: Options<PostV1ScrapeData, ThrowOnError>) => (options.client ?? client).post<PostV1ScrapeResponses, PostV1ScrapeErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/scrape',
     ...options,
     headers: {
@@ -118,6 +142,7 @@ export const postV1Scrape = <ThrowOnError extends boolean = false>(options: Opti
  * Crawl a site
  */
 export const postV1Crawl = <ThrowOnError extends boolean = false>(options: Options<PostV1CrawlData, ThrowOnError>) => (options.client ?? client).post<PostV1CrawlResponses, PostV1CrawlErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/crawl',
     ...options,
     headers: {
@@ -130,6 +155,7 @@ export const postV1Crawl = <ThrowOnError extends boolean = false>(options: Optio
  * Deep research across multiple sources
  */
 export const postV1Research = <ThrowOnError extends boolean = false>(options: Options<PostV1ResearchData, ThrowOnError>) => (options.client ?? client).post<PostV1ResearchResponses, PostV1ResearchErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/research',
     ...options,
     headers: {
@@ -141,7 +167,11 @@ export const postV1Research = <ThrowOnError extends boolean = false>(options: Op
 /**
  * List jobs
  */
-export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, GetV1JobsErrors, ThrowOnError>({ url: '/v1/jobs', ...options });
+export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Options<GetV1JobsData, ThrowOnError>) => (options?.client ?? client).get<GetV1JobsResponses, GetV1JobsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs',
+    ...options
+});
 
 /**
  * Cancel or delete a job
@@ -150,27 +180,44 @@ export const getV1Jobs = <ThrowOnError extends boolean = false>(options?: Option
  * With ?force=true, permanently deletes the job from the store.
  *
  */
-export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, DeleteV1JobsByIdErrors, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
+export const deleteV1JobsById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1JobsByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1JobsByIdResponses, DeleteV1JobsByIdErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/{id}',
+    ...options
+});
 
 /**
  * Get a job
  */
-export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResponses, GetV1JobsByIdErrors, ThrowOnError>({ url: '/v1/jobs/{id}', ...options });
+export const getV1JobsById = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResponses, GetV1JobsByIdErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/{id}',
+    ...options
+});
 
 /**
  * Get job results
  */
-export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, GetV1JobsByIdResultsErrors, ThrowOnError>({ url: '/v1/jobs/{id}/results', ...options });
+export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(options: Options<GetV1JobsByIdResultsData, ThrowOnError>) => (options.client ?? client).get<GetV1JobsByIdResultsResponses, GetV1JobsByIdResultsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/{id}/results',
+    ...options
+});
 
 /**
  * List schedules
  */
-export const getV1Schedules = <ThrowOnError extends boolean = false>(options?: Options<GetV1SchedulesData, ThrowOnError>) => (options?.client ?? client).get<GetV1SchedulesResponses, GetV1SchedulesErrors, ThrowOnError>({ url: '/v1/schedules', ...options });
+export const getV1Schedules = <ThrowOnError extends boolean = false>(options?: Options<GetV1SchedulesData, ThrowOnError>) => (options?.client ?? client).get<GetV1SchedulesResponses, GetV1SchedulesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/schedules',
+    ...options
+});
 
 /**
  * Add a schedule
  */
 export const postV1Schedules = <ThrowOnError extends boolean = false>(options: Options<PostV1SchedulesData, ThrowOnError>) => (options.client ?? client).post<PostV1SchedulesResponses, PostV1SchedulesErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/schedules',
     ...options,
     headers: {
@@ -182,7 +229,11 @@ export const postV1Schedules = <ThrowOnError extends boolean = false>(options: O
 /**
  * Delete a schedule
  */
-export const deleteV1SchedulesById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SchedulesByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SchedulesByIdResponses, DeleteV1SchedulesByIdErrors, ThrowOnError>({ url: '/v1/schedules/{id}', ...options });
+export const deleteV1SchedulesById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SchedulesByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SchedulesByIdResponses, DeleteV1SchedulesByIdErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/schedules/{id}',
+    ...options
+});
 
 /**
  * Get performance metrics
@@ -191,7 +242,11 @@ export const deleteV1SchedulesById = <ThrowOnError extends boolean = false>(opti
  * response times, fetcher usage breakdown, and rate limiter status.
  *
  */
-export const getMetrics = <ThrowOnError extends boolean = false>(options?: Options<GetMetricsData, ThrowOnError>) => (options?.client ?? client).get<GetMetricsResponses, GetMetricsErrors, ThrowOnError>({ url: '/v1/metrics', ...options });
+export const getMetrics = <ThrowOnError extends boolean = false>(options?: Options<GetMetricsData, ThrowOnError>) => (options?.client ?? client).get<GetMetricsResponses, GetMetricsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/metrics',
+    ...options
+});
 
 /**
  * WebSocket endpoint for real-time job updates
@@ -266,4 +321,8 @@ export const getMetrics = <ThrowOnError extends boolean = false>(options?: Optio
  * polling the `/v1/jobs` endpoint every 4 seconds.
  *
  */
-export const getV1Ws = <ThrowOnError extends boolean = false>(options?: Options<GetV1WsData, ThrowOnError>) => (options?.client ?? client).get<unknown, GetV1WsErrors, ThrowOnError>({ url: '/v1/ws', ...options });
+export const getV1Ws = <ThrowOnError extends boolean = false>(options?: Options<GetV1WsData, ThrowOnError>) => (options?.client ?? client).get<unknown, GetV1WsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/ws',
+    ...options
+});
