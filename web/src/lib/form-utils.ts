@@ -194,6 +194,7 @@ export function buildScrapeRequest(
   transformers: string,
   incremental: boolean,
   webhook?: WebhookConfig,
+  device?: import("../api").DeviceEmulation,
 ): ScrapeRequest {
   return {
     url,
@@ -206,6 +207,7 @@ export function buildScrapeRequest(
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     webhook,
+    device,
   };
 }
 
@@ -228,6 +230,7 @@ export function buildCrawlRequest(
   webhook?: WebhookConfig,
   includePatterns?: string[],
   excludePatterns?: string[],
+  device?: import("../api").DeviceEmulation,
 ): CrawlRequest {
   return {
     url,
@@ -246,6 +249,7 @@ export function buildCrawlRequest(
     webhook,
     includePatterns,
     excludePatterns,
+    device,
   };
 }
 
@@ -264,6 +268,7 @@ export function buildResearchRequest(
   postProcessors: string,
   transformers: string,
   webhook?: WebhookConfig,
+  device?: import("../api").DeviceEmulation,
 ): ResearchRequest {
   return {
     query,
@@ -278,6 +283,7 @@ export function buildResearchRequest(
     extract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
+    device,
   };
 }
 

@@ -176,7 +176,7 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		Headless:   fs.Bool("headless", false, "Use headless browser"),
 		Playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
 		Timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
-		Device:     fs.String("device", "", "Device preset for mobile emulation (iphone14, iphonemax, ipad, ipadpro, pixel7, galaxys23, desktop)"),
+		Device:     fs.String("device", "", "Device preset for mobile emulation (iphone15, iphone15pro, iphone15promax, iphone15plus, iphone16, iphone16pro, iphone16promax, iphone16plus, iphone14, iphonemax, pixel7, pixel8, pixel8pro, pixel9, pixel9pro, galaxys23, galaxys24, galaxys24plus, galaxys24ultra, ipad, ipadpro, ipadair, ipadmini, galaxytabs9, desktop, laptop)"),
 
 		Out:         fs.String("out", "", "Output file (JSON)"),
 		Wait:        fs.Bool("wait", false, "Wait for completion and write output"),

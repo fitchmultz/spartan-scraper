@@ -847,27 +847,33 @@ func (f *PlaywrightFetcher) applyDeviceEmulation(opts *playwright.BrowserNewCont
 		return
 	}
 
+	// Apply orientation if needed (swaps dimensions for landscape on mobile/tablet)
+	effectiveDevice := device
+	if device.Orientation == OrientationLandscape && device.Category != DeviceCategoryDesktop {
+		effectiveDevice = device.ApplyOrientation(OrientationLandscape)
+	}
+
 	// Set viewport
 	viewport := playwright.Size{
-		Width:  device.ViewportWidth,
-		Height: device.ViewportHeight,
+		Width:  effectiveDevice.ViewportWidth,
+		Height: effectiveDevice.ViewportHeight,
 	}
 	opts.Viewport = &viewport
 
 	// Set device scale factor
-	if device.DeviceScaleFactor > 0 {
-		opts.DeviceScaleFactor = &device.DeviceScaleFactor
+	if effectiveDevice.DeviceScaleFactor > 0 {
+		opts.DeviceScaleFactor = &effectiveDevice.DeviceScaleFactor
 	}
 
 	// Set mobile flag
-	opts.IsMobile = &device.IsMobile
+	opts.IsMobile = &effectiveDevice.IsMobile
 
 	// Set touch support
-	opts.HasTouch = &device.HasTouch
+	opts.HasTouch = &effectiveDevice.HasTouch
 
 	// Set user agent
-	if device.UserAgent != "" {
-		opts.UserAgent = &device.UserAgent
+	if effectiveDevice.UserAgent != "" {
+		opts.UserAgent = &effectiveDevice.UserAgent
 	}
 }
 

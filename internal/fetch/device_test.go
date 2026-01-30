@@ -24,6 +24,57 @@ func TestGetDevicePreset(t *testing.T) {
 			wantNil:  true,
 			wantName: "",
 		},
+		// iPhone 15 series
+		{
+			name:     "iPhone 15 preset",
+			preset:   "iphone15",
+			wantNil:  false,
+			wantName: "iPhone 15",
+		},
+		{
+			name:     "iPhone 15 Pro preset",
+			preset:   "iphone15pro",
+			wantNil:  false,
+			wantName: "iPhone 15 Pro",
+		},
+		{
+			name:     "iPhone 15 Pro Max preset",
+			preset:   "iphone15promax",
+			wantNil:  false,
+			wantName: "iPhone 15 Pro Max",
+		},
+		{
+			name:     "iPhone 15 Plus preset",
+			preset:   "iphone15plus",
+			wantNil:  false,
+			wantName: "iPhone 15 Plus",
+		},
+		// iPhone 16 series
+		{
+			name:     "iPhone 16 preset",
+			preset:   "iphone16",
+			wantNil:  false,
+			wantName: "iPhone 16",
+		},
+		{
+			name:     "iPhone 16 Pro preset",
+			preset:   "iphone16pro",
+			wantNil:  false,
+			wantName: "iPhone 16 Pro",
+		},
+		{
+			name:     "iPhone 16 Pro Max preset",
+			preset:   "iphone16promax",
+			wantNil:  false,
+			wantName: "iPhone 16 Pro Max",
+		},
+		{
+			name:     "iPhone 16 Plus preset",
+			preset:   "iphone16plus",
+			wantNil:  false,
+			wantName: "iPhone 16 Plus",
+		},
+		// Legacy iPhone
 		{
 			name:     "iPhone 14 preset",
 			preset:   "iphone14",
@@ -42,6 +93,63 @@ func TestGetDevicePreset(t *testing.T) {
 			wantNil:  false,
 			wantName: "iPhone 14 Pro Max",
 		},
+		// Pixel series
+		{
+			name:     "Pixel 7 preset",
+			preset:   "pixel7",
+			wantNil:  false,
+			wantName: "Pixel 7",
+		},
+		{
+			name:     "Pixel 8 preset",
+			preset:   "pixel8",
+			wantNil:  false,
+			wantName: "Pixel 8",
+		},
+		{
+			name:     "Pixel 8 Pro preset",
+			preset:   "pixel8pro",
+			wantNil:  false,
+			wantName: "Pixel 8 Pro",
+		},
+		{
+			name:     "Pixel 9 preset",
+			preset:   "pixel9",
+			wantNil:  false,
+			wantName: "Pixel 9",
+		},
+		{
+			name:     "Pixel 9 Pro preset",
+			preset:   "pixel9pro",
+			wantNil:  false,
+			wantName: "Pixel 9 Pro",
+		},
+		// Galaxy S series
+		{
+			name:     "Galaxy S23 preset",
+			preset:   "galaxys23",
+			wantNil:  false,
+			wantName: "Galaxy S23",
+		},
+		{
+			name:     "Galaxy S24 preset",
+			preset:   "galaxys24",
+			wantNil:  false,
+			wantName: "Galaxy S24",
+		},
+		{
+			name:     "Galaxy S24+ preset",
+			preset:   "galaxys24plus",
+			wantNil:  false,
+			wantName: "Galaxy S24+",
+		},
+		{
+			name:     "Galaxy S24 Ultra preset",
+			preset:   "galaxys24ultra",
+			wantNil:  false,
+			wantName: "Galaxy S24 Ultra",
+		},
+		// iPad series
 		{
 			name:     "iPad preset",
 			preset:   "ipad",
@@ -52,25 +160,39 @@ func TestGetDevicePreset(t *testing.T) {
 			name:     "iPad Pro preset",
 			preset:   "ipadpro",
 			wantNil:  false,
-			wantName: "iPad Pro",
+			wantName: "iPad Pro 12.9\"",
 		},
 		{
-			name:     "Pixel 7 preset",
-			preset:   "pixel7",
+			name:     "iPad Air preset",
+			preset:   "ipadair",
 			wantNil:  false,
-			wantName: "Pixel 7",
+			wantName: "iPad Air",
 		},
 		{
-			name:     "Galaxy S23 preset",
-			preset:   "galaxys23",
+			name:     "iPad Mini preset",
+			preset:   "ipadmini",
 			wantNil:  false,
-			wantName: "Galaxy S23",
+			wantName: "iPad Mini",
 		},
+		// Android tablets
+		{
+			name:     "Galaxy Tab S9 preset",
+			preset:   "galaxytabs9",
+			wantNil:  false,
+			wantName: "Galaxy Tab S9",
+		},
+		// Desktop
 		{
 			name:     "Desktop preset",
 			preset:   "desktop",
 			wantNil:  false,
 			wantName: "Desktop",
+		},
+		{
+			name:     "Laptop preset",
+			preset:   "laptop",
+			wantNil:  false,
+			wantName: "Laptop",
 		},
 	}
 
@@ -111,7 +233,12 @@ func TestGetDevicePresetReturnsCopy(t *testing.T) {
 }
 
 func TestDevicePresetsHaveRequiredFields(t *testing.T) {
-	presets := []string{"iphone14", "iphonemax", "ipad", "ipadpro", "pixel7", "galaxys23", "desktop"}
+	presets := ListDevicePresetNames()
+
+	// Ensure we have at least 20 device presets
+	if len(presets) < 20 {
+		t.Errorf("Expected at least 20 device presets, got %d", len(presets))
+	}
 
 	for _, preset := range presets {
 		t.Run(preset, func(t *testing.T) {
@@ -135,6 +262,13 @@ func TestDevicePresetsHaveRequiredFields(t *testing.T) {
 			if device.UserAgent == "" {
 				t.Errorf("%s: UserAgent is empty", preset)
 			}
+			// Check new fields
+			if device.Category == "" {
+				t.Errorf("%s: Category is empty", preset)
+			}
+			if device.Orientation == "" {
+				t.Errorf("%s: Orientation is empty", preset)
+			}
 		})
 	}
 }
@@ -148,6 +282,8 @@ func TestDeviceEmulationFields(t *testing.T) {
 		UserAgent:         "TestUserAgent/1.0",
 		IsMobile:          true,
 		HasTouch:          true,
+		Category:          DeviceCategoryMobile,
+		Orientation:       OrientationPortrait,
 	}
 
 	if device.Name != "Test Device" {
@@ -170,5 +306,180 @@ func TestDeviceEmulationFields(t *testing.T) {
 	}
 	if !device.HasTouch {
 		t.Error("HasTouch = false, want true")
+	}
+	if device.Category != DeviceCategoryMobile {
+		t.Errorf("Category = %q, want %q", device.Category, DeviceCategoryMobile)
+	}
+	if device.Orientation != OrientationPortrait {
+		t.Errorf("Orientation = %q, want %q", device.Orientation, OrientationPortrait)
+	}
+}
+
+func TestGetDevicePresetsByCategory(t *testing.T) {
+	tests := []struct {
+		name     string
+		category DeviceCategory
+		minCount int
+	}{
+		{
+			name:     "mobile devices",
+			category: DeviceCategoryMobile,
+			minCount: 14, // iPhone 15/16 series + legacy + Pixel + Galaxy
+		},
+		{
+			name:     "tablet devices",
+			category: DeviceCategoryTablet,
+			minCount: 5, // iPad, iPad Pro, iPad Air, iPad Mini, Galaxy Tab S9
+		},
+		{
+			name:     "desktop devices",
+			category: DeviceCategoryDesktop,
+			minCount: 2, // Desktop, Laptop
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devices := GetDevicePresetsByCategory(tt.category)
+			if len(devices) < tt.minCount {
+				t.Errorf("GetDevicePresetsByCategory(%q) returned %d devices, want at least %d", tt.category, len(devices), tt.minCount)
+			}
+			// Verify all returned devices have the correct category
+			for _, device := range devices {
+				if device.Category != tt.category {
+					t.Errorf("Device %q has category %q, want %q", device.Name, device.Category, tt.category)
+				}
+			}
+		})
+	}
+}
+
+func TestListDevicePresetNames(t *testing.T) {
+	names := ListDevicePresetNames()
+	if len(names) < 20 {
+		t.Errorf("ListDevicePresetNames() returned %d names, want at least 20", len(names))
+	}
+	// Check that some expected presets are present
+	expectedPresets := []string{"iphone15", "iphone16", "pixel9", "galaxys24", "ipadair", "desktop"}
+	for _, preset := range expectedPresets {
+		found := false
+		for _, name := range names {
+			if name == preset {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("ListDevicePresetNames() missing expected preset %q", preset)
+		}
+	}
+}
+
+func TestGetDeviceCategories(t *testing.T) {
+	categories := GetDeviceCategories()
+	if len(categories) != 3 {
+		t.Errorf("GetDeviceCategories() returned %d categories, want 3", len(categories))
+	}
+	expected := []DeviceCategory{DeviceCategoryMobile, DeviceCategoryTablet, DeviceCategoryDesktop}
+	for i, cat := range categories {
+		if cat != expected[i] {
+			t.Errorf("GetDeviceCategories()[%d] = %q, want %q", i, cat, expected[i])
+		}
+	}
+}
+
+func TestApplyOrientation(t *testing.T) {
+	tests := []struct {
+		name            string
+		device          DeviceEmulation
+		orientation     Orientation
+		wantWidth       int
+		wantHeight      int
+		wantOrientation Orientation
+		shouldSwap      bool
+	}{
+		{
+			name: "mobile portrait stays same",
+			device: DeviceEmulation{
+				ViewportWidth:  390,
+				ViewportHeight: 844,
+				Category:       DeviceCategoryMobile,
+			},
+			orientation:     OrientationPortrait,
+			wantWidth:       390,
+			wantHeight:      844,
+			wantOrientation: OrientationPortrait,
+			shouldSwap:      false,
+		},
+		{
+			name: "mobile landscape swaps dimensions",
+			device: DeviceEmulation{
+				ViewportWidth:  390,
+				ViewportHeight: 844,
+				Category:       DeviceCategoryMobile,
+			},
+			orientation:     OrientationLandscape,
+			wantWidth:       844,
+			wantHeight:      390,
+			wantOrientation: OrientationLandscape,
+			shouldSwap:      true,
+		},
+		{
+			name: "desktop landscape does not swap",
+			device: DeviceEmulation{
+				ViewportWidth:  1920,
+				ViewportHeight: 1080,
+				Category:       DeviceCategoryDesktop,
+			},
+			orientation:     OrientationLandscape,
+			wantWidth:       1920,
+			wantHeight:      1080,
+			wantOrientation: OrientationLandscape,
+			shouldSwap:      false,
+		},
+		{
+			name:            "nil device returns nil",
+			device:          DeviceEmulation{},
+			orientation:     OrientationPortrait,
+			wantWidth:       0,
+			wantHeight:      0,
+			wantOrientation: OrientationPortrait,
+			shouldSwap:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var device *DeviceEmulation
+			if tt.name != "nil device returns nil" {
+				d := tt.device
+				device = &d
+			}
+			result := device.ApplyOrientation(tt.orientation)
+
+			if tt.name == "nil device returns nil" {
+				if result != nil {
+					t.Errorf("ApplyOrientation() = %v, want nil", result)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Fatal("ApplyOrientation() returned nil for non-nil device")
+			}
+			if result.ViewportWidth != tt.wantWidth {
+				t.Errorf("ViewportWidth = %d, want %d", result.ViewportWidth, tt.wantWidth)
+			}
+			if result.ViewportHeight != tt.wantHeight {
+				t.Errorf("ViewportHeight = %d, want %d", result.ViewportHeight, tt.wantHeight)
+			}
+			if result.Orientation != tt.wantOrientation {
+				t.Errorf("Orientation = %q, want %q", result.Orientation, tt.wantOrientation)
+			}
+			// Verify original device is not modified
+			if device.ViewportWidth != tt.device.ViewportWidth {
+				t.Error("ApplyOrientation modified the original device width")
+			}
+		})
 	}
 }

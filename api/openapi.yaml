@@ -2273,6 +2273,14 @@ components:
           type: string
           description: Password for proxy authentication
           format: password
+    DeviceCategory:
+      type: string
+      enum: [mobile, tablet, desktop]
+      description: Device category classification
+    Orientation:
+      type: string
+      enum: [portrait, landscape]
+      description: Device screen orientation
     DeviceEmulation:
       type: object
       description: Device emulation configuration for mobile/responsive content
@@ -2299,6 +2307,10 @@ components:
         hasTouch:
           type: boolean
           description: Whether the device has touch capability
+        category:
+          $ref: '#/components/schemas/DeviceCategory'
+        orientation:
+          $ref: '#/components/schemas/Orientation'
     ScreenshotConfig:
       type: object
       description: Screenshot capture configuration for headless fetchers (chromedp, playwright). Ignored for HTTP fetcher.

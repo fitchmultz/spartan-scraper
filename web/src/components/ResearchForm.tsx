@@ -28,6 +28,8 @@ import {
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
+import { DeviceSelector } from "./DeviceSelector";
+import type { DeviceEmulation } from "../api";
 
 export interface ResearchFormRef {
   /** Submit the form programmatically */
@@ -153,6 +155,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
   ) {
     const [researchQuery, setResearchQuery] = useState("");
     const [researchUrls, setResearchUrls] = useState("");
+    const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -192,6 +195,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         postProcessors,
         transformers,
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        device || undefined,
       );
       await onSubmit(request);
     }, [
@@ -221,6 +225,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       webhookUrl,
       webhookEvents,
       webhookSecret,
+      device,
       onSubmit,
     ]);
 
@@ -253,6 +258,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        device: device || undefined,
       }),
       [
         researchQuery,
@@ -281,6 +287,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        device,
       ],
     );
 
@@ -362,6 +369,11 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             />
           </label>
         </div>
+        <DeviceSelector
+          device={device}
+          onChange={setDevice}
+          disabled={!headless}
+        />
         <AuthConfig
           authProfile={authProfile}
           setAuthProfile={setAuthProfile}

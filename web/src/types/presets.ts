@@ -7,6 +7,7 @@
  *
  * @module types/presets
  */
+import type { DeviceEmulation } from "../api";
 
 /**
  * Job type discriminator for presets
@@ -66,6 +67,8 @@ export interface PresetConfig {
   // Pattern filtering options
   includePatterns?: string;
   excludePatterns?: string;
+  // Device emulation
+  device?: DeviceEmulation;
 }
 
 /**

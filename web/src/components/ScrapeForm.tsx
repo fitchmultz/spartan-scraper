@@ -26,6 +26,8 @@ import {
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
+import { DeviceSelector } from "./DeviceSelector";
+import type { DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
   /** Submit the form programmatically */
@@ -146,6 +148,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     ref,
   ) {
     const [scrapeUrl, setScrapeUrl] = useState("");
+    const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -183,6 +186,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         transformers,
         incremental,
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        device || undefined,
       );
       await onSubmit(request);
     }, [
@@ -210,6 +214,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       webhookUrl,
       webhookEvents,
       webhookSecret,
+      device,
       onSubmit,
     ]);
 
@@ -240,6 +245,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        device: device || undefined,
       }),
       [
         scrapeUrl,
@@ -266,6 +272,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        device,
       ],
     );
 
@@ -317,6 +324,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
             />
           </label>
         </div>
+        <DeviceSelector
+          device={device}
+          onChange={setDevice}
+          disabled={!headless}
+        />
         <AuthConfig
           authProfile={authProfile}
           setAuthProfile={setAuthProfile}

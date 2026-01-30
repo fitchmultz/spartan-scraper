@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0212",
-      "status": "todo",
-      "title": "Add more device emulation presets and custom device config",
-      "priority": "medium",
-      "tags": [
-        "rendering",
-        "devices",
-        "headless"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "web/src/"
-      ],
-      "evidence": [
-        "Only 7 device presets available in render profiles",
-        "No custom device configuration",
-        "No viewport rotation support"
-      ],
-      "plan": [
-        "Expand device presets to 20+ common devices",
-        "Add custom device configuration (viewport, UA, DPR)",
-        "Support viewport rotation (portrait/landscape)",
-        "Add device category filtering (mobile, tablet, desktop)",
-        "Sync device list with Chrome DevTools"
-      ],
-      "notes": [],
-      "request": "scan finding: device emulation gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0213",
       "status": "todo",
       "title": "Implement automatic form detection and intelligent login",

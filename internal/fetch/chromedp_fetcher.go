@@ -1032,35 +1032,41 @@ func (f *ChromedpFetcher) applyDeviceEmulation(ctx context.Context, device *Devi
 		return nil
 	}
 
+	// Apply orientation if needed (swaps dimensions for landscape on mobile/tablet)
+	effectiveDevice := device
+	if device.Orientation == OrientationLandscape && device.Category != DeviceCategoryDesktop {
+		effectiveDevice = device.ApplyOrientation(OrientationLandscape)
+	}
+
 	// Set viewport
-	width := int64(device.ViewportWidth)
-	height := int64(device.ViewportHeight)
+	width := int64(effectiveDevice.ViewportWidth)
+	height := int64(effectiveDevice.ViewportHeight)
 	if err := chromedp.Run(ctx, chromedp.EmulateViewport(width, height)); err != nil {
 		return fmt.Errorf("failed to set viewport: %w", err)
 	}
 
 	// Set device scale factor
-	if device.DeviceScaleFactor > 0 {
+	if effectiveDevice.DeviceScaleFactor > 0 {
 		if err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(
-			int64(device.ViewportWidth),
-			int64(device.ViewportHeight),
-			device.DeviceScaleFactor,
-			device.IsMobile,
+			int64(effectiveDevice.ViewportWidth),
+			int64(effectiveDevice.ViewportHeight),
+			effectiveDevice.DeviceScaleFactor,
+			effectiveDevice.IsMobile,
 		)); err != nil {
 			return fmt.Errorf("failed to set device metrics: %w", err)
 		}
 	}
 
 	// Set touch emulation
-	if device.HasTouch {
+	if effectiveDevice.HasTouch {
 		if err := chromedp.Run(ctx, emulation.SetTouchEmulationEnabled(true)); err != nil {
 			return fmt.Errorf("failed to enable touch emulation: %w", err)
 		}
 	}
 
 	// Set user agent (if not already set via allocator options)
-	if device.UserAgent != "" {
-		if err := chromedp.Run(ctx, emulation.SetUserAgentOverride(device.UserAgent)); err != nil {
+	if effectiveDevice.UserAgent != "" {
+		if err := chromedp.Run(ctx, emulation.SetUserAgentOverride(effectiveDevice.UserAgent)); err != nil {
 			return fmt.Errorf("failed to set user agent: %w", err)
 		}
 	}

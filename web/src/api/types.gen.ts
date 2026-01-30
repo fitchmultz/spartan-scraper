@@ -319,6 +319,16 @@ export type ProxyConfig = {
 };
 
 /**
+ * Device category classification
+ */
+export type DeviceCategory = 'mobile' | 'tablet' | 'desktop';
+
+/**
+ * Device screen orientation
+ */
+export type Orientation = 'portrait' | 'landscape';
+
+/**
  * Device emulation configuration for mobile/responsive content
  */
 export type DeviceEmulation = {
@@ -350,6 +360,8 @@ export type DeviceEmulation = {
      * Whether the device has touch capability
      */
     hasTouch?: boolean;
+    category?: DeviceCategory;
+    orientation?: Orientation;
 };
 
 /**

@@ -27,6 +27,8 @@ import {
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
+import { DeviceSelector } from "./DeviceSelector";
+import type { DeviceEmulation } from "../api";
 
 export interface CrawlFormRef {
   /** Submit the form programmatically */
@@ -153,6 +155,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const [sitemapOnly, setSitemapOnly] = useState(false);
     const [includePatterns, setIncludePatterns] = useState("");
     const [excludePatterns, setExcludePatterns] = useState("");
+    const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -196,6 +199,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
         parsePatternList(includePatterns),
         parsePatternList(excludePatterns),
+        device || undefined,
       );
       await onSubmit(request);
     }, [
@@ -229,6 +233,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       webhookSecret,
       includePatterns,
       excludePatterns,
+      device,
       onSubmit,
     ]);
 
@@ -265,6 +270,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookSecret,
         includePatterns,
         excludePatterns,
+        device: device || undefined,
       }),
       [
         crawlUrl,
@@ -297,6 +303,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookSecret,
         includePatterns,
         excludePatterns,
+        device,
       ],
     );
 
@@ -417,6 +424,11 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
             />
           </label>
         </div>
+        <DeviceSelector
+          device={device}
+          onChange={setDevice}
+          disabled={!headless}
+        />
         <AuthConfig
           authProfile={authProfile}
           setAuthProfile={setAuthProfile}
