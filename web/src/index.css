@@ -1909,3 +1909,328 @@ textarea:focus-visible {
   padding: 16px;
   box-shadow: 0 8px 32px var(--shadow);
 }
+
+/* ============================================================================
+   Metrics Dashboard Styles
+   ============================================================================ */
+
+.metrics-dashboard {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  padding: 24px;
+  margin: 24px 0;
+}
+
+.metrics-dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.metrics-dashboard__header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.metrics-dashboard__status {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.metrics-dashboard__status.status--connected {
+  background: rgba(0, 201, 130, 0.15);
+  color: #00c982;
+}
+
+.metrics-dashboard__status.status--reconnecting {
+  background: rgba(247, 181, 0, 0.15);
+  color: #f7b500;
+}
+
+.metrics-dashboard__status.status--polling {
+  background: rgba(100, 149, 237, 0.15);
+  color: #6495ed;
+}
+
+.metrics-dashboard__status.status--disconnected {
+  background: rgba(255, 75, 75, 0.15);
+  color: #ff4b4b;
+}
+
+.metrics-dashboard__empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.metrics-dashboard__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metrics-dashboard__section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--stroke);
+}
+
+.metrics-dashboard__section h4 {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Metric Card Styles */
+.metric-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.metric-card--success {
+  border-color: rgba(0, 201, 130, 0.3);
+}
+
+.metric-card--warning {
+  border-color: rgba(247, 181, 0, 0.3);
+}
+
+.metric-card--error {
+  border-color: rgba(255, 75, 75, 0.3);
+}
+
+.metric-card__label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.metric-card__value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.metric-card__unit {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.metric-card__trend {
+  font-size: 0.9rem;
+  margin-left: 4px;
+}
+
+.metric-card__trend--up {
+  color: #00c982;
+}
+
+.metric-card__trend--down {
+  color: #ff4b4b;
+}
+
+.metric-card__trend--neutral {
+  color: var(--muted);
+}
+
+/* Fetcher Usage Bar Styles */
+.fetcher-usage-bar {
+  padding: 8px 0;
+}
+
+.fetcher-usage-bar--empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 16px;
+  text-align: center;
+}
+
+.fetcher-usage-bar__segments {
+  display: flex;
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-alt);
+  margin-bottom: 12px;
+}
+
+.fetcher-usage-bar__segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.fetcher-usage-bar__segment--http {
+  background: linear-gradient(90deg, #00c982, #00d490);
+}
+
+.fetcher-usage-bar__segment--chromedp {
+  background: linear-gradient(90deg, #f7b500, #ffc107);
+}
+
+.fetcher-usage-bar__segment--playwright {
+  background: linear-gradient(90deg, #6495ed, #7aa3f0);
+}
+
+.fetcher-usage-bar__legend {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.fetcher-usage-bar__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.fetcher-usage-bar__legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.fetcher-usage-bar__legend-color--http {
+  background: #00c982;
+}
+
+.fetcher-usage-bar__legend-color--chromedp {
+  background: #f7b500;
+}
+
+.fetcher-usage-bar__legend-color--playwright {
+  background: #6495ed;
+}
+
+/* Rate Limit Indicator Styles */
+.metrics-dashboard__rate-limits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.rate-limit-indicator {
+  background: var(--bg-alt);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.rate-limit-indicator--healthy {
+  border-color: rgba(0, 201, 130, 0.3);
+}
+
+.rate-limit-indicator--throttling {
+  border-color: rgba(247, 181, 0, 0.3);
+}
+
+.rate-limit-indicator--limited {
+  border-color: rgba(255, 75, 75, 0.3);
+}
+
+.rate-limit-indicator__host {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.rate-limit-indicator__details {
+  display: flex;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.rate-limit-indicator__tokens {
+  height: 8px;
+  background: var(--panel);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.rate-limit-indicator__token-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.rate-limit-indicator--healthy .rate-limit-indicator__token-bar {
+  background: linear-gradient(90deg, #00c982, #00d490);
+}
+
+.rate-limit-indicator--throttling .rate-limit-indicator__token-bar {
+  background: linear-gradient(90deg, #f7b500, #ffc107);
+}
+
+.rate-limit-indicator--limited .rate-limit-indicator__token-bar {
+  background: linear-gradient(90deg, #ff4b4b, #ff6b6b);
+}
+
+.rate-limit-indicator__status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rate-limit-indicator--healthy .rate-limit-indicator__status {
+  color: #00c982;
+}
+
+.rate-limit-indicator--throttling .rate-limit-indicator__status {
+  color: #f7b500;
+}
+
+.rate-limit-indicator--limited .rate-limit-indicator__status {
+  color: #ff4b4b;
+}
+
+/* Light theme adjustments for metrics */
+[data-theme="light"] .metrics-dashboard {
+  background: var(--panel);
+}
+
+[data-theme="light"] .metric-card {
+  background: var(--bg-alt);
+}
+
+[data-theme="light"] .rate-limit-indicator {
+  background: var(--bg-alt);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .metrics-dashboard {
+    background: var(--panel);
+  }
+
+  :root:not([data-theme]) .metric-card {
+    background: var(--bg-alt);
+  }
+
+  :root:not([data-theme]) .rate-limit-indicator {
+    background: var(--bg-alt);
+  }
+}

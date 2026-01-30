@@ -6,15 +6,17 @@ package fetch
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 type AdaptiveFetcher struct {
-	store *RenderProfileStore
-	http  *HTTPFetcher
-	cdp   *ChromedpFetcher
-	pw    *PlaywrightFetcher
+	store           *RenderProfileStore
+	http            *HTTPFetcher
+	cdp             *ChromedpFetcher
+	pw              *PlaywrightFetcher
+	metricsCallback MetricsCallback
 }
 
 func NewAdaptiveFetcher(dataDir string) *AdaptiveFetcher {
@@ -29,8 +31,23 @@ func NewAdaptiveFetcher(dataDir string) *AdaptiveFetcher {
 func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	slog.Debug("adaptive fetch start", "url", apperrors.SanitizeURL(req.URL))
 
+	// Start metrics tracking
+	if f.metricsCallback != nil {
+		f.metricsCallback(0, true, "http", req.URL) // Start marker
+	}
+	start := time.Now()
+	var result Result
+	var err error
+	var fetcherType string
+	defer func() {
+		if f.metricsCallback != nil {
+			duration := time.Since(start)
+			f.metricsCallback(duration, err == nil, fetcherType, req.URL)
+		}
+	}()
+
 	// 1. Reload profiles if file changed (cache invalidation)
-	if err := f.store.ReloadIfChanged(); err != nil {
+	if err = f.store.ReloadIfChanged(); err != nil {
 		slog.Error("failed to reload render profile store", "url", apperrors.SanitizeURL(req.URL), "error", err)
 		return Result{}, err
 	}
@@ -50,11 +67,14 @@ func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error
 	// 2. Decision: Forced Headless?
 	if prof.NeverHeadless {
 		slog.Debug("profile forces HTTP (NeverHeadless)", "url", apperrors.SanitizeURL(req.URL))
-		return f.http.Fetch(ctx, req)
+		fetcherType = "http"
+		result, err = f.http.Fetch(ctx, req)
+		return result, err
 	}
 	if req.Headless || prof.PreferHeadless || prof.AssumeJSHeavy || prof.ForceEngine != "" {
 		slog.Debug("profile or request forces headless", "url", apperrors.SanitizeURL(req.URL), "headless", req.Headless, "preferHeadless", prof.PreferHeadless, "assumeJSHeavy", prof.AssumeJSHeavy, "forceEngine", prof.ForceEngine)
-		return f.fetchHeadless(ctx, req, prof)
+		fetcherType, result, err = f.fetchHeadlessWithType(ctx, req, prof)
+		return result, err
 	}
 
 	// 3. HTTP Probe
@@ -62,12 +82,14 @@ func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error
 	probeReq := req
 	// Reduce timeout for probe if not specified, to save time on failure?
 	// Actually, stick to configured timeout to avoid premature giving up.
-	res, err := f.http.Fetch(ctx, probeReq)
-	if err != nil {
-		slog.Warn("HTTP probe failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
+	res, fetchErr := f.http.Fetch(ctx, probeReq)
+	if fetchErr != nil {
+		slog.Warn("HTTP probe failed", "url", apperrors.SanitizeURL(req.URL), "error", fetchErr)
 		// If HTTP failed, depends on error.
 		// If timeout, maybe headless won't help?
 		// If network error, headless might not help.
+		err = fetchErr
+		fetcherType = "http"
 		return Result{}, err
 	}
 
@@ -80,7 +102,8 @@ func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error
 		// But 429 is rate limit.
 		if res.Status != 429 {
 			slog.Info("retrying with headless due to HTTP status", "url", apperrors.SanitizeURL(req.URL), "status", res.Status)
-			return f.fetchHeadless(ctx, req, prof)
+			fetcherType, result, err = f.fetchHeadlessWithType(ctx, req, prof)
+			return result, err
 		}
 	}
 
@@ -92,15 +115,31 @@ func (f *AdaptiveFetcher) Fetch(ctx context.Context, req Request) (Result, error
 
 	if IsJSHeavy(js, threshold) {
 		slog.Info("retrying with headless due to JS heaviness", "url", apperrors.SanitizeURL(req.URL), "jsScore", js, "threshold", threshold)
-		return f.fetchHeadless(ctx, req, prof)
+		fetcherType, result, err = f.fetchHeadlessWithType(ctx, req, prof)
+		return result, err
 	}
 
 	// 5. Return HTTP result if satisfied
 	slog.Debug("satisfied with HTTP result", "url", apperrors.SanitizeURL(req.URL))
+	fetcherType = "http"
+	result = res
+	err = nil
 	return res, nil
 }
 
+// SetMetricsCallback sets the callback function for metrics collection
+func (f *AdaptiveFetcher) SetMetricsCallback(cb MetricsCallback) {
+	f.metricsCallback = cb
+}
+
+// fetchHeadless performs headless fetching and returns the result
 func (f *AdaptiveFetcher) fetchHeadless(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
+	_, res, err := f.fetchHeadlessWithType(ctx, req, prof)
+	return res, err
+}
+
+// fetchHeadlessWithType performs headless fetching and returns the fetcher type along with the result
+func (f *AdaptiveFetcher) fetchHeadlessWithType(ctx context.Context, req Request, prof RenderProfile) (string, Result, error) {
 	// Engine selection
 	engine := RenderEngineChromedp
 	if req.UsePlaywright {
@@ -117,16 +156,19 @@ func (f *AdaptiveFetcher) fetchHeadless(ctx context.Context, req Request, prof R
 	// Primary attempt
 	var res Result
 	var err error
+	var fetcherType string
 
 	if engine == RenderEnginePlaywright {
+		fetcherType = "playwright"
 		res, err = f.pw.Fetch(ctx, req, prof)
 	} else {
+		fetcherType = "chromedp"
 		res, err = f.cdp.Fetch(ctx, req, prof)
 	}
 
 	if err == nil {
 		slog.Debug("headless fetch success", "url", apperrors.SanitizeURL(req.URL), "engine", engine)
-		return res, nil
+		return fetcherType, res, nil
 	}
 
 	slog.Error("headless fetch failed", "url", apperrors.SanitizeURL(req.URL), "engine", engine, "error", err)
@@ -134,7 +176,7 @@ func (f *AdaptiveFetcher) fetchHeadless(ctx context.Context, req Request, prof R
 	// Fallback logic?
 	// If Chromedp failed and UsePlaywright is explicitly allowed but not forced?
 	// For now, simple: if error, error.
-	return Result{}, err
+	return fetcherType, Result{}, err
 }
 
 func (f *AdaptiveFetcher) Close() error {

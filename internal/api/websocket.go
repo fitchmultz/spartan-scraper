@@ -34,6 +34,7 @@ const (
 	WSMessageStatusChanged WSMessageType = "job_status_changed"
 	WSMessageJobCompleted  WSMessageType = "job_completed"
 	WSMessageManagerStatus WSMessageType = "manager_status"
+	WSMessageMetrics       WSMessageType = "metrics"
 	WSMessagePing          WSMessageType = "ping"
 
 	// Client -> Server message types
@@ -320,6 +321,16 @@ func (h *Hub) BroadcastManagerStatus(queuedJobs, activeJobs int) {
 			QueuedJobs: queuedJobs,
 			ActiveJobs: activeJobs,
 		},
+	}
+	h.Broadcast(msg)
+}
+
+// BroadcastMetrics broadcasts the current metrics snapshot to all clients.
+func (h *Hub) BroadcastMetrics(snapshot MetricsSnapshot) {
+	msg := WSMessage{
+		Type:      WSMessageMetrics,
+		Timestamp: time.Now().UnixMilli(),
+		Payload:   snapshot,
 	}
 	h.Broadcast(msg)
 }

@@ -749,6 +749,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/metrics:
+    get:
+      summary: Get performance metrics
+      description: |
+        Returns current performance metrics including request rates, success rates,
+        response times, fetcher usage breakdown, and rate limiter status.
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Current metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/ws:
     get:
       summary: WebSocket endpoint for real-time job updates
@@ -789,6 +815,10 @@ paths:
         ### manager_status
         Sent periodically with queue depth and active job count.
         Payload: ManagerStatusPayload
+
+        ### metrics
+        Sent every 5 seconds with performance metrics.
+        Payload: MetricsResponse
 
         ### ping
         Heartbeat ping sent every 30 seconds.
@@ -1394,7 +1424,7 @@ components:
         type:
           type: string
           description: Message type
-          enum: [job_created, job_started, job_status_changed, job_completed, manager_status, ping, pong, subscribe_jobs, unsubscribe_jobs]
+          enum: [job_created, job_started, job_status_changed, job_completed, manager_status, metrics, ping, pong, subscribe_jobs, unsubscribe_jobs]
         timestamp:
           type: integer
           format: int64
@@ -1452,3 +1482,83 @@ components:
         activeJobs:
           type: integer
           description: Number of currently running jobs
+    MetricsResponse:
+      type: object
+      description: Performance metrics and rate limiting status
+      properties:
+        requestsPerSec:
+          type: number
+          format: float
+          description: Requests per second over the retention window
+        successRate:
+          type: number
+          format: float
+          description: Success rate as percentage (0-100)
+        avgResponseTimeMs:
+          type: number
+          format: float
+          description: Average response time in milliseconds
+        activeRequests:
+          type: integer
+          description: Number of currently active requests
+        totalRequests:
+          type: integer
+          format: int64
+          description: Total number of requests since startup
+        fetcherUsage:
+          $ref: '#/components/schemas/FetcherUsageBreakdown'
+        rateLimitStatus:
+          type: array
+          items:
+            $ref: '#/components/schemas/RateLimitStatus'
+          description: Rate limit status for all known hosts
+        jobThroughputPerMin:
+          type: number
+          format: float
+          description: Job throughput in jobs per minute
+        avgJobDurationMs:
+          type: number
+          format: float
+          description: Average job duration in milliseconds
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp when metrics were captured
+    FetcherUsageBreakdown:
+      type: object
+      description: Usage counts per fetcher type
+      properties:
+        http:
+          type: integer
+          format: int64
+          description: Number of HTTP requests
+        chromedp:
+          type: integer
+          format: int64
+          description: Number of Chromedp requests
+        playwright:
+          type: integer
+          format: int64
+          description: Number of Playwright requests
+    RateLimitStatus:
+      type: object
+      description: Rate limit status for a single host
+      properties:
+        host:
+          type: string
+          description: Hostname (sanitized, no paths or query params)
+        qps:
+          type: number
+          format: float
+          description: Queries per second limit
+        burst:
+          type: integer
+          description: Burst capacity
+        tokens:
+          type: number
+          format: float
+          description: Estimated current tokens available
+        lastRequest:
+          type: integer
+          format: int64
+          description: Unix timestamp of last request to this host

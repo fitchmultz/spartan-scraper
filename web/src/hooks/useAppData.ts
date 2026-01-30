@@ -18,6 +18,7 @@ import {
   getV1AuthProfiles,
   getV1Schedules,
   type CrawlState,
+  type MetricsResponse,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
 import { useWebSocket, type WSMessage } from "./useWebSocket";
@@ -46,6 +47,7 @@ export interface AppDataState {
   templates: string[];
   crawlStates: CrawlState[];
   managerStatus: ManagerStatus | null;
+  metrics: MetricsResponse | null;
   jobsTotal: number;
   jobsPage: number;
   crawlStatesTotal: number;
@@ -99,6 +101,7 @@ export function useAppData(): AppDataState & AppDataActions {
   const [managerStatus, setManagerStatus] = useState<ManagerStatus | null>(
     null,
   );
+  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
@@ -266,6 +269,11 @@ export function useAppData(): AppDataState & AppDataActions {
           });
           break;
         }
+        case "metrics": {
+          const payload = msg.payload as MetricsResponse;
+          setMetrics(payload);
+          break;
+        }
         default:
           break;
       }
@@ -330,6 +338,7 @@ export function useAppData(): AppDataState & AppDataActions {
     templates,
     crawlStates,
     managerStatus,
+    metrics,
     jobsTotal,
     jobsPage,
     crawlStatesTotal,

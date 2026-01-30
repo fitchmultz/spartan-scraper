@@ -175,6 +175,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
+			MetricsCallback:  m.metricsCallback,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -233,6 +234,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
+			MetricsCallback:  m.metricsCallback,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

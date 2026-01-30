@@ -326,7 +326,7 @@ export type WsMessage = {
     /**
      * Message type
      */
-    type: 'job_created' | 'job_started' | 'job_status_changed' | 'job_completed' | 'manager_status' | 'ping' | 'pong' | 'subscribe_jobs' | 'unsubscribe_jobs';
+    type: 'job_created' | 'job_started' | 'job_status_changed' | 'job_completed' | 'manager_status' | 'metrics' | 'ping' | 'pong' | 'subscribe_jobs' | 'unsubscribe_jobs';
     /**
      * Unix timestamp in milliseconds
      */
@@ -377,6 +377,93 @@ export type WsManagerStatusPayload = {
      * Number of currently running jobs
      */
     activeJobs: number;
+};
+
+/**
+ * Performance metrics and rate limiting status
+ */
+export type MetricsResponse = {
+    /**
+     * Requests per second over the retention window
+     */
+    requestsPerSec?: number;
+    /**
+     * Success rate as percentage (0-100)
+     */
+    successRate?: number;
+    /**
+     * Average response time in milliseconds
+     */
+    avgResponseTimeMs?: number;
+    /**
+     * Number of currently active requests
+     */
+    activeRequests?: number;
+    /**
+     * Total number of requests since startup
+     */
+    totalRequests?: number;
+    fetcherUsage?: FetcherUsageBreakdown;
+    /**
+     * Rate limit status for all known hosts
+     */
+    rateLimitStatus?: Array<RateLimitStatus>;
+    /**
+     * Job throughput in jobs per minute
+     */
+    jobThroughputPerMin?: number;
+    /**
+     * Average job duration in milliseconds
+     */
+    avgJobDurationMs?: number;
+    /**
+     * Unix timestamp when metrics were captured
+     */
+    timestamp?: number;
+};
+
+/**
+ * Usage counts per fetcher type
+ */
+export type FetcherUsageBreakdown = {
+    /**
+     * Number of HTTP requests
+     */
+    http?: number;
+    /**
+     * Number of Chromedp requests
+     */
+    chromedp?: number;
+    /**
+     * Number of Playwright requests
+     */
+    playwright?: number;
+};
+
+/**
+ * Rate limit status for a single host
+ */
+export type RateLimitStatus = {
+    /**
+     * Hostname (sanitized, no paths or query params)
+     */
+    host?: string;
+    /**
+     * Queries per second limit
+     */
+    qps?: number;
+    /**
+     * Burst capacity
+     */
+    burst?: number;
+    /**
+     * Estimated current tokens available
+     */
+    tokens?: number;
+    /**
+     * Unix timestamp of last request to this host
+     */
+    lastRequest?: number;
 };
 
 export type GetHealthzData = {
@@ -1079,6 +1166,35 @@ export type DeleteV1SchedulesByIdResponses = {
 };
 
 export type DeleteV1SchedulesByIdResponse = DeleteV1SchedulesByIdResponses[keyof DeleteV1SchedulesByIdResponses];
+
+export type GetMetricsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/metrics';
+};
+
+export type GetMetricsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetMetricsError = GetMetricsErrors[keyof GetMetricsErrors];
+
+export type GetMetricsResponses = {
+    /**
+     * Current metrics
+     */
+    200: MetricsResponse;
+};
+
+export type GetMetricsResponse = GetMetricsResponses[keyof GetMetricsResponses];
 
 export type GetV1WsData = {
     body?: never;

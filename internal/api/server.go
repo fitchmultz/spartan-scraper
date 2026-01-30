@@ -5,6 +5,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -13,18 +14,20 @@ import (
 )
 
 type Server struct {
-	manager *jobs.Manager
-	store   *store.Store
-	cfg     config.Config
-	wsHub   *Hub
+	manager          *jobs.Manager
+	store            *store.Store
+	cfg              config.Config
+	wsHub            *Hub
+	metricsCollector *MetricsCollector
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
 	s := &Server{
-		manager: manager,
-		store:   store,
-		cfg:     cfg,
-		wsHub:   NewHub(),
+		manager:          manager,
+		store:            store,
+		cfg:              cfg,
+		wsHub:            NewHub(),
+		metricsCollector: NewMetricsCollector(),
 	}
 
 	// Start WebSocket hub
@@ -33,7 +36,47 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	// Subscribe hub to job manager events
 	go s.subscribeToJobEvents()
 
+	// Start periodic metrics broadcasting
+	go s.startMetricsBroadcast()
+
+	// Set up metrics callback for fetch operations
+	s.manager.SetMetricsCallback(s.metricsCollector.RecordRequest)
+
 	return s
+}
+
+// GetMetricsCollector returns the server's metrics collector for external registration
+func (s *Server) GetMetricsCollector() *MetricsCollector {
+	return s.metricsCollector
+}
+
+// startMetricsBroadcast periodically broadcasts metrics via WebSocket
+func (s *Server) startMetricsBroadcast() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.syncHostLimiters()
+		snapshot := s.metricsCollector.GetSnapshot()
+		s.wsHub.BroadcastMetrics(snapshot)
+	}
+}
+
+// syncHostLimiters syncs host limiters from the job manager to the metrics collector.
+func (s *Server) syncHostLimiters() {
+	limiter := s.manager.GetLimiter()
+	if limiter == nil {
+		return
+	}
+
+	// Get all host statuses and register them with the metrics collector
+	statuses := limiter.GetHostStatus()
+	for _, status := range statuses {
+		l := limiter.GetLimiter(status.Host)
+		if l != nil {
+			s.metricsCollector.RegisterHostLimiter(status.Host, l, status.QPS, status.Burst)
+		}
+	}
 }
 
 // subscribeToJobEvents subscribes the WebSocket hub to job manager events.
@@ -67,6 +110,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
 	mux.HandleFunc("/v1/templates", s.handleTemplates)
 	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
+	mux.HandleFunc("/v1/metrics", s.handleMetrics)
 	mux.HandleFunc("/v1/ws", s.handleWebSocket)
 
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

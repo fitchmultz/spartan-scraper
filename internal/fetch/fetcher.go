@@ -33,8 +33,26 @@ type Fetcher interface {
 	Fetch(ctx context.Context, req Request) (Result, error)
 }
 
+// MetricsCallback is the function signature for metrics collection callbacks.
+type MetricsCallback func(duration time.Duration, success bool, fetcherType, url string)
+
+// FetcherWithMetrics is a fetcher that supports metrics callbacks.
+type FetcherWithMetrics interface {
+	Fetcher
+	SetMetricsCallback(cb MetricsCallback)
+}
+
 func NewFetcher(dataDir string) Fetcher {
 	return NewAdaptiveFetcher(dataDir)
+}
+
+// NewFetcherWithMetrics creates a new fetcher with metrics callback support.
+func NewFetcherWithMetrics(dataDir string, callback MetricsCallback) FetcherWithMetrics {
+	af := NewAdaptiveFetcher(dataDir)
+	if callback != nil {
+		af.SetMetricsCallback(callback)
+	}
+	return af
 }
 
 var (

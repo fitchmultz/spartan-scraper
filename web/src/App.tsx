@@ -25,6 +25,7 @@ import {
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
+import { MetricsDashboard } from "./components/MetricsDashboard";
 import { ResultsExplorer } from "./components/ResultsExplorer";
 import { InfoSections } from "./components/InfoSections";
 import { ScrapeForm, type ScrapeFormRef } from "./components/ScrapeForm";
@@ -143,6 +144,7 @@ export function App() {
     templates,
     crawlStates,
     managerStatus,
+    metrics,
     jobsTotal,
     jobsPage,
     crawlStatesTotal,
@@ -452,6 +454,8 @@ export function App() {
         onSkip={skipOnboarding}
         onStepChange={goToStep}
       />
+
+      <MetricsDashboard metrics={metrics} connectionState={connectionState} />
 
       <section id="forms" className="grid" data-tour="form-types">
         <ScrapeForm

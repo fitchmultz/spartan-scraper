@@ -40,6 +40,8 @@ type Request struct {
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
 	TemplateRegistry *extract.TemplateRegistry
+	// MetricsCallback is called for each fetch operation to record metrics.
+	MetricsCallback fetch.MetricsCallback
 }
 
 // Result contains the outcome of a scrape operation.
@@ -91,7 +93,12 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		}
 	}
 
-	fetcher := fetch.NewFetcher(req.DataDir)
+	var fetcher fetch.Fetcher
+	if req.MetricsCallback != nil {
+		fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	} else {
+		fetcher = fetch.NewFetcher(req.DataDir)
+	}
 
 	fetchReq := fetch.Request{
 		URL:              req.URL,

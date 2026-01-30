@@ -47,6 +47,8 @@ type Request struct {
 	Registry         *pipeline.Registry
 	JSRegistry       *pipeline.JSRegistry
 	TemplateRegistry *extract.TemplateRegistry
+	// MetricsCallback is called for each fetch operation to record metrics.
+	MetricsCallback fetch.MetricsCallback
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -101,7 +103,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		return nil, err
 	}
 
-	fetcher := fetch.NewFetcher(req.DataDir)
+	var fetcher fetch.Fetcher
+	if req.MetricsCallback != nil {
+		fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	} else {
+		fetcher = fetch.NewFetcher(req.DataDir)
+	}
 
 	type task struct {
 		URL   string

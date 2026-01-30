@@ -1,44 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0180",
-      "status": "todo",
-      "title": "Implement rate limiting dashboard and performance metrics",
-      "priority": "low",
-      "tags": [
-        "ux",
-        "web",
-        "observability",
-        "developer"
-      ],
-      "scope": [
-        "internal/api/metrics.go (new)",
-        "web/src/components/MetricsDashboard.tsx (new)",
-        "web/src/components/InfoSections.tsx"
-      ],
-      "evidence": [
-        "No visibility into request rates, success/failure ratios, or performance trends.",
-        "Rate limiting is invisible - users don't know when they'll be throttled.",
-        "No metrics on crawl speed, extraction accuracy, or resource usage."
-      ],
-      "plan": [
-        "Add Prometheus-style metrics endpoint for scraping performance.",
-        "Create real-time dashboard showing: requests/sec, success rate, average response time.",
-        "Display rate limit status with visual indicator (green/yellow/red).",
-        "Add job duration histogram and throughput stats.",
-        "Show fetcher usage breakdown (HTTP vs Chromedp vs Playwright)."
-      ],
-      "notes": [
-        "Keep metrics lightweight - in-memory circular buffers",
-        "Don't expose sensitive URLs in metrics",
-        "Consider optional Prometheus export endpoint"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

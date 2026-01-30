@@ -21,6 +21,7 @@ package jobs
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
@@ -33,6 +34,16 @@ func (m *Manager) DefaultTimeoutSeconds() int {
 
 func (m *Manager) DefaultUsePlaywright() bool {
 	return m.usePlaywright
+}
+
+// GetLimiter returns the host rate limiter for metrics registration.
+func (m *Manager) GetLimiter() *fetch.HostLimiter {
+	return m.limiter
+}
+
+// SetMetricsCallback sets the callback function for recording fetch metrics.
+func (m *Manager) SetMetricsCallback(cb func(duration time.Duration, success bool, fetcherType, url string)) {
+	m.metricsCallback = cb
 }
 
 func reqRetries(v int) int {

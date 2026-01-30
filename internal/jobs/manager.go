@@ -39,6 +39,7 @@ type Manager struct {
 	mu               sync.Mutex
 	eventSubscribers []chan<- JobEvent
 	subscribersMu    sync.RWMutex
+	metricsCallback  func(duration time.Duration, success bool, fetcherType, url string)
 }
 
 // JobEventType represents the type of job lifecycle event.
