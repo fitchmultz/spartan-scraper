@@ -24,8 +24,10 @@ import {
   buildAuth,
   buildResearchRequest,
   parseUrlList,
+  buildWebhookConfig,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
+import { WebhookConfig } from "./WebhookConfig";
 
 export interface ResearchFormRef {
   /** Submit the form programmatically */
@@ -81,6 +83,12 @@ interface ResearchFormProps {
   setPostProcessors: (value: string) => void;
   transformers: string;
   setTransformers: (value: string) => void;
+  webhookUrl: string;
+  setWebhookUrl: (value: string) => void;
+  webhookEvents: string[];
+  setWebhookEvents: (value: string[]) => void;
+  webhookSecret: string;
+  setWebhookSecret: (value: string) => void;
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").ResearchRequest) => Promise<void>;
   loading: boolean;
@@ -131,6 +139,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setPostProcessors,
       transformers,
       setTransformers,
+      webhookUrl,
+      setWebhookUrl,
+      webhookEvents,
+      setWebhookEvents,
+      webhookSecret,
+      setWebhookSecret,
       profiles,
       onSubmit,
       loading,
@@ -177,6 +191,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         preProcessors,
         postProcessors,
         transformers,
+        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
       );
       await onSubmit(request);
     }, [
@@ -203,6 +218,9 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       preProcessors,
       postProcessors,
       transformers,
+      webhookUrl,
+      webhookEvents,
+      webhookSecret,
       onSubmit,
     ]);
 
@@ -232,6 +250,9 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         transformers,
         maxDepth,
         maxPages,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       }),
       [
         researchQuery,
@@ -257,6 +278,9 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         transformers,
         maxDepth,
         maxPages,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       ],
     );
 
@@ -374,6 +398,15 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           setPostProcessors={setPostProcessors}
           transformers={transformers}
           setTransformers={setTransformers}
+          inputPrefix="research"
+        />
+        <WebhookConfig
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           inputPrefix="research"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>

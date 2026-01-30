@@ -56,7 +56,7 @@ func TestManagerRecoverQueuedJobsPagination(t *testing.T) {
 	const jobCount = 120
 
 	for i := 0; i < jobCount; i++ {
-		_, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+		_, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob %d failed: %v", i, err)
 		}

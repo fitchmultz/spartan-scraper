@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
@@ -33,6 +34,16 @@ import (
 
 // EnvOverrides is an alias for auth.EnvOverrides
 type EnvOverrides = auth.EnvOverrides
+
+// WebhookConfig holds global webhook configuration.
+type WebhookConfig struct {
+	Enabled    bool
+	Secret     string
+	MaxRetries int
+	BaseDelay  time.Duration
+	MaxDelay   time.Duration
+	Timeout    time.Duration
+}
 
 // Config is the application's configuration snapshot.
 //
@@ -73,6 +84,9 @@ type Config struct {
 	ProxyURL      string
 	ProxyUsername string
 	ProxyPassword string
+
+	// Webhook configuration
+	Webhook WebhookConfig
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -116,6 +130,16 @@ func Load() (Config, error) {
 		ProxyURL:      getenv("PROXY_URL", ""),
 		ProxyUsername: getenv("PROXY_USERNAME", ""),
 		ProxyPassword: getenv("PROXY_PASSWORD", ""),
+
+		// Webhook configuration
+		Webhook: WebhookConfig{
+			Enabled:    getenvBool("WEBHOOK_ENABLED", false),
+			Secret:     getenv("WEBHOOK_SECRET", ""),
+			MaxRetries: getenvInt("WEBHOOK_MAX_RETRIES", 3),
+			BaseDelay:  time.Duration(getenvInt("WEBHOOK_BASE_DELAY_MS", 1000)) * time.Millisecond,
+			MaxDelay:   time.Duration(getenvInt("WEBHOOK_MAX_DELAY_MS", 30000)) * time.Millisecond,
+			Timeout:    time.Duration(getenvInt("WEBHOOK_TIMEOUT_MS", 30000)) * time.Millisecond,
+		},
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {

@@ -89,6 +89,11 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		Incremental:    incremental,
 		RequestID:      requestID,
 	}
+	if req.Webhook != nil {
+		spec.WebhookURL = req.Webhook.URL
+		spec.WebhookEvents = req.Webhook.Events
+		spec.WebhookSecret = req.Webhook.Secret
+	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
 		writeError(w, r, err)

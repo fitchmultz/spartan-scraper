@@ -33,7 +33,7 @@ import (
 )
 
 // CreateScrapeJob creates and persists a new scrape job.
-func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, webhookURL string, webhookEvents []string, webhookSecret string) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -52,6 +52,15 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool
 			"requestID":   requestID,
 		},
 	}
+	if webhookURL != "" {
+		job.Params["webhookURL"] = webhookURL
+		if len(webhookEvents) > 0 {
+			job.Params["webhookEvents"] = webhookEvents
+		}
+		if webhookSecret != "" {
+			job.Params["webhookSecret"] = webhookSecret
+		}
+	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
@@ -60,7 +69,7 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool
 }
 
 // CreateCrawlJob creates and persists a new crawl job.
-func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, sitemapURL string, sitemapOnly bool) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, sitemapURL string, sitemapOnly bool, webhookURL string, webhookEvents []string, webhookSecret string) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -83,6 +92,15 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 			"sitemapOnly": sitemapOnly,
 		},
 	}
+	if webhookURL != "" {
+		job.Params["webhookURL"] = webhookURL
+		if len(webhookEvents) > 0 {
+			job.Params["webhookEvents"] = webhookEvents
+		}
+		if webhookSecret != "" {
+			job.Params["webhookSecret"] = webhookSecret
+		}
+	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
@@ -91,7 +109,7 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 }
 
 // CreateResearchJob creates and persists a new research job.
-func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, requestID string) (model.Job, error) {
+func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, requestID string, webhookURL string, webhookEvents []string, webhookSecret string) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindResearch,
@@ -112,6 +130,15 @@ func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []st
 			"requestID":  requestID,
 		},
 	}
+	if webhookURL != "" {
+		job.Params["webhookURL"] = webhookURL
+		if len(webhookEvents) > 0 {
+			job.Params["webhookEvents"] = webhookEvents
+		}
+		if webhookSecret != "" {
+			job.Params["webhookSecret"] = webhookSecret
+		}
+	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
@@ -130,11 +157,11 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 
 	switch spec.Kind {
 	case model.KindScrape:
-		return m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID)
+		return m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindCrawl:
-		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly)
+		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindResearch:
-		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID)
+		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	default:
 		return model.Job{}, fmt.Errorf("unknown job kind: %s", spec.Kind)
 	}

@@ -41,6 +41,45 @@ func ValidStatuses() []Status {
 	return []Status{StatusQueued, StatusRunning, StatusSucceeded, StatusFailed, StatusCanceled}
 }
 
+// WebhookConfig holds webhook notification settings for a job.
+// These values are stored in Job.Params to avoid database schema changes.
+type WebhookConfig struct {
+	URL    string   `json:"url,omitempty"`
+	Events []string `json:"events,omitempty"`
+	Secret string   `json:"secret,omitempty"`
+}
+
+// ExtractWebhookConfig extracts webhook configuration from job params.
+// Returns nil if no webhook is configured.
+func (j Job) ExtractWebhookConfig() *WebhookConfig {
+	url, _ := j.Params["webhookURL"].(string)
+	if url == "" {
+		return nil
+	}
+
+	cfg := &WebhookConfig{
+		URL:    url,
+		Events: []string{"completed"}, // default
+	}
+
+	if events, ok := j.Params["webhookEvents"].([]string); ok && len(events) > 0 {
+		cfg.Events = events
+	}
+	if events, ok := j.Params["webhookEvents"].([]interface{}); ok && len(events) > 0 {
+		cfg.Events = make([]string, 0, len(events))
+		for _, e := range events {
+			if s, ok := e.(string); ok {
+				cfg.Events = append(cfg.Events, s)
+			}
+		}
+	}
+	if secret, ok := j.Params["webhookSecret"].(string); ok && secret != "" {
+		cfg.Secret = secret
+	}
+
+	return cfg
+}
+
 type Job struct {
 	ID         string                 `json:"id"`
 	Kind       Kind                   `json:"kind"`

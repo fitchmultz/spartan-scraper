@@ -32,8 +32,11 @@ type JobSpec struct {
 	Pipeline       pipeline.Options
 	Incremental    bool
 	RequestID      string
-	SitemapURL     string // Optional sitemap.xml URL for URL discovery
-	SitemapOnly    bool   // If true, only crawl URLs from sitemap, not the root URL
+	SitemapURL     string   // Optional sitemap.xml URL for URL discovery
+	SitemapOnly    bool     // If true, only crawl URLs from sitemap, not the root URL
+	WebhookURL     string   // Optional webhook URL for job notifications
+	WebhookEvents  []string // Events to trigger webhook (default: ["completed"])
+	WebhookSecret  string   // Optional HMAC secret for webhook signatures
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.

@@ -99,6 +99,11 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		SitemapURL:     req.SitemapURL,
 		SitemapOnly:    sitemapOnly,
 	}
+	if req.Webhook != nil {
+		spec.WebhookURL = req.Webhook.URL
+		spec.WebhookEvents = req.Webhook.Events
+		spec.WebhookSecret = req.Webhook.Secret
+	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
 		writeError(w, r, err)

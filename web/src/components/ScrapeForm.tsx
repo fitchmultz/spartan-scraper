@@ -22,8 +22,10 @@ import {
   parseQueryParams,
   buildAuth,
   buildScrapeRequest,
+  buildWebhookConfig,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
+import { WebhookConfig } from "./WebhookConfig";
 
 export interface ScrapeFormRef {
   /** Submit the form programmatically */
@@ -77,6 +79,12 @@ interface ScrapeFormProps {
   setTransformers: (value: string) => void;
   incremental: boolean;
   setIncremental: (value: boolean) => void;
+  webhookUrl: string;
+  setWebhookUrl: (value: string) => void;
+  webhookEvents: string[];
+  setWebhookEvents: (value: string[]) => void;
+  webhookSecret: string;
+  setWebhookSecret: (value: string) => void;
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").ScrapeRequest) => Promise<void>;
   loading: boolean;
@@ -125,6 +133,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setTransformers,
       incremental,
       setIncremental,
+      webhookUrl,
+      setWebhookUrl,
+      webhookEvents,
+      setWebhookEvents,
+      webhookSecret,
+      setWebhookSecret,
       profiles,
       onSubmit,
       loading,
@@ -168,6 +182,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         postProcessors,
         transformers,
         incremental,
+        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
       );
       await onSubmit(request);
     }, [
@@ -192,6 +207,9 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       postProcessors,
       transformers,
       incremental,
+      webhookUrl,
+      webhookEvents,
+      webhookSecret,
       onSubmit,
     ]);
 
@@ -219,6 +237,9 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         postProcessors,
         transformers,
         incremental,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       }),
       [
         scrapeUrl,
@@ -242,6 +263,9 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         postProcessors,
         transformers,
         incremental,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       ],
     );
 
@@ -331,6 +355,15 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           setTransformers={setTransformers}
           incremental={incremental}
           setIncremental={setIncremental}
+          inputPrefix="scrape"
+        />
+        <WebhookConfig
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           inputPrefix="scrape"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>

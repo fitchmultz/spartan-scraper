@@ -33,6 +33,9 @@ func TestServerCloseStopsManager(t *testing.T) {
 		pipeline.Options{},
 		false,
 		"",
+		"",
+		nil,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)

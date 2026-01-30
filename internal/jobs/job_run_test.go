@@ -30,7 +30,7 @@ func TestJobRun_RedactError_AuthTokens(t *testing.T) {
 		},
 	}
 
-	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestJobRun_RedactError_Paths(t *testing.T) {
 		},
 	}
 
-	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestJobRun_RedactError_KeyValueSecrets(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a job with secrets in query params that will be in error
-	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example?password=mypass123&token=mytoken456", false, false, fetch.AuthOptions{}, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example?password=mypass123&token=mytoken456", false, false, fetch.AuthOptions{}, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestJobRun_RedactError_MultipleSecrets(t *testing.T) {
 		},
 	}
 
-	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example?password=pass123", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://invalid-url-that-does-not-exist.example?password=pass123", false, false, auth, 5, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}

@@ -15,6 +15,7 @@ import type {
   ScrapeRequest,
   CrawlRequest,
   ResearchRequest,
+  WebhookConfig,
 } from "../api";
 import type { ResultItem, CrawlResultItem, ResearchResultItem } from "../types";
 
@@ -153,6 +154,22 @@ export function parseUrlList(raw: string): string[] {
     .filter(Boolean);
 }
 
+export function buildWebhookConfig(
+  url: string,
+  events: string[],
+  secret: string,
+): WebhookConfig | undefined {
+  if (!url.trim()) {
+    return undefined;
+  }
+  const validEvents = events.length > 0 ? events : ["completed"];
+  return {
+    url: url.trim(),
+    events: validEvents as WebhookConfig["events"],
+    secret: secret || undefined,
+  };
+}
+
 export function buildScrapeRequest(
   url: string,
   headless: boolean,
@@ -165,6 +182,7 @@ export function buildScrapeRequest(
   postProcessors: string,
   transformers: string,
   incremental: boolean,
+  webhook?: WebhookConfig,
 ): ScrapeRequest {
   return {
     url,
@@ -176,6 +194,7 @@ export function buildScrapeRequest(
     extract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
+    webhook,
   };
 }
 
@@ -195,6 +214,7 @@ export function buildCrawlRequest(
   incremental: boolean,
   sitemapURL?: string,
   sitemapOnly?: boolean,
+  webhook?: WebhookConfig,
 ): CrawlRequest {
   return {
     url,
@@ -210,6 +230,7 @@ export function buildCrawlRequest(
     incremental: incremental || undefined,
     sitemapURL: sitemapURL || undefined,
     sitemapOnly: sitemapOnly || undefined,
+    webhook,
   };
 }
 
@@ -227,6 +248,7 @@ export function buildResearchRequest(
   preProcessors: string,
   postProcessors: string,
   transformers: string,
+  webhook?: WebhookConfig,
 ): ResearchRequest {
   return {
     query,
@@ -240,6 +262,7 @@ export function buildResearchRequest(
     auth,
     extract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
+    webhook,
   };
 }
 

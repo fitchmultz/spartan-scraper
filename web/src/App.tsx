@@ -180,6 +180,9 @@ export function App() {
     incremental,
     maxDepth,
     maxPages,
+    webhookUrl,
+    webhookEvents,
+    webhookSecret,
     setHeadless,
     setUsePlaywright,
     setTimeoutSeconds,
@@ -202,6 +205,9 @@ export function App() {
     setIncremental,
     setMaxDepth,
     setMaxPages,
+    setWebhookUrl,
+    setWebhookEvents,
+    setWebhookSecret,
     applyPreset,
   } = formState;
 
@@ -500,6 +506,12 @@ export function App() {
           setTransformers={setTransformers}
           incremental={incremental}
           setIncremental={setIncremental}
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           profiles={profiles}
           onSubmit={handleSubmitScrape}
           loading={loading}
@@ -547,6 +559,12 @@ export function App() {
           setTransformers={setTransformers}
           incremental={incremental}
           setIncremental={setIncremental}
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           profiles={profiles}
           onSubmit={handleSubmitCrawl}
           loading={loading}
@@ -596,6 +614,12 @@ export function App() {
           setPostProcessors={setPostProcessors}
           transformers={transformers}
           setTransformers={setTransformers}
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           profiles={profiles}
           onSubmit={handleSubmitResearch}
           loading={loading}

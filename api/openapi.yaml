@@ -1133,6 +1133,62 @@ components:
           type: string
         proxy:
           $ref: '#/components/schemas/ProxyConfig'
+    WebhookConfig:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Webhook URL to receive job notifications
+        events:
+          type: array
+          description: "Events to subscribe to (default: ['completed'])"
+          items:
+            type: string
+            enum: [completed, failed, canceled, started, all]
+        secret:
+          type: string
+          description: HMAC-SHA256 secret for signature verification
+          format: password
+    WebhookPayload:
+      type: object
+      description: Payload sent to webhook endpoints on job events
+      properties:
+        eventId:
+          type: string
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          enum: [job.created, job.started, job.completed]
+          description: Type of event that triggered this webhook
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the event
+        jobId:
+          type: string
+          description: ID of the job this event relates to
+        jobKind:
+          type: string
+          enum: [scrape, crawl, research]
+          description: Type of job
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, canceled]
+          description: Current job status
+        prevStatus:
+          type: string
+          description: Previous job status (if applicable)
+        error:
+          type: string
+          description: Error message if job failed
+        resultPath:
+          type: string
+          description: Path to job results file
+        completedAt:
+          type: string
+          format: date-time
+          description: Timestamp when job completed (for completed events)
     ScrapeRequest:
       type: object
       required: [url]
@@ -1165,6 +1221,8 @@ components:
           default: false
         proxy:
           $ref: '#/components/schemas/ProxyConfig'
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
     CrawlRequest:
       type: object
       required: [url]
@@ -1215,6 +1273,8 @@ components:
           type: boolean
           default: false
           description: If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1258,6 +1318,8 @@ components:
           maximum: 300
         proxy:
           $ref: '#/components/schemas/ProxyConfig'
+        webhook:
+          $ref: '#/components/schemas/WebhookConfig'
     Job:
       type: object
       required:

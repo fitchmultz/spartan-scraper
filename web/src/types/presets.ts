@@ -59,6 +59,10 @@ export interface PresetConfig {
   // Sitemap options
   sitemapURL?: string;
   sitemapOnly?: boolean;
+  // Webhook options
+  webhookUrl?: string;
+  webhookEvents?: string[];
+  webhookSecret?: string;
 }
 
 /**

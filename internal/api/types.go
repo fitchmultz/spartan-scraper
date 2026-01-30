@@ -34,6 +34,13 @@ type StatusResponse struct {
 	RequestID string `json:"requestId,omitempty"`
 }
 
+// WebhookConfig represents webhook configuration for job notifications.
+type WebhookConfig struct {
+	URL    string   `json:"url,omitempty"`
+	Events []string `json:"events,omitempty"`
+	Secret string   `json:"secret,omitempty"`
+}
+
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`
@@ -45,6 +52,7 @@ type ScrapeRequest struct {
 	Extract        *extract.ExtractOptions `json:"extract"`
 	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
+	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 }
 
 // CrawlRequest represents a request to crawl a website.
@@ -62,6 +70,7 @@ type CrawlRequest struct {
 	Incremental    *bool                   `json:"incremental"`
 	SitemapURL     string                  `json:"sitemapURL,omitempty"`
 	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
+	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 }
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
@@ -77,6 +86,7 @@ type ResearchRequest struct {
 	Auth           *fetch.AuthOptions      `json:"auth"`
 	Extract        *extract.ExtractOptions `json:"extract"`
 	Pipeline       *pipeline.Options       `json:"pipeline"`
+	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 }
 
 // ScheduleRequest represents a request to add a scheduled job.

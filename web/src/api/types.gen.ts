@@ -172,6 +172,67 @@ export type AuthOptions = {
     proxy?: ProxyConfig;
 };
 
+export type WebhookConfig = {
+    /**
+     * Webhook URL to receive job notifications
+     */
+    url?: string;
+    /**
+     * Events to subscribe to (default: ['completed'])
+     */
+    events?: Array<'completed' | 'failed' | 'canceled' | 'started' | 'all'>;
+    /**
+     * HMAC-SHA256 secret for signature verification
+     */
+    secret?: string;
+};
+
+/**
+ * Payload sent to webhook endpoints on job events
+ */
+export type WebhookPayload = {
+    /**
+     * Unique identifier for this event
+     */
+    eventId?: string;
+    /**
+     * Type of event that triggered this webhook
+     */
+    eventType?: 'job.created' | 'job.started' | 'job.completed';
+    /**
+     * ISO 8601 timestamp of the event
+     */
+    timestamp?: string;
+    /**
+     * ID of the job this event relates to
+     */
+    jobId?: string;
+    /**
+     * Type of job
+     */
+    jobKind?: 'scrape' | 'crawl' | 'research';
+    /**
+     * Current job status
+     */
+    status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+    /**
+     * Previous job status (if applicable)
+     */
+    prevStatus?: string;
+    /**
+     * Error message if job failed
+     */
+    error?: string;
+    /**
+     * Path to job results file
+     */
+    resultPath?: string;
+    /**
+     * Timestamp when job completed (for completed events)
+     */
+    completedAt?: string;
+};
+
 export type ScrapeRequest = {
     url: string;
     headless?: boolean;
@@ -183,6 +244,7 @@ export type ScrapeRequest = {
     timeoutSeconds?: number;
     incremental?: boolean;
     proxy?: ProxyConfig;
+    webhook?: WebhookConfig;
 };
 
 export type CrawlRequest = {
@@ -206,6 +268,7 @@ export type CrawlRequest = {
      * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
      */
     sitemapOnly?: boolean;
+    webhook?: WebhookConfig;
 };
 
 export type ResearchRequest = {
@@ -221,6 +284,7 @@ export type ResearchRequest = {
     pipeline?: PipelineOptions;
     timeoutSeconds?: number;
     proxy?: ProxyConfig;
+    webhook?: WebhookConfig;
 };
 
 export type Job = {

@@ -20,7 +20,7 @@ func TestManagerRun_ContextCancellation(t *testing.T) {
 
 	ctx := context.Background()
 
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestContextCleanupOnShutdown(t *testing.T) {
 	const jobCount = 3
 	var jobIDs []string
 	for i := 0; i < jobCount; i++ {
-		job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+		job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob %d failed: %v", i, err)
 		}
@@ -112,7 +112,7 @@ func TestContextCleanupOnJobError(t *testing.T) {
 
 	ctx := context.Background()
 
-	job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com/test", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}

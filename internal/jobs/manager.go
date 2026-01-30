@@ -16,30 +16,32 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // Manager coordinates the execution of scraping, crawling, and research jobs.
 type Manager struct {
-	store            *store.Store
-	dataDir          string
-	userAgent        string
-	requestTimeout   time.Duration
-	maxConcurrency   int
-	limiter          *fetch.HostLimiter
-	maxRetries       int
-	retryBase        time.Duration
-	maxResponseBytes int64
-	usePlaywright    bool
-	queue            chan model.Job
-	pipelineRegistry *pipeline.Registry
-	jsRegistry       *pipeline.JSRegistry
-	templateRegistry *extract.TemplateRegistry
-	wg               sync.WaitGroup
-	activeJobs       map[string]context.CancelFunc
-	mu               sync.Mutex
-	eventSubscribers []chan<- JobEvent
-	subscribersMu    sync.RWMutex
-	metricsCallback  func(duration time.Duration, success bool, fetcherType, url string)
+	store             *store.Store
+	dataDir           string
+	userAgent         string
+	requestTimeout    time.Duration
+	maxConcurrency    int
+	limiter           *fetch.HostLimiter
+	maxRetries        int
+	retryBase         time.Duration
+	maxResponseBytes  int64
+	usePlaywright     bool
+	queue             chan model.Job
+	pipelineRegistry  *pipeline.Registry
+	jsRegistry        *pipeline.JSRegistry
+	templateRegistry  *extract.TemplateRegistry
+	wg                sync.WaitGroup
+	activeJobs        map[string]context.CancelFunc
+	mu                sync.Mutex
+	eventSubscribers  []chan<- JobEvent
+	subscribersMu     sync.RWMutex
+	metricsCallback   func(duration time.Duration, success bool, fetcherType, url string)
+	webhookDispatcher *webhook.Dispatcher
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -261,6 +263,7 @@ func (m *Manager) UnsubscribeFromEvents(ch chan<- JobEvent) {
 
 // publishEvent broadcasts a job event to all subscribers.
 // Non-blocking: slow subscribers will miss events.
+// Also dispatches webhooks if configured for the job.
 func (m *Manager) publishEvent(event JobEvent) {
 	m.subscribersMu.RLock()
 	defer m.subscribersMu.RUnlock()
@@ -271,6 +274,57 @@ func (m *Manager) publishEvent(event JobEvent) {
 			// Channel full or closed, skip this subscriber
 		}
 	}
+
+	// Dispatch webhook if configured
+	if m.webhookDispatcher != nil {
+		if cfg := event.Job.ExtractWebhookConfig(); cfg != nil {
+			m.dispatchWebhook(event, cfg)
+		}
+	}
+}
+
+// dispatchWebhook sends a webhook notification for a job event.
+func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookConfig) {
+	// Map JobEventType to webhook EventType
+	var eventType webhook.EventType
+	switch event.Type {
+	case JobEventCreated:
+		eventType = webhook.EventJobCreated
+	case JobEventStarted:
+		eventType = webhook.EventJobStarted
+	case JobEventCompleted:
+		eventType = webhook.EventJobCompleted
+	default:
+		// Don't send webhook for status updates that aren't terminal
+		return
+	}
+
+	// Check if this event should be sent based on configured events
+	if !webhook.ShouldSendEvent(eventType, string(event.Job.Status), cfg.Events) {
+		return
+	}
+
+	payload := webhook.Payload{
+		EventID:    event.Job.ID + "-" + string(event.Type),
+		EventType:  eventType,
+		Timestamp:  time.Now(),
+		JobID:      event.Job.ID,
+		JobKind:    string(event.Job.Kind),
+		Status:     string(event.Job.Status),
+		PrevStatus: string(event.PrevStatus),
+		Error:      event.Job.Error,
+		ResultPath: event.Job.ResultPath,
+	}
+
+	m.webhookDispatcher.Dispatch(context.Background(), cfg.URL, payload, cfg.Secret)
+}
+
+// SetWebhookDispatcher sets the webhook dispatcher for the manager.
+// This should be called before Start() if webhook notifications are desired.
+func (m *Manager) SetWebhookDispatcher(dispatcher *webhook.Dispatcher) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.webhookDispatcher = dispatcher
 }
 
 // CancelJob attempts to cancel a running or queued job.

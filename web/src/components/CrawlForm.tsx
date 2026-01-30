@@ -22,8 +22,10 @@ import {
   parseQueryParams,
   buildAuth,
   buildCrawlRequest,
+  buildWebhookConfig,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
+import { WebhookConfig } from "./WebhookConfig";
 
 export interface CrawlFormRef {
   /** Submit the form programmatically */
@@ -77,6 +79,12 @@ interface CrawlFormProps {
   setTransformers: (value: string) => void;
   incremental: boolean;
   setIncremental: (value: boolean) => void;
+  webhookUrl: string;
+  setWebhookUrl: (value: string) => void;
+  webhookEvents: string[];
+  setWebhookEvents: (value: string[]) => void;
+  webhookSecret: string;
+  setWebhookSecret: (value: string) => void;
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").CrawlRequest) => Promise<void>;
   loading: boolean;
@@ -125,6 +133,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setTransformers,
       incremental,
       setIncremental,
+      webhookUrl,
+      setWebhookUrl,
+      webhookEvents,
+      setWebhookEvents,
+      webhookSecret,
+      setWebhookSecret,
       profiles,
       onSubmit,
       loading,
@@ -176,6 +190,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         incremental,
         sitemapURL,
         sitemapOnly,
+        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
       );
       await onSubmit(request);
     }, [
@@ -204,6 +219,9 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       incremental,
       sitemapURL,
       sitemapOnly,
+      webhookUrl,
+      webhookEvents,
+      webhookSecret,
       onSubmit,
     ]);
 
@@ -235,6 +253,9 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         maxPages,
         sitemapURL,
         sitemapOnly,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       }),
       [
         crawlUrl,
@@ -262,6 +283,9 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         maxPages,
         sitemapURL,
         sitemapOnly,
+        webhookUrl,
+        webhookEvents,
+        webhookSecret,
       ],
     );
 
@@ -396,6 +420,15 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           setTransformers={setTransformers}
           incremental={incremental}
           setIncremental={setIncremental}
+          inputPrefix="crawl"
+        />
+        <WebhookConfig
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
           inputPrefix="crawl"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>

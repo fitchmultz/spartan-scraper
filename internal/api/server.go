@@ -10,6 +10,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 	"github.com/gobwas/ws"
 )
 
@@ -41,6 +42,18 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 
 	// Set up metrics callback for fetch operations
 	s.manager.SetMetricsCallback(s.metricsCollector.RecordRequest)
+
+	// Initialize webhook dispatcher if configured
+	if cfg.Webhook.Enabled || cfg.Webhook.Secret != "" {
+		dispatcher := webhook.NewDispatcher(webhook.Config{
+			Secret:     cfg.Webhook.Secret,
+			MaxRetries: cfg.Webhook.MaxRetries,
+			BaseDelay:  cfg.Webhook.BaseDelay,
+			MaxDelay:   cfg.Webhook.MaxDelay,
+			Timeout:    cfg.Webhook.Timeout,
+		})
+		s.manager.SetWebhookDispatcher(dispatcher)
+	}
 
 	return s
 }

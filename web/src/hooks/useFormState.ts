@@ -36,6 +36,9 @@ export interface FormState {
   incremental: boolean;
   maxDepth: number;
   maxPages: number;
+  webhookUrl: string;
+  webhookEvents: string[];
+  webhookSecret: string;
 }
 
 export interface FormActions {
@@ -61,6 +64,9 @@ export interface FormActions {
   setIncremental: (value: boolean) => void;
   setMaxDepth: (value: number) => void;
   setMaxPages: (value: number) => void;
+  setWebhookUrl: (value: string) => void;
+  setWebhookEvents: (value: string[]) => void;
+  setWebhookSecret: (value: string) => void;
   /** Apply a preset configuration to the form state */
   applyPreset: (config: PresetConfig) => void;
 }
@@ -88,6 +94,9 @@ const INITIAL_STATE: FormState = {
   incremental: false,
   maxDepth: 2,
   maxPages: 200,
+  webhookUrl: "",
+  webhookEvents: ["completed"],
+  webhookSecret: "",
 };
 
 export function useFormState(): FormState & FormActions {
@@ -181,6 +190,18 @@ export function useFormState(): FormState & FormActions {
     setState((prev) => ({ ...prev, maxPages: value }));
   }, []);
 
+  const setWebhookUrl = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, webhookUrl: value }));
+  }, []);
+
+  const setWebhookEvents = useCallback((value: string[]) => {
+    setState((prev) => ({ ...prev, webhookEvents: value }));
+  }, []);
+
+  const setWebhookSecret = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, webhookSecret: value }));
+  }, []);
+
   useEffect(() => {
     if (!state.headless && state.usePlaywright) {
       setState((prev) => ({ ...prev, usePlaywright: false }));
@@ -236,6 +257,13 @@ export function useFormState(): FormState & FormActions {
       }),
       ...(config.maxDepth !== undefined && { maxDepth: config.maxDepth }),
       ...(config.maxPages !== undefined && { maxPages: config.maxPages }),
+      ...(config.webhookUrl !== undefined && { webhookUrl: config.webhookUrl }),
+      ...(config.webhookEvents !== undefined && {
+        webhookEvents: config.webhookEvents,
+      }),
+      ...(config.webhookSecret !== undefined && {
+        webhookSecret: config.webhookSecret,
+      }),
     }));
   }, []);
 
@@ -263,6 +291,9 @@ export function useFormState(): FormState & FormActions {
     setIncremental,
     setMaxDepth,
     setMaxPages,
+    setWebhookUrl,
+    setWebhookEvents,
+    setWebhookSecret,
     applyPreset,
   };
 }

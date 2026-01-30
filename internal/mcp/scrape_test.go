@@ -36,6 +36,9 @@ func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 		},
 		true,
 		"",
+		"",
+		nil,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)

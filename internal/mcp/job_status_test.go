@@ -55,7 +55,7 @@ func TestHandleJobStatus(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("get job status", func(t *testing.T) {
-		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "")
+		job, err := srv.manager.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 		if err != nil {
 			t.Fatalf("CreateScrapeJob failed: %v", err)
 		}
