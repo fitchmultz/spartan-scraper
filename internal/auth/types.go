@@ -12,6 +12,7 @@ const (
 	TokenBearer TokenKind = "bearer"
 	TokenBasic  TokenKind = "basic"
 	TokenApiKey TokenKind = "api_key"
+	TokenOAuth2 TokenKind = "oauth2"
 )
 
 // APIKeyPermission defines the access level for an API key
@@ -77,6 +78,64 @@ type LoginFlow struct {
 	Password       string `json:"password,omitempty"`
 }
 
+// OAuth2FlowType defines the OAuth 2.0 flow variant.
+type OAuth2FlowType string
+
+const (
+	OAuth2FlowAuthorizationCode OAuth2FlowType = "authorization_code"
+	OAuth2FlowClientCredentials OAuth2FlowType = "client_credentials"
+	OAuth2FlowDeviceCode        OAuth2FlowType = "device_code"
+)
+
+// OAuth2Config defines OAuth 2.0 client configuration.
+type OAuth2Config struct {
+	FlowType     OAuth2FlowType `json:"flow_type"`
+	ClientID     string         `json:"client_id"`
+	ClientSecret string         `json:"client_secret,omitempty"`
+	AuthorizeURL string         `json:"authorize_url,omitempty"` // For auth code flow
+	TokenURL     string         `json:"token_url"`
+	RevokeURL    string         `json:"revoke_url,omitempty"`
+	Scopes       []string       `json:"scopes,omitempty"`
+	UsePKCE      bool           `json:"use_pkce"` // Required for public clients
+	RedirectURI  string         `json:"redirect_uri,omitempty"`
+	// OIDC-specific
+	DiscoveryURL string `json:"discovery_url,omitempty"` // .well-known/openid-configuration
+	Issuer       string `json:"issuer,omitempty"`
+}
+
+// OAuth2Token represents an OAuth 2.0 token set with refresh capability.
+type OAuth2Token struct {
+	AccessToken  string     `json:"access_token"`
+	RefreshToken string     `json:"refresh_token,omitempty"`
+	TokenType    string     `json:"token_type"` // "Bearer", etc.
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	Scope        string     `json:"scope,omitempty"`
+}
+
+// OAuth2State represents an in-progress OAuth 2.0 authorization flow.
+type OAuth2State struct {
+	State        string    `json:"state"`         // CSRF protection token
+	CodeVerifier string    `json:"code_verifier"` // PKCE verifier
+	ProfileName  string    `json:"profile_name"`  // Associated profile
+	RedirectURI  string    `json:"redirect_uri"`
+	CreatedAt    time.Time `json:"created_at"`
+	ExpiresAt    time.Time `json:"expires_at"` // State expires for security
+}
+
+// OIDCProviderMetadata represents OIDC discovery document.
+type OIDCProviderMetadata struct {
+	Issuer                 string   `json:"issuer"`
+	AuthorizationEndpoint  string   `json:"authorization_endpoint"`
+	TokenEndpoint          string   `json:"token_endpoint"`
+	UserinfoEndpoint       string   `json:"userinfo_endpoint,omitempty"`
+	RevocationEndpoint     string   `json:"revocation_endpoint,omitempty"`
+	JWKSURI                string   `json:"jwks_uri,omitempty"`
+	ScopesSupported        []string `json:"scopes_supported,omitempty"`
+	ResponseTypesSupported []string `json:"response_types_supported,omitempty"`
+	GrantTypesSupported    []string `json:"grant_types_supported,omitempty"`
+	CodeChallengeMethods   []string `json:"code_challenge_methods_supported,omitempty"`
+}
+
 type Profile struct {
 	Name    string         `json:"name"`
 	Parents []string       `json:"parents,omitempty"`
@@ -84,6 +143,7 @@ type Profile struct {
 	Cookies []Cookie       `json:"cookies,omitempty"`
 	Tokens  []Token        `json:"tokens,omitempty"`
 	Login   *LoginFlow     `json:"login,omitempty"`
+	OAuth2  *OAuth2Config  `json:"oauth2,omitempty"`
 	Presets []TargetPreset `json:"presets,omitempty"`
 }
 

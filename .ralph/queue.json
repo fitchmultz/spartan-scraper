@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0205",
-      "status": "todo",
-      "title": "Add OAuth 2.0 and OIDC authentication flow support",
-      "priority": "high",
-      "tags": [
-        "auth",
-        "oauth",
-        "security"
-      ],
-      "scope": [
-        "internal/auth/",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "Auth supports static tokens but not OAuth 2.0 flows",
-        "No automatic token refresh mechanism",
-        "No OIDC discovery support"
-      ],
-      "plan": [
-        "Add OAuth 2.0 authorization code flow",
-        "Implement token refresh with automatic retry",
-        "Add OIDC discovery and configuration",
-        "Support PKCE for public clients",
-        "Add OAuth state parameter security",
-        "Create auth callback endpoint for web UI"
-      ],
-      "notes": [],
-      "request": "scan finding: OAuth 2.0 support gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0206",
       "status": "todo",
       "title": "Add JSON Schema validation for extracted data",

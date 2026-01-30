@@ -337,6 +337,255 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/oauth/initiate:
+    post:
+      summary: Initiate OAuth 2.0 authorization flow
+      description: |
+        Starts an OAuth 2.0 authorization code flow. Generates state parameter for CSRF protection
+        and optionally PKCE code challenge. Returns the authorization URL to redirect the user to.
+      operationId: initiateOAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthInitiateRequest'
+      responses:
+        '200':
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInitiateResponse'
+        '400':
+          description: Bad Request - Missing profile or invalid OAuth configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/oauth/callback:
+    get:
+      summary: OAuth 2.0 callback endpoint
+      description: |
+        Handles the OAuth 2.0 callback from the authorization server. Exchanges the authorization
+        code for access and refresh tokens. The state parameter is validated for CSRF protection.
+      operationId: oauthCallback
+      parameters:
+        - name: code
+          in: query
+          description: Authorization code from OAuth provider
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          description: State parameter for CSRF validation
+          schema:
+            type: string
+        - name: error
+          in: query
+          description: Error from OAuth provider (if authentication failed)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token exchange successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenResponse'
+        '400':
+          description: Bad Request - Invalid state or missing code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/oauth/refresh:
+    post:
+      summary: Refresh OAuth 2.0 access token
+      description: |
+        Refreshes an OAuth 2.0 access token using the stored refresh token.
+        The new tokens are automatically saved for the profile.
+      operationId: refreshOAuthToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthTokenResponse'
+        '400':
+          description: Bad Request - Missing profile or no refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile or token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/oauth/discover:
+    post:
+      summary: Perform OIDC discovery
+      description: |
+        Fetches OIDC provider metadata from a discovery URL or issuer.
+        Returns endpoints, supported scopes, and other provider configuration.
+      operationId: discoverOIDC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OIDCDiscoverRequest'
+      responses:
+        '200':
+          description: Discovery successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCProviderMetadata'
+        '400':
+          description: Bad Request - Missing discovery URL or issuer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/oauth/revoke:
+    post:
+      summary: Revoke OAuth 2.0 token
+      description: |
+        Revokes the OAuth 2.0 token for a profile at the provider (if supported)
+        and deletes it from local storage.
+      operationId: revokeOAuthToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - profile_name
+              properties:
+                profile_name:
+                  type: string
+                  description: Name of the profile to revoke tokens for
+      responses:
+        '200':
+          description: Token revoked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Bad Request - Missing profile name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile or token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/templates:
     get:
       summary: List extraction templates
@@ -1609,6 +1858,155 @@ components:
           type: string
         password:
           type: string
+    OAuth2Config:
+      type: object
+      description: OAuth 2.0 client configuration for authorization flows
+      properties:
+        flow_type:
+          type: string
+          enum: [authorization_code, client_credentials, device_code]
+          description: OAuth 2.0 flow type
+        client_id:
+          type: string
+          description: OAuth client ID
+        client_secret:
+          type: string
+          description: OAuth client secret (omit for public clients)
+        authorize_url:
+          type: string
+          format: uri
+          description: Authorization endpoint URL (required for authorization_code flow)
+        token_url:
+          type: string
+          format: uri
+          description: Token endpoint URL
+        revoke_url:
+          type: string
+          format: uri
+          description: Token revocation endpoint URL (optional)
+        scopes:
+          type: array
+          items:
+            type: string
+          description: OAuth scopes to request
+        use_pkce:
+          type: boolean
+          default: true
+          description: Use PKCE for authorization code flow (required for public clients)
+        redirect_uri:
+          type: string
+          format: uri
+          description: OAuth redirect URI
+        discovery_url:
+          type: string
+          format: uri
+          description: OIDC discovery URL (.well-known/openid-configuration)
+        issuer:
+          type: string
+          description: OIDC issuer identifier
+    OAuthInitiateRequest:
+      type: object
+      required:
+        - profile_name
+      properties:
+        profile_name:
+          type: string
+          description: Name of the profile with OAuth2 configuration
+        redirect_uri:
+          type: string
+          format: uri
+          description: Override redirect URI for this flow
+    OAuthInitiateResponse:
+      type: object
+      properties:
+        authorization_url:
+          type: string
+          format: uri
+          description: URL to redirect user for OAuth authorization
+        state:
+          type: string
+          description: CSRF protection state parameter
+    OAuthTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: OAuth access token
+        token_type:
+          type: string
+          description: Token type (e.g., Bearer)
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+        scope:
+          type: string
+          description: Granted scopes
+    OAuthRefreshRequest:
+      type: object
+      required:
+        - profile_name
+      properties:
+        profile_name:
+          type: string
+          description: Name of the profile to refresh token for
+    OIDCDiscoverRequest:
+      type: object
+      description: OIDC discovery request - provide either discovery_url or issuer
+      properties:
+        discovery_url:
+          type: string
+          format: uri
+          description: Full URL to .well-known/openid-configuration
+        issuer:
+          type: string
+          description: OIDC issuer URL (will append .well-known/openid-configuration)
+    OIDCProviderMetadata:
+      type: object
+      description: OIDC provider metadata from discovery
+      properties:
+        issuer:
+          type: string
+          description: OIDC issuer identifier
+        authorization_endpoint:
+          type: string
+          format: uri
+          description: Authorization endpoint URL
+        token_endpoint:
+          type: string
+          format: uri
+          description: Token endpoint URL
+        userinfo_endpoint:
+          type: string
+          format: uri
+          description: UserInfo endpoint URL
+        revocation_endpoint:
+          type: string
+          format: uri
+          description: Token revocation endpoint URL
+        jwks_uri:
+          type: string
+          format: uri
+          description: JSON Web Key Set URL
+        scopes_supported:
+          type: array
+          items:
+            type: string
+          description: Supported OAuth scopes
+        response_types_supported:
+          type: array
+          items:
+            type: string
+          description: Supported OAuth response types
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+          description: Supported OAuth grant types
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+          description: Supported PKCE code challenge methods
     TargetPreset:
       type: object
       properties:
@@ -1656,6 +2054,8 @@ components:
             $ref: '#/components/schemas/Token'
         login:
           $ref: '#/components/schemas/LoginFlow'
+        oauth2:
+          $ref: '#/components/schemas/OAuth2Config'
         presets:
           type: array
           items:

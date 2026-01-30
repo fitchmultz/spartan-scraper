@@ -83,6 +83,164 @@ export type LoginFlow = {
     password?: string;
 };
 
+/**
+ * OAuth 2.0 client configuration for authorization flows
+ */
+export type OAuth2Config = {
+    /**
+     * OAuth 2.0 flow type
+     */
+    flow_type?: 'authorization_code' | 'client_credentials' | 'device_code';
+    /**
+     * OAuth client ID
+     */
+    client_id?: string;
+    /**
+     * OAuth client secret (omit for public clients)
+     */
+    client_secret?: string;
+    /**
+     * Authorization endpoint URL (required for authorization_code flow)
+     */
+    authorize_url?: string;
+    /**
+     * Token endpoint URL
+     */
+    token_url?: string;
+    /**
+     * Token revocation endpoint URL (optional)
+     */
+    revoke_url?: string;
+    /**
+     * OAuth scopes to request
+     */
+    scopes?: Array<string>;
+    /**
+     * Use PKCE for authorization code flow (required for public clients)
+     */
+    use_pkce?: boolean;
+    /**
+     * OAuth redirect URI
+     */
+    redirect_uri?: string;
+    /**
+     * OIDC discovery URL (.well-known/openid-configuration)
+     */
+    discovery_url?: string;
+    /**
+     * OIDC issuer identifier
+     */
+    issuer?: string;
+};
+
+export type OAuthInitiateRequest = {
+    /**
+     * Name of the profile with OAuth2 configuration
+     */
+    profile_name: string;
+    /**
+     * Override redirect URI for this flow
+     */
+    redirect_uri?: string;
+};
+
+export type OAuthInitiateResponse = {
+    /**
+     * URL to redirect user for OAuth authorization
+     */
+    authorization_url?: string;
+    /**
+     * CSRF protection state parameter
+     */
+    state?: string;
+};
+
+export type OAuthTokenResponse = {
+    /**
+     * OAuth access token
+     */
+    access_token?: string;
+    /**
+     * Token type (e.g., Bearer)
+     */
+    token_type?: string;
+    /**
+     * Token lifetime in seconds
+     */
+    expires_in?: number;
+    /**
+     * Granted scopes
+     */
+    scope?: string;
+};
+
+export type OAuthRefreshRequest = {
+    /**
+     * Name of the profile to refresh token for
+     */
+    profile_name: string;
+};
+
+/**
+ * OIDC discovery request - provide either discovery_url or issuer
+ */
+export type OidcDiscoverRequest = {
+    /**
+     * Full URL to .well-known/openid-configuration
+     */
+    discovery_url?: string;
+    /**
+     * OIDC issuer URL (will append .well-known/openid-configuration)
+     */
+    issuer?: string;
+};
+
+/**
+ * OIDC provider metadata from discovery
+ */
+export type OidcProviderMetadata = {
+    /**
+     * OIDC issuer identifier
+     */
+    issuer?: string;
+    /**
+     * Authorization endpoint URL
+     */
+    authorization_endpoint?: string;
+    /**
+     * Token endpoint URL
+     */
+    token_endpoint?: string;
+    /**
+     * UserInfo endpoint URL
+     */
+    userinfo_endpoint?: string;
+    /**
+     * Token revocation endpoint URL
+     */
+    revocation_endpoint?: string;
+    /**
+     * JSON Web Key Set URL
+     */
+    jwks_uri?: string;
+    /**
+     * Supported OAuth scopes
+     */
+    scopes_supported?: Array<string>;
+    /**
+     * Supported OAuth response types
+     */
+    response_types_supported?: Array<string>;
+    /**
+     * Supported OAuth grant types
+     */
+    grant_types_supported?: Array<string>;
+    /**
+     * Supported PKCE code challenge methods
+     */
+    code_challenge_methods_supported?: Array<string>;
+};
+
 export type TargetPreset = {
     name?: string;
     hostPatterns?: Array<string>;
@@ -99,6 +257,7 @@ export type AuthProfile = {
     cookies?: Array<Cookie>;
     tokens?: Array<Token>;
     login?: LoginFlow;
+    oauth2?: OAuth2Config;
     presets?: Array<TargetPreset>;
 };
 
@@ -1718,6 +1877,217 @@ export type GetSessionResponses = {
 };
 
 export type GetSessionResponse = GetSessionResponses[keyof GetSessionResponses];
+
+export type InitiateOAuthData = {
+    body: OAuthInitiateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/oauth/initiate';
+};
+
+export type InitiateOAuthErrors = {
+    /**
+     * Bad Request - Missing profile or invalid OAuth configuration
+     */
+    400: ErrorResponse;
+    /**
+     * Profile not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type InitiateOAuthError = InitiateOAuthErrors[keyof InitiateOAuthErrors];
+
+export type InitiateOAuthResponses = {
+    /**
+     * Authorization URL generated
+     */
+    200: OAuthInitiateResponse;
+};
+
+export type InitiateOAuthResponse = InitiateOAuthResponses[keyof InitiateOAuthResponses];
+
+export type OauthCallbackData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Authorization code from OAuth provider
+         */
+        code?: string;
+        /**
+         * State parameter for CSRF validation
+         */
+        state: string;
+        /**
+         * Error from OAuth provider (if authentication failed)
+         */
+        error?: string;
+    };
+    url: '/v1/auth/oauth/callback';
+};
+
+export type OauthCallbackErrors = {
+    /**
+     * Bad Request - Invalid state or missing code
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type OauthCallbackError = OauthCallbackErrors[keyof OauthCallbackErrors];
+
+export type OauthCallbackResponses = {
+    /**
+     * Token exchange successful
+     */
+    200: OAuthTokenResponse;
+};
+
+export type OauthCallbackResponse = OauthCallbackResponses[keyof OauthCallbackResponses];
+
+export type RefreshOAuthTokenData = {
+    body: OAuthRefreshRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/oauth/refresh';
+};
+
+export type RefreshOAuthTokenErrors = {
+    /**
+     * Bad Request - Missing profile or no refresh token
+     */
+    400: ErrorResponse;
+    /**
+     * Profile or token not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type RefreshOAuthTokenError = RefreshOAuthTokenErrors[keyof RefreshOAuthTokenErrors];
+
+export type RefreshOAuthTokenResponses = {
+    /**
+     * Token refreshed successfully
+     */
+    200: OAuthTokenResponse;
+};
+
+export type RefreshOAuthTokenResponse = RefreshOAuthTokenResponses[keyof RefreshOAuthTokenResponses];
+
+export type DiscoverOidcData = {
+    body: OidcDiscoverRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/oauth/discover';
+};
+
+export type DiscoverOidcErrors = {
+    /**
+     * Bad Request - Missing discovery URL or issuer
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DiscoverOidcError = DiscoverOidcErrors[keyof DiscoverOidcErrors];
+
+export type DiscoverOidcResponses = {
+    /**
+     * Discovery successful
+     */
+    200: OidcProviderMetadata;
+};
+
+export type DiscoverOidcResponse = DiscoverOidcResponses[keyof DiscoverOidcResponses];
+
+export type RevokeOAuthTokenData = {
+    body: {
+        /**
+         * Name of the profile to revoke tokens for
+         */
+        profile_name: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/auth/oauth/revoke';
+};
+
+export type RevokeOAuthTokenErrors = {
+    /**
+     * Bad Request - Missing profile name
+     */
+    400: ErrorResponse;
+    /**
+     * Profile or token not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type RevokeOAuthTokenError = RevokeOAuthTokenErrors[keyof RevokeOAuthTokenErrors];
+
+export type RevokeOAuthTokenResponses = {
+    /**
+     * Token revoked successfully
+     */
+    200: StatusResponse;
+};
+
+export type RevokeOAuthTokenResponse = RevokeOAuthTokenResponses[keyof RevokeOAuthTokenResponses];
 
 export type ListTemplatesData = {
     body?: never;

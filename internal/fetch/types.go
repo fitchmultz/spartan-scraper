@@ -250,6 +250,19 @@ type AuthOptions struct {
 	ProxyPool string `json:"proxyPool,omitempty"`
 	// ProxyHints provides hints for proxy selection when using a proxy pool.
 	ProxyHints *ProxySelectionHints `json:"proxyHints,omitempty"`
+	// OAuth2 contains OAuth 2.0 configuration for automatic token management.
+	// When set, the fetcher will use OAuth transport with automatic token refresh.
+	OAuth2 *OAuth2AuthConfig `json:"oauth2,omitempty"`
+}
+
+// OAuth2AuthConfig defines OAuth 2.0 authentication configuration for fetch operations.
+type OAuth2AuthConfig struct {
+	// ProfileName is the name of the auth profile with OAuth2 configuration
+	ProfileName string `json:"profileName,omitempty"`
+	// AccessToken is a static access token (optional - if not set, will be loaded from store)
+	AccessToken string `json:"accessToken,omitempty"`
+	// TokenType is the token type (e.g., "Bearer"). Defaults to "Bearer" if not set.
+	TokenType string `json:"tokenType,omitempty"`
 }
 
 type Request struct {

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses } from './types.gen';
+import type { CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, DiscoverOidcData, DiscoverOidcErrors, DiscoverOidcResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, InitiateOAuthData, InitiateOAuthErrors, InitiateOAuthResponses, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, RefreshOAuthTokenData, RefreshOAuthTokenErrors, RefreshOAuthTokenResponses, RevokeOAuthTokenData, RevokeOAuthTokenErrors, RevokeOAuthTokenResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -128,6 +128,87 @@ export const getSession = <ThrowOnError extends boolean = false>(options: Option
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/auth/sessions/{id}',
     ...options
+});
+
+/**
+ * Initiate OAuth 2.0 authorization flow
+ *
+ * Starts an OAuth 2.0 authorization code flow. Generates state parameter for CSRF protection
+ * and optionally PKCE code challenge. Returns the authorization URL to redirect the user to.
+ *
+ */
+export const initiateOAuth = <ThrowOnError extends boolean = false>(options: Options<InitiateOAuthData, ThrowOnError>) => (options.client ?? client).post<InitiateOAuthResponses, InitiateOAuthErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/oauth/initiate',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * OAuth 2.0 callback endpoint
+ *
+ * Handles the OAuth 2.0 callback from the authorization server. Exchanges the authorization
+ * code for access and refresh tokens. The state parameter is validated for CSRF protection.
+ *
+ */
+export const oauthCallback = <ThrowOnError extends boolean = false>(options: Options<OauthCallbackData, ThrowOnError>) => (options.client ?? client).get<OauthCallbackResponses, OauthCallbackErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/oauth/callback',
+    ...options
+});
+
+/**
+ * Refresh OAuth 2.0 access token
+ *
+ * Refreshes an OAuth 2.0 access token using the stored refresh token.
+ * The new tokens are automatically saved for the profile.
+ *
+ */
+export const refreshOAuthToken = <ThrowOnError extends boolean = false>(options: Options<RefreshOAuthTokenData, ThrowOnError>) => (options.client ?? client).post<RefreshOAuthTokenResponses, RefreshOAuthTokenErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/oauth/refresh',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Perform OIDC discovery
+ *
+ * Fetches OIDC provider metadata from a discovery URL or issuer.
+ * Returns endpoints, supported scopes, and other provider configuration.
+ *
+ */
+export const discoverOidc = <ThrowOnError extends boolean = false>(options: Options<DiscoverOidcData, ThrowOnError>) => (options.client ?? client).post<DiscoverOidcResponses, DiscoverOidcErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/oauth/discover',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoke OAuth 2.0 token
+ *
+ * Revokes the OAuth 2.0 token for a profile at the provider (if supported)
+ * and deletes it from local storage.
+ *
+ */
+export const revokeOAuthToken = <ThrowOnError extends boolean = false>(options: Options<RevokeOAuthTokenData, ThrowOnError>) => (options.client ?? client).post<RevokeOAuthTokenResponses, RevokeOAuthTokenErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/auth/oauth/revoke',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**
