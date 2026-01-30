@@ -237,6 +237,13 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		ctxOptions.Proxy = &proxyOpts
 	}
 
+	// Apply device emulation if specified
+	device := f.resolveDevice(req, prof)
+	if device != nil {
+		slog.Debug("applying device emulation", "url", apperrors.SanitizeURL(req.URL), "device", device.Name)
+		f.applyDeviceEmulation(&ctxOptions, device)
+	}
+
 	slog.Debug("creating browser context", "url", apperrors.SanitizeURL(req.URL))
 	browserCtx, err := browser.NewContext(ctxOptions)
 	if err != nil {
@@ -407,7 +414,7 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	// Capture screenshot if requested
 	var screenshotPath string
 	if req.Screenshot != nil && req.Screenshot.Enabled {
-		path, err := f.captureScreenshot(page, req, req.DataDir)
+		path, err := f.captureScreenshot(page, req, prof, req.DataDir)
 		if err != nil {
 			// Log warning but don't fail the fetch if screenshot fails
 			slog.Warn("screenshot capture failed", "url", apperrors.SanitizeURL(req.URL), "error", err)
@@ -509,7 +516,7 @@ func isBlockedType(resType string, blockType BlockedResourceType) bool {
 
 // captureScreenshot captures a screenshot of the current page using Playwright.
 // It returns the path to the saved screenshot file.
-func (f *PlaywrightFetcher) captureScreenshot(page playwright.Page, req Request, dataDir string) (string, error) {
+func (f *PlaywrightFetcher) captureScreenshot(page playwright.Page, req Request, prof RenderProfile, dataDir string) (string, error) {
 	if req.Screenshot == nil || !req.Screenshot.Enabled {
 		return "", nil
 	}
@@ -530,8 +537,9 @@ func (f *PlaywrightFetcher) captureScreenshot(page playwright.Page, req Request,
 	filename := fmt.Sprintf("playwright_%d_%d.%s", timestamp, req.Screenshot.Quality, ext)
 	path := filepath.Join(screenshotDir, filename)
 
-	// Set viewport if custom dimensions provided
-	if req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
+	// Set viewport if custom dimensions provided and no device emulation is active
+	device := f.resolveDevice(req, prof)
+	if device == nil && req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
 		if err := page.SetViewportSize(req.Screenshot.Width, req.Screenshot.Height); err != nil {
 			return "", fmt.Errorf("failed to set viewport: %w", err)
 		}
@@ -556,4 +564,52 @@ func (f *PlaywrightFetcher) captureScreenshot(page playwright.Page, req Request,
 	}
 
 	return path, nil
+}
+
+// resolveDevice determines which device emulation to use.
+// Priority: req.Device > prof.Device > req.Screenshot.Device > prof.Screenshot.Device > none
+func (f *PlaywrightFetcher) resolveDevice(req Request, prof RenderProfile) *DeviceEmulation {
+	if req.Device != nil {
+		return req.Device
+	}
+	if prof.Device != nil {
+		return prof.Device
+	}
+	if req.Screenshot != nil && req.Screenshot.Device != nil {
+		return req.Screenshot.Device
+	}
+	if prof.Screenshot.Device != nil {
+		return prof.Screenshot.Device
+	}
+	return nil
+}
+
+// applyDeviceEmulation applies device emulation settings to the Playwright context options.
+func (f *PlaywrightFetcher) applyDeviceEmulation(opts *playwright.BrowserNewContextOptions, device *DeviceEmulation) {
+	if device == nil {
+		return
+	}
+
+	// Set viewport
+	viewport := playwright.Size{
+		Width:  device.ViewportWidth,
+		Height: device.ViewportHeight,
+	}
+	opts.Viewport = &viewport
+
+	// Set device scale factor
+	if device.DeviceScaleFactor > 0 {
+		opts.DeviceScaleFactor = &device.DeviceScaleFactor
+	}
+
+	// Set mobile flag
+	opts.IsMobile = &device.IsMobile
+
+	// Set touch support
+	opts.HasTouch = &device.HasTouch
+
+	// Set user agent
+	if device.UserAgent != "" {
+		opts.UserAgent = &device.UserAgent
+	}
 }

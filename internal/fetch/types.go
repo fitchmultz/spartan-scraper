@@ -5,6 +5,7 @@ package fetch
 
 import (
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -33,6 +34,101 @@ const (
 	ScreenshotFormatJPEG ScreenshotFormat = "jpeg"
 )
 
+// DeviceEmulation defines device emulation settings for mobile/responsive content.
+// Used by headless fetchers to emulate specific devices.
+type DeviceEmulation struct {
+	Name              string  `json:"name"`              // Device preset name (e.g., "iPhone 14", "Pixel 7")
+	ViewportWidth     int     `json:"viewportWidth"`     // Viewport width in pixels
+	ViewportHeight    int     `json:"viewportHeight"`    // Viewport height in pixels
+	DeviceScaleFactor float64 `json:"deviceScaleFactor"` // Device pixel ratio (e.g., 2.0 for Retina)
+	UserAgent         string  `json:"userAgent"`         // User agent string for the device
+	IsMobile          bool    `json:"isMobile"`          // Whether to emulate mobile viewport
+	HasTouch          bool    `json:"hasTouch"`          // Whether the device has touch capability
+}
+
+// Common device presets for mobile emulation.
+var devicePresets = map[string]DeviceEmulation{
+	"iphone14": {
+		Name:              "iPhone 14",
+		ViewportWidth:     390,
+		ViewportHeight:    844,
+		DeviceScaleFactor: 3.0,
+		UserAgent:         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"iphonemax": {
+		Name:              "iPhone 14 Pro Max",
+		ViewportWidth:     428,
+		ViewportHeight:    926,
+		DeviceScaleFactor: 3.0,
+		UserAgent:         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"ipad": {
+		Name:              "iPad",
+		ViewportWidth:     810,
+		ViewportHeight:    1080,
+		DeviceScaleFactor: 2.0,
+		UserAgent:         "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"ipadpro": {
+		Name:              "iPad Pro",
+		ViewportWidth:     1024,
+		ViewportHeight:    1366,
+		DeviceScaleFactor: 2.0,
+		UserAgent:         "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"pixel7": {
+		Name:              "Pixel 7",
+		ViewportWidth:     412,
+		ViewportHeight:    915,
+		DeviceScaleFactor: 2.625,
+		UserAgent:         "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"galaxys23": {
+		Name:              "Galaxy S23",
+		ViewportWidth:     360,
+		ViewportHeight:    780,
+		DeviceScaleFactor: 3.0,
+		UserAgent:         "Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
+		IsMobile:          true,
+		HasTouch:          true,
+	},
+	"desktop": {
+		Name:              "Desktop",
+		ViewportWidth:     1920,
+		ViewportHeight:    1080,
+		DeviceScaleFactor: 1.0,
+		UserAgent:         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+		IsMobile:          false,
+		HasTouch:          false,
+	},
+}
+
+// GetDevicePreset returns a device emulation preset by name.
+// Returns nil if the preset name is not recognized.
+func GetDevicePreset(name string) *DeviceEmulation {
+	if name == "" {
+		return nil
+	}
+	// Normalize name to lowercase for case-insensitive lookup
+	name = strings.ToLower(name)
+	if preset, ok := devicePresets[name]; ok {
+		// Return a copy to prevent modification of the original
+		presetCopy := preset
+		return &presetCopy
+	}
+	return nil
+}
+
 // ScreenshotConfig defines screenshot capture options for headless fetchers.
 // Screenshots are only applicable to chromedp and playwright engines, not HTTP fetcher.
 type ScreenshotConfig struct {
@@ -42,6 +138,7 @@ type ScreenshotConfig struct {
 	Quality  int              `json:"quality,omitempty"` // JPEG quality (1-100), ignored for PNG
 	Width    int              `json:"width,omitempty"`   // Viewport width (0 = default)
 	Height   int              `json:"height,omitempty"`  // Viewport height (0 = default)
+	Device   *DeviceEmulation `json:"device,omitempty"`  // Device emulation settings
 }
 
 type RenderWaitMode string
@@ -108,6 +205,7 @@ type RenderProfile struct {
 	Wait       RenderWaitPolicy    `json:"wait,omitempty"`
 	Timeouts   RenderTimeoutPolicy `json:"timeouts,omitempty"`
 	Screenshot ScreenshotConfig    `json:"screenshot,omitempty"`
+	Device     *DeviceEmulation    `json:"device,omitempty"` // Device emulation for this profile
 }
 
 type RenderProfilesFile struct {
@@ -163,6 +261,7 @@ type Request struct {
 	PostNavJS        []string          `json:"-"`
 	WaitSelectors    []string          `json:"-"`
 	Screenshot       *ScreenshotConfig `json:"screenshot"`
+	Device           *DeviceEmulation  `json:"device,omitempty"` // Device emulation settings
 }
 
 type Result struct {

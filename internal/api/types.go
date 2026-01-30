@@ -54,6 +54,7 @@ type ScrapeRequest struct {
 	Incremental    *bool                   `json:"incremental"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
+	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
 }
 
 // CrawlRequest represents a request to crawl a website.
@@ -73,6 +74,7 @@ type CrawlRequest struct {
 	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
+	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
 }
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
@@ -90,6 +92,7 @@ type ResearchRequest struct {
 	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
 	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
+	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
 }
 
 // ScheduleRequest represents a request to add a scheduled job.
@@ -111,6 +114,8 @@ type ScheduleRequest struct {
 	Incremental     *bool                   `json:"incremental"`
 	SitemapURL      *string                 `json:"sitemapURL,omitempty"`
 	SitemapOnly     *bool                   `json:"sitemapOnly,omitempty"`
+	Screenshot      *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
+	Device          *fetch.DeviceEmulation  `json:"device,omitempty"`
 }
 
 // ScheduleResponse represents a schedule in the response.

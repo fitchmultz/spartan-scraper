@@ -1114,6 +1114,32 @@ components:
           type: string
           description: Password for proxy authentication
           format: password
+    DeviceEmulation:
+      type: object
+      description: Device emulation configuration for mobile/responsive content
+      properties:
+        name:
+          type: string
+          description: Device preset name (e.g., "iPhone 14", "Pixel 7")
+        viewportWidth:
+          type: integer
+          description: Viewport width in pixels
+        viewportHeight:
+          type: integer
+          description: Viewport height in pixels
+        deviceScaleFactor:
+          type: number
+          format: float
+          description: Device pixel ratio (e.g., 2.0 for Retina, 3.0 for iPhone)
+        userAgent:
+          type: string
+          description: User agent string for the device
+        isMobile:
+          type: boolean
+          description: Whether to emulate mobile viewport
+        hasTouch:
+          type: boolean
+          description: Whether the device has touch capability
     ScreenshotConfig:
       type: object
       description: Screenshot capture configuration for headless fetchers (chromedp, playwright). Ignored for HTTP fetcher.
@@ -1143,6 +1169,8 @@ components:
         height:
           type: integer
           description: Viewport height in pixels (0 = use default)
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
     AuthOptions:
       type: object
       properties:
@@ -1269,6 +1297,8 @@ components:
           $ref: '#/components/schemas/WebhookConfig'
         screenshot:
           $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
     CrawlRequest:
       type: object
       required: [url]
@@ -1333,6 +1363,8 @@ components:
           $ref: '#/components/schemas/WebhookConfig'
         screenshot:
           $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1380,6 +1412,8 @@ components:
           $ref: '#/components/schemas/WebhookConfig'
         screenshot:
           $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
     Job:
       type: object
       required:
@@ -1538,6 +1572,10 @@ components:
           type: boolean
           default: false
           description: If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
+        screenshot:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        device:
+          $ref: '#/components/schemas/DeviceEmulation'
     ScheduleListResponse:
       type: object
       properties:

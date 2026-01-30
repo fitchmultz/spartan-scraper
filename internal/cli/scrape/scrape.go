@@ -14,6 +14,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
@@ -85,6 +86,16 @@ Options:
 		return 1
 	}
 
+	// Resolve device preset if specified
+	var device *fetch.DeviceEmulation
+	if *cf.Device != "" {
+		device = fetch.GetDevicePreset(*cf.Device)
+		if device == nil {
+			fmt.Fprintf(os.Stderr, "Unknown device preset: %s\n", *cf.Device)
+			return 1
+		}
+	}
+
 	spec := jobs.JobSpec{
 		Kind:           model.KindScrape,
 		URL:            *url,
@@ -95,6 +106,7 @@ Options:
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
 		Incremental:    *cf.Incremental,
+		Device:         device,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

@@ -108,6 +108,12 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		if req.SitemapOnly != nil && req.Kind == "crawl" {
 			params["sitemapOnly"] = *req.SitemapOnly
 		}
+		if req.Screenshot != nil {
+			params["screenshot"] = *req.Screenshot
+		}
+		if req.Device != nil {
+			params["device"] = *req.Device
+		}
 
 		schedule := scheduler.Schedule{
 			Kind:            model.Kind(req.Kind),

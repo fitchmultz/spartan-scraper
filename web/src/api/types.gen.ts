@@ -146,6 +146,40 @@ export type ProxyConfig = {
 };
 
 /**
+ * Device emulation configuration for mobile/responsive content
+ */
+export type DeviceEmulation = {
+    /**
+     * Device preset name (e.g., "iPhone 14", "Pixel 7")
+     */
+    name?: string;
+    /**
+     * Viewport width in pixels
+     */
+    viewportWidth?: number;
+    /**
+     * Viewport height in pixels
+     */
+    viewportHeight?: number;
+    /**
+     * Device pixel ratio (e.g., 2.0 for Retina, 3.0 for iPhone)
+     */
+    deviceScaleFactor?: number;
+    /**
+     * User agent string for the device
+     */
+    userAgent?: string;
+    /**
+     * Whether to emulate mobile viewport
+     */
+    isMobile?: boolean;
+    /**
+     * Whether the device has touch capability
+     */
+    hasTouch?: boolean;
+};
+
+/**
  * Screenshot capture configuration for headless fetchers (chromedp, playwright). Ignored for HTTP fetcher.
  */
 export type ScreenshotConfig = {
@@ -173,6 +207,7 @@ export type ScreenshotConfig = {
      * Viewport height in pixels (0 = use default)
      */
     height?: number;
+    device?: DeviceEmulation;
 };
 
 export type AuthOptions = {
@@ -276,6 +311,7 @@ export type ScrapeRequest = {
     proxy?: ProxyConfig;
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
 };
 
 export type CrawlRequest = {
@@ -309,6 +345,7 @@ export type CrawlRequest = {
     excludePatterns?: Array<string>;
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
 };
 
 export type ResearchRequest = {
@@ -326,6 +363,7 @@ export type ResearchRequest = {
     proxy?: ProxyConfig;
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
 };
 
 export type Job = {
@@ -427,6 +465,8 @@ export type ScheduleRequest = {
      * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
      */
     sitemapOnly?: boolean;
+    screenshot?: ScreenshotConfig;
+    device?: DeviceEmulation;
 };
 
 export type ScheduleListResponse = {

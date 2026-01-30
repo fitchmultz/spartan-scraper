@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 
@@ -129,6 +130,15 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 
 	ctx, cancelTimeout := context.WithTimeout(ctx, timeout)
 	defer cancelTimeout()
+
+	// Apply device emulation if specified
+	device := f.resolveDevice(req, prof)
+	if device != nil {
+		slog.Debug("applying device emulation", "url", apperrors.SanitizeURL(req.URL), "device", device.Name)
+		if err := f.applyDeviceEmulation(ctx, device); err != nil {
+			slog.Warn("failed to apply device emulation", "url", apperrors.SanitizeURL(req.URL), "error", err)
+		}
+	}
 
 	// Configure network interception and blocking
 	actions := []chromedp.Action{network.Enable()}
@@ -610,8 +620,9 @@ func (f *ChromedpFetcher) captureScreenshot(ctx context.Context, req Request, da
 	filename := fmt.Sprintf("chromedp_%d_%d.%s", timestamp, req.Screenshot.Quality, ext)
 	path := filepath.Join(screenshotDir, filename)
 
-	// Set viewport if custom dimensions provided
-	if req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
+	// Set viewport if custom dimensions provided and no device emulation is active
+	device := f.resolveDevice(req, RenderProfile{})
+	if device == nil && req.Screenshot.Width > 0 && req.Screenshot.Height > 0 {
 		width := int64(req.Screenshot.Width)
 		height := int64(req.Screenshot.Height)
 		if err := chromedp.Run(ctx, chromedp.EmulateViewport(width, height)); err != nil {
@@ -636,4 +647,64 @@ func (f *ChromedpFetcher) captureScreenshot(ctx context.Context, req Request, da
 	}
 
 	return path, nil
+}
+
+// resolveDevice determines which device emulation to use.
+// Priority: req.Device > prof.Device > req.Screenshot.Device > prof.Screenshot.Device > none
+func (f *ChromedpFetcher) resolveDevice(req Request, prof RenderProfile) *DeviceEmulation {
+	if req.Device != nil {
+		return req.Device
+	}
+	if prof.Device != nil {
+		return prof.Device
+	}
+	if req.Screenshot != nil && req.Screenshot.Device != nil {
+		return req.Screenshot.Device
+	}
+	if prof.Screenshot.Device != nil {
+		return prof.Screenshot.Device
+	}
+	return nil
+}
+
+// applyDeviceEmulation applies device emulation settings to the chromedp context.
+func (f *ChromedpFetcher) applyDeviceEmulation(ctx context.Context, device *DeviceEmulation) error {
+	if device == nil {
+		return nil
+	}
+
+	// Set viewport
+	width := int64(device.ViewportWidth)
+	height := int64(device.ViewportHeight)
+	if err := chromedp.Run(ctx, chromedp.EmulateViewport(width, height)); err != nil {
+		return fmt.Errorf("failed to set viewport: %w", err)
+	}
+
+	// Set device scale factor
+	if device.DeviceScaleFactor > 0 {
+		if err := chromedp.Run(ctx, emulation.SetDeviceMetricsOverride(
+			int64(device.ViewportWidth),
+			int64(device.ViewportHeight),
+			device.DeviceScaleFactor,
+			device.IsMobile,
+		)); err != nil {
+			return fmt.Errorf("failed to set device metrics: %w", err)
+		}
+	}
+
+	// Set touch emulation
+	if device.HasTouch {
+		if err := chromedp.Run(ctx, emulation.SetTouchEmulationEnabled(true)); err != nil {
+			return fmt.Errorf("failed to enable touch emulation: %w", err)
+		}
+	}
+
+	// Set user agent (if not already set via allocator options)
+	if device.UserAgent != "" {
+		if err := chromedp.Run(ctx, emulation.SetUserAgentOverride(device.UserAgent)); err != nil {
+			return fmt.Errorf("failed to set user agent: %w", err)
+		}
+	}
+
+	return nil
 }

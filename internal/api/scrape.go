@@ -89,6 +89,7 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		Incremental:    incremental,
 		RequestID:      requestID,
 		Screenshot:     req.Screenshot,
+		Device:         req.Device,
 	}
 	if req.Webhook != nil {
 		spec.WebhookURL = req.Webhook.URL

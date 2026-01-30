@@ -82,6 +82,7 @@ type CommonFlags struct {
 	Headless   *bool
 	Playwright *bool
 	Timeout    *int
+	Device     *string // Device preset for mobile emulation
 
 	// Output flags
 	Out         *string
@@ -170,6 +171,7 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		Headless:   fs.Bool("headless", false, "Use headless browser"),
 		Playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
 		Timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+		Device:     fs.String("device", "", "Device preset for mobile emulation (iphone14, iphonemax, ipad, ipadpro, pixel7, galaxys23, desktop)"),
 
 		Out:         fs.String("out", "", "Output file (JSON)"),
 		Wait:        fs.Bool("wait", false, "Wait for completion and write output"),

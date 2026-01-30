@@ -99,6 +99,7 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		SitemapURL:     req.SitemapURL,
 		SitemapOnly:    sitemapOnly,
 		Screenshot:     req.Screenshot,
+		Device:         req.Device,
 	}
 	if req.Webhook != nil {
 		spec.WebhookURL = req.Webhook.URL

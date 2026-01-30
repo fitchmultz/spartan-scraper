@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0189",
-      "status": "todo",
-      "title": "Add mobile device emulation for responsive content",
-      "priority": "medium",
-      "tags": [
-        "fetch",
-        "mobile",
-        "emulation",
-        "responsive"
-      ],
-      "scope": [
-        "internal/fetch/types.go",
-        "internal/fetch/chromedp_fetcher.go",
-        "internal/fetch/playwright_fetcher.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "internal/fetch/types.go only has UserAgent configuration",
-        "No Device, Viewport, or Mobile fields in RenderProfile",
-        "Cannot scrape mobile-responsive content that differs from desktop"
-      ],
-      "plan": [
-        "Add DeviceEmulation struct with Name, Viewport, UserAgent, Touch fields",
-        "Add preset devices (iPhone, iPad, Pixel, etc.)",
-        "Implement device emulation in ChromedpFetcher using chromedp.Emulate",
-        "Implement device emulation in Playwright using context.SetViewportSize",
-        "Add --device flag to CLI with preset options",
-        "Update OpenAPI spec with device emulation options",
-        "Add device selector to web UI",
-        "Write tests for device emulation"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0190",
       "status": "todo",
       "title": "Implement per-host rate limiting",

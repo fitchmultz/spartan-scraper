@@ -40,6 +40,7 @@ type JobSpec struct {
 	IncludePatterns []string                // URL path patterns to include (glob syntax, e.g., /blog/**)
 	ExcludePatterns []string                // URL path patterns to exclude (glob syntax, e.g., /admin/*)
 	Screenshot      *fetch.ScreenshotConfig // Optional screenshot capture configuration
+	Device          *fetch.DeviceEmulation  // Optional device emulation for mobile/responsive content
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.
