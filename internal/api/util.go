@@ -129,6 +129,25 @@ func parseIntParam(s string, defaultVal int) int {
 	return val
 }
 
+// parseIntParamStrict parses an integer parameter and returns an error for invalid input.
+// Unlike parseIntParam, this does NOT silently default - it validates and reports errors.
+// Returns validation error if:
+//   - The string is non-empty but cannot be parsed as an integer
+//   - The parsed value is negative
+func parseIntParamStrict(s string, paramName string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	var val int
+	if _, err := fmt.Sscanf(s, "%d", &val); err != nil {
+		return 0, apperrors.Validation(fmt.Sprintf("invalid %s: must be a non-negative integer", paramName))
+	}
+	if val < 0 {
+		return 0, apperrors.Validation(fmt.Sprintf("invalid %s: cannot be negative", paramName))
+	}
+	return val, nil
+}
+
 func resolveAuthForRequest(cfg config.Config, url string, profile string, override *fetch.AuthOptions) (fetch.AuthOptions, error) {
 	input := auth.ResolveInput{
 		ProfileName: profile,

@@ -20,12 +20,23 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := r.URL.Query()
-	limit := parseIntParam(query.Get("limit"), 100)
-	offset := parseIntParam(query.Get("offset"), 0)
+	limit, err := parseIntParamStrict(query.Get("limit"), "limit")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if limit == 0 {
+		limit = 100
+	}
+
+	offset, err := parseIntParamStrict(query.Get("offset"), "offset")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 	statusParam := query.Get("status")
 
 	var jobsList []model.Job
-	var err error
 	var total int
 	var status model.Status
 

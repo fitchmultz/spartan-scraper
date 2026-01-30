@@ -125,31 +125,54 @@ func TestHandleJobResultsWithPagination(t *testing.T) {
 		t.Errorf("expected 0 items with offset beyond total, got %d", len(items))
 	}
 
+	// Test negative limit returns 400
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=-1&offset=0", nil)
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	json.Unmarshal(rr.Body.Bytes(), &items)
-	if len(items) != 100 {
-		t.Errorf("expected default limit of 100 with invalid limit, got %d", len(items))
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected 400 for negative limit, got %v", status)
 	}
 
-	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=2000&offset=0", nil)
+	// Test non-numeric limit returns 400
+	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=abc&offset=0", nil)
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	json.Unmarshal(rr.Body.Bytes(), &items)
-	if len(items) != 150 {
-		t.Errorf("expected max limit of 1000 with limit > 1000, but only 150 items in file, got %d", len(items))
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected 400 for non-numeric limit, got %v", status)
 	}
 
+	// Test negative offset returns 400
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=50&offset=-1", nil)
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected 400 for negative offset, got %v", status)
+	}
+
+	// Test non-numeric offset returns 400
+	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=50&offset=xyz", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("expected 400 for non-numeric offset, got %v", status)
+	}
+
+	// Test limit > 1000 is clamped to 1000 (still returns 200)
+	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=2000&offset=0", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected 200 for limit > 1000 (clamped), got %v", status)
+	}
+
 	json.Unmarshal(rr.Body.Bytes(), &items)
-	if len(items) != 50 {
-		t.Errorf("expected default offset of 0 with invalid offset, got %d", len(items))
+	if len(items) != 150 {
+		t.Errorf("expected max limit of 1000 with limit > 1000, but only 150 items in file, got %d", len(items))
 	}
 
 	req = httptest.NewRequest("GET", "/v1/jobs/"+jobID+"/results?format=jsonl&limit=50&offset=0", nil)

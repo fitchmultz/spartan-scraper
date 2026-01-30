@@ -193,18 +193,19 @@ func TestHandleJobsPagination(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		query         string
-		expectedCount int
+		name           string
+		query          string
+		expectedStatus int
+		expectedCount  int
 	}{
-		{"limit 5", "?limit=5", 5},
-		{"limit 2", "?limit=2", 2},
-		{"offset 8", "?offset=8", 2},
-		{"limit 5 offset 8", "?limit=5&offset=8", 2},
-		{"invalid limit", "?limit=abc", 10}, // Should default to 100, but we only have 10
-		{"negative limit", "?limit=-1", 10}, // Should default to 100
-		{"invalid offset", "?offset=abc", 10},
-		{"negative offset", "?offset=-5", 10},
+		{"limit 5", "?limit=5", http.StatusOK, 5},
+		{"limit 2", "?limit=2", http.StatusOK, 2},
+		{"offset 8", "?offset=8", http.StatusOK, 2},
+		{"limit 5 offset 8", "?limit=5&offset=8", http.StatusOK, 2},
+		{"invalid limit", "?limit=abc", http.StatusBadRequest, 0},
+		{"negative limit", "?limit=-1", http.StatusBadRequest, 0},
+		{"invalid offset", "?offset=abc", http.StatusBadRequest, 0},
+		{"negative offset", "?offset=-5", http.StatusBadRequest, 0},
 	}
 
 	for _, tt := range tests {
@@ -213,20 +214,29 @@ func TestHandleJobsPagination(t *testing.T) {
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
 
-			if status := rr.Code; status != http.StatusOK {
-				t.Errorf("expected status 200, got %v", status)
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("expected status %d, got %v", tt.expectedStatus, status)
 			}
 
-			// Verify X-Total-Count header
-			if total := rr.Header().Get("X-Total-Count"); total != "10" {
-				t.Errorf("expected X-Total-Count 10, got %s", total)
-			}
+			if tt.expectedStatus == http.StatusOK {
+				// Verify X-Total-Count header
+				if total := rr.Header().Get("X-Total-Count"); total != "10" {
+					t.Errorf("expected X-Total-Count 10, got %s", total)
+				}
 
-			var resp map[string]interface{}
-			json.Unmarshal(rr.Body.Bytes(), &resp)
-			jobsList := resp["jobs"].([]interface{})
-			if len(jobsList) != tt.expectedCount {
-				t.Errorf("expected %d jobs, got %d", tt.expectedCount, len(jobsList))
+				var resp map[string]interface{}
+				json.Unmarshal(rr.Body.Bytes(), &resp)
+				jobsList := resp["jobs"].([]interface{})
+				if len(jobsList) != tt.expectedCount {
+					t.Errorf("expected %d jobs, got %d", tt.expectedCount, len(jobsList))
+				}
+			} else {
+				// For error cases, verify error response
+				var resp map[string]interface{}
+				json.Unmarshal(rr.Body.Bytes(), &resp)
+				if _, ok := resp["error"]; !ok {
+					t.Error("expected 'error' field in response for invalid pagination")
+				}
 			}
 		})
 	}

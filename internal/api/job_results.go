@@ -90,8 +90,23 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		hasPagination := r.URL.Query().Get("limit") != "" || r.URL.Query().Get("offset") != ""
 
 		if hasPagination {
-			limit := exporter.Limit(r)
-			offset := exporter.Offset(r)
+			limit, err := parseIntParamStrict(r.URL.Query().Get("limit"), "limit")
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			if limit == 0 {
+				limit = 100
+			}
+			if limit > 1000 {
+				limit = 1000
+			}
+
+			offset, err := parseIntParamStrict(r.URL.Query().Get("offset"), "offset")
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
 
 			f, err := os.Open(job.ResultPath)
 			if err != nil {

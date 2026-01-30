@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0159",
-      "status": "todo",
-      "title": "Return validation errors for invalid pagination params",
-      "priority": "medium",
-      "tags": [
-        "api",
-        "validation",
-        "ux"
-      ],
-      "scope": [
-        "internal/api/util.go",
-        "internal/api/jobs.go",
-        "internal/api/job_results.go",
-        "internal/api/crawl_states.go",
-        "internal/exporter/pagination.go",
-        "internal/api/job_results_pagination_test.go"
-      ],
-      "evidence": [
-        "internal/api/util.go parseIntParam silently defaults on parse errors or negatives.",
-        "internal/exporter/pagination.go Limit/Offset clamp to defaults instead of returning an error, so invalid inputs never surface to callers."
-      ],
-      "plan": [
-        "Introduce strict parsing helpers that return (value, error) for limit/offset.",
-        "Update handlers to return apperrors.Validation on invalid pagination params.",
-        "Adjust pagination tests to assert 400 responses on invalid input."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T23:18:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0160",
       "status": "todo",
       "title": "Address generated API types file exceeding 1k LOC",
