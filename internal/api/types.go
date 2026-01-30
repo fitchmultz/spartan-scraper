@@ -44,6 +44,9 @@ type WebhookConfig struct {
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
 	URL            string                  `json:"url"`
+	Method         string                  `json:"method,omitempty"`      // HTTP method, default GET
+	Body           string                  `json:"body,omitempty"`        // Request body (base64 for binary data)
+	ContentType    string                  `json:"contentType,omitempty"` // Content-Type header for request body
 	Headless       bool                    `json:"headless"`
 	Playwright     *bool                   `json:"playwright"`
 	TimeoutSeconds int                     `json:"timeoutSeconds"`

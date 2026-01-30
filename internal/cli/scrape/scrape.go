@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
@@ -96,9 +97,27 @@ Options:
 		}
 	}
 
+	// Parse request body (support @file syntax)
+	var body []byte
+	if *cf.Body != "" {
+		if strings.HasPrefix(*cf.Body, "@") {
+			// Read from file
+			body, err = os.ReadFile((*cf.Body)[1:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to read body file: %v\n", err)
+				return 1
+			}
+		} else {
+			body = []byte(*cf.Body)
+		}
+	}
+
 	spec := jobs.JobSpec{
 		Kind:           model.KindScrape,
 		URL:            *url,
+		Method:         *cf.Method,
+		Body:           body,
+		ContentType:    *cf.ContentType,
 		Headless:       *cf.Headless,
 		UsePlaywright:  *cf.Playwright,
 		Auth:           authOptions,

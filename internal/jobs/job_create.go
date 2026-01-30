@@ -33,7 +33,7 @@ import (
 )
 
 // CreateScrapeJob creates and persists a new scrape job.
-func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, webhookURL string, webhookEvents []string, webhookSecret string) (model.Job, error) {
+func (m *Manager) CreateScrapeJob(ctx context.Context, url string, method string, body []byte, contentType string, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, webhookURL string, webhookEvents []string, webhookSecret string) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindScrape,
@@ -42,6 +42,9 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool
 		UpdatedAt: time.Now(),
 		Params: map[string]interface{}{
 			"url":         url,
+			"method":      method,
+			"body":        body,
+			"contentType": contentType,
 			"headless":    headless,
 			"playwright":  usePlaywright,
 			"auth":        auth,
@@ -160,7 +163,7 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 
 	switch spec.Kind {
 	case model.KindScrape:
-		job, err = m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
+		job, err = m.CreateScrapeJob(ctx, spec.URL, spec.Method, spec.Body, spec.ContentType, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindCrawl:
 		job, err = m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly, spec.WebhookURL, spec.WebhookEvents, spec.WebhookSecret)
 	case model.KindResearch:

@@ -24,6 +24,9 @@ func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 	job, err := srv.manager.CreateScrapeJob(
 		ctx,
 		"http://example.com",
+		"GET",
+		nil,
+		"",
 		false,
 		false,
 		fetch.AuthOptions{},

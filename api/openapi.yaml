@@ -1268,6 +1268,17 @@ components:
         url:
           type: string
           format: uri
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+          default: GET
+          description: HTTP method to use for the request
+        body:
+          type: string
+          description: Request body for POST/PUT/PATCH requests (use base64 for binary data)
+        contentType:
+          type: string
+          description: Content-Type header for the request body (auto-detected if not provided)
         headless:
           type: boolean
           default: false

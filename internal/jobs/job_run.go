@@ -145,6 +145,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	case model.KindScrape:
 		url, _ := job.Params["url"].(string)
 		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "request_id", getJobRequestID(job))
+		method, _ := job.Params["method"].(string)
+		if method == "" {
+			method = "GET"
+		}
+		body := decodeBytes(job.Params["body"])
+		contentType, _ := job.Params["contentType"].(string)
 		headless, _ := job.Params["headless"].(bool)
 		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
 		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
@@ -158,6 +164,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		screenshot := decodeScreenshot(job.Params["screenshot"])
 		result, err := scrape.Run(jobCtx, scrape.Request{
 			URL:              url,
+			Method:           method,
+			Body:             body,
+			ContentType:      contentType,
 			RequestID:        getJobRequestID(job),
 			Headless:         headless,
 			UsePlaywright:    usePlaywright,

@@ -300,6 +300,18 @@ export type WebhookPayload = {
 
 export type ScrapeRequest = {
     url: string;
+    /**
+     * HTTP method to use for the request
+     */
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+    /**
+     * Request body for POST/PUT/PATCH requests (use base64 for binary data)
+     */
+    body?: string;
+    /**
+     * Content-Type header for the request body (auto-detected if not provided)
+     */
+    contentType?: string;
     headless?: boolean;
     playwright?: boolean;
     authProfile?: string;

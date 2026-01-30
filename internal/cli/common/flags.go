@@ -99,6 +99,11 @@ type CommonFlags struct {
 	ProxyURL      *string
 	ProxyUsername *string
 	ProxyPassword *string
+
+	// HTTP method and body flags
+	Method      *string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+	Body        *string // Request body (string or @file path)
+	ContentType *string // Content-Type header for request body
 }
 
 // BrowserFlags are used by schedule add.
@@ -185,6 +190,11 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		ProxyURL:      fs.String("proxy", "", "Proxy URL (http://, https://, socks5://)"),
 		ProxyUsername: fs.String("proxy-username", "", "Proxy username"),
 		ProxyPassword: fs.String("proxy-password", "", "Proxy password"),
+
+		// HTTP method and body flags
+		Method:      fs.String("method", "GET", "HTTP method (GET, POST, PUT, DELETE, PATCH)"),
+		Body:        fs.String("body", "", "Request body (string or @file to read from file)"),
+		ContentType: fs.String("content-type", "", "Content-Type header (auto-detected if not set)"),
 	}
 
 	fs.Var(&cf.PreProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")

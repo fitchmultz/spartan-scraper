@@ -19,7 +19,7 @@ func TestManagerCancelJob(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", "GET", nil, "", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestManagerCancelJob_AfterSuccess(t *testing.T) {
 
 	ctx := context.Background()
 
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", "GET", nil, "", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestManagerCancelJob_AfterFailure(t *testing.T) {
 
 	ctx := context.Background()
 
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", "GET", nil, "", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestManagerCancelJob_WhileRunning(t *testing.T) {
 
 	ctx := context.Background()
 
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", "GET", nil, "", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}

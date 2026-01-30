@@ -20,6 +20,9 @@ import (
 type JobSpec struct {
 	Kind            model.Kind
 	URL             string
+	Method          string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+	Body            []byte // Request body for POST/PUT/PATCH
+	ContentType     string // Content-Type header for request body
 	Query           string
 	URLs            []string
 	MaxDepth        int

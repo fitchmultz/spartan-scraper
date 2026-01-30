@@ -22,6 +22,9 @@ import (
 // Request represents a single page scrape request.
 type Request struct {
 	URL              string
+	Method           string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+	Body             []byte // Request body for POST/PUT/PATCH
+	ContentType      string // Content-Type header for request body
 	RequestID        string
 	Headless         bool
 	UsePlaywright    bool
@@ -104,6 +107,9 @@ func Run(ctx context.Context, req Request) (Result, error) {
 
 	fetchReq := fetch.Request{
 		URL:              req.URL,
+		Method:           req.Method,
+		Body:             req.Body,
+		ContentType:      req.ContentType,
 		Timeout:          req.Timeout,
 		UserAgent:        req.UserAgent,
 		Headless:         req.Headless,

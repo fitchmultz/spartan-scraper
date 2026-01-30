@@ -212,3 +212,28 @@ func decodeScreenshot(value interface{}) *fetch.ScreenshotConfig {
 	}
 	return &cfg
 }
+
+// decodeBytes decodes a byte slice from interface{}.
+// Handles []byte, []interface{} (of uint8), and string types.
+func decodeBytes(value interface{}) []byte {
+	if value == nil {
+		return nil
+	}
+	if b, ok := value.([]byte); ok {
+		return b
+	}
+	if s, ok := value.(string); ok {
+		return []byte(s)
+	}
+	// Handle []interface{} case (JSON arrays of numbers)
+	if arr, ok := value.([]interface{}); ok {
+		result := make([]byte, 0, len(arr))
+		for _, v := range arr {
+			if n, ok := v.(float64); ok {
+				result = append(result, byte(n))
+			}
+		}
+		return result
+	}
+	return nil
+}

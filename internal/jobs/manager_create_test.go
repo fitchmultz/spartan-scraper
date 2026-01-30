@@ -37,7 +37,7 @@ func TestManagerCreateScrapeJob(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	job, err := m.CreateScrapeJob(ctx, "http://example.com", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
+	job, err := m.CreateScrapeJob(ctx, "http://example.com", "GET", nil, "", false, false, fetch.AuthOptions{}, 30, extract.ExtractOptions{}, pipeline.Options{}, false, "", "", nil, "")
 	if err != nil {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}

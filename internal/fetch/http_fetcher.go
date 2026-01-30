@@ -4,6 +4,7 @@
 package fetch
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -112,7 +113,19 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 		}
 
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.URL, nil)
+		// Determine HTTP method (default to GET if not specified)
+		method := req.Method
+		if method == "" {
+			method = http.MethodGet
+		}
+
+		// Create request body reader if body is present
+		var reqBodyReader io.Reader
+		if len(req.Body) > 0 {
+			reqBodyReader = bytes.NewReader(req.Body)
+		}
+
+		httpReq, err := http.NewRequestWithContext(ctx, method, req.URL, reqBodyReader)
 		if err != nil {
 			slog.Error("failed to create HTTP request", "url", apperrors.SanitizeURL(req.URL), "error", err)
 			return Result{}, err
@@ -141,6 +154,11 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if len(parts) == 2 {
 				httpReq.SetBasicAuth(parts[0], parts[1])
 			}
+		}
+
+		// Set Content-Type header if body is present and content type is specified
+		if len(req.Body) > 0 && req.ContentType != "" {
+			httpReq.Header.Set("Content-Type", req.ContentType)
 		}
 
 		resp, err := client.Do(httpReq)

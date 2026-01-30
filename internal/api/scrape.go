@@ -76,10 +76,20 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+
+	// Determine HTTP method (default to GET if not specified)
+	method := req.Method
+	if method == "" {
+		method = "GET"
+	}
+
 	requestID := contextRequestID(r.Context())
 	spec := jobs.JobSpec{
 		Kind:           model.KindScrape,
 		URL:            req.URL,
+		Method:         method,
+		Body:           []byte(req.Body),
+		ContentType:    req.ContentType,
 		Headless:       req.Headless,
 		UsePlaywright:  usePlaywright,
 		Auth:           authOptions,
