@@ -17,9 +17,9 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create jobs with sensitive data
+	// Create jobs with sensitive data (using valid UUIDs)
 	job1 := model.Job{
-		ID:         "job-1",
+		ID:         "550e8400-e29b-41d4-a716-446655440001",
 		Kind:       model.KindScrape,
 		Status:     model.StatusSucceeded,
 		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
@@ -30,7 +30,7 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 		},
 	}
 	job2 := model.Job{
-		ID:         "job-2",
+		ID:         "550e8400-e29b-41d4-a716-446655440002",
 		Kind:       model.KindCrawl,
 		Status:     model.StatusRunning,
 		ResultPath: "/home/user/results/job-2.jsonl",
@@ -75,17 +75,17 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 		}
 	}
 
-	// Find job-1 and verify secrets are redacted
+	// Find job1 and verify secrets are redacted
 	var job1Response map[string]interface{}
 	for _, job := range response.Jobs {
-		if job["id"] == "job-1" {
+		if job["id"] == "550e8400-e29b-41d4-a716-446655440001" {
 			job1Response = job
 			break
 		}
 	}
 
 	if job1Response == nil {
-		t.Fatal("job-1 not found in response")
+		t.Fatal("job1 not found in response")
 	}
 
 	params := job1Response["params"].(map[string]interface{})
@@ -106,9 +106,9 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create job with sensitive data
+	// Create job with sensitive data (using valid UUID)
 	job := model.Job{
-		ID:         "job-1",
+		ID:         "550e8400-e29b-41d4-a716-446655440001",
 		Kind:       model.KindScrape,
 		Status:     model.StatusFailed,
 		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
@@ -126,7 +126,7 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/550e8400-e29b-41d4-a716-446655440001", nil)
 	w := httptest.NewRecorder()
 
 	server.handleJob(w, req)
@@ -167,9 +167,9 @@ func TestHandleJobs_ByStatus_RedactsData(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create job with sensitive data
+	// Create job with sensitive data (using valid UUID)
 	job := model.Job{
-		ID:         "job-1",
+		ID:         "550e8400-e29b-41d4-a716-446655440001",
 		Kind:       model.KindScrape,
 		Status:     model.StatusSucceeded,
 		ResultPath: "/secret/path.jsonl",
@@ -222,7 +222,8 @@ func TestHandleJob_NotFound(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/nonexistent", nil)
+	// Use a valid UUID format that doesn't exist
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/550e8400-e29b-41d4-a716-446655440999", nil)
 	w := httptest.NewRecorder()
 
 	server.handleJob(w, req)
@@ -238,9 +239,9 @@ func TestHandleJob_JSONOmitsResultPath(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create job with ResultPath
+	// Create job with ResultPath (using valid UUID)
 	job := model.Job{
-		ID:         "job-1",
+		ID:         "550e8400-e29b-41d4-a716-446655440001",
 		Kind:       model.KindScrape,
 		Status:     model.StatusSucceeded,
 		ResultPath: "/very/secret/path.jsonl",
@@ -251,7 +252,7 @@ func TestHandleJob_JSONOmitsResultPath(t *testing.T) {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/550e8400-e29b-41d4-a716-446655440001", nil)
 	w := httptest.NewRecorder()
 
 	server.handleJob(w, req)
@@ -279,9 +280,9 @@ func TestHandleJob_HeadersRedacted(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create job with headers
+	// Create job with headers (using valid UUID)
 	job := model.Job{
-		ID:     "job-1",
+		ID:     "550e8400-e29b-41d4-a716-446655440001",
 		Kind:   model.KindScrape,
 		Status: model.StatusRunning,
 		Params: map[string]interface{}{
@@ -298,7 +299,7 @@ func TestHandleJob_HeadersRedacted(t *testing.T) {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/job-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/550e8400-e29b-41d4-a716-446655440001", nil)
 	w := httptest.NewRecorder()
 
 	server.handleJob(w, req)

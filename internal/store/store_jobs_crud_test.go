@@ -178,8 +178,9 @@ func TestStoreDeleteWithArtifacts(t *testing.T) {
 		t.Error("job directory should be deleted")
 	}
 
-	if err := s.DeleteWithArtifacts(ctx, "j1"); err != nil {
-		t.Errorf("deleting already-deleted job should succeed, got: %v", err)
+	// Deleting already-deleted job should return NotFound error
+	if err := s.DeleteWithArtifacts(ctx, "j1"); err == nil {
+		t.Error("deleting already-deleted job should return error")
 	}
 }
 
@@ -213,5 +214,78 @@ func TestStoreListUsesDefaults(t *testing.T) {
 	}
 	if len(jobs) != 5 {
 		t.Errorf("expected 5 jobs with List(), got %d", len(jobs))
+	}
+}
+
+func TestStoreDeleteWithArtifactsPathTraversal(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a file outside the jobs directory that should NOT be deleted
+	outsideFile := filepath.Join(dataDir, "sensitive.txt")
+	if err := os.WriteFile(outsideFile, []byte("secret"), 0o644); err != nil {
+		t.Fatalf("failed to create outside file: %v", err)
+	}
+
+	// Attempt to delete using path traversal - should fail because job doesn't exist
+	traversalID := "../../../sensitive"
+	err = s.DeleteWithArtifacts(ctx, traversalID)
+	if err == nil {
+		t.Error("expected error for path traversal attempt, got nil")
+	}
+
+	// Verify the outside file still exists
+	if _, err := os.Stat(outsideFile); os.IsNotExist(err) {
+		t.Error("outside file should not have been deleted")
+	}
+}
+
+func TestStoreDeleteWithArtifactsPathTraversalWithJob(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job with a malicious ID that looks like path traversal
+	// This tests the defense-in-depth path check in DeleteWithArtifacts
+	maliciousID := "../../../etc/passwd"
+	job := model.Job{
+		ID:        maliciousID,
+		Kind:      model.KindScrape,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+
+	if err := s.Create(ctx, job); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Create a file outside the jobs directory that should NOT be deleted
+	outsideFile := filepath.Join(dataDir, "sensitive.txt")
+	if err := os.WriteFile(outsideFile, []byte("secret"), 0o644); err != nil {
+		t.Fatalf("failed to create outside file: %v", err)
+	}
+
+	// Attempt to delete - the path traversal check should prevent deletion outside jobs dir
+	err = s.DeleteWithArtifacts(ctx, maliciousID)
+	if err == nil {
+		t.Error("expected error for path traversal attempt, got nil")
+	}
+
+	// Verify the outside file still exists
+	if _, err := os.Stat(outsideFile); os.IsNotExist(err) {
+		t.Error("outside file should not have been deleted")
 	}
 }

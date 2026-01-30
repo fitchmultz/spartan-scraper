@@ -64,8 +64,8 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := extractID(path, "jobs")
-	if id == "" {
-		writeError(w, apperrors.Validation("id required"))
+	if err := validateJobID(id); err != nil {
+		writeError(w, err)
 		return
 	}
 	switch r.Method {

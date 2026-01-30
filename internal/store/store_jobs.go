@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -181,13 +182,30 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 // DeleteWithArtifacts permanently removes a job from store and deletes its result file and directory.
 // This is used for force delete operations.
+// The function verifies the job exists before deletion and ensures the delete path stays
+// within the data directory to prevent path traversal attacks.
 func (s *Store) DeleteWithArtifacts(ctx context.Context, id string) error {
+	// First verify job exists before any deletion
+	_, err := s.Get(ctx, id)
+	if err != nil {
+		return err // Returns NotFound if job doesn't exist
+	}
+
 	if err := s.Delete(ctx, id); err != nil {
 		return err
 	}
 
+	// Secure path construction with traversal check
 	jobDir := filepath.Join(s.dataDir, "jobs", id)
-	if err := os.RemoveAll(jobDir); err != nil {
+	cleanPath := filepath.Clean(jobDir)
+	baseDir := filepath.Clean(filepath.Join(s.dataDir, "jobs"))
+
+	// Ensure the cleaned path is within the jobs directory
+	if !strings.HasPrefix(cleanPath, baseDir+string(filepath.Separator)) && cleanPath != baseDir {
+		return apperrors.Permission("invalid job id: path traversal detected")
+	}
+
+	if err := os.RemoveAll(cleanPath); err != nil {
 		return err
 	}
 

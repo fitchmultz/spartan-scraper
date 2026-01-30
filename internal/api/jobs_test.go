@@ -66,7 +66,7 @@ func TestHandleJobsWithStatusFilter(t *testing.T) {
 		}
 
 		newJob := model.Job{
-			ID:        fmt.Sprintf("test-job-%d", i),
+			ID:        fmt.Sprintf("550e8400-e29b-41d4-a716-44665544000%d", i),
 			Kind:      model.KindScrape,
 			Status:    job.status,
 			CreatedAt: time.Now(),
@@ -137,7 +137,7 @@ func TestHandleJobsNoStatusFilter(t *testing.T) {
 		}
 
 		newJob := model.Job{
-			ID:        fmt.Sprintf("test-job-no-filter-%d", i),
+			ID:        fmt.Sprintf("550e8400-e29b-41d4-a716-44665544000%d", i),
 			Kind:      model.KindScrape,
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
@@ -180,7 +180,7 @@ func TestHandleJobsPagination(t *testing.T) {
 	// Create 10 jobs
 	for i := 0; i < 10; i++ {
 		newJob := model.Job{
-			ID:        fmt.Sprintf("pagination-job-%d", i),
+			ID:        fmt.Sprintf("550e8400-e29b-41d4-a716-44665544000%d", i),
 			Kind:      model.KindScrape,
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
@@ -251,7 +251,7 @@ func TestHandleJobRouting(t *testing.T) {
 		{
 			name:           "unexpected trailing segment",
 			method:         "GET",
-			path:           "/v1/jobs/some-id/invalid",
+			path:           "/v1/jobs/550e8400-e29b-41d4-a716-446655440001/invalid",
 			expectedStatus: http.StatusNotFound,
 		},
 		{
@@ -263,7 +263,7 @@ func TestHandleJobRouting(t *testing.T) {
 		{
 			name:           "method not allowed on id",
 			method:         "POST",
-			path:           "/v1/jobs/some-id",
+			path:           "/v1/jobs/550e8400-e29b-41d4-a716-446655440001",
 			expectedStatus: http.StatusMethodNotAllowed,
 		},
 	}
@@ -427,5 +427,118 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 
 	if _, err := os.Stat(jobDir); os.IsNotExist(err) {
 		t.Error("job directory should still exist after cancel")
+	}
+}
+
+func TestHandleJobForceDeletePathTraversal(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Test various path traversal attempts (encoded to bypass router path cleaning)
+	traversalAttempts := []string{
+		"..%2f..%2f..%2fetc%2fpasswd",
+		"..%5c..%5c..%5cwindows%5csystem32",
+		".%2f..%2fetc",
+	}
+
+	for _, maliciousID := range traversalAttempts {
+		t.Run(fmt.Sprintf("traversal_%s", maliciousID), func(t *testing.T) {
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/v1/jobs/%s?force=true", maliciousID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			// Should return 400 Bad Request for invalid ID format
+			if status := rr.Code; status != http.StatusBadRequest {
+				t.Errorf("expected status 400 for path traversal attempt %q, got %v", maliciousID, status)
+			}
+		})
+	}
+}
+
+func TestHandleJobForceDeleteNonExistent(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Use a valid UUID format that doesn't exist
+	nonExistentID := "550e8400-e29b-41d4-a716-446655440000"
+
+	req := httptest.NewRequest("DELETE", fmt.Sprintf("/v1/jobs/%s?force=true", nonExistentID), nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	// Should return 404 Not Found
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("expected status 404 for non-existent job, got %v", status)
+	}
+}
+
+func TestHandleJobForceDeleteInvalidID(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	invalidIDs := []string{
+		"not-a-uuid",
+		"123",
+		"test-job-with-special-chars!",
+	}
+
+	for _, invalidID := range invalidIDs {
+		t.Run(fmt.Sprintf("invalid_%s", invalidID), func(t *testing.T) {
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/v1/jobs/%s?force=true", invalidID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			// Should return 400 Bad Request
+			if status := rr.Code; status != http.StatusBadRequest {
+				t.Errorf("expected status 400 for invalid id %q, got %v", invalidID, status)
+			}
+		})
+	}
+}
+
+func TestHandleJobGetInvalidID(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	invalidIDs := []string{
+		"not-a-uuid",
+		"123",
+	}
+
+	for _, invalidID := range invalidIDs {
+		t.Run(fmt.Sprintf("invalid_%s", invalidID), func(t *testing.T) {
+			req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s", invalidID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			// Should return 400 Bad Request
+			if status := rr.Code; status != http.StatusBadRequest {
+				t.Errorf("expected status 400 for invalid id %q, got %v", invalidID, status)
+			}
+		})
+	}
+}
+
+func TestHandleJobGetPathTraversal(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Use encoded path traversal to bypass router's path cleaning
+	traversalIDs := []string{
+		"..%2f..%2f..%2fetc%2fpasswd",
+		".%2f..%2fetc",
+	}
+
+	for _, invalidID := range traversalIDs {
+		t.Run(fmt.Sprintf("traversal_%s", invalidID), func(t *testing.T) {
+			req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s", invalidID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			// Should return 400 Bad Request
+			if status := rr.Code; status != http.StatusBadRequest {
+				t.Errorf("expected status 400 for path traversal id %q, got %v", invalidID, status)
+			}
+		})
 	}
 }

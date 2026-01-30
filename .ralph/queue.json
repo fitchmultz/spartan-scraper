@@ -2,39 +2,15 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0154",
-      "status": "todo",
-      "title": "Block path traversal in force-delete job artifacts",
-      "priority": "critical",
-      "tags": ["security", "api", "store"],
-      "scope": [
-        "internal/api/jobs.go",
-        "internal/store/store_jobs.go",
-        "internal/api/util.go",
-        "internal/api/jobs_test.go"
-      ],
-      "evidence": [
-        "internal/api/jobs.go handleJob only checks id != \"\" before calling store.DeleteWithArtifacts when ?force=true.",
-        "internal/store/store_jobs.go DeleteWithArtifacts runs os.RemoveAll(filepath.Join(s.dataDir, \"jobs\", id)) and Delete does not verify a row was removed, so arbitrary ids can delete paths even when no job exists."
-      ],
-      "plan": [
-        "Add a shared job ID validation helper (UUID or strict pattern) and reject invalid ids with apperrors.Validation in API handlers.",
-        "Harden DeleteWithArtifacts by verifying the job exists and ensuring the delete path stays under the data dir (clean + prefix check or safe join helper).",
-        "Add tests covering path traversal attempts and non-existent ids for force delete."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T23:18:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0155",
       "status": "todo",
       "title": "Ensure X-Request-ID is always set and logged",
       "priority": "high",
-      "tags": ["api", "observability", "bug"],
+      "tags": [
+        "api",
+        "observability",
+        "bug"
+      ],
       "scope": [
         "internal/api/server.go",
         "internal/api/util.go",
@@ -62,8 +38,15 @@
       "status": "todo",
       "title": "Redact query strings in API request logging",
       "priority": "high",
-      "tags": ["security", "logging", "api"],
-      "scope": ["internal/api/util.go", "internal/api/util_test.go"],
+      "tags": [
+        "security",
+        "logging",
+        "api"
+      ],
+      "scope": [
+        "internal/api/util.go",
+        "internal/api/util_test.go"
+      ],
       "evidence": [
         "internal/api/util.go loggingMiddleware logs r.URL.RawQuery verbatim, which can include tokens or API keys.",
         "apperrors.RedactString/SanitizeURL exists for redaction but is not used in request logging."
@@ -85,7 +68,11 @@
       "status": "todo",
       "title": "Respect context cancellation in research orchestration",
       "priority": "high",
-      "tags": ["research", "context", "bug"],
+      "tags": [
+        "research",
+        "context",
+        "bug"
+      ],
       "scope": [
         "internal/research/orchestrate.go",
         "internal/research/research_test.go"
@@ -111,7 +98,11 @@
       "status": "todo",
       "title": "Make HTTP fetch retry backoff honor context cancellation",
       "priority": "medium",
-      "tags": ["fetch", "reliability", "context"],
+      "tags": [
+        "fetch",
+        "reliability",
+        "context"
+      ],
       "scope": [
         "internal/fetch/http_fetcher.go",
         "internal/fetch/http_fetcher_test.go"
@@ -137,7 +128,11 @@
       "status": "todo",
       "title": "Return validation errors for invalid pagination params",
       "priority": "medium",
-      "tags": ["api", "validation", "ux"],
+      "tags": [
+        "api",
+        "validation",
+        "ux"
+      ],
       "scope": [
         "internal/api/util.go",
         "internal/api/jobs.go",
@@ -167,7 +162,11 @@
       "status": "todo",
       "title": "Address generated API types file exceeding 1k LOC",
       "priority": "low",
-      "tags": ["tooling", "openapi", "docs"],
+      "tags": [
+        "tooling",
+        "openapi",
+        "docs"
+      ],
       "scope": [
         "web/src/api/types.gen.ts",
         "web/src/api",
@@ -195,7 +194,10 @@
       "status": "todo",
       "title": "Add file-level docstrings to all source and test files",
       "priority": "low",
-      "tags": ["docs", "standards"],
+      "tags": [
+        "docs",
+        "standards"
+      ],
       "scope": [
         "internal/apperrors/*.go",
         "internal/jobs/*.go",
@@ -222,7 +224,9 @@
         "Add brief headers to all test files.",
         "Run gofmt and biome format after edits."
       ],
-      "notes": ["Consolidated from RQ-0161 through RQ-0172"],
+      "notes": [
+        "Consolidated from RQ-0161 through RQ-0172"
+      ],
       "request": "scan finding",
       "created_at": "2026-01-29T23:18:04Z",
       "updated_at": "2026-01-29T17:04:00Z",
@@ -234,7 +238,12 @@
       "status": "todo",
       "title": "Modernize TUI with rich Bubble Tea components and real-time progress",
       "priority": "high",
-      "tags": ["ux", "tui", "modern", "awesome"],
+      "tags": [
+        "ux",
+        "tui",
+        "modern",
+        "awesome"
+      ],
       "scope": [
         "internal/ui/tui/*.go",
         "go.mod"
@@ -269,7 +278,13 @@
       "status": "todo",
       "title": "Add WebSocket support for real-time job updates in Web UI",
       "priority": "high",
-      "tags": ["ux", "web", "realtime", "modern", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "realtime",
+        "modern",
+        "awesome"
+      ],
       "scope": [
         "internal/api/server.go",
         "internal/api/websocket.go (new)",
@@ -307,7 +322,13 @@
       "status": "todo",
       "title": "Design and implement dark mode + polished visual design for Web UI",
       "priority": "high",
-      "tags": ["ux", "web", "design", "modern", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "design",
+        "modern",
+        "awesome"
+      ],
       "scope": [
         "web/src/styles/",
         "web/src/App.tsx",
@@ -344,7 +365,13 @@
       "status": "todo",
       "title": "Add keyboard shortcuts and command palette to Web UI",
       "priority": "medium",
-      "tags": ["ux", "web", "productivity", "modern", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "productivity",
+        "modern",
+        "awesome"
+      ],
       "scope": [
         "web/src/hooks/useKeyboard.ts (new)",
         "web/src/components/CommandPalette.tsx (new)",
@@ -378,7 +405,12 @@
       "status": "todo",
       "title": "Implement job templates and quick-start presets in UI",
       "priority": "medium",
-      "tags": ["ux", "web", "productivity", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "productivity",
+        "awesome"
+      ],
       "scope": [
         "web/src/components/QuickStartPanel.tsx (new)",
         "web/src/components/ScrapeForm.tsx",
@@ -412,7 +444,12 @@
       "status": "todo",
       "title": "Add visual results explorer with tree view and diff support",
       "priority": "medium",
-      "tags": ["ux", "web", "data-viz", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "data-viz",
+        "awesome"
+      ],
       "scope": [
         "web/src/components/ResultsExplorer.tsx (new)",
         "web/src/components/ResultsViewer.tsx"
@@ -447,7 +484,12 @@
       "status": "todo",
       "title": "Add onboarding flow and interactive tutorials",
       "priority": "medium",
-      "tags": ["ux", "web", "onboarding", "awesome"],
+      "tags": [
+        "ux",
+        "web",
+        "onboarding",
+        "awesome"
+      ],
       "scope": [
         "web/src/components/OnboardingFlow.tsx (new)",
         "web/src/components/TutorialTooltip.tsx (new)",
@@ -481,7 +523,12 @@
       "status": "todo",
       "title": "Implement rate limiting dashboard and performance metrics",
       "priority": "low",
-      "tags": ["ux", "web", "observability", "developer"],
+      "tags": [
+        "ux",
+        "web",
+        "observability",
+        "developer"
+      ],
       "scope": [
         "internal/api/metrics.go (new)",
         "web/src/components/MetricsDashboard.tsx (new)",

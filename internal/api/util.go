@@ -237,6 +237,19 @@ func extractID(path, resource string) string {
 	return ""
 }
 
+// validateJobID checks if the provided ID is a valid UUID format.
+// Returns apperrors.Validation error if invalid.
+func validateJobID(id string) error {
+	if id == "" {
+		return apperrors.Validation("id required")
+	}
+	// Validate UUID format (with or without hyphens)
+	if _, err := uuid.Parse(id); err != nil {
+		return apperrors.Validation(fmt.Sprintf("invalid job id format: %s", id))
+	}
+	return nil
+}
+
 // recoveryMiddleware recovers from panics in handlers and returns a 500 response.
 // It logs the panic with stack trace.
 func recoveryMiddleware(next http.Handler) http.Handler {
