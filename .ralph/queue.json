@@ -1,4 +1,631 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0154",
+      "status": "todo",
+      "title": "Block path traversal in force-delete job artifacts",
+      "priority": "critical",
+      "tags": [
+        "security",
+        "api",
+        "store"
+      ],
+      "scope": [
+        "internal/api/jobs.go",
+        "internal/store/store_jobs.go",
+        "internal/api/util.go",
+        "internal/api/jobs_test.go"
+      ],
+      "evidence": [
+        "internal/api/jobs.go handleJob only checks id != \"\" before calling store.DeleteWithArtifacts when ?force=true.",
+        "internal/store/store_jobs.go DeleteWithArtifacts runs os.RemoveAll(filepath.Join(s.dataDir, \"jobs\", id)) and Delete does not verify a row was removed, so arbitrary ids can delete paths even when no job exists."
+      ],
+      "plan": [
+        "Add a shared job ID validation helper (UUID or strict pattern) and reject invalid ids with apperrors.Validation in API handlers.",
+        "Harden DeleteWithArtifacts by verifying the job exists and ensuring the delete path stays under the data dir (clean + prefix check or safe join helper).",
+        "Add tests covering path traversal attempts and non-existent ids for force delete."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0155",
+      "status": "todo",
+      "title": "Ensure X-Request-ID is always set and logged",
+      "priority": "high",
+      "tags": [
+        "api",
+        "observability",
+        "bug"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/util.go",
+        "internal/api/util_test.go"
+      ],
+      "evidence": [
+        "internal/api/server.go wires middleware as loggingMiddleware(recoveryMiddleware(requestIDMiddleware(mux))) so logging runs before request IDs are injected.",
+        "internal/api/util.go requestIDResponseWriter only overrides WriteHeader; handlers that only Write skip setting X-Request-ID.",
+        "internal/api/util.go writeError only pulls request_id when ResponseWriter is *requestIDResponseWriter, but recovery wraps with loggingResponseWriter."
+      ],
+      "plan": [
+        "Reorder middleware so requestIDMiddleware runs outermost (or update logging/recovery to read request ID from context).",
+        "Implement requestIDResponseWriter.Write to ensure X-Request-ID is set on first write.",
+        "Extend util tests to assert request_id on normal and error responses and in logs."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0156",
+      "status": "todo",
+      "title": "Redact query strings in API request logging",
+      "priority": "high",
+      "tags": [
+        "security",
+        "logging",
+        "api"
+      ],
+      "scope": [
+        "internal/api/util.go",
+        "internal/api/util_test.go"
+      ],
+      "evidence": [
+        "internal/api/util.go loggingMiddleware logs r.URL.RawQuery verbatim, which can include tokens or API keys.",
+        "apperrors.RedactString/SanitizeURL exists for redaction but is not used in request logging."
+      ],
+      "plan": [
+        "Log a sanitized URL (or redacted query string) instead of raw query parameters.",
+        "Use apperrors.RedactString or SanitizeURL consistently for request logs.",
+        "Add/update tests to confirm query secrets are redacted in logs."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0157",
+      "status": "todo",
+      "title": "Respect context cancellation in research orchestration",
+      "priority": "high",
+      "tags": [
+        "research",
+        "context",
+        "bug"
+      ],
+      "scope": [
+        "internal/research/orchestrate.go",
+        "internal/research/research_test.go"
+      ],
+      "evidence": [
+        "internal/research/orchestrate.go continues looping on crawl/scrape errors and never checks ctx.Done inside the URL loop.",
+        "Research Run returns a Result even if every target fails, leading to silent success with empty evidence."
+      ],
+      "plan": [
+        "Check ctx.Done during the URL loop and return a wrapped ctx error when canceled.",
+        "Track success vs failure; return a classified error when all targets fail.",
+        "Add tests for cancellation and all-targets-fail scenarios."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0158",
+      "status": "todo",
+      "title": "Make HTTP fetch retry backoff honor context cancellation",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "reliability",
+        "context"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/http_fetcher_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go uses time.Sleep(delay) during retry backoff without checking ctx.Done, so canceled requests still sleep.",
+        "Retries continue even if the caller has already canceled the context."
+      ],
+      "plan": [
+        "Replace time.Sleep with a select on time.After vs ctx.Done to exit early.",
+        "Return a wrapped ctx error when cancellation occurs mid-backoff.",
+        "Add tests verifying cancellation stops retries promptly."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0159",
+      "status": "todo",
+      "title": "Return validation errors for invalid pagination params",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "validation",
+        "ux"
+      ],
+      "scope": [
+        "internal/api/util.go",
+        "internal/api/jobs.go",
+        "internal/api/job_results.go",
+        "internal/api/crawl_states.go",
+        "internal/exporter/pagination.go",
+        "internal/api/job_results_pagination_test.go"
+      ],
+      "evidence": [
+        "internal/api/util.go parseIntParam silently defaults on parse errors or negatives.",
+        "internal/exporter/pagination.go Limit/Offset clamp to defaults instead of returning an error, so invalid inputs never surface to callers."
+      ],
+      "plan": [
+        "Introduce strict parsing helpers that return (value, error) for limit/offset.",
+        "Update handlers to return apperrors.Validation on invalid pagination params.",
+        "Adjust pagination tests to assert 400 responses on invalid input."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0161",
+      "status": "todo",
+      "title": "Add file-level docstrings for apperrors sources and tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "standards",
+        "apperrors"
+      ],
+      "scope": [
+        "internal/apperrors/apperrors.go",
+        "internal/apperrors/sanitize.go",
+        "internal/apperrors/sentinels.go",
+        "internal/apperrors/apperrors_test.go",
+        "internal/apperrors/sanitize_paths_test.go",
+        "internal/apperrors/sanitize_url_test.go"
+      ],
+      "evidence": [
+        "internal/apperrors/apperrors.go starts with 'package apperrors' and the doc comment comes after it.",
+        "internal/apperrors/sanitize.go and sentinels.go have no top-of-file docstring before the package line."
+      ],
+      "plan": [
+        "Add file-level docstrings above the package line describing responsibilities, non-responsibilities, and invariants.",
+        "Ensure tests also include brief file headers to meet repo docstring requirements.",
+        "Run gofmt after edits."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0162",
+      "status": "todo",
+      "title": "Add file-level docstrings for jobs helpers and runners",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "jobs"
+      ],
+      "scope": [
+        "internal/jobs/helpers.go",
+        "internal/jobs/job_create.go",
+        "internal/jobs/job_run.go"
+      ],
+      "evidence": [
+        "internal/jobs/helpers.go and job_create.go have doc comments placed after the package line.",
+        "internal/jobs/job_run.go also places its file header after the package line, violating docstring placement."
+      ],
+      "plan": [
+        "Move existing headers above the package line and ensure they cover responsibilities, non-responsibilities, and invariants.",
+        "Verify Go doc formatting remains intact.",
+        "Run gofmt after edits."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0163",
+      "status": "todo",
+      "title": "Add file-level docstrings for scheduler sources and tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "scheduler"
+      ],
+      "scope": [
+        "internal/scheduler/cached_scheduler.go",
+        "internal/scheduler/scheduler.go",
+        "internal/scheduler/params.go",
+        "internal/scheduler/storage.go",
+        "internal/scheduler/types.go",
+        "internal/scheduler/validation.go",
+        "internal/scheduler/watcher.go",
+        "internal/scheduler/*_test.go"
+      ],
+      "evidence": [
+        "internal/scheduler/cached_scheduler.go and scheduler.go begin with 'package scheduler' without a file header above it.",
+        "internal/scheduler/*_test.go files (e.g., cached_scheduler_test.go, persistence_test.go) have no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add concise file-level docstrings before the package line for scheduler sources.",
+        "Add brief docstrings to scheduler test files.",
+        "Run gofmt across the scheduler package."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0164",
+      "status": "todo",
+      "title": "Add file-level docstrings for store sources and tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "store"
+      ],
+      "scope": [
+        "internal/store/store_init.go",
+        "internal/store/store_jobs.go",
+        "internal/store/store_crawl_states.go",
+        "internal/store/store_options.go",
+        "internal/store/*_test.go"
+      ],
+      "evidence": [
+        "internal/store/store_init.go and store_jobs.go start with 'package store' without a file header above it.",
+        "internal/store/*_test.go files (e.g., store_jobs_crud_test.go, store_migration_errors_test.go) lack top docstrings."
+      ],
+      "plan": [
+        "Add file-level docstrings before the package line for store sources.",
+        "Add brief headers to store test files.",
+        "Run gofmt after edits."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0165",
+      "status": "todo",
+      "title": "Add file-level docstrings for CLI manage sources and CLI tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "cli"
+      ],
+      "scope": [
+        "internal/cli/manage/pipeline_js_mgmt.go",
+        "internal/cli/manage/render_profiles.go",
+        "internal/cli/cli_test.go",
+        "internal/cli/common/*_test.go",
+        "internal/cli/manage/*_test.go",
+        "internal/cli/scrape/*_test.go",
+        "internal/cli/server/server_test.go"
+      ],
+      "evidence": [
+        "internal/cli/manage/pipeline_js_mgmt.go and render_profiles.go have no file-level docstring above the package line.",
+        "internal/cli/cli_test.go and internal/cli/common/auth_test.go lack top-of-file docstrings."
+      ],
+      "plan": [
+        "Add file-level docstrings to the CLI manage sources noted above.",
+        "Add brief headers to CLI-related test files.",
+        "Run gofmt on CLI packages."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0166",
+      "status": "todo",
+      "title": "Add file-level docstrings for API tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "api",
+        "tests"
+      ],
+      "scope": [
+        "internal/api/crawl_playwright_test.go",
+        "internal/api/error_test.go",
+        "internal/api/jobs_redaction_test.go",
+        "internal/api/scrape_playwright_test.go"
+      ],
+      "evidence": [
+        "internal/api/crawl_playwright_test.go and error_test.go start directly with package declarations.",
+        "internal/api/jobs_redaction_test.go and scrape_playwright_test.go have no file-level docstrings."
+      ],
+      "plan": [
+        "Add concise file-level docstrings describing the test focus and exclusions.",
+        "Ensure headers follow repo docstring format requirements.",
+        "Run gofmt on affected files."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0167",
+      "status": "todo",
+      "title": "Add file-level docstrings for auth tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "auth",
+        "tests"
+      ],
+      "scope": [
+        "internal/auth/merge_test.go",
+        "internal/auth/types_cookie_test.go",
+        "internal/auth/types_header_test.go",
+        "internal/auth/types_login_test.go",
+        "internal/auth/types_preset_test.go",
+        "internal/auth/types_profile_test.go",
+        "internal/auth/types_resolve_test.go",
+        "internal/auth/types_token_test.go",
+        "internal/auth/types_vault_test.go",
+        "internal/auth/vault_test.go"
+      ],
+      "evidence": [
+        "internal/auth/merge_test.go and types_cookie_test.go lack top-of-file docstrings.",
+        "internal/auth/vault_test.go also starts with a package declaration."
+      ],
+      "plan": [
+        "Add brief file-level docstrings for auth test files listed in scope.",
+        "Ensure each header includes responsibilities and exclusions per repo policy.",
+        "Run gofmt on auth tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0168",
+      "status": "todo",
+      "title": "Add file-level docstrings for extract tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "extract",
+        "tests"
+      ],
+      "scope": [
+        "internal/extract/extract_test.go",
+        "internal/extract/jsonld_extract_test.go",
+        "internal/extract/jsonld_helpers_test.go",
+        "internal/extract/jsonld_match_test.go",
+        "internal/extract/jsonld_realworld_test.go",
+        "internal/extract/normalize_*_test.go",
+        "internal/extract/schema_*_test.go",
+        "internal/extract/templates_test.go",
+        "internal/extract/types_*_test.go"
+      ],
+      "evidence": [
+        "internal/extract/extract_test.go and jsonld_extract_test.go start with package declarations and no docstrings.",
+        "internal/extract/normalize_text_test.go and templates_test.go also lack file headers."
+      ],
+      "plan": [
+        "Add concise file-level docstrings to extract test files.",
+        "Include notes on what each test file does NOT cover.",
+        "Run gofmt on extract tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0169",
+      "status": "todo",
+      "title": "Add file-level docstrings for fetch tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "fetch",
+        "tests"
+      ],
+      "scope": [
+        "internal/fetch/adaptive_fetcher_test.go",
+        "internal/fetch/chromedp_fetcher_test.go",
+        "internal/fetch/detect_test.go",
+        "internal/fetch/fetcher_test.go",
+        "internal/fetch/http_fetcher_test.go",
+        "internal/fetch/limiter_test.go",
+        "internal/fetch/playwright_fetcher_test.go",
+        "internal/fetch/render_profiles_store_test.go",
+        "internal/fetch/render_profiles_test.go",
+        "internal/fetch/retry_test.go",
+        "internal/fetch/types_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher_test.go and chromedp_fetcher_test.go start with package declarations and no docstrings.",
+        "internal/fetch/adaptive_fetcher_test.go also lacks a file-level header."
+      ],
+      "plan": [
+        "Add file-level docstrings describing the purpose and exclusions for fetch tests.",
+        "Keep headers short but compliant with repo requirements.",
+        "Run gofmt on fetch tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0170",
+      "status": "todo",
+      "title": "Add file-level docstrings for MCP and E2E tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "mcp",
+        "e2e",
+        "tests"
+      ],
+      "scope": [
+        "internal/mcp/*_test.go",
+        "internal/e2e/*_test.go"
+      ],
+      "evidence": [
+        "internal/mcp/job_list_test.go and waitforjob_test.go lack file-level docstrings.",
+        "internal/e2e/e2e_test.go and web_test.go also start with package declarations."
+      ],
+      "plan": [
+        "Add file-level docstrings to MCP test files describing focus and limits.",
+        "Add file-level docstrings to E2E test files (what they cover and exclude).",
+        "Run gofmt on MCP and E2E tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0171",
+      "status": "todo",
+      "title": "Add file-level docstrings for pipeline and validate tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "pipeline",
+        "validate",
+        "tests"
+      ],
+      "scope": [
+        "internal/pipeline/*_test.go",
+        "internal/validate/*_test.go"
+      ],
+      "evidence": [
+        "internal/pipeline/types_test.go and js_test.go lack top-of-file docstrings.",
+        "internal/validate/request_test.go and validate_test.go also lack file headers."
+      ],
+      "plan": [
+        "Add concise file-level docstrings to pipeline test files.",
+        "Add concise file-level docstrings to validate test files.",
+        "Run gofmt on both packages."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0172",
+      "status": "todo",
+      "title": "Add file-level docstrings for web tests and scripts",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "web",
+        "scripts"
+      ],
+      "scope": [
+        "web/src/auth-parsers.test.ts",
+        "web/src/lib/api-config.test.ts",
+        "web/src/test/setup.ts",
+        "scripts/stress_test.sh",
+        "scripts/strip_openapi_todos.mjs"
+      ],
+      "evidence": [
+        "web/src/auth-parsers.test.ts and web/src/test/setup.ts have no file-level docstrings.",
+        "scripts/stress_test.sh and scripts/strip_openapi_todos.mjs start with shebangs/imports without file headers."
+      ],
+      "plan": [
+        "Add file-level docstrings to the listed web test files.",
+        "Add short file headers after shebangs for scripts to meet docstring requirements.",
+        "Format files as needed (biome for web, shell formatting minimal)."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0160",
+      "status": "todo",
+      "title": "Address generated API types file exceeding 1k LOC",
+      "priority": "low",
+      "tags": [
+        "tooling",
+        "openapi",
+        "docs"
+      ],
+      "scope": [
+        "web/src/api/types.gen.ts",
+        "web/src/api",
+        "api/openapi.yaml",
+        "Makefile"
+      ],
+      "evidence": [
+        "web/src/api/types.gen.ts is 1021 LOC, exceeding the 1,000 LOC threshold requiring split or justification.",
+        "Current generator output is a single monolithic types file."
+      ],
+      "plan": [
+        "Choose an approach: configure openapi-ts to split types or document a justified exception for generated output.",
+        "Update generation config/Makefile and regenerate as needed.",
+        "Verify generated files include required file-level docstrings if modified."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T23:18:04Z",
+      "updated_at": "2026-01-29T23:18:04Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
