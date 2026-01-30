@@ -149,6 +149,21 @@ Pinned in `.tool-versions`:
 - **Commit messages**: Use clear, descriptive messages (no enforced format currently)
 - **PR requirements**: Ensure `make ci` passes, describe changes clearly
 
+## Generated Code Exceptions
+
+Files generated from API contracts (e.g., `web/src/api/*.gen.ts` from `api/openapi.yaml`) are exempt from the 1000 LOC threshold requirement because:
+
+1. They are machine-generated from a single source of truth
+2. The generator controls output structure (limited splitting options)
+3. They are regenerated on every `make generate` — manual organization would be overwritten
+4. The types are conceptually cohesive (all API contract types)
+5. They are not hand-maintained — complexity concerns for human editing don't apply
+
+The relevant files are:
+- `web/src/api/types.gen.ts` - Domain types and endpoint operation types
+- `web/src/api/core/*.gen.ts` - Core client infrastructure types
+- `web/src/api/client/*.gen.ts` - Client-specific types
+
 ## Documentation
 
 - `README.md`: Project overview and quickstart
