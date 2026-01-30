@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0191",
-      "status": "todo",
-      "title": "Add request/response interception for API scraping",
-      "priority": "medium",
-      "tags": [
-        "fetch",
-        "network",
-        "interception",
-        "spa",
-        "xhr"
-      ],
-      "scope": [
-        "internal/fetch/types.go",
-        "internal/fetch/chromedp_fetcher.go",
-        "internal/fetch/playwright_fetcher.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "No network interception capabilities in fetchers",
-        "Cannot capture XHR/Fetch API calls made by SPAs",
-        "No HAR (HTTP Archive) format export available"
-      ],
-      "plan": [
-        "Add NetworkInterceptConfig with URL patterns and resource types",
-        "Implement network event listeners in ChromedpFetcher",
-        "Implement route interception in PlaywrightFetcher",
-        "Capture request/response pairs for matched patterns",
-        "Store intercepted data alongside page content",
-        "Add HAR format export option",
-        "Update OpenAPI spec with interception options",
-        "Write tests for network interception"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0192",
       "status": "todo",
       "title": "Implement POST/PUT/DELETE HTTP methods and request body support",

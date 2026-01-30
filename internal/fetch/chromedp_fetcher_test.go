@@ -281,7 +281,7 @@ func TestChromedpFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
 	}
 
 	// Assert: result should be empty (zero value)
-	if result != (Result{}) {
+	if result.URL != "" || result.Status != 0 || result.HTML != "" {
 		t.Errorf("expected empty Result, got %+v", result)
 	}
 }

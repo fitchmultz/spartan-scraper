@@ -28,6 +28,183 @@ type PlaywrightFetcher struct {
 	headless    bool
 }
 
+// playwrightInterceptor captures network requests and responses for API scraping.
+type playwrightInterceptor struct {
+	config  NetworkInterceptConfig
+	mu      sync.Mutex
+	entries []InterceptedEntry
+	pending map[string]*InterceptedRequest // URL -> request (for matching)
+}
+
+func newPlaywrightInterceptor(config NetworkInterceptConfig) *playwrightInterceptor {
+	return &playwrightInterceptor{
+		config:  config,
+		entries: make([]InterceptedEntry, 0, config.MaxEntries),
+		pending: make(map[string]*InterceptedRequest),
+	}
+}
+
+func (pi *playwrightInterceptor) shouldIntercept(url string, resourceType string) bool {
+	// Check resource type
+	if len(pi.config.ResourceTypes) > 0 {
+		matched := false
+		for _, rt := range pi.config.ResourceTypes {
+			if string(rt) == resourceType {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// Check URL patterns
+	if len(pi.config.URLPatterns) == 0 {
+		return true
+	}
+	for _, pattern := range pi.config.URLPatterns {
+		if matchGlob(pattern, url) {
+			return true
+		}
+	}
+	return false
+}
+
+func (pi *playwrightInterceptor) handleRoute(route playwright.Route) {
+	req := route.Request()
+	url := req.URL()
+	resourceType := req.ResourceType()
+
+	if !pi.shouldIntercept(url, resourceType) {
+		_ = route.Continue()
+		return
+	}
+
+	pi.mu.Lock()
+	// Check max entries
+	if len(pi.entries) >= pi.config.MaxEntries {
+		pi.mu.Unlock()
+		slog.Warn("playwright interceptor max entries reached, dropping request", "url", url)
+		_ = route.Continue()
+		return
+	}
+
+	interceptedReq := &InterceptedRequest{
+		RequestID:    req.URL(), // Use URL as ID since Playwright doesn't expose request ID
+		URL:          url,
+		Method:       req.Method(),
+		Headers:      make(map[string]string),
+		Timestamp:    time.Now(),
+		ResourceType: InterceptedResourceType(resourceType),
+	}
+
+	// Copy headers
+	for k, v := range req.Headers() {
+		interceptedReq.Headers[k] = v
+	}
+
+	// Capture request body if enabled
+	if pi.config.CaptureRequestBody {
+		if postData, err := req.PostData(); err == nil && postData != "" {
+			body := postData
+			if int64(len(body)) > pi.config.MaxBodySize {
+				body = body[:pi.config.MaxBodySize]
+			}
+			interceptedReq.Body = body
+			interceptedReq.BodySize = int64(len(postData))
+		}
+	}
+
+	pi.pending[url] = interceptedReq
+	pi.mu.Unlock()
+
+	// Continue the request and capture response
+	_ = route.Continue()
+
+	// Note: Response capture happens via page event listeners
+}
+
+func (pi *playwrightInterceptor) onResponse(resp playwright.Response) {
+	req := resp.Request()
+	url := req.URL()
+
+	pi.mu.Lock()
+	interceptedReq, exists := pi.pending[url]
+	if !exists {
+		pi.mu.Unlock()
+		return
+	}
+	delete(pi.pending, url)
+
+	// Check max entries again
+	if len(pi.entries) >= pi.config.MaxEntries {
+		pi.mu.Unlock()
+		return
+	}
+
+	interceptedResp := &InterceptedResponse{
+		RequestID:  interceptedReq.RequestID,
+		Status:     resp.Status(),
+		StatusText: resp.StatusText(),
+		Headers:    make(map[string]string),
+		Timestamp:  time.Now(),
+	}
+
+	// Copy headers
+	for k, v := range resp.Headers() {
+		interceptedResp.Headers[k] = v
+	}
+
+	// Capture response body if enabled
+	if pi.config.CaptureResponseBody {
+		if body, err := resp.Body(); err == nil && len(body) > 0 {
+			bodyStr := string(body)
+			if int64(len(bodyStr)) > pi.config.MaxBodySize {
+				bodyStr = bodyStr[:pi.config.MaxBodySize]
+			}
+			interceptedResp.Body = bodyStr
+			interceptedResp.BodySize = int64(len(bodyStr))
+		}
+	}
+
+	entry := InterceptedEntry{
+		Request:  *interceptedReq,
+		Response: interceptedResp,
+		Duration: interceptedResp.Timestamp.Sub(interceptedReq.Timestamp),
+	}
+	pi.entries = append(pi.entries, entry)
+	pi.mu.Unlock()
+}
+
+func (pi *playwrightInterceptor) onRequestFailed(req playwright.Request) {
+	url := req.URL()
+
+	pi.mu.Lock()
+	interceptedReq, exists := pi.pending[url]
+	if !exists {
+		pi.mu.Unlock()
+		return
+	}
+	delete(pi.pending, url)
+
+	entry := InterceptedEntry{
+		Request:  *interceptedReq,
+		Response: nil,
+		Duration: time.Since(interceptedReq.Timestamp),
+	}
+	pi.entries = append(pi.entries, entry)
+	pi.mu.Unlock()
+}
+
+func (pi *playwrightInterceptor) getEntries() []InterceptedEntry {
+	pi.mu.Lock()
+	defer pi.mu.Unlock()
+	result := make([]InterceptedEntry, len(pi.entries))
+	copy(result, pi.entries)
+	return result
+}
+
 func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderProfile) (Result, error) {
 	req.URL = ApplyAuthQuery(req.URL, req.Auth.Query)
 	if req.URL == "" {
@@ -308,6 +485,35 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		_ = page.Close()
 	}()
 
+	// Set up network interceptor if configured
+	var interceptor *playwrightInterceptor
+	if req.NetworkIntercept != nil && req.NetworkIntercept.Enabled {
+		slog.Debug("setting up network interception", "url", apperrors.SanitizeURL(req.URL))
+		config := *req.NetworkIntercept
+		if config.MaxBodySize == 0 {
+			config.MaxBodySize = 1024 * 1024 // 1MB default
+		}
+		if config.MaxEntries == 0 {
+			config.MaxEntries = 1000 // Default max entries
+		}
+		interceptor = newPlaywrightInterceptor(config)
+
+		// Set up route handler for interception
+		_ = page.Route("**/*", func(route playwright.Route) {
+			interceptor.handleRoute(route)
+		})
+
+		// Set up response listener
+		page.On("response", func(resp playwright.Response) {
+			interceptor.onResponse(resp)
+		})
+
+		// Set up request failed listener
+		page.On("requestfailed", func(req playwright.Request) {
+			interceptor.onRequestFailed(req)
+		})
+	}
+
 	timeoutFloat := float64(req.Timeout.Milliseconds())
 	navTimeoutFloat := float64(navTimeout.Milliseconds())
 	if timeoutFloat <= 0 {
@@ -424,15 +630,23 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 		}
 	}
 
+	// Collect intercepted data if enabled
+	var interceptedData []InterceptedEntry
+	if interceptor != nil {
+		interceptedData = interceptor.getEntries()
+		slog.Debug("network interception complete", "url", apperrors.SanitizeURL(req.URL), "entriesCaptured", len(interceptedData))
+	}
+
 	return Result{
-		URL:            req.URL,
-		Status:         statusCode,
-		HTML:           content,
-		FetchedAt:      time.Now(),
-		Engine:         RenderEnginePlaywright,
-		ETag:           "", // Headless browsers don't easily expose response headers without complex interception.
-		LastModified:   "",
-		ScreenshotPath: screenshotPath,
+		URL:             req.URL,
+		Status:          statusCode,
+		HTML:            content,
+		FetchedAt:       time.Now(),
+		Engine:          RenderEnginePlaywright,
+		ETag:            "", // Headless browsers don't easily expose response headers without complex interception.
+		LastModified:    "",
+		ScreenshotPath:  screenshotPath,
+		InterceptedData: interceptedData,
 	}, nil
 }
 

@@ -312,6 +312,7 @@ export type ScrapeRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
 };
 
 export type CrawlRequest = {
@@ -346,6 +347,7 @@ export type CrawlRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
 };
 
 export type ResearchRequest = {
@@ -364,6 +366,7 @@ export type ResearchRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
 };
 
 export type Job = {
@@ -386,6 +389,10 @@ export type Job = {
      * Path to the screenshot file if screenshot capture was enabled
      */
     screenshotPath?: string;
+    /**
+     * Captured network activity if network interception was enabled
+     */
+    interceptedData?: Array<InterceptedEntry>;
 };
 
 export type JobList = {
@@ -726,6 +733,128 @@ export type RenderProfile = {
         isMobile?: boolean;
         hasTouch?: boolean;
     };
+};
+
+/**
+ * Configuration for network request/response interception for API scraping
+ */
+export type NetworkInterceptConfig = {
+    /**
+     * Enable network interception
+     */
+    enabled?: boolean;
+    /**
+     * Glob patterns for URLs to intercept (e.g., "**api**", "*.json")
+     */
+    urlPatterns?: Array<string>;
+    /**
+     * Resource types to capture
+     */
+    resourceTypes?: Array<'xhr' | 'fetch' | 'document' | 'script' | 'stylesheet' | 'image' | 'media' | 'font' | 'websocket' | 'other'>;
+    /**
+     * Whether to capture request bodies
+     */
+    captureRequestBody?: boolean;
+    /**
+     * Whether to capture response bodies
+     */
+    captureResponseBody?: boolean;
+    /**
+     * Maximum bytes to capture per body (default 1MB)
+     */
+    maxBodySize?: number;
+    /**
+     * Maximum number of entries to capture
+     */
+    maxEntries?: number;
+};
+
+/**
+ * Captured network request/response pair
+ */
+export type InterceptedEntry = {
+    request?: InterceptedRequest;
+    response?: InterceptedResponse;
+    /**
+     * Time between request and response in milliseconds
+     */
+    duration?: number;
+};
+
+/**
+ * Captured network request
+ */
+export type InterceptedRequest = {
+    /**
+     * Unique identifier
+     */
+    requestId?: string;
+    /**
+     * Request URL
+     */
+    url?: string;
+    /**
+     * HTTP method
+     */
+    method?: string;
+    /**
+     * Request headers
+     */
+    headers?: {
+        [key: string]: string;
+    };
+    /**
+     * Request body (base64 if binary)
+     */
+    body?: string;
+    /**
+     * Original body size in bytes
+     */
+    bodySize?: number;
+    /**
+     * When request was sent
+     */
+    timestamp?: string;
+    /**
+     * Type of resource
+     */
+    resourceType?: 'xhr' | 'fetch' | 'document' | 'script' | 'stylesheet' | 'image' | 'media' | 'font' | 'websocket' | 'other';
+};
+
+/**
+ * Captured network response
+ */
+export type InterceptedResponse = {
+    /**
+     * Matches request
+     */
+    requestId?: string;
+    /**
+     * HTTP status code
+     */
+    status?: number;
+    /**
+     * HTTP status text
+     */
+    statusText?: string;
+    /**
+     * Response headers
+     */
+    headers?: {
+        [key: string]: string;
+    };
+    /**
+     * Response body (base64 if binary)
+     */
+    body?: string;
+    /**
+     * Size of response body in bytes
+     */
+    bodySize?: number;
+    /**
+     * When response was received
+     */
+    timestamp?: string;
 };
 
 export type GetHealthzData = {
@@ -1285,9 +1414,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics)
+         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format)
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet';
+        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */

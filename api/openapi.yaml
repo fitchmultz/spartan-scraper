@@ -602,9 +602,9 @@ paths:
           name: format
           schema:
             type: string
-            enum: [jsonl, json, md, csv, xlsx, parquet]
+            enum: [jsonl, json, md, csv, xlsx, parquet, har]
             default: jsonl
-          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics)
+          description: Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates Excel spreadsheet, parquet generates Apache Parquet for analytics, har generates HTTP Archive format)
         - in: query
           name: limit
           schema:
@@ -1299,6 +1299,8 @@ components:
           $ref: '#/components/schemas/ScreenshotConfig'
         device:
           $ref: '#/components/schemas/DeviceEmulation'
+        networkIntercept:
+          $ref: '#/components/schemas/NetworkInterceptConfig'
     CrawlRequest:
       type: object
       required: [url]
@@ -1365,6 +1367,8 @@ components:
           $ref: '#/components/schemas/ScreenshotConfig'
         device:
           $ref: '#/components/schemas/DeviceEmulation'
+        networkIntercept:
+          $ref: '#/components/schemas/NetworkInterceptConfig'
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1414,6 +1418,8 @@ components:
           $ref: '#/components/schemas/ScreenshotConfig'
         device:
           $ref: '#/components/schemas/DeviceEmulation'
+        networkIntercept:
+          $ref: '#/components/schemas/NetworkInterceptConfig'
     Job:
       type: object
       required:
@@ -1446,6 +1452,11 @@ components:
         screenshotPath:
           type: string
           description: Path to the screenshot file if screenshot capture was enabled
+        interceptedData:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterceptedEntry'
+          description: Captured network activity if network interception was enabled
     JobList:
       type: object
       properties:
@@ -1876,3 +1887,109 @@ components:
               type: boolean
             hasTouch:
               type: boolean
+    NetworkInterceptConfig:
+      type: object
+      description: Configuration for network request/response interception for API scraping
+      properties:
+        enabled:
+          type: boolean
+          default: false
+          description: Enable network interception
+        urlPatterns:
+          type: array
+          items:
+            type: string
+          description: Glob patterns for URLs to intercept (e.g., "**/api/**", "*.json")
+        resourceTypes:
+          type: array
+          items:
+            type: string
+            enum: [xhr, fetch, document, script, stylesheet, image, media, font, websocket, other]
+          description: Resource types to capture
+        captureRequestBody:
+          type: boolean
+          default: true
+          description: Whether to capture request bodies
+        captureResponseBody:
+          type: boolean
+          default: true
+          description: Whether to capture response bodies
+        maxBodySize:
+          type: integer
+          default: 1048576
+          description: Maximum bytes to capture per body (default 1MB)
+        maxEntries:
+          type: integer
+          default: 1000
+          description: Maximum number of entries to capture
+    InterceptedEntry:
+      type: object
+      description: Captured network request/response pair
+      properties:
+        request:
+          $ref: '#/components/schemas/InterceptedRequest'
+        response:
+          $ref: '#/components/schemas/InterceptedResponse'
+        duration:
+          type: integer
+          description: Time between request and response in milliseconds
+    InterceptedRequest:
+      type: object
+      description: Captured network request
+      properties:
+        requestId:
+          type: string
+          description: Unique identifier
+        url:
+          type: string
+          description: Request URL
+        method:
+          type: string
+          description: HTTP method
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Request headers
+        body:
+          type: string
+          description: Request body (base64 if binary)
+        bodySize:
+          type: integer
+          description: Original body size in bytes
+        timestamp:
+          type: string
+          format: date-time
+          description: When request was sent
+        resourceType:
+          type: string
+          enum: [xhr, fetch, document, script, stylesheet, image, media, font, websocket, other]
+          description: Type of resource
+    InterceptedResponse:
+      type: object
+      description: Captured network response
+      properties:
+        requestId:
+          type: string
+          description: Matches request
+        status:
+          type: integer
+          description: HTTP status code
+        statusText:
+          type: string
+          description: HTTP status text
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Response headers
+        body:
+          type: string
+          description: Response body (base64 if binary)
+        bodySize:
+          type: integer
+          description: Size of response body in bytes
+        timestamp:
+          type: string
+          format: date-time
+          description: When response was received

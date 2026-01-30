@@ -50,6 +50,8 @@ func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error 
 		return exportXLSXStream(job, r, w)
 	case "parquet":
 		return exportParquetStream(job, r, w)
+	case "har":
+		return exportHARStream(job, r, w)
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}
