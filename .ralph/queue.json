@@ -1,4 +1,781 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0181",
+      "status": "todo",
+      "title": "Implement HTTP/HTTPS/SOCKS proxy support for fetch operations",
+      "priority": "high",
+      "tags": [
+        "network",
+        "fetch",
+        "proxy",
+        "infrastructure"
+      ],
+      "scope": [
+        "internal/fetch/types.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "internal/config/config.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Search for 'proxy' in codebase only finds vite dev server proxy config, not fetch proxy support",
+        "No proxy configuration in RenderProfile or Request types",
+        "Competitors like Firecrawl and ScrapeGraph support proxy rotation"
+      ],
+      "plan": [
+        "Add proxy configuration fields to RenderProfile and Request types",
+        "Implement proxy transport for HTTP fetcher using golang.org/x/net/proxy",
+        "Add proxy support to Chromedp fetcher via chromedp.ProxyServer option",
+        "Add proxy support to Playwright fetcher via browser.NewContext with proxy",
+        "Add PROXY_URL, PROXY_USERNAME, PROXY_PASSWORD env vars to config",
+        "Update OpenAPI spec with proxy configuration schema",
+        "Add --proxy flag to CLI scrape/crawl commands",
+        "Write tests for proxy functionality"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0182",
+      "status": "todo",
+      "title": "Add sitemap.xml parsing for URL discovery",
+      "priority": "high",
+      "tags": [
+        "crawl",
+        "discovery",
+        "sitemap",
+        "seo"
+      ],
+      "scope": [
+        "internal/crawl/crawl.go",
+        "internal/cli/scrape/crawl.go",
+        "api/openapi.yaml",
+        "web/src/"
+      ],
+      "evidence": [
+        "Search for 'sitemap' only finds references in docs/landscape.md, not in code",
+        "No sitemap parsing in crawl.go - only same-host link extraction",
+        "Firecrawl supports sitemap.xml ingestion as a discovery method"
+      ],
+      "plan": [
+        "Create internal/crawl/sitemap.go for XML parsing (sitemapindex and urlset)",
+        "Add SitemapURL field to CrawlRequest model",
+        "Implement sitemap fetching and parsing with gzip support",
+        "Add --sitemap flag to crawl CLI command",
+        "Support recursive sitemapindex following",
+        "Update OpenAPI spec with sitemap options",
+        "Add sitemap input field to web UI crawl form",
+        "Write tests for sitemap parsing"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0183",
+      "status": "todo",
+      "title": "Add Excel/XLSX export format",
+      "priority": "high",
+      "tags": [
+        "export",
+        "excel",
+        "xlsx",
+        "data"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/xlsx.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "internal/exporter/exporter.go only supports: json, jsonl, md, csv",
+        "No Excel/XLSX support found in any exporter files",
+        "Excel is commonly requested for business users who need formatted data"
+      ],
+      "plan": [
+        "Add github.com/xuri/excelize/v2 dependency",
+        "Create internal/exporter/xlsx.go with XLSX exporter implementation",
+        "Support multi-sheet exports for complex crawl results",
+        "Add column width auto-sizing and header formatting",
+        "Add 'xlsx' case to exporter switch statement",
+        "Update OpenAPI spec format enum to include xlsx",
+        "Add XLSX download option to web UI",
+        "Write tests for XLSX export"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0184",
+      "status": "todo",
+      "title": "Implement webhook notifications for job completion",
+      "priority": "high",
+      "tags": [
+        "integration",
+        "webhook",
+        "notifications",
+        "api"
+      ],
+      "scope": [
+        "internal/jobs/manager.go",
+        "internal/model/job.go",
+        "internal/api/server.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Search for 'webhook' or 'notification' returns no results",
+        "Job completion only updates status internally - no external notification",
+        "Users must poll API to check job status - inefficient for long jobs"
+      ],
+      "plan": [
+        "Add WebhookURL and WebhookEvents fields to Job model",
+        "Create internal/webhook package for dispatch logic",
+        "Implement retry with exponential backoff for failed webhooks",
+        "Add webhook signature verification (HMAC-SHA256)",
+        "Dispatch on job completion, failure, and cancellation",
+        "Update OpenAPI spec with webhook configuration",
+        "Add webhook URL input to web UI job forms",
+        "Write tests for webhook dispatch and retry logic"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0185",
+      "status": "todo",
+      "title": "Add URL pattern filtering for crawls (include/exclude regex)",
+      "priority": "high",
+      "tags": [
+        "crawl",
+        "filtering",
+        "url-patterns",
+        "navigation"
+      ],
+      "scope": [
+        "internal/crawl/crawl.go",
+        "internal/model/crawl.go",
+        "api/openapi.yaml",
+        "web/src/"
+      ],
+      "evidence": [
+        "internal/crawl/crawl.go only has sameHost filtering - no pattern matching",
+        "No IncludePatterns or ExcludePatterns in CrawlRequest",
+        "Users cannot restrict crawls to specific URL paths like /products/*"
+      ],
+      "plan": [
+        "Add IncludePatterns and ExcludePatterns []string to CrawlRequest",
+        "Compile patterns to regex on crawl start for efficiency",
+        "Apply filters in shouldEnqueue before adding URL to queue",
+        "Support glob patterns (e.g., /blog/**, /products/*) and full regex",
+        "Add --include and --exclude flags to crawl CLI",
+        "Update OpenAPI spec with pattern fields",
+        "Add pattern inputs to web UI crawl form",
+        "Write tests for pattern matching logic"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0186",
+      "status": "todo",
+      "title": "Implement API authentication with API keys",
+      "priority": "high",
+      "tags": [
+        "security",
+        "api",
+        "authentication",
+        "auth"
+      ],
+      "scope": [
+        "internal/api/server.go",
+        "internal/api/middleware.go",
+        "internal/auth/vault.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "internal/api/server.go has no authentication middleware",
+        "API is completely open when exposed beyond localhost",
+        "No API key or token validation in any handler"
+      ],
+      "plan": [
+        "Create internal/api/middleware.go with API key auth middleware",
+        "Add API key storage to auth vault",
+        "Implement X-API-Key header validation",
+        "Add API key generation and rotation commands to CLI",
+        "Support read-only vs read-write key permissions",
+        "Make auth optional when bound to localhost (dev mode)",
+        "Update OpenAPI spec with security schemes",
+        "Write tests for auth middleware"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0187",
+      "status": "todo",
+      "title": "Add screenshot capture capability",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "screenshot",
+        "visual",
+        "headless"
+      ],
+      "scope": [
+        "internal/fetch/types.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "No screenshot functionality in any fetcher",
+        "No ScreenshotOptions or CaptureScreenshot field in types",
+        "Competitors offer screenshot capture for visual verification"
+      ],
+      "plan": [
+        "Add ScreenshotConfig struct with FullPage, Viewport, Format, Quality fields",
+        "Implement screenshot capture in ChromedpFetcher using chromedp.Screenshot",
+        "Implement screenshot capture in PlaywrightFetcher using page.Screenshot",
+        "Store screenshots alongside job results",
+        "Add screenshot option to RenderProfile",
+        "Update OpenAPI spec with screenshot options",
+        "Add screenshot preview to web UI results",
+        "Write tests for screenshot capture"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0188",
+      "status": "todo",
+      "title": "Implement Parquet export format for analytics pipelines",
+      "priority": "medium",
+      "tags": [
+        "export",
+        "parquet",
+        "analytics",
+        "data"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/parquet.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Exporter only supports json, jsonl, md, csv - no columnar formats",
+        "Parquet is standard for BigQuery, Athena, Spark analytics pipelines",
+        "No Apache Parquet support found in codebase"
+      ],
+      "plan": [
+        "Add github.com/xitongsys/parquet-go dependency",
+        "Create internal/exporter/parquet.go with Parquet exporter",
+        "Implement schema inference from extraction fields",
+        "Support compression (SNAPPY, GZIP)",
+        "Add 'parquet' case to exporter switch",
+        "Update OpenAPI spec format enum",
+        "Add Parquet download option to web UI",
+        "Write tests for Parquet export"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0189",
+      "status": "todo",
+      "title": "Add mobile device emulation for responsive content",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "mobile",
+        "emulation",
+        "responsive"
+      ],
+      "scope": [
+        "internal/fetch/types.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "internal/fetch/types.go only has UserAgent configuration",
+        "No Device, Viewport, or Mobile fields in RenderProfile",
+        "Cannot scrape mobile-responsive content that differs from desktop"
+      ],
+      "plan": [
+        "Add DeviceEmulation struct with Name, Viewport, UserAgent, Touch fields",
+        "Add preset devices (iPhone, iPad, Pixel, etc.)",
+        "Implement device emulation in ChromedpFetcher using chromedp.Emulate",
+        "Implement device emulation in Playwright using context.SetViewportSize",
+        "Add --device flag to CLI with preset options",
+        "Update OpenAPI spec with device emulation options",
+        "Add device selector to web UI",
+        "Write tests for device emulation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0190",
+      "status": "todo",
+      "title": "Implement per-host rate limiting",
+      "priority": "medium",
+      "tags": [
+        "rate-limit",
+        "crawl-politeness",
+        "performance",
+        "fetch"
+      ],
+      "scope": [
+        "internal/fetch/limiter.go",
+        "internal/fetch/types.go",
+        "internal/fetch/render_profiles.go"
+      ],
+      "evidence": [
+        "internal/fetch/limiter.go uses global QPS/burst for all hosts",
+        "Single RATE_LIMIT_QPS env var - no per-host configuration",
+        "Some sites need gentler crawling than others"
+      ],
+      "plan": [
+        "Add RateLimitQPS and RateLimitBurst fields to RenderProfile",
+        "Create per-host rate limiter registry in limiter.go",
+        "Use host-specific limiter when profile has custom rates",
+        "Fall back to global limiter for hosts without custom config",
+        "Support wildcards in host patterns (*.example.com)",
+        "Update render profile JSON schema",
+        "Add rate limit display to web UI",
+        "Write tests for per-host rate limiting"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0191",
+      "status": "todo",
+      "title": "Add request/response interception for API scraping",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "network",
+        "interception",
+        "spa",
+        "xhr"
+      ],
+      "scope": [
+        "internal/fetch/types.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "No network interception capabilities in fetchers",
+        "Cannot capture XHR/Fetch API calls made by SPAs",
+        "No HAR (HTTP Archive) format export available"
+      ],
+      "plan": [
+        "Add NetworkInterceptConfig with URL patterns and resource types",
+        "Implement network event listeners in ChromedpFetcher",
+        "Implement route interception in PlaywrightFetcher",
+        "Capture request/response pairs for matched patterns",
+        "Store intercepted data alongside page content",
+        "Add HAR format export option",
+        "Update OpenAPI spec with interception options",
+        "Write tests for network interception"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0192",
+      "status": "todo",
+      "title": "Implement POST/PUT/DELETE HTTP methods and request body support",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "http-methods",
+        "api-scraping",
+        "rest"
+      ],
+      "scope": [
+        "internal/fetch/types.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/chromedp_fetcher.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go only implements GET requests",
+        "No Method or Body fields in Request type",
+        "Cannot scrape APIs that require POST with JSON payload"
+      ],
+      "plan": [
+        "Add Method and Body fields to Request type",
+        "Add ContentType and Headers for request configuration",
+        "Implement POST/PUT/DELETE in HTTPFetcher",
+        "Implement form submission in ChromedpFetcher",
+        "Support JSON and form-encoded request bodies",
+        "Add --method and --body flags to CLI",
+        "Update OpenAPI spec with method and body options",
+        "Write tests for non-GET methods"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0193",
+      "status": "todo",
+      "title": "Add database export targets (PostgreSQL, MySQL, MongoDB)",
+      "priority": "medium",
+      "tags": [
+        "export",
+        "database",
+        "integration",
+        "data"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/database.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "All exporters write to local files only",
+        "No database connection or export capability",
+        "Users must manually import files into databases"
+      ],
+      "plan": [
+        "Create internal/exporter/database.go with database exporters",
+        "Implement PostgreSQL exporter with bulk insert",
+        "Implement MySQL exporter with prepared statements",
+        "Implement MongoDB exporter with document batches",
+        "Add connection string configuration",
+        "Support table/collection creation with schema inference",
+        "Add upsert vs insert mode options",
+        "Update OpenAPI spec with database export options",
+        "Write tests with testcontainers"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0194",
+      "status": "todo",
+      "title": "Implement cloud storage export (S3, GCS, Azure Blob)",
+      "priority": "medium",
+      "tags": [
+        "export",
+        "cloud-storage",
+        "s3",
+        "gcs",
+        "azure"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/cloud.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Exporters only write to local filesystem",
+        "No cloud storage integration found",
+        "Users in cloud environments need direct bucket export"
+      ],
+      "plan": [
+        "Create internal/exporter/cloud.go with cloud exporters",
+        "Implement S3 exporter using AWS SDK",
+        "Implement GCS exporter using Google Cloud SDK",
+        "Implement Azure Blob exporter",
+        "Support multipart uploads for large files",
+        "Add IAM role and credential chain support",
+        "Support path templates with date/job variables",
+        "Update OpenAPI spec with cloud export options",
+        "Write tests with localstack/azurite"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0195",
+      "status": "todo",
+      "title": "Add batch job submission API",
+      "priority": "medium",
+      "tags": [
+        "api",
+        "batch",
+        "performance",
+        "jobs"
+      ],
+      "scope": [
+        "internal/api/jobs.go",
+        "internal/jobs/manager.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "API only supports single job creation per request",
+        "No batch endpoint for submitting multiple URLs",
+        "Inefficient for users who need to scrape many URLs at once"
+      ],
+      "plan": [
+        "Add POST /jobs/batch endpoint",
+        "Create BatchJobRequest with []JobSpec",
+        "Implement parallel job creation in manager",
+        "Return batch ID and individual job IDs",
+        "Add batch status endpoint GET /jobs/batch/{id}",
+        "Support batch cancellation",
+        "Update OpenAPI spec with batch endpoints",
+        "Add batch submission UI to web",
+        "Write tests for batch operations"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0196",
+      "status": "todo",
+      "title": "Implement job dependencies and chaining",
+      "priority": "low",
+      "tags": [
+        "jobs",
+        "workflow",
+        "dependencies",
+        "chaining"
+      ],
+      "scope": [
+        "internal/model/job.go",
+        "internal/jobs/manager.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Job model has no dependency fields",
+        "Cannot create job workflows (crawl -> extract -> analyze)",
+        "Each job is independent - no orchestration capability"
+      ],
+      "plan": [
+        "Add DependsOn []string field to Job model",
+        "Add JobChain model for named workflows",
+        "Implement dependency resolution in manager",
+        "Auto-start jobs when dependencies complete",
+        "Handle failure propagation (fail dependent jobs)",
+        "Add chain visualization to web UI",
+        "Update OpenAPI spec with dependency fields",
+        "Write tests for dependency resolution"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0197",
+      "status": "todo",
+      "title": "Add PDF export format",
+      "priority": "low",
+      "tags": [
+        "export",
+        "pdf",
+        "document",
+        "print"
+      ],
+      "scope": [
+        "internal/exporter/exporter.go",
+        "internal/exporter/pdf.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "No PDF generation capability in exporters",
+        "Cannot export scraped pages as PDF documents",
+        "Useful for reports and archival"
+      ],
+      "plan": [
+        "Add PDF export using headless browser (Chromedp/Playwright)",
+        "Support page ranges for crawl results",
+        "Add header/footer templates",
+        "Support table of contents generation",
+        "Add 'pdf' case to exporter switch",
+        "Update OpenAPI spec format enum",
+        "Add PDF download to web UI",
+        "Write tests for PDF export"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0198",
+      "status": "todo",
+      "title": "Implement cookie persistence and session management",
+      "priority": "low",
+      "tags": [
+        "auth",
+        "session",
+        "cookies",
+        "persistence"
+      ],
+      "scope": [
+        "internal/auth/vault.go",
+        "internal/fetch/types.go",
+        "internal/fetch/http_fetcher.go"
+      ],
+      "evidence": [
+        "HTTP fetcher uses in-memory cookie jar per request",
+        "No persistent cookie sessions across jobs",
+        "Must re-login for every scrape of authenticated sites"
+      ],
+      "plan": [
+        "Add SessionStore to auth vault for cookie persistence",
+        "Add SessionID field to Request and RenderProfile",
+        "Implement cookie jar serialization to JSON",
+        "Auto-save session after successful login",
+        "Add session list/get/delete CLI commands",
+        "Support session refresh with refresh tokens",
+        "Update OpenAPI spec with session options",
+        "Write tests for session persistence"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0199",
+      "status": "todo",
+      "title": "Add adaptive rate limiting based on server response",
+      "priority": "low",
+      "tags": [
+        "rate-limit",
+        "adaptive",
+        "crawl-politeness",
+        "performance"
+      ],
+      "scope": [
+        "internal/fetch/limiter.go",
+        "internal/fetch/http_fetcher.go",
+        "internal/crawl/crawl.go"
+      ],
+      "evidence": [
+        "Rate limiter uses fixed QPS - no adaptation",
+        "Retry-After header is read but not used for throttling",
+        "No backoff based on 429 responses or server load"
+      ],
+      "plan": [
+        "Add adaptive rate limiting mode to limiter",
+        "Monitor 429 responses and adjust QPS downward",
+        "Respect Retry-After header for cooldown",
+        "Gradually increase rate on successful requests",
+        "Add per-host adaptive state tracking",
+        "Add ADAPTIVE_RATE_LIMIT env var config",
+        "Log rate adjustments for visibility",
+        "Write tests for adaptive behavior"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0200",
+      "status": "todo",
+      "title": "Implement optional robots.txt compliance",
+      "priority": "low",
+      "tags": [
+        "crawl",
+        "robots.txt",
+        "politeness",
+        "seo"
+      ],
+      "scope": [
+        "internal/crawl/crawl.go",
+        "internal/crawl/robots.go",
+        "internal/config/config.go"
+      ],
+      "evidence": [
+        "AGENTS.md explicitly states 'Robots.txt: Ignored by design'",
+        "No robots.txt parsing or checking in codebase",
+        "Some users need polite crawling for compliance"
+      ],
+      "plan": [
+        "Create internal/crawl/robots.go with robots.txt parser",
+        "Implement user-agent matching and rule evaluation",
+        "Add CrawlDelay support for rate limiting",
+        "Add --respect-robots flag (default: false)",
+        "Add RESPECT_ROBOTS env var",
+        "Cache robots.txt per host to avoid repeated fetches",
+        "Log when URLs are skipped due to robots.txt",
+        "Write tests for robots.txt parsing"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-29T22:35:00Z",
+      "updated_at": "2026-01-29T22:35:00Z",
+      "depends_on": [],
+      "custom_fields": {}
+    }
+  ]
 }
