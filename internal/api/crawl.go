@@ -79,6 +79,10 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requestID := contextRequestID(r.Context())
+	sitemapOnly := false
+	if req.SitemapOnly != nil {
+		sitemapOnly = *req.SitemapOnly
+	}
 	spec := jobs.JobSpec{
 		Kind:           model.KindCrawl,
 		URL:            req.URL,
@@ -92,6 +96,8 @@ func (s *Server) handleCrawl(w http.ResponseWriter, r *http.Request) {
 		Pipeline:       pipelineOpts,
 		Incremental:    incremental,
 		RequestID:      requestID,
+		SitemapURL:     req.SitemapURL,
+		SitemapOnly:    sitemapOnly,
 	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {

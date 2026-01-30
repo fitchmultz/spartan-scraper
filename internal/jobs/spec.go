@@ -32,6 +32,8 @@ type JobSpec struct {
 	Pipeline       pipeline.Options
 	Incremental    bool
 	RequestID      string
+	SitemapURL     string // Optional sitemap.xml URL for URL discovery
+	SitemapOnly    bool   // If true, only crawl URLs from sitemap, not the root URL
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.
@@ -57,6 +59,14 @@ func (s JobSpec) Validate() error {
 		}
 		if err := validate.ValidateTimeout(s.TimeoutSeconds); err != nil {
 			return err
+		}
+		if s.SitemapOnly && s.SitemapURL == "" {
+			return apperrors.Validation("sitemapOnly requires sitemapURL to be set")
+		}
+		if s.SitemapURL != "" {
+			if err := validate.ValidateURL(s.SitemapURL); err != nil {
+				return apperrors.Wrap(apperrors.KindValidation, "invalid sitemapURL", err)
+			}
 		}
 	case model.KindResearch:
 		if s.Query == "" {

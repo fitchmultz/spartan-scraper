@@ -60,6 +60,8 @@ type CrawlRequest struct {
 	Extract        *extract.ExtractOptions `json:"extract"`
 	Pipeline       *pipeline.Options       `json:"pipeline"`
 	Incremental    *bool                   `json:"incremental"`
+	SitemapURL     string                  `json:"sitemapURL,omitempty"`
+	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
 }
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
@@ -94,6 +96,8 @@ type ScheduleRequest struct {
 	Extract         *extract.ExtractOptions `json:"extract"`
 	Pipeline        *pipeline.Options       `json:"pipeline"`
 	Incremental     *bool                   `json:"incremental"`
+	SitemapURL      *string                 `json:"sitemapURL,omitempty"`
+	SitemapOnly     *bool                   `json:"sitemapOnly,omitempty"`
 }
 
 // ScheduleResponse represents a schedule in the response.

@@ -56,6 +56,9 @@ export interface PresetConfig {
   url?: string;
   query?: string;
   urls?: string;
+  // Sitemap options
+  sitemapURL?: string;
+  sitemapOnly?: boolean;
 }
 
 /**

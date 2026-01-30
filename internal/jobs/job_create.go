@@ -60,7 +60,7 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, headless bool
 }
 
 // CreateCrawlJob creates and persists a new crawl job.
-func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string) (model.Job, error) {
+func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxPages int, headless bool, usePlaywright bool, auth fetch.AuthOptions, timeoutSeconds int, extractOpts extract.ExtractOptions, pipelineOpts pipeline.Options, incremental bool, requestID string, sitemapURL string, sitemapOnly bool) (model.Job, error) {
 	job := model.Job{
 		ID:        uuid.NewString(),
 		Kind:      model.KindCrawl,
@@ -79,6 +79,8 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 			"timeout":     timeoutSeconds,
 			"incremental": incremental,
 			"requestID":   requestID,
+			"sitemapURL":  sitemapURL,
+			"sitemapOnly": sitemapOnly,
 		},
 	}
 	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
@@ -130,7 +132,7 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 	case model.KindScrape:
 		return m.CreateScrapeJob(ctx, spec.URL, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID)
 	case model.KindCrawl:
-		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID)
+		return m.CreateCrawlJob(ctx, spec.URL, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.Incremental, spec.RequestID, spec.SitemapURL, spec.SitemapOnly)
 	case model.KindResearch:
 		return m.CreateResearchJob(ctx, spec.Query, spec.URLs, spec.MaxDepth, spec.MaxPages, spec.Headless, spec.UsePlaywright, spec.Auth, spec.TimeoutSeconds, spec.Extract, spec.Pipeline, spec.RequestID)
 	default:

@@ -1207,6 +1207,14 @@ components:
           default: false
         proxy:
           $ref: '#/components/schemas/ProxyConfig'
+        sitemapURL:
+          type: string
+          format: uri
+          description: Optional URL to a sitemap.xml file. If provided, URLs from the sitemap will be used as crawl seeds.
+        sitemapOnly:
+          type: boolean
+          default: false
+          description: If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -1397,6 +1405,14 @@ components:
           default: false
         proxy:
           $ref: '#/components/schemas/ProxyConfig'
+        sitemapURL:
+          type: string
+          format: uri
+          description: Optional URL to a sitemap.xml file. If provided, URLs from the sitemap will be used as crawl seeds.
+        sitemapOnly:
+          type: boolean
+          default: false
+          description: If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
     ScheduleListResponse:
       type: object
       properties:

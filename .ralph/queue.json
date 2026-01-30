@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0182",
-      "status": "todo",
-      "title": "Add sitemap.xml parsing for URL discovery",
-      "priority": "high",
-      "tags": [
-        "crawl",
-        "discovery",
-        "sitemap",
-        "seo"
-      ],
-      "scope": [
-        "internal/crawl/crawl.go",
-        "internal/cli/scrape/crawl.go",
-        "api/openapi.yaml",
-        "web/src/"
-      ],
-      "evidence": [
-        "Search for 'sitemap' only finds references in docs/landscape.md, not in code",
-        "No sitemap parsing in crawl.go - only same-host link extraction",
-        "Firecrawl supports sitemap.xml ingestion as a discovery method"
-      ],
-      "plan": [
-        "Create internal/crawl/sitemap.go for XML parsing (sitemapindex and urlset)",
-        "Add SitemapURL field to CrawlRequest model",
-        "Implement sitemap fetching and parsing with gzip support",
-        "Add --sitemap flag to crawl CLI command",
-        "Support recursive sitemapindex following",
-        "Update OpenAPI spec with sitemap options",
-        "Add sitemap input field to web UI crawl form",
-        "Write tests for sitemap parsing"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T22:35:00Z",
-      "updated_at": "2026-01-29T22:35:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0183",
       "status": "todo",
       "title": "Add Excel/XLSX export format",

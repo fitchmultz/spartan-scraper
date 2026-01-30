@@ -193,6 +193,8 @@ export function buildCrawlRequest(
   postProcessors: string,
   transformers: string,
   incremental: boolean,
+  sitemapURL?: string,
+  sitemapOnly?: boolean,
 ): CrawlRequest {
   return {
     url,
@@ -206,6 +208,8 @@ export function buildCrawlRequest(
     extract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
+    sitemapURL: sitemapURL || undefined,
+    sitemapOnly: sitemapOnly || undefined,
   };
 }
 

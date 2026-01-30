@@ -102,6 +102,12 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		if req.Incremental != nil && req.Kind != "research" {
 			params["incremental"] = *req.Incremental
 		}
+		if req.SitemapURL != nil && req.Kind == "crawl" {
+			params["sitemapURL"] = *req.SitemapURL
+		}
+		if req.SitemapOnly != nil && req.Kind == "crawl" {
+			params["sitemapOnly"] = *req.SitemapOnly
+		}
 
 		schedule := scheduler.Schedule{
 			Kind:            model.Kind(req.Kind),

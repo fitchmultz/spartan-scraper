@@ -211,6 +211,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		var pipelineOpts pipeline.Options
 		pipelineOpts = decodePipeline(job.Params["pipeline"])
 		incremental := toBool(job.Params["incremental"], false)
+		sitemapURL, _ := job.Params["sitemapURL"].(string)
+		sitemapOnly := toBool(job.Params["sitemapOnly"], false)
 		results, err := crawl.Run(jobCtx, crawl.Request{
 			URL:              url,
 			RequestID:        getJobRequestID(job),
@@ -235,6 +237,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
 			MetricsCallback:  m.metricsCallback,
+			SitemapURL:       sitemapURL,
+			SitemapOnly:      sitemapOnly,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

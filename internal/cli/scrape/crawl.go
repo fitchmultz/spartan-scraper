@@ -24,6 +24,8 @@ func RunCrawl(ctx context.Context, cfg config.Config, args []string) int {
 	url := fs.String("url", "", "Root URL to crawl")
 	maxDepth := fs.Int("max-depth", 2, "Max crawl depth")
 	maxPages := fs.Int("max-pages", 200, "Max pages to crawl")
+	sitemapURL := fs.String("sitemap-url", "", "Optional URL to sitemap.xml for URL discovery")
+	sitemapOnly := fs.Bool("sitemap-only", false, "Only crawl URLs from sitemap, not the root URL")
 	cf := common.RegisterCommonFlags(fs, cfg)
 
 	fs.Usage = func() {
@@ -34,6 +36,8 @@ Examples:
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan crawl --url https://example.com --headless --wait --out ./out/site.jsonl
   spartan crawl --url https://example.com --pre-processor redact --transformer json-clean
+  spartan crawl --url https://example.com --sitemap-url https://example.com/sitemap.xml
+  spartan crawl --url https://example.com --sitemap-url https://example.com/sitemap.xml --sitemap-only
 
 Options:
 `)
@@ -96,6 +100,8 @@ Options:
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
 		Incremental:    *cf.Incremental,
+		SitemapURL:     *sitemapURL,
+		SitemapOnly:    *sitemapOnly,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

@@ -198,6 +198,14 @@ export type CrawlRequest = {
     timeoutSeconds?: number;
     incremental?: boolean;
     proxy?: ProxyConfig;
+    /**
+     * Optional URL to a sitemap.xml file. If provided, URLs from the sitemap will be used as crawl seeds.
+     */
+    sitemapURL?: string;
+    /**
+     * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
+     */
+    sitemapOnly?: boolean;
 };
 
 export type ResearchRequest = {
@@ -302,6 +310,14 @@ export type ScheduleRequest = {
     pipeline?: PipelineOptions;
     incremental?: boolean;
     proxy?: ProxyConfig;
+    /**
+     * Optional URL to a sitemap.xml file. If provided, URLs from the sitemap will be used as crawl seeds.
+     */
+    sitemapURL?: string;
+    /**
+     * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
+     */
+    sitemapOnly?: boolean;
 };
 
 export type ScheduleListResponse = {

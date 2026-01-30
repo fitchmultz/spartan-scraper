@@ -49,6 +49,12 @@ type Request struct {
 	TemplateRegistry *extract.TemplateRegistry
 	// MetricsCallback is called for each fetch operation to record metrics.
 	MetricsCallback fetch.MetricsCallback
+	// SitemapURL is an optional URL to a sitemap.xml file.
+	// If provided, URLs from the sitemap will be used as crawl seeds.
+	SitemapURL string
+	// SitemapOnly indicates whether to only crawl URLs from the sitemap.
+	// If false (default), the root URL is also crawled plus sitemap URLs.
+	SitemapOnly bool
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -361,7 +367,30 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		}
 	}
 
-	enqueue(req.URL, 0)
+	// If sitemap URL provided, fetch and enqueue URLs from it
+	if req.SitemapURL != "" {
+		parser := NewSitemapParser(fetcher)
+		sitemapURLs, err := parser.ParseSitemap(ctx, req.SitemapURL)
+		if err != nil {
+			slog.Error("failed to parse sitemap", "url", apperrors.SanitizeURL(req.SitemapURL), "error", err)
+			// Don't fail the crawl - just log and continue
+		} else {
+			for _, u := range sitemapURLs {
+				// Only enqueue same-host URLs
+				if sameHost(startURL, u) {
+					enqueue(u, 0) // Start sitemap URLs at depth 0
+				}
+			}
+		}
+	}
+
+	// If SitemapOnly is true, don't crawl the root URL
+	if !req.SitemapOnly {
+		enqueue(req.URL, 0)
+	} else if req.SitemapURL == "" {
+		// If SitemapOnly but no sitemap URL, we have nothing to crawl
+		return nil, apperrors.Validation("sitemapOnly requires sitemapURL")
+	}
 
 	for i := 0; i < req.Concurrency; i++ {
 		go func(workerID int) {

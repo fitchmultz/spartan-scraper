@@ -134,6 +134,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const [crawlUrl, setCrawlUrl] = useState("");
     const [maxDepth, setMaxDepth] = useState(2);
     const [maxPages, setMaxPages] = useState(200);
+    const [sitemapURL, setSitemapURL] = useState("");
+    const [sitemapOnly, setSitemapOnly] = useState(false);
 
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
@@ -172,6 +174,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         postProcessors,
         transformers,
         incremental,
+        sitemapURL,
+        sitemapOnly,
       );
       await onSubmit(request);
     }, [
@@ -198,6 +202,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       postProcessors,
       transformers,
       incremental,
+      sitemapURL,
+      sitemapOnly,
       onSubmit,
     ]);
 
@@ -227,6 +233,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         incremental,
         maxDepth,
         maxPages,
+        sitemapURL,
+        sitemapOnly,
       }),
       [
         crawlUrl,
@@ -252,6 +260,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         incremental,
         maxDepth,
         maxPages,
+        sitemapURL,
+        sitemapOnly,
       ],
     );
 
@@ -273,6 +283,31 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           onChange={(event) => setCrawlUrl(event.target.value)}
           placeholder="https://example.com"
         />
+        <label htmlFor="sitemap-url" style={{ marginTop: 12 }}>
+          Sitemap URL (optional)
+        </label>
+        <input
+          id="sitemap-url"
+          value={sitemapURL}
+          onChange={(event) => setSitemapURL(event.target.value)}
+          placeholder="https://example.com/sitemap.xml"
+        />
+        <label
+          style={{
+            marginTop: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={sitemapOnly}
+            disabled={!sitemapURL}
+            onChange={(event) => setSitemapOnly(event.target.checked)}
+          />
+          Sitemap only (don't crawl root URL)
+        </label>
         <div className="row" style={{ marginTop: 12 }}>
           <label>
             Max depth

@@ -35,6 +35,8 @@ func TestCrawlSiteWithPartialPipelineOptions(t *testing.T) {
 		},
 		false,
 		"",
+		"",
+		false,
 	)
 	if err != nil {
 		t.Fatalf("CreateCrawlJob failed: %v", err)
