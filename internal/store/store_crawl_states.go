@@ -33,7 +33,7 @@ func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState
 	row := s.getCrawlStateStmt.QueryRowContext(ctx, url)
 	var state model.CrawlState
 	var lastScraped string
-	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped, &state.Depth, &state.JobID); err != nil {
+	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped, &state.Depth, &state.JobID, &state.PreviousContent, &state.ContentSnapshot); err != nil {
 		if err == sql.ErrNoRows || err.Error() == "sql: no rows in result set" {
 			return model.CrawlState{}, nil
 		}
@@ -61,6 +61,8 @@ func (s *Store) UpsertCrawlState(ctx context.Context, state model.CrawlState) er
 		state.LastScraped.Format(time.RFC3339Nano),
 		state.Depth,
 		state.JobID,
+		state.PreviousContent,
+		state.ContentSnapshot,
 	)
 	return err
 }
@@ -82,7 +84,7 @@ func (s *Store) DeleteAllCrawlStates(ctx context.Context) error {
 func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions) ([]model.CrawlState, error) {
 	opts = opts.Defaults()
 	rows, err := s.db.QueryContext(ctx,
-		`select url, etag, last_modified, content_hash, last_scraped, depth, job_id
+		`select url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot
 		 from crawl_states order by last_scraped desc limit ? offset ?`,
 		opts.Limit, opts.Offset)
 	if err != nil {
@@ -95,7 +97,7 @@ func (s *Store) ListCrawlStates(ctx context.Context, opts ListCrawlStatesOptions
 		var state model.CrawlState
 		var lastScraped string
 		if err := rows.Scan(&state.URL, &state.ETag, &state.LastModified,
-			&state.ContentHash, &lastScraped, &state.Depth, &state.JobID); err != nil {
+			&state.ContentHash, &lastScraped, &state.Depth, &state.JobID, &state.PreviousContent, &state.ContentSnapshot); err != nil {
 			return nil, err
 		}
 		if lastScraped != "" {

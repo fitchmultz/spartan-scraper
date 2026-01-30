@@ -68,6 +68,8 @@ func Run(ctx context.Context) int {
 		return manage.RunCrawlStates(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
+	case "watch":
+		return manage.RunWatch(ctx, cfg, os.Args[2:])
 
 	case "server":
 		return server.RunServer(ctx, cfg, os.Args[2:])

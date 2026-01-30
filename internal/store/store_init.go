@@ -82,20 +82,22 @@ func (s *Store) prepareStatements() error {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get job statement", err)
 	}
 
-	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped, depth, job_id from crawl_states where url = ?`)
+	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot from crawl_states where url = ?`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get crawl state statement", err)
 	}
 
-	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id)
-		values (?, ?, ?, ?, ?, ?, ?)
+	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot)
+		values (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		on conflict(url) do update set
 			etag = excluded.etag,
 			last_modified = excluded.last_modified,
 			content_hash = excluded.content_hash,
 			last_scraped = excluded.last_scraped,
 			depth = excluded.depth,
-			job_id = excluded.job_id`)
+			job_id = excluded.job_id,
+			previous_content = excluded.previous_content,
+			content_snapshot = excluded.content_snapshot`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare upsert crawl state statement", err)
 	}
@@ -249,6 +251,34 @@ func (s *Store) init() error {
 		if err != nil {
 			return apperrors.Wrap(apperrors.KindInternal,
 				"failed to add job_id column to crawl_states", err)
+		}
+	}
+
+	// Migrate: add previous_content column for change detection
+	previousContentExists, err := columnExists(s.db, "crawl_states", "previous_content")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for previous_content column migration", err)
+	}
+	if !previousContentExists {
+		_, err = s.db.Exec("alter table crawl_states add column previous_content text")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add previous_content column to crawl_states", err)
+		}
+	}
+
+	// Migrate: add content_snapshot column for change detection
+	contentSnapshotExists, err := columnExists(s.db, "crawl_states", "content_snapshot")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for content_snapshot column migration", err)
+	}
+	if !contentSnapshotExists {
+		_, err = s.db.Exec("alter table crawl_states add column content_snapshot text")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add content_snapshot column to crawl_states", err)
 		}
 	}
 

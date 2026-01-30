@@ -31,6 +31,7 @@ Commands:
   pipeline-js  List pipeline JavaScript scripts
   templates    List extraction templates
   crawl-states List crawl states (incremental tracking)
+  watch        Watch content for changes
   export       Export job results (jsonl, json, md, csv)
   schedule     Manage scheduled jobs
   mcp          Run MCP server over stdio
@@ -56,6 +57,11 @@ Examples:
   spartan templates list
   spartan crawl-states list
   spartan crawl-states list --limit 10
+  spartan watch add --url https://example.com --interval 3600
+  spartan watch add --url https://example.com --selector "#price" --webhook https://hooks.slack.com/...
+  spartan watch list
+  spartan watch check <id>
+  spartan watch start
   spartan export --job-id <id> --format md --out ./out/report.md
   spartan schedule add --kind scrape --interval 3600 --url https://example.com
   spartan schedule list

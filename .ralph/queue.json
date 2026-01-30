@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0202",
-      "status": "todo",
-      "title": "Implement content change detection for monitoring",
-      "priority": "high",
-      "tags": [
-        "monitoring",
-        "change-detection",
-        "feature"
-      ],
-      "scope": [
-        "internal/scrape/",
-        "internal/store/",
-        "cmd/spartan/"
-      ],
-      "evidence": [
-        "No mechanism to detect when page content changes between scrapes",
-        "Store has crawl states but no diff/comparison functionality",
-        "No 'spartan watch' or monitoring command exists"
-      ],
-      "plan": [
-        "Add content fingerprint storage to job results",
-        "Create new 'watch' subcommand for periodic monitoring",
-        "Implement diff output (text and HTML) for changed content",
-        "Add webhook event for 'content_changed'",
-        "Support CSS selector-level change detection",
-        "Add notification integrations (email, slack, discord)"
-      ],
-      "notes": [],
-      "request": "scan finding: change detection gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0203",
       "status": "todo",
       "title": "Add data retention policies and automatic cleanup",

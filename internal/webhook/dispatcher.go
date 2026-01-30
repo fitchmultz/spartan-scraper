@@ -34,9 +34,10 @@ import (
 type EventType string
 
 const (
-	EventJobCreated   EventType = "job.created"
-	EventJobStarted   EventType = "job.started"
-	EventJobCompleted EventType = "job.completed"
+	EventJobCreated     EventType = "job.created"
+	EventJobStarted     EventType = "job.started"
+	EventJobCompleted   EventType = "job.completed"
+	EventContentChanged EventType = "content.changed"
 )
 
 // Payload represents the webhook notification body.
@@ -51,6 +52,14 @@ type Payload struct {
 	Error       string     `json:"error,omitempty"`
 	ResultPath  string     `json:"resultPath,omitempty"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
+
+	// Content change fields (populated when EventType is EventContentChanged)
+	URL          string `json:"url,omitempty"`
+	PreviousHash string `json:"previousHash,omitempty"`
+	CurrentHash  string `json:"currentHash,omitempty"`
+	DiffText     string `json:"diffText,omitempty"`
+	DiffHTML     string `json:"diffHtml,omitempty"`
+	Selector     string `json:"selector,omitempty"`
 }
 
 // Config for webhook dispatcher.
@@ -230,7 +239,7 @@ func (d *Dispatcher) signPayload(payload []byte, secret string) string {
 }
 
 // ShouldSendEvent checks if the given event type matches the configured events.
-// Supported events: "completed", "failed", "canceled", "started", "all".
+// Supported events: "completed", "failed", "canceled", "started", "content_changed", "all".
 // An empty configuredEvents slice defaults to ["completed"].
 func ShouldSendEvent(eventType EventType, status string, configuredEvents []string) bool {
 	if len(configuredEvents) == 0 {
@@ -264,6 +273,10 @@ func ShouldSendEvent(eventType EventType, status string, configuredEvents []stri
 			}
 		case "succeeded":
 			if eventType == EventJobCompleted && status == "succeeded" {
+				return true
+			}
+		case "content_changed":
+			if eventType == EventContentChanged {
 				return true
 			}
 		}
