@@ -18,59 +18,59 @@ import (
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	id := extractID(r.URL.Path, "jobs")
 	if id == "" {
-		writeError(w, apperrors.Validation("id required"))
+		writeError(w, r, apperrors.Validation("id required"))
 		return
 	}
 	if r.Method != http.MethodGet {
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	job, err := s.store.Get(r.Context(), id)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
 	switch job.Status {
 	case model.StatusQueued:
-		writeError(w, apperrors.Validation("job is queued and has no results yet"))
+		writeError(w, r, apperrors.Validation("job is queued and has no results yet"))
 		return
 	case model.StatusRunning:
-		writeError(w, apperrors.Validation("job is still running and has no results yet"))
+		writeError(w, r, apperrors.Validation("job is still running and has no results yet"))
 		return
 	case model.StatusFailed:
-		writeError(w, apperrors.Validation("job failed and produced no results"))
+		writeError(w, r, apperrors.Validation("job failed and produced no results"))
 		return
 	case model.StatusCanceled:
-		writeError(w, apperrors.Validation("job was canceled and produced no results"))
+		writeError(w, r, apperrors.Validation("job was canceled and produced no results"))
 		return
 	case model.StatusSucceeded:
 		if job.ResultPath == "" {
-			writeError(w, apperrors.NotFound("job succeeded but no result path was recorded"))
+			writeError(w, r, apperrors.NotFound("job succeeded but no result path was recorded"))
 			return
 		}
 
 		info, err := os.Stat(job.ResultPath)
 		if err != nil {
-			writeError(w, apperrors.NotFound("job succeeded but result file is missing"))
+			writeError(w, r, apperrors.NotFound("job succeeded but result file is missing"))
 			return
 		}
 		if info.Size() == 0 {
-			writeError(w, apperrors.NotFound("job succeeded but result file is empty"))
+			writeError(w, r, apperrors.NotFound("job succeeded but result file is empty"))
 			return
 		}
 	default:
 		if job.ResultPath == "" {
-			writeError(w, apperrors.NotFound("no results"))
+			writeError(w, r, apperrors.NotFound("no results"))
 			return
 		}
 		info, err := os.Stat(job.ResultPath)
 		if err != nil {
-			writeError(w, apperrors.NotFound("no results"))
+			writeError(w, r, apperrors.NotFound("no results"))
 			return
 		}
 		if info.Size() == 0 {
-			writeError(w, apperrors.NotFound("no results"))
+			writeError(w, r, apperrors.NotFound("no results"))
 			return
 		}
 	}
@@ -82,7 +82,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 	validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
 	if !validFormats[format] {
-		writeError(w, apperrors.Validation("invalid format: must be jsonl, json, md, or csv"))
+		writeError(w, r, apperrors.Validation("invalid format: must be jsonl, json, md, or csv"))
 		return
 	}
 
@@ -95,7 +95,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 			f, err := os.Open(job.ResultPath)
 			if err != nil {
-				writeError(w, err)
+				writeError(w, r, err)
 				return
 			}
 			defer f.Close()
@@ -115,7 +115,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err != nil {
-				writeError(w, err)
+				writeError(w, r, err)
 				return
 			}
 
@@ -136,7 +136,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(job.ResultPath)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	defer f.Close()
@@ -153,7 +153,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.%s"`, job.ID, format))
 
 	if err := exporter.ExportStream(job, f, format, w); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 }

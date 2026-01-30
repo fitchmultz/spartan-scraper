@@ -18,7 +18,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		schedules, err := scheduler.List(s.cfg.DataDir)
 		if err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 		response := make([]ScheduleResponse, len(schedules))
@@ -36,7 +36,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost {
 		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
+			writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -44,19 +44,19 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&req); err != nil {
-			writeError(w, apperrors.Validation("invalid json: "+err.Error()))
+			writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
 			return
 		}
 		if req.Kind == "" {
-			writeError(w, apperrors.Validation("kind is required"))
+			writeError(w, r, apperrors.Validation("kind is required"))
 			return
 		}
 		if req.IntervalSeconds <= 0 {
-			writeError(w, apperrors.Validation("intervalSeconds must be positive"))
+			writeError(w, r, apperrors.Validation("intervalSeconds must be positive"))
 			return
 		}
 		if req.Kind != "scrape" && req.Kind != "crawl" && req.Kind != "research" {
-			writeError(w, apperrors.Validation("kind must be scrape, crawl, or research"))
+			writeError(w, r, apperrors.Validation("kind must be scrape, crawl, or research"))
 			return
 		}
 
@@ -111,7 +111,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 
 		addedSchedule, err := scheduler.Add(s.cfg.DataDir, schedule)
 		if err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 
@@ -124,21 +124,21 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+	writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	id := extractID(r.URL.Path, "schedules")
 	if id == "" {
-		writeError(w, apperrors.Validation("id required"))
+		writeError(w, r, apperrors.Validation("id required"))
 		return
 	}
 	if r.Method != http.MethodDelete {
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if err := scheduler.Delete(s.cfg.DataDir, id); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})

@@ -12,13 +12,13 @@ import (
 
 func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 
 	names, err := extract.ListTemplateNames(s.cfg.DataDir)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 

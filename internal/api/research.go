@@ -19,11 +19,11 @@ import (
 
 func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, apperrors.UnsupportedMediaType("content-type must be application/json"))
+		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
@@ -31,11 +31,11 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		writeError(w, apperrors.Validation(err.Error()))
+		writeError(w, r, apperrors.Validation(err.Error()))
 		return
 	}
 	if req.Query == "" || len(req.URLs) == 0 {
-		writeError(w, apperrors.Validation("query and urls are required"))
+		writeError(w, r, apperrors.Validation("query and urls are required"))
 		return
 	}
 	opts := validate.JobValidationOpts{
@@ -47,7 +47,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 		AuthProfile: req.AuthProfile,
 	}
 	if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	}
 	authOptions, err := resolveAuthForRequest(s.cfg, targetURL, req.AuthProfile, req.Auth)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	requestID := contextRequestID(r.Context())
@@ -96,11 +96,11 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	}
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	if err := s.manager.Enqueue(job); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 

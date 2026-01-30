@@ -16,7 +16,7 @@ import (
 
 func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 	query := r.URL.Query()
@@ -32,7 +32,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	if statusParam != "" {
 		status = model.Status(statusParam)
 		if !status.IsValid() {
-			writeError(w, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
+			writeError(w, r, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
 			return
 		}
 		opts := store.ListByStatusOptions{Limit: limit, Offset: offset}
@@ -43,13 +43,13 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
 	total, err = s.store.CountJobs(r.Context(), status)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
@@ -65,32 +65,32 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	}
 	id := extractID(path, "jobs")
 	if err := validateJobID(id); err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
 		job, err := s.store.Get(r.Context(), id)
 		if err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 		writeJSON(w, model.SanitizeJob(job))
 	case http.MethodDelete:
 		if r.URL.Query().Get("force") == "true" {
 			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
-				writeError(w, err)
+				writeError(w, r, err)
 				return
 			}
 			writeJSON(w, map[string]string{"status": "deleted"})
 		} else {
 			if err := s.manager.CancelJob(r.Context(), id); err != nil {
-				writeError(w, err)
+				writeError(w, r, err)
 				return
 			}
 			writeJSON(w, map[string]string{"status": "canceled"})
 		}
 	default:
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 	}
 }

@@ -18,7 +18,7 @@ func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.handleCrawlStatesDelete(w, r)
 	default:
-		writeError(w, apperrors.MethodNotAllowed("method not allowed"))
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 	}
 }
 
@@ -30,13 +30,13 @@ func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
 
 	states, err := s.store.ListCrawlStates(r.Context(), opts)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
 	total, err := s.store.CountCrawlStates(r.Context())
 	if err != nil {
-		writeError(w, err)
+		writeError(w, r, err)
 		return
 	}
 
@@ -49,12 +49,12 @@ func (s *Server) handleCrawlStatesDelete(w http.ResponseWriter, r *http.Request)
 
 	if url != "" {
 		if err := s.store.DeleteCrawlState(r.Context(), url); err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 	} else {
 		if err := s.store.DeleteAllCrawlStates(r.Context()); err != nil {
-			writeError(w, err)
+			writeError(w, r, err)
 			return
 		}
 	}

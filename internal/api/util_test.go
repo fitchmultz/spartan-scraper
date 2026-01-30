@@ -5,6 +5,8 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -330,4 +332,191 @@ func TestLoggingMiddlewareWithRequestID(t *testing.T) {
 			t.Errorf("X-Request-ID header = %q, want %q", reqID, "test-req-123")
 		}
 	})
+}
+
+// TestRequestIDMiddlewareOrder verifies that requestIDMiddleware runs before
+// loggingMiddleware so that request IDs are available in logs.
+func TestRequestIDMiddlewareOrder(t *testing.T) {
+	var capturedRequestID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequestID = contextRequestID(r.Context())
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	// Correct order: requestIDMiddleware outermost
+	wrappedHandler := requestIDMiddleware(loggingMiddleware(handler))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("X-Request-ID", "test-order-123")
+	rr := httptest.NewRecorder()
+
+	wrappedHandler.ServeHTTP(rr, req)
+
+	if capturedRequestID != "test-order-123" {
+		t.Errorf("request ID not propagated to handler context: got %q, want %q", capturedRequestID, "test-order-123")
+	}
+
+	if headerReqID := rr.Header().Get("X-Request-ID"); headerReqID != "test-order-123" {
+		t.Errorf("X-Request-ID header not set: got %q, want %q", headerReqID, "test-order-123")
+	}
+}
+
+// TestRequestIDResponseWriterWrite ensures X-Request-ID header is set
+// when handler only calls Write() without WriteHeader().
+func TestRequestIDResponseWriterWrite(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only call Write, not WriteHeader
+		w.Write([]byte("response body"))
+	})
+
+	middleware := requestIDMiddleware(handler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("X-Request-ID", "test-write-123")
+	rr := httptest.NewRecorder()
+
+	middleware.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", status)
+	}
+
+	if body := rr.Body.String(); body != "response body" {
+		t.Errorf("expected body 'response body', got: %s", body)
+	}
+
+	if reqID := rr.Header().Get("X-Request-ID"); reqID != "test-write-123" {
+		t.Errorf("X-Request-ID header not set on Write(): got %q, want %q", reqID, "test-write-123")
+	}
+}
+
+// TestRequestIDResponseWriterWriteHeader ensures X-Request-ID header is set
+// when handler calls WriteHeader().
+func TestRequestIDResponseWriterWriteHeader(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("created"))
+	})
+
+	middleware := requestIDMiddleware(handler)
+
+	req := httptest.NewRequest("POST", "/test", nil)
+	req.Header.Set("X-Request-ID", "test-header-123")
+	rr := httptest.NewRecorder()
+
+	middleware.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", status)
+	}
+
+	if reqID := rr.Header().Get("X-Request-ID"); reqID != "test-header-123" {
+		t.Errorf("X-Request-ID header not set on WriteHeader(): got %q, want %q", reqID, "test-header-123")
+	}
+}
+
+// TestRecoveryMiddlewareWithRequestID verifies that panic recovery logs include request ID.
+func TestRecoveryMiddlewareWithRequestID(t *testing.T) {
+	var logBuf strings.Builder
+	handler := slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelError})
+	logger := slog.New(handler)
+
+	oldDefault := slog.Default()
+	slog.SetDefault(logger)
+	defer slog.SetDefault(oldDefault)
+
+	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("test panic with request id")
+	})
+
+	// Correct middleware order: requestIDMiddleware outermost
+	handlerChain := requestIDMiddleware(recoveryMiddleware(panicHandler))
+
+	req := httptest.NewRequest("GET", "/panic", nil)
+	req.Header.Set("X-Request-ID", "panic-req-123")
+	rr := httptest.NewRecorder()
+
+	assertNotPanics(t, func() {
+		handlerChain.ServeHTTP(rr, req)
+	})
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", status)
+	}
+
+	// Check that panic log includes request_id
+	logOutput := logBuf.String()
+	if !strings.Contains(logOutput, "request_id=panic-req-123") {
+		t.Errorf("panic log should contain request_id, got: %s", logOutput)
+	}
+
+	// Check that error response includes request ID
+	var resp ErrorResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.RequestID != "panic-req-123" {
+		t.Errorf("error response should include request ID: got %q, want %q", resp.RequestID, "panic-req-123")
+	}
+}
+
+// TestFullMiddlewareChainRequestID verifies request ID propagation through full middleware chain.
+func TestFullMiddlewareChainRequestID(t *testing.T) {
+	var capturedRequestID string
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequestID = contextRequestID(r.Context())
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	})
+
+	// Correct order: requestIDMiddleware outermost (first on request, last on response)
+	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(finalHandler)))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("X-Request-ID", "full-chain-123")
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if capturedRequestID != "full-chain-123" {
+		t.Errorf("request ID not propagated through chain: got %q, want %q", capturedRequestID, "full-chain-123")
+	}
+
+	if reqID := rr.Header().Get("X-Request-ID"); reqID != "full-chain-123" {
+		t.Errorf("X-Request-ID header not set in response: got %q, want %q", reqID, "full-chain-123")
+	}
+}
+
+// TestGeneratedRequestIDPropagation verifies that generated request IDs are consistent.
+func TestGeneratedRequestIDPropagation(t *testing.T) {
+	var capturedRequestID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequestID = contextRequestID(r.Context())
+		w.Write([]byte("ok"))
+	})
+
+	middleware := requestIDMiddleware(handler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	// No X-Request-ID header, so one should be generated
+	rr := httptest.NewRecorder()
+
+	middleware.ServeHTTP(rr, req)
+
+	responseReqID := rr.Header().Get("X-Request-ID")
+	if responseReqID == "" {
+		t.Error("X-Request-ID header should be generated when not provided")
+	}
+
+	if capturedRequestID != responseReqID {
+		t.Errorf("request ID mismatch: context has %q, response header has %q", capturedRequestID, responseReqID)
+	}
+
+	// Verify it's a valid UUID
+	uuidRegex := regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`)
+	if !uuidRegex.MatchString(responseReqID) {
+		t.Errorf("generated request ID should be valid UUID v4, got %q", responseReqID)
+	}
 }

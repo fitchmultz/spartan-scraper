@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0155",
-      "status": "todo",
-      "title": "Ensure X-Request-ID is always set and logged",
-      "priority": "high",
-      "tags": [
-        "api",
-        "observability",
-        "bug"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/api/util.go",
-        "internal/api/util_test.go"
-      ],
-      "evidence": [
-        "internal/api/server.go wires middleware as loggingMiddleware(recoveryMiddleware(requestIDMiddleware(mux))) so logging runs before request IDs are injected.",
-        "internal/api/util.go requestIDResponseWriter only overrides WriteHeader; handlers that only Write skip setting X-Request-ID.",
-        "internal/api/util.go writeError only pulls request_id when ResponseWriter is *requestIDResponseWriter, but recovery wraps with loggingResponseWriter."
-      ],
-      "plan": [
-        "Reorder middleware so requestIDMiddleware runs outermost (or update logging/recovery to read request ID from context).",
-        "Implement requestIDResponseWriter.Write to ensure X-Request-ID is set on first write.",
-        "Extend util tests to assert request_id on normal and error responses and in logs."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-29T23:18:04Z",
-      "updated_at": "2026-01-29T23:18:04Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0156",
       "status": "todo",
       "title": "Redact query strings in API request logging",

@@ -73,7 +73,8 @@ func TestWriteError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			writeError(w, tt.err)
+			r := httptest.NewRequest("GET", "/test", nil)
+			writeError(w, r, tt.err)
 
 			if w.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
@@ -97,7 +98,7 @@ func TestWriteError(t *testing.T) {
 
 func TestWriteErrorWithRequestID(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, apperrors.Validation("test error"))
+		writeError(w, r, apperrors.Validation("test error"))
 	})
 
 	middleware := requestIDMiddleware(handler)
@@ -190,7 +191,8 @@ func TestWriteErrorLogging(t *testing.T) {
 			logBuf.Reset()
 
 			w := httptest.NewRecorder()
-			writeError(w, tt.err)
+			r := httptest.NewRequest("GET", "/test", nil)
+			writeError(w, r, tt.err)
 
 			logOutput := logBuf.String()
 			if logOutput == "" {
@@ -216,7 +218,8 @@ func TestWriteErrorLogging(t *testing.T) {
 		logBuf.Reset()
 
 		w := httptest.NewRecorder()
-		writeError(w, nil)
+		r := httptest.NewRequest("GET", "/test", nil)
+		writeError(w, r, nil)
 
 		logOutput := logBuf.String()
 		if logOutput != "" {

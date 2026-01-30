@@ -50,6 +50,13 @@ func (rw *requestIDResponseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+func (rw *requestIDResponseWriter) Write(p []byte) (int, error) {
+	if rw.requestID != "" {
+		rw.Header().Set("X-Request-ID", rw.requestID)
+	}
+	return rw.ResponseWriter.Write(p)
+}
+
 func writeJSON(w http.ResponseWriter, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
@@ -77,7 +84,8 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 
 // writeError maps error kinds to appropriate HTTP status codes and writes the response.
 // Error messages are redacted using SafeMessage to prevent secret leakage.
-func writeError(w http.ResponseWriter, err error) {
+// The request parameter is used to extract the request ID from context for logging and response.
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
 	}
@@ -99,10 +107,7 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 
 	message := apperrors.SafeMessage(err)
-	var requestID string
-	if rw, ok := w.(*requestIDResponseWriter); ok {
-		requestID = rw.requestID
-	}
+	requestID := contextRequestID(r.Context())
 
 	slog.Error("api error",
 		"error_kind", apperrors.KindOf(err),
@@ -251,19 +256,21 @@ func validateJobID(id string) error {
 }
 
 // recoveryMiddleware recovers from panics in handlers and returns a 500 response.
-// It logs the panic with stack trace.
+// It logs the panic with stack trace and includes the request ID in logs.
 func recoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				stack := debug.Stack()
+				reqID := contextRequestID(r.Context())
 				slog.Error("panic recovered",
 					"method", r.Method,
 					"path", r.URL.Path,
 					"panic", fmt.Sprintf("%v", rec),
 					"stack", string(stack),
+					"request_id", reqID,
 				)
-				writeError(w, apperrors.Internal("internal server error"))
+				writeError(w, r, apperrors.Internal("internal server error"))
 			}
 		}()
 		next.ServeHTTP(w, r)
