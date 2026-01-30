@@ -34,12 +34,15 @@ import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { QuickStartPanel } from "./components/QuickStartPanel";
 import { SavePresetDialog } from "./components/SavePresetDialog";
+import { WelcomeModal } from "./components/WelcomeModal";
+import { OnboardingFlow } from "./components/OnboardingFlow";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
 import { useResultsState } from "./hooks/useResultsState";
 import { useTheme } from "./hooks/useTheme";
 import { usePresets } from "./hooks/usePresets";
+import { useOnboarding } from "./hooks/useOnboarding";
 import {
   submitScrapeJob,
   submitCrawlJob,
@@ -54,6 +57,18 @@ export function App() {
   const resultsState = useResultsState();
   const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const { presets, savePreset } = usePresets();
+
+  // Onboarding state management
+  const {
+    shouldShowWelcome,
+    isTourActive,
+    currentStep,
+    startOnboarding,
+    skipOnboarding,
+    resetOnboarding,
+    goToStep,
+    finishOnboarding,
+  } = useOnboarding();
 
   // Keyboard shortcuts and command palette
   const {
@@ -395,15 +410,18 @@ export function App() {
         isMac={isMac}
         presets={presets}
         onSelectPreset={handleSelectPreset}
+        onRestartTour={resetOnboarding}
       />
 
-      <QuickStartPanel
-        presets={presets}
-        activeJobType={activeTab}
-        onSelectPreset={handleSelectPreset}
-        onSavePreset={handleSavePreset}
-        currentUrl={getCurrentUrl()}
-      />
+      <div data-tour="quickstart">
+        <QuickStartPanel
+          presets={presets}
+          activeJobType={activeTab}
+          onSelectPreset={handleSelectPreset}
+          onSavePreset={handleSavePreset}
+          currentUrl={getCurrentUrl()}
+        />
+      </div>
 
       <SavePresetDialog
         isOpen={isSaveDialogOpen}
@@ -420,7 +438,22 @@ export function App() {
         isMac={isMac}
       />
 
-      <section id="forms" className="grid">
+      {/* Onboarding Components */}
+      <WelcomeModal
+        isOpen={shouldShowWelcome}
+        onStartTour={startOnboarding}
+        onSkip={skipOnboarding}
+      />
+
+      <OnboardingFlow
+        isRunning={isTourActive}
+        currentStep={currentStep}
+        onComplete={finishOnboarding}
+        onSkip={skipOnboarding}
+        onStepChange={goToStep}
+      />
+
+      <section id="forms" className="grid" data-tour="form-types">
         <ScrapeForm
           ref={scrapeFormRef}
           headless={headless}

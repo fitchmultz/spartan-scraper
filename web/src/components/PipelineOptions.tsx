@@ -41,7 +41,7 @@ export function PipelineOptions({
   inputPrefix,
 }: PipelineOptionsProps) {
   return (
-    <>
+    <div data-tour="templates">
       <div className="row" style={{ marginTop: 12 }}>
         <label>
           Extract Template
@@ -123,6 +123,6 @@ export function PipelineOptions({
           )}
         </div>
       </details>
-    </>
+    </div>
   );
 }

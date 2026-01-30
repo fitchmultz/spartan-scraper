@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0179",
-      "status": "todo",
-      "title": "Add onboarding flow and interactive tutorials",
-      "priority": "medium",
-      "tags": [
-        "ux",
-        "web",
-        "onboarding",
-        "awesome"
-      ],
-      "scope": [
-        "web/src/components/OnboardingFlow.tsx (new)",
-        "web/src/components/TutorialTooltip.tsx (new)",
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "First-time users may be overwhelmed by the many options.",
-        "No explanation of extraction templates, pipeline hooks, or render profiles.",
-        "Advanced features like auth profiles are hard to discover."
-      ],
-      "plan": [
-        "Create step-by-step onboarding for first-time users (can be skipped).",
-        "Add interactive tooltips explaining each feature on hover/focus.",
-        "Include example walkthroughs: 'Scrape your first page', 'Set up authentication'.",
-        "Add inline help text and links to documentation.",
-        "Create sample/demo data so users can see results without configuring a real job."
-      ],
-      "notes": [
-        "Use react-joyride or similar for guided tours",
-        "Track onboarding completion in localStorage",
-        "Include 'Playground' mode with mock data"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0180",
       "status": "todo",
       "title": "Implement rate limiting dashboard and performance metrics",

@@ -36,7 +36,7 @@ export function Hero({
 }: HeroProps) {
   return (
     <section className="hero">
-      <div className="hero-card">
+      <div className="hero-card" data-tour="hero">
         <div className="kicker">Operation Spartan</div>
         <h1>Spartan Scraper Command Center</h1>
         <p>
@@ -44,7 +44,7 @@ export function Hero({
           headless login flows, and durable job tracking.
         </p>
       </div>
-      <div className="stats">
+      <div className="stats" data-tour="fetcher-options">
         <div
           style={{
             display: "flex",
@@ -52,6 +52,7 @@ export function Hero({
             alignItems: "center",
             marginBottom: "12px",
           }}
+          data-tour="command-palette"
         >
           <h3 style={{ margin: 0 }}>Live Signals</h3>
           <ThemeToggle

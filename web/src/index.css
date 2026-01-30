@@ -1832,3 +1832,80 @@ textarea:focus-visible {
   flex-direction: column;
   gap: 24px;
 }
+
+/* ============================================================================
+   Onboarding Animations
+   ============================================================================ */
+
+/* Welcome modal fade in */
+@keyframes welcome-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Tutorial beacon pulse animation */
+@keyframes tutorial-beacon-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Tutorial tooltip fade in */
+@keyframes tutorial-tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Joyride tooltip customization to match theme */
+.__floater__body {
+  background: var(--panel) !important;
+  border: 1px solid var(--stroke) !important;
+  border-radius: 18px !important;
+  color: var(--text) !important;
+}
+
+/* Ensure joyride overlay is above other elements */
+.__floater {
+  z-index: 1000 !important;
+}
+
+/* Onboarding spotlight styling */
+.react-joyride__spotlight {
+  border-radius: 12px !important;
+  border: 2px solid var(--accent) !important;
+}
+
+/* Onboarding tooltip button hover effects */
+.react-joyride__tooltip button:hover {
+  opacity: 0.9;
+}
+
+/* Tutorial tooltip base styles */
+.tutorial-tooltip {
+  position: absolute;
+  z-index: 1001;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px var(--shadow);
+}

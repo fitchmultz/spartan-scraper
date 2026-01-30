@@ -60,7 +60,7 @@ export function AuthConfig({
   profiles,
 }: AuthConfigProps) {
   return (
-    <>
+    <div data-tour="auth-profiles">
       <label htmlFor="auth-profile">Auth Profile</label>
       <select
         id="auth-profile"
@@ -187,6 +187,6 @@ export function AuthConfig({
           </div>
         </div>
       </details>
-    </>
+    </div>
   );
 }

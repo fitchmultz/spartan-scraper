@@ -36,6 +36,8 @@ export type CommandPaletteProps = {
   presets?: JobPreset[];
   /** Callback when a preset is selected */
   onSelectPreset?: (preset: JobPreset) => void;
+  /** Callback to restart the onboarding tour */
+  onRestartTour?: () => void;
 };
 
 type CommandItem = {
@@ -85,6 +87,7 @@ export function CommandPalette({
   isMac = false,
   presets = [],
   onSelectPreset,
+  onRestartTour,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
 
@@ -154,6 +157,16 @@ export function CommandPalette({
             onCancelJob(activeJobId);
             onClose();
           }
+        },
+      },
+      {
+        id: "restart-tour",
+        label: "Restart Onboarding Tour",
+        icon: "🎯",
+        group: "actions",
+        onSelect: () => {
+          onRestartTour?.();
+          onClose();
         },
       },
 
@@ -242,6 +255,7 @@ export function CommandPalette({
     onSubmitForm,
     onCancelJob,
     onSelectPreset,
+    onRestartTour,
     onClose,
   ]);
 
