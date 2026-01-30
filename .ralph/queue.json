@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0174",
-      "status": "todo",
-      "title": "Add WebSocket support for real-time job updates in Web UI",
-      "priority": "high",
-      "tags": [
-        "ux",
-        "web",
-        "realtime",
-        "modern",
-        "awesome"
-      ],
-      "scope": [
-        "internal/api/server.go",
-        "internal/api/websocket.go (new)",
-        "internal/jobs/manager.go",
-        "web/src/hooks/useWebSocket.ts (new)",
-        "web/src/components/JobList.tsx",
-        "web/src/App.tsx"
-      ],
-      "evidence": [
-        "Web UI currently polls for job status updates causing delay and unnecessary requests.",
-        "No real-time feedback when jobs start, progress, or complete.",
-        "Users must manually refresh to see status changes."
-      ],
-      "plan": [
-        "Add WebSocket endpoint /v1/ws for job status streaming.",
-        "Implement pub/sub in job manager to broadcast status changes.",
-        "Create useWebSocket hook in React for connection management and auto-reconnect.",
-        "Update JobList to show live progress indicators and animated status badges.",
-        "Add toast notifications for job completions and failures.",
-        "Implement connection status indicator (connected/disconnect/reconnecting)."
-      ],
-      "notes": [
-        "Use gorilla/websocket or native Go websockets",
-        "Gracefully degrade to polling if WebSocket unavailable",
-        "Add heartbeat/ping-pong for connection health"
-      ],
-      "request": "awesome ux initiative",
-      "created_at": "2026-01-29T17:04:00Z",
-      "updated_at": "2026-01-29T17:04:00Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0175",
       "status": "todo",
       "title": "Design and implement dark mode + polished visual design for Web UI",

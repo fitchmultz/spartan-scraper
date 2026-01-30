@@ -319,6 +319,66 @@ export type CrawlState = {
     jobId?: string;
 };
 
+/**
+ * WebSocket message envelope
+ */
+export type WsMessage = {
+    /**
+     * Message type
+     */
+    type: 'job_created' | 'job_started' | 'job_status_changed' | 'job_completed' | 'manager_status' | 'ping' | 'pong' | 'subscribe_jobs' | 'unsubscribe_jobs';
+    /**
+     * Unix timestamp in milliseconds
+     */
+    timestamp: number;
+    /**
+     * Message payload (varies by type)
+     */
+    payload: unknown;
+};
+
+/**
+ * Payload for job-related WebSocket events
+ */
+export type WsJobEventPayload = {
+    jobId: string;
+    kind: 'scrape' | 'crawl' | 'research';
+    status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+    /**
+     * Error message if job failed
+     */
+    error?: string;
+    progress?: WsJobProgress;
+    /**
+     * Unix timestamp in milliseconds
+     */
+    updatedAt: number;
+};
+
+/**
+ * Progress information for crawl jobs
+ */
+export type WsJobProgress = {
+    pagesCrawled?: number;
+    pagesTotal?: number;
+    depthCurrent?: number;
+    depthMax?: number;
+};
+
+/**
+ * Payload for manager status updates
+ */
+export type WsManagerStatusPayload = {
+    /**
+     * Number of jobs in queue
+     */
+    queuedJobs: number;
+    /**
+     * Number of currently running jobs
+     */
+    activeJobs: number;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -1019,3 +1079,19 @@ export type DeleteV1SchedulesByIdResponses = {
 };
 
 export type DeleteV1SchedulesByIdResponse = DeleteV1SchedulesByIdResponses[keyof DeleteV1SchedulesByIdResponses];
+
+export type GetV1WsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/ws';
+};
+
+export type GetV1WsErrors = {
+    /**
+     * Bad Request (invalid upgrade request)
+     */
+    400: ErrorResponse;
+};
+
+export type GetV1WsError = GetV1WsErrors[keyof GetV1WsErrors];

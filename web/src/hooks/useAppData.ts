@@ -3,12 +3,13 @@
  *
  * Custom React hook for managing all application-wide data fetching.
  * Handles loading and refreshing of jobs, profiles, schedules, templates,
- * crawl states, and manager status. Implements polling for real-time updates.
+ * crawl states, and manager status. Uses WebSocket for real-time updates
+ * with graceful fallback to polling.
  *
  * @module useAppData
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   getV1Jobs,
   getHealthz,
@@ -19,6 +20,7 @@ import {
   type CrawlState,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { useWebSocket, type WSMessage } from "./useWebSocket";
 
 export interface ManagerStatus {
   queued: number;
@@ -50,6 +52,7 @@ export interface AppDataState {
   crawlStatesPage: number;
   error: string | null;
   loading: boolean;
+  connectionState: "connected" | "disconnected" | "reconnecting" | "polling";
 }
 
 export interface AppDataActions {
@@ -66,6 +69,27 @@ const JOBS_PER_PAGE = 100;
 const CRAWL_STATES_PER_PAGE = 100;
 const POLL_INTERVAL = 4000;
 
+function getWebSocketUrl(): string {
+  const baseUrl = getApiBaseUrl();
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+  if (!baseUrl) {
+    // Relative path - use current host
+    return `${protocol}//${window.location.host}/v1/ws`;
+  }
+
+  // Convert http/https to ws/wss
+  if (baseUrl.startsWith("http://")) {
+    return `${baseUrl.replace("http://", "ws://")}/v1/ws`;
+  }
+  if (baseUrl.startsWith("https://")) {
+    return `${baseUrl.replace("https://", "wss://")}/v1/ws`;
+  }
+
+  // Assume it's a host:port without protocol
+  return `${protocol}//${baseUrl}/v1/ws`;
+}
+
 export function useAppData(): AppDataState & AppDataActions {
   const [jobs, setJobs] = useState<import("../types").JobEntry[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -81,6 +105,7 @@ export function useAppData(): AppDataState & AppDataActions {
   const [jobsTotal, setJobsTotal] = useState(0);
   const [crawlStatesPage, setCrawlStatesPage] = useState(1);
   const [crawlStatesTotal, setCrawlStatesTotal] = useState(0);
+  const [usePolling, setUsePolling] = useState(false);
 
   const refreshJobs = useCallback(
     async (page = jobsPage) => {
@@ -219,6 +244,57 @@ export function useAppData(): AppDataState & AppDataActions {
     [crawlStatesPage],
   );
 
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback(
+    (msg: WSMessage) => {
+      switch (msg.type) {
+        case "job_created":
+        case "job_started":
+        case "job_status_changed":
+        case "job_completed":
+          // Refresh jobs list when job state changes
+          void refreshJobs();
+          break;
+        case "manager_status": {
+          const payload = msg.payload as {
+            queuedJobs: number;
+            activeJobs: number;
+          };
+          setManagerStatus({
+            queued: payload.queuedJobs,
+            active: payload.activeJobs,
+          });
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [refreshJobs],
+  );
+
+  // WebSocket connection
+  const wsUrl = useMemo(() => getWebSocketUrl(), []);
+  const { state: wsState } = useWebSocket({
+    url: wsUrl,
+    onMessage: handleWebSocketMessage,
+    onConnect: () => {
+      setUsePolling(false);
+    },
+    onDisconnect: () => {
+      setUsePolling(true);
+    },
+  });
+
+  // Determine connection state for UI
+  const connectionState = useMemo(() => {
+    if (wsState === "connected") return "connected";
+    if (wsState === "reconnecting") return "reconnecting";
+    if (usePolling) return "polling";
+    return "disconnected";
+  }, [wsState, usePolling]);
+
+  // Initial data load
   useEffect(() => {
     void refreshJobs();
     void refreshManagerStatus();
@@ -226,11 +302,6 @@ export function useAppData(): AppDataState & AppDataActions {
     void refreshSchedules();
     void refreshTemplates();
     void refreshCrawlStates();
-    const handle = window.setInterval(() => {
-      void refreshJobs();
-      void refreshManagerStatus();
-    }, POLL_INTERVAL);
-    return () => window.clearInterval(handle);
   }, [
     refreshJobs,
     refreshManagerStatus,
@@ -239,6 +310,18 @@ export function useAppData(): AppDataState & AppDataActions {
     refreshTemplates,
     refreshCrawlStates,
   ]);
+
+  // Polling fallback (only when WebSocket is not connected)
+  useEffect(() => {
+    if (!usePolling) return;
+
+    const handle = window.setInterval(() => {
+      void refreshJobs();
+      void refreshManagerStatus();
+    }, POLL_INTERVAL);
+
+    return () => window.clearInterval(handle);
+  }, [usePolling, refreshJobs, refreshManagerStatus]);
 
   return {
     jobs,
@@ -253,6 +336,7 @@ export function useAppData(): AppDataState & AppDataActions {
     crawlStatesPage,
     error,
     loading,
+    connectionState,
     refreshJobs,
     refreshProfiles,
     refreshSchedules,

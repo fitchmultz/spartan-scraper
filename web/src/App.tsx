@@ -58,6 +58,7 @@ export function App() {
     crawlStatesPage,
     error,
     loading,
+    connectionState,
     refreshJobs,
     setJobsPage,
     setCrawlStatesPage,
@@ -375,6 +376,7 @@ export function App() {
         totalJobs={jobsTotal}
         jobsPerPage={100}
         onPageChange={setJobsPage}
+        connectionState={connectionState}
       />
 
       <ResultsViewer

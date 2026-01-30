@@ -24,7 +24,6 @@ package jobs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"path/filepath"
 	"time"
@@ -56,6 +55,35 @@ func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, err
 	cancelUpdate()
 }
 
+// updateStatusWithEvent updates job status and publishes an event.
+func (m *Manager) updateStatusWithEvent(job model.Job, prevStatus model.Status, status model.Status, errMsg string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if updateErr := m.store.UpdateStatus(ctx, job.ID, status, errMsg); updateErr != nil {
+		slog.Error("failed to update job status", "jobID", job.ID, "status", status, "error", updateErr)
+		return
+	}
+
+	// Update job for event
+	job.Status = status
+	if errMsg != "" {
+		job.Error = errMsg
+	}
+
+	// Determine event type
+	eventType := JobEventStatus
+	if status.IsTerminal() {
+		eventType = JobEventCompleted
+	}
+
+	m.publishEvent(JobEvent{
+		Type:       eventType,
+		Job:        job,
+		PrevStatus: prevStatus,
+	})
+}
+
 func (m *Manager) run(ctx context.Context, job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind, "request_id", getJobRequestID(job))
 
@@ -64,6 +92,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		slog.Info("job already in terminal state, not running", "jobID", job.ID, "status", latest.Status)
 		return nil
 	}
+
+	prevStatus := job.Status
 
 	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusRunning, ""); err != nil {
 		// If primary context is canceled, retry with background context
@@ -76,6 +106,14 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			slog.Error("failed to update job status to running", "jobID", job.ID, "error", err)
 		}
 	}
+
+	// Publish job started event
+	job.Status = model.StatusRunning
+	m.publishEvent(JobEvent{
+		Type:       JobEventStarted,
+		Job:        job,
+		PrevStatus: prevStatus,
+	})
 
 	jobCtx, cancel := context.WithCancel(ctx)
 	m.mu.Lock()
@@ -141,11 +179,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during scrape", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
+				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
 				return nil
 			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -199,11 +237,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during crawl", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
+				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
 				return nil
 			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			return err
 		}
 		for _, item := range results {
@@ -259,11 +297,11 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during research", "jobID", job.ID)
-				m.updateStatusWithTimeout(job.ID, model.StatusCanceled, errors.New("canceled by user"), 5*time.Second)
+				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
 				return nil
 			}
 			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
-			m.updateStatusWithTimeout(job.ID, model.StatusFailed, err, 2*time.Second)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -277,7 +315,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		}
 	default:
 		slog.Error("unknown job kind", "jobID", job.ID, "kind", job.Kind)
-		m.updateStatusWithTimeout(job.ID, model.StatusFailed, apperrors.Internal("unknown job kind"), 2*time.Second)
+		m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, "unknown job kind")
 		return apperrors.Internal("unknown job kind")
 	}
 
@@ -287,10 +325,6 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	}
 
 	slog.Info("job succeeded", "jobID", job.ID)
-	updateCtx, cancelUpdate := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelUpdate()
-	if err := m.store.UpdateStatus(updateCtx, job.ID, model.StatusSucceeded, ""); err != nil {
-		slog.Error("failed to update job status to succeeded", "jobID", job.ID, "error", err)
-	}
+	m.updateStatusWithEvent(job, model.StatusRunning, model.StatusSucceeded, "")
 	return nil
 }

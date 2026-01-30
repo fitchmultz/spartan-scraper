@@ -9,16 +9,46 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/gobwas/ws"
 )
 
 type Server struct {
 	manager *jobs.Manager
 	store   *store.Store
 	cfg     config.Config
+	wsHub   *Hub
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
-	return &Server{manager: manager, store: store, cfg: cfg}
+	s := &Server{
+		manager: manager,
+		store:   store,
+		cfg:     cfg,
+		wsHub:   NewHub(),
+	}
+
+	// Start WebSocket hub
+	go s.wsHub.Run()
+
+	// Subscribe hub to job manager events
+	go s.subscribeToJobEvents()
+
+	return s
+}
+
+// subscribeToJobEvents subscribes the WebSocket hub to job manager events.
+func (s *Server) subscribeToJobEvents() {
+	eventCh := make(chan jobs.JobEvent, 256)
+	s.manager.SubscribeToEvents(eventCh)
+	defer s.manager.UnsubscribeFromEvents(eventCh)
+
+	for event := range eventCh {
+		s.wsHub.BroadcastJobEvent(JobEvent{
+			Type:       JobEventType(event.Type),
+			Job:        event.Job,
+			PrevStatus: event.PrevStatus,
+		})
+	}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -37,7 +67,25 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
 	mux.HandleFunc("/v1/templates", s.handleTemplates)
 	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
+	mux.HandleFunc("/v1/ws", s.handleWebSocket)
 
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
 	return handler
+}
+
+func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Upgrade HTTP to WebSocket
+	conn, _, _, err := ws.UpgradeHTTP(r, w)
+	if err != nil {
+		http.Error(w, "websocket upgrade failed", http.StatusBadRequest)
+		return
+	}
+
+	// Create client and register with hub
+	client := s.wsHub.NewClient(conn)
+	s.wsHub.register <- client
+
+	// Start goroutines for the client
+	go client.writePump()
+	go client.readPump()
 }

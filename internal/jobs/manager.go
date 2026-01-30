@@ -37,6 +37,25 @@ type Manager struct {
 	wg               sync.WaitGroup
 	activeJobs       map[string]context.CancelFunc
 	mu               sync.Mutex
+	eventSubscribers []chan<- JobEvent
+	subscribersMu    sync.RWMutex
+}
+
+// JobEventType represents the type of job lifecycle event.
+type JobEventType string
+
+const (
+	JobEventCreated   JobEventType = "created"
+	JobEventStarted   JobEventType = "started"
+	JobEventStatus    JobEventType = "status"
+	JobEventCompleted JobEventType = "completed"
+)
+
+// JobEvent represents a job lifecycle event for subscribers.
+type JobEvent struct {
+	Type       JobEventType
+	Job        model.Job
+	PrevStatus model.Status
 }
 
 // ManagerStatus represents the current state of the job manager.
@@ -207,10 +226,49 @@ func (m *Manager) Enqueue(job model.Job) error {
 	slog.Debug("enqueuing job", "jobID", job.ID, "kind", job.Kind)
 	select {
 	case m.queue <- job:
+		// Publish event for WebSocket subscribers
+		m.publishEvent(JobEvent{
+			Type: JobEventCreated,
+			Job:  job,
+		})
 		return nil
 	default:
 		slog.Warn("job queue full", "jobID", job.ID)
 		return apperrors.ErrQueueFull
+	}
+}
+
+// SubscribeToEvents allows subscribers to receive job events.
+// The subscriber should read from the channel until it's closed.
+func (m *Manager) SubscribeToEvents(ch chan<- JobEvent) {
+	m.subscribersMu.Lock()
+	defer m.subscribersMu.Unlock()
+	m.eventSubscribers = append(m.eventSubscribers, ch)
+}
+
+// UnsubscribeFromEvents removes a subscriber from receiving job events.
+func (m *Manager) UnsubscribeFromEvents(ch chan<- JobEvent) {
+	m.subscribersMu.Lock()
+	defer m.subscribersMu.Unlock()
+	for i, subscriber := range m.eventSubscribers {
+		if subscriber == ch {
+			m.eventSubscribers = append(m.eventSubscribers[:i], m.eventSubscribers[i+1:]...)
+			break
+		}
+	}
+}
+
+// publishEvent broadcasts a job event to all subscribers.
+// Non-blocking: slow subscribers will miss events.
+func (m *Manager) publishEvent(event JobEvent) {
+	m.subscribersMu.RLock()
+	defer m.subscribersMu.RUnlock()
+	for _, ch := range m.eventSubscribers {
+		select {
+		case ch <- event:
+		default:
+			// Channel full or closed, skip this subscriber
+		}
 	}
 }
 

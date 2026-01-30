@@ -4,6 +4,7 @@
  * Displays the list of active/completed jobs with their status, kind, timestamps,
  * and error messages. Provides action buttons for viewing results, canceling running
  * jobs, and deleting completed jobs. Supports refresh to update job states.
+ * Includes connection status indicator for WebSocket/polling state.
  *
  * @module JobList
  */
@@ -22,6 +23,79 @@ interface JobListProps {
   totalJobs: number;
   jobsPerPage: number;
   onPageChange: (page: number) => void;
+  connectionState?: "connected" | "disconnected" | "reconnecting" | "polling";
+}
+
+function ConnectionIndicator({
+  state,
+}: {
+  state: "connected" | "disconnected" | "reconnecting" | "polling";
+}) {
+  const indicatorStyle: React.CSSProperties = {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    display: "inline-block",
+    marginRight: 6,
+  };
+
+  const containerStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 12,
+    color: "#666",
+    padding: "4px 8px",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 4,
+  };
+
+  switch (state) {
+    case "connected":
+      return (
+        <span
+          style={containerStyle}
+          title="WebSocket connected - real-time updates"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#22c55e" }} />
+          Live
+        </span>
+      );
+    case "reconnecting":
+      return (
+        <span style={containerStyle} title="Reconnecting to WebSocket...">
+          <span
+            style={{
+              ...indicatorStyle,
+              backgroundColor: "#f59e0b",
+              animation: "pulse 1s infinite",
+            }}
+          />
+          Reconnecting
+        </span>
+      );
+    case "polling":
+      return (
+        <span
+          style={containerStyle}
+          title="Using polling fallback (4s interval)"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#6b7280" }} />
+          Polling
+        </span>
+      );
+    case "disconnected":
+      return (
+        <span
+          style={containerStyle}
+          title="Disconnected - using polling fallback"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#ef4444" }} />
+          Disconnected
+        </span>
+      );
+    default:
+      return null;
+  }
 }
 
 export function JobList({
@@ -35,6 +109,7 @@ export function JobList({
   totalJobs,
   jobsPerPage,
   onPageChange,
+  connectionState = "polling",
 }: JobListProps) {
   const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
 
@@ -54,9 +129,12 @@ export function JobList({
         }}
       >
         <h2>Active Jobs</h2>
-        <button type="button" className="secondary" onClick={onRefresh}>
-          Refresh
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ConnectionIndicator state={connectionState} />
+          <button type="button" className="secondary" onClick={onRefresh}>
+            Refresh
+          </button>
+        </div>
       </div>
       {error ? <p className="error">{error}</p> : null}
 

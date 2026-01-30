@@ -749,6 +749,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/ws:
+    get:
+      summary: WebSocket endpoint for real-time job updates
+      description: |
+        Establishes a WebSocket connection for receiving real-time job status updates.
+
+        ## Connection
+        Upgrade HTTP connection to WebSocket protocol at `ws://host:port/v1/ws`.
+
+        ## Message Format
+        All messages are JSON with the structure:
+        ```json
+        {
+          "type": "job_status_changed",
+          "timestamp": 1706563200000,
+          "payload": { ... }
+        }
+        ```
+
+        ## Server -> Client Messages
+
+        ### job_created
+        Sent when a new job is enqueued.
+        Payload: JobEventPayload
+
+        ### job_started
+        Sent when a job begins execution.
+        Payload: JobEventPayload
+
+        ### job_status_changed
+        Sent when a job transitions between states.
+        Payload: JobEventPayload
+
+        ### job_completed
+        Sent when a job reaches a terminal state (succeeded, failed, canceled).
+        Payload: JobEventPayload
+
+        ### manager_status
+        Sent periodically with queue depth and active job count.
+        Payload: ManagerStatusPayload
+
+        ### ping
+        Heartbeat ping sent every 30 seconds.
+        Client should respond with a pong message.
+
+        ## Client -> Server Messages
+
+        ### pong
+        Response to server ping for connection health.
+        ```json
+        {"type": "pong", "timestamp": 1706563200000, "payload": null}
+        ```
+
+        ### subscribe_jobs
+        Subscribe to job lifecycle events.
+        ```json
+        {"type": "subscribe_jobs", "timestamp": 1706563200000, "payload": null}
+        ```
+
+        ### unsubscribe_jobs
+        Unsubscribe from job lifecycle events.
+        ```json
+        {"type": "unsubscribe_jobs", "timestamp": 1706563200000, "payload": null}
+        ```
+
+        ## Fallback Behavior
+        If the WebSocket connection fails, clients should fall back to
+        polling the `/v1/jobs` endpoint every 4 seconds.
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+        '400':
+          description: Bad Request (invalid upgrade request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ExtractOptions:
@@ -1306,3 +1383,72 @@ components:
         jobId:
           type: string
           description: ID of the job that last scraped this URL
+    WSMessage:
+      type: object
+      description: WebSocket message envelope
+      required:
+        - type
+        - timestamp
+        - payload
+      properties:
+        type:
+          type: string
+          description: Message type
+          enum: [job_created, job_started, job_status_changed, job_completed, manager_status, ping, pong, subscribe_jobs, unsubscribe_jobs]
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+        payload:
+          description: Message payload (varies by type)
+    WSJobEventPayload:
+      type: object
+      description: Payload for job-related WebSocket events
+      required:
+        - jobId
+        - kind
+        - status
+        - updatedAt
+      properties:
+        jobId:
+          type: string
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, canceled]
+        error:
+          type: string
+          description: Error message if job failed
+        progress:
+          $ref: '#/components/schemas/WSJobProgress'
+        updatedAt:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+    WSJobProgress:
+      type: object
+      description: Progress information for crawl jobs
+      properties:
+        pagesCrawled:
+          type: integer
+        pagesTotal:
+          type: integer
+        depthCurrent:
+          type: integer
+        depthMax:
+          type: integer
+    WSManagerStatusPayload:
+      type: object
+      description: Payload for manager status updates
+      required:
+        - queuedJobs
+        - activeJobs
+      properties:
+        queuedJobs:
+          type: integer
+          description: Number of jobs in queue
+        activeJobs:
+          type: integer
+          description: Number of currently running jobs

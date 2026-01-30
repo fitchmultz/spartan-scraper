@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
+import type { DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -183,3 +183,74 @@ export const postV1Schedules = <ThrowOnError extends boolean = false>(options: O
  * Delete a schedule
  */
 export const deleteV1SchedulesById = <ThrowOnError extends boolean = false>(options: Options<DeleteV1SchedulesByIdData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1SchedulesByIdResponses, DeleteV1SchedulesByIdErrors, ThrowOnError>({ url: '/v1/schedules/{id}', ...options });
+
+/**
+ * WebSocket endpoint for real-time job updates
+ *
+ * Establishes a WebSocket connection for receiving real-time job status updates.
+ *
+ * ## Connection
+ * Upgrade HTTP connection to WebSocket protocol at `ws://host:port/v1/ws`.
+ *
+ * ## Message Format
+ * All messages are JSON with the structure:
+ * ```json
+ * {
+ * "type": "job_status_changed",
+ * "timestamp": 1706563200000,
+ * "payload": { ... }
+ * }
+ * ```
+ *
+ * ## Server -> Client Messages
+ *
+ * ### job_created
+ * Sent when a new job is enqueued.
+ * Payload: JobEventPayload
+ *
+ * ### job_started
+ * Sent when a job begins execution.
+ * Payload: JobEventPayload
+ *
+ * ### job_status_changed
+ * Sent when a job transitions between states.
+ * Payload: JobEventPayload
+ *
+ * ### job_completed
+ * Sent when a job reaches a terminal state (succeeded, failed, canceled).
+ * Payload: JobEventPayload
+ *
+ * ### manager_status
+ * Sent periodically with queue depth and active job count.
+ * Payload: ManagerStatusPayload
+ *
+ * ### ping
+ * Heartbeat ping sent every 30 seconds.
+ * Client should respond with a pong message.
+ *
+ * ## Client -> Server Messages
+ *
+ * ### pong
+ * Response to server ping for connection health.
+ * ```json
+ * {"type": "pong", "timestamp": 1706563200000, "payload": null}
+ * ```
+ *
+ * ### subscribe_jobs
+ * Subscribe to job lifecycle events.
+ * ```json
+ * {"type": "subscribe_jobs", "timestamp": 1706563200000, "payload": null}
+ * ```
+ *
+ * ### unsubscribe_jobs
+ * Unsubscribe from job lifecycle events.
+ * ```json
+ * {"type": "unsubscribe_jobs", "timestamp": 1706563200000, "payload": null}
+ * ```
+ *
+ * ## Fallback Behavior
+ * If the WebSocket connection fails, clients should fall back to
+ * polling the `/v1/jobs` endpoint every 4 seconds.
+ *
+ */
+export const getV1Ws = <ThrowOnError extends boolean = false>(options?: Options<GetV1WsData, ThrowOnError>) => (options?.client ?? client).get<unknown, GetV1WsErrors, ThrowOnError>({ url: '/v1/ws', ...options });
