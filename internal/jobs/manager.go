@@ -80,7 +80,7 @@ func (m *Manager) Status() ManagerStatus {
 }
 
 // NewManager creates a new job manager with the specified configuration.
-func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, maxResponseBytes int64, usePlaywright bool) *Manager {
+func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout time.Duration, maxConcurrency int, rateLimitQPS int, rateLimitBurst int, maxRetries int, retryBase time.Duration, maxResponseBytes int64, usePlaywright bool, cbConfig fetch.CircuitBreakerConfig, adaptiveConfig *fetch.AdaptiveConfig) *Manager {
 	jsRegistry, err := pipeline.LoadJSRegistry(dataDir)
 	if err != nil {
 		slog.Warn("failed to load JS registry", "error", err)
@@ -95,7 +95,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		userAgent:        userAgent,
 		requestTimeout:   requestTimeout,
 		maxConcurrency:   maxConcurrency,
-		limiter:          fetch.NewHostLimiter(rateLimitQPS, rateLimitBurst),
+		limiter:          createLimiter(rateLimitQPS, rateLimitBurst, cbConfig, adaptiveConfig),
 		maxRetries:       maxRetries,
 		retryBase:        retryBase,
 		maxResponseBytes: maxResponseBytes,
@@ -106,6 +106,27 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		templateRegistry: templateRegistry,
 		activeJobs:       make(map[string]context.CancelFunc),
 	}
+}
+
+// createLimiter creates a HostLimiter with optional circuit breaker and adaptive rate limiting.
+func createLimiter(qps, burst int, cbConfig fetch.CircuitBreakerConfig, adaptiveConfig *fetch.AdaptiveConfig) *fetch.HostLimiter {
+	// Create circuit breaker if enabled
+	var cb *fetch.CircuitBreaker
+	if cbConfig.Enabled {
+		cb = fetch.NewCircuitBreaker(cbConfig)
+	}
+
+	// Create limiter based on which features are enabled
+	if adaptiveConfig != nil && adaptiveConfig.Enabled && cb != nil {
+		return fetch.NewAdaptiveHostLimiterWithCircuitBreaker(qps, burst, adaptiveConfig, cb)
+	}
+	if adaptiveConfig != nil && adaptiveConfig.Enabled {
+		return fetch.NewAdaptiveHostLimiter(qps, burst, adaptiveConfig)
+	}
+	if cb != nil {
+		return fetch.NewHostLimiterWithCircuitBreaker(qps, burst, cb)
+	}
+	return fetch.NewHostLimiter(qps, burst)
 }
 
 // recoverQueuedJobs loads all queued jobs that are ready from the store and enqueues them.

@@ -14,6 +14,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -123,6 +124,8 @@ func RunJobs(ctx context.Context, cfg config.Config, args []string) int {
 			time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 			cfg.MaxResponseBytes,
 			cfg.UsePlaywright,
+			fetch.DefaultCircuitBreakerConfig(),
+			nil, // no adaptive rate limiting for cancel operations
 		)
 		if err := manager.CancelJob(ctx, id); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to cancel job: %v\n", err)

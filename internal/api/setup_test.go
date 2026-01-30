@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
@@ -46,6 +47,8 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.MaxResponseBytes,
 		false,
+		fetch.DefaultCircuitBreakerConfig(),
+		nil, // no adaptive rate limiting in tests
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	manager.Start(ctx)

@@ -1170,3 +1170,305 @@ func TestAdaptiveHostLimiter_GetAdaptiveConfig(t *testing.T) {
 		}
 	})
 }
+
+// Circuit breaker tests
+
+func TestNewHostLimiterWithCircuitBreaker(t *testing.T) {
+	t.Run("circuit breaker disabled by default", func(t *testing.T) {
+		l := NewHostLimiter(10, 10)
+		if l.IsCircuitBreakerEnabled() {
+			t.Error("expected circuit breaker to be disabled by default")
+		}
+	})
+
+	t.Run("circuit breaker enabled", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 3,
+			ResetTimeout:     30 * time.Second,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(10, 10, cb)
+
+		if !l.IsCircuitBreakerEnabled() {
+			t.Error("expected circuit breaker to be enabled")
+		}
+		if l.GetCircuitBreaker() != cb {
+			t.Error("expected circuit breaker to be the same instance")
+		}
+	})
+
+	t.Run("nil circuit breaker does not panic", func(t *testing.T) {
+		l := NewHostLimiterWithCircuitBreaker(10, 10, nil)
+		if l.IsCircuitBreakerEnabled() {
+			t.Error("expected circuit breaker to be disabled with nil")
+		}
+	})
+
+	t.Run("adaptive with circuit breaker", func(t *testing.T) {
+		adaptiveCfg := &AdaptiveConfig{
+			Enabled: true,
+			MinQPS:  0.1,
+			MaxQPS:  10,
+		}
+		cbCfg := CircuitBreakerConfig{Enabled: true}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewAdaptiveHostLimiterWithCircuitBreaker(10, 10, adaptiveCfg, cb)
+
+		if !l.IsAdaptiveEnabled() {
+			t.Error("expected adaptive to be enabled")
+		}
+		if !l.IsCircuitBreakerEnabled() {
+			t.Error("expected circuit breaker to be enabled")
+		}
+	})
+}
+
+func TestHostLimiter_CircuitBreakerBlocksRequests(t *testing.T) {
+	t.Run("circuit breaker blocks when open", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 2,
+			SuccessThreshold: 1,
+			ResetTimeout:     1 * time.Hour, // Long timeout
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(100, 100, cb)
+
+		ctx := context.Background()
+
+		// First request should succeed
+		err := l.Wait(ctx, "https://example.com")
+		if err != nil {
+			t.Errorf("expected first request to succeed, got error: %v", err)
+		}
+
+		// Record failures to open circuit
+		l.RecordResult("example.com", errors.New("connection refused"), 0)
+		l.RecordResult("example.com", errors.New("connection refused"), 0)
+
+		// Next request should be blocked
+		err = l.Wait(ctx, "https://example.com")
+		if err == nil {
+			t.Error("expected request to be blocked when circuit is open")
+		}
+		if !errors.Is(err, ErrCircuitBreakerOpen) {
+			t.Errorf("expected ErrCircuitBreakerOpen, got: %v", err)
+		}
+	})
+
+	t.Run("circuit breaker allows different hosts", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 2,
+			ResetTimeout:     1 * time.Hour,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(100, 100, cb)
+
+		ctx := context.Background()
+
+		// Open circuit for host1
+		l.Wait(ctx, "https://host1.example.com")
+		l.RecordResult("host1.example.com", errors.New("error"), 0)
+		l.RecordResult("host1.example.com", errors.New("error"), 0)
+
+		// host1 should be blocked
+		err := l.Wait(ctx, "https://host1.example.com")
+		if err == nil {
+			t.Error("expected host1 to be blocked")
+		}
+
+		// host2 should still work
+		err = l.Wait(ctx, "https://host2.example.com")
+		if err != nil {
+			t.Errorf("expected host2 to be allowed, got error: %v", err)
+		}
+	})
+}
+
+func TestHostLimiter_RecordResult(t *testing.T) {
+	t.Run("record success updates circuit breaker", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 3,
+			SuccessThreshold: 2,
+			ResetTimeout:     50 * time.Millisecond,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(100, 100, cb)
+
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Record failures to open circuit
+		l.RecordResult("example.com", errors.New("error"), 0)
+		l.RecordResult("example.com", errors.New("error"), 0)
+		l.RecordResult("example.com", errors.New("error"), 0)
+
+		// Circuit should be open
+		if cb.GetState("example.com") != StateOpen {
+			t.Error("expected circuit to be open")
+		}
+
+		// Wait for reset timeout
+		time.Sleep(75 * time.Millisecond)
+
+		// Record successes to close circuit
+		l.RecordResult("example.com", nil, 200)
+		l.RecordResult("example.com", nil, 200)
+
+		// Circuit should be closed
+		if cb.GetState("example.com") != StateClosed {
+			t.Errorf("expected circuit to be closed, got %v", cb.GetState("example.com"))
+		}
+	})
+
+	t.Run("record 5xx failure updates circuit breaker", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 2,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(100, 100, cb)
+
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Record 5xx failures
+		l.RecordResult("example.com", nil, 500)
+		l.RecordResult("example.com", nil, 503)
+
+		if cb.GetState("example.com") != StateOpen {
+			t.Errorf("expected circuit to be open after 2 5xx errors, got %v", cb.GetState("example.com"))
+		}
+	})
+
+	t.Run("record 4xx does not update circuit breaker", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 2,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(100, 100, cb)
+
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		// Record 4xx responses (not failures)
+		l.RecordResult("example.com", nil, 404)
+		l.RecordResult("example.com", nil, 403)
+
+		if cb.GetState("example.com") != StateClosed {
+			t.Errorf("expected circuit to still be closed after 4xx, got %v", cb.GetState("example.com"))
+		}
+	})
+
+	t.Run("nil limiter record result does not panic", func(t *testing.T) {
+		var l *HostLimiter
+		l.RecordResult("example.com", errors.New("error"), 0) // Should not panic
+	})
+}
+
+func TestHostLimiter_GetHostStatus_WithCircuitBreaker(t *testing.T) {
+	t.Run("status includes circuit breaker fields", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{
+			Enabled:          true,
+			FailureThreshold: 3,
+		}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(10, 10, cb)
+
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+		l.RecordResult("example.com", errors.New("error"), 0)
+
+		status := l.GetHostStatus()
+		if len(status) != 1 {
+			t.Fatalf("expected 1 status, got %d", len(status))
+		}
+
+		s := status[0]
+		if s.CircuitBreakerState == "" {
+			t.Error("expected CircuitBreakerState to be set")
+		}
+		if s.CircuitBreakerFailures != 1 {
+			t.Errorf("expected CircuitBreakerFailures = 1, got %d", s.CircuitBreakerFailures)
+		}
+		if s.CircuitBreakerLastFail.IsZero() {
+			t.Error("expected CircuitBreakerLastFail to be set")
+		}
+	})
+
+	t.Run("status without circuit breaker has empty CB fields", func(t *testing.T) {
+		l := NewHostLimiter(10, 10)
+
+		ctx := context.Background()
+		l.Wait(ctx, "https://example.com")
+
+		status := l.GetHostStatus()
+		if len(status) != 1 {
+			t.Fatalf("expected 1 status, got %d", len(status))
+		}
+
+		s := status[0]
+		if s.CircuitBreakerState != "" {
+			t.Errorf("expected CircuitBreakerState to be empty, got %s", s.CircuitBreakerState)
+		}
+	})
+}
+
+func TestHostLimiter_IsCircuitBreakerEnabled(t *testing.T) {
+	t.Run("nil limiter returns false", func(t *testing.T) {
+		var l *HostLimiter
+		if l.IsCircuitBreakerEnabled() {
+			t.Error("expected IsCircuitBreakerEnabled to return false for nil limiter")
+		}
+	})
+
+	t.Run("disabled circuit breaker returns false", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{Enabled: false}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(10, 10, cb)
+
+		if l.IsCircuitBreakerEnabled() {
+			t.Error("expected IsCircuitBreakerEnabled to return false when CB disabled")
+		}
+	})
+
+	t.Run("enabled circuit breaker returns true", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{Enabled: true}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(10, 10, cb)
+
+		if !l.IsCircuitBreakerEnabled() {
+			t.Error("expected IsCircuitBreakerEnabled to return true when CB enabled")
+		}
+	})
+}
+
+func TestHostLimiter_GetCircuitBreaker(t *testing.T) {
+	t.Run("nil limiter returns nil", func(t *testing.T) {
+		var l *HostLimiter
+		if l.GetCircuitBreaker() != nil {
+			t.Error("expected GetCircuitBreaker to return nil for nil limiter")
+		}
+	})
+
+	t.Run("returns circuit breaker instance", func(t *testing.T) {
+		cbCfg := CircuitBreakerConfig{Enabled: true}
+		cb := NewCircuitBreaker(cbCfg)
+		l := NewHostLimiterWithCircuitBreaker(10, 10, cb)
+
+		if l.GetCircuitBreaker() != cb {
+			t.Error("expected GetCircuitBreaker to return the same instance")
+		}
+	})
+
+	t.Run("no circuit breaker returns nil", func(t *testing.T) {
+		l := NewHostLimiter(10, 10)
+		if l.GetCircuitBreaker() != nil {
+			t.Error("expected GetCircuitBreaker to return nil when no CB")
+		}
+	})
+}

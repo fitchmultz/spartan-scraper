@@ -115,6 +115,18 @@ type Config struct {
 	RetentionMaxStorageGB         int  // RETENTION_MAX_STORAGE_GB env var (default: 10, 0 = unlimited)
 	RetentionCleanupIntervalHours int  // RETENTION_CLEANUP_INTERVAL_HOURS env var (default: 24)
 	RetentionDryRunDefault        bool // RETENTION_DRY_RUN_DEFAULT env var (default: false)
+
+	// Circuit breaker configuration
+	CircuitBreakerEnabled             bool // CIRCUIT_BREAKER_ENABLED env var (default: true)
+	CircuitBreakerFailureThreshold    int  // CIRCUIT_BREAKER_FAILURE_THRESHOLD env var (default: 5)
+	CircuitBreakerSuccessThreshold    int  // CIRCUIT_BREAKER_SUCCESS_THRESHOLD env var (default: 3)
+	CircuitBreakerResetTimeoutSecs    int  // CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS env var (default: 30)
+	CircuitBreakerHalfOpenMaxRequests int  // CIRCUIT_BREAKER_HALF_OPEN_MAX_REQUESTS env var (default: 3)
+
+	// Enhanced retry configuration
+	RetryMaxDelaySecs    int    // RETRY_MAX_DELAY_SECONDS env var (default: 60)
+	RetryBackoffStrategy string // RETRY_BACKOFF_STRATEGY env var (default: "exponential_jitter")
+	RetryStatusCodes     string // RETRY_STATUS_CODES env var (default: "429,500,502,503,504")
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -196,6 +208,18 @@ func Load() (Config, error) {
 		RetentionMaxStorageGB:         getenvInt("RETENTION_MAX_STORAGE_GB", 10),
 		RetentionCleanupIntervalHours: getenvInt("RETENTION_CLEANUP_INTERVAL_HOURS", 24),
 		RetentionDryRunDefault:        getenvBool("RETENTION_DRY_RUN_DEFAULT", false),
+
+		// Circuit breaker configuration
+		CircuitBreakerEnabled:             getenvBool("CIRCUIT_BREAKER_ENABLED", true),
+		CircuitBreakerFailureThreshold:    getenvInt("CIRCUIT_BREAKER_FAILURE_THRESHOLD", 5),
+		CircuitBreakerSuccessThreshold:    getenvInt("CIRCUIT_BREAKER_SUCCESS_THRESHOLD", 3),
+		CircuitBreakerResetTimeoutSecs:    getenvInt("CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS", 30),
+		CircuitBreakerHalfOpenMaxRequests: getenvInt("CIRCUIT_BREAKER_HALF_OPEN_MAX_REQUESTS", 3),
+
+		// Enhanced retry configuration
+		RetryMaxDelaySecs:    getenvInt("RETRY_MAX_DELAY_SECONDS", 60),
+		RetryBackoffStrategy: getenv("RETRY_BACKOFF_STRATEGY", "exponential_jitter"),
+		RetryStatusCodes:     getenv("RETRY_STATUS_CODES", "429,500,502,503,504"),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {
@@ -204,6 +228,8 @@ func Load() (Config, error) {
 
 	cfg = validateAndFixAdaptiveConfig(cfg)
 	cfg = validateAndFixRetentionConfig(cfg)
+	cfg = validateAndFixCircuitBreakerConfig(cfg)
+	cfg = validateAndFixRetryConfig(cfg)
 
 	return cfg, nil
 }
@@ -290,6 +316,67 @@ func validateAndFixRetentionConfig(cfg Config) Config {
 		if hasLimits {
 			fmt.Fprintf(os.Stderr, "[WARN] Retention limits are set but RETENTION_ENABLED is false; cleanup will not run automatically\n")
 		}
+	}
+
+	return cfg
+}
+
+// validateAndFixCircuitBreakerConfig ensures circuit breaker configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixCircuitBreakerConfig(cfg Config) Config {
+	if !cfg.CircuitBreakerEnabled {
+		return cfg
+	}
+
+	// Ensure positive thresholds
+	if cfg.CircuitBreakerFailureThreshold <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_FAILURE_THRESHOLD must be positive, using default 5\n")
+		cfg.CircuitBreakerFailureThreshold = 5
+	}
+	if cfg.CircuitBreakerSuccessThreshold <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_SUCCESS_THRESHOLD must be positive, using default 3\n")
+		cfg.CircuitBreakerSuccessThreshold = 3
+	}
+	if cfg.CircuitBreakerResetTimeoutSecs <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS must be positive, using default 30\n")
+		cfg.CircuitBreakerResetTimeoutSecs = 30
+	}
+	if cfg.CircuitBreakerHalfOpenMaxRequests <= 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_HALF_OPEN_MAX_REQUESTS must be positive, using default 3\n")
+		cfg.CircuitBreakerHalfOpenMaxRequests = 3
+	}
+
+	return cfg
+}
+
+// validateAndFixRetryConfig ensures retry configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixRetryConfig(cfg Config) Config {
+	// Validate retry max delay
+	if cfg.RetryMaxDelaySecs < 0 {
+		fmt.Fprintf(os.Stderr, "[WARN] RETRY_MAX_DELAY_SECONDS must be non-negative, using default 60\n")
+		cfg.RetryMaxDelaySecs = 60
+	}
+
+	// Validate backoff strategy
+	validStrategies := map[string]bool{
+		"exponential":        true,
+		"exponential_jitter": true,
+		"exponential-jitter": true,
+		"exponentialjitter":  true,
+		"linear":             true,
+		"fixed":              true,
+	}
+
+	strategyLower := strings.ToLower(cfg.RetryBackoffStrategy)
+	if cfg.RetryBackoffStrategy != "" && !validStrategies[strategyLower] {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid RETRY_BACKOFF_STRATEGY: %q, using default 'exponential_jitter'\n", cfg.RetryBackoffStrategy)
+		cfg.RetryBackoffStrategy = "exponential_jitter"
+	}
+
+	// Normalize to canonical form
+	if strategyLower == "exponential-jitter" || strategyLower == "exponentialjitter" {
+		cfg.RetryBackoffStrategy = "exponential_jitter"
 	}
 
 	return cfg

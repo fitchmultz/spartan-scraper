@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -128,6 +129,8 @@ func TestTUICancelJob(t *testing.T) {
 		400*time.Millisecond,
 		10*1024*1024,
 		false,
+		fetch.DefaultCircuitBreakerConfig(),
+		nil, // no adaptive rate limiting in tests
 	)
 
 	jobID := "test-cancel-job"

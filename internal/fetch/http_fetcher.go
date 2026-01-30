@@ -152,6 +152,13 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		Transport: transport,
 	}
 
+	// Parse host once for circuit breaker and result tracking
+	parsedURL, _ := url.Parse(req.URL)
+	host := ""
+	if parsedURL != nil {
+		host = parsedURL.Host
+	}
+
 	for attempt := 0; attempt <= retries; attempt++ {
 		if attempt > 0 {
 			slog.Debug("retrying HTTP fetch", "url", apperrors.SanitizeURL(req.URL), "attempt", attempt)
@@ -222,6 +229,10 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if selectedProxy != nil && f.proxyPool != nil && (attempt >= retries || !shouldRetry(err, 0)) {
 				f.proxyPool.RecordFailure(selectedProxy.ID, err)
 			}
+			// Record failure for circuit breaker
+			if req.Limiter != nil && host != "" {
+				req.Limiter.RecordResult(host, err, 0)
+			}
 			if attempt >= retries || !shouldRetry(err, 0) {
 				return Result{}, err
 			}
@@ -264,6 +275,10 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		_ = resp.Body.Close()
 		if readErr != nil {
 			slog.Warn("failed to read HTTP response body", "url", apperrors.SanitizeURL(req.URL), "error", readErr, "attempt", attempt)
+			// Record failure for circuit breaker
+			if req.Limiter != nil && host != "" {
+				req.Limiter.RecordResult(host, readErr, resp.StatusCode)
+			}
 			if attempt >= retries || !shouldRetry(readErr, resp.StatusCode) {
 				return Result{}, readErr
 			}
@@ -277,16 +292,20 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		// Report 429 to adaptive rate limiter if enabled (regardless of whether we'll retry)
 		if resp.StatusCode == http.StatusTooManyRequests && req.Limiter != nil && req.Limiter.IsAdaptiveEnabled() {
-			if parsedURL, err := url.Parse(req.URL); err == nil && parsedURL.Host != "" {
+			if host != "" {
 				delay := readRetryAfter(resp)
 				if delay <= 0 {
 					delay = backoff(baseDelay, attempt)
 				}
-				req.Limiter.RecordRateLimit(parsedURL.Host, delay)
+				req.Limiter.RecordRateLimit(host, delay)
 			}
 		}
 
 		if shouldRetry(nil, resp.StatusCode) && attempt < retries {
+			// Record failure for circuit breaker (status code triggered retry)
+			if req.Limiter != nil && host != "" {
+				req.Limiter.RecordResult(host, nil, resp.StatusCode)
+			}
 			delay := readRetryAfter(resp)
 			if delay <= 0 {
 				delay = backoff(baseDelay, attempt)
@@ -301,10 +320,17 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 		slog.Debug("HTTP fetch complete", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode)
 
-		// Report success to adaptive rate limiter only for successful responses (2xx/3xx)
-		if req.Limiter != nil && req.Limiter.IsAdaptiveEnabled() && isSuccessStatus(resp.StatusCode) {
-			if parsedURL, err := url.Parse(req.URL); err == nil && parsedURL.Host != "" {
-				req.Limiter.RecordSuccess(parsedURL.Host)
+		// Record success or failure for circuit breaker
+		if req.Limiter != nil && host != "" {
+			if isSuccessStatus(resp.StatusCode) {
+				req.Limiter.RecordResult(host, nil, resp.StatusCode)
+				// Also report success to adaptive rate limiter
+				if req.Limiter.IsAdaptiveEnabled() {
+					req.Limiter.RecordSuccess(host)
+				}
+			} else if resp.StatusCode >= 500 {
+				// Server error - record as failure
+				req.Limiter.RecordResult(host, nil, resp.StatusCode)
 			}
 		}
 

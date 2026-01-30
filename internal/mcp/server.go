@@ -25,6 +25,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
@@ -46,6 +47,8 @@ func NewServer(cfg config.Config) (*Server, error) {
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.MaxResponseBytes,
 		cfg.UsePlaywright,
+		fetch.DefaultCircuitBreakerConfig(),
+		nil, // no adaptive rate limiting in MCP mode
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr.Start(ctx)

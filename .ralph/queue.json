@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0209",
-      "status": "todo",
-      "title": "Implement circuit breaker and advanced retry strategies",
-      "priority": "medium",
-      "tags": [
-        "reliability",
-        "resilience",
-        "networking"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "internal/crawl/"
-      ],
-      "evidence": [
-        "Only exponential backoff retry is supported",
-        "No circuit breaker for failing hosts",
-        "No per-status-code retry configuration"
-      ],
-      "plan": [
-        "Implement circuit breaker pattern per host",
-        "Add configurable retry strategies per status code",
-        "Add jitter to retry delays",
-        "Support custom retry predicates",
-        "Add circuit breaker metrics and health status"
-      ],
-      "notes": [],
-      "request": "scan finding: retry strategy gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0210",
       "status": "todo",
       "title": "Add RateLimit header and Retry-After compliance",

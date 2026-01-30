@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"golang.org/x/time/rate"
 )
 
@@ -26,6 +27,10 @@ type HostStatus struct {
 	Consecutive429s      int
 	InCooldown           bool
 	CooldownUntil        time.Time
+	// Circuit breaker fields
+	CircuitBreakerState    string    // closed, open, half-open
+	CircuitBreakerFailures int       // Current failure count
+	CircuitBreakerLastFail time.Time // Last failure timestamp
 }
 
 // AdaptiveConfig controls the behavior of adaptive rate limiting.
@@ -54,6 +59,9 @@ type HostLimiter struct {
 
 	// Adaptive rate limiting configuration (nil if disabled)
 	adaptive *AdaptiveConfig
+
+	// Circuit breaker for per-host failure isolation (nil if disabled)
+	circuitBreaker *CircuitBreaker
 }
 
 type hostLimiterInfo struct {
@@ -70,16 +78,28 @@ type hostLimiterInfo struct {
 }
 
 func NewHostLimiter(qps int, burst int) *HostLimiter {
-	return newHostLimiterWithAdaptive(qps, burst, nil)
+	return newHostLimiterWithAdaptiveAndCircuitBreaker(qps, burst, nil, nil)
 }
 
 // NewAdaptiveHostLimiter creates a HostLimiter with adaptive rate limiting enabled.
 // The limiter will dynamically adjust QPS per host based on server responses.
 func NewAdaptiveHostLimiter(qps int, burst int, cfg *AdaptiveConfig) *HostLimiter {
-	return newHostLimiterWithAdaptive(qps, burst, cfg)
+	return newHostLimiterWithAdaptiveAndCircuitBreaker(qps, burst, cfg, nil)
 }
 
-func newHostLimiterWithAdaptive(qps int, burst int, cfg *AdaptiveConfig) *HostLimiter {
+// NewHostLimiterWithCircuitBreaker creates a HostLimiter with circuit breaker enabled.
+// The circuit breaker will isolate failing hosts to prevent cascading failures.
+func NewHostLimiterWithCircuitBreaker(qps int, burst int, cb *CircuitBreaker) *HostLimiter {
+	return newHostLimiterWithAdaptiveAndCircuitBreaker(qps, burst, nil, cb)
+}
+
+// NewAdaptiveHostLimiterWithCircuitBreaker creates a HostLimiter with both adaptive
+// rate limiting and circuit breaker enabled.
+func NewAdaptiveHostLimiterWithCircuitBreaker(qps int, burst int, adaptiveCfg *AdaptiveConfig, cb *CircuitBreaker) *HostLimiter {
+	return newHostLimiterWithAdaptiveAndCircuitBreaker(qps, burst, adaptiveCfg, cb)
+}
+
+func newHostLimiterWithAdaptiveAndCircuitBreaker(qps int, burst int, adaptiveCfg *AdaptiveConfig, cb *CircuitBreaker) *HostLimiter {
 	limit := rate.Limit(qps)
 	if qps <= 0 {
 		limit = rate.Inf
@@ -89,33 +109,34 @@ func newHostLimiterWithAdaptive(qps int, burst int, cfg *AdaptiveConfig) *HostLi
 	}
 
 	// Set up adaptive config defaults if provided
-	if cfg != nil {
-		if cfg.MinQPS <= 0 {
-			cfg.MinQPS = 0.1 // 1 req per 10 seconds minimum
+	if adaptiveCfg != nil {
+		if adaptiveCfg.MinQPS <= 0 {
+			adaptiveCfg.MinQPS = 0.1 // 1 req per 10 seconds minimum
 		}
-		if cfg.MaxQPS <= 0 {
-			cfg.MaxQPS = limit
+		if adaptiveCfg.MaxQPS <= 0 {
+			adaptiveCfg.MaxQPS = limit
 		}
-		if cfg.AdditiveIncrease <= 0 {
-			cfg.AdditiveIncrease = 0.5 // add 0.5 QPS per increase
+		if adaptiveCfg.AdditiveIncrease <= 0 {
+			adaptiveCfg.AdditiveIncrease = 0.5 // add 0.5 QPS per increase
 		}
-		if cfg.MultiplicativeDecrease <= 0 {
-			cfg.MultiplicativeDecrease = 0.5 // halve the rate
+		if adaptiveCfg.MultiplicativeDecrease <= 0 {
+			adaptiveCfg.MultiplicativeDecrease = 0.5 // halve the rate
 		}
-		if cfg.SuccessThreshold <= 0 {
-			cfg.SuccessThreshold = 5 // 5 consecutive successes before increase
+		if adaptiveCfg.SuccessThreshold <= 0 {
+			adaptiveCfg.SuccessThreshold = 5 // 5 consecutive successes before increase
 		}
-		if cfg.CooldownPeriod <= 0 {
-			cfg.CooldownPeriod = time.Second // 1 second between adjustments
+		if adaptiveCfg.CooldownPeriod <= 0 {
+			adaptiveCfg.CooldownPeriod = time.Second // 1 second between adjustments
 		}
 	}
 
 	return &HostLimiter{
-		qps:      limit,
-		burst:    burst,
-		byHost:   map[string]*rate.Limiter{},
-		hostInfo: map[string]*hostLimiterInfo{},
-		adaptive: cfg,
+		qps:            limit,
+		burst:          burst,
+		byHost:         map[string]*rate.Limiter{},
+		hostInfo:       map[string]*hostLimiterInfo{},
+		adaptive:       adaptiveCfg,
+		circuitBreaker: cb,
 	}
 }
 
@@ -127,6 +148,7 @@ func (h *HostLimiter) Wait(ctx context.Context, rawURL string) error {
 
 // WaitWithRates waits for the rate limiter for the given URL with optional per-host rates.
 // If profileQPS or profileBurst are 0, the global defaults are used.
+// This method also checks the circuit breaker before allowing the request.
 func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQPS int, profileBurst int) error {
 	if h == nil {
 		return nil
@@ -134,7 +156,8 @@ func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQ
 
 	// When global QPS is unlimited but adaptive mode is enabled, we still need to
 	// enforce adaptive rate limits. Skip early return if adaptive is enabled.
-	if h.qps == rate.Inf && !h.IsAdaptiveEnabled() {
+	// Also need to check circuit breaker even with unlimited QPS.
+	if h.qps == rate.Inf && !h.IsAdaptiveEnabled() && !h.IsCircuitBreakerEnabled() {
 		return nil
 	}
 	parsed, err := url.Parse(rawURL)
@@ -144,6 +167,13 @@ func (h *HostLimiter) WaitWithRates(ctx context.Context, rawURL string, profileQ
 	host := parsed.Host
 	if host == "" {
 		return nil
+	}
+
+	// Check circuit breaker first
+	if h.circuitBreaker != nil && !h.circuitBreaker.Allow(host) {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"circuit breaker open for host "+host,
+			ErrCircuitBreakerOpen)
 	}
 
 	// Check for cooldown period (adaptive rate limiting)
@@ -249,6 +279,15 @@ func (h *HostLimiter) GetHostStatus() []HostStatus {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	// Get circuit breaker status if enabled
+	var cbStatuses map[string]CircuitBreakerHostStatus
+	if h.circuitBreaker != nil {
+		cbStatuses = make(map[string]CircuitBreakerHostStatus)
+		for _, s := range h.circuitBreaker.GetHostStatus() {
+			cbStatuses[s.Host] = s
+		}
+	}
+
 	result := make([]HostStatus, 0, len(h.hostInfo))
 	for host, info := range h.hostInfo {
 		qps := float64(info.qps)
@@ -271,6 +310,13 @@ func (h *HostLimiter) GetHostStatus() []HostStatus {
 			status.Consecutive429s = info.consecutive429s
 			status.InCooldown = time.Now().Before(info.cooldownUntil)
 			status.CooldownUntil = info.cooldownUntil
+		}
+
+		// Add circuit breaker fields if enabled
+		if cbStatus, ok := cbStatuses[host]; ok {
+			status.CircuitBreakerState = cbStatus.State
+			status.CircuitBreakerFailures = cbStatus.FailureCount
+			status.CircuitBreakerLastFail = cbStatus.LastFailureTime
 		}
 
 		result = append(result, status)
@@ -408,4 +454,34 @@ func (h *HostLimiter) GetAdaptiveConfig() *AdaptiveConfig {
 	}
 	cfg := *h.adaptive
 	return &cfg
+}
+
+// IsCircuitBreakerEnabled returns true if circuit breaker is enabled.
+func (h *HostLimiter) IsCircuitBreakerEnabled() bool {
+	return h != nil && h.circuitBreaker != nil && h.circuitBreaker.IsEnabled()
+}
+
+// GetCircuitBreaker returns the circuit breaker instance, or nil if not enabled.
+func (h *HostLimiter) GetCircuitBreaker() *CircuitBreaker {
+	if h == nil {
+		return nil
+	}
+	return h.circuitBreaker
+}
+
+// RecordResult records the result of a request for both adaptive rate limiting
+// and circuit breaker tracking.
+func (h *HostLimiter) RecordResult(host string, err error, status int) {
+	if h == nil {
+		return
+	}
+
+	// Record for circuit breaker if enabled
+	if h.circuitBreaker != nil && h.circuitBreaker.IsEnabled() {
+		if err != nil || status >= 500 {
+			h.circuitBreaker.RecordFailure(host)
+		} else if status >= 200 && status < 400 {
+			h.circuitBreaker.RecordSuccess(host)
+		}
+	}
 }

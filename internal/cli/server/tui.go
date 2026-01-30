@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	uitui "github.com/fitchmultz/spartan-scraper/internal/ui/tui"
@@ -55,6 +56,8 @@ Notes:
 		time.Duration(cfg.RetryBaseMs)*time.Millisecond,
 		cfg.MaxResponseBytes,
 		cfg.UsePlaywright,
+		fetch.DefaultCircuitBreakerConfig(),
+		nil, // no adaptive rate limiting in TUI mode
 	)
 
 	return uitui.RunWithOptions(ctx, st, manager, uitui.Options{Smoke: *smoke})

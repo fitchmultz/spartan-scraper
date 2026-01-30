@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
@@ -27,6 +28,8 @@ func setupTestManager(t *testing.T) (*Manager, *store.Store, func()) {
 		100*time.Millisecond,
 		10*1024*1024,
 		false,
+		fetch.DefaultCircuitBreakerConfig(),
+		nil, // no adaptive rate limiting in tests
 	)
 
 	cleanup := func() {
