@@ -447,3 +447,161 @@ func TestSchemaVersionInfo_Struct(t *testing.T) {
 		t.Errorf("SchemaVersionInfo.MigrationRules length = %v, want %v", len(info.MigrationRules), 1)
 	}
 }
+
+func TestMigrateDocument_JMESPath(t *testing.T) {
+	tests := []struct {
+		name        string
+		doc         NormalizedDocument
+		fromVersion string
+		toVersion   string
+		rules       []MigrationRule
+		wantErr     bool
+		checkFn     func(t *testing.T, doc NormalizedDocument)
+	}{
+		{
+			name: "JMESPath projection migration",
+			doc: NormalizedDocument{
+				URL:   "http://example.com",
+				Title: "Example Page",
+				Fields: map[string]FieldValue{
+					"url":   {Values: []string{"http://example.com"}, Source: FieldSourceSelector},
+					"title": {Values: []string{"Example Page"}, Source: FieldSourceSelector},
+				},
+			},
+			fromVersion: "1.0.0",
+			toVersion:   "2.0.0",
+			rules: []MigrationRule{
+				{
+					FromVersion: "1.0.0",
+					ToVersion:   "2.0.0",
+					// JMESPath expression that selects specific fields from the document
+					// Uses lowercase field names as per JSON tags in NormalizedDocument
+					Transform: "jmespath:{\"pageUrl\": url, \"pageTitle\": title}",
+				},
+			},
+			wantErr: false,
+			checkFn: func(t *testing.T, doc NormalizedDocument) {
+				// The result should have pageUrl and pageTitle in Fields
+				if _, ok := doc.Fields["pageUrl"]; !ok {
+					t.Error("Expected 'pageUrl' field to exist")
+				}
+				if _, ok := doc.Fields["pageTitle"]; !ok {
+					t.Error("Expected 'pageTitle' field to exist")
+				}
+			},
+		},
+		{
+			name: "invalid JMESPath expression",
+			doc: NormalizedDocument{
+				Fields: map[string]FieldValue{
+					"url": {Values: []string{"http://example.com"}, Source: FieldSourceSelector},
+				},
+			},
+			fromVersion: "1.0.0",
+			toVersion:   "2.0.0",
+			rules: []MigrationRule{
+				{
+					FromVersion: "1.0.0",
+					ToVersion:   "2.0.0",
+					Transform:   "jmespath:[?invalid",
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MigrateDocument(tt.doc, tt.fromVersion, tt.toVersion, tt.rules)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MigrateDocument() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if tt.checkFn != nil {
+				tt.checkFn(t, got)
+			}
+		})
+	}
+}
+
+func TestMigrateDocument_JSONata(t *testing.T) {
+	tests := []struct {
+		name        string
+		doc         NormalizedDocument
+		fromVersion string
+		toVersion   string
+		rules       []MigrationRule
+		wantErr     bool
+		checkFn     func(t *testing.T, doc NormalizedDocument)
+	}{
+		{
+			name: "JSONata projection migration",
+			doc: NormalizedDocument{
+				URL:   "http://example.com",
+				Title: "Example Page",
+				Fields: map[string]FieldValue{
+					"url":   {Values: []string{"http://example.com"}, Source: FieldSourceSelector},
+					"title": {Values: []string{"Example Page"}, Source: FieldSourceSelector},
+				},
+			},
+			fromVersion: "1.0.0",
+			toVersion:   "2.0.0",
+			rules: []MigrationRule{
+				{
+					FromVersion: "1.0.0",
+					ToVersion:   "2.0.0",
+					// JSONata expression that selects specific fields from the document
+					// Uses lowercase field names as per JSON tags in NormalizedDocument
+					Transform: `jsonata:{"pageUrl": url, "pageTitle": title}`,
+				},
+			},
+			wantErr: false,
+			checkFn: func(t *testing.T, doc NormalizedDocument) {
+				// The result should have pageUrl and pageTitle in Fields
+				if _, ok := doc.Fields["pageUrl"]; !ok {
+					t.Error("Expected 'pageUrl' field to exist")
+				}
+				if _, ok := doc.Fields["pageTitle"]; !ok {
+					t.Error("Expected 'pageTitle' field to exist")
+				}
+			},
+		},
+		{
+			name: "invalid JSONata expression",
+			doc: NormalizedDocument{
+				Fields: map[string]FieldValue{
+					"url": {Values: []string{"http://example.com"}, Source: FieldSourceSelector},
+				},
+			},
+			fromVersion: "1.0.0",
+			toVersion:   "2.0.0",
+			rules: []MigrationRule{
+				{
+					FromVersion: "1.0.0",
+					ToVersion:   "2.0.0",
+					Transform:   "jsonata:$[invalid",
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MigrateDocument(tt.doc, tt.fromVersion, tt.toVersion, tt.rules)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MigrateDocument() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if tt.checkFn != nil {
+				tt.checkFn(t, got)
+			}
+		})
+	}
+}

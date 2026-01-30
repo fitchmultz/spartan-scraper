@@ -19,6 +19,20 @@ export type PipelineOptions = {
     preProcessors?: Array<string>;
     postProcessors?: Array<string>;
     transformers?: Array<string>;
+    /**
+     * JMESPath expression for data transformation
+     */
+    jmesPath?: string;
+    /**
+     * JSONata expression for data transformation
+     */
+    jsonata?: string;
+    /**
+     * Variables available to transformation expressions
+     */
+    transformVars?: {
+        [key: string]: unknown;
+    };
 };
 
 export type ResearchEvidence = {
@@ -1544,6 +1558,80 @@ export type SessionsResponse = {
     sessions?: Array<Session>;
 };
 
+/**
+ * Request to preview a transformation on job results
+ */
+export type TransformPreviewRequest = {
+    /**
+     * Job ID to preview against
+     */
+    jobId: string;
+    /**
+     * JMESPath or JSONata expression
+     */
+    expression: string;
+    /**
+     * Transformation language
+     */
+    language: 'jmespath' | 'jsonata';
+    /**
+     * Maximum number of results to transform
+     */
+    limit?: number;
+};
+
+/**
+ * Response containing transformed preview results
+ */
+export type TransformPreviewResponse = {
+    /**
+     * Transformed data items
+     */
+    results?: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Error message if transformation failed
+     */
+    error?: string;
+    /**
+     * Number of results returned
+     */
+    resultCount?: number;
+};
+
+/**
+ * Request to validate a transformation expression
+ */
+export type TransformValidateRequest = {
+    /**
+     * JMESPath or JSONata expression to validate
+     */
+    expression: string;
+    /**
+     * Transformation language
+     */
+    language: 'jmespath' | 'jsonata';
+};
+
+/**
+ * Response containing validation result
+ */
+export type TransformValidateResponse = {
+    /**
+     * Whether the expression is valid
+     */
+    valid?: boolean;
+    /**
+     * Error message if expression is invalid
+     */
+    error?: string;
+    /**
+     * Human-readable validation message
+     */
+    message?: string;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -2530,6 +2618,70 @@ export type GetV1JobsByIdResultsResponses = {
 };
 
 export type GetV1JobsByIdResultsResponse = GetV1JobsByIdResultsResponses[keyof GetV1JobsByIdResultsResponses];
+
+export type PostV1JobsByIdPreviewTransformData = {
+    body: TransformPreviewRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/jobs/{id}/preview-transform';
+};
+
+export type PostV1JobsByIdPreviewTransformErrors = {
+    /**
+     * Bad Request (invalid expression or language)
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found (job not found or no results)
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type PostV1JobsByIdPreviewTransformError = PostV1JobsByIdPreviewTransformErrors[keyof PostV1JobsByIdPreviewTransformErrors];
+
+export type PostV1JobsByIdPreviewTransformResponses = {
+    /**
+     * Transformed preview results
+     */
+    200: TransformPreviewResponse;
+};
+
+export type PostV1JobsByIdPreviewTransformResponse = PostV1JobsByIdPreviewTransformResponses[keyof PostV1JobsByIdPreviewTransformResponses];
+
+export type PostV1TransformValidateData = {
+    body: TransformValidateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/transform/validate';
+};
+
+export type PostV1TransformValidateErrors = {
+    /**
+     * Bad Request (invalid request body)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type PostV1TransformValidateError = PostV1TransformValidateErrors[keyof PostV1TransformValidateErrors];
+
+export type PostV1TransformValidateResponses = {
+    /**
+     * Validation result
+     */
+    200: TransformValidateResponse;
+};
+
+export type PostV1TransformValidateResponse = PostV1TransformValidateResponses[keyof PostV1TransformValidateResponses];
 
 export type PostV1JobsBatchScrapeData = {
     body: BatchScrapeRequest;

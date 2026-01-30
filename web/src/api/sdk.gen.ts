@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, DiscoverOidcData, DiscoverOidcErrors, DiscoverOidcResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, InitiateOAuthData, InitiateOAuthErrors, InitiateOAuthResponses, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, RefreshOAuthTokenData, RefreshOAuthTokenErrors, RefreshOAuthTokenResponses, RevokeOAuthTokenData, RevokeOAuthTokenErrors, RevokeOAuthTokenResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses } from './types.gen';
+import type { CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, DiscoverOidcData, DiscoverOidcErrors, DiscoverOidcResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WsData, GetV1WsErrors, InitiateOAuthData, InitiateOAuthErrors, InitiateOAuthResponses, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1JobsByIdPreviewTransformData, PostV1JobsByIdPreviewTransformErrors, PostV1JobsByIdPreviewTransformResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PostV1TransformValidateData, PostV1TransformValidateErrors, PostV1TransformValidateResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, RefreshOAuthTokenData, RefreshOAuthTokenErrors, RefreshOAuthTokenResponses, RevokeOAuthTokenData, RevokeOAuthTokenErrors, RevokeOAuthTokenResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -323,6 +323,36 @@ export const getV1JobsByIdResults = <ThrowOnError extends boolean = false>(optio
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/jobs/{id}/results',
     ...options
+});
+
+/**
+ * Preview transformation on job results
+ *
+ * Apply JMESPath or JSONata expression to job results and return preview
+ */
+export const postV1JobsByIdPreviewTransform = <ThrowOnError extends boolean = false>(options: Options<PostV1JobsByIdPreviewTransformData, ThrowOnError>) => (options.client ?? client).post<PostV1JobsByIdPreviewTransformResponses, PostV1JobsByIdPreviewTransformErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/jobs/{id}/preview-transform',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Validate transformation expression
+ *
+ * Validate a JMESPath or JSONata expression without executing it on data
+ */
+export const postV1TransformValidate = <ThrowOnError extends boolean = false>(options: Options<PostV1TransformValidateData, ThrowOnError>) => (options.client ?? client).post<PostV1TransformValidateResponses, PostV1TransformValidateErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/transform/validate',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**

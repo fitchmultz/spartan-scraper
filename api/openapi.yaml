@@ -1095,6 +1095,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/{id}/preview-transform:
+    post:
+      summary: Preview transformation on job results
+      description: Apply JMESPath or JSONata expression to job results and return preview
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransformPreviewRequest'
+      responses:
+        '200':
+          description: Transformed preview results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformPreviewResponse'
+        '400':
+          description: Bad Request (invalid expression or language)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found (job not found or no results)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/transform/validate:
+    post:
+      summary: Validate transformation expression
+      description: Validate a JMESPath or JSONata expression without executing it on data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransformValidateRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformValidateResponse'
+        '400':
+          description: Bad Request (invalid request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/jobs/batch/scrape:
     post:
       summary: Create a batch of scrape jobs
@@ -1748,6 +1818,16 @@ components:
           type: array
           items:
             type: string
+        jmesPath:
+          type: string
+          description: JMESPath expression for data transformation
+        jsonata:
+          type: string
+          description: JSONata expression for data transformation
+        transformVars:
+          type: object
+          description: Variables available to transformation expressions
+          additionalProperties: true
     ResearchEvidence:
       type: object
       properties:
@@ -3524,3 +3604,69 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Session'
+    TransformPreviewRequest:
+      type: object
+      description: Request to preview a transformation on job results
+      required:
+        - jobId
+        - expression
+        - language
+      properties:
+        jobId:
+          type: string
+          description: Job ID to preview against
+        expression:
+          type: string
+          description: JMESPath or JSONata expression
+        language:
+          type: string
+          enum: [jmespath, jsonata]
+          description: Transformation language
+        limit:
+          type: integer
+          default: 10
+          minimum: 1
+          maximum: 100
+          description: Maximum number of results to transform
+    TransformPreviewResponse:
+      type: object
+      description: Response containing transformed preview results
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+          description: Transformed data items
+        error:
+          type: string
+          description: Error message if transformation failed
+        resultCount:
+          type: integer
+          description: Number of results returned
+    TransformValidateRequest:
+      type: object
+      description: Request to validate a transformation expression
+      required:
+        - expression
+        - language
+      properties:
+        expression:
+          type: string
+          description: JMESPath or JSONata expression to validate
+        language:
+          type: string
+          enum: [jmespath, jsonata]
+          description: Transformation language
+    TransformValidateResponse:
+      type: object
+      description: Response containing validation result
+      properties:
+        valid:
+          type: boolean
+          description: Whether the expression is valid
+        error:
+          type: string
+          description: Error message if expression is invalid
+        message:
+          type: string
+          description: Human-readable validation message

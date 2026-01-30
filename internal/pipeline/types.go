@@ -26,9 +26,12 @@ const (
 )
 
 type Options struct {
-	PreProcessors  []string `json:"preProcessors,omitempty"`
-	PostProcessors []string `json:"postProcessors,omitempty"`
-	Transformers   []string `json:"transformers,omitempty"`
+	PreProcessors  []string       `json:"preProcessors,omitempty"`
+	PostProcessors []string       `json:"postProcessors,omitempty"`
+	Transformers   []string       `json:"transformers,omitempty"`
+	JMESPath       string         `json:"jmesPath,omitempty"`      // JMESPath expression for data transformation
+	JSONata        string         `json:"jsonata,omitempty"`       // JSONata expression for data transformation
+	TransformVars  map[string]any `json:"transformVars,omitempty"` // Variables available to expressions
 }
 
 type Target struct {

@@ -74,6 +74,10 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 		s.handleJobResults(w, r)
 		return
 	}
+	if strings.HasSuffix(strings.TrimSuffix(path, "/"), "/preview-transform") {
+		s.handlePreviewTransform(w, r)
+		return
+	}
 	id := extractID(path, "jobs")
 	if err := validateJobID(id); err != nil {
 		writeError(w, r, err)

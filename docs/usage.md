@@ -202,6 +202,72 @@ Optional pipeline flags (repeatable):
 
 These map to the standardized plugin interface in `internal/pipeline`.
 
+### Data Transformation
+
+Spartan supports transforming extracted data using **JMESPath** and **JSONata** query languages. These are useful for reshaping, filtering, and aggregating scraped data without writing custom code.
+
+**When to use each:**
+
+- **JMESPath**: Simpler syntax, great for projections, filtering, and basic transformations. Use when you need to extract nested fields or filter arrays.
+- **JSONata**: More powerful, supports complex aggregations, calculations, and custom functions. Use when you need to compute values, group data, or perform conditional logic.
+
+**JMESPath Examples:**
+
+```bash
+# Extract just the titles from a crawl
+spartan scrape --url https://example.com --transformer 'jmespath:{title: title, url: url}'
+
+# Filter to only items with a specific field
+spartan crawl --url https://example.com --transformer 'jmespath:items[?status == `active`]'
+```
+
+Common JMESPath patterns:
+- Projection: `{name: name, price: price}` - Select specific fields
+- Filtering: `items[?price > 100]` - Filter arrays by condition
+- Slicing: `items[0:10]` - Get first 10 items
+- Sorting: `sort_by(items, &price)` - Sort by field
+- Counting: `length(items)` - Count array items
+
+**JSONata Examples:**
+
+```bash
+# Calculate total price with tax
+spartan scrape --url https://example.com --transformer 'jsonata:{"item": name, "total": price * 1.08}'
+
+# Filter and transform in one expression
+spartan crawl --url https://example.com --transformer 'jsonata:items[price > 100].{"name": name, "cost": price}'
+```
+
+Common JSONata patterns:
+- Projection with computed fields: `{"name": name, "total": price * quantity}`
+- Conditional logic: `{"status": price > 100 ? "premium" : "standard"}`
+- Aggregation: `$sum(items.price)` - Sum all prices
+- Grouping: `items{category: $count($)}` - Count by category
+- Array mapping: `items.{"title": title, "url": link}`
+
+**API Usage:**
+
+Validate an expression before using:
+```bash
+curl -sS -X POST "http://localhost:8741/v1/transform/validate" \
+  -H "Content-Type: application/json" \
+  -d '{"expression":"{title: title, url: url}","language":"jmespath"}'
+```
+
+Preview transformation on job results:
+```bash
+curl -sS -X POST "http://localhost:8741/v1/jobs/abc123/preview-transform" \
+  -H "Content-Type: application/json" \
+  -d '{"expression":"items[?price > 100]","language":"jmespath","limit":5}'
+```
+
+**Web UI:**
+
+In the Results Explorer, switch to the "Transform" tab to:
+1. Enter a JMESPath or JSONata expression
+2. See real-time validation feedback
+3. Preview transformed results before exporting
+
 ### JS per-target scripts (headless)
 
 List configured pipeline JavaScript scripts:

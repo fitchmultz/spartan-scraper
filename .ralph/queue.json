@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0208",
-      "status": "todo",
-      "title": "Add JMESPath/JSONata data transformation support",
-      "priority": "medium",
-      "tags": [
-        "transformation",
-        "pipeline",
-        "feature"
-      ],
-      "scope": [
-        "internal/pipeline/",
-        "internal/extract/"
-      ],
-      "evidence": [
-        "Pipeline transformers are limited to predefined operations",
-        "No complex query/transformation language for results",
-        "Users must post-process data externally"
-      ],
-      "plan": [
-        "Add JMESPath support for JSON transformation",
-        "Add JSONata as alternative transformation language",
-        "Integrate with pipeline post-extract hook",
-        "Add transformation preview in web UI",
-        "Document common transformation patterns"
-      ],
-      "notes": [],
-      "request": "scan finding: transformation language gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0209",
       "status": "todo",
       "title": "Implement circuit breaker and advanced retry strategies",
@@ -65,6 +32,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -98,6 +67,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -132,6 +103,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -165,6 +138,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -198,6 +173,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -231,6 +208,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -264,6 +243,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -297,6 +278,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -331,6 +314,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -365,6 +350,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -398,6 +385,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -432,6 +421,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     },
     {
@@ -465,6 +456,8 @@
       "created_at": "2026-01-30T15:12:56Z",
       "updated_at": "2026-01-30T15:12:56Z",
       "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
       "custom_fields": {}
     }
   ]

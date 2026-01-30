@@ -17,6 +17,7 @@ import { DiffViewer } from "./DiffViewer";
 import { EvidenceChart } from "./EvidenceChart";
 import { ClusterGraph } from "./ClusterGraph";
 import { ResultsViewer } from "./ResultsViewer";
+import { TransformPreview } from "./TransformPreview";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import {
   diffResults,
@@ -33,7 +34,7 @@ import type {
   CrawlResultItem,
 } from "../types";
 
-export type ViewMode = "explorer" | "tree" | "diff" | "visualize";
+export type ViewMode = "explorer" | "tree" | "diff" | "visualize" | "transform";
 export type StatusFilter = "all" | "success" | "error";
 
 interface ResultsExplorerProps {
@@ -383,6 +384,13 @@ export function ResultsExplorer({
               Visualize
             </button>
           )}
+          <button
+            type="button"
+            className={viewMode === "transform" ? "active" : ""}
+            onClick={() => setViewMode("transform")}
+          >
+            Transform
+          </button>
         </div>
       </div>
 
@@ -574,6 +582,16 @@ export function ResultsExplorer({
               />
             )}
           </div>
+        )}
+
+        {viewMode === "transform" && (
+          <TransformPreview
+            jobId={jobId}
+            onApply={(expression, language) => {
+              console.log("Applying transform:", expression, language);
+              // TODO: Apply transformation to export
+            }}
+          />
         )}
       </div>
     </div>

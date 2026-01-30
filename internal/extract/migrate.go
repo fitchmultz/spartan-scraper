@@ -4,10 +4,15 @@
 package extract
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/blues/jsonata-go"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/jmespath/go-jmespath"
 )
 
 // VersionedDocument extends a NormalizedDocument with version metadata.
@@ -96,17 +101,36 @@ func findMigrationPath(fromVersion, toVersion string, rules []MigrationRule) []M
 }
 
 // applyMigrationRule applies a single migration rule to a document.
-// Currently supports simple field renames and basic transformations.
+// Supports:
+//   - Simple field renames: "oldField->newField"
+//   - Field deletion: "delete:fieldName"
+//   - JMESPath expressions: "jmespath:expression"
+//   - JSONata expressions: "jsonata:expression"
 func applyMigrationRule(doc NormalizedDocument, rule MigrationRule) (NormalizedDocument, error) {
-	// For now, we only support simple field renames via transform syntax
-	// Format: "oldField->newField" or "delete:fieldName"
-	// In the future, this could support JavaScript or JSONata expressions
-
 	if rule.Transform == "" {
 		// No transform specified, return document as-is
 		return doc, nil
 	}
 
+	// Check for expression-based transforms
+	transform := strings.TrimSpace(rule.Transform)
+
+	// Handle JMESPath expression: "jmespath:expression"
+	if expr, ok := strings.CutPrefix(transform, "jmespath:"); ok {
+		return applyJMESPathMigration(doc, strings.TrimSpace(expr))
+	}
+
+	// Handle JSONata expression: "jsonata:expression"
+	if expr, ok := strings.CutPrefix(transform, "jsonata:"); ok {
+		return applyJSONataMigration(doc, strings.TrimSpace(expr))
+	}
+
+	// Handle simple field transforms (rename/delete)
+	return applySimpleMigration(doc, transform)
+}
+
+// applySimpleMigration handles field rename and delete operations.
+func applySimpleMigration(doc NormalizedDocument, transform string) (NormalizedDocument, error) {
 	result := doc
 	result.Fields = make(map[string]FieldValue)
 
@@ -114,7 +138,7 @@ func applyMigrationRule(doc NormalizedDocument, rule MigrationRule) (NormalizedD
 	maps.Copy(result.Fields, doc.Fields)
 
 	// Parse and apply transform
-	for t := range strings.SplitSeq(rule.Transform, ";") {
+	for t := range strings.SplitSeq(transform, ";") {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -145,6 +169,175 @@ func applyMigrationRule(doc NormalizedDocument, rule MigrationRule) (NormalizedD
 	}
 
 	return result, nil
+}
+
+// applyJMESPathMigration applies a JMESPath expression to transform the document.
+func applyJMESPathMigration(doc NormalizedDocument, expression string) (NormalizedDocument, error) {
+	compiled, err := jmespath.Compile(expression)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindValidation,
+			fmt.Sprintf("invalid JMESPath expression in migration: %s", err.Error()),
+			err,
+		)
+	}
+
+	// Convert document to map for JMESPath processing
+	docJSON, err := json.Marshal(doc)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to serialize document for JMESPath migration",
+			err,
+		)
+	}
+
+	var docData any
+	if err := json.Unmarshal(docJSON, &docData); err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to deserialize document for JMESPath migration",
+			err,
+		)
+	}
+
+	// Apply JMESPath expression
+	result, err := compiled.Search(docData)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"JMESPath migration failed",
+			err,
+		)
+	}
+
+	// Convert result back to NormalizedDocument
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to serialize JMESPath result",
+			err,
+		)
+	}
+
+	// Try to unmarshal as NormalizedDocument first
+	var migratedDoc NormalizedDocument
+	if err := json.Unmarshal(resultJSON, &migratedDoc); err != nil {
+		// If unmarshal fails, try to extract fields from the result
+		return convertMapToDocument(doc, resultJSON)
+	}
+
+	// Check if the result actually has NormalizedDocument fields
+	// by checking if any core fields were populated
+	if migratedDoc.URL == "" && migratedDoc.Title == "" && len(migratedDoc.Fields) == 0 {
+		// Result doesn't match NormalizedDocument structure, treat as field map
+		return convertMapToDocument(doc, resultJSON)
+	}
+
+	return migratedDoc, nil
+}
+
+// convertMapToDocument converts a JSON result to a NormalizedDocument by treating
+// the result as a map of fields.
+func convertMapToDocument(doc NormalizedDocument, resultJSON []byte) (NormalizedDocument, error) {
+	var resultMap map[string]any
+	if err := json.Unmarshal(resultJSON, &resultMap); err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"migration result cannot be converted to document",
+			err,
+		)
+	}
+
+	// Create a new document with the result as Fields
+	migratedDoc := doc
+	migratedDoc.Fields = make(map[string]FieldValue)
+	for key, value := range resultMap {
+		if strValue, ok := value.(string); ok {
+			migratedDoc.Fields[key] = FieldValue{
+				Values: []string{strValue},
+				Source: FieldSourceDerived,
+			}
+		} else {
+			// Store complex values as JSON
+			valueJSON, _ := json.Marshal(value)
+			migratedDoc.Fields[key] = FieldValue{
+				Values:    []string{string(valueJSON)},
+				Source:    FieldSourceDerived,
+				RawObject: string(valueJSON),
+			}
+		}
+	}
+
+	return migratedDoc, nil
+}
+
+// applyJSONataMigration applies a JSONata expression to transform the document.
+func applyJSONataMigration(doc NormalizedDocument, expression string) (NormalizedDocument, error) {
+	compiled, err := jsonata.Compile(expression)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindValidation,
+			fmt.Sprintf("invalid JSONata expression in migration: %s", err.Error()),
+			err,
+		)
+	}
+
+	// Convert document to map for JSONata processing
+	docJSON, err := json.Marshal(doc)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to serialize document for JSONata migration",
+			err,
+		)
+	}
+
+	var docData any
+	if err := json.Unmarshal(docJSON, &docData); err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to deserialize document for JSONata migration",
+			err,
+		)
+	}
+
+	// Apply JSONata expression
+	result, err := compiled.Eval(docData)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"JSONata migration failed",
+			err,
+		)
+	}
+
+	// Convert result back to NormalizedDocument
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return doc, apperrors.Wrap(
+			apperrors.KindInternal,
+			"failed to serialize JSONata result",
+			err,
+		)
+	}
+
+	// Try to unmarshal as NormalizedDocument first
+	var migratedDoc NormalizedDocument
+	if err := json.Unmarshal(resultJSON, &migratedDoc); err != nil {
+		// If unmarshal fails, try to extract fields from the result
+		return convertMapToDocument(doc, resultJSON)
+	}
+
+	// Check if the result actually has NormalizedDocument fields
+	// by checking if any core fields were populated
+	if migratedDoc.URL == "" && migratedDoc.Title == "" && len(migratedDoc.Fields) == 0 {
+		// Result doesn't match NormalizedDocument structure, treat as field map
+		return convertMapToDocument(doc, resultJSON)
+	}
+
+	return migratedDoc, nil
 }
 
 // ValidateVersionCompatibility checks if a document version is compatible with a template version.
