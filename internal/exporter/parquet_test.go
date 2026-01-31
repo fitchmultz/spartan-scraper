@@ -35,10 +35,8 @@ func TestExportStreamParquet_Scrape(t *testing.T) {
 	}
 
 	// Verify it's a valid Parquet file by reading it back with correct schema
-	bufFile, err := buffer.NewBufferFile(buf.Bytes())
-	if err != nil {
-		t.Fatalf("Failed to create buffer file: %v", err)
-	}
+	bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
+
 	pr, err := reader.NewParquetReader(bufFile, new(ParquetScrapeRow), 1)
 	if err != nil {
 		t.Fatalf("Failed to open Parquet for reading: %v", err)
@@ -74,10 +72,8 @@ func TestExportStreamParquet_Crawl(t *testing.T) {
 	}
 
 	// Verify it's a valid Parquet file by reading it back with correct schema
-	bufFile, err := buffer.NewBufferFile(buf.Bytes())
-	if err != nil {
-		t.Fatalf("Failed to create buffer file: %v", err)
-	}
+	bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
+
 	pr, err := reader.NewParquetReader(bufFile, new(ParquetCrawlRow), 1)
 	if err != nil {
 		t.Fatalf("Failed to open Parquet for reading: %v", err)
@@ -100,10 +96,8 @@ func TestExportStreamParquet_Research(t *testing.T) {
 	}
 
 	// Verify it's a valid Parquet file by reading it back with correct schema
-	bufFile, err := buffer.NewBufferFile(buf.Bytes())
-	if err != nil {
-		t.Fatalf("Failed to create buffer file: %v", err)
-	}
+	bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
+
 	pr, err := reader.NewParquetReader(bufFile, new(ParquetEvidenceRow), 1)
 	if err != nil {
 		t.Fatalf("Failed to open Parquet for reading: %v", err)
@@ -143,7 +137,7 @@ func TestExportStreamParquet_LargeDataset(t *testing.T) {
 		}
 
 		// Verify it's a valid Parquet by opening it
-		bufFile, err := buffer.NewBufferFile(buf.Bytes())
+		bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
 		if err != nil {
 			t.Fatalf("Failed to create buffer file: %v", err)
 		}
@@ -173,7 +167,7 @@ func TestExportStreamParquet_LargeDataset(t *testing.T) {
 		}
 
 		// Verify it's a valid Parquet
-		bufFile, err := buffer.NewBufferFile(buf.Bytes())
+		bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
 		if err != nil {
 			t.Fatalf("Failed to create buffer file: %v", err)
 		}
@@ -200,10 +194,8 @@ func TestExportParquetCanBeReadBack(t *testing.T) {
 	}
 
 	// Read back the Parquet file
-	bufFile, err := buffer.NewBufferFile(buf.Bytes())
-	if err != nil {
-		t.Fatalf("Failed to create buffer file: %v", err)
-	}
+	bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
+
 	pr, err := reader.NewParquetReader(bufFile, new(ParquetScrapeRow), 1)
 	if err != nil {
 		t.Fatalf("Failed to open Parquet for reading: %v", err)
@@ -246,7 +238,7 @@ func TestExportCrawlParquetFieldOrderIsStable(t *testing.T) {
 		}
 
 		// Verify it's a valid Parquet
-		bufFile, err := buffer.NewBufferFile(buf.Bytes())
+		bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
 		if err != nil {
 			t.Fatalf("Failed to create buffer file: %v", err)
 		}
@@ -273,10 +265,8 @@ func TestExportResearchParquetEvidenceStructure(t *testing.T) {
 	}
 
 	// Read back the Parquet file
-	bufFile, err := buffer.NewBufferFile(buf.Bytes())
-	if err != nil {
-		t.Fatalf("Failed to create buffer file: %v", err)
-	}
+	bufFile := buffer.NewBufferFileFromBytes(buf.Bytes())
+
 	pr, err := reader.NewParquetReader(bufFile, new(ParquetEvidenceRow), 1)
 	if err != nil {
 		t.Fatalf("Failed to open Parquet for reading: %v", err)
