@@ -1,3 +1,22 @@
+// Package jobs provides test helper functions for the jobs package.
+// This file contains utilities for setting up test Manager instances
+// with isolated storage and appropriate test defaults.
+//
+// Responsibilities:
+// - Creating test Manager instances with temporary data directories
+// - Providing cleanup functions for test isolation
+// - Setting up test-appropriate configuration (timeouts, concurrency limits)
+//
+// This file does NOT:
+// - Contain actual test cases (see *_test.go files)
+// - Perform assertions or test validations
+// - Modify production code behavior
+//
+// Invariants:
+// - setupTestManager returns a cleanup function that must be called via defer
+// - Test managers use t.TempDir() for automatic cleanup
+// - Adaptive rate limiting is disabled in tests (nil config)
+
 package jobs
 
 import (

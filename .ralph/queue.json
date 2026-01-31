@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0239",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in jobs helpers and tests",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "jobs"
-      ],
-      "scope": [
-        "internal/jobs/"
-      ],
-      "evidence": [
-        "internal/jobs/helpers.go, job_create.go, job_run.go, and manager_test_helpers.go begin with package lines and lack top-of-file docstrings."
-      ],
-      "plan": [
-        "Add docstrings before the package line in each listed jobs file.",
-        "Ensure docstrings describe responsibilities, non-goals, and invariants.",
-        "Run gofmt and jobs package tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0240",
       "status": "todo",
       "title": "Add top-of-file docstrings across CLI tests and manage commands",
