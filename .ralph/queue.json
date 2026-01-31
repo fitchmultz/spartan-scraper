@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0232",
-      "status": "todo",
-      "title": "Split api/transform_test.go into focused test modules",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "api",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/api/transform_test.go",
-        "internal/api/"
-      ],
-      "evidence": [
-        "wc -l internal/api/transform_test.go reports 750 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Split transform API tests by endpoint/behavior (preview, validate, errors).",
-        "Share fixtures/helpers via a small test utility file.",
-        "Preserve coverage and update imports.",
-        "Run go test ./internal/api."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0233",
       "status": "todo",
       "title": "Split exporter/cloud_test.go for maintainability",
