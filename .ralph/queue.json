@@ -2,6 +2,709 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0222",
+      "status": "todo",
+      "title": "Make run_ci.sh portable and add CLI help",
+      "priority": "high",
+      "tags": [
+        "workflow",
+        "scripts",
+        "ci",
+        "compliance"
+      ],
+      "scope": [
+        "run_ci.sh"
+      ],
+      "evidence": [
+        "run_ci.sh hard-codes /Users/mitchfultz/Projects/spartan-scraper (non-portable path).",
+        "run_ci.sh has no --help/usage output despite being executable (shebang at top of file)."
+      ],
+      "plan": [
+        "Replace hard-coded path with script-relative repo root resolution.",
+        "Add a top-of-file docstring describing responsibilities, non-goals, and assumptions.",
+        "Implement --help output with examples and clear exit codes.",
+        "Add a lightweight validation or test that exercises the help path."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0223",
+      "status": "todo",
+      "title": "Sync .env and .env.example with config env vars",
+      "priority": "high",
+      "tags": [
+        "config",
+        "env",
+        "docs",
+        "compliance"
+      ],
+      "scope": [
+        ".env",
+        ".env.example",
+        "internal/config/config.go"
+      ],
+      "evidence": [
+        "internal/config/config.go loads PROXY_URL/PROXY_USERNAME/PROXY_PASSWORD/PROXY_POOL_FILE, WEBHOOK_*, MAX_BATCH_SIZE, RESPECT_ROBOTS_TXT, RETENTION_* but .env/.env.example stop at API_AUTH_ENABLED and omit these entries."
+      ],
+      "plan": [
+        "Inventory all env vars consumed in config.Load().",
+        "Add missing entries and comments to .env and .env.example (no real secrets).",
+        "Keep ordering/grouping aligned with config sections and verify defaults."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0224",
+      "status": "todo",
+      "title": "Implement TransformPreview apply path in ResultsExplorer",
+      "priority": "high",
+      "tags": [
+        "web",
+        "ux",
+        "bug",
+        "transform"
+      ],
+      "scope": [
+        "web/src/components/ResultsExplorer.tsx",
+        "web/src/components/TransformPreview.tsx",
+        "web/src/lib/"
+      ],
+      "evidence": [
+        "web/src/components/ResultsExplorer.tsx onApply for TransformPreview only logs and contains TODO: Apply transformation to export."
+      ],
+      "plan": [
+        "Define expected behavior for applying transforms (state update vs export pipeline).",
+        "Wire onApply to the transform API or client-side transformation logic.",
+        "Update export flow to use transformed output and handle errors.",
+        "Add web tests covering apply success and failure paths."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0225",
+      "status": "todo",
+      "title": "Split store_analytics.go into smaller cohesive modules",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "store",
+        "refactor"
+      ],
+      "scope": [
+        "internal/store/store_analytics.go",
+        "internal/store/"
+      ],
+      "evidence": [
+        "wc -l internal/store/store_analytics.go reports 1264 LOC (>1000 file-size limit)."
+      ],
+      "plan": [
+        "Identify cohesive sections (schema/init, rollups, queries, retention).",
+        "Split into multiple files under internal/store with clear responsibilities.",
+        "Update any references/tests impacted by file moves.",
+        "Run gofmt and relevant store tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0226",
+      "status": "todo",
+      "title": "Split chromedp_fetcher.go to stay under size limits",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "fetch",
+        "refactor"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/chromedp_fetcher.go reports 1219 LOC (>1000 file-size limit)."
+      ],
+      "plan": [
+        "Group chromedp fetcher logic into smaller files (setup, navigation, interception, utils).",
+        "Extract helpers while keeping package API unchanged.",
+        "Update tests/imports as needed.",
+        "Run gofmt and fetch package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0227",
+      "status": "todo",
+      "title": "Break up retry_test.go into focused test files",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "fetch",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/fetch/retry_test.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/retry_test.go reports 1011 LOC (>1000 file-size limit)."
+      ],
+      "plan": [
+        "Split retry tests by scenario (backoff strategies, retryable errors, status codes).",
+        "Centralize shared helpers/fixtures in a small test helper file.",
+        "Ensure coverage remains intact after refactor.",
+        "Run go test ./internal/fetch."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0228",
+      "status": "todo",
+      "title": "Split playwright_fetcher.go into smaller modules",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "fetch",
+        "refactor"
+      ],
+      "scope": [
+        "internal/fetch/playwright_fetcher.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/playwright_fetcher.go reports 975 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Partition Playwright fetcher by lifecycle (browser setup, navigation, interception, output).",
+        "Move helper functions into new files under internal/fetch.",
+        "Update references and ensure no API changes.",
+        "Run gofmt and fetch package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0229",
+      "status": "todo",
+      "title": "Split exporter/database.go by responsibility",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "exporter",
+        "refactor"
+      ],
+      "scope": [
+        "internal/exporter/database.go",
+        "internal/exporter/"
+      ],
+      "evidence": [
+        "wc -l internal/exporter/database.go reports 955 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Group DB exporter logic into smaller files (schema, writers, helpers).",
+        "Keep public API unchanged while moving internals.",
+        "Update tests to point at new file locations if needed.",
+        "Run gofmt and exporter tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0230",
+      "status": "todo",
+      "title": "Split proxy_pool_test.go into smaller test files",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "fetch",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/fetch/proxy_pool_test.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/proxy_pool_test.go reports 919 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Split proxy pool tests by behavior (selection, health checks, metrics, edge cases).",
+        "Create shared fixtures/utilities for repeated setup.",
+        "Preserve coverage and update imports.",
+        "Run go test ./internal/fetch."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0231",
+      "status": "todo",
+      "title": "Split http_fetcher_test.go into scenario-focused files",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "fetch",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher_test.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/http_fetcher_test.go reports 847 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Split HTTP fetcher tests by feature area (auth, retries, limits, caching, proxies).",
+        "Extract common setup into helpers.",
+        "Ensure all existing assertions remain covered.",
+        "Run go test ./internal/fetch."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0232",
+      "status": "todo",
+      "title": "Split api/transform_test.go into focused test modules",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "api",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/api/transform_test.go",
+        "internal/api/"
+      ],
+      "evidence": [
+        "wc -l internal/api/transform_test.go reports 750 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Split transform API tests by endpoint/behavior (preview, validate, errors).",
+        "Share fixtures/helpers via a small test utility file.",
+        "Preserve coverage and update imports.",
+        "Run go test ./internal/api."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0233",
+      "status": "todo",
+      "title": "Split exporter/cloud_test.go for maintainability",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "exporter",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/exporter/cloud_test.go",
+        "internal/exporter/"
+      ],
+      "evidence": [
+        "wc -l internal/exporter/cloud_test.go reports 736 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Split cloud exporter tests by provider/behavior.",
+        "Extract shared setup into helper functions.",
+        "Ensure tests remain deterministic and complete.",
+        "Run go test ./internal/exporter."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0234",
+      "status": "todo",
+      "title": "Split form_detect.go into smaller files",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "fetch",
+        "refactor"
+      ],
+      "scope": [
+        "internal/fetch/form_detect.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/form_detect.go reports 733 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Separate form detection parsing, heuristics, and data models into distinct files.",
+        "Keep exported behavior unchanged and update references.",
+        "Run gofmt and fetch package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0235",
+      "status": "todo",
+      "title": "Split proxy_pool.go into smaller components",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "fetch",
+        "refactor"
+      ],
+      "scope": [
+        "internal/fetch/proxy_pool.go",
+        "internal/fetch/"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/proxy_pool.go reports 720 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Extract proxy pool configuration, health checks, and selection logic into separate files.",
+        "Preserve public types and behavior.",
+        "Update tests and run go test ./internal/fetch."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0236",
+      "status": "todo",
+      "title": "Split graphql/resolvers.go to meet size guidelines",
+      "priority": "medium",
+      "tags": [
+        "maintainability",
+        "api",
+        "refactor"
+      ],
+      "scope": [
+        "internal/api/graphql/resolvers.go",
+        "internal/api/graphql/"
+      ],
+      "evidence": [
+        "wc -l internal/api/graphql/resolvers.go reports 708 LOC (>700 file-size limit)."
+      ],
+      "plan": [
+        "Group resolvers by domain into separate files.",
+        "Keep resolver interfaces and registration unchanged.",
+        "Update tests or add new ones as needed.",
+        "Run go test ./internal/api."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0237",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in apperrors package files",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "errors"
+      ],
+      "scope": [
+        "internal/apperrors/"
+      ],
+      "evidence": [
+        "internal/apperrors/apperrors.go starts with `package apperrors` and places the doc comment below it.",
+        "internal/apperrors/sanitize.go and internal/apperrors/sentinels.go follow the same pattern; tests in apperrors also begin without top-of-file docstrings."
+      ],
+      "plan": [
+        "Move or add docstrings before the package statement in the apperrors files.",
+        "Ensure each docstring states responsibilities, non-goals, and invariants/assumptions.",
+        "Run gofmt and confirm tests still pass."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0238",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in config tests and utilities",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "config"
+      ],
+      "scope": [
+        "internal/config/"
+      ],
+      "evidence": [
+        "internal/config/config_test.go, log_format_test.go, log_handler_test.go, log_level_test.go, and log_test_utils.go start with package lines and no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add docstrings before the package statements in each listed config test/util file.",
+        "Document responsibilities, non-goals, and assumptions per file.",
+        "Run gofmt and config tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0239",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in jobs helpers and tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "jobs"
+      ],
+      "scope": [
+        "internal/jobs/"
+      ],
+      "evidence": [
+        "internal/jobs/helpers.go, job_create.go, job_run.go, and manager_test_helpers.go begin with package lines and lack top-of-file docstrings."
+      ],
+      "plan": [
+        "Add docstrings before the package line in each listed jobs file.",
+        "Ensure docstrings describe responsibilities, non-goals, and invariants.",
+        "Run gofmt and jobs package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0240",
+      "status": "todo",
+      "title": "Add top-of-file docstrings across CLI tests and manage commands",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "cli"
+      ],
+      "scope": [
+        "internal/cli/"
+      ],
+      "evidence": [
+        "Files such as internal/cli/cli_test.go, internal/cli/common/auth_test.go, flags_test.go, results_test.go, util_test.go, internal/cli/manage/pipeline_js_mgmt.go, render_profiles.go, internal/cli/scrape/crawl_test.go, research_test.go, scrape_test.go, and internal/cli/server/server_test.go start with package lines and no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add docstrings before the package statement for each listed CLI file.",
+        "Capture responsibilities, non-goals, and assumptions (especially for tests).",
+        "Run gofmt and CLI-related tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0241",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in API/buildinfo/crawl/research/scrape tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "tests"
+      ],
+      "scope": [
+        "internal/api/metrics_test.go",
+        "internal/buildinfo/consistency_test.go",
+        "internal/crawl/",
+        "internal/research/",
+        "internal/scrape/scrape_test.go"
+      ],
+      "evidence": [
+        "internal/api/metrics_test.go, internal/buildinfo/consistency_test.go, internal/crawl/crawl_test.go, internal/crawl/robots_test.go, internal/research/pipeline_test.go, internal/research/research_test.go, and internal/scrape/scrape_test.go start with package lines and no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add docstrings before package statements in the listed test files.",
+        "Document responsibilities, non-goals, and assumptions for each test module.",
+        "Run gofmt and relevant package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0242",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in model/store/ui/fsutil/webhook tests",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "tests"
+      ],
+      "scope": [
+        "internal/model/",
+        "internal/store/performance_test.go",
+        "internal/ui/tui/tui_test.go",
+        "internal/fsutil/fsutil_test.go",
+        "internal/webhook/"
+      ],
+      "evidence": [
+        "internal/model/job_sanitize_test.go, job_test.go, state_test.go, internal/store/performance_test.go, internal/ui/tui/tui_test.go, internal/fsutil/fsutil_test.go, internal/webhook/dispatcher_test.go, and internal/webhook/store_test.go start with package lines and no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add docstrings before package statements in the listed test files.",
+        "Ensure each docstring states responsibilities, non-goals, and assumptions.",
+        "Run gofmt and relevant package tests."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0243",
+      "status": "todo",
+      "title": "Add top-of-file docstrings in web tests and Vite config",
+      "priority": "medium",
+      "tags": [
+        "docs",
+        "compliance",
+        "web"
+      ],
+      "scope": [
+        "web/src/auth-parsers.test.ts",
+        "web/src/lib/api-config.test.ts",
+        "web/src/test/setup.ts",
+        "web/vite.config.ts"
+      ],
+      "evidence": [
+        "web/src/auth-parsers.test.ts, web/src/lib/api-config.test.ts, web/src/test/setup.ts, and web/vite.config.ts start with import statements and have no top-of-file docstrings."
+      ],
+      "plan": [
+        "Add file-level docstrings describing responsibilities, non-goals, and assumptions.",
+        "Run biome format/lint and web tests as needed."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T02:12:07Z",
+      "updated_at": "2026-01-31T02:12:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0217",
       "status": "todo",
       "title": "Add request/response inspection and traffic replay",
