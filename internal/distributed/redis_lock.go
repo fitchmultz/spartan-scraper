@@ -37,6 +37,10 @@ func NewRedisLock(client *redis.Client, keyPrefix string) *RedisLock {
 // Acquire attempts to acquire the lock with given TTL.
 // Returns true and a token if acquired, false if already held.
 func (rl *RedisLock) Acquire(ctx context.Context, key string, ttl time.Duration) (bool, string, error) {
+	if ttl <= 0 {
+		return false, "", apperrors.Validation("ttl must be positive")
+	}
+
 	token := generateToken()
 	fullKey := rl.keyPrefix + key
 
@@ -85,6 +89,10 @@ func (rl *RedisLock) Release(ctx context.Context, key string, token string) erro
 // Renew extends the lock TTL.
 // The token must match the one returned by Acquire.
 func (rl *RedisLock) Renew(ctx context.Context, key string, token string, ttl time.Duration) error {
+	if ttl <= 0 {
+		return apperrors.Validation("ttl must be positive")
+	}
+
 	fullKey := rl.keyPrefix + key
 
 	// Use Lua script to check token and expire atomically
@@ -276,6 +284,10 @@ func NewRedisLeaderElection(client *redis.Client, keyPrefix string) *RedisLeader
 
 // Elect attempts to become the leader for the given role.
 func (rle *RedisLeaderElection) Elect(ctx context.Context, role string, instanceID string, ttl time.Duration) (bool, error) {
+	if ttl <= 0 {
+		return false, apperrors.Validation("ttl must be positive")
+	}
+
 	key := rle.keyPrefix + role
 
 	// Try to acquire leadership
@@ -299,6 +311,10 @@ func (rle *RedisLeaderElection) Elect(ctx context.Context, role string, instance
 
 // RenewLeadership extends the leadership TTL.
 func (rle *RedisLeaderElection) RenewLeadership(ctx context.Context, role string, instanceID string, ttl time.Duration) error {
+	if ttl <= 0 {
+		return apperrors.Validation("ttl must be positive")
+	}
+
 	key := rle.keyPrefix + role
 
 	// Use Lua script to verify ownership and extend TTL

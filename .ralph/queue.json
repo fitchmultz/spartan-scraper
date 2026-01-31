@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0244",
-      "status": "todo",
-      "title": "Validate distributed lock and leader-election TTLs to avoid non-expiring keys",
-      "priority": "high",
-      "tags": [
-        "distributed",
-        "redis",
-        "correctness",
-        "safety"
-      ],
-      "scope": [
-        "internal/distributed/redis_lock.go",
-        "internal/distributed/lock.go",
-        "go test ./internal/distributed/..."
-      ],
-      "evidence": [
-        "internal/distributed/redis_lock.go:37-47 uses ttl directly in SetNX without validation",
-        "internal/distributed/redis_lock.go:277-283 uses ttl directly in SetNX for leader election"
-      ],
-      "plan": [
-        "Add ttl > 0 validation for RedisLock.Acquire/Renew and RedisLeaderElection.Elect/RenewLeadership using apperrors.Validation",
-        "Update or add tests that cover ttl <= 0 behavior and ensure errors are classified correctly",
-        "Confirm call sites pass explicit TTL values and update any docs/usage notes"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0245",
       "status": "todo",
       "title": "Handle crypto/rand.Read failures when generating Redis lock tokens",
