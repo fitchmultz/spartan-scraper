@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0257",
-      "status": "todo",
-      "title": "Split internal/users/user_service_test.go into smaller files",
-      "priority": "low",
-      "tags": [
-        "tests",
-        "users",
-        "refactor"
-      ],
-      "scope": [
-        "internal/users/user_service_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/users/user_service_test.go reports 1036 lines (>1000 limit)"
-      ],
-      "plan": [
-        "Group tests by service method into separate files",
-        "Extract shared setup into helper functions",
-        "Confirm user service tests still cover success and failure paths"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0258",
       "status": "todo",
       "title": "Refactor internal/fetch/types.go to stay under size guidelines",
