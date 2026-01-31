@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0245",
-      "status": "todo",
-      "title": "Handle crypto/rand.Read failures when generating Redis lock tokens",
-      "priority": "high",
-      "tags": [
-        "distributed",
-        "security",
-        "correctness"
-      ],
-      "scope": [
-        "internal/distributed/redis_lock.go",
-        "internal/distributed"
-      ],
-      "evidence": [
-        "internal/distributed/redis_lock.go:111-115 calls rand.Read(b) without checking error"
-      ],
-      "plan": [
-        "Change generateToken to return (string, error) and handle rand.Read failure",
-        "Propagate failures from RedisLock.Acquire with apperrors.Internal and add tests for the error path",
-        "Ensure token generation failure does not attempt to acquire a lock"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0246",
       "status": "todo",
       "title": "Replace RedisRegistry ListWorkers KEYS usage with SCAN to avoid blocking",

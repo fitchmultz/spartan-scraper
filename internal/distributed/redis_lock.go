@@ -41,7 +41,10 @@ func (rl *RedisLock) Acquire(ctx context.Context, key string, ttl time.Duration)
 		return false, "", apperrors.Validation("ttl must be positive")
 	}
 
-	token := generateToken()
+	token, err := generateToken()
+	if err != nil {
+		return false, "", err
+	}
 	fullKey := rl.keyPrefix + key
 
 	// SET key token NX EX ttl
@@ -117,10 +120,12 @@ func (rl *RedisLock) Renew(ctx context.Context, key string, token string, ttl ti
 }
 
 // generateToken creates a random token for lock ownership.
-func generateToken() string {
+func generateToken() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", apperrors.Wrap(apperrors.KindInternal, "failed to generate lock token", err)
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // RedisRegistry implements worker registration using Redis.
