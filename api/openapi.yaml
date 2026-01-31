@@ -1147,6 +1147,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/jobs/{id}/replay:
+    post:
+      summary: Replay captured network traffic
+      description: Replay intercepted network requests from a job against a target URL
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrafficReplayRequest'
+      responses:
+        '200':
+          description: Replay results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrafficReplayResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/transform/validate:
     post:
       summary: Validate transformation expression
@@ -4064,6 +4105,184 @@ components:
         effect_size:
           type: number
           description: Effect size (Cohen's d or odds ratio)
+    TrafficReplayRequest:
+      type: object
+      required:
+        - jobId
+        - targetBaseUrl
+      properties:
+        jobId:
+          type: string
+          description: Job ID to replay traffic from
+        targetBaseUrl:
+          type: string
+          description: Base URL to replay requests against
+        filter:
+          $ref: '#/components/schemas/TrafficReplayFilter'
+        modifications:
+          $ref: '#/components/schemas/TrafficModifications'
+        compareResponses:
+          type: boolean
+          default: false
+          description: Compare replayed responses with original
+        timeout:
+          type: integer
+          default: 30
+          description: Per-request timeout in seconds
+    TrafficReplayFilter:
+      type: object
+      properties:
+        urlPatterns:
+          type: array
+          items:
+            type: string
+          description: URL patterns to match (glob-style)
+        methods:
+          type: array
+          items:
+            type: string
+          description: HTTP methods to include
+        resourceTypes:
+          type: array
+          items:
+            type: string
+          description: Resource types to include (xhr, fetch, document, etc.)
+        statusCodes:
+          type: array
+          items:
+            type: integer
+          description: Only replay if original had these status codes
+    TrafficModifications:
+      type: object
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers to add or replace
+        removeHeaders:
+          type: array
+          items:
+            type: string
+          description: Headers to remove
+        bodyTransform:
+          type: string
+          description: JMESPath/JSONata transform for request body
+    TrafficReplayResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        totalRequests:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReplayResult'
+        comparison:
+          $ref: '#/components/schemas/ReplayComparison'
+        durationMs:
+          type: integer
+          description: Total replay duration in milliseconds
+    ReplayResult:
+      type: object
+      properties:
+        originalRequest:
+          $ref: '#/components/schemas/ReplayRequestInfo'
+        replayedRequest:
+          $ref: '#/components/schemas/ReplayRequestInfo'
+        replayedResponse:
+          $ref: '#/components/schemas/ReplayResponseInfo'
+        error:
+          type: string
+        durationMs:
+          type: integer
+    ReplayRequestInfo:
+      type: object
+      properties:
+        url:
+          type: string
+        method:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: string
+    ReplayResponseInfo:
+      type: object
+      properties:
+        status:
+          type: integer
+        statusText:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: string
+        bodySize:
+          type: integer
+    ReplayComparison:
+      type: object
+      properties:
+        totalCompared:
+          type: integer
+        matches:
+          type: integer
+        mismatches:
+          type: integer
+        differences:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResponseDiff'
+    ResponseDiff:
+      type: object
+      properties:
+        requestId:
+          type: string
+        url:
+          type: string
+        statusDiff:
+          $ref: '#/components/schemas/StatusDiff'
+        headerDiffs:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeaderDiff'
+        bodyDiff:
+          $ref: '#/components/schemas/BodyDiff'
+    StatusDiff:
+      type: object
+      properties:
+        original:
+          type: integer
+        replayed:
+          type: integer
+    HeaderDiff:
+      type: object
+      properties:
+        name:
+          type: string
+        original:
+          type: string
+        replayed:
+          type: string
+    BodyDiff:
+      type: object
+      properties:
+        originalSize:
+          type: integer
+        replayedSize:
+          type: integer
+        preview:
+          type: string
+          description: Unified diff preview
   /v1/template-metrics:
     get:
       summary: Get template performance metrics

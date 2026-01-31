@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0217",
-      "status": "todo",
-      "title": "Add request/response inspection and traffic replay",
-      "priority": "low",
-      "tags": [
-        "debugging",
-        "developer-experience",
-        "feature"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "web/src/",
-        "cmd/spartan/"
-      ],
-      "evidence": [
-        "HAR export exists but no real-time inspection",
-        "No traffic replay for debugging",
-        "Limited debugging tools for failed requests"
-      ],
-      "plan": [
-        "Add request/response capture to job results",
-        "Create traffic inspector UI in web frontend",
-        "Implement traffic replay command",
-        "Add request comparison (expected vs actual)",
-        "Support exporting captured traffic as HAR"
-      ],
-      "notes": [],
-      "request": "scan finding: traffic inspection gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0218",
       "status": "todo",
       "title": "Implement distributed crawling with Redis/RabbitMQ worker queues",

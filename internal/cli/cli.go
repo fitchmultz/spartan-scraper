@@ -74,6 +74,8 @@ func Run(ctx context.Context) int {
 		return manage.RunRestore(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
+	case "replay":
+		return manage.RunReplay(ctx, cfg, os.Args[2:])
 	case "watch":
 		return manage.RunWatch(ctx, cfg, os.Args[2:])
 

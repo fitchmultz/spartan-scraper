@@ -31,6 +31,7 @@ Commands:
   pipeline-js  List pipeline JavaScript scripts
   templates    List extraction templates
   crawl-states List crawl states (incremental tracking)
+  replay       Replay captured network traffic
   retention    Manage data retention and cleanup
   backup       Create and manage backups
   restore      Restore from a backup archive
@@ -60,6 +61,8 @@ Examples:
   spartan templates list
   spartan crawl-states list
   spartan crawl-states list --limit 10
+  spartan replay --job-id <id> --target-url https://staging.example.com
+  spartan replay --job-id <id> --target-url https://localhost:8080 --compare
   spartan retention status
   spartan retention cleanup --dry-run
   spartan backup create

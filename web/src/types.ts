@@ -16,6 +16,7 @@ import type {
   ResearchRequest,
   PipelineOptions,
   AuthOptions,
+  InterceptedEntry,
 } from "./api";
 
 export type {
@@ -67,6 +68,10 @@ export type CrawlResultItem = {
   metadata?: Record<string, unknown>;
   extracted?: ExtractedData;
   normalized?: NormalizedData;
+};
+
+export type CrawlResultWithTraffic = CrawlResultItem & {
+  interceptedData?: InterceptedEntry[];
 };
 
 export type ResearchResultItem = {

@@ -1994,6 +1994,138 @@ export type StatisticalResult = {
     effect_size?: number;
 };
 
+export type TrafficReplayRequest = {
+    /**
+     * Job ID to replay traffic from
+     */
+    jobId: string;
+    /**
+     * Base URL to replay requests against
+     */
+    targetBaseUrl: string;
+    filter?: TrafficReplayFilter;
+    modifications?: TrafficModifications;
+    /**
+     * Compare replayed responses with original
+     */
+    compareResponses?: boolean;
+    /**
+     * Per-request timeout in seconds
+     */
+    timeout?: number;
+};
+
+export type TrafficReplayFilter = {
+    /**
+     * URL patterns to match (glob-style)
+     */
+    urlPatterns?: Array<string>;
+    /**
+     * HTTP methods to include
+     */
+    methods?: Array<string>;
+    /**
+     * Resource types to include (xhr, fetch, document, etc.)
+     */
+    resourceTypes?: Array<string>;
+    /**
+     * Only replay if original had these status codes
+     */
+    statusCodes?: Array<number>;
+};
+
+export type TrafficModifications = {
+    /**
+     * Headers to add or replace
+     */
+    headers?: {
+        [key: string]: string;
+    };
+    /**
+     * Headers to remove
+     */
+    removeHeaders?: Array<string>;
+    /**
+     * JMESPath/JSONata transform for request body
+     */
+    bodyTransform?: string;
+};
+
+export type TrafficReplayResponse = {
+    jobId?: string;
+    totalRequests?: number;
+    successful?: number;
+    failed?: number;
+    results?: Array<ReplayResult>;
+    comparison?: ReplayComparison;
+    /**
+     * Total replay duration in milliseconds
+     */
+    durationMs?: number;
+};
+
+export type ReplayResult = {
+    originalRequest?: ReplayRequestInfo;
+    replayedRequest?: ReplayRequestInfo;
+    replayedResponse?: ReplayResponseInfo;
+    error?: string;
+    durationMs?: number;
+};
+
+export type ReplayRequestInfo = {
+    url?: string;
+    method?: string;
+    headers?: {
+        [key: string]: string;
+    };
+    body?: string;
+};
+
+export type ReplayResponseInfo = {
+    status?: number;
+    statusText?: string;
+    headers?: {
+        [key: string]: string;
+    };
+    body?: string;
+    bodySize?: number;
+};
+
+export type ReplayComparison = {
+    totalCompared?: number;
+    matches?: number;
+    mismatches?: number;
+    differences?: Array<ResponseDiff>;
+};
+
+export type ResponseDiff = {
+    requestId?: string;
+    url?: string;
+    statusDiff?: StatusDiff;
+    headerDiffs?: Array<HeaderDiff>;
+    bodyDiff?: BodyDiff;
+};
+
+export type StatusDiff = {
+    original?: number;
+    replayed?: number;
+};
+
+export type HeaderDiff = {
+    name?: string;
+    original?: string;
+    replayed?: string;
+};
+
+export type BodyDiff = {
+    originalSize?: number;
+    replayedSize?: number;
+    /**
+     * Unified diff preview
+     */
+    preview?: string;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -3023,6 +3155,41 @@ export type PostV1JobsByIdPreviewTransformResponses = {
 };
 
 export type PostV1JobsByIdPreviewTransformResponse = PostV1JobsByIdPreviewTransformResponses[keyof PostV1JobsByIdPreviewTransformResponses];
+
+export type PostV1JobsByIdReplayData = {
+    body: TrafficReplayRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/jobs/{id}/replay';
+};
+
+export type PostV1JobsByIdReplayErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type PostV1JobsByIdReplayError = PostV1JobsByIdReplayErrors[keyof PostV1JobsByIdReplayErrors];
+
+export type PostV1JobsByIdReplayResponses = {
+    /**
+     * Replay results
+     */
+    200: TrafficReplayResponse;
+};
+
+export type PostV1JobsByIdReplayResponse = PostV1JobsByIdReplayResponses[keyof PostV1JobsByIdReplayResponses];
 
 export type PostV1TransformValidateData = {
     body: TransformValidateRequest;

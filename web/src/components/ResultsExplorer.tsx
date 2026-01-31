@@ -18,6 +18,7 @@ import { EvidenceChart } from "./EvidenceChart";
 import { ClusterGraph } from "./ClusterGraph";
 import { ResultsViewer } from "./ResultsViewer";
 import { TransformPreview } from "./TransformPreview";
+import { TrafficInspector } from "./TrafficInspector";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import {
   diffResults,
@@ -32,9 +33,16 @@ import type {
   CitationItem,
   Job,
   CrawlResultItem,
+  CrawlResultWithTraffic,
 } from "../types";
 
-export type ViewMode = "explorer" | "tree" | "diff" | "visualize" | "transform";
+export type ViewMode =
+  | "explorer"
+  | "tree"
+  | "diff"
+  | "visualize"
+  | "transform"
+  | "traffic";
 export type StatusFilter = "all" | "success" | "error";
 
 interface ResultsExplorerProps {
@@ -429,6 +437,13 @@ export function ResultsExplorer({
           >
             Transform
           </button>
+          <button
+            type="button"
+            className={viewMode === "traffic" ? "active" : ""}
+            onClick={() => setViewMode("traffic")}
+          >
+            Traffic
+          </button>
         </div>
       </div>
 
@@ -509,6 +524,18 @@ export function ResultsExplorer({
               disabled={isExporting}
             >
               Export PDF
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                if (!jobId) return;
+                // HAR export is handled via direct download
+                const url = `/v1/jobs/${jobId}/results?format=har`;
+                window.open(url, "_blank");
+              }}
+            >
+              Export HAR
             </button>
           </div>
         </div>
@@ -630,9 +657,31 @@ export function ResultsExplorer({
             }}
           />
         )}
+
+        {viewMode === "traffic" && (
+          <TrafficInspector
+            jobId={jobId}
+            entries={extractTrafficData(resultItems)}
+          />
+        )}
       </div>
     </div>
   );
+}
+
+/**
+ * Extract traffic data from result items.
+ * Aggregates interceptedData from all results that have it.
+ */
+function extractTrafficData(resultItems: ResultItem[]) {
+  const traffic: import("../api").InterceptedEntry[] = [];
+  for (const item of resultItems) {
+    const crawlItem = item as CrawlResultWithTraffic;
+    if (crawlItem.interceptedData && Array.isArray(crawlItem.interceptedData)) {
+      traffic.push(...crawlItem.interceptedData);
+    }
+  }
+  return traffic;
 }
 
 export default ResultsExplorer;
