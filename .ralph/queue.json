@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0250",
-      "status": "todo",
-      "title": "Add test coverage for internal/distributed package",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "distributed"
-      ],
-      "scope": [
-        "internal/distributed",
-        "go test ./internal/distributed/..."
-      ],
-      "evidence": [
-        "No *_test.go files in internal/distributed (directory scan output)"
-      ],
-      "plan": [
-        "Create tests for RedisLock Acquire/Release/Renew including token mismatch and ttl validation",
-        "Add tests for RedisRegistry register/heartbeat/status/list paths",
-        "Add tests for RedisLeaderElection elect/renew/resign/leader queries"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0251",
       "status": "todo",
       "title": "Add test coverage for internal/analytics package",
