@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0254",
-      "status": "todo",
-      "title": "Move module docstrings above package lines in listed Go files",
-      "priority": "low",
-      "tags": [
-        "docs",
-        "go",
-        "consistency"
-      ],
-      "scope": [
-        "internal/jobs/job_run.go",
-        "internal/jobs/job_create.go",
-        "internal/jobs/helpers.go",
-        "internal/cli/manage/pipeline_js_mgmt.go",
-        "internal/cli/manage/render_profiles.go"
-      ],
-      "evidence": [
-        "Go file scan shows first non-empty line is package for: internal/jobs/job_run.go, internal/jobs/job_create.go, internal/jobs/helpers.go, internal/cli/manage/pipeline_js_mgmt.go, internal/cli/manage/render_profiles.go"
-      ],
-      "plan": [
-        "Move existing module doc comments above the package declaration",
-        "Verify docstrings still cover responsibilities, non-goals, and invariants",
-        "Run gofmt on touched files"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0255",
       "status": "todo",
       "title": "Split internal/fetch/limiter_test.go into smaller cohesive test files",

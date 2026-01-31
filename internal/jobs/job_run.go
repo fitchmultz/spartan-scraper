@@ -1,5 +1,3 @@
-package jobs
-
 // Package jobs provides job execution lifecycle management.
 // This file contains the core job execution logic that dispatches to scrape, crawl,
 // or research packages based on job kind.
@@ -20,6 +18,8 @@ package jobs
 // - Result directories are created securely before writing
 // - Active jobs are tracked for cancellation support
 // - All errors are sanitized via apperrors before storage
+
+package jobs
 
 import (
 	"context"

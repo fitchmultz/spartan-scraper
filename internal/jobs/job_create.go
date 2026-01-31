@@ -1,5 +1,3 @@
-package jobs
-
 // Package jobs provides job creation and persistence logic for scrape, crawl, and research jobs.
 // This file contains Manager methods that create and persist job records with appropriate
 // metadata and parameter storage.
@@ -17,6 +15,8 @@ package jobs
 // - All jobs are created with StatusQueued
 // - ResultPath is always set under DATA_DIR/jobs/{id}/results.jsonl
 // - Job IDs are generated as UUID strings
+
+package jobs
 
 import (
 	"context"

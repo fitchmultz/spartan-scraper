@@ -1,5 +1,3 @@
-package jobs
-
 // Package jobs provides helper functions for parameter decoding and type conversion.
 // This file contains utility functions that decode job parameters from map[string]interface{}
 // storage into strongly-typed Go structs used by job execution.
@@ -18,6 +16,8 @@ package jobs
 // - All decode functions return empty structs on failure (never panic)
 // - Type conversion helpers return explicit fallback values for invalid inputs
 // - Nested maps (headers, cookies, query) are flattened safely
+
+package jobs
 
 import (
 	"encoding/json"

@@ -1,5 +1,3 @@
-package manage
-
 // Package manage provides CLI subcommands for managing pipeline JavaScript scripts.
 // This file implements the `spartan pipeline-js` command that lists configured scripts.
 //
@@ -15,6 +13,8 @@ package manage
 // - Scripts are loaded from DATA_DIR/pipeline_js.json via pipeline.LoadJSRegistry
 // - Subcommands return exit codes: 0 for success, 1 for errors
 // - Help is displayed for unknown subcommands or when explicitly requested
+
+package manage
 
 import (
 	"context"
