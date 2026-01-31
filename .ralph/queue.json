@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0223",
-      "status": "todo",
-      "title": "Sync .env and .env.example with config env vars",
-      "priority": "high",
-      "tags": [
-        "config",
-        "env",
-        "docs",
-        "compliance"
-      ],
-      "scope": [
-        ".env",
-        ".env.example",
-        "internal/config/config.go"
-      ],
-      "evidence": [
-        "internal/config/config.go loads PROXY_URL/PROXY_USERNAME/PROXY_PASSWORD/PROXY_POOL_FILE, WEBHOOK_*, MAX_BATCH_SIZE, RESPECT_ROBOTS_TXT, RETENTION_* but .env/.env.example stop at API_AUTH_ENABLED and omit these entries."
-      ],
-      "plan": [
-        "Inventory all env vars consumed in config.Load().",
-        "Add missing entries and comments to .env and .env.example (no real secrets).",
-        "Keep ordering/grouping aligned with config sections and verify defaults."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0224",
       "status": "todo",
       "title": "Implement TransformPreview apply path in ResultsExplorer",
