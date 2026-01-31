@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0234",
-      "status": "todo",
-      "title": "Split form_detect.go into smaller files",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "fetch",
-        "refactor"
-      ],
-      "scope": [
-        "internal/fetch/form_detect.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/form_detect.go reports 733 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Separate form detection parsing, heuristics, and data models into distinct files.",
-        "Keep exported behavior unchanged and update references.",
-        "Run gofmt and fetch package tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0235",
       "status": "todo",
       "title": "Split proxy_pool.go into smaller components",
