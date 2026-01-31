@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0222",
-      "status": "todo",
-      "title": "Make run_ci.sh portable and add CLI help",
-      "priority": "high",
-      "tags": [
-        "workflow",
-        "scripts",
-        "ci",
-        "compliance"
-      ],
-      "scope": [
-        "run_ci.sh"
-      ],
-      "evidence": [
-        "run_ci.sh hard-codes /Users/mitchfultz/Projects/spartan-scraper (non-portable path).",
-        "run_ci.sh has no --help/usage output despite being executable (shebang at top of file)."
-      ],
-      "plan": [
-        "Replace hard-coded path with script-relative repo root resolution.",
-        "Add a top-of-file docstring describing responsibilities, non-goals, and assumptions.",
-        "Implement --help output with examples and clear exit codes.",
-        "Add a lightweight validation or test that exercises the help path."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0223",
       "status": "todo",
       "title": "Sync .env and .env.example with config env vars",
