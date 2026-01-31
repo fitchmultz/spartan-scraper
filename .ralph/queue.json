@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0227",
-      "status": "todo",
-      "title": "Break up retry_test.go into focused test files",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "fetch",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/fetch/retry_test.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/retry_test.go reports 1011 LOC (>1000 file-size limit)."
-      ],
-      "plan": [
-        "Split retry tests by scenario (backoff strategies, retryable errors, status codes).",
-        "Centralize shared helpers/fixtures in a small test helper file.",
-        "Ensure coverage remains intact after refactor.",
-        "Run go test ./internal/fetch."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0228",
       "status": "todo",
       "title": "Split playwright_fetcher.go into smaller modules",
