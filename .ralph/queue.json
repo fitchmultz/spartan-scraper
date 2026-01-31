@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0255",
-      "status": "todo",
-      "title": "Split internal/fetch/limiter_test.go into smaller cohesive test files",
-      "priority": "low",
-      "tags": [
-        "tests",
-        "fetch",
-        "refactor"
-      ],
-      "scope": [
-        "internal/fetch/limiter_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/limiter_test.go reports 1712 lines (>1000 limit)"
-      ],
-      "plan": [
-        "Split limiter tests into multiple files grouped by feature (rate limits, adaptive, retries)",
-        "Extract shared helpers into a _test.go helper file",
-        "Ensure go test ./internal/fetch/... passes after refactor"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0256",
       "status": "todo",
       "title": "Split internal/api/traffic_replay_test.go into smaller files",
