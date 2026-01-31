@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0229",
-      "status": "todo",
-      "title": "Split exporter/database.go by responsibility",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "exporter",
-        "refactor"
-      ],
-      "scope": [
-        "internal/exporter/database.go",
-        "internal/exporter/"
-      ],
-      "evidence": [
-        "wc -l internal/exporter/database.go reports 955 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Group DB exporter logic into smaller files (schema, writers, helpers).",
-        "Keep public API unchanged while moving internals.",
-        "Update tests to point at new file locations if needed.",
-        "Run gofmt and exporter tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0230",
       "status": "todo",
       "title": "Split proxy_pool_test.go into smaller test files",
