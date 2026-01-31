@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0231",
-      "status": "todo",
-      "title": "Split http_fetcher_test.go into scenario-focused files",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "fetch",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/fetch/http_fetcher_test.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/http_fetcher_test.go reports 847 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Split HTTP fetcher tests by feature area (auth, retries, limits, caching, proxies).",
-        "Extract common setup into helpers.",
-        "Ensure all existing assertions remain covered.",
-        "Run go test ./internal/fetch."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0232",
       "status": "todo",
       "title": "Split api/transform_test.go into focused test modules",
