@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0249",
-      "status": "todo",
-      "title": "Standardize HTTPFetcher errors on apperrors for consistency",
-      "priority": "medium",
-      "tags": [
-        "fetch",
-        "error-handling",
-        "consistency"
-      ],
-      "scope": [
-        "internal/fetch/http_fetcher.go",
-        "internal/fetch/http_fetcher_*_test.go"
-      ],
-      "evidence": [
-        "internal/fetch/http_fetcher.go:58-75 returns errors.New/ fmt.Errorf instead of apperrors",
-        "internal/fetch/http_fetcher.go:115-130 returns fmt.Errorf for proxy errors",
-        "internal/fetch/http_fetcher.go:366-367 returns errors.New(\"max retries exceeded\")"
-      ],
-      "plan": [
-        "Replace errors.New/fmt.Errorf with apperrors.Validation/Internal and safe messages",
-        "Update tests to assert on apperrors kinds and safe messages instead of raw strings",
-        "Review other HTTPFetcher error paths (size limit, session lookup) for consistency"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0250",
       "status": "todo",
       "title": "Add test coverage for internal/distributed package",

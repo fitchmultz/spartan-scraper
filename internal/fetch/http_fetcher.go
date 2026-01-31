@@ -56,7 +56,7 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 // It supports retries, rate limiting, and basic/token authentication.
 func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	if req.URL == "" {
-		return Result{}, errors.New("url is required")
+		return Result{}, apperrors.Validation("url is required")
 	}
 
 	slog.Debug("HTTP fetch start", "url", apperrors.SanitizeURL(req.URL))
@@ -72,7 +72,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed to create cookie jar: %w", err)
+		return Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to create cookie jar", err)
 	}
 
 	// Load session cookies if SessionID is provided
@@ -117,7 +117,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			if selectedProxy != nil {
 				f.proxyPool.RecordFailure(selectedProxy.ID, err)
 			}
-			return Result{}, fmt.Errorf("invalid proxy URL: %w", err)
+			return Result{}, apperrors.Wrap(apperrors.KindValidation, "invalid proxy URL", err)
 		}
 
 		// Handle SOCKS5 proxies
@@ -127,7 +127,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 				if selectedProxy != nil {
 					f.proxyPool.RecordFailure(selectedProxy.ID, err)
 				}
-				return Result{}, fmt.Errorf("failed to create SOCKS5 dialer: %w", err)
+				return Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to create SOCKS5 dialer", err)
 			}
 			transport.DialContext = dialer.(proxy.ContextDialer).DialContext
 		} else {
@@ -269,7 +269,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 		// Check if response exceeded the size limit
 		if req.MaxResponseBytes > 0 && int64(len(body)) > req.MaxResponseBytes {
 			_ = resp.Body.Close()
-			return Result{}, fmt.Errorf("response body exceeded maximum size of %d bytes", req.MaxResponseBytes)
+			return Result{}, apperrors.Validation(fmt.Sprintf("response body exceeded maximum size of %d bytes", req.MaxResponseBytes))
 		}
 
 		_ = resp.Body.Close()
@@ -364,7 +364,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 	}
 
 	slog.Error("HTTP fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
-	return Result{}, errors.New("max retries exceeded")
+	return Result{}, apperrors.Internal("max retries exceeded")
 }
 
 // sessionCookie represents a cookie stored in a session.
@@ -400,7 +400,7 @@ func applySessionToJar(jar http.CookieJar, sessionID, dataDir, targetURL string)
 		}
 	}
 	if sess == nil {
-		return fmt.Errorf("session not found: %s", sessionID)
+		return apperrors.NotFound(fmt.Sprintf("session not found: %s", sessionID))
 	}
 
 	parsed, err := url.Parse(targetURL)
