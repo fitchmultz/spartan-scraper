@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0253",
-      "status": "todo",
-      "title": "Ignore root node_modules and clean stray directory",
-      "priority": "medium",
-      "tags": [
-        "repo-hygiene",
-        "build"
-      ],
-      "scope": [
-        ".gitignore",
-        "node_modules/"
-      ],
-      "evidence": [
-        "Root node_modules exists (ls -d node_modules) while .gitignore only ignores /web/node_modules"
-      ],
-      "plan": [
-        "Add /node_modules/ to .gitignore",
-        "Remove the accidental root node_modules directory from the repo workspace",
-        "Verify make clean covers root node_modules or adjust if needed"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0254",
       "status": "todo",
       "title": "Move module docstrings above package lines in listed Go files",
