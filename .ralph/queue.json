@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0236",
-      "status": "todo",
-      "title": "Split graphql/resolvers.go to meet size guidelines",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "api",
-        "refactor"
-      ],
-      "scope": [
-        "internal/api/graphql/resolvers.go",
-        "internal/api/graphql/"
-      ],
-      "evidence": [
-        "wc -l internal/api/graphql/resolvers.go reports 708 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Group resolvers by domain into separate files.",
-        "Keep resolver interfaces and registration unchanged.",
-        "Update tests or add new ones as needed.",
-        "Run go test ./internal/api."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0237",
       "status": "todo",
       "title": "Add top-of-file docstrings in apperrors package files",
