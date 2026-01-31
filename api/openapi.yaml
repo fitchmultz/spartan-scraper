@@ -3883,3 +3883,588 @@ components:
         total:
           type: integer
           description: Total number of delivery records
+    TemplateMetrics:
+      type: object
+      description: Hourly performance metrics for a template
+      properties:
+        hour:
+          type: string
+          format: date-time
+          description: Hour for which metrics are aggregated
+        template_name:
+          type: string
+          description: Template name
+        extractions_total:
+          type: integer
+          description: Total number of extractions
+        extractions_success:
+          type: integer
+          description: Number of successful extractions
+        field_coverage_avg:
+          type: number
+          description: Average field coverage (0-1)
+        avg_extraction_time_ms:
+          type: number
+          description: Average extraction time in milliseconds
+    TemplateABTest:
+      type: object
+      description: A/B test configuration for comparing templates
+      properties:
+        id:
+          type: string
+          description: Unique test identifier
+        name:
+          type: string
+          description: Test name
+        description:
+          type: string
+          description: Test description
+        baseline_template:
+          type: string
+          description: Baseline template name
+        variant_template:
+          type: string
+          description: Variant template name
+        allocation:
+          type: object
+          additionalProperties:
+            type: integer
+          description: "Traffic allocation percentages (e.g., baseline: 50, variant: 50)"
+        start_time:
+          type: string
+          format: date-time
+          description: Test start time
+        end_time:
+          type: string
+          format: date-time
+          description: Test end time (if completed)
+        status:
+          type: string
+          enum: [pending, running, paused, completed]
+          description: Current test status
+        success_criteria:
+          $ref: '#/components/schemas/SuccessCriteria'
+        min_sample_size:
+          type: integer
+          description: Minimum samples per variant for significance
+        confidence_level:
+          type: number
+          description: Statistical confidence level (e.g., 0.95)
+        winner:
+          type: string
+          nullable: true
+          enum: [baseline, variant, null]
+          description: Winning template if test is complete
+        created_at:
+          type: string
+          format: date-time
+          description: When the test was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the test was last updated
+    SuccessCriteria:
+      type: object
+      description: Criteria for determining A/B test success
+      properties:
+        metric:
+          type: string
+          enum: [success_rate, field_coverage, combined]
+          description: Metric to compare
+        min_improvement:
+          type: number
+          description: Minimum improvement required (e.g., 0.05 for 5%)
+        required_fields:
+          type: array
+          items:
+            type: string
+          description: Fields that must be present for success
+        min_field_coverage:
+          type: number
+          description: Minimum field coverage required (0-1)
+    TemplateComparison:
+      type: object
+      description: Statistical comparison of two templates
+      properties:
+        test_id:
+          type: string
+          description: A/B test ID if part of a test
+        baseline_template:
+          type: string
+          description: Baseline template name
+        variant_template:
+          type: string
+          description: Variant template name
+        baseline_metrics:
+          $ref: '#/components/schemas/ComparisonMetrics'
+        variant_metrics:
+          $ref: '#/components/schemas/ComparisonMetrics'
+        statistical_test:
+          $ref: '#/components/schemas/StatisticalResult'
+        winner:
+          type: string
+          nullable: true
+          enum: [baseline, variant, null]
+          description: Winning template if significant
+        recommendation:
+          type: string
+          description: Human-readable recommendation
+        generated_at:
+          type: string
+          format: date-time
+          description: When the comparison was generated
+    ComparisonMetrics:
+      type: object
+      description: Aggregated metrics for template comparison
+      properties:
+        sample_size:
+          type: integer
+          description: Number of samples
+        success_rate:
+          type: number
+          description: Success rate as percentage (0-100)
+        field_coverage:
+          type: number
+          description: Average field coverage (0-1)
+        avg_extraction_time_ms:
+          type: integer
+          description: Average extraction time in milliseconds
+    StatisticalResult:
+      type: object
+      description: Statistical significance test result
+      properties:
+        test_type:
+          type: string
+          enum: [chi_square, t_test]
+          description: Type of statistical test performed
+        p_value:
+          type: number
+          description: P-value from the test
+        is_significant:
+          type: boolean
+          description: Whether the result is statistically significant
+        confidence_interval:
+          type: array
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+          description: Confidence interval [lower, upper]
+        effect_size:
+          type: number
+          description: Effect size (Cohen's d or odds ratio)
+  /v1/template-metrics:
+    get:
+      summary: Get template performance metrics
+      description: Retrieve hourly performance metrics for extraction templates
+      tags:
+        - Template Metrics
+      parameters:
+        - name: template
+          in: query
+          schema:
+            type: string
+          description: Filter by template name (optional)
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Start time (RFC3339)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: End time (RFC3339)
+      responses:
+        '200':
+          description: Template metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateMetrics'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-comparison:
+    get:
+      summary: Compare two templates
+      description: Compare performance metrics between two templates with statistical significance testing
+      tags:
+        - Template Metrics
+      parameters:
+        - name: template_a
+          in: query
+          required: true
+          schema:
+            type: string
+          description: First template name
+        - name: template_b
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Second template name
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Start time (RFC3339)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: End time (RFC3339)
+      responses:
+        '200':
+          description: Template comparison with statistical analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateComparison'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests:
+    get:
+      summary: List A/B tests
+      description: Retrieve all A/B tests, optionally filtered by status
+      tags:
+        - A/B Testing
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, paused, completed]
+          description: Filter by test status
+      responses:
+        '200':
+          description: List of A/B tests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateABTest'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create A/B test
+      description: Create a new A/B test comparing two templates
+      tags:
+        - A/B Testing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateABTest'
+      responses:
+        '201':
+          description: Created test
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateABTest'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests/{id}:
+    get:
+      summary: Get A/B test
+      description: Retrieve a specific A/B test by ID
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '200':
+          description: A/B test details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateABTest'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Update A/B test
+      description: Update an existing A/B test (only allowed for pending or paused tests)
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateABTest'
+      responses:
+        '200':
+          description: Updated test
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateABTest'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete A/B test
+      description: Delete an A/B test
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '204':
+          description: Deleted successfully
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests/{id}/start:
+    post:
+      summary: Start A/B test
+      description: Start a pending or paused A/B test
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '200':
+          description: Test started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  test_id:
+                    type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests/{id}/stop:
+    post:
+      summary: Stop A/B test
+      description: Stop a running A/B test
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '200':
+          description: Test stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  test_id:
+                    type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests/{id}/results:
+    get:
+      summary: Get A/B test results
+      description: Get statistical comparison results for an A/B test
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '200':
+          description: Test results with statistical analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateComparison'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-ab-tests/{id}/auto-select:
+    post:
+      summary: Auto-select winner
+      description: Automatically select the winning template if statistical significance is reached
+      tags:
+        - A/B Testing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Test ID
+      responses:
+        '200':
+          description: Winner selection result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateComparison'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

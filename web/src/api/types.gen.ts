@@ -1793,6 +1793,207 @@ export type WebhookDeliveryListResponse = {
     total?: number;
 };
 
+/**
+ * Hourly performance metrics for a template
+ */
+export type TemplateMetrics = {
+    /**
+     * Hour for which metrics are aggregated
+     */
+    hour?: string;
+    /**
+     * Template name
+     */
+    template_name?: string;
+    /**
+     * Total number of extractions
+     */
+    extractions_total?: number;
+    /**
+     * Number of successful extractions
+     */
+    extractions_success?: number;
+    /**
+     * Average field coverage (0-1)
+     */
+    field_coverage_avg?: number;
+    /**
+     * Average extraction time in milliseconds
+     */
+    avg_extraction_time_ms?: number;
+};
+
+/**
+ * A/B test configuration for comparing templates
+ */
+export type TemplateAbTest = {
+    /**
+     * Unique test identifier
+     */
+    id?: string;
+    /**
+     * Test name
+     */
+    name?: string;
+    /**
+     * Test description
+     */
+    description?: string;
+    /**
+     * Baseline template name
+     */
+    baseline_template?: string;
+    /**
+     * Variant template name
+     */
+    variant_template?: string;
+    /**
+     * Traffic allocation percentages (e.g., baseline: 50, variant: 50)
+     */
+    allocation?: {
+        [key: string]: number;
+    };
+    /**
+     * Test start time
+     */
+    start_time?: string;
+    /**
+     * Test end time (if completed)
+     */
+    end_time?: string;
+    /**
+     * Current test status
+     */
+    status?: 'pending' | 'running' | 'paused' | 'completed';
+    success_criteria?: SuccessCriteria;
+    /**
+     * Minimum samples per variant for significance
+     */
+    min_sample_size?: number;
+    /**
+     * Statistical confidence level (e.g., 0.95)
+     */
+    confidence_level?: number;
+    /**
+     * Winning template if test is complete
+     */
+    winner?: 'baseline' | 'variant' | null;
+    /**
+     * When the test was created
+     */
+    created_at?: string;
+    /**
+     * When the test was last updated
+     */
+    updated_at?: string;
+};
+
+/**
+ * Criteria for determining A/B test success
+ */
+export type SuccessCriteria = {
+    /**
+     * Metric to compare
+     */
+    metric?: 'success_rate' | 'field_coverage' | 'combined';
+    /**
+     * Minimum improvement required (e.g., 0.05 for 5%)
+     */
+    min_improvement?: number;
+    /**
+     * Fields that must be present for success
+     */
+    required_fields?: Array<string>;
+    /**
+     * Minimum field coverage required (0-1)
+     */
+    min_field_coverage?: number;
+};
+
+/**
+ * Statistical comparison of two templates
+ */
+export type TemplateComparison = {
+    /**
+     * A/B test ID if part of a test
+     */
+    test_id?: string;
+    /**
+     * Baseline template name
+     */
+    baseline_template?: string;
+    /**
+     * Variant template name
+     */
+    variant_template?: string;
+    baseline_metrics?: ComparisonMetrics;
+    variant_metrics?: ComparisonMetrics;
+    statistical_test?: StatisticalResult;
+    /**
+     * Winning template if significant
+     */
+    winner?: 'baseline' | 'variant' | null;
+    /**
+     * Human-readable recommendation
+     */
+    recommendation?: string;
+    /**
+     * When the comparison was generated
+     */
+    generated_at?: string;
+};
+
+/**
+ * Aggregated metrics for template comparison
+ */
+export type ComparisonMetrics = {
+    /**
+     * Number of samples
+     */
+    sample_size?: number;
+    /**
+     * Success rate as percentage (0-100)
+     */
+    success_rate?: number;
+    /**
+     * Average field coverage (0-1)
+     */
+    field_coverage?: number;
+    /**
+     * Average extraction time in milliseconds
+     */
+    avg_extraction_time_ms?: number;
+};
+
+/**
+ * Statistical significance test result
+ */
+export type StatisticalResult = {
+    /**
+     * Type of statistical test performed
+     */
+    test_type?: 'chi_square' | 't_test';
+    /**
+     * P-value from the test
+     */
+    p_value?: number;
+    /**
+     * Whether the result is statistically significant
+     */
+    is_significant?: boolean;
+    /**
+     * Confidence interval [lower, upper]
+     */
+    confidence_interval?: [
+        number,
+        number
+    ];
+    /**
+     * Effect size (Cohen's d or odds ratio)
+     */
+    effect_size?: number;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;

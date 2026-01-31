@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 var (
@@ -146,4 +148,27 @@ func ListTemplateNames(dataDir string) ([]string, error) {
 	// Sort for consistent ordering
 	sort.Strings(names)
 	return names, nil
+}
+
+// getTemplate retrieves a template by name from the registry.
+// Returns an error if the template is not found.
+func (r *TemplateRegistry) getTemplate(name string) (Template, error) {
+	if r == nil {
+		// Fallback to built-ins
+		if t, ok := builtInTemplates[name]; ok {
+			return t, nil
+		}
+		return Template{}, apperrors.NotFound("template not found: " + name)
+	}
+
+	if t, ok := r.Templates[name]; ok {
+		return t, nil
+	}
+
+	// Fallback to built-in
+	if t, ok := builtInTemplates[name]; ok {
+		return t, nil
+	}
+
+	return Template{}, apperrors.NotFound("template not found: " + name)
 }

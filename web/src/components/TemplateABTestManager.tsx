@@ -1,0 +1,693 @@
+/**
+ * Template A/B Test Manager Component
+ *
+ * Manages A/B tests for template comparison including creation,
+ * monitoring, and winner selection.
+ *
+ * @module TemplateABTestManager
+ */
+
+import { useState, useEffect, useCallback } from "react";
+
+interface ABTest {
+  id: string;
+  name: string;
+  description: string;
+  baseline_template: string;
+  variant_template: string;
+  allocation: Record<string, number>;
+  start_time: string;
+  end_time?: string;
+  status: "pending" | "running" | "paused" | "completed";
+  success_criteria: {
+    metric: string;
+    min_improvement: number;
+    required_fields: string[];
+    min_field_coverage: number;
+  };
+  min_sample_size: number;
+  confidence_level: number;
+  winner?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ComparisonMetrics {
+  sample_size: number;
+  success_rate: number;
+  field_coverage: number;
+  avg_extraction_time_ms: number;
+}
+
+interface StatisticalResult {
+  test_type: string;
+  p_value: number;
+  is_significant: boolean;
+  confidence_interval: [number, number];
+  effect_size: number;
+}
+
+interface TestResultsData {
+  test_id: string;
+  baseline_template: string;
+  variant_template: string;
+  baseline_metrics: ComparisonMetrics;
+  variant_metrics: ComparisonMetrics;
+  statistical_test: StatisticalResult;
+  winner: string | null;
+  recommendation: string;
+}
+
+export function TemplateABTestManager() {
+  const [tests, setTests] = useState<ABTest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const fetchTests = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/v1/template-ab-tests");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch A/B tests");
+      }
+
+      const data = await response.json();
+      setTests(data.tests || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTests();
+  }, [fetchTests]);
+
+  if (loading) {
+    return <div className="ab-test-manager loading">Loading A/B tests...</div>;
+  }
+
+  if (error) {
+    return <div className="ab-test-manager error">Error: {error}</div>;
+  }
+
+  return (
+    <div className="ab-test-manager">
+      <div className="ab-test-manager__header">
+        <h2>A/B Tests</h2>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => setShowCreateForm(!showCreateForm)}
+        >
+          {showCreateForm ? "Cancel" : "Create Test"}
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <CreateTestForm
+          onSuccess={() => {
+            setShowCreateForm(false);
+            fetchTests();
+          }}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      )}
+
+      <div className="ab-test-manager__list">
+        {tests.length === 0 ? (
+          <div className="ab-test-manager__empty">
+            No A/B tests yet. Create one to compare template performance.
+          </div>
+        ) : (
+          tests.map((test) => (
+            <ABTestCard key={test.id} test={test} onUpdate={fetchTests} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface CreateTestFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+function CreateTestForm({ onSuccess, onCancel }: CreateTestFormProps) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [baselineTemplate, setBaselineTemplate] = useState("");
+  const [variantTemplate, setVariantTemplate] = useState("");
+  const [baselineAllocation, setBaselineAllocation] = useState(50);
+  const [minSampleSize, setMinSampleSize] = useState(100);
+  const [confidenceLevel, setConfidenceLevel] = useState(0.95);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name || !baselineTemplate || !variantTemplate) {
+      setError("Name, baseline template, and variant template are required");
+      return;
+    }
+
+    if (baselineTemplate === variantTemplate) {
+      setError("Baseline and variant templates must be different");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const response = await fetch("/v1/template-ab-tests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          baseline_template: baselineTemplate,
+          variant_template: variantTemplate,
+          allocation: {
+            baseline: baselineAllocation,
+            variant: 100 - baselineAllocation,
+          },
+          success_criteria: {
+            metric: "success_rate",
+            min_improvement: 0.05,
+            required_fields: [],
+            min_field_coverage: 0.8,
+          },
+          min_sample_size: minSampleSize,
+          confidence_level: confidenceLevel,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create test");
+      }
+
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="create-test-form" onSubmit={handleSubmit}>
+      <h3>Create A/B Test</h3>
+
+      {error && <div className="form-error">{error}</div>}
+
+      <div className="form-group">
+        <label htmlFor="test-name">Name *</label>
+        <input
+          id="test-name"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., Article vs Product Template"
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="test-description">Description</label>
+        <textarea
+          id="test-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Optional description of the test"
+          rows={3}
+        />
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="baseline-template">Baseline Template *</label>
+          <input
+            id="baseline-template"
+            type="text"
+            value={baselineTemplate}
+            onChange={(e) => setBaselineTemplate(e.target.value)}
+            placeholder="e.g., article"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="variant-template">Variant Template *</label>
+          <input
+            id="variant-template"
+            type="text"
+            value={variantTemplate}
+            onChange={(e) => setVariantTemplate(e.target.value)}
+            placeholder="e.g., product"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="baseline-allocation">
+          Baseline Allocation: {baselineAllocation}%
+        </label>
+        <input
+          id="baseline-allocation"
+          type="range"
+          min={10}
+          max={90}
+          value={baselineAllocation}
+          onChange={(e) => setBaselineAllocation(parseInt(e.target.value, 10))}
+        />
+        <div className="allocation-labels">
+          <span>Baseline: {baselineAllocation}%</span>
+          <span>Variant: {100 - baselineAllocation}%</span>
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="min-sample-size">Min Sample Size</label>
+          <input
+            id="min-sample-size"
+            type="number"
+            min={10}
+            max={10000}
+            value={minSampleSize}
+            onChange={(e) => setMinSampleSize(parseInt(e.target.value, 10))}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="confidence-level">Confidence Level</label>
+          <select
+            id="confidence-level"
+            value={confidenceLevel}
+            onChange={(e) => setConfidenceLevel(parseFloat(e.target.value))}
+          >
+            <option value={0.9}>90%</option>
+            <option value={0.95}>95%</option>
+            <option value={0.99}>99%</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={submitting}
+        >
+          {submitting ? "Creating..." : "Create Test"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+interface ABTestCardProps {
+  test: ABTest;
+  onUpdate: () => void;
+}
+
+function ABTestCard({ test, onUpdate }: ABTestCardProps) {
+  const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const getStatusBadge = () => {
+    const statusClasses: Record<string, string> = {
+      pending: "badge--neutral",
+      running: "badge--success",
+      paused: "badge--warning",
+      completed: "badge--info",
+    };
+
+    return (
+      <span className={`badge ${statusClasses[test.status] || ""}`}>
+        {test.status}
+      </span>
+    );
+  };
+
+  const handleStart = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/v1/template-ab-tests/${test.id}/start`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to start test");
+      }
+
+      onUpdate();
+    } catch (err) {
+      console.error("Failed to start test:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/v1/template-ab-tests/${test.id}/stop`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to stop test");
+      }
+
+      onUpdate();
+    } catch (err) {
+      console.error("Failed to stop test:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this A/B test?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/v1/template-ab-tests/${test.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete test");
+      }
+
+      onUpdate();
+    } catch (err) {
+      console.error("Failed to delete test:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProgress = () => {
+    // This would ideally come from the test results
+    // For now, show indeterminate progress for running tests
+    if (test.status === "running") {
+      return (
+        <div className="test-progress">
+          <div className="progress-bar progress-bar--indeterminate" />
+          <span className="progress-label">Running...</span>
+        </div>
+      );
+    }
+
+    if (test.winner) {
+      const winnerName =
+        test.winner === "baseline"
+          ? test.baseline_template
+          : test.variant_template;
+      return (
+        <div className="test-progress">
+          <span className="winner-badge">Winner: {winnerName}</span>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className={`ab-test-card ab-test-card--${test.status}`}>
+      <div className="ab-test-card__header">
+        <div className="ab-test-card__title">
+          <h4>{test.name}</h4>
+          {getStatusBadge()}
+        </div>
+        <div className="ab-test-card__actions">
+          {test.status === "pending" && (
+            <button
+              type="button"
+              className="btn btn--small btn--primary"
+              onClick={handleStart}
+              disabled={loading}
+            >
+              Start
+            </button>
+          )}
+          {test.status === "running" && (
+            <button
+              type="button"
+              className="btn btn--small btn--warning"
+              onClick={handleStop}
+              disabled={loading}
+            >
+              Stop
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn--small btn--secondary"
+            onClick={() => setShowResults(!showResults)}
+          >
+            {showResults ? "Hide Results" : "View Results"}
+          </button>
+          <button
+            type="button"
+            className="btn btn--small btn--danger"
+            onClick={handleDelete}
+            disabled={loading}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {test.description && (
+        <p className="ab-test-card__description">{test.description}</p>
+      )}
+
+      <div className="ab-test-card__details">
+        <div className="detail-row">
+          <span className="detail-label">Templates:</span>
+          <span className="detail-value">
+            {test.baseline_template} vs {test.variant_template}
+          </span>
+        </div>
+        <div className="detail-row">
+          <span className="detail-label">Allocation:</span>
+          <span className="detail-value">
+            {test.allocation.baseline || 50}% / {test.allocation.variant || 50}%
+          </span>
+        </div>
+        <div className="detail-row">
+          <span className="detail-label">Min Samples:</span>
+          <span className="detail-value">{test.min_sample_size}</span>
+        </div>
+        <div className="detail-row">
+          <span className="detail-label">Confidence:</span>
+          <span className="detail-value">
+            {(test.confidence_level * 100).toFixed(0)}%
+          </span>
+        </div>
+      </div>
+
+      {getProgress()}
+
+      {showResults && <TestResults testId={test.id} />}
+    </div>
+  );
+}
+
+interface TestResultsProps {
+  testId: string;
+}
+
+function TestResults({ testId }: TestResultsProps) {
+  const [results, setResults] = useState<TestResultsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/v1/template-ab-tests/${testId}/results`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch results");
+        }
+
+        const data = await response.json();
+        setResults(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, [testId]);
+
+  if (loading) {
+    return <div className="test-results loading">Loading results...</div>;
+  }
+
+  if (error) {
+    return <div className="test-results error">Error: {error}</div>;
+  }
+
+  if (!results) {
+    return <div className="test-results empty">No results available</div>;
+  }
+
+  return (
+    <div className="test-results">
+      <h5>Test Results</h5>
+
+      <div className="test-results__comparison">
+        <div className="comparison-column">
+          <h6>{results.baseline_template}</h6>
+          <div className="metric">
+            <span className="metric-label">Success Rate:</span>
+            <span className="metric-value">
+              {results.baseline_metrics.success_rate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Field Coverage:</span>
+            <span className="metric-value">
+              {(results.baseline_metrics.field_coverage * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Samples:</span>
+            <span className="metric-value">
+              {results.baseline_metrics.sample_size.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        <div className="comparison-column">
+          <h6>{results.variant_template}</h6>
+          <div className="metric">
+            <span className="metric-label">Success Rate:</span>
+            <span className="metric-value">
+              {results.variant_metrics.success_rate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Field Coverage:</span>
+            <span className="metric-value">
+              {(results.variant_metrics.field_coverage * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Samples:</span>
+            <span className="metric-value">
+              {results.variant_metrics.sample_size.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="test-results__stats">
+        <div className="stat-row">
+          <span className="stat-label">P-Value:</span>
+          <span className="stat-value">
+            {results.statistical_test.p_value.toFixed(4)}
+          </span>
+        </div>
+        <div className="stat-row">
+          <span className="stat-label">Significant:</span>
+          <span
+            className={`stat-value ${
+              results.statistical_test.is_significant ? "success" : "neutral"
+            }`}
+          >
+            {results.statistical_test.is_significant ? "Yes" : "No"}
+          </span>
+        </div>
+      </div>
+
+      <div className="test-results__recommendation">
+        <strong>Recommendation:</strong> {results.recommendation}
+      </div>
+
+      {!results.winner && results.statistical_test.is_significant && (
+        <AutoSelectButton
+          testId={testId}
+          onUpdate={() => window.location.reload()}
+        />
+      )}
+    </div>
+  );
+}
+
+interface AutoSelectButtonProps {
+  testId: string;
+  onUpdate: () => void;
+}
+
+function AutoSelectButton({ testId, onUpdate }: AutoSelectButtonProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    if (
+      !confirm(
+        "This will select the winning template and complete the test. Continue?",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/v1/template-ab-tests/${testId}/auto-select`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to auto-select winner");
+      }
+
+      onUpdate();
+    } catch (err) {
+      console.error("Failed to auto-select winner:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="btn btn--primary btn--small"
+      onClick={handleClick}
+      disabled={loading}
+    >
+      {loading ? "Selecting..." : "Auto-Select Winner"}
+    </button>
+  );
+}

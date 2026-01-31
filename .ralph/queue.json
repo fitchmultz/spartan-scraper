@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0216",
-      "status": "todo",
-      "title": "Implement extraction template A/B testing framework",
-      "priority": "low",
-      "tags": [
-        "testing",
-        "templates",
-        "feature"
-      ],
-      "scope": [
-        "internal/extract/",
-        "internal/pipeline/"
-      ],
-      "evidence": [
-        "No way to compare template effectiveness",
-        "No metrics on extraction success rates per template",
-        "Manual testing required for template improvements"
-      ],
-      "plan": [
-        "Add A/B test configuration for templates",
-        "Implement success metrics tracking",
-        "Add statistical significance calculation",
-        "Support automatic winner selection",
-        "Create template performance comparison UI"
-      ],
-      "notes": [],
-      "request": "scan finding: template testing gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0217",
       "status": "todo",
       "title": "Add request/response inspection and traffic replay",

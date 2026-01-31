@@ -38,6 +38,7 @@ type ExtractOptions struct {
 	Inline          *Template       `json:"inline,omitempty"`
 	Validate        bool            `json:"validate,omitempty"`
 	RejectionPolicy RejectionPolicy `json:"rejectionPolicy,omitempty"`
+	ABTestID        *string         `json:"ab_test_id,omitempty"` // If part of an A/B test
 }
 
 type Template struct {

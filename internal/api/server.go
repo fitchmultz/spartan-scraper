@@ -211,6 +211,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/analytics/hosts", s.handleAnalyticsHosts)
 	mux.HandleFunc("/v1/analytics/trends", s.handleAnalyticsTrends)
 	mux.HandleFunc("/v1/analytics/dashboard", s.handleAnalyticsDashboard)
+	mux.HandleFunc("/v1/template-metrics", s.handleTemplateMetrics)
+	mux.HandleFunc("/v1/template-comparison", s.handleTemplateComparison)
+	mux.HandleFunc("/v1/template-ab-tests", s.handleABTests)
+	mux.HandleFunc("/v1/template-ab-tests/", s.handleABTest)
 	mux.HandleFunc("/graphql", s.handleGraphQL)
 	mux.HandleFunc("/graphql/playground", s.handleGraphQLPlayground)
 

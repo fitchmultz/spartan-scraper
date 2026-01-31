@@ -43,4 +43,21 @@ type Store struct {
 	stmtRecordJobTrend      *sql.Stmt
 	stmtGetJobTrends        *sql.Stmt
 	stmtPurgeOldAnalytics   *sql.Stmt
+
+	// Template metrics statements
+	stmtRecordTemplateMetrics *sql.Stmt
+	stmtGetTemplateMetrics    *sql.Stmt
+	stmtGetAllTemplateMetrics *sql.Stmt
+
+	// A/B test statements
+	stmtCreateABTest       *sql.Stmt
+	stmtGetABTest          *sql.Stmt
+	stmtListABTests        *sql.Stmt
+	stmtUpdateABTest       *sql.Stmt
+	stmtUpdateABTestStatus *sql.Stmt
+	stmtDeleteABTest       *sql.Stmt
+
+	// Extraction record statements
+	stmtRecordExtraction     *sql.Stmt
+	stmtGetExtractionRecords *sql.Stmt
 }
