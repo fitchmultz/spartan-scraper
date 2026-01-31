@@ -1,3 +1,16 @@
+// Package config_test provides tests for the config package.
+//
+// Responsibilities:
+//   - Tests configuration loading from environment variables
+//   - Tests helper functions (getenvBool, getenvInt, getenvInt64)
+//   - Tests auth key normalization
+//   - Tests concurrent read safety of Config (race detector validation)
+//   - Tests data directory validation and creation
+//
+// Does NOT handle:
+//   - Production configuration loading (see config.go)
+//   - Logger initialization tests (see log_*_test.go files)
+//   - Cross-package integration tests
 package config
 
 import (

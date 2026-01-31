@@ -1,3 +1,16 @@
+// Package config_test provides tests for log level configuration.
+//
+// Responsibilities:
+//   - Tests valid log level strings (debug, info, warn, error)
+//   - Tests case-insensitive level parsing
+//   - Tests level switching at runtime
+//   - Tests default level fallback for invalid/empty levels
+//   - Tests level-specific log output
+//
+// Does NOT handle:
+//   - Log format configuration (see log_format_test.go)
+//   - Log handler implementation (see log_handler_test.go)
+//   - Dynamic level changes after initialization
 package config
 
 import (

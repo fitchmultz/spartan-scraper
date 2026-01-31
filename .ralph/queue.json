@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0238",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in config tests and utilities",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "config"
-      ],
-      "scope": [
-        "internal/config/"
-      ],
-      "evidence": [
-        "internal/config/config_test.go, log_format_test.go, log_handler_test.go, log_level_test.go, and log_test_utils.go start with package lines and no top-of-file docstrings."
-      ],
-      "plan": [
-        "Add docstrings before the package statements in each listed config test/util file.",
-        "Document responsibilities, non-goals, and assumptions per file.",
-        "Run gofmt and config tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0239",
       "status": "todo",
       "title": "Add top-of-file docstrings in jobs helpers and tests",

@@ -1,3 +1,17 @@
+// Package config_test provides tests for log handler initialization.
+//
+// Responsibilities:
+//   - Tests default slog handler setup
+//   - Tests stderr output redirection
+//   - Tests case-insensitive level and format handling
+//   - Tests handler type selection (JSON vs text)
+//   - Tests multiple InitLogger calls (reconfiguration)
+//   - Tests whitespace stripping in configuration values
+//
+// Does NOT handle:
+//   - Log format parsing (see log_format_test.go)
+//   - Log level parsing (see log_level_test.go)
+//   - Custom handler implementations beyond JSON/text
 package config
 
 import (

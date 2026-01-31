@@ -1,3 +1,15 @@
+// Package config_test provides tests for log format configuration.
+//
+// Responsibilities:
+//   - Tests JSON and text log format initialization
+//   - Tests format string parsing (case-insensitive)
+//   - Tests format switching at runtime
+//   - Tests default format fallback for unknown formats
+//
+// Does NOT handle:
+//   - Log level configuration (see log_level_test.go)
+//   - Log handler implementation details (see log_handler_test.go)
+//   - Output destination configuration
 package config
 
 import (
