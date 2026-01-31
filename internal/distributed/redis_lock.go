@@ -158,7 +158,10 @@ func (rr *RedisRegistry) Register(ctx context.Context, worker Worker) error {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to marshal worker", err)
 	}
 
-	return rr.client.Set(ctx, key, data, rr.ttl).Err()
+	if err := rr.client.Set(ctx, key, data, rr.ttl).Err(); err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to register worker", err)
+	}
+	return nil
 }
 
 // Heartbeat updates the worker's last seen timestamp.
@@ -185,7 +188,10 @@ func (rr *RedisRegistry) Heartbeat(ctx context.Context, workerID string) error {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to marshal worker", err)
 	}
 
-	return rr.client.Set(ctx, key, newData, rr.ttl).Err()
+	if err := rr.client.Set(ctx, key, newData, rr.ttl).Err(); err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to update heartbeat", err)
+	}
+	return nil
 }
 
 // UpdateStatus updates the worker's status.
@@ -212,13 +218,19 @@ func (rr *RedisRegistry) UpdateStatus(ctx context.Context, workerID string, stat
 		return apperrors.Wrap(apperrors.KindInternal, "failed to marshal worker", err)
 	}
 
-	return rr.client.Set(ctx, key, newData, rr.ttl).Err()
+	if err := rr.client.Set(ctx, key, newData, rr.ttl).Err(); err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to update worker status", err)
+	}
+	return nil
 }
 
 // Unregister removes a worker from the registry.
 func (rr *RedisRegistry) Unregister(ctx context.Context, workerID string) error {
 	key := rr.keyPrefix + workerID
-	return rr.client.Del(ctx, key).Err()
+	if err := rr.client.Del(ctx, key).Err(); err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to unregister worker", err)
+	}
+	return nil
 }
 
 // ListWorkers returns all currently registered workers.

@@ -367,3 +367,142 @@ func TestRedisRegistry_ListWorkers_InvalidJSON(t *testing.T) {
 		t.Errorf("expected worker-valid, got %s", workers[0].ID)
 	}
 }
+
+// TestRedisRegistry_Register_Error verifies Register returns apperrors.KindInternal on Redis failure.
+func TestRedisRegistry_Register_Error(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
+
+	// Close the connection to force an error
+	mr.Close()
+
+	worker := Worker{
+		ID:            "worker-1",
+		NodeID:        "node-1",
+		StartedAt:     time.Now(),
+		LastHeartbeat: time.Now(),
+		Status:        WorkerStatusActive,
+		Version:       "1.0.0",
+	}
+
+	err := rr.Register(ctx, worker)
+	if err == nil {
+		t.Fatal("expected error when Redis is unavailable")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("expected internal error, got kind: %v", apperrors.KindOf(err))
+	}
+
+	safeMsg := apperrors.SafeMessage(err)
+	if safeMsg != "failed to register worker" {
+		t.Errorf("expected safe message 'failed to register worker', got %q", safeMsg)
+	}
+}
+
+// TestRedisRegistry_Unregister_Error verifies Unregister returns apperrors.KindInternal on Redis failure.
+func TestRedisRegistry_Unregister_Error(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
+
+	// Close the connection to force an error
+	mr.Close()
+
+	err := rr.Unregister(ctx, "worker-1")
+	if err == nil {
+		t.Fatal("expected error when Redis is unavailable")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("expected internal error, got kind: %v", apperrors.KindOf(err))
+	}
+
+	safeMsg := apperrors.SafeMessage(err)
+	if safeMsg != "failed to unregister worker" {
+		t.Errorf("expected safe message 'failed to unregister worker', got %q", safeMsg)
+	}
+}
+
+// TestRedisRegistry_Heartbeat_Error verifies Heartbeat returns apperrors.KindInternal on Redis failure.
+// Note: Heartbeat first reads the worker data, so the error will be from the Get operation.
+func TestRedisRegistry_Heartbeat_Error(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
+
+	// Register a worker first
+	worker := Worker{
+		ID:            "worker-1",
+		NodeID:        "node-1",
+		StartedAt:     time.Now(),
+		LastHeartbeat: time.Now(),
+		Status:        WorkerStatusActive,
+		Version:       "1.0.0",
+	}
+	if err := rr.Register(ctx, worker); err != nil {
+		t.Fatalf("failed to register worker: %v", err)
+	}
+
+	// Close the connection to force an error
+	mr.Close()
+
+	err := rr.Heartbeat(ctx, "worker-1")
+	if err == nil {
+		t.Fatal("expected error when Redis is unavailable")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("expected internal error, got kind: %v", apperrors.KindOf(err))
+	}
+
+	// Heartbeat reads first, so the error will be from Get, not Set
+	safeMsg := apperrors.SafeMessage(err)
+	if safeMsg != "failed to get worker" {
+		t.Errorf("expected safe message 'failed to get worker', got %q", safeMsg)
+	}
+}
+
+// TestRedisRegistry_UpdateStatus_Error verifies UpdateStatus returns apperrors.KindInternal on Redis failure.
+// Note: UpdateStatus first reads the worker data, so the error will be from the Get operation.
+func TestRedisRegistry_UpdateStatus_Error(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
+
+	// Register a worker first
+	worker := Worker{
+		ID:            "worker-1",
+		NodeID:        "node-1",
+		StartedAt:     time.Now(),
+		LastHeartbeat: time.Now(),
+		Status:        WorkerStatusActive,
+		Version:       "1.0.0",
+	}
+	if err := rr.Register(ctx, worker); err != nil {
+		t.Fatalf("failed to register worker: %v", err)
+	}
+
+	// Close the connection to force an error
+	mr.Close()
+
+	err := rr.UpdateStatus(ctx, "worker-1", WorkerStatusStopped)
+	if err == nil {
+		t.Fatal("expected error when Redis is unavailable")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("expected internal error, got kind: %v", apperrors.KindOf(err))
+	}
+
+	// UpdateStatus reads first, so the error will be from Get, not Set
+	safeMsg := apperrors.SafeMessage(err)
+	if safeMsg != "failed to get worker" {
+		t.Errorf("expected safe message 'failed to get worker', got %q", safeMsg)
+	}
+}
