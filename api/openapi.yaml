@@ -3201,6 +3201,51 @@ components:
               type: boolean
             hasTouch:
               type: boolean
+        captchaConfig:
+          $ref: '#/components/schemas/CaptchaConfig'
+    CaptchaConfig:
+      type: object
+      description: Configuration for CAPTCHA detection and solving
+      properties:
+        enabled:
+          type: boolean
+          description: Enable CAPTCHA detection
+          default: false
+        autoSolve:
+          type: boolean
+          description: Automatically solve detected CAPTCHAs
+          default: false
+        service:
+          type: string
+          description: Solving service to use
+          enum: [2captcha, anticaptcha]
+        apiKey:
+          type: string
+          description: API key for the solving service (sensitive)
+        customEndpoint:
+          type: string
+          description: Optional custom service endpoint
+        maxRetries:
+          type: integer
+          description: Maximum solving attempts
+          default: 3
+        retryDelay:
+          type: integer
+          description: Delay between retries in seconds
+          default: 5
+        timeout:
+          type: integer
+          description: Maximum time to wait for solution in seconds
+          default: 120
+        pollingInterval:
+          type: integer
+          description: Poll interval for solution in seconds
+          default: 5
+        minConfidence:
+          type: number
+          format: float
+          description: Minimum detection confidence (0.0-1.0)
+          default: 0.7
     NetworkInterceptConfig:
       type: object
       description: Configuration for network request/response interception for API scraping

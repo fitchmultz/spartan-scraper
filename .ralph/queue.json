@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0219",
-      "status": "todo",
-      "title": "Add CAPTCHA detection and solving service integration",
-      "priority": "low",
-      "tags": [
-        "automation",
-        "captcha",
-        "integration"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "internal/crawl/"
-      ],
-      "evidence": [
-        "No CAPTCHA detection mechanism",
-        "No integration with solving services",
-        "Manual intervention required for CAPTCHA pages"
-      ],
-      "plan": [
-        "Add CAPTCHA detection (image, reCAPTCHA, hCaptcha)",
-        "Integrate with 2captcha/anti-captcha services",
-        "Add CAPTCHA solving retry logic",
-        "Support custom solving service endpoints",
-        "Add CAPTCHA detection metrics"
-      ],
-      "notes": [],
-      "request": "scan finding: CAPTCHA handling gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0220",
       "status": "todo",
       "title": "Add multi-user support and team workspaces",

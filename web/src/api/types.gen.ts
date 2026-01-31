@@ -1026,6 +1026,53 @@ export type RenderProfile = {
         isMobile?: boolean;
         hasTouch?: boolean;
     };
+    captchaConfig?: CaptchaConfig;
+};
+
+/**
+ * Configuration for CAPTCHA detection and solving
+ */
+export type CaptchaConfig = {
+    /**
+     * Enable CAPTCHA detection
+     */
+    enabled?: boolean;
+    /**
+     * Automatically solve detected CAPTCHAs
+     */
+    autoSolve?: boolean;
+    /**
+     * Solving service to use
+     */
+    service?: '2captcha' | 'anticaptcha';
+    /**
+     * API key for the solving service (sensitive)
+     */
+    apiKey?: string;
+    /**
+     * Optional custom service endpoint
+     */
+    customEndpoint?: string;
+    /**
+     * Maximum solving attempts
+     */
+    maxRetries?: number;
+    /**
+     * Delay between retries in seconds
+     */
+    retryDelay?: number;
+    /**
+     * Maximum time to wait for solution in seconds
+     */
+    timeout?: number;
+    /**
+     * Poll interval for solution in seconds
+     */
+    pollingInterval?: number;
+    /**
+     * Minimum detection confidence (0.0-1.0)
+     */
+    minConfidence?: number;
 };
 
 /**

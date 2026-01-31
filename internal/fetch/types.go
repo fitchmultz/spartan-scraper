@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/captcha"
 )
 
 type RenderEngine string
@@ -510,6 +512,9 @@ type RenderProfile struct {
 	Timeouts   RenderTimeoutPolicy `json:"timeouts,omitempty"`
 	Screenshot ScreenshotConfig    `json:"screenshot,omitempty"`
 	Device     *DeviceEmulation    `json:"device,omitempty"` // Device emulation for this profile
+
+	// CaptchaConfig defines CAPTCHA handling for this profile.
+	CaptchaConfig *captcha.CaptchaConfig `json:"captchaConfig,omitempty"`
 }
 
 type RenderProfilesFile struct {

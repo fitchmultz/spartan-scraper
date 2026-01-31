@@ -105,6 +105,12 @@ type CommonFlags struct {
 	Method      *string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
 	Body        *string // Request body (string or @file path)
 	ContentType *string // Content-Type header for request body
+
+	// CAPTCHA flags
+	CaptchaEnabled   *bool
+	CaptchaAutoSolve *bool
+	CaptchaService   *string
+	CaptchaAPIKey    *string
 }
 
 // BrowserFlags are used by schedule add.
@@ -198,6 +204,12 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		Method:      fs.String("method", "GET", "HTTP method (GET, POST, PUT, DELETE, PATCH)"),
 		Body:        fs.String("body", "", "Request body (string or @file to read from file)"),
 		ContentType: fs.String("content-type", "", "Content-Type header (auto-detected if not set)"),
+
+		// CAPTCHA flags
+		CaptchaEnabled:   fs.Bool("captcha-enabled", false, "Enable CAPTCHA detection"),
+		CaptchaAutoSolve: fs.Bool("captcha-auto-solve", false, "Automatically solve detected CAPTCHAs (requires --captcha-service and --captcha-api-key)"),
+		CaptchaService:   fs.String("captcha-service", "", "CAPTCHA solving service (2captcha|anticaptcha)"),
+		CaptchaAPIKey:    fs.String("captcha-api-key", "", "API key for CAPTCHA solving service"),
 	}
 
 	fs.Var(&cf.PreProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
