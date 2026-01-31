@@ -1,3 +1,23 @@
+// Package model provides tests for job sanitization and sensitive data redaction.
+//
+// Tests cover:
+// - Removal of ResultPath from sanitized jobs
+// - Redaction of sensitive parameter keys (password, apiKey, token, secret, etc.)
+// - Redaction of sensitive HTTP headers (Authorization, Cookie, etc.)
+// - Path redaction in error messages and parameters
+// - Nested parameter traversal and redaction
+// - Case-insensitive key matching for sensitive patterns
+// - Preservation of non-sensitive data
+// - JSON serialization of sanitized jobs
+//
+// Does NOT test:
+// - Status or Kind constants (see job_test.go)
+// - Crawl state handling (see state_test.go)
+// - Database persistence
+//
+// Assumes:
+// - Sensitive key patterns are defined in the sanitizer
+// - Original jobs are not modified by sanitization (copy-on-write)
 package model
 
 import (

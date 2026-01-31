@@ -1,3 +1,24 @@
+// Package webhook provides tests for webhook dispatch and delivery.
+//
+// Tests cover:
+// - Dispatcher configuration defaults and custom values
+// - Successful webhook dispatch with payload serialization
+// - HMAC-SHA256 signature generation and verification
+// - Retry logic with exponential backoff
+// - Timeout handling for slow endpoints
+// - Context cancellation propagation
+// - Event type filtering (ShouldSendEvent)
+// - HTTP header setting (Content-Type, User-Agent)
+//
+// Does NOT test:
+// - Delivery record persistence (see store_test.go)
+// - Actual network calls (uses httptest)
+// - Webhook endpoint reliability in production
+//
+// Assumes:
+// - HTTP endpoints follow standard request/response patterns
+// - Signatures use HMAC-SHA256 when secret is provided
+// - Retries use exponential backoff with configurable limits
 package webhook
 
 import (

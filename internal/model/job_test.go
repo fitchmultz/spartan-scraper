@@ -1,3 +1,19 @@
+// Package model provides tests for domain model behaviors and constants.
+//
+// Tests cover:
+// - Status state machine methods (IsTerminal, IsValid)
+// - Valid status enumeration
+// - Job kind constants
+// - Webhook configuration extraction from job parameters
+//
+// Does NOT test:
+// - Job sanitization (see job_sanitize_test.go)
+// - Crawl state serialization (see state_test.go)
+// - Database persistence
+//
+// Assumes:
+// - Status constants are defined in the model package
+// - Webhook config extraction follows documented parameter naming conventions
 package model
 
 import (

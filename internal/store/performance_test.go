@@ -1,3 +1,19 @@
+// Package store provides performance and index verification tests.
+//
+// Tests cover:
+// - Index usage verification for common query patterns
+// - Benchmarks for job listing operations (ListByStatus, ListOpts)
+// - Benchmarks for crawl state listing (ListCrawlStates)
+//
+// Does NOT test:
+// - Functional correctness of store operations (see other store_*_test.go files)
+// - Database migrations
+// - Error handling paths
+//
+// Assumes:
+// - SQLite is the underlying database
+// - EXPLAIN QUERY PLAN output format is stable
+// - Benchmarks run with sufficient data volume (10,000 rows)
 package store
 
 import (

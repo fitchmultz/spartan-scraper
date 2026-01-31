@@ -1,3 +1,23 @@
+// Package tui provides tests for the Terminal User Interface components.
+//
+// Tests cover:
+// - Job list pagination and navigation
+// - Job detail fetching and selection
+// - Job cancellation through the manager
+// - Vim-style keyboard navigation (j/k keys)
+// - Help modal toggle functionality
+// - Status badge rendering for all job statuses
+//
+// Does NOT test:
+// - Actual terminal rendering (bubbletea framework handles this)
+// - Store operations (tested in store package)
+// - Job manager internals (tested in jobs package)
+// - Keyboard input handling from real terminals
+//
+// Assumes:
+// - Store is available and populated with test data
+// - Job manager is initialized with appropriate configuration
+// - bubbletea framework handles the Update/View cycle correctly
 package tui
 
 import (

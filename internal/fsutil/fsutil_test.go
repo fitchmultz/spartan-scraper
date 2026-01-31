@@ -1,3 +1,21 @@
+// Package fsutil provides tests for secure filesystem utilities.
+//
+// Tests cover:
+// - Directory creation with secure permissions (EnsureDataDir, MkdirAllSecure)
+// - File creation with secure permissions (WriteFileSecure, CreateSecure)
+// - Permission enforcement on Unix systems
+// - Nested directory creation
+// - Existing file/directory handling
+//
+// Does NOT test:
+// - Windows permission semantics (skipped on Windows)
+// - Symbolic link handling
+// - File locking or concurrent access
+//
+// Assumes:
+// - DirMode and FileMode constants define secure permissions
+// - Unix permission model (tests skip on Windows)
+// - Parent directories exist or can be created
 package fsutil
 
 import (

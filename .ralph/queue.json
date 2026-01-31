@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0242",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in model/store/ui/fsutil/webhook tests",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "tests"
-      ],
-      "scope": [
-        "internal/model/",
-        "internal/store/performance_test.go",
-        "internal/ui/tui/tui_test.go",
-        "internal/fsutil/fsutil_test.go",
-        "internal/webhook/"
-      ],
-      "evidence": [
-        "internal/model/job_sanitize_test.go, job_test.go, state_test.go, internal/store/performance_test.go, internal/ui/tui/tui_test.go, internal/fsutil/fsutil_test.go, internal/webhook/dispatcher_test.go, and internal/webhook/store_test.go start with package lines and no top-of-file docstrings."
-      ],
-      "plan": [
-        "Add docstrings before package statements in the listed test files.",
-        "Ensure each docstring states responsibilities, non-goals, and assumptions.",
-        "Run gofmt and relevant package tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0243",
       "status": "todo",
       "title": "Add top-of-file docstrings in web tests and Vite config",

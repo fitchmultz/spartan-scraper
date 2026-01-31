@@ -1,3 +1,23 @@
+// Package webhook provides tests for webhook delivery record storage.
+//
+// Tests cover:
+// - Delivery record creation with validation
+// - Record retrieval and updates
+// - Listing with filtering by JobID
+// - Pagination (limit/offset)
+// - Record counting
+// - Persistence to JSON file (Load/Save)
+// - Copy-on-read behavior for stored records
+//
+// Does NOT test:
+// - Webhook dispatch logic (see dispatcher_test.go)
+// - Actual HTTP delivery
+// - Concurrent access patterns
+//
+// Assumes:
+// - Records are stored as JSON in the data directory
+// - Record IDs are unique and non-empty
+// - Required fields: ID, EventID, URL
 package webhook
 
 import (

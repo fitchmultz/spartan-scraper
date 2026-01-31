@@ -1,3 +1,19 @@
+// Package model provides tests for CrawlState serialization and field handling.
+//
+// Tests cover:
+// - JSON marshaling/unmarshaling of CrawlState
+// - Field type verification (URL, ETag, LastModified, ContentHash, LastScraped)
+// - Handling of fully populated, zero value, and partial state objects
+// - Time serialization in RFC3339 format
+//
+// Does NOT test:
+// - Job model behaviors (see job_test.go)
+// - Job sanitization (see job_sanitize_test.go)
+// - Database persistence of crawl states
+//
+// Assumes:
+// - CrawlState fields use json tags for proper serialization
+// - LastScraped is stored as RFC3339 formatted string in JSON
 package model
 
 import (
