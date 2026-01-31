@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0252",
-      "status": "todo",
-      "title": "Sync .env and .env.example to keep configuration aligned",
-      "priority": "medium",
-      "tags": [
-        "config",
-        "docs",
-        "consistency"
-      ],
-      "scope": [
-        ".env",
-        ".env.example"
-      ],
-      "evidence": [
-        "diff -u .env.example .env shows sections missing/shifted and PROXY_POOL_FILE mismatch"
-      ],
-      "plan": [
-        "Align keys, ordering, and defaults between .env and .env.example",
-        "Ensure no real secrets are present in committed env files",
-        "Update comments to match current behavior where needed"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0253",
       "status": "todo",
       "title": "Ignore root node_modules and clean stray directory",
