@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0235",
-      "status": "todo",
-      "title": "Split proxy_pool.go into smaller components",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "fetch",
-        "refactor"
-      ],
-      "scope": [
-        "internal/fetch/proxy_pool.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/proxy_pool.go reports 720 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Extract proxy pool configuration, health checks, and selection logic into separate files.",
-        "Preserve public types and behavior.",
-        "Update tests and run go test ./internal/fetch."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0236",
       "status": "todo",
       "title": "Split graphql/resolvers.go to meet size guidelines",
