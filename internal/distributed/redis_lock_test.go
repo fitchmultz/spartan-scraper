@@ -5,10 +5,13 @@ package distributed
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/redis/go-redis/v9"
 )
 
 // TestRedisLock_Acquire_InvalidTTL tests that Acquire rejects non-positive TTL values.
@@ -221,4 +224,150 @@ func TestGenerateToken_ErrorPath(t *testing.T) {
 	// Since crypto/rand.Read failure is extremely rare (only on systems with
 	// broken entropy sources), we verify the contract through code inspection
 	// and the fact that the code compiles correctly.
+}
+
+// setupTestRedis creates a miniredis instance and redis client for testing.
+func setupTestRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(),
+	})
+	return mr, client
+}
+
+// TestRedisRegistry_ListWorkers_MultipleBatches verifies SCAN iterates through multiple batches.
+func TestRedisRegistry_ListWorkers_MultipleBatches(t *testing.T) {
+	_, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
+	rr := (*registry).(*RedisRegistry)
+
+	// Register more workers than the batch size (100) to test multiple SCAN iterations
+	numWorkers := 250
+	for i := 0; i < numWorkers; i++ {
+		worker := Worker{
+			ID:            fmt.Sprintf("worker-%03d", i),
+			NodeID:        fmt.Sprintf("node-%d", i%10),
+			StartedAt:     time.Now(),
+			LastHeartbeat: time.Now(),
+			Status:        WorkerStatusActive,
+			Version:       "1.0.0",
+		}
+		if err := rr.Register(ctx, worker); err != nil {
+			t.Fatalf("failed to register worker %d: %v", i, err)
+		}
+	}
+
+	workers, err := rr.ListWorkers(ctx)
+	if err != nil {
+		t.Fatalf("ListWorkers failed: %v", err)
+	}
+
+	if len(workers) != numWorkers {
+		t.Errorf("expected %d workers, got %d", numWorkers, len(workers))
+	}
+}
+
+// TestRedisRegistry_ListWorkers_ContextCancellation verifies context cancellation is respected.
+func TestRedisRegistry_ListWorkers_ContextCancellation(t *testing.T) {
+	_, client := setupTestRedis(t)
+
+	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
+	rr := (*registry).(*RedisRegistry)
+
+	// Create a cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err := rr.ListWorkers(ctx)
+	if err == nil {
+		t.Fatal("expected error for cancelled context")
+	}
+
+	if !apperrors.IsKind(err, apperrors.KindInternal) {
+		t.Errorf("expected internal error, got kind: %v", apperrors.KindOf(err))
+	}
+}
+
+// TestRedisRegistry_ListWorkers_ExpiredWorkers verifies expired workers are skipped.
+func TestRedisRegistry_ListWorkers_ExpiredWorkers(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	// Use a very short TTL
+	registry := NewRedisRegistry(client, "test:worker:", 100*time.Millisecond)
+	rr := (*registry).(*RedisRegistry)
+
+	// Register a worker
+	worker := Worker{
+		ID:            "worker-1",
+		NodeID:        "node-1",
+		StartedAt:     time.Now(),
+		LastHeartbeat: time.Now(),
+		Status:        WorkerStatusActive,
+		Version:       "1.0.0",
+	}
+	if err := rr.Register(ctx, worker); err != nil {
+		t.Fatalf("failed to register worker: %v", err)
+	}
+
+	// Verify worker is listed
+	workers, err := rr.ListWorkers(ctx)
+	if err != nil {
+		t.Fatalf("ListWorkers failed: %v", err)
+	}
+	if len(workers) != 1 {
+		t.Errorf("expected 1 worker, got %d", len(workers))
+	}
+
+	// Fast-forward past TTL
+	mr.FastForward(200 * time.Millisecond)
+
+	// Worker should be expired now
+	workers, err = rr.ListWorkers(ctx)
+	if err != nil {
+		t.Fatalf("ListWorkers failed: %v", err)
+	}
+	if len(workers) != 0 {
+		t.Errorf("expected 0 workers after expiry, got %d", len(workers))
+	}
+}
+
+// TestRedisRegistry_ListWorkers_InvalidJSON verifies unmarshal errors are handled gracefully.
+func TestRedisRegistry_ListWorkers_InvalidJSON(t *testing.T) {
+	mr, client := setupTestRedis(t)
+	ctx := context.Background()
+
+	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
+	rr := (*registry).(*RedisRegistry)
+
+	// Register a valid worker
+	validWorker := Worker{
+		ID:            "worker-valid",
+		NodeID:        "node-1",
+		StartedAt:     time.Now(),
+		LastHeartbeat: time.Now(),
+		Status:        WorkerStatusActive,
+		Version:       "1.0.0",
+	}
+	if err := rr.Register(ctx, validWorker); err != nil {
+		t.Fatalf("failed to register valid worker: %v", err)
+	}
+
+	// Manually insert invalid JSON
+	mr.Set("test:worker:worker-invalid", "not-valid-json")
+
+	// List should return only the valid worker, skipping invalid ones
+	workers, err := rr.ListWorkers(ctx)
+	if err != nil {
+		t.Fatalf("ListWorkers failed: %v", err)
+	}
+	if len(workers) != 1 {
+		t.Errorf("expected 1 valid worker, got %d", len(workers))
+	}
+	if workers[0].ID != "worker-valid" {
+		t.Errorf("expected worker-valid, got %s", workers[0].ID)
+	}
 }

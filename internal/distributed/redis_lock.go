@@ -224,28 +224,44 @@ func (rr *RedisRegistry) Unregister(ctx context.Context, workerID string) error 
 }
 
 // ListWorkers returns all currently registered workers.
+// Uses SCAN instead of KEYS to avoid blocking the Redis server.
 func (rr *RedisRegistry) ListWorkers(ctx context.Context) ([]Worker, error) {
 	pattern := rr.keyPrefix + "*"
-	keys, err := rr.client.Keys(ctx, pattern).Result()
-	if err != nil {
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to list workers", err)
-	}
+	var cursor uint64
+	var workers []Worker
 
-	workers := make([]Worker, 0, len(keys))
-	for _, key := range keys {
-		data, err := rr.client.Get(ctx, key).Result()
+	for {
+		// Check for context cancellation before each batch
+		if err := ctx.Err(); err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "context cancelled while listing workers", err)
+		}
+
+		// Scan in batches of 100 to avoid blocking
+		keys, nextCursor, err := rr.client.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
-			// Worker may have expired between KEYS and GET
-			continue
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to list workers", err)
 		}
 
-		var worker Worker
-		if err := json.Unmarshal([]byte(data), &worker); err != nil {
-			slog.Warn("failed to unmarshal worker data", "key", key, "error", err)
-			continue
+		for _, key := range keys {
+			data, err := rr.client.Get(ctx, key).Result()
+			if err != nil {
+				// Worker may have expired between SCAN and GET
+				continue
+			}
+
+			var worker Worker
+			if err := json.Unmarshal([]byte(data), &worker); err != nil {
+				slog.Warn("failed to unmarshal worker data", "key", key, "error", err)
+				continue
+			}
+
+			workers = append(workers, worker)
 		}
 
-		workers = append(workers, worker)
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
 
 	return workers, nil

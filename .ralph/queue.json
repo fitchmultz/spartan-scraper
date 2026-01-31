@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0246",
-      "status": "todo",
-      "title": "Replace RedisRegistry ListWorkers KEYS usage with SCAN to avoid blocking",
-      "priority": "high",
-      "tags": [
-        "distributed",
-        "redis",
-        "performance"
-      ],
-      "scope": [
-        "internal/distributed/redis_lock.go",
-        "internal/distributed"
-      ],
-      "evidence": [
-        "internal/distributed/redis_lock.go:213-217 uses rr.client.Keys(ctx, pattern)"
-      ],
-      "plan": [
-        "Replace KEYS with SCAN iteration and a reasonable COUNT batch size",
-        "Preserve current behavior for expired workers and error handling",
-        "Add tests covering multiple scan batches and context cancellation"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0247",
       "status": "todo",
       "title": "Fix NewRedisRegistry return type (avoid pointer-to-interface)",
