@@ -26,6 +26,7 @@ type Server struct {
 	webhookDispatcher  *webhook.Dispatcher
 	analyticsCollector *analytics.Collector
 	analyticsService   *analytics.Service
+	graphqlHandler     *GraphQLHandler
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
@@ -73,6 +74,14 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	metricsAdapter := &metricsCollectorAdapter{collector: s.metricsCollector}
 	s.analyticsCollector = analytics.NewCollector(store, metricsAdapter)
 	s.analyticsCollector.Start()
+
+	// Initialize GraphQL handler
+	graphqlHandler, err := NewGraphQLHandler(s)
+	if err != nil {
+		slog.Warn("failed to initialize GraphQL handler", "error", err)
+	} else {
+		s.graphqlHandler = graphqlHandler
+	}
 
 	return s
 }
@@ -202,6 +211,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/analytics/hosts", s.handleAnalyticsHosts)
 	mux.HandleFunc("/v1/analytics/trends", s.handleAnalyticsTrends)
 	mux.HandleFunc("/v1/analytics/dashboard", s.handleAnalyticsDashboard)
+	mux.HandleFunc("/graphql", s.handleGraphQL)
+	mux.HandleFunc("/graphql/playground", s.handleGraphQLPlayground)
 
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

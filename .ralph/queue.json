@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0215",
-      "status": "todo",
-      "title": "Add GraphQL API endpoint for flexible queries",
-      "priority": "low",
-      "tags": [
-        "api",
-        "graphql",
-        "feature"
-      ],
-      "scope": [
-        "internal/api/",
-        "api/"
-      ],
-      "evidence": [
-        "Only REST API available",
-        "No flexible querying for job results",
-        "Over-fetching/under-fetching common with REST"
-      ],
-      "plan": [
-        "Add GraphQL schema for jobs and results",
-        "Implement query resolvers with pagination",
-        "Add mutation support for job creation",
-        "Support GraphQL subscriptions for real-time updates",
-        "Add GraphQL playground in web UI"
-      ],
-      "notes": [],
-      "request": "scan finding: GraphQL API gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0216",
       "status": "todo",
       "title": "Implement extraction template A/B testing framework",
