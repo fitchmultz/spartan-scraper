@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0233",
-      "status": "todo",
-      "title": "Split exporter/cloud_test.go for maintainability",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "exporter",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/exporter/cloud_test.go",
-        "internal/exporter/"
-      ],
-      "evidence": [
-        "wc -l internal/exporter/cloud_test.go reports 736 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Split cloud exporter tests by provider/behavior.",
-        "Extract shared setup into helper functions.",
-        "Ensure tests remain deterministic and complete.",
-        "Run go test ./internal/exporter."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0234",
       "status": "todo",
       "title": "Split form_detect.go into smaller files",
