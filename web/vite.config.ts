@@ -1,3 +1,9 @@
+/**
+ * Vite configuration for the Spartan web frontend.
+ *
+ * Configures React plugin, Vitest test environment with jsdom,
+ * and development server proxy for API endpoints.
+ */
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 

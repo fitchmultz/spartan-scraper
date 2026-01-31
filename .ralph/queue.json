@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0243",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in web tests and Vite config",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "web"
-      ],
-      "scope": [
-        "web/src/auth-parsers.test.ts",
-        "web/src/lib/api-config.test.ts",
-        "web/src/test/setup.ts",
-        "web/vite.config.ts"
-      ],
-      "evidence": [
-        "web/src/auth-parsers.test.ts, web/src/lib/api-config.test.ts, web/src/test/setup.ts, and web/vite.config.ts start with import statements and have no top-of-file docstrings."
-      ],
-      "plan": [
-        "Add file-level docstrings describing responsibilities, non-goals, and assumptions.",
-        "Run biome format/lint and web tests as needed."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0217",
       "status": "todo",
       "title": "Add request/response inspection and traffic replay",

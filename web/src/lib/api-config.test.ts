@@ -1,3 +1,9 @@
+/**
+ * Tests for API URL configuration utilities.
+ *
+ * Tests base URL resolution, path construction, and URL building
+ * for API requests with various base URL configurations.
+ */
 import { describe, it, expect } from "vitest";
 import { buildApiUrl, buildApiUrlWithBase, getApiBaseUrl } from "./api-config";
 

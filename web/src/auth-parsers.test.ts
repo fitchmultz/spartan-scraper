@@ -1,3 +1,9 @@
+/**
+ * Tests for authentication parsing utilities.
+ *
+ * Tests cookie parsing, query parameter parsing, and auth payload building
+ * for scrape, crawl, and research request forms.
+ */
 import { describe, it, expect } from "vitest";
 import { parseCookies, parseQueryParams, buildAuth } from "./lib/form-utils";
 
