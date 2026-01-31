@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0226",
-      "status": "todo",
-      "title": "Split chromedp_fetcher.go to stay under size limits",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "fetch",
-        "refactor"
-      ],
-      "scope": [
-        "internal/fetch/chromedp_fetcher.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/chromedp_fetcher.go reports 1219 LOC (>1000 file-size limit)."
-      ],
-      "plan": [
-        "Group chromedp fetcher logic into smaller files (setup, navigation, interception, utils).",
-        "Extract helpers while keeping package API unchanged.",
-        "Update tests/imports as needed.",
-        "Run gofmt and fetch package tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0227",
       "status": "todo",
       "title": "Break up retry_test.go into focused test files",
