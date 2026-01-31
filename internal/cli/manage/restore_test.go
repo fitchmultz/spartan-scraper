@@ -157,14 +157,45 @@ func TestContainsPathTraversal(t *testing.T) {
 		path     string
 		expected bool
 	}{
+		// Normal files (should be allowed)
 		{"jobs.db", false},
 		{"auth_vault.json", false},
 		{"jobs/test.json", false},
-		{"../etc/passwd", true},
-		{"foo/../bar", true},
-		{"/absolute/path", true},
-		{"\\windows\\path", true},
+		{"subdir/nested/file.txt", false},
 		{"normal-file.txt", false},
+		{"./jobs.db", false},       // Explicit current dir (harmless)
+		{"foo/./bar", false},       // Current dir in middle
+		{".hiddenfile", false},     // Hidden file
+		{"dir/.hiddenfile", false}, // Hidden file in directory
+
+		// Path traversal attacks (should be blocked)
+		{"../etc/passwd", true},               // Unix traversal
+		{"..\\Windows\\System32", true},       // Windows traversal (TAR uses /, but check both)
+		{"foo/../bar", true},                  // Mid-path traversal
+		{"foo/bar/../../../etc/passwd", true}, // Nested traversal
+		{"../jobs.db", true},                  // Simple parent reference
+		{"a/b/c/../../../../d", true},         // Deep traversal
+
+		// Absolute paths (should be blocked)
+		{"/absolute/path", true},        // Unix absolute
+		{"/etc/passwd", true},           // Unix absolute system file
+		{"/", true},                     // Root directory
+		{"\\windows\\path", true},       // Windows backslash absolute
+		{"C:\\Windows\\System32", true}, // Windows drive letter
+		{"\\\\server\\share", true},     // UNC path (Windows network)
+
+		// Edge cases with traversal
+		{"foo//../bar", true},    // Double slashes with traversal
+		{"/../etc/passwd", true}, // Absolute with traversal
+		{"../", true},            // Trailing slash after traversal
+		{"..", true},             // Just parent reference
+		{"foo/..", true},         // Parent at end
+		{"foo/bar/..", true},     // Parent at end of nested path
+		{".../file", false},      // Triple dot (not traversal)
+		{"file...txt", false},    // Triple dot in filename
+		{"..file", false},        // Double dot prefix
+		{"file..", false},        // Double dot suffix
+		{"file..txt", false},     // Double dot in middle
 	}
 
 	for _, tt := range tests {
@@ -265,4 +296,92 @@ func createTestBackupWithTraversal(archivePath string) error {
 	}
 
 	return nil
+}
+
+// TestRestoreFromArchivePathTraversal tests that secondary validation in
+// restoreFromArchive blocks path traversal attempts even if validateBackup
+// were bypassed or the archive is modified between validation and extraction.
+func TestRestoreFromArchivePathTraversal(t *testing.T) {
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+
+	// Test case 1: Direct path traversal attempt
+	t.Run("DirectTraversalBlocked", func(t *testing.T) {
+		backupPath := filepath.Join(tempDir, "traversal-backup.tar.gz")
+		if err := createTestBackupWithContent(backupPath, map[string]string{
+			"jobs.db":       "valid content",
+			"../etc/passwd": "malicious content",
+		}); err != nil {
+			t.Fatalf("failed to create test backup: %v", err)
+		}
+
+		err := restoreFromArchive(backupPath, dataDir, false)
+		if err == nil {
+			t.Error("restoreFromArchive should fail for archive with path traversal")
+		}
+	})
+
+	// Test case 2: Mid-path traversal attempt
+	t.Run("MidPathTraversalBlocked", func(t *testing.T) {
+		backupPath := filepath.Join(tempDir, "mid-traversal-backup.tar.gz")
+		if err := createTestBackupWithContent(backupPath, map[string]string{
+			"jobs.db":              "valid content",
+			"foo/../../etc/shadow": "malicious content",
+		}); err != nil {
+			t.Fatalf("failed to create test backup: %v", err)
+		}
+
+		err := restoreFromArchive(backupPath, dataDir, false)
+		if err == nil {
+			t.Error("restoreFromArchive should fail for archive with mid-path traversal")
+		}
+	})
+
+	// Test case 3: Absolute path attempt
+	t.Run("AbsolutePathBlocked", func(t *testing.T) {
+		backupPath := filepath.Join(tempDir, "absolute-backup.tar.gz")
+		if err := createTestBackupWithContent(backupPath, map[string]string{
+			"jobs.db":     "valid content",
+			"/etc/passwd": "malicious content",
+		}); err != nil {
+			t.Fatalf("failed to create test backup: %v", err)
+		}
+
+		err := restoreFromArchive(backupPath, dataDir, false)
+		if err == nil {
+			t.Error("restoreFromArchive should fail for archive with absolute path")
+		}
+	})
+
+	// Test case 4: Valid files should restore successfully
+	t.Run("ValidFilesRestored", func(t *testing.T) {
+		backupPath := filepath.Join(tempDir, "valid-backup.tar.gz")
+		testFiles := map[string]string{
+			"jobs.db":                "test database content",
+			"auth_vault.json":        `{"profiles": {}}`,
+			"subdir/nested/file.txt": "nested content",
+		}
+
+		if err := createTestBackupWithContent(backupPath, testFiles); err != nil {
+			t.Fatalf("failed to create test backup: %v", err)
+		}
+
+		dataDir := filepath.Join(tempDir, "valid-data")
+		if err := restoreFromArchive(backupPath, dataDir, false); err != nil {
+			t.Fatalf("restoreFromArchive failed: %v", err)
+		}
+
+		// Verify files were restored
+		for name, expectedContent := range testFiles {
+			path := filepath.Join(dataDir, name)
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Errorf("restored file %s not found: %v", name, err)
+				continue
+			}
+			if string(content) != expectedContent {
+				t.Errorf("restored file %s content mismatch: got %q, want %q", name, string(content), expectedContent)
+			}
+		}
+	})
 }

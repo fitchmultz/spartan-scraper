@@ -135,15 +135,29 @@ func validateBackup(archivePath string) error {
 }
 
 func containsPathTraversal(path string) bool {
-	// Check for path traversal attempts
-	parts := strings.Split(path, string(os.PathSeparator))
+	// Check for path traversal attempts.
+	// TAR format always uses '/' as path separator per POSIX standard,
+	// so we primarily split on '/' to detect traversal consistently.
+	parts := strings.Split(path, "/")
 	for _, part := range parts {
 		if part == ".." {
 			return true
 		}
 	}
-	// Also check for absolute paths
-	return strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\")
+
+	// Also check for '..' in backslash-separated paths (defense in depth).
+	// While TAR uses '/', we also check for Windows-style paths to handle
+	// any edge cases or malicious archives that might use backslashes.
+	parts = strings.Split(path, "\\")
+	for _, part := range parts {
+		if part == ".." {
+			return true
+		}
+	}
+
+	// Check for absolute paths (Unix '/path' and Windows '\\server\share' or 'C:\path').
+	// Note: We check for ':' to catch Windows drive letters like "C:".
+	return strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") || strings.Contains(path, ":")
 }
 
 func isDataDirInUse(dataDir string) bool {
@@ -221,6 +235,12 @@ func restoreFromArchive(archivePath, dataDir string, dryRun bool) error {
 
 	tarReader2 := tar.NewReader(gzReader2)
 
+	// Pre-compute absolute dataDir path for containment checks
+	absDataDir, err := filepath.Abs(dataDir)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to resolve data directory", err)
+	}
+
 	restoredCount := 0
 	for {
 		header, err := tarReader2.Next()
@@ -231,7 +251,27 @@ func restoreFromArchive(archivePath, dataDir string, dryRun bool) error {
 			return apperrors.Wrap(apperrors.KindValidation, "corrupted archive", err)
 		}
 
+		// Re-validate path traversal before extraction (defense in depth).
+		// This catches any bypass attempts that might have slipped past validateBackup.
+		if containsPathTraversal(header.Name) {
+			return apperrors.Validation(fmt.Sprintf("suspicious path in archive: %s", header.Name))
+		}
+
 		targetPath := filepath.Join(dataDir, header.Name)
+
+		// Verify the resolved path stays within dataDir (prevents symlink attacks
+		// and path normalization issues like 'foo/bar/../../../etc/passwd').
+		absTargetPath, err := filepath.Abs(targetPath)
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, fmt.Sprintf("failed to resolve target path for %s", header.Name), err)
+		}
+		relPath, err := filepath.Rel(absDataDir, absTargetPath)
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, fmt.Sprintf("failed to compute relative path for %s", header.Name), err)
+		}
+		if strings.HasPrefix(relPath, "..") {
+			return apperrors.Validation(fmt.Sprintf("path escapes data directory: %s", header.Name))
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:

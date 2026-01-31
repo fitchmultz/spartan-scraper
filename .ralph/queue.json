@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0259",
-      "status": "todo",
-      "title": "Harden restore archive path traversal checks",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "security",
-        "restore",
-        "cli"
-      ],
-      "scope": [
-        "internal/cli/manage/restore.go",
-        "internal/cli/manage/restore_test.go",
-        "go test ./internal/cli/manage -run Restore"
-      ],
-      "evidence": [
-        "path: internal/cli/manage/restore.go :: containsPathTraversal :: uses os.PathSeparator to split; tar headers use '/' so '../' can bypass on Windows",
-        "path: internal/cli/manage/restore.go :: validateBackup :: relies on containsPathTraversal as the only traversal gate"
-      ],
-      "plan": [
-        "Update traversal detection to use a platform-agnostic check (e.g., path.Clean on '/'-separated tar names) and reject absolute or .. paths",
-        "Re-validate or sanitize header.Name during extraction so restoreFromArchive cannot bypass validation",
-        "Add tests for '../', '..\\', and absolute path entries to ensure validation fails",
-        "Verify by running `go test ./internal/cli/manage -run Restore` and confirming traversal cases are rejected"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T23:22:20Z",
-      "updated_at": "2026-01-31T23:22:20Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0260",
       "status": "todo",
       "title": "Fix GraphQL createJob to set ResultPath and validate inputs",
