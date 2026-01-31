@@ -1,4 +1,471 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0244",
+      "status": "todo",
+      "title": "Validate distributed lock and leader-election TTLs to avoid non-expiring keys",
+      "priority": "high",
+      "tags": [
+        "distributed",
+        "redis",
+        "correctness",
+        "safety"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock.go",
+        "internal/distributed/lock.go",
+        "go test ./internal/distributed/..."
+      ],
+      "evidence": [
+        "internal/distributed/redis_lock.go:37-47 uses ttl directly in SetNX without validation",
+        "internal/distributed/redis_lock.go:277-283 uses ttl directly in SetNX for leader election"
+      ],
+      "plan": [
+        "Add ttl > 0 validation for RedisLock.Acquire/Renew and RedisLeaderElection.Elect/RenewLeadership using apperrors.Validation",
+        "Update or add tests that cover ttl <= 0 behavior and ensure errors are classified correctly",
+        "Confirm call sites pass explicit TTL values and update any docs/usage notes"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0245",
+      "status": "todo",
+      "title": "Handle crypto/rand.Read failures when generating Redis lock tokens",
+      "priority": "high",
+      "tags": [
+        "distributed",
+        "security",
+        "correctness"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock.go",
+        "internal/distributed"
+      ],
+      "evidence": [
+        "internal/distributed/redis_lock.go:111-115 calls rand.Read(b) without checking error"
+      ],
+      "plan": [
+        "Change generateToken to return (string, error) and handle rand.Read failure",
+        "Propagate failures from RedisLock.Acquire with apperrors.Internal and add tests for the error path",
+        "Ensure token generation failure does not attempt to acquire a lock"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0246",
+      "status": "todo",
+      "title": "Replace RedisRegistry ListWorkers KEYS usage with SCAN to avoid blocking",
+      "priority": "high",
+      "tags": [
+        "distributed",
+        "redis",
+        "performance"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock.go",
+        "internal/distributed"
+      ],
+      "evidence": [
+        "internal/distributed/redis_lock.go:213-217 uses rr.client.Keys(ctx, pattern)"
+      ],
+      "plan": [
+        "Replace KEYS with SCAN iteration and a reasonable COUNT batch size",
+        "Preserve current behavior for expired workers and error handling",
+        "Add tests covering multiple scan batches and context cancellation"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0247",
+      "status": "todo",
+      "title": "Fix NewRedisRegistry return type (avoid pointer-to-interface)",
+      "priority": "medium",
+      "tags": [
+        "distributed",
+        "api",
+        "correctness"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock.go",
+        "internal/distributed/lock.go"
+      ],
+      "evidence": [
+        "internal/distributed/redis_lock.go:125-139 returns *Registry (pointer to interface)"
+      ],
+      "plan": [
+        "Change NewRedisRegistry to return Registry (or *RedisRegistry) instead of *Registry",
+        "Update any call sites and compile-time interface assertions",
+        "Add/adjust tests to exercise the constructor path"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0248",
+      "status": "todo",
+      "title": "Wrap RedisRegistry Register/Unregister errors with apperrors",
+      "priority": "medium",
+      "tags": [
+        "distributed",
+        "error-handling"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock.go",
+        "internal/apperrors"
+      ],
+      "evidence": [
+        "internal/distributed/redis_lock.go:142-151 returns rr.client.Set(...).Err() without apperrors wrapping",
+        "internal/distributed/redis_lock.go:207-210 returns rr.client.Del(...).Err() without apperrors wrapping"
+      ],
+      "plan": [
+        "Wrap Redis client errors with apperrors.Wrap(KindInternal, ...) and safe messages",
+        "Add tests asserting error kind classification and safe messages",
+        "Verify logging uses apperrors.SafeMessage where relevant"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0249",
+      "status": "todo",
+      "title": "Standardize HTTPFetcher errors on apperrors for consistency",
+      "priority": "medium",
+      "tags": [
+        "fetch",
+        "error-handling",
+        "consistency"
+      ],
+      "scope": [
+        "internal/fetch/http_fetcher.go",
+        "internal/fetch/http_fetcher_*_test.go"
+      ],
+      "evidence": [
+        "internal/fetch/http_fetcher.go:58-75 returns errors.New/ fmt.Errorf instead of apperrors",
+        "internal/fetch/http_fetcher.go:115-130 returns fmt.Errorf for proxy errors",
+        "internal/fetch/http_fetcher.go:366-367 returns errors.New(\"max retries exceeded\")"
+      ],
+      "plan": [
+        "Replace errors.New/fmt.Errorf with apperrors.Validation/Internal and safe messages",
+        "Update tests to assert on apperrors kinds and safe messages instead of raw strings",
+        "Review other HTTPFetcher error paths (size limit, session lookup) for consistency"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0250",
+      "status": "todo",
+      "title": "Add test coverage for internal/distributed package",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "distributed"
+      ],
+      "scope": [
+        "internal/distributed",
+        "go test ./internal/distributed/..."
+      ],
+      "evidence": [
+        "No *_test.go files in internal/distributed (directory scan output)"
+      ],
+      "plan": [
+        "Create tests for RedisLock Acquire/Release/Renew including token mismatch and ttl validation",
+        "Add tests for RedisRegistry register/heartbeat/status/list paths",
+        "Add tests for RedisLeaderElection elect/renew/resign/leader queries"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0251",
+      "status": "todo",
+      "title": "Add test coverage for internal/analytics package",
+      "priority": "medium",
+      "tags": [
+        "tests",
+        "analytics"
+      ],
+      "scope": [
+        "internal/analytics",
+        "go test ./internal/analytics/..."
+      ],
+      "evidence": [
+        "No *_test.go files in internal/analytics (directory scan output)"
+      ],
+      "plan": [
+        "Add store-backed tests for Service.GetDashboardData and GetMetrics",
+        "Cover period handling for 24h/7d/30d/90d and default fallback",
+        "Add error-path tests for store failures and invalid inputs"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0252",
+      "status": "todo",
+      "title": "Sync .env and .env.example to keep configuration aligned",
+      "priority": "medium",
+      "tags": [
+        "config",
+        "docs",
+        "consistency"
+      ],
+      "scope": [
+        ".env",
+        ".env.example"
+      ],
+      "evidence": [
+        "diff -u .env.example .env shows sections missing/shifted and PROXY_POOL_FILE mismatch"
+      ],
+      "plan": [
+        "Align keys, ordering, and defaults between .env and .env.example",
+        "Ensure no real secrets are present in committed env files",
+        "Update comments to match current behavior where needed"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0253",
+      "status": "todo",
+      "title": "Ignore root node_modules and clean stray directory",
+      "priority": "medium",
+      "tags": [
+        "repo-hygiene",
+        "build"
+      ],
+      "scope": [
+        ".gitignore",
+        "node_modules/"
+      ],
+      "evidence": [
+        "Root node_modules exists (ls -d node_modules) while .gitignore only ignores /web/node_modules"
+      ],
+      "plan": [
+        "Add /node_modules/ to .gitignore",
+        "Remove the accidental root node_modules directory from the repo workspace",
+        "Verify make clean covers root node_modules or adjust if needed"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0254",
+      "status": "todo",
+      "title": "Move module docstrings above package lines in listed Go files",
+      "priority": "low",
+      "tags": [
+        "docs",
+        "go",
+        "consistency"
+      ],
+      "scope": [
+        "internal/jobs/job_run.go",
+        "internal/jobs/job_create.go",
+        "internal/jobs/helpers.go",
+        "internal/cli/manage/pipeline_js_mgmt.go",
+        "internal/cli/manage/render_profiles.go"
+      ],
+      "evidence": [
+        "Go file scan shows first non-empty line is package for: internal/jobs/job_run.go, internal/jobs/job_create.go, internal/jobs/helpers.go, internal/cli/manage/pipeline_js_mgmt.go, internal/cli/manage/render_profiles.go"
+      ],
+      "plan": [
+        "Move existing module doc comments above the package declaration",
+        "Verify docstrings still cover responsibilities, non-goals, and invariants",
+        "Run gofmt on touched files"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0255",
+      "status": "todo",
+      "title": "Split internal/fetch/limiter_test.go into smaller cohesive test files",
+      "priority": "low",
+      "tags": [
+        "tests",
+        "fetch",
+        "refactor"
+      ],
+      "scope": [
+        "internal/fetch/limiter_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/limiter_test.go reports 1712 lines (>1000 limit)"
+      ],
+      "plan": [
+        "Split limiter tests into multiple files grouped by feature (rate limits, adaptive, retries)",
+        "Extract shared helpers into a _test.go helper file",
+        "Ensure go test ./internal/fetch/... passes after refactor"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0256",
+      "status": "todo",
+      "title": "Split internal/api/traffic_replay_test.go into smaller files",
+      "priority": "low",
+      "tags": [
+        "tests",
+        "api",
+        "refactor"
+      ],
+      "scope": [
+        "internal/api/traffic_replay_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/api/traffic_replay_test.go reports 1142 lines (>1000 limit)"
+      ],
+      "plan": [
+        "Break tests into focused files by scenario (validation, replay logic, edge cases)",
+        "Centralize shared fixtures/helpers",
+        "Re-run API tests to ensure coverage is unchanged"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0257",
+      "status": "todo",
+      "title": "Split internal/users/user_service_test.go into smaller files",
+      "priority": "low",
+      "tags": [
+        "tests",
+        "users",
+        "refactor"
+      ],
+      "scope": [
+        "internal/users/user_service_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/users/user_service_test.go reports 1036 lines (>1000 limit)"
+      ],
+      "plan": [
+        "Group tests by service method into separate files",
+        "Extract shared setup into helper functions",
+        "Confirm user service tests still cover success and failure paths"
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0258",
+      "status": "todo",
+      "title": "Refactor internal/fetch/types.go to stay under size guidelines",
+      "priority": "low",
+      "tags": [
+        "fetch",
+        "refactor",
+        "maintainability"
+      ],
+      "scope": [
+        "internal/fetch/types.go"
+      ],
+      "evidence": [
+        "wc -l internal/fetch/types.go reports 705 lines (>700 heuristic)"
+      ],
+      "plan": [
+        "Split types into cohesive files (auth, proxy, network intercept, results)",
+        "Keep package API stable and update references",
+        "Run gofmt and go test ./internal/fetch/..."
+      ],
+      "notes": [],
+      "request": "scan finding",
+      "created_at": "2026-01-31T18:20:02Z",
+      "updated_at": "2026-01-31T18:20:02Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    }
+  ]
 }
