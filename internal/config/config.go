@@ -127,6 +127,18 @@ type Config struct {
 	RetryMaxDelaySecs    int    // RETRY_MAX_DELAY_SECONDS env var (default: 60)
 	RetryBackoffStrategy string // RETRY_BACKOFF_STRATEGY env var (default: "exponential_jitter")
 	RetryStatusCodes     string // RETRY_STATUS_CODES env var (default: "429,500,502,503,504")
+
+	// Queue backend configuration
+	QueueBackend string // QUEUE_BACKEND env var (default: "memory", options: "memory", "redis")
+
+	// Redis configuration (used when QueueBackend="redis")
+	RedisAddr      string // REDIS_ADDR env var (default: "localhost:6379")
+	RedisPassword  string // REDIS_PASSWORD env var
+	RedisDB        int    // REDIS_DB env var (default: 0)
+	RedisKeyPrefix string // REDIS_KEY_PREFIX env var (default: "spartan:")
+
+	// Distributed state configuration
+	CrawlStateBackend string // CRAWL_STATE_BACKEND env var (default: "sqlite", options: "sqlite", "redis")
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -220,6 +232,16 @@ func Load() (Config, error) {
 		RetryMaxDelaySecs:    getenvInt("RETRY_MAX_DELAY_SECONDS", 60),
 		RetryBackoffStrategy: getenv("RETRY_BACKOFF_STRATEGY", "exponential_jitter"),
 		RetryStatusCodes:     getenv("RETRY_STATUS_CODES", "429,500,502,503,504"),
+
+		// Queue backend configuration
+		QueueBackend:   getenv("QUEUE_BACKEND", "memory"),
+		RedisAddr:      getenv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:  getenv("REDIS_PASSWORD", ""),
+		RedisDB:        getenvInt("REDIS_DB", 0),
+		RedisKeyPrefix: getenv("REDIS_KEY_PREFIX", "spartan:"),
+
+		// Distributed state configuration
+		CrawlStateBackend: getenv("CRAWL_STATE_BACKEND", "sqlite"),
 	}
 
 	if err := validateDataDir(cfg.DataDir); err != nil {
@@ -230,6 +252,7 @@ func Load() (Config, error) {
 	cfg = validateAndFixRetentionConfig(cfg)
 	cfg = validateAndFixCircuitBreakerConfig(cfg)
 	cfg = validateAndFixRetryConfig(cfg)
+	cfg = validateAndFixQueueConfig(cfg)
 
 	return cfg, nil
 }
@@ -377,6 +400,40 @@ func validateAndFixRetryConfig(cfg Config) Config {
 	// Normalize to canonical form
 	if strategyLower == "exponential-jitter" || strategyLower == "exponentialjitter" {
 		cfg.RetryBackoffStrategy = "exponential_jitter"
+	}
+
+	return cfg
+}
+
+// validateAndFixQueueConfig ensures queue backend configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixQueueConfig(cfg Config) Config {
+	// Validate queue backend
+	validBackends := map[string]bool{
+		"memory": true,
+		"redis":  true,
+	}
+	if !validBackends[cfg.QueueBackend] {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid QUEUE_BACKEND: %q, using default 'memory'\n", cfg.QueueBackend)
+		cfg.QueueBackend = "memory"
+	}
+
+	// Validate crawl state backend
+	validStateBackends := map[string]bool{
+		"sqlite": true,
+		"redis":  true,
+	}
+	if !validStateBackends[cfg.CrawlStateBackend] {
+		fmt.Fprintf(os.Stderr, "[WARN] Invalid CRAWL_STATE_BACKEND: %q, using default 'sqlite'\n", cfg.CrawlStateBackend)
+		cfg.CrawlStateBackend = "sqlite"
+	}
+
+	// If queue backend is redis but crawl state is not explicitly set, use redis for state too
+	if cfg.QueueBackend == "redis" && cfg.CrawlStateBackend == "sqlite" {
+		// Check if CRAWL_STATE_BACKEND was explicitly set
+		if os.Getenv("CRAWL_STATE_BACKEND") == "" {
+			cfg.CrawlStateBackend = "redis"
+		}
 	}
 
 	return cfg
