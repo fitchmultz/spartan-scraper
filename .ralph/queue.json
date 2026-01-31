@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0230",
-      "status": "todo",
-      "title": "Split proxy_pool_test.go into smaller test files",
-      "priority": "medium",
-      "tags": [
-        "tests",
-        "fetch",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/fetch/proxy_pool_test.go",
-        "internal/fetch/"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/proxy_pool_test.go reports 919 LOC (>700 file-size limit)."
-      ],
-      "plan": [
-        "Split proxy pool tests by behavior (selection, health checks, metrics, edge cases).",
-        "Create shared fixtures/utilities for repeated setup.",
-        "Preserve coverage and update imports.",
-        "Run go test ./internal/fetch."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0231",
       "status": "todo",
       "title": "Split http_fetcher_test.go into scenario-focused files",
