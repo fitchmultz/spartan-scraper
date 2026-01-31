@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0256",
-      "status": "todo",
-      "title": "Split internal/api/traffic_replay_test.go into smaller files",
-      "priority": "low",
-      "tags": [
-        "tests",
-        "api",
-        "refactor"
-      ],
-      "scope": [
-        "internal/api/traffic_replay_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/api/traffic_replay_test.go reports 1142 lines (>1000 limit)"
-      ],
-      "plan": [
-        "Break tests into focused files by scenario (validation, replay logic, edge cases)",
-        "Centralize shared fixtures/helpers",
-        "Re-run API tests to ensure coverage is unchanged"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0257",
       "status": "todo",
       "title": "Split internal/users/user_service_test.go into smaller files",
