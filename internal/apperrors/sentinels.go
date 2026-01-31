@@ -1,5 +1,3 @@
-package apperrors
-
 // Package apperrors provides centralized sentinel error definitions for stable error comparison.
 //
 // This package defines named error variables that serve as:
@@ -28,6 +26,7 @@ package apperrors
 // - Fetch/browser errors: Chrome not found, Playwright not ready
 // - Auth/vault errors: Invalid path
 // - Jobs/queue errors: Queue full
+package apperrors
 
 import "errors"
 

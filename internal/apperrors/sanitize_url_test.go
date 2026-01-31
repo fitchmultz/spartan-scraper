@@ -1,3 +1,17 @@
+// Package apperrors_test contains tests for URL sanitization.
+//
+// This test file verifies:
+// - Query parameter stripping
+// - Fragment removal
+// - Userinfo (credentials) removal
+// - Port preservation
+// - Malformed URL handling (returns original)
+// - Relative URL handling
+//
+// Test coverage includes:
+// - HTTPS and HTTP URLs
+// - URLs with combinations of userinfo, query, and fragment
+// - Edge cases (empty string, encoded characters)
 package apperrors
 
 import "testing"

@@ -1,5 +1,3 @@
-package apperrors
-
 // Package apperrors provides classified error handling infrastructure.
 //
 // This package defines:
@@ -24,6 +22,7 @@ package apperrors
 // - Err is always preserved via Unwrap() for debugging and errors.Is()/errors.As()
 // - KindOf() returns KindInternal as a safe default if no Kind is found
 // - IsKind() and KindOf() traverse the error chain using errors.As()
+package apperrors
 
 import (
 	"errors"

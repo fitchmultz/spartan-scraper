@@ -1,3 +1,15 @@
+// Package apperrors_test contains tests for path and secret redaction.
+//
+// This test file verifies:
+// - Filesystem path redaction (Unix, Windows, file:// URLs)
+// - API paths are NOT redacted (preserved for debugging)
+// - Combined secrets and paths handling
+// - Edge cases (empty strings, clean strings)
+//
+// Test coverage includes:
+// - macOS /Users paths
+// - Linux /home, /var, /tmp, /opt, /usr, /etc paths
+// - Windows paths (backslash and forward slash)
 package apperrors
 
 import (

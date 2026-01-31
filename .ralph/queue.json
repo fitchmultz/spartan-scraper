@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0237",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in apperrors package files",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "errors"
-      ],
-      "scope": [
-        "internal/apperrors/"
-      ],
-      "evidence": [
-        "internal/apperrors/apperrors.go starts with `package apperrors` and places the doc comment below it.",
-        "internal/apperrors/sanitize.go and internal/apperrors/sentinels.go follow the same pattern; tests in apperrors also begin without top-of-file docstrings."
-      ],
-      "plan": [
-        "Move or add docstrings before the package statement in the apperrors files.",
-        "Ensure each docstring states responsibilities, non-goals, and invariants/assumptions.",
-        "Run gofmt and confirm tests still pass."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0238",
       "status": "todo",
       "title": "Add top-of-file docstrings in config tests and utilities",

@@ -1,3 +1,15 @@
+// Package apperrors_test contains tests for the apperrors package.
+//
+// This test file verifies:
+// - Error kind classification (KindOf, IsKind)
+// - Error wrapping and unwrapping behavior
+// - Safe message redaction of sensitive content
+// - Sentinel error preservation with WithKind
+//
+// Test coverage includes:
+// - All error kinds (validation, not_found, permission, internal, etc.)
+// - Wrapped error chains
+// - Generic errors (default to KindInternal)
 package apperrors
 
 import (

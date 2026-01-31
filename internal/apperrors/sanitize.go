@@ -1,5 +1,3 @@
-package apperrors
-
 // Package apperrors provides utilities for redacting sensitive information from error messages and URLs.
 //
 // This package defines:
@@ -28,6 +26,7 @@ package apperrors
 // - Key-value secrets (password=, token=, api_key=, etc.)
 // - JSON fields ("password":"...", "apiKey":"...", etc.)
 // - Filesystem paths (Unix and Windows, including file:// URLs)
+package apperrors
 
 import (
 	"net/url"
