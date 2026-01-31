@@ -1,35 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0258",
-      "status": "todo",
-      "title": "Refactor internal/fetch/types.go to stay under size guidelines",
-      "priority": "low",
-      "tags": [
-        "fetch",
-        "refactor",
-        "maintainability"
-      ],
-      "scope": [
-        "internal/fetch/types.go"
-      ],
-      "evidence": [
-        "wc -l internal/fetch/types.go reports 705 lines (>700 heuristic)"
-      ],
-      "plan": [
-        "Split types into cohesive files (auth, proxy, network intercept, results)",
-        "Keep package API stable and update references",
-        "Run gofmt and go test ./internal/fetch/..."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    }
-  ]
+  "tasks": []
 }

@@ -3,7 +3,7 @@ cd web && pnpm install
 Lockfile is up to date, resolution step is skipped
 Already up to date
 
-Done in 529ms using pnpm v10.28.0
+Done in 723ms using pnpm v10.28.0
 cd web && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
 [90m@hey-api/openapi-ts v0.90.10[39m
 
@@ -13,14 +13,14 @@ cd web && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
 node /Users/mitchfultz/Projects/spartan-scraper/scripts/strip_openapi_todos.mjs --path web/src/api
 gofmt -w ./cmd ./internal
 cd web && pnpm exec biome format . --write
-Formatted 66 files in 26ms. No fixes applied.
+Formatted 66 files in 36ms. No fixes applied.
 cd web && pnpm exec tsc --noEmit
 go vet ./...
 cd web && pnpm exec biome lint .
-Checked 67 files in 55ms. No fixes applied.
+Checked 67 files in 45ms. No fixes applied.
 Found 7 warnings.
 mkdir -p bin
-go build -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=0.1.0 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=21f04cf -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=2026-01-31T19:17:40Z" -o bin/spartan ./cmd/spartan
+go build -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=0.1.0 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=21830da -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=2026-01-31T20:36:48Z" -o bin/spartan ./cmd/spartan
 cd web && pnpm run build
 
 > spartan-scraper-web@0.1.0 build /Users/mitchfultz/Projects/spartan-scraper/web
@@ -34,12 +34,12 @@ computing gzip size...
 dist/index.html                   0.72 kB │ gzip:   0.40 kB
 dist/assets/index-CVIa0Yhm.css   30.34 kB │ gzip:   5.46 kB
 dist/assets/index-BbcT57zy.js   520.47 kB │ gzip: 153.12 kB
-✓ built in 903ms
+✓ built in 884ms
 Installing spartan to /Users/mitchfultz/.local/bin...
 Installed: /Users/mitchfultz/.local/bin/spartan
 CI=1 go test $(go list ./... | grep -v /e2e) -p=1 -timeout 5m
 ?   	github.com/fitchmultz/spartan-scraper/cmd/spartan	[no test files]
-?   	github.com/fitchmultz/spartan-scraper/internal/analytics	[no test files]
+ok  	github.com/fitchmultz/spartan-scraper/internal/analytics	(cached)
 ok  	github.com/fitchmultz/spartan-scraper/internal/api	(cached)
 ok  	github.com/fitchmultz/spartan-scraper/internal/api/graphql	(cached)
 ok  	github.com/fitchmultz/spartan-scraper/internal/apperrors	(cached)
@@ -93,15 +93,15 @@ cd web && CI=1 pnpm run test
 
 [1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/mitchfultz/Projects/spartan-scraper/web[39m
 
- [32m✓[39m src/auth-parsers.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 3[2mms[22m[39m
  [32m✓[39m src/lib/form-utils.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/auth-parsers.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 3[2mms[22m[39m
  [32m✓[39m src/lib/job-actions.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 7[2mms[22m[39m
  [32m✓[39m src/lib/api-config.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 2[2mms[22m[39m
  [32m✓[39m src/lib/results.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 5[2mms[22m[39m
- [32m✓[39m src/hooks/useTheme.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/hooks/useTheme.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 17[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
 [2m      Tests [22m [1m[32m95 passed[39m[22m[90m (95)[39m
-[2m   Start at [22m 12:18:11
-[2m   Duration [22m 1.23s[2m (transform 378ms, setup 675ms, import 481ms, tests 40ms, environment 4.42s)[22m
+[2m   Start at [22m 13:37:06
+[2m   Duration [22m 1.32s[2m (transform 409ms, setup 702ms, import 527ms, tests 37ms, environment 4.92s)[22m
 
