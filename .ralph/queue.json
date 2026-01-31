@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0225",
-      "status": "todo",
-      "title": "Split store_analytics.go into smaller cohesive modules",
-      "priority": "medium",
-      "tags": [
-        "maintainability",
-        "store",
-        "refactor"
-      ],
-      "scope": [
-        "internal/store/store_analytics.go",
-        "internal/store/"
-      ],
-      "evidence": [
-        "wc -l internal/store/store_analytics.go reports 1264 LOC (>1000 file-size limit)."
-      ],
-      "plan": [
-        "Identify cohesive sections (schema/init, rollups, queries, retention).",
-        "Split into multiple files under internal/store with clear responsibilities.",
-        "Update any references/tests impacted by file moves.",
-        "Run gofmt and relevant store tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0226",
       "status": "todo",
       "title": "Split chromedp_fetcher.go to stay under size limits",

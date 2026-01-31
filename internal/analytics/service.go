@@ -7,7 +7,7 @@
 //
 // This file does NOT handle:
 // - Data collection (collector.go handles that)
-// - Data persistence (store/store_analytics.go handles that)
+// - Data persistence (store/store_analytics_*.go files handle that)
 // - Report generation (reports.go handles that)
 package analytics
 
