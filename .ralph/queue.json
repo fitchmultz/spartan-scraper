@@ -145,6 +145,170 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0263",
+      "status": "todo",
+      "title": "Add batch job submission workflow (CLI + Web UI)",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "batch",
+        "cli",
+        "web",
+        "jobs"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "internal/api/batch.go",
+        "internal/cli",
+        "web/src",
+        "make ci"
+      ],
+      "evidence": [
+        "path: api/openapi.yaml :: /v1/jobs/batch/scrape :: batch endpoints exist for scrape/crawl/research",
+        "path: internal/cli/help.go :: Commands list :: no batch command exposed",
+        "path: web/src/App.tsx :: imports ScrapeForm/CrawlForm/ResearchForm only (no batch submission UI)"
+      ],
+      "plan": [
+        "Add a CLI batch subcommand that accepts CSV/JSON input and maps rows to batch scrape/crawl/research requests",
+        "Add a Web UI bulk submit panel with file upload/paste, validation feedback, and batch status/cancel controls",
+        "Add CLI and Web UI tests covering request construction, validation errors, and batch status rendering",
+        "Verify by running `go test ./internal/cli/... -run Batch` and `cd web && pnpm run test` and confirming batch jobs are created and listed"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-01-31T23:38:27Z",
+      "updated_at": "2026-01-31T23:38:27Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0264",
+      "status": "todo",
+      "title": "Expose watch monitoring via API + Web UI",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "watch",
+        "api",
+        "web"
+      ],
+      "scope": [
+        "internal/watch",
+        "internal/api",
+        "api/openapi.yaml",
+        "web/src",
+        "make ci"
+      ],
+      "evidence": [
+        "path: internal/cli/help.go :: Commands list :: watch add/list/check/start exists",
+        "path: internal/watch/watch.go :: Watcher handles change detection and webhook dispatch",
+        "path: api/openapi.yaml :: paths section :: no /v1/watch endpoints present"
+      ],
+      "plan": [
+        "Define watch CRUD/check endpoints in OpenAPI and route them in the API server",
+        "Implement handlers that persist watches, trigger checks, and return diffs using internal/watch storage",
+        "Add a Web UI panel to create/list/disable watches and view last change/diff details",
+        "Add API and UI tests for watch creation, listing, and check responses",
+        "Verify by running `go test ./internal/api -run Watch` and `cd web && pnpm run test` and confirming watch lifecycle works end-to-end"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-01-31T23:38:27Z",
+      "updated_at": "2026-01-31T23:38:27Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0265",
+      "status": "todo",
+      "title": "Expose network interception config and traffic replay controls in UI/CLI",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "traffic",
+        "observability",
+        "cli",
+        "web"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "internal/cli/common/flags.go",
+        "internal/api/traffic_replay.go",
+        "web/src/components/TrafficInspector.tsx",
+        "web/src"
+      ],
+      "evidence": [
+        "path: api/openapi.yaml :: ScrapeRequest/CrawlRequest/ResearchRequest :: networkIntercept config supported",
+        "path: internal/cli/common/flags.go :: common flags include proxy/captcha but no network interception flags",
+        "path: web/src/components/TrafficInspector.tsx :: empty-state notes traffic capture requires interception enabled"
+      ],
+      "plan": [
+        "Add CLI flags for network interception (enable, URL patterns, resource types, max entries) and wire into job specs",
+        "Add Web UI controls in scrape/crawl/research forms to enable and configure interception, saving in presets",
+        "Add a replay action in the Traffic Inspector to call /v1/jobs/{id}/replay with a user-supplied target base URL",
+        "Add CLI parsing tests and Web UI tests for interception config and replay action wiring",
+        "Verify by running `go test ./internal/cli/scrape -run Intercept` and `cd web && pnpm run test` and confirming intercepted traffic is captured and replay can be triggered"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-01-31T23:38:27Z",
+      "updated_at": "2026-01-31T23:38:27Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0266",
+      "status": "todo",
+      "title": "Add chain management CLI + Web UI (create/list/submit)",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "chains",
+        "cli",
+        "web"
+      ],
+      "scope": [
+        "api/openapi.yaml",
+        "internal/api/chains.go",
+        "internal/cli",
+        "web/src",
+        "make ci"
+      ],
+      "evidence": [
+        "path: api/openapi.yaml :: /v1/chains :: chain CRUD and submit endpoints exist",
+        "path: internal/cli/help.go :: Commands list :: no chain command exposed",
+        "path: web/src/components/JobList.tsx :: chain badge shown for jobs, but no chain creation UI"
+      ],
+      "plan": [
+        "Add CLI chain subcommands for list/get/create/submit/delete to wrap /v1/chains endpoints",
+        "Add a Web UI chain builder/editor with validation and a submit action to instantiate chains",
+        "Add CLI and Web UI tests for chain CRUD and submit flows",
+        "Verify by running `go test ./internal/cli/manage -run Chain` and `cd web && pnpm run test` and confirming chain jobs submit successfully"
+      ],
+      "notes": [],
+      "request": "innovation scan finding",
+      "created_at": "2026-01-31T23:38:27Z",
+      "updated_at": "2026-01-31T23:38:27Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
     }
   ]
 }
