@@ -32,11 +32,14 @@ export interface JsonlParseResult {
  * Build the results URL for a given job ID and format.
  *
  * Includes pagination parameters for jsonl format (limit, offset) but not for other formats.
+ * Supports optional transformation parameters for applying JMESPath/JSONata expressions.
  *
  * @param jobId - The job ID to fetch results for
  * @param format - The result format (e.g., "jsonl", "json", "csv", "md")
  * @param limit - Pagination limit for jsonl format
  * @param offset - Pagination offset for jsonl format
+ * @param transformExpression - Optional JMESPath/JSONata expression to transform results
+ * @param transformLanguage - Optional transformation language ("jmespath" or "jsonata")
  * @returns The complete URL for fetching results
  */
 export function buildResultsUrl(
@@ -44,12 +47,22 @@ export function buildResultsUrl(
   format: string,
   limit?: number,
   offset?: number,
+  transformExpression?: string,
+  transformLanguage?: "jmespath" | "jsonata",
 ): string {
   let path = `/v1/jobs/${jobId}/results?format=${format}`;
 
   // Only add pagination for jsonl format
   if (format === "jsonl" && limit !== undefined && offset !== undefined) {
     path += `&limit=${limit}&offset=${offset}`;
+  }
+
+  // Add transform parameters if provided
+  if (transformExpression) {
+    path += `&transform_expression=${encodeURIComponent(transformExpression)}`;
+    if (transformLanguage) {
+      path += `&transform_language=${transformLanguage}`;
+    }
   }
 
   return buildApiUrl(path);
@@ -120,11 +133,14 @@ export function parseJsonlResults(text: string): JsonlParseResult {
  *
  * Fetches results in the specified format, handles HTTP errors, and parses JSONL responses.
  * For jsonl format, returns parsed data; for other formats, returns raw text.
+ * Supports optional transformation parameters for applying JMESPath/JSONata expressions.
  *
  * @param jobId - The job ID to fetch results for
  * @param format - The result format (defaults to "jsonl")
  * @param page - The page number for jsonl pagination (1-based)
  * @param resultsPerPage - Number of results per page for jsonl format
+ * @param transformExpression - Optional JMESPath/JSONata expression to transform results
+ * @param transformLanguage - Optional transformation language ("jmespath" or "jsonata")
  * @returns The results response with data, raw text, or error
  */
 export async function loadResults(
@@ -132,10 +148,19 @@ export async function loadResults(
   format: string = "jsonl",
   page: number = 1,
   resultsPerPage: number = 100,
+  transformExpression?: string,
+  transformLanguage?: "jmespath" | "jsonata",
 ): Promise<ResultsResponse> {
   try {
     const offset = (page - 1) * resultsPerPage;
-    const resultsUrl = buildResultsUrl(jobId, format, resultsPerPage, offset);
+    const resultsUrl = buildResultsUrl(
+      jobId,
+      format,
+      resultsPerPage,
+      offset,
+      transformExpression,
+      transformLanguage,
+    );
     const response = await fetch(resultsUrl);
 
     if (!response.ok) {

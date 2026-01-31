@@ -116,7 +116,7 @@ func (s *Server) handlePreviewTransform(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Apply transformation
-	transformedResults, transformErr := applyTransformation(results, req.Expression, req.Language)
+	transformedResults, transformErr := ApplyTransformation(results, req.Expression, req.Language)
 
 	resp := TransformPreviewResponse{
 		Results:     transformedResults,
@@ -227,8 +227,9 @@ func (s *Server) loadJobResults(job model.Job, limit int) ([]any, error) {
 	return results, nil
 }
 
-// applyTransformation applies a transformation expression to data.
-func applyTransformation(data []any, expression, language string) ([]any, error) {
+// ApplyTransformation applies a transformation expression to data.
+// This function is exported for use by other handlers (e.g., job_results.go).
+func ApplyTransformation(data []any, expression, language string) ([]any, error) {
 	if len(data) == 0 {
 		return []any{}, nil
 	}

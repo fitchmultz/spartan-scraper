@@ -608,7 +608,7 @@ func TestApplyTransformation(t *testing.T) {
 	}
 
 	t.Run("JMESPath projection", func(t *testing.T) {
-		results, err := applyTransformation(testData, "{name: name}", "jmespath")
+		results, err := ApplyTransformation(testData, "{name: name}", "jmespath")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -633,7 +633,7 @@ func TestApplyTransformation(t *testing.T) {
 	})
 
 	t.Run("JSONata calculation", func(t *testing.T) {
-		results, err := applyTransformation(testData, `{"person": name, "category": age > 25 ? "senior" : "junior"}`, "jsonata")
+		results, err := ApplyTransformation(testData, `{"person": name, "category": age > 25 ? "senior" : "junior"}`, "jsonata")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -655,7 +655,7 @@ func TestApplyTransformation(t *testing.T) {
 	})
 
 	t.Run("Empty data", func(t *testing.T) {
-		results, err := applyTransformation([]interface{}{}, "{name: name}", "jmespath")
+		results, err := ApplyTransformation([]interface{}{}, "{name: name}", "jmespath")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -666,7 +666,7 @@ func TestApplyTransformation(t *testing.T) {
 	})
 
 	t.Run("Invalid expression", func(t *testing.T) {
-		_, err := applyTransformation(testData, "{invalid", "jmespath")
+		_, err := ApplyTransformation(testData, "{invalid", "jmespath")
 		if err == nil {
 			t.Error("expected error for invalid expression")
 		}

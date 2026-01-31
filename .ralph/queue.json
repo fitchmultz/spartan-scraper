@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0224",
-      "status": "todo",
-      "title": "Implement TransformPreview apply path in ResultsExplorer",
-      "priority": "high",
-      "tags": [
-        "web",
-        "ux",
-        "bug",
-        "transform"
-      ],
-      "scope": [
-        "web/src/components/ResultsExplorer.tsx",
-        "web/src/components/TransformPreview.tsx",
-        "web/src/lib/"
-      ],
-      "evidence": [
-        "web/src/components/ResultsExplorer.tsx onApply for TransformPreview only logs and contains TODO: Apply transformation to export."
-      ],
-      "plan": [
-        "Define expected behavior for applying transforms (state update vs export pipeline).",
-        "Wire onApply to the transform API or client-side transformation logic.",
-        "Update export flow to use transformed output and handle errors.",
-        "Add web tests covering apply success and failure paths."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0225",
       "status": "todo",
       "title": "Split store_analytics.go into smaller cohesive modules",

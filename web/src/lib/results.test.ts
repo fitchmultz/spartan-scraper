@@ -211,4 +211,56 @@ describe("buildResultsUrl", () => {
     const url = buildResultsUrl("test-id", "json");
     expect(url).toBe("/v1/jobs/test-id/results?format=json");
   });
+
+  it("should include transform parameters when provided", () => {
+    const url = buildResultsUrl(
+      "test-id",
+      "json",
+      undefined,
+      undefined,
+      "{title: title}",
+      "jmespath",
+    );
+    expect(url).toContain("format=json");
+    expect(url).toContain("transform_expression=");
+    expect(url).toContain("transform_language=jmespath");
+  });
+
+  it("should encode transform expression", () => {
+    const url = buildResultsUrl(
+      "test-id",
+      "json",
+      undefined,
+      undefined,
+      "{title: title, url: url}",
+      "jmespath",
+    );
+    expect(url).toContain(
+      "transform_expression=%7Btitle%3A%20title%2C%20url%3A%20url%7D",
+    );
+  });
+
+  it("should handle jsonata language", () => {
+    const url = buildResultsUrl(
+      "test-id",
+      "json",
+      undefined,
+      undefined,
+      '{"name": name}',
+      "jsonata",
+    );
+    expect(url).toContain("transform_language=jsonata");
+  });
+
+  it("should not include transform_language if transform_expression is not provided", () => {
+    const url = buildResultsUrl(
+      "test-id",
+      "json",
+      undefined,
+      undefined,
+      undefined,
+      "jmespath",
+    );
+    expect(url).not.toContain("transform_language");
+  });
 });

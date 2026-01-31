@@ -290,6 +290,44 @@ export function ResultsExplorer({
     [jobId],
   );
 
+  // Handle export with transformation
+  const handleExportWithTransform = useCallback(
+    async (expression: string, language: "jmespath" | "jsonata") => {
+      if (!jobId) return;
+
+      setIsExporting(true);
+      try {
+        // Default to JSON format for transform export, but allow user to choose
+        // For now, export as JSON which is most useful for transformed data
+        const format = "json";
+        const result = await loadResults(
+          jobId,
+          format,
+          1,
+          1000,
+          expression,
+          language,
+        );
+
+        if (result.error) {
+          console.error("Transform export failed:", result.error);
+          return;
+        }
+
+        const content = result.raw || "";
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `results-${jobId}-transformed-${timestamp}.${format}`;
+        const mimeType = "application/json";
+        downloadFile(content, filename, mimeType, false);
+      } catch (err) {
+        console.error("Transform export failed:", err);
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [jobId],
+  );
+
   // Filter results for list view
   const filteredResultItems = useMemo(() => {
     let filtered = resultItems;
@@ -588,8 +626,7 @@ export function ResultsExplorer({
           <TransformPreview
             jobId={jobId}
             onApply={(expression, language) => {
-              console.log("Applying transform:", expression, language);
-              // TODO: Apply transformation to export
+              void handleExportWithTransform(expression, language);
             }}
           />
         )}

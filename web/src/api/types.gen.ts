@@ -2949,6 +2949,14 @@ export type GetV1JobsByIdResultsData = {
          * Content format when using s3/gcs/azure export (default jsonl)
          */
         cloudFormat?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
+        /**
+         * JMESPath or JSONata expression to transform results before export
+         */
+        transform_expression?: string;
+        /**
+         * Transformation language (required if transform_expression is provided)
+         */
+        transform_language?: 'jmespath' | 'jsonata';
     };
     url: '/v1/jobs/{id}/results';
 };
