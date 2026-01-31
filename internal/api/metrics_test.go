@@ -1,3 +1,6 @@
+// Package api provides unit tests for metrics collection and reporting.
+// Tests cover RingBuffer, MetricsCollector, request recording, and snapshot generation.
+// Does NOT test HTTP endpoint handlers for metrics (covered in other test files).
 package api
 
 import (

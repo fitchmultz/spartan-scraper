@@ -1,6 +1,6 @@
-// Package api implements the REST API server for Spartan Scraper.
-// It provides endpoints for enqueuing jobs, managing auth profiles,
-// and retrieving job status and results.
+// Package api provides unit tests for HTTP middleware functions.
+// Tests cover recovery middleware, logging middleware, request ID handling, and middleware chaining.
+// Does NOT test API endpoint handlers or integration behavior.
 package api
 
 import (

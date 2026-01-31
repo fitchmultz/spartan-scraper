@@ -1,3 +1,7 @@
+// Package research provides integration tests for multi-source research workflows.
+// Tests cover evidence gathering, deduplication, summarization, context cancellation,
+// and partial failure handling across multiple target URLs.
+// Does NOT test the pipeline output processing (pipeline_test.go covers that).
 package research
 
 import (

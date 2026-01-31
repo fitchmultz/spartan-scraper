@@ -1,3 +1,7 @@
+// Package crawl provides unit tests for robots.txt parsing and caching.
+// Tests cover robots.txt parsing, rule matching, user-agent selection, crawl-delay extraction,
+// caching with TTL, and fail-open behavior on errors.
+// Does NOT test the actual crawl logic (crawl_test.go covers that).
 package crawl
 
 import (

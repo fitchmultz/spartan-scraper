@@ -1,3 +1,6 @@
+// Package research provides unit tests for research pipeline output processing.
+// Tests cover pipeline plugin integration, type mismatch handling, and output transformations.
+// Does NOT test the research crawler or evidence gathering (research_test.go covers that).
 package research
 
 import (

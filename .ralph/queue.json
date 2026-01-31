@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0241",
-      "status": "todo",
-      "title": "Add top-of-file docstrings in API/buildinfo/crawl/research/scrape tests",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "tests"
-      ],
-      "scope": [
-        "internal/api/metrics_test.go",
-        "internal/buildinfo/consistency_test.go",
-        "internal/crawl/",
-        "internal/research/",
-        "internal/scrape/scrape_test.go"
-      ],
-      "evidence": [
-        "internal/api/metrics_test.go, internal/buildinfo/consistency_test.go, internal/crawl/crawl_test.go, internal/crawl/robots_test.go, internal/research/pipeline_test.go, internal/research/research_test.go, and internal/scrape/scrape_test.go start with package lines and no top-of-file docstrings."
-      ],
-      "plan": [
-        "Add docstrings before package statements in the listed test files.",
-        "Document responsibilities, non-goals, and assumptions for each test module.",
-        "Run gofmt and relevant package tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0242",
       "status": "todo",
       "title": "Add top-of-file docstrings in model/store/ui/fsutil/webhook tests",

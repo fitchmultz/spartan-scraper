@@ -1,3 +1,7 @@
+// Package crawl provides integration tests for website crawling functionality.
+// Tests cover URL normalization, link resolution, pattern matching, robots.txt compliance,
+// include/exclude patterns, and duplicate detection with simhash.
+// Does NOT test the HTTP fetcher implementation (fetch package handles that).
 package crawl
 
 import (

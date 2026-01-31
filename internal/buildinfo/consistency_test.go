@@ -1,3 +1,6 @@
+// Package buildinfo provides tests for version consistency between build info and OpenAPI spec.
+// Tests verify that the version in buildinfo.Version matches api/openapi.yaml info.version.
+// Does NOT test build-time variable injection or release processes.
 package buildinfo
 
 import (

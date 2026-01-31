@@ -1,3 +1,6 @@
+// Package scrape provides integration tests for single-page scraping functionality.
+// Tests cover basic scraping, title extraction, normalized output, and pipeline integration.
+// Does NOT test the HTTP fetcher implementation (fetch package handles that).
 package scrape
 
 import (
