@@ -31,4 +31,16 @@ type Store struct {
 	stmtGetJobsByDependencyStatus *sql.Stmt
 	stmtUpdateDependencyStatus    *sql.Stmt
 	stmtGetDependentJobs          *sql.Stmt
+
+	// Analytics statements
+	stmtRecordHourlyMetrics *sql.Stmt
+	stmtGetHourlyMetrics    *sql.Stmt
+	stmtRecordHostMetrics   *sql.Stmt
+	stmtGetHostMetrics      *sql.Stmt
+	stmtGetTopHosts         *sql.Stmt
+	stmtRecordDailyMetrics  *sql.Stmt
+	stmtGetDailyMetrics     *sql.Stmt
+	stmtRecordJobTrend      *sql.Stmt
+	stmtGetJobTrends        *sql.Stmt
+	stmtPurgeOldAnalytics   *sql.Stmt
 }

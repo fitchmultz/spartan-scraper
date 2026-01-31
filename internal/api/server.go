@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/analytics"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -17,12 +18,14 @@ import (
 )
 
 type Server struct {
-	manager           *jobs.Manager
-	store             *store.Store
-	cfg               config.Config
-	wsHub             *Hub
-	metricsCollector  *MetricsCollector
-	webhookDispatcher *webhook.Dispatcher
+	manager            *jobs.Manager
+	store              *store.Store
+	cfg                config.Config
+	wsHub              *Hub
+	metricsCollector   *MetricsCollector
+	webhookDispatcher  *webhook.Dispatcher
+	analyticsCollector *analytics.Collector
+	analyticsService   *analytics.Service
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
@@ -32,6 +35,7 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 		cfg:              cfg,
 		wsHub:            NewHub(),
 		metricsCollector: NewMetricsCollector(),
+		analyticsService: analytics.NewService(store),
 	}
 
 	// Start WebSocket hub
@@ -65,12 +69,54 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 		s.manager.SetWebhookDispatcher(dispatcher)
 	}
 
+	// Initialize analytics collector with adapter
+	metricsAdapter := &metricsCollectorAdapter{collector: s.metricsCollector}
+	s.analyticsCollector = analytics.NewCollector(store, metricsAdapter)
+	s.analyticsCollector.Start()
+
 	return s
+}
+
+// metricsCollectorAdapter adapts api.MetricsCollector to analytics.MetricsCollector
+type metricsCollectorAdapter struct {
+	collector *MetricsCollector
+}
+
+func (a *metricsCollectorAdapter) GetSnapshot() analytics.MetricsSnapshot {
+	snapshot := a.collector.GetSnapshot()
+	return analytics.MetricsSnapshot{
+		RequestsPerSec:  snapshot.RequestsPerSec,
+		SuccessRate:     snapshot.SuccessRate,
+		AvgResponseTime: snapshot.AvgResponseTime,
+		ActiveRequests:  snapshot.ActiveRequests,
+		TotalRequests:   snapshot.TotalRequests,
+		FetcherUsage: struct {
+			HTTP       uint64
+			Chromedp   uint64
+			Playwright uint64
+		}{
+			HTTP:       snapshot.FetcherUsage.HTTP,
+			Chromedp:   snapshot.FetcherUsage.Chromedp,
+			Playwright: snapshot.FetcherUsage.Playwright,
+		},
+		JobThroughput:  snapshot.JobThroughput,
+		AvgJobDuration: snapshot.AvgJobDuration,
+		Timestamp:      snapshot.Timestamp,
+	}
 }
 
 // GetMetricsCollector returns the server's metrics collector for external registration
 func (s *Server) GetMetricsCollector() *MetricsCollector {
 	return s.metricsCollector
+}
+
+// Stop gracefully shuts down the server's background services.
+// This should be called during application shutdown to ensure
+// analytics data is properly flushed to storage.
+func (s *Server) Stop() {
+	if s.analyticsCollector != nil {
+		s.analyticsCollector.Stop()
+	}
 }
 
 // startMetricsBroadcast periodically broadcasts metrics via WebSocket
@@ -152,6 +198,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/transform/validate", s.handleValidateTransform)
 	mux.HandleFunc("/v1/webhooks/deliveries", s.handleWebhookDeliveries)
 	mux.HandleFunc("/v1/webhooks/deliveries/", s.handleWebhookDeliveryDetail)
+	mux.HandleFunc("/v1/analytics/metrics", s.handleAnalyticsMetrics)
+	mux.HandleFunc("/v1/analytics/hosts", s.handleAnalyticsHosts)
+	mux.HandleFunc("/v1/analytics/trends", s.handleAnalyticsTrends)
+	mux.HandleFunc("/v1/analytics/dashboard", s.handleAnalyticsDashboard)
 
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

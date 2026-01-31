@@ -292,6 +292,11 @@ func (s *Store) init() error {
 		return err
 	}
 
+	// Initialize analytics tables
+	if err := s.initAnalyticsTables(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -446,6 +451,11 @@ func (s *Store) Close() error {
 	}
 	if s.stmtGetDependentJobs != nil {
 		s.stmtGetDependentJobs.Close()
+	}
+
+	// Close analytics statements
+	if err := s.closeAnalyticsStatements(); err != nil {
+		return err
 	}
 
 	return s.db.Close()

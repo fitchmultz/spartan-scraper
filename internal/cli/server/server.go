@@ -69,6 +69,9 @@ Notes:
 		slog.Error("HTTP server shutdown error", "error", err)
 	}
 
+	slog.Info("stopping analytics collector...")
+	apiServer.Stop()
+
 	slog.Info("waiting for job workers to finish...")
 	waitCh := make(chan struct{})
 	go func() {

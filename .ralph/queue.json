@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0214",
-      "status": "todo",
-      "title": "Add comprehensive analytics dashboard and reporting",
-      "priority": "low",
-      "tags": [
-        "analytics",
-        "reporting",
-        "web-ui"
-      ],
-      "scope": [
-        "web/src/",
-        "internal/api/"
-      ],
-      "evidence": [
-        "Basic metrics exist but limited visualization",
-        "No trend analysis or historical comparison",
-        "No scheduled reports or exportable dashboards"
-      ],
-      "plan": [
-        "Add trend charts for success rates over time",
-        "Implement domain/host performance comparison",
-        "Add scheduled report generation (PDF, email)",
-        "Create customizable dashboard widgets",
-        "Add exportable dashboard snapshots"
-      ],
-      "notes": [],
-      "request": "scan finding: analytics gap",
-      "created_at": "2026-01-30T15:12:56Z",
-      "updated_at": "2026-01-30T15:12:56Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0215",
       "status": "todo",
       "title": "Add GraphQL API endpoint for flexible queries",
