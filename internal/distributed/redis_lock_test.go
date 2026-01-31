@@ -241,8 +241,7 @@ func TestRedisRegistry_ListWorkers_MultipleBatches(t *testing.T) {
 	_, client := setupTestRedis(t)
 	ctx := context.Background()
 
-	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
-	rr := (*registry).(*RedisRegistry)
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
 
 	// Register more workers than the batch size (100) to test multiple SCAN iterations
 	numWorkers := 250
@@ -274,8 +273,7 @@ func TestRedisRegistry_ListWorkers_MultipleBatches(t *testing.T) {
 func TestRedisRegistry_ListWorkers_ContextCancellation(t *testing.T) {
 	_, client := setupTestRedis(t)
 
-	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
-	rr := (*registry).(*RedisRegistry)
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
 
 	// Create a cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -297,8 +295,7 @@ func TestRedisRegistry_ListWorkers_ExpiredWorkers(t *testing.T) {
 	ctx := context.Background()
 
 	// Use a very short TTL
-	registry := NewRedisRegistry(client, "test:worker:", 100*time.Millisecond)
-	rr := (*registry).(*RedisRegistry)
+	rr := NewRedisRegistry(client, "test:worker:", 100*time.Millisecond).(*RedisRegistry)
 
 	// Register a worker
 	worker := Worker{
@@ -340,8 +337,7 @@ func TestRedisRegistry_ListWorkers_InvalidJSON(t *testing.T) {
 	mr, client := setupTestRedis(t)
 	ctx := context.Background()
 
-	registry := NewRedisRegistry(client, "test:worker:", 30*time.Second)
-	rr := (*registry).(*RedisRegistry)
+	rr := NewRedisRegistry(client, "test:worker:", 30*time.Second).(*RedisRegistry)
 
 	// Register a valid worker
 	validWorker := Worker{

@@ -2,37 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0247",
-      "status": "todo",
-      "title": "Fix NewRedisRegistry return type (avoid pointer-to-interface)",
-      "priority": "medium",
-      "tags": [
-        "distributed",
-        "api",
-        "correctness"
-      ],
-      "scope": [
-        "internal/distributed/redis_lock.go",
-        "internal/distributed/lock.go"
-      ],
-      "evidence": [
-        "internal/distributed/redis_lock.go:125-139 returns *Registry (pointer to interface)"
-      ],
-      "plan": [
-        "Change NewRedisRegistry to return Registry (or *RedisRegistry) instead of *Registry",
-        "Update any call sites and compile-time interface assertions",
-        "Add/adjust tests to exercise the constructor path"
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T18:20:02Z",
-      "updated_at": "2026-01-31T18:20:02Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0248",
       "status": "todo",
       "title": "Wrap RedisRegistry Register/Unregister errors with apperrors",

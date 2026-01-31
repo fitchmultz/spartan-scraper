@@ -136,20 +136,18 @@ type RedisRegistry struct {
 }
 
 // NewRedisRegistry creates a new Redis-based worker registry.
-func NewRedisRegistry(client *redis.Client, keyPrefix string, ttl time.Duration) *Registry {
+func NewRedisRegistry(client *redis.Client, keyPrefix string, ttl time.Duration) Registry {
 	if keyPrefix == "" {
 		keyPrefix = "spartan:worker:"
 	}
 	if ttl == 0 {
 		ttl = 30 * time.Second
 	}
-	r := &RedisRegistry{
+	return &RedisRegistry{
 		client:    client,
 		keyPrefix: keyPrefix,
 		ttl:       ttl,
 	}
-	var reg Registry = r
-	return &reg
 }
 
 // Register registers a new worker.
