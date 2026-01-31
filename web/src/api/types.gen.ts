@@ -4,6 +4,52 @@ export type ClientOptions = {
     baseUrl: 'http://localhost:8741' | (string & {});
 };
 
+export type User = {
+    id?: string;
+    email?: string;
+    name?: string;
+    avatarUrl?: string;
+    authProvider?: string;
+    isActive?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export type Workspace = {
+    id?: string;
+    name?: string;
+    slug?: string;
+    description?: string;
+    isPersonal?: boolean;
+    ownerId?: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export type WorkspaceMember = {
+    workspaceId?: string;
+    userId?: string;
+    role?: 'admin' | 'editor' | 'viewer';
+    user?: User;
+    joinedAt?: string;
+};
+
+export type LoginRequest = {
+    email: string;
+    password: string;
+};
+
+export type LoginResponse = {
+    user?: User;
+    workspaces?: Array<Workspace>;
+};
+
+export type RegisterRequest = {
+    email: string;
+    password: string;
+    name: string;
+};
+
 export type ExtractOptions = {
     /**
      * Template name (e.g. "article", "product")

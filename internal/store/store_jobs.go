@@ -363,3 +363,76 @@ func (s *Store) scanJobsWithDependencies(rows *sql.Rows) ([]model.Job, error) {
 	}
 	return results, rows.Err()
 }
+
+// ListByWorkspace returns jobs filtered by workspace ID with pagination.
+func (s *Store) ListByWorkspace(ctx context.Context, workspaceID string, opts ListOptions) ([]model.Job, error) {
+	opts = opts.Defaults()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, kind, status, created_at, updated_at, params, result_path, error, user_id, workspace_id
+		FROM jobs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		workspaceID, opts.Limit, opts.Offset)
+	if err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to list jobs by workspace", err)
+	}
+	defer rows.Close()
+
+	return s.scanJobsWithWorkspace(rows)
+}
+
+// ListByWorkspaceAndStatus returns jobs filtered by workspace ID and status.
+func (s *Store) ListByWorkspaceAndStatus(ctx context.Context, workspaceID string, status model.Status, opts ListOptions) ([]model.Job, error) {
+	opts = opts.Defaults()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, kind, status, created_at, updated_at, params, result_path, error, user_id, workspace_id
+		FROM jobs WHERE workspace_id = ? AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		workspaceID, status, opts.Limit, opts.Offset)
+	if err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to list jobs by workspace and status", err)
+	}
+	defer rows.Close()
+
+	return s.scanJobsWithWorkspace(rows)
+}
+
+// CountJobsByWorkspace returns the total number of jobs in a workspace.
+func (s *Store) CountJobsByWorkspace(ctx context.Context, workspaceID string) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs WHERE workspace_id = ?`, workspaceID).Scan(&count)
+	if err != nil {
+		return 0, apperrors.Wrap(apperrors.KindInternal, "failed to count jobs by workspace", err)
+	}
+	return count, nil
+}
+
+// scanJobsWithWorkspace scans job rows including user_id and workspace_id fields.
+func (s *Store) scanJobsWithWorkspace(rows *sql.Rows) ([]model.Job, error) {
+	var results []model.Job
+	for rows.Next() {
+		var job model.Job
+		var createdAt, updatedAt string
+		var params string
+
+		if err := rows.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error, &job.UserID, &job.WorkspaceID); err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to scan job row", err)
+		}
+
+		var parseErr error
+		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
+		if parseErr != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", parseErr)
+		}
+		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
+		if parseErr != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", parseErr)
+		}
+
+		if params != "" {
+			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
+				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
+			}
+		}
+
+		results = append(results, job)
+	}
+	return results, rows.Err()
+}

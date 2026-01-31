@@ -107,6 +107,10 @@ func (j Job) ExtractWebhookConfig() *WebhookConfig {
 //   - DependsOn contains job IDs that must complete successfully before this job runs.
 //   - DependencyStatus tracks whether dependencies are pending, ready, or failed.
 //   - ChainID optionally associates this job with a named workflow chain.
+//
+// Multi-user support:
+//   - UserID identifies the user who created the job (optional for backward compatibility).
+//   - WorkspaceID identifies the workspace the job belongs to (optional for backward compatibility).
 type Job struct {
 	ID               string                 `json:"id"`
 	Kind             Kind                   `json:"kind"`
@@ -119,4 +123,6 @@ type Job struct {
 	DependsOn        []string               `json:"dependsOn,omitempty"`        // List of job IDs this job depends on
 	DependencyStatus DependencyStatus       `json:"dependencyStatus,omitempty"` // pending/ready/failed
 	ChainID          string                 `json:"chainId,omitempty"`          // Optional chain membership
+	UserID           string                 `json:"userId,omitempty"`           // User who created the job
+	WorkspaceID      string                 `json:"workspaceId,omitempty"`      // Workspace the job belongs to
 }
