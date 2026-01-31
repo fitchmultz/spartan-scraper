@@ -1,3 +1,17 @@
+// Package common contains tests for job result handling utilities.
+//
+// Responsibilities:
+// - Testing waitForJob with secret redaction in error messages
+// - Testing copyResults for job output retrieval
+// - Validating that secrets, tokens, and paths are properly redacted
+//
+// Non-goals:
+// - Testing actual job execution or worker pools
+// - Testing external storage backends
+//
+// Assumptions:
+// - Tests use temporary directories for data storage
+// - Tests are isolated and do not depend on external services
 package common
 
 import (

@@ -1,3 +1,18 @@
+// Package scrape contains tests for the scrape subcommand.
+//
+// Responsibilities:
+// - Testing RunScrape flag validation (URL, extract-config)
+// - Testing loadExtractOptions for template loading
+// - Testing job creation with valid flags and extract configs
+//
+// Non-goals:
+// - Testing actual scraping or HTTP fetching
+// - Testing extraction template execution
+//
+// Assumptions:
+// - Tests use temporary directories for data storage
+// - Tests capture stdout/stderr for validation
+// - No external network access required
 package scrape
 
 import (

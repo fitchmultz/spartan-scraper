@@ -1,3 +1,16 @@
+// Package common contains tests for general utility functions.
+//
+// Responsibilities:
+// - Testing SplitCSV for comma-separated value parsing
+// - Validating whitespace trimming and empty value handling
+//
+// Non-goals:
+// - Testing CSV format compliance with RFC 4180
+// - Testing integration with external CSV parsers
+//
+// Assumptions:
+// - Tests are isolated and use only in-memory data structures
+// - No environment variables required
 package common
 
 import "testing"

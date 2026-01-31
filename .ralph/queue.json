@@ -2,36 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0240",
-      "status": "todo",
-      "title": "Add top-of-file docstrings across CLI tests and manage commands",
-      "priority": "medium",
-      "tags": [
-        "docs",
-        "compliance",
-        "cli"
-      ],
-      "scope": [
-        "internal/cli/"
-      ],
-      "evidence": [
-        "Files such as internal/cli/cli_test.go, internal/cli/common/auth_test.go, flags_test.go, results_test.go, util_test.go, internal/cli/manage/pipeline_js_mgmt.go, render_profiles.go, internal/cli/scrape/crawl_test.go, research_test.go, scrape_test.go, and internal/cli/server/server_test.go start with package lines and no top-of-file docstrings."
-      ],
-      "plan": [
-        "Add docstrings before the package statement for each listed CLI file.",
-        "Capture responsibilities, non-goals, and assumptions (especially for tests).",
-        "Run gofmt and CLI-related tests."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-01-31T02:12:07Z",
-      "updated_at": "2026-01-31T02:12:07Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0241",
       "status": "todo",
       "title": "Add top-of-file docstrings in API/buildinfo/crawl/research/scrape tests",

@@ -1,3 +1,16 @@
+// Package cli_test contains tests for common CLI utilities.
+//
+// Responsibilities:
+// - Testing CSV parsing, cookie/header conversions, token building, and login flow construction
+// - Validating edge cases and error handling for utility functions
+//
+// Non-goals:
+// - Integration tests with external services
+// - Testing actual HTTP requests or authentication flows
+//
+// Assumptions:
+// - Tests are isolated and do not require external dependencies
+// - No environment variables required
 package cli_test
 
 import (

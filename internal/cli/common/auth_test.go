@@ -1,3 +1,16 @@
+// Package common contains tests for authentication helper functions.
+//
+// Responsibilities:
+// - Testing BuildLoginFlow, ParseTokenKind, BuildTokens, ToHeaderKVs, and ToCookies
+// - Validating token parsing, header/cookie conversion, and login flow construction
+//
+// Non-goals:
+// - Testing actual authentication against external services
+// - Testing credential storage or encryption
+//
+// Assumptions:
+// - Tests are isolated and use only in-memory data structures
+// - No environment variables required
 package common
 
 import (

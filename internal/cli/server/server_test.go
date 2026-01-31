@@ -1,3 +1,18 @@
+// Package server contains tests for the server subcommand.
+//
+// Responsibilities:
+// - Testing HTTP server configuration (bind address, port)
+// - Testing timeout configuration (read, write, idle, header)
+// - Validating default values and environment variable overrides
+//
+// Non-goals:
+// - Testing actual HTTP request handling
+// - Testing API endpoints or route handlers
+//
+// Assumptions:
+// - Tests use temporary directories for data storage
+// - Tests use config.Load() with environment variable overrides
+// - No actual server startup or network binding required
 package server
 
 import (

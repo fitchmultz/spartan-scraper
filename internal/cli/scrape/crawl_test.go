@@ -1,3 +1,18 @@
+// Package scrape contains tests for the crawl subcommand.
+//
+// Responsibilities:
+// - Testing RunCrawl flag validation (URL, max-depth, max-pages)
+// - Testing job creation with valid flags
+// - Validating error handling for missing or invalid flags
+//
+// Non-goals:
+// - Testing actual crawling logic or HTTP fetching
+// - Testing job execution or worker pools
+//
+// Assumptions:
+// - Tests use temporary directories for data storage
+// - Tests capture stdout/stderr for validation
+// - No external network access required
 package scrape
 
 import (

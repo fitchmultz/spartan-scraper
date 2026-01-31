@@ -1,3 +1,16 @@
+// Package common contains tests for CLI flag parsing utilities.
+//
+// Responsibilities:
+// - Testing StringSliceFlag parsing and conversion to maps
+// - Validating key:value pair extraction and edge cases
+//
+// Non-goals:
+// - Testing actual CLI flag parsing from command line
+// - Testing integration with flag package
+//
+// Assumptions:
+// - Tests are isolated and use only in-memory data structures
+// - No environment variables required
 package common
 
 import "testing"
