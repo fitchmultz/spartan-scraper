@@ -1,4 +1,108 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0267",
+      "status": "todo",
+      "title": "Surface artifact deletion failures in retention batch deletes",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "retention",
+        "store"
+      ],
+      "scope": [
+        "internal/store/store_retention.go",
+        "internal/retention/retention.go"
+      ],
+      "evidence": [
+        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: failedDeletions is incremented but never returned or logged, so artifact removal failures are silently ignored",
+        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: spaceReclaimedMB is computed before deletes and returned even if deleteJobArtifacts fails"
+      ],
+      "plan": [
+        "Decide how to surface artifact deletion failures (return aggregated error, include failed IDs in result, or attach to CleanupResult.Errors)",
+        "Adjust DeleteJobsWithArtifactsBatch to report failures and keep spaceReclaimedMB consistent with actual deletions",
+        "Update retention engine handling to propagate/report partial deletion errors",
+        "Add store/retention tests that simulate artifact deletion failure and assert error reporting + spaceReclaimedMB behavior",
+        "Verify by running `go test ./internal/store -run DeleteJobsWithArtifactsBatch` and confirming failures are reported"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T03:38:29Z",
+      "updated_at": "2026-02-01T03:38:29Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0268",
+      "status": "todo",
+      "title": "Fix retention cleanup skipping matching kinds when first batch mismatches",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "retention"
+      ],
+      "scope": [
+        "internal/retention/retention.go",
+        "internal/retention/retention_test.go"
+      ],
+      "evidence": [
+        "path: internal/retention/retention.go :: cleanupByAge :: when opts.Kind filters out all jobs in a batch, len(toDelete)==0 triggers break, so later matching jobs are never considered",
+        "path: internal/retention/retention.go :: cleanupByCount/cleanupByStorage :: same len(toDelete)==0 break causes early exit when first batch contains only other kinds"
+      ],
+      "plan": [
+        "Adjust cleanupByAge/cleanupByCount/cleanupByStorage loops to continue scanning when the current batch has no matching kinds (avoid premature break)",
+        "Add or extend retention tests to cover the scenario where early batches are non-matching kinds but later batches match",
+        "Ensure loop termination still occurs when no more jobs are available to avoid infinite loops",
+        "Verify by running `go test ./internal/retention -run Cleanup` and confirming kind-filtered cleanup deletes the expected jobs"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T03:38:29Z",
+      "updated_at": "2026-02-01T03:38:29Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0269",
+      "status": "todo",
+      "title": "Treat missing jobs directory as zero storage in GetStorageStats",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "retention",
+        "store"
+      ],
+      "scope": [
+        "internal/store/store_retention.go",
+        "internal/store/store_retention_test.go"
+      ],
+      "evidence": [
+        "path: internal/store/store_retention.go :: getTotalStorageSizeMB :: filepath.WalkDir is called on dataDir/jobs without handling the root-not-exist error, so missing jobs dir returns an error instead of zero storage"
+      ],
+      "plan": [
+        "Handle a missing jobs directory by returning 0 bytes before walking or by translating os.IsNotExist errors from WalkDir",
+        "Add a store retention test that calls GetStorageStats with no jobs directory and asserts it returns zero storage without error",
+        "Verify by running `go test ./internal/store -run GetStorageStats` and confirming a clean pass"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-01T03:38:29Z",
+      "updated_at": "2026-02-01T03:38:29Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
