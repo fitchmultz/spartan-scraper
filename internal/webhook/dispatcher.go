@@ -9,11 +9,11 @@
 //   - HMAC-SHA256 signatures are generated when a secret is provided
 //   - Timeouts prevent hanging connections from blocking the system
 //   - Retries use exponential backoff to avoid overwhelming receiving endpoints
+//   - SSRF validation is performed automatically on all webhook URLs
 //
 // This package does NOT:
 //   - Store webhook delivery state persistently
 //   - Guarantee exactly-once delivery (at-least-once is attempted)
-//   - Validate webhook URLs against SSRF attacks (callers should validate)
 package webhook
 
 import (
@@ -29,6 +29,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 // generateID creates a unique identifier for delivery records.
@@ -111,17 +113,23 @@ type Config struct {
 
 	// Timeout is the HTTP request timeout (default: 30s).
 	Timeout time.Duration
+
+	// AllowInternal allows webhooks to internal/private addresses (default: false).
+	// When false, SSRF protection blocks private IPs, localhost, and link-local addresses.
+	// WARNING: Only enable in trusted environments.
+	AllowInternal bool
 }
 
 // Dispatcher manages webhook delivery with retry logic.
 type Dispatcher struct {
-	client     *http.Client
-	secret     string
-	maxRetries int
-	baseDelay  time.Duration
-	maxDelay   time.Duration
-	timeout    time.Duration
-	store      *Store
+	client        *http.Client
+	secret        string
+	maxRetries    int
+	baseDelay     time.Duration
+	maxDelay      time.Duration
+	timeout       time.Duration
+	allowInternal bool
+	store         *Store
 }
 
 // NewDispatcher creates a new webhook dispatcher with the given configuration.
@@ -148,13 +156,14 @@ func NewDispatcher(cfg Config) *Dispatcher {
 	}
 
 	return &Dispatcher{
-		client:     &http.Client{Timeout: timeout},
-		secret:     cfg.Secret,
-		maxRetries: maxRetries,
-		baseDelay:  baseDelay,
-		maxDelay:   maxDelay,
-		timeout:    timeout,
-		store:      nil,
+		client:        &http.Client{Timeout: timeout},
+		secret:        cfg.Secret,
+		maxRetries:    maxRetries,
+		baseDelay:     baseDelay,
+		maxDelay:      maxDelay,
+		timeout:       timeout,
+		allowInternal: cfg.AllowInternal,
+		store:         nil,
 	}
 }
 
@@ -175,7 +184,16 @@ func (d *Dispatcher) Store() *Store {
 // Dispatch sends a webhook notification asynchronously.
 // It executes in a goroutine and returns immediately.
 // The secret parameter overrides the dispatcher's default secret if non-empty.
+// URLs are validated against SSRF attacks before dispatching.
 func (d *Dispatcher) Dispatch(ctx context.Context, url string, payload Payload, secret string) {
+	// Validate URL against SSRF before dispatching
+	if err := ValidateURL(url, d.allowInternal); err != nil {
+		slog.Error("webhook URL failed SSRF validation",
+			"url", SanitizeURL(url),
+			"jobID", payload.JobID,
+			"error", apperrors.SafeMessage(err))
+		return
+	}
 	go d.dispatchWithRetry(ctx, url, payload, secret)
 }
 

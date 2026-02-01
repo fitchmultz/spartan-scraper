@@ -9,6 +9,8 @@
 // - Context cancellation propagation
 // - Event type filtering (ShouldSendEvent)
 // - HTTP header setting (Content-Type, User-Agent)
+// - SSRF protection (private IPs, localhost, link-local)
+// - AllowInternal configuration bypass
 //
 // Does NOT test:
 // - Delivery record persistence (see store_test.go)
@@ -19,6 +21,7 @@
 // - HTTP endpoints follow standard request/response patterns
 // - Signatures use HMAC-SHA256 when secret is provided
 // - Retries use exponential backoff with configurable limits
+// - SSRF validation blocks internal/private addresses by default
 package webhook
 
 import (
@@ -51,15 +54,19 @@ func TestNewDispatcher_Defaults(t *testing.T) {
 	if d.timeout != 30*time.Second {
 		t.Errorf("expected timeout=30s, got %v", d.timeout)
 	}
+	if d.allowInternal {
+		t.Error("expected allowInternal to be false by default")
+	}
 }
 
 func TestNewDispatcher_CustomValues(t *testing.T) {
 	cfg := Config{
-		Secret:     "test-secret",
-		MaxRetries: 5,
-		BaseDelay:  500 * time.Millisecond,
-		MaxDelay:   60 * time.Second,
-		Timeout:    10 * time.Second,
+		Secret:        "test-secret",
+		MaxRetries:    5,
+		BaseDelay:     500 * time.Millisecond,
+		MaxDelay:      60 * time.Second,
+		Timeout:       10 * time.Second,
+		AllowInternal: true,
 	}
 	d := NewDispatcher(cfg)
 
@@ -78,6 +85,9 @@ func TestNewDispatcher_CustomValues(t *testing.T) {
 	if d.secret != "test-secret" {
 		t.Errorf("expected secret='test-secret', got %q", d.secret)
 	}
+	if !d.allowInternal {
+		t.Error("expected allowInternal to be true")
+	}
 }
 
 func TestDispatch_Success(t *testing.T) {
@@ -93,7 +103,8 @@ func TestDispatch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	d := NewDispatcher(Config{})
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
+	d := NewDispatcher(Config{AllowInternal: true})
 	payload := Payload{
 		EventID:   "evt-123",
 		EventType: EventJobCompleted,
@@ -136,7 +147,8 @@ func TestDispatch_WithSignature(t *testing.T) {
 	}))
 	defer server.Close()
 
-	d := NewDispatcher(Config{})
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
+	d := NewDispatcher(Config{AllowInternal: true})
 	payload := Payload{
 		EventID:   "evt-123",
 		EventType: EventJobCompleted,
@@ -177,10 +189,12 @@ func TestDispatch_RetryOnFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
-		MaxRetries: 3,
-		BaseDelay:  10 * time.Millisecond,
-		MaxDelay:   100 * time.Millisecond,
+		MaxRetries:    3,
+		BaseDelay:     10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		AllowInternal: true,
 	})
 
 	payload := Payload{
@@ -210,10 +224,12 @@ func TestDispatch_ExhaustedRetries(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
-		MaxRetries: 2,
-		BaseDelay:  10 * time.Millisecond,
-		MaxDelay:   100 * time.Millisecond,
+		MaxRetries:    2,
+		BaseDelay:     10 * time.Millisecond,
+		MaxDelay:      100 * time.Millisecond,
+		AllowInternal: true,
 	})
 
 	payload := Payload{
@@ -245,9 +261,11 @@ func TestDispatch_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
-		MaxRetries: 1,
-		Timeout:    50 * time.Millisecond,
+		MaxRetries:    1,
+		Timeout:       50 * time.Millisecond,
+		AllowInternal: true,
 	})
 
 	payload := Payload{
@@ -273,9 +291,11 @@ func TestDispatch_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
-		MaxRetries: 3,
-		BaseDelay:  50 * time.Millisecond,
+		MaxRetries:    3,
+		BaseDelay:     50 * time.Millisecond,
+		AllowInternal: true,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -477,7 +497,8 @@ func TestDispatch_Headers(t *testing.T) {
 	}))
 	defer server.Close()
 
-	d := NewDispatcher(Config{})
+	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
+	d := NewDispatcher(Config{AllowInternal: true})
 	payload := Payload{
 		EventID:   "evt-123",
 		EventType: EventJobCompleted,
@@ -497,5 +518,108 @@ func TestDispatch_Headers(t *testing.T) {
 	}
 	if !strings.HasPrefix(receivedHeaders.Get("User-Agent"), "SpartanScraper-Webhook") {
 		t.Errorf("expected User-Agent to start with 'SpartanScraper-Webhook', got %q", receivedHeaders.Get("User-Agent"))
+	}
+}
+
+// SSRF Protection Tests
+
+func TestDispatch_SSRFBlocksPrivateIPs(t *testing.T) {
+	privateURLs := []string{
+		"http://127.0.0.1/webhook",
+		"http://10.0.0.1/webhook",
+		"http://192.168.1.1/webhook",
+		"http://172.16.0.1/webhook",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://localhost/webhook",
+		"http://[::1]/webhook",
+	}
+
+	for _, url := range privateURLs {
+		t.Run(url, func(t *testing.T) {
+			var received atomic.Bool
+
+			d := NewDispatcher(Config{AllowInternal: false})
+			payload := Payload{
+				EventID:   "evt-123",
+				EventType: EventJobCompleted,
+				Timestamp: time.Now(),
+				JobID:     "job-456",
+				JobKind:   "scrape",
+				Status:    "succeeded",
+			}
+
+			d.Dispatch(context.Background(), url, payload, "")
+
+			// Wait to ensure no request is made
+			time.Sleep(50 * time.Millisecond)
+
+			if received.Load() {
+				t.Errorf("expected SSRF protection to block %s", url)
+			}
+		})
+	}
+}
+
+func TestDispatch_AllowInternalBypassesSSRF(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Test with allowInternal=true
+	d := NewDispatcher(Config{
+		AllowInternal: true,
+	})
+	payload := Payload{
+		EventID:   "evt-123",
+		EventType: EventJobCompleted,
+		Timestamp: time.Now(),
+		JobID:     "job-456",
+		JobKind:   "scrape",
+		Status:    "succeeded",
+	}
+
+	var received atomic.Bool
+	serverWithReceiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer serverWithReceiver.Close()
+
+	d.Dispatch(context.Background(), serverWithReceiver.URL, payload, "")
+
+	// Wait for async dispatch
+	time.Sleep(100 * time.Millisecond)
+
+	if !received.Load() {
+		t.Error("expected webhook to be received with allowInternal=true")
+	}
+}
+
+func TestDispatch_SSRFBlocksInvalidSchemes(t *testing.T) {
+	invalidURLs := []string{
+		"file:///etc/passwd",
+		"ftp://example.com/webhook",
+		"gopher://example.com",
+	}
+
+	for _, url := range invalidURLs {
+		t.Run(url, func(t *testing.T) {
+			d := NewDispatcher(Config{})
+			payload := Payload{
+				EventID:   "evt-123",
+				EventType: EventJobCompleted,
+				Timestamp: time.Now(),
+				JobID:     "job-456",
+				JobKind:   "scrape",
+				Status:    "succeeded",
+			}
+
+			// Should not panic and should not dispatch
+			d.Dispatch(context.Background(), url, payload, "")
+
+			// Wait to ensure no request is made
+			time.Sleep(50 * time.Millisecond)
+		})
 	}
 }

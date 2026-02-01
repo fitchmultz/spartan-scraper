@@ -60,11 +60,12 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 		}
 
 		dispatcher := webhook.NewDispatcherWithStore(webhook.Config{
-			Secret:     cfg.Webhook.Secret,
-			MaxRetries: cfg.Webhook.MaxRetries,
-			BaseDelay:  cfg.Webhook.BaseDelay,
-			MaxDelay:   cfg.Webhook.MaxDelay,
-			Timeout:    cfg.Webhook.Timeout,
+			Secret:        cfg.Webhook.Secret,
+			MaxRetries:    cfg.Webhook.MaxRetries,
+			BaseDelay:     cfg.Webhook.BaseDelay,
+			MaxDelay:      cfg.Webhook.MaxDelay,
+			Timeout:       cfg.Webhook.Timeout,
+			AllowInternal: cfg.Webhook.AllowInternal,
 		}, webhookStore)
 		s.webhookDispatcher = dispatcher
 		s.manager.SetWebhookDispatcher(dispatcher)

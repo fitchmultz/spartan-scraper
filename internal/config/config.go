@@ -37,12 +37,13 @@ type EnvOverrides = auth.EnvOverrides
 
 // WebhookConfig holds global webhook configuration.
 type WebhookConfig struct {
-	Enabled    bool
-	Secret     string
-	MaxRetries int
-	BaseDelay  time.Duration
-	MaxDelay   time.Duration
-	Timeout    time.Duration
+	Enabled       bool
+	Secret        string
+	MaxRetries    int
+	BaseDelay     time.Duration
+	MaxDelay      time.Duration
+	Timeout       time.Duration
+	AllowInternal bool // Allow webhooks to internal/private addresses (default: false for security)
 }
 
 // Config is the application's configuration snapshot.
@@ -186,12 +187,13 @@ func Load() (Config, error) {
 
 		// Webhook configuration
 		Webhook: WebhookConfig{
-			Enabled:    getenvBool("WEBHOOK_ENABLED", false),
-			Secret:     getenv("WEBHOOK_SECRET", ""),
-			MaxRetries: getenvInt("WEBHOOK_MAX_RETRIES", 3),
-			BaseDelay:  time.Duration(getenvInt("WEBHOOK_BASE_DELAY_MS", 1000)) * time.Millisecond,
-			MaxDelay:   time.Duration(getenvInt("WEBHOOK_MAX_DELAY_MS", 30000)) * time.Millisecond,
-			Timeout:    time.Duration(getenvInt("WEBHOOK_TIMEOUT_MS", 30000)) * time.Millisecond,
+			Enabled:       getenvBool("WEBHOOK_ENABLED", false),
+			Secret:        getenv("WEBHOOK_SECRET", ""),
+			MaxRetries:    getenvInt("WEBHOOK_MAX_RETRIES", 3),
+			BaseDelay:     time.Duration(getenvInt("WEBHOOK_BASE_DELAY_MS", 1000)) * time.Millisecond,
+			MaxDelay:      time.Duration(getenvInt("WEBHOOK_MAX_DELAY_MS", 30000)) * time.Millisecond,
+			Timeout:       time.Duration(getenvInt("WEBHOOK_TIMEOUT_MS", 30000)) * time.Millisecond,
+			AllowInternal: getenvBool("WEBHOOK_ALLOW_INTERNAL", false),
 		},
 
 		// API Authentication

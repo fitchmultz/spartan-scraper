@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0280",
-      "status": "todo",
-      "title": "Fix SSRF vulnerability in webhook dispatcher",
-      "priority": "critical",
-      "tags": [
-        "maintenance",
-        "security",
-        "ssrf",
-        "webhook"
-      ],
-      "scope": [
-        "internal/webhook/dispatcher.go",
-        "internal/api/"
-      ],
-      "evidence": [
-        "path: internal/webhook/dispatcher.go :: package comment :: explicitly states 'This package does NOT: ... Validate webhook URLs against SSRF attacks'",
-        "path: internal/webhook/dispatcher.go :: Dispatch method :: calls dispatchWithRetry in goroutine without URL validation",
-        "path: internal/webhook/dispatcher.go :: attemptDelivery :: creates HTTP request to arbitrary URL without SSRF checks",
-        "workflow: spartan server with WEBHOOK_ENABLED=true :: webhook can be configured to target internal services like 169.254.169.254 (IMDS)"
-      ],
-      "plan": [
-        "Create internal/webhook/ssrf.go with URL validation function",
-        "Add check for private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16)",
-        "Add check for localhost variants (127.0.0.0/8, ::1, localhost)",
-        "Add check for DNS rebinding protection (resolve and validate)",
-        "Integrate SSRF check into Dispatch method before creating goroutine",
-        "Add WEBHOOK_ALLOW_INTERNAL=true env var for testing override",
-        "Add unit tests for SSRF validation with various attack vectors",
-        "Verify by attempting to configure webhook to http://169.254.169.254/latest/meta-data/ and receiving validation error"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0281",
       "status": "todo",
       "title": "Add goroutine limits to webhook dispatcher to prevent resource exhaustion",
