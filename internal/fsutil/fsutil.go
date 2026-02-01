@@ -12,6 +12,7 @@ package fsutil
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 )
@@ -71,4 +72,28 @@ func MkdirAllSecure(path string) error {
 		return fmt.Errorf("failed to create secure directory %s: %w", path, err)
 	}
 	return nil
+}
+
+// IsDirEmpty returns true if the directory exists and contains no entries
+// (excluding "." and ".."). Returns true if the directory doesn't exist
+// (treated as empty for restore use case). Returns false if the directory
+// contains any files or directories.
+func IsDirEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, nil // Non-existent directory is considered "empty"
+		}
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Read just one entry
+	if err == io.EOF {
+		return true, nil // Directory is empty
+	}
+	if err != nil {
+		return false, err
+	}
+	return false, nil // Directory has at least one entry
 }

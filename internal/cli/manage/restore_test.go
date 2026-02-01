@@ -4,10 +4,12 @@ package manage
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 )
 
@@ -296,6 +298,91 @@ func createTestBackupWithTraversal(archivePath string) error {
 	}
 
 	return nil
+}
+
+// TestRunRestore_NonEmptyDir tests restore behavior with non-empty data directories.
+func TestRunRestore_NonEmptyDir(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create test backup
+	backupPath := filepath.Join(tempDir, "test-backup.tar.gz")
+	if err := createTestBackup(backupPath, []string{"jobs.db"}); err != nil {
+		t.Fatalf("failed to create test backup: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Test 1: Restore into empty directory succeeds
+	t.Run("EmptyDirSucceeds", func(t *testing.T) {
+		dataDir := filepath.Join(tempDir, "empty-data")
+		// Create the empty data directory
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			t.Fatalf("failed to create empty data dir: %v", err)
+		}
+		cfg := config.Config{DataDir: dataDir}
+
+		exitCode := RunRestore(ctx, cfg, []string{"--from", backupPath})
+		if exitCode != 0 {
+			t.Errorf("expected exit code 0 for empty dir, got %d", exitCode)
+		}
+	})
+
+	// Test 2: Restore into non-empty directory without --force fails
+	t.Run("NonEmptyDirWithoutForceFails", func(t *testing.T) {
+		dataDir := filepath.Join(tempDir, "nonempty-data")
+		cfg := config.Config{DataDir: dataDir}
+
+		// Create directory with a file
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			t.Fatalf("failed to create data dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dataDir, "existing.txt"), []byte("data"), 0644); err != nil {
+			t.Fatalf("failed to create existing file: %v", err)
+		}
+
+		exitCode := RunRestore(ctx, cfg, []string{"--from", backupPath})
+		if exitCode != 1 {
+			t.Errorf("expected exit code 1 for non-empty dir without force, got %d", exitCode)
+		}
+	})
+
+	// Test 3: Restore into non-empty directory with --force succeeds
+	t.Run("NonEmptyDirWithForceSucceeds", func(t *testing.T) {
+		dataDir := filepath.Join(tempDir, "force-data")
+		cfg := config.Config{DataDir: dataDir}
+
+		// Create directory with a file
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			t.Fatalf("failed to create data dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dataDir, "existing.txt"), []byte("data"), 0644); err != nil {
+			t.Fatalf("failed to create existing file: %v", err)
+		}
+
+		exitCode := RunRestore(ctx, cfg, []string{"--from", backupPath, "--force"})
+		if exitCode != 0 {
+			t.Errorf("expected exit code 0 for non-empty dir with force, got %d", exitCode)
+		}
+	})
+
+	// Test 4: Dry-run should succeed even with non-empty directory (no --force needed)
+	t.Run("DryRunNonEmptyDirSucceeds", func(t *testing.T) {
+		dataDir := filepath.Join(tempDir, "dryrun-data")
+		cfg := config.Config{DataDir: dataDir}
+
+		// Create directory with a file
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			t.Fatalf("failed to create data dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dataDir, "existing.txt"), []byte("data"), 0644); err != nil {
+			t.Fatalf("failed to create existing file: %v", err)
+		}
+
+		exitCode := RunRestore(ctx, cfg, []string{"--from", backupPath, "--dry-run"})
+		if exitCode != 0 {
+			t.Errorf("expected exit code 0 for dry-run with non-empty dir, got %d", exitCode)
+		}
+	})
 }
 
 // TestRestoreFromArchivePathTraversal tests that secondary validation in

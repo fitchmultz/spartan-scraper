@@ -43,7 +43,7 @@ var expectedBackupFiles = []string{
 func RunRestore(ctx context.Context, cfg config.Config, args []string) int {
 	fs := flag.NewFlagSet("restore", flag.ExitOnError)
 	from := fs.String("from", "", "Path to backup archive (required)")
-	force := fs.Bool("force", false, "Restore even if data directory is not empty")
+	force := fs.Bool("force", false, "Restore even if data directory is in use or not empty")
 	dryRun := fs.Bool("dry-run", false, "Preview what would be restored without making changes")
 	_ = fs.Parse(args)
 
@@ -74,6 +74,20 @@ func RunRestore(ctx context.Context, cfg config.Config, args []string) int {
 		fmt.Fprintln(os.Stderr, "error: data directory appears to be in use by a running server")
 		fmt.Fprintln(os.Stderr, "Use --force to restore anyway (may corrupt running server data)")
 		return 1
+	}
+
+	// Check if data directory is non-empty
+	if !*dryRun {
+		isEmpty, err := fsutil.IsDirEmpty(cfg.DataDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: failed to check data directory: %v\n", err)
+			return 1
+		}
+		if !isEmpty && !*force {
+			fmt.Fprintln(os.Stderr, "error: data directory is not empty")
+			fmt.Fprintln(os.Stderr, "Use --force to restore anyway (will overwrite existing data)")
+			return 1
+		}
 	}
 
 	// Perform restore (or dry-run)
@@ -314,7 +328,7 @@ func printRestoreHelp() {
 
 Options:
   --from=PATH         Path to backup archive (required)
-  --force             Restore even if data directory appears to be in use
+  --force             Restore even if data directory is in use or not empty
   --dry-run           Preview what would be restored without making changes
 
 Examples:

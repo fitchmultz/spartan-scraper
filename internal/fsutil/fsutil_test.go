@@ -267,3 +267,89 @@ func TestMkdirAllSecure_ExistingDirectory(t *testing.T) {
 		t.Fatalf("MkdirAllSecure failed on existing directory: %v", err)
 	}
 }
+
+func TestIsDirEmpty(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Test 1: Non-existent directory should be considered empty
+	t.Run("NonExistentDir", func(t *testing.T) {
+		nonExistent := filepath.Join(tempDir, "does-not-exist")
+		isEmpty, err := IsDirEmpty(nonExistent)
+		if err != nil {
+			t.Errorf("IsDirEmpty should not error for non-existent directory: %v", err)
+		}
+		if !isEmpty {
+			t.Error("IsDirEmpty should return true for non-existent directory")
+		}
+	})
+
+	// Test 2: Empty directory should return true
+	t.Run("EmptyDir", func(t *testing.T) {
+		emptyDir := filepath.Join(tempDir, "empty")
+		if err := os.MkdirAll(emptyDir, 0755); err != nil {
+			t.Fatalf("failed to create empty directory: %v", err)
+		}
+
+		isEmpty, err := IsDirEmpty(emptyDir)
+		if err != nil {
+			t.Errorf("IsDirEmpty should not error for empty directory: %v", err)
+		}
+		if !isEmpty {
+			t.Error("IsDirEmpty should return true for empty directory")
+		}
+	})
+
+	// Test 3: Directory with a file should return false
+	t.Run("DirWithFile", func(t *testing.T) {
+		dirWithFile := filepath.Join(tempDir, "with-file")
+		if err := os.MkdirAll(dirWithFile, 0755); err != nil {
+			t.Fatalf("failed to create directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dirWithFile, "test.txt"), []byte("test"), 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+
+		isEmpty, err := IsDirEmpty(dirWithFile)
+		if err != nil {
+			t.Errorf("IsDirEmpty should not error: %v", err)
+		}
+		if isEmpty {
+			t.Error("IsDirEmpty should return false for directory with file")
+		}
+	})
+
+	// Test 4: Directory with subdirectory should return false
+	t.Run("DirWithSubdir", func(t *testing.T) {
+		dirWithSubdir := filepath.Join(tempDir, "with-subdir")
+		if err := os.MkdirAll(filepath.Join(dirWithSubdir, "nested"), 0755); err != nil {
+			t.Fatalf("failed to create nested directory: %v", err)
+		}
+
+		isEmpty, err := IsDirEmpty(dirWithSubdir)
+		if err != nil {
+			t.Errorf("IsDirEmpty should not error: %v", err)
+		}
+		if isEmpty {
+			t.Error("IsDirEmpty should return false for directory with subdirectory")
+		}
+	})
+
+	// Test 5: Directory with hidden file should return false
+	t.Run("DirWithHiddenFile", func(t *testing.T) {
+		dirWithHidden := filepath.Join(tempDir, "with-hidden")
+		if err := os.MkdirAll(dirWithHidden, 0755); err != nil {
+			t.Fatalf("failed to create directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dirWithHidden, ".hidden"), []byte("secret"), 0644); err != nil {
+			t.Fatalf("failed to create hidden file: %v", err)
+		}
+
+		isEmpty, err := IsDirEmpty(dirWithHidden)
+		if err != nil {
+			t.Errorf("IsDirEmpty should not error: %v", err)
+		}
+		if isEmpty {
+			t.Error("IsDirEmpty should return false for directory with hidden file")
+		}
+	})
+}

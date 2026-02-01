@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0262",
-      "status": "todo",
-      "title": "Require --force when restore target data dir is non-empty",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "restore",
-        "safety"
-      ],
-      "scope": [
-        "internal/cli/manage/restore.go",
-        "internal/cli/manage/restore_test.go",
-        "go test ./internal/cli/manage -run Restore"
-      ],
-      "evidence": [
-        "path: internal/cli/manage/restore.go :: RunRestore :: --force described as 'data directory is not empty' but only checks isDataDirInUse",
-        "path: internal/cli/manage/restore.go :: isDataDirInUse :: checks lock file / exclusive create only, no directory emptiness check"
-      ],
-      "plan": [
-        "Add a data directory emptiness check before restore and block unless --force is set",
-        "Align --force help text and restore messaging with the actual behavior",
-        "Add tests for restoring into non-empty directories with/without --force",
-        "Verify by running `go test ./internal/cli/manage -run Restore` and confirming non-empty dirs are rejected without --force"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T23:22:20Z",
-      "updated_at": "2026-01-31T23:22:20Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0263",
       "status": "todo",
       "title": "Add batch job submission workflow (CLI + Web UI)",
