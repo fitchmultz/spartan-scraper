@@ -20,6 +20,7 @@ package watch
 import (
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
@@ -48,6 +49,11 @@ type Watch struct {
 	Headless      bool   `json:"headless"`              // Use headless browser
 	UsePlaywright bool   `json:"usePlaywright"`         // Use Playwright instead of chromedp
 	ExtractMode   string `json:"extractMode,omitempty"` // Extraction mode (text, html, markdown)
+
+	// Screenshot configuration for visual change detection
+	ScreenshotConfig    *fetch.ScreenshotConfig `json:"screenshotConfig,omitempty"`    // Screenshot capture options
+	ScreenshotEnabled   bool                    `json:"screenshotEnabled"`             // Enable visual change detection
+	VisualDiffThreshold float64                 `json:"visualDiffThreshold,omitempty"` // Pixel difference threshold (0-1, default 0.1 = 10%)
 }
 
 // WatchCheckResult contains the outcome of a watch check.
@@ -62,6 +68,15 @@ type WatchCheckResult struct {
 	DiffHTML     string    `json:"diffHtml,omitempty"`
 	Error        string    `json:"error,omitempty"`
 	Selector     string    `json:"selector,omitempty"`
+
+	// Visual change detection fields
+	ScreenshotPath         string  `json:"screenshotPath,omitempty"`         // Path to current screenshot
+	PreviousScreenshotPath string  `json:"previousScreenshotPath,omitempty"` // Path to previous screenshot
+	VisualDiffPath         string  `json:"visualDiffPath,omitempty"`         // Path to generated visual diff image
+	VisualHash             string  `json:"visualHash,omitempty"`             // Perceptual hash of current screenshot
+	PreviousVisualHash     string  `json:"previousVisualHash,omitempty"`     // Perceptual hash of previous screenshot
+	VisualChanged          bool    `json:"visualChanged"`                    // True if visual change detected
+	VisualSimilarity       float64 `json:"visualSimilarity,omitempty"`       // Similarity score (0-1)
 }
 
 // IsDue returns true if the watch is due for a check based on its interval.
@@ -93,6 +108,9 @@ func (w *Watch) Validate() error {
 	}
 	if w.IntervalSeconds < 60 {
 		return &ValidationError{Field: "intervalSeconds", Message: "interval must be at least 60 seconds"}
+	}
+	if w.VisualDiffThreshold < 0 || w.VisualDiffThreshold > 1 {
+		return &ValidationError{Field: "visualDiffThreshold", Message: "visual diff threshold must be between 0 and 1"}
 	}
 	return nil
 }

@@ -3322,6 +3322,19 @@ components:
           type: string
           enum: [active, paused, error, disabled]
           description: Current watch status (derived from enabled field)
+        screenshotEnabled:
+          type: boolean
+          default: false
+          description: Enable screenshot capture and visual change detection
+        screenshotConfig:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        visualDiffThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.1
+          description: Visual diff threshold (0-1) for detecting changes
 
     WatchInput:
       type: object
@@ -3374,6 +3387,19 @@ components:
           type: string
           enum: [text, html, markdown]
           description: Content extraction mode
+        screenshotEnabled:
+          type: boolean
+          default: false
+          description: Enable screenshot capture and visual change detection
+        screenshotConfig:
+          $ref: '#/components/schemas/ScreenshotConfig'
+        visualDiffThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.1
+          description: Visual diff threshold (0-1) for detecting changes
 
     WatchList:
       type: object
@@ -3421,6 +3447,29 @@ components:
         selector:
           type: string
           description: CSS selector used for extraction
+        # Visual change detection fields
+        screenshotPath:
+          type: string
+          description: Path to captured screenshot
+        previousScreenshotPath:
+          type: string
+          description: Path to previous screenshot for comparison
+        visualDiffPath:
+          type: string
+          description: Path to generated visual diff image
+        visualHash:
+          type: string
+          description: Perceptual hash of current screenshot
+        previousVisualHash:
+          type: string
+          description: Perceptual hash of previous screenshot
+        visualChanged:
+          type: boolean
+          description: Whether visual changes were detected
+        visualSimilarity:
+          type: number
+          format: float
+          description: Similarity score between screenshots (0-1)
     WebhookPayload:
       type: object
       description: Payload sent to webhook endpoints on job events
@@ -3430,7 +3479,7 @@ components:
           description: Unique identifier for this event
         eventType:
           type: string
-          enum: [job.created, job.started, job.completed, content.changed, page.crawled, retry.attempted, export.completed]
+          enum: [job.created, job.started, job.completed, content.changed, page.crawled, retry.attempted, export.completed, visual.changed]
           description: Type of event that triggered this webhook
         timestamp:
           type: string
@@ -3479,6 +3528,23 @@ components:
         selector:
           type: string
           description: CSS selector for tracked element
+        # Visual change fields (for visual.changed events)
+        screenshotPath:
+          type: string
+          description: Path to current screenshot
+        visualDiffPath:
+          type: string
+          description: Path to visual diff image
+        visualHash:
+          type: string
+          description: Perceptual hash of current screenshot
+        previousVisualHash:
+          type: string
+          description: Perceptual hash of previous screenshot
+        visualSimilarity:
+          type: number
+          format: float
+          description: Visual similarity score (0-1)
         # Page crawled fields (for page.crawled events)
         pageUrl:
           type: string

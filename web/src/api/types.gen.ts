@@ -705,6 +705,15 @@ export type Watch = {
      * Current watch status (derived from enabled field)
      */
     status?: 'active' | 'paused' | 'error' | 'disabled';
+    /**
+     * Enable screenshot capture and visual change detection
+     */
+    screenshotEnabled?: boolean;
+    screenshotConfig?: ScreenshotConfig;
+    /**
+     * Visual diff threshold (0-1) for detecting changes
+     */
+    visualDiffThreshold?: number;
 };
 
 export type WatchInput = {
@@ -753,6 +762,15 @@ export type WatchInput = {
      * Content extraction mode
      */
     extractMode?: 'text' | 'html' | 'markdown';
+    /**
+     * Enable screenshot capture and visual change detection
+     */
+    screenshotEnabled?: boolean;
+    screenshotConfig?: ScreenshotConfig;
+    /**
+     * Visual diff threshold (0-1) for detecting changes
+     */
+    visualDiffThreshold?: number;
 };
 
 export type WatchList = {
@@ -803,6 +821,34 @@ export type WatchCheckResult = {
      * CSS selector used for extraction
      */
     selector?: string;
+    /**
+     * Path to captured screenshot
+     */
+    screenshotPath?: string;
+    /**
+     * Path to previous screenshot for comparison
+     */
+    previousScreenshotPath?: string;
+    /**
+     * Path to generated visual diff image
+     */
+    visualDiffPath?: string;
+    /**
+     * Perceptual hash of current screenshot
+     */
+    visualHash?: string;
+    /**
+     * Perceptual hash of previous screenshot
+     */
+    previousVisualHash?: string;
+    /**
+     * Whether visual changes were detected
+     */
+    visualChanged?: boolean;
+    /**
+     * Similarity score between screenshots (0-1)
+     */
+    visualSimilarity?: number;
 };
 
 /**
@@ -816,7 +862,7 @@ export type WebhookPayload = {
     /**
      * Type of event that triggered this webhook
      */
-    eventType?: 'job.created' | 'job.started' | 'job.completed' | 'content.changed' | 'page.crawled' | 'retry.attempted' | 'export.completed';
+    eventType?: 'job.created' | 'job.started' | 'job.completed' | 'content.changed' | 'page.crawled' | 'retry.attempted' | 'export.completed' | 'visual.changed';
     /**
      * ISO 8601 timestamp of the event
      */
@@ -873,6 +919,26 @@ export type WebhookPayload = {
      * CSS selector for tracked element
      */
     selector?: string;
+    /**
+     * Path to current screenshot
+     */
+    screenshotPath?: string;
+    /**
+     * Path to visual diff image
+     */
+    visualDiffPath?: string;
+    /**
+     * Perceptual hash of current screenshot
+     */
+    visualHash?: string;
+    /**
+     * Perceptual hash of previous screenshot
+     */
+    previousVisualHash?: string;
+    /**
+     * Visual similarity score (0-1)
+     */
+    visualSimilarity?: number;
     /**
      * URL of crawled page
      */

@@ -99,6 +99,11 @@ export function WatchDetail({
         >
           <p style={{ fontSize: 18, marginBottom: 8 }}>✓ No Changes Detected</p>
           <p>Content hash matches the previous snapshot.</p>
+          {checkResult.screenshotPath && (
+            <p style={{ fontSize: 12, marginTop: 8 }}>
+              Screenshot captured: <code>{checkResult.screenshotPath}</code>
+            </p>
+          )}
           <p style={{ fontSize: 12, marginTop: 16 }}>
             Current Hash:{" "}
             <code>{checkResult.currentHash?.slice(0, 16)}...</code>
@@ -123,6 +128,12 @@ export function WatchDetail({
             <strong>Changed:</strong>{" "}
             <span style={{ color: "#22c55e", fontWeight: 600 }}>Yes</span>
           </span>
+          {checkResult.visualChanged && (
+            <span>
+              <strong>Visual Change:</strong>{" "}
+              <span style={{ color: "#3b82f6", fontWeight: 600 }}>Yes</span>
+            </span>
+          )}
           <span>
             <strong>Previous:</strong>{" "}
             <code>{checkResult.previousHash?.slice(0, 16) || "N/A"}...</code>
@@ -132,6 +143,44 @@ export function WatchDetail({
             <code>{checkResult.currentHash?.slice(0, 16)}...</code>
           </span>
         </div>
+
+        {/* Visual Diff Section */}
+        {checkResult.visualChanged && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 16,
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              borderRadius: 8,
+            }}
+          >
+            <h4 style={{ margin: "0 0 12px 0" }}>Visual Changes Detected</h4>
+            <div className="row" style={{ gap: 16, flexWrap: "wrap" }}>
+              {checkResult.visualSimilarity !== undefined && (
+                <span>
+                  <strong>Similarity:</strong>{" "}
+                  {Math.round(checkResult.visualSimilarity * 100)}%
+                </span>
+              )}
+              {checkResult.screenshotPath && (
+                <span>
+                  <strong>Screenshot:</strong>{" "}
+                  <code style={{ fontSize: 12 }}>
+                    {checkResult.screenshotPath}
+                  </code>
+                </span>
+              )}
+              {checkResult.visualDiffPath && (
+                <span>
+                  <strong>Diff:</strong>{" "}
+                  <code style={{ fontSize: 12 }}>
+                    {checkResult.visualDiffPath}
+                  </code>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {checkResult.diffHtml ? (
           <div
@@ -499,6 +548,54 @@ export function WatchDetail({
                     Min Change Size:
                   </span>
                   <span>{watch.minChangeSize} bytes</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: 16,
+              backgroundColor: "var(--bg-alt)",
+              borderRadius: 8,
+            }}
+          >
+            <h4 style={{ margin: "0 0 12px 0" }}>Visual Change Detection</h4>
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              <div
+                className="row"
+                style={{ justifyContent: "space-between", marginBottom: 8 }}
+              >
+                <span style={{ color: "var(--muted)" }}>Enabled:</span>
+                <span>{watch.screenshotEnabled ? "Yes" : "No"}</span>
+              </div>
+              {watch.screenshotEnabled && watch.screenshotConfig && (
+                <>
+                  <div
+                    className="row"
+                    style={{ justifyContent: "space-between", marginBottom: 8 }}
+                  >
+                    <span style={{ color: "var(--muted)" }}>Format:</span>
+                    <span>{watch.screenshotConfig.format || "png"}</span>
+                  </div>
+                  <div
+                    className="row"
+                    style={{ justifyContent: "space-between", marginBottom: 8 }}
+                  >
+                    <span style={{ color: "var(--muted)" }}>Full Page:</span>
+                    <span>
+                      {watch.screenshotConfig.fullPage ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </>
+              )}
+              {watch.visualDiffThreshold !== undefined && (
+                <div
+                  className="row"
+                  style={{ justifyContent: "space-between" }}
+                >
+                  <span style={{ color: "var(--muted)" }}>Diff Threshold:</span>
+                  <span>{watch.visualDiffThreshold}</span>
                 </div>
               )}
             </div>

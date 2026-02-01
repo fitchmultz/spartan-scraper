@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0272",
-      "status": "todo",
-      "title": "Add Screenshot Comparison and Visual Change Detection",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "monitoring",
-        "visual-diff",
-        "watch"
-      ],
-      "scope": [
-        "internal/watch/",
-        "internal/fetch/",
-        "web/src/components/WatchDetail.tsx",
-        "web/src/components/DiffViewer.tsx"
-      ],
-      "evidence": [
-        "path: internal/watch/watch.go :: Check function :: only SHA256 hash of text content, no visual comparison",
-        "path: internal/fetch/playwright_screenshot.go :: screenshot capability exists but not used for change detection",
-        "path: web/src/components/DiffViewer.tsx :: only text diffs supported, no image comparison",
-        "workflow: spartan watch check :: detects text changes but not visual/layout changes"
-      ],
-      "plan": [
-        "Extend Watch model with screenshot options (fullpage, selector-based, viewport)",
-        "Integrate screenshot capture into watch check workflow using existing playwright/chromedp",
-        "Implement image hashing (perceptual hash) for change detection",
-        "Add pixel-by-pixel diff generation with threshold support",
-        "Create visual diff viewer component in Web UI (side-by-side, overlay, slider modes)",
-        "Add webhook event for visual changes (EventVisualChanged)",
-        "Store screenshot history with retention policy",
-        "Verify by creating a watch with screenshot enabled, changing page styling, and receiving visual diff notification"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T21:24:49Z",
-      "updated_at": "2026-01-31T21:24:49Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0273",
       "status": "todo",
       "title": "Build Plugin System for Third-Party Extensions",

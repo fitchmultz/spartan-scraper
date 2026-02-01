@@ -52,6 +52,7 @@ const (
 	EventPageCrawled     EventType = "page.crawled"
 	EventRetryAttempted  EventType = "retry.attempted"
 	EventExportCompleted EventType = "export.completed"
+	EventVisualChanged   EventType = "visual.changed"
 )
 
 // Payload represents the webhook notification body.
@@ -74,6 +75,13 @@ type Payload struct {
 	DiffText     string `json:"diffText,omitempty"`
 	DiffHTML     string `json:"diffHtml,omitempty"`
 	Selector     string `json:"selector,omitempty"`
+
+	// Visual change fields (populated when EventType is EventVisualChanged)
+	ScreenshotPath     string  `json:"screenshotPath,omitempty"`
+	VisualDiffPath     string  `json:"visualDiffPath,omitempty"`
+	VisualHash         string  `json:"visualHash,omitempty"`
+	PreviousVisualHash string  `json:"previousVisualHash,omitempty"`
+	VisualSimilarity   float64 `json:"visualSimilarity,omitempty"`
 
 	// Page crawled fields (populated when EventType is EventPageCrawled)
 	PageURL     string `json:"pageUrl,omitempty"`
@@ -457,6 +465,10 @@ func ShouldSendEvent(eventType EventType, status string, configuredEvents []stri
 			}
 		case "export_completed":
 			if eventType == EventExportCompleted {
+				return true
+			}
+		case "visual_changed":
+			if eventType == EventVisualChanged {
 				return true
 			}
 		}

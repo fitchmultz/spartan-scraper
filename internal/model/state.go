@@ -15,4 +15,7 @@ type CrawlState struct {
 	JobID           string    `json:"jobId"`
 	PreviousContent string    `json:"previousContent,omitempty"` // Previous content snapshot for diff generation
 	ContentSnapshot string    `json:"contentSnapshot,omitempty"` // Current full content snapshot
+	// Visual change detection fields
+	ScreenshotPath string `json:"screenshotPath,omitempty"` // Path to saved screenshot file
+	VisualHash     string `json:"visualHash,omitempty"`     // Perceptual hash for screenshot comparison
 }

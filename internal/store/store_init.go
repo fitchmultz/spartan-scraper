@@ -282,6 +282,34 @@ func (s *Store) init() error {
 		}
 	}
 
+	// Migrate: add screenshot_path column for visual change detection
+	screenshotPathExists, err := columnExists(s.db, "crawl_states", "screenshot_path")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for screenshot_path column migration", err)
+	}
+	if !screenshotPathExists {
+		_, err = s.db.Exec("alter table crawl_states add column screenshot_path text")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add screenshot_path column to crawl_states", err)
+		}
+	}
+
+	// Migrate: add visual_hash column for visual change detection
+	visualHashExists, err := columnExists(s.db, "crawl_states", "visual_hash")
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal,
+			"failed to check for visual_hash column migration", err)
+	}
+	if !visualHashExists {
+		_, err = s.db.Exec("alter table crawl_states add column visual_hash text")
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal,
+				"failed to add visual_hash column to crawl_states", err)
+		}
+	}
+
 	// Initialize batch tables
 	if err := s.initBatchTables(); err != nil {
 		return err

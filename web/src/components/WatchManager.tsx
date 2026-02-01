@@ -35,6 +35,10 @@ interface WatchFormData {
   extractMode: "" | "text" | "html" | "markdown";
   minChangeSize: string;
   ignorePatterns: string;
+  screenshotEnabled: boolean;
+  screenshotFullPage: boolean;
+  screenshotFormat: "png" | "jpeg";
+  visualDiffThreshold: string;
 }
 
 const defaultFormData: WatchFormData = {
@@ -51,6 +55,10 @@ const defaultFormData: WatchFormData = {
   extractMode: "",
   minChangeSize: "",
   ignorePatterns: "",
+  screenshotEnabled: false,
+  screenshotFullPage: true,
+  screenshotFormat: "png",
+  visualDiffThreshold: "0.1",
 };
 
 function formatDuration(seconds: number): string {
@@ -81,6 +89,11 @@ function watchToFormData(watch: Watch): WatchFormData {
     extractMode: (watch.extractMode as WatchFormData["extractMode"]) || "",
     minChangeSize: watch.minChangeSize?.toString() || "",
     ignorePatterns: watch.ignorePatterns?.join("\n") || "",
+    screenshotEnabled: watch.screenshotEnabled ?? false,
+    screenshotFullPage: watch.screenshotConfig?.fullPage ?? true,
+    screenshotFormat:
+      (watch.screenshotConfig?.format as "png" | "jpeg") || "png",
+    visualDiffThreshold: watch.visualDiffThreshold?.toString() || "0.1",
   };
 }
 
@@ -93,6 +106,7 @@ function formDataToWatchInput(data: WatchFormData): WatchInput {
     notifyOnChange: data.notifyOnChange,
     headless: data.headless,
     usePlaywright: data.usePlaywright,
+    screenshotEnabled: data.screenshotEnabled,
   };
 
   if (data.selector) input.selector = data.selector;
@@ -109,6 +123,16 @@ function formDataToWatchInput(data: WatchFormData): WatchInput {
       url: data.webhookUrl,
       secret: data.webhookSecret || undefined,
     };
+  }
+  if (data.screenshotEnabled) {
+    input.screenshotConfig = {
+      enabled: true,
+      fullPage: data.screenshotFullPage,
+      format: data.screenshotFormat,
+    };
+    if (data.visualDiffThreshold) {
+      input.visualDiffThreshold = parseFloat(data.visualDiffThreshold);
+    }
   }
 
   return input;
@@ -805,6 +829,112 @@ export function WatchManager({
                   Use Playwright
                 </label>
               </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.screenshotEnabled}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        screenshotEnabled: e.target.checked,
+                        // Auto-enable headless when screenshots are enabled
+                        headless: e.target.checked ? true : prev.headless,
+                      }))
+                    }
+                  />
+                  Enable Visual Change Detection (Screenshots)
+                </label>
+                <small
+                  style={{
+                    color: "var(--muted)",
+                    display: "block",
+                    marginTop: 4,
+                  }}
+                >
+                  Captures screenshots to detect visual/layout changes
+                </small>
+              </div>
+
+              {formData.screenshotEnabled && (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: 16,
+                    backgroundColor: "var(--bg-alt)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <h4 style={{ margin: "0 0 12px 0" }}>
+                    Screenshot Configuration
+                  </h4>
+                  <div className="row" style={{ gap: 16, marginBottom: 12 }}>
+                    <label
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.screenshotFullPage}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            screenshotFullPage: e.target.checked,
+                          }))
+                        }
+                      />
+                      Full Page Screenshot
+                    </label>
+                    <div style={{ flex: 1 }}>
+                      <label
+                        htmlFor="screenshot-format"
+                        style={{ display: "block", marginBottom: 4 }}
+                      >
+                        Format
+                      </label>
+                      <select
+                        id="screenshot-format"
+                        value={formData.screenshotFormat}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            screenshotFormat: e.target.value as "png" | "jpeg",
+                          }))
+                        }
+                        style={{ width: "100%" }}
+                      >
+                        <option value="png">PNG</option>
+                        <option value="jpeg">JPEG</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label
+                        htmlFor="visual-threshold"
+                        style={{ display: "block", marginBottom: 4 }}
+                      >
+                        Diff Threshold (0-1)
+                      </label>
+                      <input
+                        id="visual-threshold"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={formData.visualDiffThreshold}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            visualDiffThreshold: e.target.value,
+                          }))
+                        }
+                        style={{ width: "100%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div style={{ marginBottom: 16 }}>
                 <label
