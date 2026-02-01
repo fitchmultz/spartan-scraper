@@ -16,6 +16,7 @@ import type {
   CrawlRequest,
   ResearchRequest,
   WebhookConfig,
+  NetworkInterceptConfig,
 } from "../api";
 import type { ResultItem, CrawlResultItem, ResearchResultItem } from "../types";
 
@@ -181,6 +182,32 @@ export function buildWebhookConfig(
   };
 }
 
+export function buildNetworkInterceptConfig(
+  enabled: boolean,
+  urlPatternsRaw: string,
+  resourceTypes: string[],
+  captureRequestBody: boolean,
+  captureResponseBody: boolean,
+  maxBodySize: number,
+  maxEntries: number,
+): NetworkInterceptConfig | undefined {
+  if (!enabled) {
+    return undefined;
+  }
+  return {
+    enabled: true,
+    urlPatterns: parsePatternList(urlPatternsRaw),
+    resourceTypes:
+      resourceTypes.length > 0
+        ? (resourceTypes as NetworkInterceptConfig["resourceTypes"])
+        : undefined,
+    captureRequestBody,
+    captureResponseBody,
+    maxBodySize,
+    maxEntries,
+  };
+}
+
 export function buildScrapeRequest(
   url: string,
   headless: boolean,
@@ -195,6 +222,7 @@ export function buildScrapeRequest(
   incremental: boolean,
   webhook?: WebhookConfig,
   device?: import("../api").DeviceEmulation,
+  networkIntercept?: NetworkInterceptConfig,
 ): ScrapeRequest {
   return {
     url,
@@ -208,6 +236,7 @@ export function buildScrapeRequest(
     incremental: incremental || undefined,
     webhook,
     device,
+    networkIntercept,
   };
 }
 
@@ -231,6 +260,7 @@ export function buildCrawlRequest(
   includePatterns?: string[],
   excludePatterns?: string[],
   device?: import("../api").DeviceEmulation,
+  networkIntercept?: NetworkInterceptConfig,
 ): CrawlRequest {
   return {
     url,
@@ -250,6 +280,7 @@ export function buildCrawlRequest(
     includePatterns,
     excludePatterns,
     device,
+    networkIntercept,
   };
 }
 
@@ -269,6 +300,7 @@ export function buildResearchRequest(
   transformers: string,
   webhook?: WebhookConfig,
   device?: import("../api").DeviceEmulation,
+  networkIntercept?: NetworkInterceptConfig,
 ): ResearchRequest {
   return {
     query,
@@ -284,6 +316,7 @@ export function buildResearchRequest(
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
     device,
+    networkIntercept,
   };
 }
 

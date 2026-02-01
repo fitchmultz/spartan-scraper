@@ -69,6 +69,14 @@ export interface PresetConfig {
   excludePatterns?: string;
   // Device emulation
   device?: DeviceEmulation;
+  // Network interception options
+  interceptEnabled?: boolean;
+  interceptURLPatterns?: string;
+  interceptResourceTypes?: string[];
+  interceptCaptureRequestBody?: boolean;
+  interceptCaptureResponseBody?: boolean;
+  interceptMaxBodySize?: number;
+  interceptMaxEntries?: number;
 }
 
 /**

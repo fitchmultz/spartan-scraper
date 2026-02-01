@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0265",
-      "status": "todo",
-      "title": "Expose network interception config and traffic replay controls in UI/CLI",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "traffic",
-        "observability",
-        "cli",
-        "web"
-      ],
-      "scope": [
-        "api/openapi.yaml",
-        "internal/cli/common/flags.go",
-        "internal/api/traffic_replay.go",
-        "web/src/components/TrafficInspector.tsx",
-        "web/src"
-      ],
-      "evidence": [
-        "path: api/openapi.yaml :: ScrapeRequest/CrawlRequest/ResearchRequest :: networkIntercept config supported",
-        "path: internal/cli/common/flags.go :: common flags include proxy/captcha but no network interception flags",
-        "path: web/src/components/TrafficInspector.tsx :: empty-state notes traffic capture requires interception enabled"
-      ],
-      "plan": [
-        "Add CLI flags for network interception (enable, URL patterns, resource types, max entries) and wire into job specs",
-        "Add Web UI controls in scrape/crawl/research forms to enable and configure interception, saving in presets",
-        "Add a replay action in the Traffic Inspector to call /v1/jobs/{id}/replay with a user-supplied target base URL",
-        "Add CLI parsing tests and Web UI tests for interception config and replay action wiring",
-        "Verify by running `go test ./internal/cli/scrape -run Intercept` and `cd web && pnpm run test` and confirming intercepted traffic is captured and replay can be triggered"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T23:38:27Z",
-      "updated_at": "2026-01-31T23:38:27Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0266",
       "status": "todo",
       "title": "Add chain management CLI + Web UI (create/list/submit)",

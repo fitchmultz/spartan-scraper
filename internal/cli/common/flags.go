@@ -111,6 +111,15 @@ type CommonFlags struct {
 	CaptchaAutoSolve *bool
 	CaptchaService   *string
 	CaptchaAPIKey    *string
+
+	// Network interception flags
+	InterceptEnabled         *bool
+	InterceptURLPatterns     StringSliceFlag
+	InterceptResourceTypes   StringSliceFlag
+	InterceptCaptureRequest  *bool
+	InterceptCaptureResponse *bool
+	InterceptMaxBodySize     *int
+	InterceptMaxEntries      *int
 }
 
 // BrowserFlags are used by schedule add.
@@ -210,6 +219,13 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		CaptchaAutoSolve: fs.Bool("captcha-auto-solve", false, "Automatically solve detected CAPTCHAs (requires --captcha-service and --captcha-api-key)"),
 		CaptchaService:   fs.String("captcha-service", "", "CAPTCHA solving service (2captcha|anticaptcha)"),
 		CaptchaAPIKey:    fs.String("captcha-api-key", "", "API key for CAPTCHA solving service"),
+
+		// Network interception flags
+		InterceptEnabled:         fs.Bool("intercept-enabled", false, "Enable network interception (requires --headless)"),
+		InterceptCaptureRequest:  fs.Bool("intercept-request-body", true, "Capture request bodies during interception"),
+		InterceptCaptureResponse: fs.Bool("intercept-response-body", true, "Capture response bodies during interception"),
+		InterceptMaxBodySize:     fs.Int("intercept-max-body-size", 1048576, "Maximum bytes to capture per body (default 1MB)"),
+		InterceptMaxEntries:      fs.Int("intercept-max-entries", 1000, "Maximum number of entries to capture (default 1000)"),
 	}
 
 	fs.Var(&cf.PreProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")
@@ -218,6 +234,8 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 	fs.Var(&cf.TokenValues, "token", "Token value (repeatable)")
 	fs.Var(&cf.Headers, "header", "Extra header (repeatable, Key: Value)")
 	fs.Var(&cf.Cookies, "cookie", "Cookie value (repeatable, name=value)")
+	fs.Var(&cf.InterceptURLPatterns, "intercept-pattern", "URL pattern to intercept (repeatable, glob syntax, e.g., '**/api/**')")
+	fs.Var(&cf.InterceptResourceTypes, "intercept-resource-type", "Resource type to intercept (repeatable: xhr,fetch,document,script,stylesheet,image,media,font,websocket,other)")
 
 	return cf
 }

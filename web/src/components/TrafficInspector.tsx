@@ -4,11 +4,14 @@
  * Displays and inspects captured network traffic from job results.
  * Shows a list of intercepted requests/responses with filtering,
  * search capabilities, and detailed view for individual entries.
+ * Includes traffic replay functionality to replay captured requests
+ * against a different target URL.
  *
  * @module TrafficInspector
  */
 import { useState, useMemo } from "react";
-import type { InterceptedEntry } from "../api";
+import { postV1JobsByIdReplay } from "../api";
+import type { InterceptedEntry, TrafficReplayResponse } from "../api";
 
 interface TrafficInspectorProps {
   entries: InterceptedEntry[];
@@ -86,6 +89,17 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
   const [showRequestBody, setShowRequestBody] = useState(true);
   const [showResponseBody, setShowResponseBody] = useState(true);
 
+  // Replay modal state
+  const [showReplayModal, setShowReplayModal] = useState(false);
+  const [replayTargetURL, setReplayTargetURL] = useState("");
+  const [replayCompare, setReplayCompare] = useState(false);
+  const [replayFilterURL, setReplayFilterURL] = useState("");
+  const [replayFilterMethod, setReplayFilterMethod] = useState("");
+  const [replayLoading, setReplayLoading] = useState(false);
+  const [replayResult, setReplayResult] =
+    useState<TrafficReplayResponse | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
+
   const filteredEntries = useMemo(() => {
     let filtered = entries;
 
@@ -141,6 +155,53 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
     window.open(url, "_blank");
   };
 
+  const handleReplay = async () => {
+    if (!replayTargetURL) {
+      setReplayError("Target URL is required");
+      return;
+    }
+    setReplayLoading(true);
+    setReplayError(null);
+    setReplayResult(null);
+    try {
+      const response = await postV1JobsByIdReplay({
+        path: { id: jobId },
+        body: {
+          jobId,
+          targetBaseUrl: replayTargetURL,
+          compareResponses: replayCompare,
+          filter: {
+            urlPatterns: replayFilterURL
+              ? replayFilterURL.split(",").map((s) => s.trim())
+              : undefined,
+            methods: replayFilterMethod
+              ? replayFilterMethod.split(",").map((s) => s.trim())
+              : undefined,
+          },
+        },
+      });
+      if (response.data) {
+        setReplayResult(response.data);
+      } else if (response.error) {
+        setReplayError(String(response.error) || "Replay failed");
+      }
+    } catch (err) {
+      setReplayError(err instanceof Error ? err.message : "Replay failed");
+    } finally {
+      setReplayLoading(false);
+    }
+  };
+
+  const closeReplayModal = () => {
+    setShowReplayModal(false);
+    setReplayTargetURL("");
+    setReplayCompare(false);
+    setReplayFilterURL("");
+    setReplayFilterMethod("");
+    setReplayResult(null);
+    setReplayError(null);
+  };
+
   if (entries.length === 0) {
     return (
       <div className="traffic-inspector empty">
@@ -172,9 +233,19 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
             avg {formatDuration(stats.avgDuration)}
           </span>
         </div>
-        <button type="button" className="secondary" onClick={handleExportHar}>
-          Export HAR
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setShowReplayModal(true)}
+            disabled={entries.length === 0}
+          >
+            Replay Traffic
+          </button>
+          <button type="button" className="secondary" onClick={handleExportHar}>
+            Export HAR
+          </button>
+        </div>
       </div>
 
       <div className="traffic-toolbar">
@@ -412,6 +483,267 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
           </div>
         )}
       </div>
+
+      {/* Replay Modal */}
+      {showReplayModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={closeReplayModal}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              closeReplayModal();
+            }
+          }}
+        >
+          <div
+            role="document"
+            tabIndex={-1}
+            style={{
+              background: "var(--panel-bg)",
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 600,
+              width: "90%",
+              maxHeight: "80vh",
+              overflow: "auto",
+              outline: "none",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                closeReplayModal();
+              }
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h3>Replay Traffic</h3>
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeReplayModal}
+                style={{ padding: "4px 12px" }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{ marginBottom: 16, color: "var(--text-secondary)" }}>
+              Replay captured network requests against a target URL.
+            </p>
+
+            <label htmlFor="replay-target-url">
+              Target Base URL <span style={{ color: "var(--accent)" }}>*</span>
+            </label>
+            <input
+              id="replay-target-url"
+              type="url"
+              value={replayTargetURL}
+              onChange={(e) => setReplayTargetURL(e.target.value)}
+              placeholder="https://staging.example.com"
+              disabled={replayLoading}
+            />
+
+            <label htmlFor="replay-filter-url" style={{ marginTop: 12 }}>
+              URL Pattern Filter (optional)
+            </label>
+            <input
+              id="replay-filter-url"
+              value={replayFilterURL}
+              onChange={(e) => setReplayFilterURL(e.target.value)}
+              placeholder="**/api/**, *.json"
+              disabled={replayLoading}
+            />
+            <small>Comma-separated glob patterns to filter requests</small>
+
+            <label htmlFor="replay-filter-method" style={{ marginTop: 12 }}>
+              HTTP Method Filter (optional)
+            </label>
+            <input
+              id="replay-filter-method"
+              value={replayFilterMethod}
+              onChange={(e) => setReplayFilterMethod(e.target.value)}
+              placeholder="GET, POST"
+              disabled={replayLoading}
+            />
+            <small>Comma-separated HTTP methods to filter</small>
+
+            <label
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={replayCompare}
+                onChange={(e) => setReplayCompare(e.target.checked)}
+                disabled={replayLoading}
+              />
+              Compare responses with original
+            </label>
+
+            {replayError && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "rgba(239, 68, 68, 0.2)",
+                  color: "#ef4444",
+                }}
+              >
+                {replayError}
+              </div>
+            )}
+
+            {replayResult && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 16,
+                  borderRadius: 8,
+                  background: "rgba(0, 0, 0, 0.2)",
+                }}
+              >
+                <h4>Replay Results</h4>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: 12,
+                    marginTop: 12,
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Total
+                    </div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                      {replayResult.totalRequests}
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Successful
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "1.5rem",
+                        fontWeight: 600,
+                        color: "#22c55e",
+                      }}
+                    >
+                      {replayResult.successful}
+                    </div>
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Failed
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "1.5rem",
+                        fontWeight: 600,
+                        color: "#ef4444",
+                      }}
+                    >
+                      {replayResult.failed}
+                    </div>
+                  </div>
+                </div>
+                {replayResult.comparison && (
+                  <div style={{ marginTop: 12 }}>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Matches: {replayResult.comparison.matches} /{" "}
+                      {replayResult.comparison.totalCompared}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Mismatches: {replayResult.comparison.mismatches}
+                    </div>
+                  </div>
+                )}
+                {replayResult.durationMs && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      fontSize: "0.85rem",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    Duration: {(replayResult.durationMs / 1000).toFixed(2)}s
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
+              <button
+                type="button"
+                onClick={handleReplay}
+                disabled={replayLoading || !replayTargetURL}
+              >
+                {replayLoading ? "Replaying..." : "Run Replay"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={closeReplayModal}
+                disabled={replayLoading}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

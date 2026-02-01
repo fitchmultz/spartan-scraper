@@ -294,6 +294,12 @@ export function App() {
     webhookUrl,
     webhookEvents,
     webhookSecret,
+    interceptEnabled,
+    interceptURLPatterns,
+    interceptResourceTypes,
+    interceptCaptureRequestBody,
+    interceptCaptureResponseBody,
+    interceptMaxBodySize,
     setHeadless,
     setUsePlaywright,
     setTimeoutSeconds,
@@ -319,6 +325,12 @@ export function App() {
     setWebhookUrl,
     setWebhookEvents,
     setWebhookSecret,
+    setInterceptEnabled,
+    setInterceptURLPatterns,
+    setInterceptResourceTypes,
+    setInterceptCaptureRequestBody,
+    setInterceptCaptureResponseBody,
+    setInterceptMaxBodySize,
     applyPreset,
   } = formState;
 
@@ -679,6 +691,18 @@ export function App() {
           profiles={profiles}
           onSubmit={handleSubmitScrape}
           loading={loading}
+          interceptEnabled={interceptEnabled}
+          setInterceptEnabled={setInterceptEnabled}
+          interceptURLPatterns={interceptURLPatterns}
+          setInterceptURLPatterns={setInterceptURLPatterns}
+          interceptResourceTypes={interceptResourceTypes}
+          setInterceptResourceTypes={setInterceptResourceTypes}
+          interceptCaptureRequestBody={interceptCaptureRequestBody}
+          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+          interceptCaptureResponseBody={interceptCaptureResponseBody}
+          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+          interceptMaxBodySize={interceptMaxBodySize}
+          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
 
         <CrawlForm
@@ -732,6 +756,18 @@ export function App() {
           profiles={profiles}
           onSubmit={handleSubmitCrawl}
           loading={loading}
+          interceptEnabled={interceptEnabled}
+          setInterceptEnabled={setInterceptEnabled}
+          interceptURLPatterns={interceptURLPatterns}
+          setInterceptURLPatterns={setInterceptURLPatterns}
+          interceptResourceTypes={interceptResourceTypes}
+          setInterceptResourceTypes={setInterceptResourceTypes}
+          interceptCaptureRequestBody={interceptCaptureRequestBody}
+          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+          interceptCaptureResponseBody={interceptCaptureResponseBody}
+          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+          interceptMaxBodySize={interceptMaxBodySize}
+          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
 
         <ResearchForm
@@ -787,6 +823,18 @@ export function App() {
           profiles={profiles}
           onSubmit={handleSubmitResearch}
           loading={loading}
+          interceptEnabled={interceptEnabled}
+          setInterceptEnabled={setInterceptEnabled}
+          interceptURLPatterns={interceptURLPatterns}
+          setInterceptURLPatterns={setInterceptURLPatterns}
+          interceptResourceTypes={interceptResourceTypes}
+          setInterceptResourceTypes={setInterceptResourceTypes}
+          interceptCaptureRequestBody={interceptCaptureRequestBody}
+          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+          interceptCaptureResponseBody={interceptCaptureResponseBody}
+          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+          interceptMaxBodySize={interceptMaxBodySize}
+          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
 
         <BatchForm

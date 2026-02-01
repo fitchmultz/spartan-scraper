@@ -24,10 +24,12 @@ import {
   buildCrawlRequest,
   buildWebhookConfig,
   parsePatternList,
+  buildNetworkInterceptConfig,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
+import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import type { DeviceEmulation } from "../api";
 
 export interface CrawlFormRef {
@@ -91,6 +93,19 @@ interface CrawlFormProps {
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").CrawlRequest) => Promise<void>;
   loading: boolean;
+  // Network interception props
+  interceptEnabled: boolean;
+  setInterceptEnabled: (value: boolean) => void;
+  interceptURLPatterns: string;
+  setInterceptURLPatterns: (value: string) => void;
+  interceptResourceTypes: string[];
+  setInterceptResourceTypes: (value: string[]) => void;
+  interceptCaptureRequestBody: boolean;
+  setInterceptCaptureRequestBody: (value: boolean) => void;
+  interceptCaptureResponseBody: boolean;
+  setInterceptCaptureResponseBody: (value: boolean) => void;
+  interceptMaxBodySize: number;
+  setInterceptMaxBodySize: (value: number) => void;
 }
 
 export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
@@ -145,6 +160,18 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       profiles,
       onSubmit,
       loading,
+      interceptEnabled,
+      setInterceptEnabled,
+      interceptURLPatterns,
+      setInterceptURLPatterns,
+      interceptResourceTypes,
+      setInterceptResourceTypes,
+      interceptCaptureRequestBody,
+      setInterceptCaptureRequestBody,
+      interceptCaptureResponseBody,
+      setInterceptCaptureResponseBody,
+      interceptMaxBodySize,
+      setInterceptMaxBodySize,
     }: CrawlFormProps,
     ref,
   ) {
@@ -160,6 +187,27 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
     const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
+
+    const networkIntercept = useMemo(
+      () =>
+        buildNetworkInterceptConfig(
+          interceptEnabled,
+          interceptURLPatterns,
+          interceptResourceTypes,
+          interceptCaptureRequestBody,
+          interceptCaptureResponseBody,
+          interceptMaxBodySize,
+          1000,
+        ),
+      [
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
+      ],
+    );
 
     const handleSubmit = useCallback(async () => {
       if (!crawlUrl) {
@@ -200,6 +248,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         parsePatternList(includePatterns),
         parsePatternList(excludePatterns),
         device || undefined,
+        networkIntercept,
       );
       await onSubmit(request);
     }, [
@@ -234,6 +283,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       includePatterns,
       excludePatterns,
       device,
+      networkIntercept,
       onSubmit,
     ]);
 
@@ -271,6 +321,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         includePatterns,
         excludePatterns,
         device: device || undefined,
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
       }),
       [
         crawlUrl,
@@ -304,6 +360,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         includePatterns,
         excludePatterns,
         device,
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
       ],
     );
 
@@ -428,6 +490,22 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           device={device}
           onChange={setDevice}
           disabled={!headless}
+        />
+        <NetworkInterceptConfig
+          enabled={interceptEnabled}
+          setEnabled={setInterceptEnabled}
+          urlPatterns={interceptURLPatterns}
+          setURLPatterns={setInterceptURLPatterns}
+          resourceTypes={interceptResourceTypes}
+          setResourceTypes={setInterceptResourceTypes}
+          captureRequestBody={interceptCaptureRequestBody}
+          setCaptureRequestBody={setInterceptCaptureRequestBody}
+          captureResponseBody={interceptCaptureResponseBody}
+          setCaptureResponseBody={setInterceptCaptureResponseBody}
+          maxBodySize={interceptMaxBodySize}
+          setMaxBodySize={setInterceptMaxBodySize}
+          disabled={!headless}
+          inputPrefix="crawl"
         />
         <AuthConfig
           authProfile={authProfile}

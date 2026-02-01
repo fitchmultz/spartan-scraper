@@ -311,3 +311,51 @@ func TestRunScrape_ValidExtractConfigJSON(t *testing.T) {
 		t.Errorf("expected output to contain job data, got %q", output)
 	}
 }
+
+func TestRunScrape_NetworkInterceptFlags(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunScrape(ctx, cfg, []string{
+		"--url", "https://example.com",
+		"--intercept-enabled",
+		"--intercept-pattern", "**/api/**",
+		"--intercept-pattern", "*.json",
+		"--intercept-resource-type", "xhr",
+		"--intercept-resource-type", "fetch",
+		"--intercept-request-body=false",
+		"--intercept-response-body=true",
+		"--intercept-max-body-size", "2097152",
+		"--intercept-max-entries", "500",
+	})
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if exitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", exitCode)
+	}
+	if !strings.Contains(output, "\"kind\": \"scrape\"") {
+		t.Errorf("expected output to contain job data, got %q", output)
+	}
+}

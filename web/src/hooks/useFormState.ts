@@ -39,6 +39,13 @@ export interface FormState {
   webhookUrl: string;
   webhookEvents: string[];
   webhookSecret: string;
+  // Network interception state
+  interceptEnabled: boolean;
+  interceptURLPatterns: string;
+  interceptResourceTypes: string[];
+  interceptCaptureRequestBody: boolean;
+  interceptCaptureResponseBody: boolean;
+  interceptMaxBodySize: number;
 }
 
 export interface FormActions {
@@ -67,6 +74,13 @@ export interface FormActions {
   setWebhookUrl: (value: string) => void;
   setWebhookEvents: (value: string[]) => void;
   setWebhookSecret: (value: string) => void;
+  // Network interception actions
+  setInterceptEnabled: (value: boolean) => void;
+  setInterceptURLPatterns: (value: string) => void;
+  setInterceptResourceTypes: (value: string[]) => void;
+  setInterceptCaptureRequestBody: (value: boolean) => void;
+  setInterceptCaptureResponseBody: (value: boolean) => void;
+  setInterceptMaxBodySize: (value: number) => void;
   /** Apply a preset configuration to the form state */
   applyPreset: (config: PresetConfig) => void;
 }
@@ -97,6 +111,13 @@ const INITIAL_STATE: FormState = {
   webhookUrl: "",
   webhookEvents: ["completed"],
   webhookSecret: "",
+  // Network interception defaults
+  interceptEnabled: false,
+  interceptURLPatterns: "",
+  interceptResourceTypes: ["xhr", "fetch"],
+  interceptCaptureRequestBody: true,
+  interceptCaptureResponseBody: true,
+  interceptMaxBodySize: 1048576,
 };
 
 export function useFormState(): FormState & FormActions {
@@ -202,6 +223,30 @@ export function useFormState(): FormState & FormActions {
     setState((prev) => ({ ...prev, webhookSecret: value }));
   }, []);
 
+  const setInterceptEnabled = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, interceptEnabled: value }));
+  }, []);
+
+  const setInterceptURLPatterns = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, interceptURLPatterns: value }));
+  }, []);
+
+  const setInterceptResourceTypes = useCallback((value: string[]) => {
+    setState((prev) => ({ ...prev, interceptResourceTypes: value }));
+  }, []);
+
+  const setInterceptCaptureRequestBody = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, interceptCaptureRequestBody: value }));
+  }, []);
+
+  const setInterceptCaptureResponseBody = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, interceptCaptureResponseBody: value }));
+  }, []);
+
+  const setInterceptMaxBodySize = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, interceptMaxBodySize: value }));
+  }, []);
+
   useEffect(() => {
     if (!state.headless && state.usePlaywright) {
       setState((prev) => ({ ...prev, usePlaywright: false }));
@@ -264,6 +309,24 @@ export function useFormState(): FormState & FormActions {
       ...(config.webhookSecret !== undefined && {
         webhookSecret: config.webhookSecret,
       }),
+      ...(config.interceptEnabled !== undefined && {
+        interceptEnabled: config.interceptEnabled,
+      }),
+      ...(config.interceptURLPatterns !== undefined && {
+        interceptURLPatterns: config.interceptURLPatterns,
+      }),
+      ...(config.interceptResourceTypes !== undefined && {
+        interceptResourceTypes: config.interceptResourceTypes,
+      }),
+      ...(config.interceptCaptureRequestBody !== undefined && {
+        interceptCaptureRequestBody: config.interceptCaptureRequestBody,
+      }),
+      ...(config.interceptCaptureResponseBody !== undefined && {
+        interceptCaptureResponseBody: config.interceptCaptureResponseBody,
+      }),
+      ...(config.interceptMaxBodySize !== undefined && {
+        interceptMaxBodySize: config.interceptMaxBodySize,
+      }),
     }));
   }, []);
 
@@ -294,6 +357,12 @@ export function useFormState(): FormState & FormActions {
     setWebhookUrl,
     setWebhookEvents,
     setWebhookSecret,
+    setInterceptEnabled,
+    setInterceptURLPatterns,
+    setInterceptResourceTypes,
+    setInterceptCaptureRequestBody,
+    setInterceptCaptureResponseBody,
+    setInterceptMaxBodySize,
     applyPreset,
   };
 }

@@ -110,6 +110,24 @@ Options:
 		}
 	}
 
+	// Build network intercept config if enabled
+	var networkIntercept *fetch.NetworkInterceptConfig
+	if *cf.InterceptEnabled {
+		resourceTypes := make([]fetch.InterceptedResourceType, 0, len(cf.InterceptResourceTypes))
+		for _, rt := range cf.InterceptResourceTypes {
+			resourceTypes = append(resourceTypes, fetch.InterceptedResourceType(rt))
+		}
+		networkIntercept = &fetch.NetworkInterceptConfig{
+			Enabled:             true,
+			URLPatterns:         []string(cf.InterceptURLPatterns),
+			ResourceTypes:       resourceTypes,
+			CaptureRequestBody:  *cf.InterceptCaptureRequest,
+			CaptureResponseBody: *cf.InterceptCaptureResponse,
+			MaxBodySize:         int64(*cf.InterceptMaxBodySize),
+			MaxEntries:          *cf.InterceptMaxEntries,
+		}
+	}
+
 	spec := jobs.JobSpec{
 		Kind:             model.KindCrawl,
 		URL:              *url,
@@ -130,6 +148,7 @@ Options:
 		RespectRobotsTxt: *respectRobots,
 		SkipDuplicates:   *skipDuplicates,
 		SimHashThreshold: *simHashThreshold,
+		NetworkIntercept: networkIntercept,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

@@ -23,10 +23,12 @@ import {
   buildAuth,
   buildScrapeRequest,
   buildWebhookConfig,
+  buildNetworkInterceptConfig,
 } from "../lib/form-utils";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
+import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import type { DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
@@ -90,6 +92,19 @@ interface ScrapeFormProps {
   profiles: Array<{ name: string; parents: string[] }>;
   onSubmit: (request: import("../api").ScrapeRequest) => Promise<void>;
   loading: boolean;
+  // Network interception props
+  interceptEnabled: boolean;
+  setInterceptEnabled: (value: boolean) => void;
+  interceptURLPatterns: string;
+  setInterceptURLPatterns: (value: string) => void;
+  interceptResourceTypes: string[];
+  setInterceptResourceTypes: (value: string[]) => void;
+  interceptCaptureRequestBody: boolean;
+  setInterceptCaptureRequestBody: (value: boolean) => void;
+  interceptCaptureResponseBody: boolean;
+  setInterceptCaptureResponseBody: (value: boolean) => void;
+  interceptMaxBodySize: number;
+  setInterceptMaxBodySize: (value: number) => void;
 }
 
 export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
@@ -144,6 +159,18 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       profiles,
       onSubmit,
       loading,
+      interceptEnabled,
+      setInterceptEnabled,
+      interceptURLPatterns,
+      setInterceptURLPatterns,
+      interceptResourceTypes,
+      setInterceptResourceTypes,
+      interceptCaptureRequestBody,
+      setInterceptCaptureRequestBody,
+      interceptCaptureResponseBody,
+      setInterceptCaptureResponseBody,
+      interceptMaxBodySize,
+      setInterceptMaxBodySize,
     }: ScrapeFormProps,
     ref,
   ) {
@@ -153,6 +180,27 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
     const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
+
+    const networkIntercept = useMemo(
+      () =>
+        buildNetworkInterceptConfig(
+          interceptEnabled,
+          interceptURLPatterns,
+          interceptResourceTypes,
+          interceptCaptureRequestBody,
+          interceptCaptureResponseBody,
+          interceptMaxBodySize,
+          1000,
+        ),
+      [
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
+      ],
+    );
 
     const handleSubmit = useCallback(async () => {
       if (!scrapeUrl) {
@@ -187,6 +235,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         incremental,
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
         device || undefined,
+        networkIntercept,
       );
       await onSubmit(request);
     }, [
@@ -215,6 +264,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       webhookEvents,
       webhookSecret,
       device,
+      networkIntercept,
       onSubmit,
     ]);
 
@@ -246,6 +296,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookEvents,
         webhookSecret,
         device: device || undefined,
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
       }),
       [
         scrapeUrl,
@@ -273,6 +329,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookEvents,
         webhookSecret,
         device,
+        interceptEnabled,
+        interceptURLPatterns,
+        interceptResourceTypes,
+        interceptCaptureRequestBody,
+        interceptCaptureResponseBody,
+        interceptMaxBodySize,
       ],
     );
 
@@ -328,6 +390,22 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           device={device}
           onChange={setDevice}
           disabled={!headless}
+        />
+        <NetworkInterceptConfig
+          enabled={interceptEnabled}
+          setEnabled={setInterceptEnabled}
+          urlPatterns={interceptURLPatterns}
+          setURLPatterns={setInterceptURLPatterns}
+          resourceTypes={interceptResourceTypes}
+          setResourceTypes={setInterceptResourceTypes}
+          captureRequestBody={interceptCaptureRequestBody}
+          setCaptureRequestBody={setInterceptCaptureRequestBody}
+          captureResponseBody={interceptCaptureResponseBody}
+          setCaptureResponseBody={setInterceptCaptureResponseBody}
+          maxBodySize={interceptMaxBodySize}
+          setMaxBodySize={setInterceptMaxBodySize}
+          disabled={!headless}
+          inputPrefix="scrape"
         />
         <AuthConfig
           authProfile={authProfile}

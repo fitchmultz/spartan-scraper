@@ -100,20 +100,39 @@ Options:
 		}
 	}
 
+	// Build network intercept config if enabled
+	var networkIntercept *fetch.NetworkInterceptConfig
+	if *cf.InterceptEnabled {
+		resourceTypes := make([]fetch.InterceptedResourceType, 0, len(cf.InterceptResourceTypes))
+		for _, rt := range cf.InterceptResourceTypes {
+			resourceTypes = append(resourceTypes, fetch.InterceptedResourceType(rt))
+		}
+		networkIntercept = &fetch.NetworkInterceptConfig{
+			Enabled:             true,
+			URLPatterns:         []string(cf.InterceptURLPatterns),
+			ResourceTypes:       resourceTypes,
+			CaptureRequestBody:  *cf.InterceptCaptureRequest,
+			CaptureResponseBody: *cf.InterceptCaptureResponse,
+			MaxBodySize:         int64(*cf.InterceptMaxBodySize),
+			MaxEntries:          *cf.InterceptMaxEntries,
+		}
+	}
+
 	spec := jobs.JobSpec{
-		Kind:           model.KindResearch,
-		Query:          *query,
-		URLs:           urlList,
-		MaxDepth:       *maxDepth,
-		MaxPages:       *maxPages,
-		Headless:       *cf.Headless,
-		UsePlaywright:  *cf.Playwright,
-		Auth:           authOptions,
-		TimeoutSeconds: *cf.Timeout,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
-		Incremental:    *cf.Incremental,
-		Device:         device,
+		Kind:             model.KindResearch,
+		Query:            *query,
+		URLs:             urlList,
+		MaxDepth:         *maxDepth,
+		MaxPages:         *maxPages,
+		Headless:         *cf.Headless,
+		UsePlaywright:    *cf.Playwright,
+		Auth:             authOptions,
+		TimeoutSeconds:   *cf.Timeout,
+		Extract:          extractOpts,
+		Pipeline:         pipelineOpts,
+		Incremental:      *cf.Incremental,
+		Device:           device,
+		NetworkIntercept: networkIntercept,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {
