@@ -20,6 +20,7 @@
 package jobs
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"time"
 
@@ -215,6 +216,8 @@ func decodeScreenshot(value interface{}) *fetch.ScreenshotConfig {
 
 // decodeBytes decodes a byte slice from interface{}.
 // Handles []byte, []interface{} (of uint8), and string types.
+// Strings are first attempted to be base64-decoded (for JSON round-tripped bytes),
+// and if that fails, treated as raw bytes for backward compatibility.
 func decodeBytes(value interface{}) []byte {
 	if value == nil {
 		return nil
@@ -223,6 +226,12 @@ func decodeBytes(value interface{}) []byte {
 		return b
 	}
 	if s, ok := value.(string); ok {
+		// Try base64 decode first (for JSON round-tripped bytes)
+		// Go's json.Marshal base64-encodes []byte, which becomes a string after unmarshal
+		if decoded, err := base64.StdEncoding.DecodeString(s); err == nil {
+			return decoded
+		}
+		// Fall back to raw bytes for actual strings or invalid base64
 		return []byte(s)
 	}
 	// Handle []interface{} case (JSON arrays of numbers)

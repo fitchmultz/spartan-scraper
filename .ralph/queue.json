@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0261",
-      "status": "todo",
-      "title": "Preserve request body bytes across job persistence/recovery",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "jobs",
-        "persistence",
-        "correctness"
-      ],
-      "scope": [
-        "internal/jobs/job_create.go",
-        "internal/store/store_jobs.go",
-        "internal/jobs/helpers.go",
-        "internal/jobs/manager.go",
-        "internal/jobs/manager_recovery_test.go",
-        "go test ./internal/jobs -run Recovery"
-      ],
-      "evidence": [
-        "path: internal/jobs/job_create.go :: CreateScrapeJob :: stores request body as []byte in Params",
-        "path: internal/store/store_jobs.go :: Create :: marshals job.Params to JSON ([]byte becomes base64 string)",
-        "path: internal/jobs/helpers.go :: decodeBytes :: treats string as raw bytes, does not base64-decode",
-        "path: internal/jobs/manager.go :: recoverQueuedJobs :: reloads params from store before enqueue"
-      ],
-      "plan": [
-        "Introduce an explicit body encoding scheme (e.g., store body as string with base64 marker) to round-trip through JSON",
-        "Update decodeBytes (and any encoder) to detect and decode the stored representation reliably",
-        "Add recovery tests to ensure queued jobs retain exact request bodies after store round-trip",
-        "Verify by running `go test ./internal/jobs -run Recovery` and confirming body equality on recovered jobs"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T23:22:20Z",
-      "updated_at": "2026-01-31T23:22:20Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0262",
       "status": "todo",
       "title": "Require --force when restore target data dir is non-empty",
