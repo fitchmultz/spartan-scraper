@@ -22,6 +22,9 @@ import {
   type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
+  type BatchScrapeRequest,
+  type BatchCrawlRequest,
+  type BatchResearchRequest,
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
@@ -31,6 +34,9 @@ import { InfoSections } from "./components/InfoSections";
 import { ScrapeForm, type ScrapeFormRef } from "./components/ScrapeForm";
 import { CrawlForm, type CrawlFormRef } from "./components/CrawlForm";
 import { ResearchForm, type ResearchFormRef } from "./components/ResearchForm";
+import { BatchForm } from "./components/BatchForm";
+import { BatchList } from "./components/BatchList";
+import { useBatches } from "./hooks/useBatches";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { QuickStartPanel } from "./components/QuickStartPanel";
@@ -88,6 +94,25 @@ export function App() {
 
   // Active tab state for preset filtering
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
+
+  // Batch form state
+  const [batchTab, setBatchTab] = useState<"scrape" | "crawl" | "research">(
+    "scrape",
+  );
+  const [batchUrls, setBatchUrls] = useState("");
+  const [batchQuery, setBatchQuery] = useState("");
+
+  // Batch data management
+  const {
+    batches,
+    batchJobs,
+    loading: batchesLoading,
+    refreshBatches,
+    cancelBatch,
+    submitBatchScrape,
+    submitBatchCrawl,
+    submitBatchResearch,
+  } = useBatches();
 
   // Save preset dialog state
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -266,6 +291,59 @@ export function App() {
       });
     },
     [refreshJobs],
+  );
+
+  // Batch submission handlers
+  const handleSubmitBatchScrape = useCallback(
+    async (request: BatchScrapeRequest) => {
+      try {
+        await submitBatchScrape(request);
+        setBatchUrls("");
+      } catch (err) {
+        console.error("Failed to submit batch scrape:", err);
+        alert(`Failed to submit batch: ${String(err)}`);
+      }
+    },
+    [submitBatchScrape],
+  );
+
+  const handleSubmitBatchCrawl = useCallback(
+    async (request: BatchCrawlRequest) => {
+      try {
+        await submitBatchCrawl(request);
+        setBatchUrls("");
+      } catch (err) {
+        console.error("Failed to submit batch crawl:", err);
+        alert(`Failed to submit batch: ${String(err)}`);
+      }
+    },
+    [submitBatchCrawl],
+  );
+
+  const handleSubmitBatchResearch = useCallback(
+    async (request: BatchResearchRequest) => {
+      try {
+        await submitBatchResearch(request);
+        setBatchUrls("");
+        setBatchQuery("");
+      } catch (err) {
+        console.error("Failed to submit batch research:", err);
+        alert(`Failed to submit batch: ${String(err)}`);
+      }
+    },
+    [submitBatchResearch],
+  );
+
+  const handleCancelBatch = useCallback(
+    async (batchId: string) => {
+      try {
+        await cancelBatch(batchId);
+      } catch (err) {
+        console.error("Failed to cancel batch:", err);
+        alert(`Failed to cancel batch: ${String(err)}`);
+      }
+    },
+    [cancelBatch],
   );
 
   const cancelJob = useCallback(
@@ -623,6 +701,81 @@ export function App() {
           profiles={profiles}
           onSubmit={handleSubmitResearch}
           loading={loading}
+        />
+
+        <BatchForm
+          activeTab={batchTab}
+          setActiveTab={setBatchTab}
+          headless={headless}
+          setHeadless={setHeadless}
+          usePlaywright={usePlaywright}
+          setUsePlaywright={setUsePlaywright}
+          timeoutSeconds={timeoutSeconds}
+          setTimeoutSeconds={setTimeoutSeconds}
+          authProfile={authProfile}
+          setAuthProfile={setAuthProfile}
+          authBasic={authBasic}
+          setAuthBasic={setAuthBasic}
+          headersRaw={headersRaw}
+          setHeadersRaw={setHeadersRaw}
+          cookiesRaw={cookiesRaw}
+          setCookiesRaw={setCookiesRaw}
+          queryRaw={queryRaw}
+          setQueryRaw={setQueryRaw}
+          loginUrl={loginUrl}
+          setLoginUrl={setLoginUrl}
+          loginUserSelector={loginUserSelector}
+          setLoginUserSelector={setLoginUserSelector}
+          loginPassSelector={loginPassSelector}
+          setLoginPassSelector={setLoginPassSelector}
+          loginSubmitSelector={loginSubmitSelector}
+          setLoginSubmitSelector={setLoginSubmitSelector}
+          loginUser={loginUser}
+          setLoginUser={setLoginUser}
+          loginPass={loginPass}
+          setLoginPass={setLoginPass}
+          extractTemplate={extractTemplate}
+          setExtractTemplate={setExtractTemplate}
+          extractValidate={extractValidate}
+          setExtractValidate={setExtractValidate}
+          preProcessors={preProcessors}
+          setPreProcessors={setPreProcessors}
+          postProcessors={postProcessors}
+          setPostProcessors={setPostProcessors}
+          transformers={transformers}
+          setTransformers={setTransformers}
+          incremental={incremental}
+          setIncremental={setIncremental}
+          webhookUrl={webhookUrl}
+          setWebhookUrl={setWebhookUrl}
+          webhookEvents={webhookEvents}
+          setWebhookEvents={setWebhookEvents}
+          webhookSecret={webhookSecret}
+          setWebhookSecret={setWebhookSecret}
+          profiles={profiles}
+          urlsInput={batchUrls}
+          setUrlsInput={setBatchUrls}
+          maxDepth={maxDepth}
+          setMaxDepth={setMaxDepth}
+          maxPages={maxPages}
+          setMaxPages={setMaxPages}
+          query={batchQuery}
+          setQuery={setBatchQuery}
+          onSubmitScrape={handleSubmitBatchScrape}
+          onSubmitCrawl={handleSubmitBatchCrawl}
+          onSubmitResearch={handleSubmitBatchResearch}
+          loading={loading}
+        />
+      </section>
+
+      <section id="batches">
+        <BatchList
+          batches={batches}
+          jobs={batchJobs}
+          onViewStatus={refreshBatches}
+          onCancel={handleCancelBatch}
+          onRefresh={refreshBatches}
+          loading={batchesLoading}
         />
       </section>
 

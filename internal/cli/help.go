@@ -27,6 +27,7 @@ Commands:
   crawl        Crawl a website
   research     Deep research across multiple sources
   auth         Manage auth vault and profiles
+  batch        Submit and manage batch jobs
   render-profiles List render profiles
   pipeline-js  List pipeline JavaScript scripts
   templates    List extraction templates
@@ -80,6 +81,11 @@ Examples:
   spartan schedule add --kind scrape --interval 3600 --url https://example.com
   spartan schedule list
   spartan schedule delete --id <id>
+  spartan batch submit scrape --file urls.csv --headless
+  spartan batch submit crawl --file sites.json --max-depth 2
+  spartan batch submit research --urls https://a.com,https://b.com --query "pricing"
+  spartan batch status <batch-id> --watch
+  spartan batch cancel <batch-id>
   spartan jobs list
   spartan jobs cancel <id>
   spartan health

@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fitchmultz/spartan-scraper/internal/cli/batch"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/manage"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/scrape"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/server"
@@ -74,6 +75,8 @@ func Run(ctx context.Context) int {
 		return manage.RunRestore(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
+	case "batch":
+		return batch.RunBatch(ctx, cfg, os.Args[2:])
 	case "replay":
 		return manage.RunReplay(ctx, cfg, os.Args[2:])
 	case "watch":
