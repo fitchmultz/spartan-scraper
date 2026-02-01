@@ -150,6 +150,13 @@ func (s *Store) getTotalStorageSizeMB() (int64, error) {
 	jobsDir := filepath.Join(s.dataDir, "jobs")
 	var totalBytes int64
 
+	// Check if jobs directory exists - treat missing as zero storage
+	if _, err := os.Stat(jobsDir); os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, apperrors.Wrap(apperrors.KindInternal, "failed to stat jobs directory", err)
+	}
+
 	err := filepath.WalkDir(jobsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			// Directory might not exist, which is fine

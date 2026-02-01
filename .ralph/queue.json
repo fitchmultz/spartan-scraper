@@ -1,38 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0269",
-      "status": "todo",
-      "title": "Treat missing jobs directory as zero storage in GetStorageStats",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "retention",
-        "store"
-      ],
-      "scope": [
-        "internal/store/store_retention.go",
-        "internal/store/store_retention_test.go"
-      ],
-      "evidence": [
-        "path: internal/store/store_retention.go :: getTotalStorageSizeMB :: filepath.WalkDir is called on dataDir/jobs without handling the root-not-exist error, so missing jobs dir returns an error instead of zero storage"
-      ],
-      "plan": [
-        "Handle a missing jobs directory by returning 0 bytes before walking or by translating os.IsNotExist errors from WalkDir",
-        "Add a store retention test that calls GetStorageStats with no jobs directory and asserts it returns zero storage without error",
-        "Verify by running `go test ./internal/store -run GetStorageStats` and confirming a clean pass"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T03:38:29Z",
-      "updated_at": "2026-02-01T03:38:29Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }

@@ -535,6 +535,52 @@ func TestGetStorageStats(t *testing.T) {
 	}
 }
 
+func TestGetStorageStatsMissingJobsDir(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create a job WITHOUT creating the jobs directory
+	job := model.Job{
+		ID:        "test-job",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := st.Create(ctx, job); err != nil {
+		t.Fatalf("Create job failed: %v", err)
+	}
+
+	// Ensure jobs directory does NOT exist
+	jobsDir := filepath.Join(dataDir, "jobs")
+	if _, err := os.Stat(jobsDir); !os.IsNotExist(err) {
+		t.Fatalf("jobs directory should not exist for this test")
+	}
+
+	// GetStorageStats should succeed and return 0 TotalStorageMB
+	stats, err := st.GetStorageStats(ctx)
+	if err != nil {
+		t.Fatalf("GetStorageStats failed when jobs directory missing: %v", err)
+	}
+
+	if stats.TotalStorageMB != 0 {
+		t.Errorf("expected 0 TotalStorageMB when jobs directory missing, got %d", stats.TotalStorageMB)
+	}
+
+	// Verify other stats are still populated correctly
+	if stats.TotalJobs != 1 {
+		t.Errorf("expected 1 total job, got %d", stats.TotalJobs)
+	}
+}
+
 func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
 	dataDir := t.TempDir()
 	st, err := Open(dataDir)
