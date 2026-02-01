@@ -548,3 +548,88 @@ func TestHandleTrafficReplayWithModifications(t *testing.T) {
 		t.Errorf("expected 1 successful, got %d", resp.Successful)
 	}
 }
+
+func TestHandleTrafficReplayTimeout(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+	ctx := t.Context()
+
+	// Create a test server that responds slowly
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second) // Longer than timeout
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer testServer.Close()
+
+	// Create result file with intercepted traffic
+	tmpDir := t.TempDir()
+	resultPath := filepath.Join(tmpDir, "results.jsonl")
+
+	entry := struct {
+		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
+	}{
+		InterceptedData: []fetch.InterceptedEntry{
+			{
+				Request: fetch.InterceptedRequest{
+					RequestID:    "req-1",
+					URL:          testServer.URL + "/api/test",
+					Method:       "GET",
+					ResourceType: fetch.ResourceTypeXHR,
+				},
+				Response: &fetch.InterceptedResponse{
+					RequestID: "req-1",
+					Status:    200,
+					BodySize:  10,
+				},
+			},
+		},
+	}
+
+	data, _ := json.Marshal(entry)
+	os.WriteFile(resultPath, append(data, '\n'), 0644)
+
+	jobID := "test-job-timeout"
+	job := model.Job{
+		ID:         jobID,
+		Kind:       model.KindScrape,
+		Status:     model.StatusSucceeded,
+		ResultPath: resultPath,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := srv.store.Create(ctx, job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	// Test with short timeout in request
+	body := fmt.Sprintf(`{
+		"jobId": "%s",
+		"targetBaseUrl": "%s",
+		"timeout": 1
+	}`, jobID, testServer.URL)
+
+	req := httptest.NewRequest("POST", fmt.Sprintf("/v1/jobs/replay/%s", jobID), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status %v, got %v: %s", http.StatusOK, status, rr.Body.String())
+	}
+
+	var resp TrafficReplayResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	// Should have 1 failed request due to timeout
+	if resp.Failed != 1 {
+		t.Errorf("expected 1 failed (timeout), got %d", resp.Failed)
+	}
+
+	// Verify error message mentions timeout
+	if len(resp.Results) > 0 && !strings.Contains(resp.Results[0].Error, "Client.Timeout") {
+		t.Errorf("expected timeout error, got: %s", resp.Results[0].Error)
+	}
+}

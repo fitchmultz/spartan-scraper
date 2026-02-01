@@ -20,6 +20,7 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 	cfg := config.Config{
 		DataDir:            dataDir,
 		RequestTimeoutSecs: 30,
+		ReplayTimeoutSecs:  30,
 		MaxConcurrency:     4,
 		RateLimitQPS:       10,
 		RateLimitBurst:     20,

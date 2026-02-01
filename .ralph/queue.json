@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0286",
-      "status": "todo",
-      "title": "Fix missing HTTP client timeouts in API traffic replay handler",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "reliability",
-        "timeout",
-        "api"
-      ],
-      "scope": [
-        "internal/api/traffic_replay.go"
-      ],
-      "evidence": [
-        "path: internal/api/traffic_replay.go :: handleTrafficReplay :: 'client := &http.Client{}' with no timeout configuration",
-        "path: internal/api/traffic_replay.go :: executeReplayRequest :: uses client without timeout",
-        "workflow: replay request to slow/unresponsive target :: HTTP client hangs indefinitely blocking worker",
-        "comparison: other handlers use 30s timeout, traffic replay uses zero timeout"
-      ],
-      "plan": [
-        "Add configurable timeout for traffic replay requests (default 30s)",
-        "Add REPLAY_REQUEST_TIMEOUT_SECONDS env var to .env.example",
-        "Update handleTrafficReplay to create client with timeout",
-        "Add context.WithTimeout for each replay request",
-        "Add proper error handling for timeout scenarios",
-        "Add unit test verifying timeout behavior",
-        "Verify by triggering replay to blackhole address and confirming timeout after 30s"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0287",
       "status": "todo",
       "title": "Add input validation to job result path to prevent path traversal",

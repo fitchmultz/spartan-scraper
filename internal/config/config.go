@@ -72,6 +72,7 @@ type Config struct {
 	UserAgent          string
 	MaxConcurrency     int
 	RequestTimeoutSecs int
+	ReplayTimeoutSecs  int // REPLAY_REQUEST_TIMEOUT_SECONDS env var (default: 30)
 	RateLimitQPS       int
 	RateLimitBurst     int
 	MaxRetries         int
@@ -170,6 +171,7 @@ func Load() (Config, error) {
 		UserAgent:          getenv("USER_AGENT", "SpartanScraper/0.1 (+https://local)"),
 		MaxConcurrency:     getenvInt("MAX_CONCURRENCY", 4),
 		RequestTimeoutSecs: getenvInt("REQUEST_TIMEOUT_SECONDS", 30),
+		ReplayTimeoutSecs:  getenvInt("REPLAY_REQUEST_TIMEOUT_SECONDS", 30),
 		RateLimitQPS:       getenvInt("RATE_LIMIT_QPS", 2),
 		RateLimitBurst:     getenvInt("RATE_LIMIT_BURST", 4),
 		MaxRetries:         getenvInt("MAX_RETRIES", 2),

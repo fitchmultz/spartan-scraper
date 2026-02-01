@@ -95,10 +95,10 @@ func (s *Server) handleTrafficReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set default timeout
+	// Set default timeout - use config value when request doesn't specify
 	timeout := req.Timeout
 	if timeout == 0 {
-		timeout = 30
+		timeout = s.cfg.ReplayTimeoutSecs
 	}
 
 	// Replay requests
