@@ -1535,6 +1535,228 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/watch:
+    get:
+      summary: List all watches
+      operationId: listWatches
+      responses:
+        '200':
+          description: List of watches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchList'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new watch
+      operationId: createWatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchInput'
+      responses:
+        '201':
+          description: Watch created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watch'
+        '400':
+          description: Bad Request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/watch/{id}:
+    get:
+      summary: Get a watch by ID
+      operationId: getWatch
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Watch ID
+      responses:
+        '200':
+          description: Watch details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watch'
+        '404':
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a watch
+      operationId: updateWatch
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Watch ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchInput'
+      responses:
+        '200':
+          description: Watch updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watch'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a watch
+      operationId: deleteWatch
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Watch ID
+      responses:
+        '204':
+          description: Watch deleted
+        '404':
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/watch/{id}/check:
+    post:
+      summary: Manually check a watch for changes
+      operationId: checkWatch
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Watch ID
+      responses:
+        '200':
+          description: Check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchCheckResult'
+        '404':
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/metrics:
     get:
       summary: Get performance metrics
@@ -2546,6 +2768,178 @@ components:
           type: string
           description: HMAC-SHA256 secret for signature verification
           format: password
+    Watch:
+      type: object
+      required: [id, url, intervalSeconds, enabled, createdAt]
+      properties:
+        id:
+          type: string
+          description: Unique watch identifier (UUID)
+        url:
+          type: string
+          format: uri
+          description: URL to monitor for changes
+        selector:
+          type: string
+          description: CSS selector for targeted monitoring (optional)
+        intervalSeconds:
+          type: integer
+          minimum: 60
+          description: Check interval in seconds (min 60)
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the watch is active
+        createdAt:
+          type: string
+          format: date-time
+          description: When the watch was created
+        lastCheckedAt:
+          type: string
+          format: date-time
+          description: When the watch was last checked
+        lastChangedAt:
+          type: string
+          format: date-time
+          description: When content last changed
+        changeCount:
+          type: integer
+          default: 0
+          description: Total number of changes detected
+        diffFormat:
+          type: string
+          enum: [unified, html-side-by-side, html-inline]
+          default: unified
+          description: Diff output format
+        webhookConfig:
+          $ref: '#/components/schemas/WebhookConfig'
+        notifyOnChange:
+          type: boolean
+          default: false
+          description: Whether to send webhook notifications on change
+        minChangeSize:
+          type: integer
+          description: Ignore changes smaller than N bytes
+        ignorePatterns:
+          type: array
+          items:
+            type: string
+          description: Regex patterns to ignore in content
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser for fetching
+        usePlaywright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of chromedp
+        extractMode:
+          type: string
+          enum: [text, html, markdown]
+          description: Content extraction mode
+        status:
+          type: string
+          enum: [active, paused, error, disabled]
+          description: Current watch status (derived from enabled field)
+
+    WatchInput:
+      type: object
+      required: [url, intervalSeconds]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to monitor for changes
+        selector:
+          type: string
+          description: CSS selector for targeted monitoring (optional)
+        intervalSeconds:
+          type: integer
+          minimum: 60
+          default: 3600
+          description: Check interval in seconds (min 60)
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the watch is active
+        diffFormat:
+          type: string
+          enum: [unified, html-side-by-side, html-inline]
+          default: unified
+          description: Diff output format
+        webhookConfig:
+          $ref: '#/components/schemas/WebhookConfig'
+        notifyOnChange:
+          type: boolean
+          default: false
+          description: Whether to send webhook notifications on change
+        minChangeSize:
+          type: integer
+          description: Ignore changes smaller than N bytes
+        ignorePatterns:
+          type: array
+          items:
+            type: string
+          description: Regex patterns to ignore in content
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser for fetching
+        usePlaywright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of chromedp
+        extractMode:
+          type: string
+          enum: [text, html, markdown]
+          description: Content extraction mode
+
+    WatchList:
+      type: object
+      required: [watches]
+      properties:
+        watches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Watch'
+          description: List of all watches
+
+    WatchCheckResult:
+      type: object
+      required: [watchId, url, checkedAt, changed]
+      properties:
+        watchId:
+          type: string
+          description: ID of the watch that was checked
+        url:
+          type: string
+          format: uri
+          description: URL that was checked
+        checkedAt:
+          type: string
+          format: date-time
+          description: When the check was performed
+        changed:
+          type: boolean
+          description: Whether content changed
+        previousHash:
+          type: string
+          description: Previous content hash (if available)
+        currentHash:
+          type: string
+          description: Current content hash
+        diffText:
+          type: string
+          description: Unified diff text (if changed and previous content existed)
+        diffHtml:
+          type: string
+          description: HTML formatted diff (if changed and previous content existed)
+        error:
+          type: string
+          description: Error message if check failed
+        selector:
+          type: string
+          description: CSS selector used for extraction
     WebhookPayload:
       type: object
       description: Payload sent to webhook endpoints on job events

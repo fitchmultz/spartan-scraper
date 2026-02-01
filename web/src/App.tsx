@@ -19,12 +19,20 @@ import {
   postV1Crawl,
   postV1Research,
   postV1Scrape,
+  listWatches,
+  createWatch,
+  updateWatch,
+  deleteWatch,
+  checkWatch,
   type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
   type BatchScrapeRequest,
   type BatchCrawlRequest,
   type BatchResearchRequest,
+  type Watch,
+  type WatchInput,
+  type WatchCheckResult,
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
@@ -36,6 +44,7 @@ import { CrawlForm, type CrawlFormRef } from "./components/CrawlForm";
 import { ResearchForm, type ResearchFormRef } from "./components/ResearchForm";
 import { BatchForm } from "./components/BatchForm";
 import { BatchList } from "./components/BatchList";
+import { WatchManager } from "./components/WatchManager";
 import { useBatches } from "./hooks/useBatches";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
@@ -101,6 +110,83 @@ export function App() {
   );
   const [batchUrls, setBatchUrls] = useState("");
   const [batchQuery, setBatchQuery] = useState("");
+
+  // Watch state
+  const [watches, setWatches] = useState<Watch[]>([]);
+  const [watchesLoading, setWatchesLoading] = useState(false);
+
+  // Load watches
+  const refreshWatches = useCallback(async () => {
+    setWatchesLoading(true);
+    try {
+      const { data, error } = await listWatches({ baseUrl: getApiBaseUrl() });
+      if (error) {
+        console.error("Failed to load watches:", error);
+        return;
+      }
+      setWatches(data?.watches || []);
+    } catch (err) {
+      console.error("Error loading watches:", err);
+    } finally {
+      setWatchesLoading(false);
+    }
+  }, []);
+
+  // Watch CRUD handlers
+  const handleCreateWatch = useCallback(
+    async (input: WatchInput) => {
+      const { error } = await createWatch({
+        baseUrl: getApiBaseUrl(),
+        body: input,
+      });
+      if (error) throw error;
+      await refreshWatches();
+    },
+    [refreshWatches],
+  );
+
+  const handleUpdateWatch = useCallback(
+    async (id: string, input: WatchInput) => {
+      const { error } = await updateWatch({
+        baseUrl: getApiBaseUrl(),
+        path: { id },
+        body: input,
+      });
+      if (error) throw error;
+      await refreshWatches();
+    },
+    [refreshWatches],
+  );
+
+  const handleDeleteWatch = useCallback(
+    async (id: string) => {
+      const { error } = await deleteWatch({
+        baseUrl: getApiBaseUrl(),
+        path: { id },
+      });
+      if (error) throw error;
+      await refreshWatches();
+    },
+    [refreshWatches],
+  );
+
+  const handleCheckWatch = useCallback(
+    async (id: string): Promise<WatchCheckResult | undefined> => {
+      const { data, error } = await checkWatch({
+        baseUrl: getApiBaseUrl(),
+        path: { id },
+      });
+      if (error) throw error;
+      await refreshWatches();
+      return data;
+    },
+    [refreshWatches],
+  );
+
+  // Load watches on mount
+  useEffect(() => {
+    refreshWatches();
+  }, [refreshWatches]);
 
   // Batch data management
   const {
@@ -813,6 +899,18 @@ export function App() {
           resultsPerPage={100}
           onLoadPage={setCurrentPage}
           availableJobs={jobs}
+        />
+      </section>
+
+      <section id="watches">
+        <WatchManager
+          watches={watches}
+          onRefresh={refreshWatches}
+          onCreate={handleCreateWatch}
+          onUpdate={handleUpdateWatch}
+          onDelete={handleDeleteWatch}
+          onCheck={handleCheckWatch}
+          loading={watchesLoading}
         />
       </section>
 

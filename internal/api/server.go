@@ -206,6 +206,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/jobs/batch/", s.handleBatchGet)
 	mux.HandleFunc("/v1/schedules", s.handleSchedules)
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
+	mux.HandleFunc("/v1/watch", s.handleWatches)
+	mux.HandleFunc("/v1/watch/", s.handleWatchCheckWrapper)
 	mux.HandleFunc("/v1/templates", s.handleTemplates)
 	mux.HandleFunc("/v1/crawl-states", s.handleCrawlStates)
 	mux.HandleFunc("/v1/metrics", s.handleMetrics)

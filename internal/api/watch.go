@@ -1,0 +1,362 @@
+// Package api provides HTTP handlers for watch monitoring endpoints.
+// Watch handlers support CRUD operations and manual check triggering
+// for content change monitoring.
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/watch"
+)
+
+// WatchRequest represents the request body for creating/updating a watch.
+type WatchRequest struct {
+	URL             string               `json:"url"`
+	Selector        string               `json:"selector,omitempty"`
+	IntervalSeconds int                  `json:"intervalSeconds"`
+	Enabled         bool                 `json:"enabled"`
+	DiffFormat      string               `json:"diffFormat,omitempty"`
+	WebhookConfig   *model.WebhookConfig `json:"webhookConfig,omitempty"`
+	NotifyOnChange  bool                 `json:"notifyOnChange"`
+	MinChangeSize   int                  `json:"minChangeSize,omitempty"`
+	IgnorePatterns  []string             `json:"ignorePatterns,omitempty"`
+	Headless        bool                 `json:"headless"`
+	UsePlaywright   bool                 `json:"usePlaywright"`
+	ExtractMode     string               `json:"extractMode,omitempty"`
+}
+
+// WatchResponse represents a watch in API responses.
+type WatchResponse struct {
+	ID              string               `json:"id"`
+	URL             string               `json:"url"`
+	Selector        string               `json:"selector,omitempty"`
+	IntervalSeconds int                  `json:"intervalSeconds"`
+	Enabled         bool                 `json:"enabled"`
+	CreatedAt       time.Time            `json:"createdAt"`
+	LastCheckedAt   time.Time            `json:"lastCheckedAt,omitempty"`
+	LastChangedAt   time.Time            `json:"lastChangedAt,omitempty"`
+	ChangeCount     int                  `json:"changeCount"`
+	DiffFormat      string               `json:"diffFormat"`
+	WebhookConfig   *model.WebhookConfig `json:"webhookConfig,omitempty"`
+	NotifyOnChange  bool                 `json:"notifyOnChange"`
+	MinChangeSize   int                  `json:"minChangeSize,omitempty"`
+	IgnorePatterns  []string             `json:"ignorePatterns,omitempty"`
+	Headless        bool                 `json:"headless"`
+	UsePlaywright   bool                 `json:"usePlaywright"`
+	ExtractMode     string               `json:"extractMode,omitempty"`
+	Status          string               `json:"status"`
+}
+
+// WatchCheckResponse represents the result of a watch check.
+type WatchCheckResponse struct {
+	WatchID      string    `json:"watchId"`
+	URL          string    `json:"url"`
+	CheckedAt    time.Time `json:"checkedAt"`
+	Changed      bool      `json:"changed"`
+	PreviousHash string    `json:"previousHash,omitempty"`
+	CurrentHash  string    `json:"currentHash,omitempty"`
+	DiffText     string    `json:"diffText,omitempty"`
+	DiffHTML     string    `json:"diffHtml,omitempty"`
+	Error        string    `json:"error,omitempty"`
+	Selector     string    `json:"selector,omitempty"`
+}
+
+// toWatchResponse converts a watch.Watch to WatchResponse.
+func toWatchResponse(w watch.Watch) WatchResponse {
+	status := "active"
+	if !w.Enabled {
+		status = "disabled"
+	}
+	return WatchResponse{
+		ID:              w.ID,
+		URL:             w.URL,
+		Selector:        w.Selector,
+		IntervalSeconds: w.IntervalSeconds,
+		Enabled:         w.Enabled,
+		CreatedAt:       w.CreatedAt,
+		LastCheckedAt:   w.LastCheckedAt,
+		LastChangedAt:   w.LastChangedAt,
+		ChangeCount:     w.ChangeCount,
+		DiffFormat:      w.DiffFormat,
+		WebhookConfig:   w.WebhookConfig,
+		NotifyOnChange:  w.NotifyOnChange,
+		MinChangeSize:   w.MinChangeSize,
+		IgnorePatterns:  w.IgnorePatterns,
+		Headless:        w.Headless,
+		UsePlaywright:   w.UsePlaywright,
+		ExtractMode:     w.ExtractMode,
+		Status:          status,
+	}
+}
+
+// handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
+func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if strings.HasSuffix(path, "/check") {
+		s.handleWatchCheck(w, r)
+		return
+	}
+	s.handleWatch(w, r)
+}
+
+// handleWatches handles requests to /v1/watch
+func (s *Server) handleWatches(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleListWatches(w, r)
+	case http.MethodPost:
+		s.handleCreateWatch(w, r)
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
+}
+
+// handleListWatches lists all watches.
+func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	watches, err := storage.List()
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	response := make([]WatchResponse, len(watches))
+	for i, w := range watches {
+		response[i] = toWatchResponse(w)
+	}
+	writeJSON(w, map[string]interface{}{"watches": response})
+}
+
+// handleCreateWatch creates a new watch.
+func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+	var req WatchRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+		return
+	}
+
+	// Set defaults
+	if req.IntervalSeconds == 0 {
+		req.IntervalSeconds = 3600
+	}
+	if req.DiffFormat == "" {
+		req.DiffFormat = "unified"
+	}
+
+	newWatch := &watch.Watch{
+		URL:             req.URL,
+		Selector:        req.Selector,
+		IntervalSeconds: req.IntervalSeconds,
+		Enabled:         req.Enabled,
+		DiffFormat:      req.DiffFormat,
+		WebhookConfig:   req.WebhookConfig,
+		NotifyOnChange:  req.NotifyOnChange,
+		MinChangeSize:   req.MinChangeSize,
+		IgnorePatterns:  req.IgnorePatterns,
+		Headless:        req.Headless,
+		UsePlaywright:   req.UsePlaywright,
+		ExtractMode:     req.ExtractMode,
+	}
+
+	if err := newWatch.Validate(); err != nil {
+		writeError(w, r, apperrors.Validation(err.Error()))
+		return
+	}
+
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	created, err := storage.Add(newWatch)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, toWatchResponse(*created))
+}
+
+// handleWatch handles requests to /v1/watch/{id}
+func (s *Server) handleWatch(w http.ResponseWriter, r *http.Request) {
+	id := extractID(r.URL.Path, "watch")
+	if id == "" {
+		writeError(w, r, apperrors.Validation("id required"))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		s.handleGetWatch(w, r, id)
+	case http.MethodPut:
+		s.handleUpdateWatch(w, r, id)
+	case http.MethodDelete:
+		s.handleDeleteWatch(w, r, id)
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
+}
+
+// handleGetWatch retrieves a single watch.
+func (s *Server) handleGetWatch(w http.ResponseWriter, r *http.Request, id string) {
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	watchItem, err := storage.Get(id)
+	if err != nil {
+		if _, ok := err.(*watch.NotFoundError); ok {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return
+		}
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, toWatchResponse(*watchItem))
+}
+
+// handleUpdateWatch updates an existing watch.
+func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id string) {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+	var req WatchRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+		return
+	}
+
+	// Get existing watch to preserve createdAt and other immutable fields
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	existing, err := storage.Get(id)
+	if err != nil {
+		if _, ok := err.(*watch.NotFoundError); ok {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return
+		}
+		writeError(w, r, err)
+		return
+	}
+
+	// Update fields
+	existing.URL = req.URL
+	existing.Selector = req.Selector
+	existing.IntervalSeconds = req.IntervalSeconds
+	existing.Enabled = req.Enabled
+	existing.DiffFormat = req.DiffFormat
+	existing.WebhookConfig = req.WebhookConfig
+	existing.NotifyOnChange = req.NotifyOnChange
+	existing.MinChangeSize = req.MinChangeSize
+	existing.IgnorePatterns = req.IgnorePatterns
+	existing.Headless = req.Headless
+	existing.UsePlaywright = req.UsePlaywright
+	existing.ExtractMode = req.ExtractMode
+
+	if err := existing.Validate(); err != nil {
+		writeError(w, r, apperrors.Validation(err.Error()))
+		return
+	}
+
+	if err := storage.Update(existing); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, toWatchResponse(*existing))
+}
+
+// handleDeleteWatch deletes a watch.
+func (s *Server) handleDeleteWatch(w http.ResponseWriter, r *http.Request, id string) {
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	// Check if watch exists first
+	if _, err := storage.Get(id); err != nil {
+		if _, ok := err.(*watch.NotFoundError); ok {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return
+		}
+		writeError(w, r, err)
+		return
+	}
+	if err := storage.Delete(id); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleWatchCheck handles requests to /v1/watch/{id}/check
+func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	id := extractID(r.URL.Path, "watch")
+	if id == "" {
+		writeError(w, r, apperrors.Validation("id required"))
+		return
+	}
+
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	watchItem, err := storage.Get(id)
+	if err != nil {
+		if _, ok := err.(*watch.NotFoundError); ok {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return
+		}
+		writeError(w, r, err)
+		return
+	}
+
+	// Open store for crawl state
+	stateStore, err := store.Open(s.cfg.DataDir)
+	if err != nil {
+		writeError(w, r, apperrors.Internal("failed to open state store"))
+		return
+	}
+	defer stateStore.Close()
+
+	// Create watcher with optional webhook dispatcher
+	watcher := watch.NewWatcher(storage, stateStore, s.cfg.DataDir, s.webhookDispatcher)
+
+	// Perform check
+	result, err := watcher.Check(r.Context(), watchItem)
+	if err != nil {
+		// Return result even on error (error is in result.Error)
+		writeJSON(w, WatchCheckResponse{
+			WatchID:   result.WatchID,
+			URL:       result.URL,
+			CheckedAt: result.CheckedAt,
+			Changed:   result.Changed,
+			Error:     result.Error,
+			Selector:  result.Selector,
+		})
+		return
+	}
+
+	writeJSON(w, WatchCheckResponse{
+		WatchID:      result.WatchID,
+		URL:          result.URL,
+		CheckedAt:    result.CheckedAt,
+		Changed:      result.Changed,
+		PreviousHash: result.PreviousHash,
+		CurrentHash:  result.CurrentHash,
+		DiffText:     result.DiffText,
+		DiffHTML:     result.DiffHTML,
+		Selector:     result.Selector,
+	})
+}

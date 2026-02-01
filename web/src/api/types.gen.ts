@@ -483,6 +483,176 @@ export type WebhookConfig = {
     secret?: string;
 };
 
+export type Watch = {
+    /**
+     * Unique watch identifier (UUID)
+     */
+    id: string;
+    /**
+     * URL to monitor for changes
+     */
+    url: string;
+    /**
+     * CSS selector for targeted monitoring (optional)
+     */
+    selector?: string;
+    /**
+     * Check interval in seconds (min 60)
+     */
+    intervalSeconds: number;
+    /**
+     * Whether the watch is active
+     */
+    enabled: boolean;
+    /**
+     * When the watch was created
+     */
+    createdAt: string;
+    /**
+     * When the watch was last checked
+     */
+    lastCheckedAt?: string;
+    /**
+     * When content last changed
+     */
+    lastChangedAt?: string;
+    /**
+     * Total number of changes detected
+     */
+    changeCount?: number;
+    /**
+     * Diff output format
+     */
+    diffFormat?: 'unified' | 'html-side-by-side' | 'html-inline';
+    webhookConfig?: WebhookConfig;
+    /**
+     * Whether to send webhook notifications on change
+     */
+    notifyOnChange?: boolean;
+    /**
+     * Ignore changes smaller than N bytes
+     */
+    minChangeSize?: number;
+    /**
+     * Regex patterns to ignore in content
+     */
+    ignorePatterns?: Array<string>;
+    /**
+     * Use headless browser for fetching
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of chromedp
+     */
+    usePlaywright?: boolean;
+    /**
+     * Content extraction mode
+     */
+    extractMode?: 'text' | 'html' | 'markdown';
+    /**
+     * Current watch status (derived from enabled field)
+     */
+    status?: 'active' | 'paused' | 'error' | 'disabled';
+};
+
+export type WatchInput = {
+    /**
+     * URL to monitor for changes
+     */
+    url: string;
+    /**
+     * CSS selector for targeted monitoring (optional)
+     */
+    selector?: string;
+    /**
+     * Check interval in seconds (min 60)
+     */
+    intervalSeconds: number;
+    /**
+     * Whether the watch is active
+     */
+    enabled?: boolean;
+    /**
+     * Diff output format
+     */
+    diffFormat?: 'unified' | 'html-side-by-side' | 'html-inline';
+    webhookConfig?: WebhookConfig;
+    /**
+     * Whether to send webhook notifications on change
+     */
+    notifyOnChange?: boolean;
+    /**
+     * Ignore changes smaller than N bytes
+     */
+    minChangeSize?: number;
+    /**
+     * Regex patterns to ignore in content
+     */
+    ignorePatterns?: Array<string>;
+    /**
+     * Use headless browser for fetching
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of chromedp
+     */
+    usePlaywright?: boolean;
+    /**
+     * Content extraction mode
+     */
+    extractMode?: 'text' | 'html' | 'markdown';
+};
+
+export type WatchList = {
+    /**
+     * List of all watches
+     */
+    watches: Array<Watch>;
+};
+
+export type WatchCheckResult = {
+    /**
+     * ID of the watch that was checked
+     */
+    watchId: string;
+    /**
+     * URL that was checked
+     */
+    url: string;
+    /**
+     * When the check was performed
+     */
+    checkedAt: string;
+    /**
+     * Whether content changed
+     */
+    changed: boolean;
+    /**
+     * Previous content hash (if available)
+     */
+    previousHash?: string;
+    /**
+     * Current content hash
+     */
+    currentHash?: string;
+    /**
+     * Unified diff text (if changed and previous content existed)
+     */
+    diffText?: string;
+    /**
+     * HTML formatted diff (if changed and previous content existed)
+     */
+    diffHtml?: string;
+    /**
+     * Error message if check failed
+     */
+    error?: string;
+    /**
+     * CSS selector used for extraction
+     */
+    selector?: string;
+};
+
 /**
  * Payload sent to webhook endpoints on job events
  */
@@ -3621,6 +3791,232 @@ export type DeleteV1SchedulesByIdResponses = {
 };
 
 export type DeleteV1SchedulesByIdResponse = DeleteV1SchedulesByIdResponses[keyof DeleteV1SchedulesByIdResponses];
+
+export type ListWatchesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/watch';
+};
+
+export type ListWatchesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListWatchesError = ListWatchesErrors[keyof ListWatchesErrors];
+
+export type ListWatchesResponses = {
+    /**
+     * List of watches
+     */
+    200: WatchList;
+};
+
+export type ListWatchesResponse = ListWatchesResponses[keyof ListWatchesResponses];
+
+export type CreateWatchData = {
+    body: WatchInput;
+    path?: never;
+    query?: never;
+    url: '/v1/watch';
+};
+
+export type CreateWatchErrors = {
+    /**
+     * Bad Request (validation error)
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateWatchError = CreateWatchErrors[keyof CreateWatchErrors];
+
+export type CreateWatchResponses = {
+    /**
+     * Watch created
+     */
+    201: Watch;
+};
+
+export type CreateWatchResponse = CreateWatchResponses[keyof CreateWatchResponses];
+
+export type DeleteWatchData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/watch/{id}';
+};
+
+export type DeleteWatchErrors = {
+    /**
+     * Watch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteWatchError = DeleteWatchErrors[keyof DeleteWatchErrors];
+
+export type DeleteWatchResponses = {
+    /**
+     * Watch deleted
+     */
+    204: void;
+};
+
+export type DeleteWatchResponse = DeleteWatchResponses[keyof DeleteWatchResponses];
+
+export type GetWatchData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/watch/{id}';
+};
+
+export type GetWatchErrors = {
+    /**
+     * Watch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetWatchError = GetWatchErrors[keyof GetWatchErrors];
+
+export type GetWatchResponses = {
+    /**
+     * Watch details
+     */
+    200: Watch;
+};
+
+export type GetWatchResponse = GetWatchResponses[keyof GetWatchResponses];
+
+export type UpdateWatchData = {
+    body: WatchInput;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/watch/{id}';
+};
+
+export type UpdateWatchErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Watch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateWatchError = UpdateWatchErrors[keyof UpdateWatchErrors];
+
+export type UpdateWatchResponses = {
+    /**
+     * Watch updated
+     */
+    200: Watch;
+};
+
+export type UpdateWatchResponse = UpdateWatchResponses[keyof UpdateWatchResponses];
+
+export type CheckWatchData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/watch/{id}/check';
+};
+
+export type CheckWatchErrors = {
+    /**
+     * Watch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CheckWatchError = CheckWatchErrors[keyof CheckWatchErrors];
+
+export type CheckWatchResponses = {
+    /**
+     * Check completed
+     */
+    200: WatchCheckResult;
+};
+
+export type CheckWatchResponse = CheckWatchResponses[keyof CheckWatchResponses];
 
 export type GetMetricsData = {
     body?: never;
