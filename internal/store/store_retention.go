@@ -233,41 +233,73 @@ func (s *Store) DeleteJobsBatch(ctx context.Context, ids []string) (int, error) 
 	return int(deleted), nil
 }
 
-// DeleteJobsWithArtifactsBatch deletes jobs and their artifacts in batch.
-// Returns the number of jobs deleted, actual MB of space reclaimed, and any job IDs whose artifacts failed to delete.
-// Note: Jobs are deleted from the database even if their artifact deletion fails.
-func (s *Store) DeleteJobsWithArtifactsBatch(ctx context.Context, ids []string) (deletedCount int, spaceReclaimedMB int64, failedIDs []string, err error) {
-	if len(ids) == 0 {
-		return 0, 0, nil, nil
-	}
-
-	// Delete jobs from database first
-	deleted, err := s.DeleteJobsBatch(ctx, ids)
-	if err != nil {
-		return 0, 0, nil, err
-	}
-
-	// Delete artifacts and track actual space reclaimed and failures
-	var totalBytes int64
+// GetJobsStorageSizeBatch returns a map of jobID -> size in bytes for multiple jobs.
+// This is used to calculate total space before attempting deletion.
+func (s *Store) GetJobsStorageSizeBatch(ctx context.Context, ids []string) (map[string]int64, error) {
+	sizeMap := make(map[string]int64, len(ids))
 	for _, id := range ids {
-		// Get size before attempting deletion for accurate tracking
 		size, err := s.GetJobStorageSize(ctx, id)
 		if err != nil {
-			// Job might not have artifacts - this is not a failure
+			// Job might not have artifacts - this is not a failure, size is 0
 			size = 0
 		}
+		sizeMap[id] = size
+	}
+	return sizeMap, nil
+}
 
+// DeleteJobsWithArtifactsBatch deletes jobs and their artifacts in batch.
+// It deletes artifacts FIRST, then only deletes DB records for jobs whose artifacts were successfully deleted.
+// This prevents orphaned artifacts when artifact deletion fails (e.g., disk full, permission denied).
+//
+// Returns:
+//   - deletedCount: number of jobs actually deleted from DB (artifacts were successfully deleted)
+//   - attemptedCount: total number of jobs attempted to delete
+//   - spaceReclaimedMB: actual MB of space reclaimed from successful artifact deletions
+//   - failedIDs: job IDs whose artifacts failed to delete (DB records preserved for these)
+//   - err: any error that occurred during DB deletion
+func (s *Store) DeleteJobsWithArtifactsBatch(ctx context.Context, ids []string) (deletedCount int, attemptedCount int, spaceReclaimedMB int64, failedIDs []string, err error) {
+	if len(ids) == 0 {
+		return 0, 0, 0, nil, nil
+	}
+
+	attemptedCount = len(ids)
+
+	// PHASE 1: Calculate artifact sizes before attempting deletion
+	// This ensures accurate space reporting even if artifact deletion fails
+	sizeMap, err := s.GetJobsStorageSizeBatch(ctx, ids)
+	if err != nil {
+		return 0, attemptedCount, 0, nil, err
+	}
+
+	// PHASE 2: Delete artifacts first, track successes
+	var successIDs []string
+	var totalBytes int64
+	for _, id := range ids {
 		if err := s.deleteJobArtifacts(id); err != nil {
 			// Artifact deletion failed - track the ID but don't fail the whole operation
+			// DB record will be preserved for this job
 			failedIDs = append(failedIDs, id)
 		} else {
-			// Artifact deletion succeeded - add to reclaimed space
-			totalBytes += size
+			// Artifact deletion succeeded - add to success list and reclaimed space
+			successIDs = append(successIDs, id)
+			totalBytes += sizeMap[id] // Add size even if 0 (no artifacts is OK)
+		}
+	}
+
+	// PHASE 3: Delete only successfully processed jobs from DB
+	if len(successIDs) > 0 {
+		deletedCount, err = s.DeleteJobsBatch(ctx, successIDs)
+		if err != nil {
+			// Partial DB deletion may have occurred
+			// Return what we know: some artifacts deleted, partial DB state
+			spaceReclaimedMB = (totalBytes + 1024*1024 - 1) / (1024 * 1024)
+			return deletedCount, attemptedCount, spaceReclaimedMB, failedIDs, err
 		}
 	}
 
 	spaceReclaimedMB = (totalBytes + 1024*1024 - 1) / (1024 * 1024)
-	return deleted, spaceReclaimedMB, failedIDs, nil
+	return deletedCount, attemptedCount, spaceReclaimedMB, failedIDs, nil
 }
 
 // deleteJobArtifacts removes the artifact directory for a job.

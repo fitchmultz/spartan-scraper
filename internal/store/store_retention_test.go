@@ -10,6 +10,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -254,13 +255,16 @@ func TestDeleteJobsWithArtifactsBatch(t *testing.T) {
 
 	// Delete job with artifacts
 	ids := []string{job.ID}
-	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	deleted, attempted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
 	if err != nil {
 		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
 	}
 
 	if deleted != 1 {
 		t.Errorf("expected 1 deleted, got %d", deleted)
+	}
+	if attempted != 1 {
+		t.Errorf("expected 1 attempted, got %d", attempted)
 	}
 	if spaceReclaimed < 1 {
 		t.Errorf("expected at least 1 MB reclaimed, got %d", spaceReclaimed)
@@ -630,7 +634,7 @@ func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
 
 	// Delete both jobs
 	ids := []string{job1.ID, job2.ID}
-	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	deleted, attempted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
 	if err != nil {
 		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
 	}
@@ -638,6 +642,9 @@ func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
 	// Both jobs should be deleted from DB
 	if deleted != 2 {
 		t.Errorf("expected 2 deleted, got %d", deleted)
+	}
+	if attempted != 2 {
+		t.Errorf("expected 2 attempted, got %d", attempted)
 	}
 
 	// Only job1's space should be reclaimed (job2 had no artifacts)
@@ -700,14 +707,18 @@ func TestDeleteJobsWithArtifactsBatch_PathTraversalFailure(t *testing.T) {
 
 	// Try to delete both jobs - the malicious one will fail at artifact deletion
 	ids := []string{validJob.ID, maliciousJob.ID}
-	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	deleted, attempted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
 	if err != nil {
 		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
 	}
 
-	// Both should be deleted from DB
-	if deleted != 2 {
-		t.Errorf("expected 2 deleted, got %d", deleted)
+	// Only valid job should be deleted from DB (artifact deletion succeeded)
+	// Malicious job DB record should be preserved (artifact deletion failed)
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted (valid job only), got %d", deleted)
+	}
+	if attempted != 2 {
+		t.Errorf("expected 2 attempted, got %d", attempted)
 	}
 
 	// Space from valid job should be reclaimed
@@ -748,7 +759,7 @@ func TestDeleteJobsWithArtifactsBatch_NoArtifacts(t *testing.T) {
 
 	// Delete job (no artifacts exist)
 	ids := []string{job.ID}
-	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	deleted, attempted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
 	if err != nil {
 		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
 	}
@@ -756,10 +767,135 @@ func TestDeleteJobsWithArtifactsBatch_NoArtifacts(t *testing.T) {
 	if deleted != 1 {
 		t.Errorf("expected 1 deleted, got %d", deleted)
 	}
+	if attempted != 1 {
+		t.Errorf("expected 1 attempted, got %d", attempted)
+	}
 	if spaceReclaimed != 0 {
 		t.Errorf("expected 0 MB reclaimed (no artifacts), got %d", spaceReclaimed)
 	}
 	if len(failedIDs) > 0 {
 		t.Errorf("expected no failed IDs (missing artifacts is OK), got %v", failedIDs)
+	}
+}
+
+// TestDeleteJobsWithArtifactsBatch_DiskFullScenario simulates artifact deletion
+// failure scenario (e.g., disk full, permission denied).
+// Verifies that when artifact deletion fails, the DB record is preserved.
+func TestDeleteJobsWithArtifactsBatch_DiskFullScenario(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create 3 jobs with artifacts
+	jobs := make([]model.Job, 3)
+	for i := 0; i < 3; i++ {
+		jobs[i] = model.Job{
+			ID:        fmt.Sprintf("job-%d", i),
+			Kind:      model.KindScrape,
+			Status:    model.StatusSucceeded,
+			CreatedAt: now,
+			UpdatedAt: now,
+			Params:    map[string]interface{}{"url": "http://example.com"},
+		}
+		if err := st.Create(ctx, jobs[i]); err != nil {
+			t.Fatalf("Create job %d failed: %v", i, err)
+		}
+	}
+
+	// Create artifact directories with files for all jobs
+	for i := 0; i < 3; i++ {
+		jobDir := filepath.Join(dataDir, "jobs", jobs[i].ID)
+		if err := os.MkdirAll(jobDir, 0755); err != nil {
+			t.Fatalf("MkdirAll job %d failed: %v", i, err)
+		}
+		content := []byte(fmt.Sprintf("test content for job %d", i))
+		if err := os.WriteFile(filepath.Join(jobDir, "file.txt"), content, 0644); err != nil {
+			t.Fatalf("WriteFile job %d failed: %v", i, err)
+		}
+	}
+
+	// Create a read-only file inside job-1 that cannot be deleted
+	// This simulates a "disk full" or permission scenario
+	job1Dir := filepath.Join(dataDir, "jobs", jobs[1].ID)
+	readOnlyFile := filepath.Join(job1Dir, "readonly.txt")
+	if err := os.WriteFile(readOnlyFile, []byte("readonly content"), 0444); err != nil {
+		t.Fatalf("WriteFile readonly failed: %v", err)
+	}
+	// Make the file read-only (no write permission)
+	if err := os.Chmod(readOnlyFile, 0444); err != nil {
+		t.Fatalf("Chmod readonly file failed: %v", err)
+	}
+	// Make the directory read-only too so the file can't be removed
+	if err := os.Chmod(job1Dir, 0555); err != nil {
+		t.Fatalf("Chmod job1 dir failed: %v", err)
+	}
+
+	// Restore permissions after test
+	defer func() {
+		os.Chmod(job1Dir, 0755)
+		os.Chmod(readOnlyFile, 0644)
+	}()
+
+	// Attempt to delete all 3 jobs
+	ids := []string{jobs[0].ID, jobs[1].ID, jobs[2].ID}
+	deleted, attempted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	if err != nil {
+		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
+	}
+
+	// Restore permissions to verify state
+	os.Chmod(job1Dir, 0755)
+	os.Chmod(readOnlyFile, 0644)
+
+	// Verify: 2 deleted from DB (job-0 and job-2), 1 preserved (job-1 with read-only artifacts)
+	if deleted != 2 {
+		t.Errorf("expected 2 deleted, got %d", deleted)
+	}
+	if attempted != 3 {
+		t.Errorf("expected 3 attempted, got %d", attempted)
+	}
+
+	// Verify: failedIDs contains job-1
+	if len(failedIDs) != 1 || failedIDs[0] != jobs[1].ID {
+		t.Errorf("expected failedIDs to contain %s, got %v", jobs[1].ID, failedIDs)
+	}
+
+	// Verify: spaceReclaimed reflects only the 2 successful deletions (not job-1)
+	// job-0 and job-2 each have ~24 bytes, total ~48 bytes = 1 MB when rounded up
+	if spaceReclaimed < 1 {
+		t.Errorf("expected at least 1 MB reclaimed, got %d", spaceReclaimed)
+	}
+
+	// Verify: job-0 and job-2 are deleted from DB
+	for _, id := range []string{jobs[0].ID, jobs[2].ID} {
+		_, err := st.Get(ctx, id)
+		if err == nil {
+			t.Errorf("expected job %s to be deleted from DB", id)
+		}
+	}
+
+	// Verify: job-1 still exists in DB (artifact deletion failed)
+	_, err = st.Get(ctx, jobs[1].ID)
+	if err != nil {
+		t.Errorf("expected job %s to still exist in DB (artifact deletion failed)", jobs[1].ID)
+	}
+
+	// Verify: job-0 and job-2 artifacts are deleted
+	for _, id := range []string{jobs[0].ID, jobs[2].ID} {
+		jobDir := filepath.Join(dataDir, "jobs", id)
+		if _, err := os.Stat(jobDir); !os.IsNotExist(err) {
+			t.Errorf("expected artifact directory %s to be deleted", id)
+		}
+	}
+
+	// Verify: job-1 artifacts still exist (deletion failed)
+	if _, err := os.Stat(job1Dir); os.IsNotExist(err) {
+		t.Errorf("expected artifact directory %s to still exist (deletion failed)", jobs[1].ID)
 	}
 }

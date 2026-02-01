@@ -56,11 +56,12 @@ type CleanupOptions struct {
 // CleanupResult reports what was cleaned up.
 type CleanupResult struct {
 	JobsDeleted        int
+	JobsAttempted      int // Total jobs attempted to delete (may differ from deleted if artifact deletion failed)
 	CrawlStatesDeleted int64
 	SpaceReclaimedMB   int64
 	Errors             []error
 	Duration           time.Duration
-	FailedJobIDs       []string // Jobs whose artifacts failed to delete
+	FailedJobIDs       []string // Jobs whose artifacts failed to delete (DB records preserved)
 }
 
 // RunCleanup executes retention policies.
@@ -192,11 +193,12 @@ func (e *Engine) cleanupByAge(ctx context.Context, opts CleanupOptions) (Cleanup
 					result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 				}
 			} else {
-				deleted, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+				deleted, attempted, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 				if err != nil {
 					result.Errors = append(result.Errors, err)
 				}
 				result.JobsDeleted += deleted
+				result.JobsAttempted += attempted
 				result.SpaceReclaimedMB += spaceMB
 				if len(failedIDs) > 0 {
 					result.FailedJobIDs = append(result.FailedJobIDs, failedIDs...)
@@ -269,16 +271,18 @@ func (e *Engine) cleanupByCount(ctx context.Context, opts CleanupOptions) (Clean
 
 		if opts.DryRun {
 			result.JobsDeleted += len(toDelete)
+			result.JobsAttempted += len(toDelete)
 			for _, id := range toDelete {
 				size, _ := e.store.GetJobStorageSize(ctx, id)
 				result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 			}
 		} else {
-			d, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+			d, attempted, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 			if err != nil {
 				result.Errors = append(result.Errors, err)
 			}
 			result.JobsDeleted += d
+			result.JobsAttempted += attempted
 			result.SpaceReclaimedMB += spaceMB
 			if len(failedIDs) > 0 {
 				result.FailedJobIDs = append(result.FailedJobIDs, failedIDs...)
@@ -345,14 +349,16 @@ func (e *Engine) cleanupByStorage(ctx context.Context, opts CleanupOptions) (Cle
 				size, _ := e.store.GetJobStorageSize(ctx, id)
 				reclaimed += (size + 1024*1024 - 1) / (1024 * 1024)
 				result.JobsDeleted++
+				result.JobsAttempted++
 				result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 			}
 		} else {
-			d, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+			d, attempted, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 			if err != nil {
 				result.Errors = append(result.Errors, err)
 			}
 			result.JobsDeleted += d
+			result.JobsAttempted += attempted
 			result.SpaceReclaimedMB += spaceMB
 			reclaimed += spaceMB
 			if len(failedIDs) > 0 {

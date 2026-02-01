@@ -126,12 +126,17 @@ func runRetentionCleanup(ctx context.Context, dataDir string, cfg config.Config)
 		return
 	}
 
-	slog.Info("retention cleanup completed",
+	logArgs := []any{
 		"jobsDeleted", result.JobsDeleted,
+		"jobsAttempted", result.JobsAttempted,
 		"crawlStatesDeleted", result.CrawlStatesDeleted,
 		"spaceReclaimedMB", result.SpaceReclaimedMB,
 		"duration", result.Duration,
-	)
+	}
+	if len(result.FailedJobIDs) > 0 {
+		logArgs = append(logArgs, "failedArtifactDeletions", len(result.FailedJobIDs))
+	}
+	slog.Info("retention cleanup completed", logArgs...)
 
 	if len(result.Errors) > 0 {
 		slog.Warn("retention cleanup completed with errors", "errorCount", len(result.Errors))

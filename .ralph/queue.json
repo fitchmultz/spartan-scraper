@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0284",
-      "status": "todo",
-      "title": "Fix potential transaction inconsistency in job retention cleanup",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "data-loss",
-        "transaction",
-        "retention"
-      ],
-      "scope": [
-        "internal/store/store_retention.go",
-        "internal/retention/retention.go"
-      ],
-      "evidence": [
-        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: deletes from DB first, then attempts artifact deletion",
-        "path: internal/store/store_retention.go :: DeleteJobsBatch :: commits transaction before artifact deletion",
-        "workflow: retention cleanup during disk full error :: jobs deleted from DB but artifacts remain orphaned",
-        "data-loss: inconsistent state where DB has no job record but artifacts still consume storage"
-      ],
-      "plan": [
-        "Modify DeleteJobsWithArtifactsBatch to delete artifacts before database transaction",
-        "Add pre-deletion size calculation for accurate space tracking",
-        "Implement two-phase cleanup: mark for deletion -> delete artifacts -> delete DB records",
-        "Add reconciliation job to find and clean orphaned artifacts",
-        "Add unit test simulating disk full scenario during cleanup",
-        "Verify by triggering retention cleanup, injecting disk error, and verifying consistent state"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0285",
       "status": "todo",
       "title": "Add graceful shutdown to WebSocket hub to prevent goroutine leaks",
