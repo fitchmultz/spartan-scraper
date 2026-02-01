@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0274",
-      "status": "todo",
-      "title": "Implement Response Caching with Redis Backend",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "performance",
-        "caching",
-        "redis"
-      ],
-      "scope": [
-        "internal/fetch/",
-        "internal/config/",
-        ".env.example"
-      ],
-      "evidence": [
-        "path: internal/fetch/fetcher.go :: Fetch method :: no cache lookup before HTTP request",
-        "path: internal/fetch/http_fetcher.go :: fetch implementation :: always makes fresh HTTP request",
-        "path: internal/distributed/redis_lock.go :: Redis client exists but only used for distributed locking",
-        "workflow: repeated spartan scrape --url same-url :: fetches fresh every time, no cache headers respected"
-      ],
-      "plan": [
-        "Add cache configuration to .env.example (CACHE_ENABLED, CACHE_TTL_SECONDS, CACHE_REDIS_URL)",
-        "Create internal/fetch/cache.go with Cache interface and Redis implementation",
-        "Implement cache key generation from URL, headers, and request fingerprint",
-        "Integrate cache lookup before HTTP requests in adaptive fetcher",
-        "Add cache control headers respect (Cache-Control, ETag, Last-Modified)",
-        "Implement cache warming for scheduled jobs",
-        "Add cache stats endpoint and metrics",
-        "Add CLI flag --no-cache to bypass cache for specific requests",
-        "Verify by running scrape twice on same URL, second request should hit cache and be significantly faster"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T21:24:49Z",
-      "updated_at": "2026-01-31T21:24:49Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0275",
       "status": "todo",
       "title": "Add RSS/Atom Feed Monitoring and Parsing",
