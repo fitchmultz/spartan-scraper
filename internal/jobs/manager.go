@@ -22,7 +22,7 @@ import (
 // Manager coordinates the execution of scraping, crawling, and research jobs.
 type Manager struct {
 	store             *store.Store
-	dataDir           string
+	DataDir           string
 	userAgent         string
 	requestTimeout    time.Duration
 	maxConcurrency    int
@@ -91,7 +91,7 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 	}
 	return &Manager{
 		store:            store,
-		dataDir:          dataDir,
+		DataDir:          dataDir,
 		userAgent:        userAgent,
 		requestTimeout:   requestTimeout,
 		maxConcurrency:   maxConcurrency,

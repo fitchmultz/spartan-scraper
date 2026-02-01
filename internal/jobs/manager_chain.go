@@ -151,7 +151,7 @@ func (m *Manager) SubmitChain(ctx context.Context, chainID string, overrides map
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
 			Params:           params,
-			ResultPath:       filepath.Join(m.dataDir, "jobs", jobID, "results.jsonl"),
+			ResultPath:       filepath.Join(m.DataDir, "jobs", jobID, "results.jsonl"),
 			DependsOn:        make([]string, 0), // Will be filled after all jobs created
 			DependencyStatus: depStatus,
 			ChainID:          chainID,

@@ -16,11 +16,14 @@
 package graphql
 
 import (
+	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/validate"
 	"github.com/google/uuid"
 	"github.com/graphql-go/graphql"
 )
@@ -133,8 +136,23 @@ func (r *Resolver) ResolveCreateJob(p graphql.ResolveParams) (interface{}, error
 		return nil, apperrors.Validation("input is required")
 	}
 
-	kindVal, ok := input["kind"].(model.Kind)
-	if !ok {
+	var kindVal model.Kind
+	switch k := input["kind"].(type) {
+	case model.Kind:
+		kindVal = k
+	case string:
+		// Convert GraphQL enum string to model.Kind
+		switch k {
+		case "SCRAPE":
+			kindVal = model.KindScrape
+		case "CRAWL":
+			kindVal = model.KindCrawl
+		case "RESEARCH":
+			kindVal = model.KindResearch
+		default:
+			return nil, apperrors.Validation("invalid kind: " + k)
+		}
+	default:
 		return nil, apperrors.Validation("kind is required")
 	}
 
@@ -160,6 +178,14 @@ func (r *Resolver) ResolveCreateJob(p graphql.ResolveParams) (interface{}, error
 
 	if chainID, ok := input["chainId"].(string); ok {
 		job.ChainID = chainID
+	}
+
+	// Set ResultPath before creating job
+	job.ResultPath = filepath.Join(r.Manager.DataDir, "jobs", job.ID, "results.jsonl")
+
+	// Validate inputs based on job kind
+	if err := validateJobInput(kindVal, job.Params); err != nil {
+		return nil, err
 	}
 
 	if err := r.Store.Create(p.Context, job); err != nil {
@@ -207,4 +233,102 @@ func (r *Resolver) ResolveDeleteJob(p graphql.ResolveParams) (interface{}, error
 	}
 
 	return true, nil
+}
+
+// validateJobInput validates job parameters based on job kind.
+// Mirrors the validation logic in internal/jobs/spec.go JobSpec.Validate().
+func validateJobInput(kind model.Kind, params map[string]interface{}) error {
+	switch kind {
+	case model.KindScrape:
+		url, _ := params["url"].(string)
+		if err := validate.ValidateURL(url); err != nil {
+			return err
+		}
+		timeout := extractInt(params["timeout"])
+		if err := validate.ValidateTimeout(timeout); err != nil {
+			return err
+		}
+	case model.KindCrawl:
+		url, _ := params["url"].(string)
+		if err := validate.ValidateURL(url); err != nil {
+			return err
+		}
+		maxDepth := extractInt(params["maxDepth"])
+		if err := validate.ValidateMaxDepth(maxDepth); err != nil {
+			return err
+		}
+		maxPages := extractInt(params["maxPages"])
+		if err := validate.ValidateMaxPages(maxPages); err != nil {
+			return err
+		}
+		timeout := extractInt(params["timeout"])
+		if err := validate.ValidateTimeout(timeout); err != nil {
+			return err
+		}
+		// sitemapOnly requires sitemapURL
+		sitemapOnly, _ := params["sitemapOnly"].(bool)
+		sitemapURL, _ := params["sitemapURL"].(string)
+		if sitemapOnly && sitemapURL == "" {
+			return apperrors.Validation("sitemapOnly requires sitemapURL to be set")
+		}
+		if sitemapURL != "" {
+			if err := validate.ValidateURL(sitemapURL); err != nil {
+				return fmt.Errorf("invalid sitemapURL: %w", err)
+			}
+		}
+	case model.KindResearch:
+		query, _ := params["query"].(string)
+		if query == "" {
+			return apperrors.Validation("query is required for research jobs")
+		}
+		// URLs validation - need to handle []interface{} from GraphQL
+		if urlsRaw, ok := params["urls"].([]interface{}); ok {
+			urls := make([]string, 0, len(urlsRaw))
+			for i, u := range urlsRaw {
+				s, ok := u.(string)
+				if !ok {
+					return apperrors.Validation(fmt.Sprintf("urls[%d] is not a string", i))
+				}
+				urls = append(urls, s)
+			}
+			if err := validate.ValidateURLs(urls); err != nil {
+				return err
+			}
+		} else if params["urls"] != nil {
+			return apperrors.Validation("urls must be an array")
+		}
+		maxDepth := extractInt(params["maxDepth"])
+		if err := validate.ValidateMaxDepth(maxDepth); err != nil {
+			return err
+		}
+		maxPages := extractInt(params["maxPages"])
+		if err := validate.ValidateMaxPages(maxPages); err != nil {
+			return err
+		}
+		timeout := extractInt(params["timeout"])
+		if err := validate.ValidateTimeout(timeout); err != nil {
+			return err
+		}
+	default:
+		return apperrors.Validation(fmt.Sprintf("unknown job kind: %s", kind))
+	}
+	return nil
+}
+
+// extractInt extracts an int value from interface{}, handling float64 (GraphQL numbers).
+func extractInt(v interface{}) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	case float32:
+		return int(n)
+	default:
+		return 0
+	}
 }

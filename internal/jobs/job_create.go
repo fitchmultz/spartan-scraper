@@ -64,7 +64,7 @@ func (m *Manager) CreateScrapeJob(ctx context.Context, url string, method string
 			job.Params["webhookSecret"] = webhookSecret
 		}
 	}
-	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
+	job.ResultPath = filepath.Join(m.DataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
@@ -104,7 +104,7 @@ func (m *Manager) CreateCrawlJob(ctx context.Context, url string, maxDepth, maxP
 			job.Params["webhookSecret"] = webhookSecret
 		}
 	}
-	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
+	job.ResultPath = filepath.Join(m.DataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
@@ -142,7 +142,7 @@ func (m *Manager) CreateResearchJob(ctx context.Context, query string, urls []st
 			job.Params["webhookSecret"] = webhookSecret
 		}
 	}
-	job.ResultPath = filepath.Join(m.dataDir, "jobs", job.ID, "results.jsonl")
+	job.ResultPath = filepath.Join(m.DataDir, "jobs", job.ID, "results.jsonl")
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}

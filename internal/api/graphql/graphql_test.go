@@ -4,11 +4,18 @@
 package graphql
 
 import (
+	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/graphql-go/graphql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -506,4 +513,250 @@ func TestCrawlStateEdgeTypeStructure(t *testing.T) {
 	fields := CrawlStateEdgeType.Fields()
 	assert.NotNil(t, fields["node"])
 	assert.NotNil(t, fields["cursor"])
+}
+
+// TestResolveCreateJob_SetsResultPath verifies that GraphQL createJob sets ResultPath correctly.
+func TestResolveCreateJob_SetsResultPath(t *testing.T) {
+	// Setup test manager and store
+	tmpDir := t.TempDir()
+	st, err := store.Open(tmpDir)
+	require.NoError(t, err)
+	defer st.Close()
+
+	manager := jobs.NewManager(st, tmpDir, "test-agent", 30*time.Second, 2, 10, 10, 3, time.Second, 10*1024*1024, false, fetch.CircuitBreakerConfig{}, nil)
+
+	resolver := &Resolver{
+		Store:   st,
+		Manager: manager,
+	}
+
+	// Test scrape job
+	params := graphql.ResolveParams{
+		Context: context.Background(),
+		Args: map[string]interface{}{
+			"input": map[string]interface{}{
+				"kind": "SCRAPE",
+				"params": map[string]interface{}{
+					"url":     "http://example.com",
+					"timeout": 30,
+				},
+			},
+		},
+	}
+
+	result, err := resolver.ResolveCreateJob(params)
+	require.NoError(t, err)
+
+	job, ok := result.(model.Job)
+	require.True(t, ok)
+
+	// Verify ResultPath is set
+	assert.NotEmpty(t, job.ResultPath, "ResultPath should be set")
+	assert.Contains(t, job.ResultPath, job.ID, "ResultPath should contain job ID")
+	assert.Contains(t, job.ResultPath, "results.jsonl", "ResultPath should end with results.jsonl")
+	assert.True(t, strings.HasPrefix(job.ResultPath, tmpDir), "ResultPath should be under dataDir")
+
+	// Verify path format: {dataDir}/jobs/{id}/results.jsonl
+	expectedSuffix := filepath.Join("jobs", job.ID, "results.jsonl")
+	assert.True(t, strings.HasSuffix(job.ResultPath, expectedSuffix),
+		"ResultPath should have format jobs/{id}/results.jsonl")
+}
+
+// TestResolveCreateJob_ValidatesJobSpec verifies that GraphQL createJob validates inputs.
+func TestResolveCreateJob_ValidatesJobSpec(t *testing.T) {
+	tmpDir := t.TempDir()
+	st, err := store.Open(tmpDir)
+	require.NoError(t, err)
+	defer st.Close()
+
+	manager := jobs.NewManager(st, tmpDir, "test-agent", 30*time.Second, 2, 10, 10, 3, time.Second, 10*1024*1024, false, fetch.CircuitBreakerConfig{}, nil)
+
+	resolver := &Resolver{
+		Store:   st,
+		Manager: manager,
+	}
+
+	tests := []struct {
+		name    string
+		input   map[string]interface{}
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "scrape with empty URL fails",
+			input: map[string]interface{}{
+				"kind": "SCRAPE",
+				"params": map[string]interface{}{
+					"url": "",
+				},
+			},
+			wantErr: true,
+			errMsg:  "url is required",
+		},
+		{
+			name: "scrape with invalid URL scheme fails",
+			input: map[string]interface{}{
+				"kind": "SCRAPE",
+				"params": map[string]interface{}{
+					"url": "ftp://example.com",
+				},
+			},
+			wantErr: true,
+			errMsg:  "must be http or https",
+		},
+		{
+			name: "scrape with invalid timeout fails",
+			input: map[string]interface{}{
+				"kind": "SCRAPE",
+				"params": map[string]interface{}{
+					"url":     "http://example.com",
+					"timeout": 400, // > 300 max
+				},
+			},
+			wantErr: true,
+			errMsg:  "timeout",
+		},
+		{
+			name: "crawl with missing URL fails",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url": "",
+				},
+			},
+			wantErr: true,
+			errMsg:  "url is required",
+		},
+		{
+			name: "crawl with invalid maxDepth fails",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url":      "http://example.com",
+					"maxDepth": 15, // > 10 max
+				},
+			},
+			wantErr: true,
+			errMsg:  "maxDepth",
+		},
+		{
+			name: "research with empty query fails",
+			input: map[string]interface{}{
+				"kind": "RESEARCH",
+				"params": map[string]interface{}{
+					"query": "",
+					"urls":  []interface{}{"http://example.com"},
+				},
+			},
+			wantErr: true,
+			errMsg:  "query is required",
+		},
+		{
+			name: "research with empty urls fails",
+			input: map[string]interface{}{
+				"kind": "RESEARCH",
+				"params": map[string]interface{}{
+					"query": "test query",
+					"urls":  []interface{}{},
+				},
+			},
+			wantErr: true,
+			errMsg:  "urls list is empty",
+		},
+		{
+			name: "valid scrape succeeds",
+			input: map[string]interface{}{
+				"kind": "SCRAPE",
+				"params": map[string]interface{}{
+					"url":     "http://example.com",
+					"timeout": 30,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid crawl succeeds",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url":      "http://example.com",
+					"maxDepth": 2,
+					"maxPages": 100,
+					"timeout":  30,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid research succeeds",
+			input: map[string]interface{}{
+				"kind": "RESEARCH",
+				"params": map[string]interface{}{
+					"query":    "test query",
+					"urls":     []interface{}{"http://example.com"},
+					"maxDepth": 2,
+					"maxPages": 100,
+					"timeout":  30,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "crawl with sitemapOnly but no sitemapURL fails",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url":         "http://example.com",
+					"sitemapOnly": true,
+				},
+			},
+			wantErr: true,
+			errMsg:  "sitemapOnly requires sitemapURL",
+		},
+		{
+			name: "crawl with invalid sitemapURL fails",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url":        "http://example.com",
+					"sitemapURL": "ftp://invalid.com/sitemap.xml",
+				},
+			},
+			wantErr: true,
+			errMsg:  "sitemapURL",
+		},
+		{
+			name: "valid crawl with sitemap succeeds",
+			input: map[string]interface{}{
+				"kind": "CRAWL",
+				"params": map[string]interface{}{
+					"url":         "http://example.com",
+					"sitemapURL":  "http://example.com/sitemap.xml",
+					"sitemapOnly": true,
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := graphql.ResolveParams{
+				Context: context.Background(),
+				Args: map[string]interface{}{
+					"input": tt.input,
+				},
+			}
+
+			_, err := resolver.ResolveCreateJob(params)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

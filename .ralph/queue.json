@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0260",
-      "status": "todo",
-      "title": "Fix GraphQL createJob to set ResultPath and validate inputs",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "graphql",
-        "jobs",
-        "correctness"
-      ],
-      "scope": [
-        "internal/api/graphql/resolver_jobs.go",
-        "internal/jobs/job_create.go",
-        "internal/api/graphql/graphql_test.go",
-        "go test ./internal/api/graphql -run CreateJob"
-      ],
-      "evidence": [
-        "path: internal/api/graphql/resolver_jobs.go :: ResolveCreateJob :: constructs model.Job without ResultPath and calls Store.Create directly",
-        "path: internal/jobs/job_run.go :: run :: expects job.ResultPath to create result directory and file"
-      ],
-      "plan": [
-        "Route GraphQL createJob through Manager.CreateJob or set ResultPath using the same DATA_DIR/jobs/{id} convention",
-        "Validate and map GraphQL input params/dependsOn into JobSpec to keep behavior consistent with REST/CLI",
-        "Add tests for createJob ensuring ResultPath is set and job can be enqueued",
-        "Verify by running `go test ./internal/api/graphql -run CreateJob` and confirming jobs persist with non-empty ResultPath"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T23:22:20Z",
-      "updated_at": "2026-01-31T23:22:20Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0261",
       "status": "todo",
       "title": "Preserve request body bytes across job persistence/recovery",
