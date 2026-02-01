@@ -2486,6 +2486,226 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/plugins:
+    get:
+      summary: List all plugins
+      description: Get a list of all installed plugins with their metadata
+      tags:
+        - Plugins
+      responses:
+        '200':
+          description: List of plugins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginListResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Install a plugin
+      description: Install a plugin from a local directory path
+      tags:
+        - Plugins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginInstallRequest'
+      responses:
+        '201':
+          description: Plugin installed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+        '400':
+          description: Bad Request - Invalid plugin source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/plugins/{name}:
+    get:
+      summary: Get plugin details
+      description: Get detailed information about a specific plugin
+      tags:
+        - Plugins
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Plugin name
+      responses:
+        '200':
+          description: Plugin details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+        '404':
+          description: Plugin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update plugin configuration
+      description: Update configuration for a specific plugin
+      tags:
+        - Plugins
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Plugin name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginConfigureRequest'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Plugin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Uninstall a plugin
+      description: Remove an installed plugin
+      tags:
+        - Plugins
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Plugin name
+      responses:
+        '204':
+          description: Plugin uninstalled successfully
+        '404':
+          description: Plugin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/plugins/{name}/enable:
+    post:
+      summary: Enable a plugin
+      description: Enable a previously disabled plugin
+      tags:
+        - Plugins
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Plugin name
+      responses:
+        '200':
+          description: Plugin enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+        '404':
+          description: Plugin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/plugins/{name}/disable:
+    post:
+      summary: Disable a plugin
+      description: Disable a plugin without removing it
+      tags:
+        - Plugins
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Plugin name
+      responses:
+        '200':
+          description: Plugin disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+        '404':
+          description: Plugin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2521,6 +2741,88 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    PluginInfo:
+      type: object
+      description: Information about an installed plugin
+      properties:
+        name:
+          type: string
+          description: Plugin name
+        version:
+          type: string
+          description: Plugin version
+        description:
+          type: string
+          description: Plugin description
+        author:
+          type: string
+          description: Plugin author
+        hooks:
+          type: array
+          description: Pipeline hooks this plugin implements
+          items:
+            type: string
+            enum: [pre_fetch, post_fetch, pre_extract, post_extract, pre_output, post_output]
+        permissions:
+          type: array
+          description: Permissions granted to this plugin
+          items:
+            type: string
+            enum: [network, filesystem, env]
+        enabled:
+          type: boolean
+          description: Whether the plugin is currently enabled
+        priority:
+          type: integer
+          description: Execution priority (lower = earlier)
+        wasmSize:
+          type: integer
+          description: Size of the WASM binary in bytes
+        config:
+          type: object
+          description: Plugin-specific configuration
+          additionalProperties: true
+      required:
+        - name
+        - version
+        - enabled
+        - priority
+
+    PluginListResponse:
+      type: object
+      description: Response containing a list of plugins
+      properties:
+        plugins:
+          type: array
+          description: List of installed plugins
+          items:
+            $ref: '#/components/schemas/PluginInfo'
+      required:
+        - plugins
+
+    PluginInstallRequest:
+      type: object
+      description: Request to install a plugin from a directory
+      properties:
+        source:
+          type: string
+          description: Path to the plugin directory
+      required:
+        - source
+
+    PluginConfigureRequest:
+      type: object
+      description: Request to update plugin configuration
+      properties:
+        key:
+          type: string
+          description: Configuration key
+        value:
+          description: Configuration value (can be any type)
+      required:
+        - key
+        - value
     Workspace:
       type: object
       properties:
@@ -6268,4 +6570,3 @@ components:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"

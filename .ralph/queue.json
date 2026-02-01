@@ -2,51 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0273",
-      "status": "todo",
-      "title": "Build Plugin System for Third-Party Extensions",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "extensibility",
-        "plugins",
-        "architecture"
-      ],
-      "scope": [
-        "internal/pipeline/",
-        "internal/plugins/",
-        "cmd/spartan/",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "path: internal/pipeline/interfaces.go :: plugin interface exists but only for internal use",
-        "path: internal/pipeline/registry.go :: registry only loads built-in transformers",
-        "path: docs/architecture.md :: pipeline hooks documented but no extension mechanism",
-        "workflow: spartan scrape --pre-processor :: only accepts built-in processor names"
-      ],
-      "plan": [
-        "Create internal/plugins/ package with WASM plugin runtime",
-        "Define Plugin interface with lifecycle methods (Init, Execute, Shutdown)",
-        "Implement plugin discovery from DATA_DIR/plugins/ directory",
-        "Add support for JavaScript plugins via embedded QuickJS or similar",
-        "Create plugin manifest schema (name, version, hooks, permissions)",
-        "Add API endpoints for plugin management (list, load, unload, configure)",
-        "Create Web UI plugin manager with marketplace interface",
-        "Add CLI commands: spartan plugin install|list|enable|disable",
-        "Verify by creating a sample plugin, loading it, and seeing it appear in hook dropdowns"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T21:24:49Z",
-      "updated_at": "2026-01-31T21:24:49Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0274",
       "status": "todo",
       "title": "Implement Response Caching with Redis Backend",

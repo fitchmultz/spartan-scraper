@@ -79,6 +79,45 @@ List configured pipeline JavaScript scripts.
 
   - `spartan pipeline-js list`
 
+### plugin
+
+Manage third-party WASM plugins (stored at `DATA_DIR/plugins/`).
+
+  - `spartan plugin list` - List all installed plugins
+  - `spartan plugin install --path <dir>` - Install a plugin from a directory
+  - `spartan plugin uninstall --name <name>` - Remove an installed plugin
+  - `spartan plugin enable --name <name>` - Enable a plugin
+  - `spartan plugin disable --name <name>` - Disable a plugin
+  - `spartan plugin configure --name <name> --key <key> --value <value>` - Set a plugin configuration value
+  - `spartan plugin info --name <name>` - Show detailed plugin information
+
+Plugin directory structure:
+```
+my-plugin/
+  manifest.json     # Plugin metadata (name, version, hooks, permissions)
+  plugin.wasm       # Compiled WASM binary
+  config.json       # Optional: default configuration
+```
+
+Manifest example:
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "description": "My custom plugin",
+  "author": "Developer Name",
+  "hooks": ["pre_fetch", "post_extract"],
+  "permissions": ["network"],
+  "wasm_path": "plugin.wasm",
+  "enabled": true,
+  "priority": 10
+}
+```
+
+Supported hooks: `pre_fetch`, `post_fetch`, `pre_extract`, `post_extract`, `pre_output`, `post_output`
+
+Supported permissions: `network`, `filesystem`, `env`
+
 ### auth
 
 Persist auth profiles (stored at `DATA_DIR/auth_vault.json`).

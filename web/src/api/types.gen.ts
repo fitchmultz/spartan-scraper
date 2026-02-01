@@ -15,6 +15,88 @@ export type User = {
     updatedAt?: string;
 };
 
+/**
+ * Information about an installed plugin
+ */
+export type PluginInfo = {
+    /**
+     * Plugin name
+     */
+    name: string;
+    /**
+     * Plugin version
+     */
+    version: string;
+    /**
+     * Plugin description
+     */
+    description?: string;
+    /**
+     * Plugin author
+     */
+    author?: string;
+    /**
+     * Pipeline hooks this plugin implements
+     */
+    hooks?: Array<'pre_fetch' | 'post_fetch' | 'pre_extract' | 'post_extract' | 'pre_output' | 'post_output'>;
+    /**
+     * Permissions granted to this plugin
+     */
+    permissions?: Array<'network' | 'filesystem' | 'env'>;
+    /**
+     * Whether the plugin is currently enabled
+     */
+    enabled: boolean;
+    /**
+     * Execution priority (lower = earlier)
+     */
+    priority: number;
+    /**
+     * Size of the WASM binary in bytes
+     */
+    wasmSize?: number;
+    /**
+     * Plugin-specific configuration
+     */
+    config?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * Response containing a list of plugins
+ */
+export type PluginListResponse = {
+    /**
+     * List of installed plugins
+     */
+    plugins: Array<PluginInfo>;
+};
+
+/**
+ * Request to install a plugin from a directory
+ */
+export type PluginInstallRequest = {
+    /**
+     * Path to the plugin directory
+     */
+    source: string;
+};
+
+/**
+ * Request to update plugin configuration
+ */
+export type PluginConfigureRequest = {
+    /**
+     * Configuration key
+     */
+    key: string;
+    /**
+     * Configuration value (can be any type)
+     */
+    value: unknown;
+};
+
 export type Workspace = {
     id?: string;
     name?: string;
@@ -5167,3 +5249,231 @@ export type GetV1WebhooksDeliveriesByIdResponses = {
 };
 
 export type GetV1WebhooksDeliveriesByIdResponse = GetV1WebhooksDeliveriesByIdResponses[keyof GetV1WebhooksDeliveriesByIdResponses];
+
+export type GetV1PluginsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/plugins';
+};
+
+export type GetV1PluginsErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1PluginsError = GetV1PluginsErrors[keyof GetV1PluginsErrors];
+
+export type GetV1PluginsResponses = {
+    /**
+     * List of plugins
+     */
+    200: PluginListResponse;
+};
+
+export type GetV1PluginsResponse = GetV1PluginsResponses[keyof GetV1PluginsResponses];
+
+export type PostV1PluginsData = {
+    body: PluginInstallRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/plugins';
+};
+
+export type PostV1PluginsErrors = {
+    /**
+     * Bad Request - Invalid plugin source
+     */
+    400: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1PluginsError = PostV1PluginsErrors[keyof PostV1PluginsErrors];
+
+export type PostV1PluginsResponses = {
+    /**
+     * Plugin installed successfully
+     */
+    201: PluginInfo;
+};
+
+export type PostV1PluginsResponse = PostV1PluginsResponses[keyof PostV1PluginsResponses];
+
+export type DeleteV1PluginsByNameData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/v1/plugins/{name}';
+};
+
+export type DeleteV1PluginsByNameErrors = {
+    /**
+     * Plugin not found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1PluginsByNameError = DeleteV1PluginsByNameErrors[keyof DeleteV1PluginsByNameErrors];
+
+export type DeleteV1PluginsByNameResponses = {
+    /**
+     * Plugin uninstalled successfully
+     */
+    204: void;
+};
+
+export type DeleteV1PluginsByNameResponse = DeleteV1PluginsByNameResponses[keyof DeleteV1PluginsByNameResponses];
+
+export type GetV1PluginsByNameData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/v1/plugins/{name}';
+};
+
+export type GetV1PluginsByNameErrors = {
+    /**
+     * Plugin not found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1PluginsByNameError = GetV1PluginsByNameErrors[keyof GetV1PluginsByNameErrors];
+
+export type GetV1PluginsByNameResponses = {
+    /**
+     * Plugin details
+     */
+    200: PluginInfo;
+};
+
+export type GetV1PluginsByNameResponse = GetV1PluginsByNameResponses[keyof GetV1PluginsByNameResponses];
+
+export type PutV1PluginsByNameData = {
+    body: PluginConfigureRequest;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/v1/plugins/{name}';
+};
+
+export type PutV1PluginsByNameErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Plugin not found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PutV1PluginsByNameError = PutV1PluginsByNameErrors[keyof PutV1PluginsByNameErrors];
+
+export type PutV1PluginsByNameResponses = {
+    /**
+     * Configuration updated
+     */
+    200: PluginInfo;
+};
+
+export type PutV1PluginsByNameResponse = PutV1PluginsByNameResponses[keyof PutV1PluginsByNameResponses];
+
+export type PostV1PluginsByNameEnableData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/v1/plugins/{name}/enable';
+};
+
+export type PostV1PluginsByNameEnableErrors = {
+    /**
+     * Plugin not found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1PluginsByNameEnableError = PostV1PluginsByNameEnableErrors[keyof PostV1PluginsByNameEnableErrors];
+
+export type PostV1PluginsByNameEnableResponses = {
+    /**
+     * Plugin enabled
+     */
+    200: PluginInfo;
+};
+
+export type PostV1PluginsByNameEnableResponse = PostV1PluginsByNameEnableResponses[keyof PostV1PluginsByNameEnableResponses];
+
+export type PostV1PluginsByNameDisableData = {
+    body?: never;
+    path: {
+        /**
+         * Plugin name
+         */
+        name: string;
+    };
+    query?: never;
+    url: '/v1/plugins/{name}/disable';
+};
+
+export type PostV1PluginsByNameDisableErrors = {
+    /**
+     * Plugin not found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1PluginsByNameDisableError = PostV1PluginsByNameDisableErrors[keyof PostV1PluginsByNameDisableErrors];
+
+export type PostV1PluginsByNameDisableResponses = {
+    /**
+     * Plugin disabled
+     */
+    200: PluginInfo;
+};
+
+export type PostV1PluginsByNameDisableResponse = PostV1PluginsByNameDisableResponses[keyof PostV1PluginsByNameDisableResponses];

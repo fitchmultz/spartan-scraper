@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AiExtractPreviewData, AiExtractPreviewErrors, AiExtractPreviewResponses, AiTemplateGenerateData, AiTemplateGenerateErrors, AiTemplateGenerateResponses, CheckWatchData, CheckWatchErrors, CheckWatchResponses, CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, CreateWatchData, CreateWatchErrors, CreateWatchResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, DeleteWatchData, DeleteWatchErrors, DeleteWatchResponses, DiscoverOidcData, DiscoverOidcErrors, DiscoverOidcResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetTemplateData, GetTemplateErrors, GetTemplatePreviewData, GetTemplatePreviewErrors, GetTemplatePreviewResponses, GetTemplateResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WebhooksDeliveriesByIdData, GetV1WebhooksDeliveriesByIdErrors, GetV1WebhooksDeliveriesByIdResponses, GetV1WebhooksDeliveriesData, GetV1WebhooksDeliveriesErrors, GetV1WebhooksDeliveriesResponses, GetV1WsData, GetV1WsErrors, GetWatchData, GetWatchErrors, GetWatchResponses, InitiateOAuthData, InitiateOAuthErrors, InitiateOAuthResponses, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListWatchesData, ListWatchesErrors, ListWatchesResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1JobsByIdPreviewTransformData, PostV1JobsByIdPreviewTransformErrors, PostV1JobsByIdPreviewTransformResponses, PostV1JobsByIdReplayData, PostV1JobsByIdReplayErrors, PostV1JobsByIdReplayResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PostV1TransformValidateData, PostV1TransformValidateErrors, PostV1TransformValidateResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, RefreshOAuthTokenData, RefreshOAuthTokenErrors, RefreshOAuthTokenResponses, RevokeOAuthTokenData, RevokeOAuthTokenErrors, RevokeOAuthTokenResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses, TestSelectorData, TestSelectorErrors, TestSelectorResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, UpdateWatchData, UpdateWatchErrors, UpdateWatchResponses } from './types.gen';
+import type { AiExtractPreviewData, AiExtractPreviewErrors, AiExtractPreviewResponses, AiTemplateGenerateData, AiTemplateGenerateErrors, AiTemplateGenerateResponses, CheckWatchData, CheckWatchErrors, CheckWatchResponses, CreateChainData, CreateChainErrors, CreateChainResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateTemplateData, CreateTemplateErrors, CreateTemplateResponses, CreateWatchData, CreateWatchErrors, CreateWatchResponses, DeleteChainData, DeleteChainErrors, DeleteChainResponses, DeleteCrawlStatesData, DeleteCrawlStatesErrors, DeleteCrawlStatesResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteTemplateData, DeleteTemplateErrors, DeleteTemplateResponses, DeleteV1AuthProfilesByNameData, DeleteV1AuthProfilesByNameErrors, DeleteV1AuthProfilesByNameResponses, DeleteV1JobsBatchByIdData, DeleteV1JobsBatchByIdErrors, DeleteV1JobsBatchByIdResponses, DeleteV1JobsByIdData, DeleteV1JobsByIdErrors, DeleteV1JobsByIdResponses, DeleteV1PluginsByNameData, DeleteV1PluginsByNameErrors, DeleteV1PluginsByNameResponses, DeleteV1SchedulesByIdData, DeleteV1SchedulesByIdErrors, DeleteV1SchedulesByIdResponses, DeleteWatchData, DeleteWatchErrors, DeleteWatchResponses, DiscoverOidcData, DiscoverOidcErrors, DiscoverOidcResponses, GetChainData, GetChainErrors, GetChainResponses, GetHealthzData, GetHealthzErrors, GetHealthzResponses, GetMetricsData, GetMetricsErrors, GetMetricsResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetTemplateData, GetTemplateErrors, GetTemplatePreviewData, GetTemplatePreviewErrors, GetTemplatePreviewResponses, GetTemplateResponses, GetV1AuthProfilesData, GetV1AuthProfilesErrors, GetV1AuthProfilesResponses, GetV1JobsBatchByIdData, GetV1JobsBatchByIdErrors, GetV1JobsBatchByIdResponses, GetV1JobsByIdData, GetV1JobsByIdErrors, GetV1JobsByIdResponses, GetV1JobsByIdResultsData, GetV1JobsByIdResultsErrors, GetV1JobsByIdResultsResponses, GetV1JobsData, GetV1JobsErrors, GetV1JobsResponses, GetV1PluginsByNameData, GetV1PluginsByNameErrors, GetV1PluginsByNameResponses, GetV1PluginsData, GetV1PluginsErrors, GetV1PluginsResponses, GetV1SchedulesData, GetV1SchedulesErrors, GetV1SchedulesResponses, GetV1WebhooksDeliveriesByIdData, GetV1WebhooksDeliveriesByIdErrors, GetV1WebhooksDeliveriesByIdResponses, GetV1WebhooksDeliveriesData, GetV1WebhooksDeliveriesErrors, GetV1WebhooksDeliveriesResponses, GetV1WsData, GetV1WsErrors, GetWatchData, GetWatchErrors, GetWatchResponses, InitiateOAuthData, InitiateOAuthErrors, InitiateOAuthResponses, ListChainsData, ListChainsErrors, ListChainsResponses, ListCrawlStatesData, ListCrawlStatesErrors, ListCrawlStatesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListTemplatesData, ListTemplatesErrors, ListTemplatesResponses, ListWatchesData, ListWatchesErrors, ListWatchesResponses, OauthCallbackData, OauthCallbackErrors, OauthCallbackResponses, PostV1AuthExportData, PostV1AuthExportErrors, PostV1AuthExportResponses, PostV1AuthImportData, PostV1AuthImportErrors, PostV1AuthImportResponses, PostV1CrawlData, PostV1CrawlErrors, PostV1CrawlResponses, PostV1JobsBatchCrawlData, PostV1JobsBatchCrawlErrors, PostV1JobsBatchCrawlResponses, PostV1JobsBatchResearchData, PostV1JobsBatchResearchErrors, PostV1JobsBatchResearchResponses, PostV1JobsBatchScrapeData, PostV1JobsBatchScrapeErrors, PostV1JobsBatchScrapeResponses, PostV1JobsByIdPreviewTransformData, PostV1JobsByIdPreviewTransformErrors, PostV1JobsByIdPreviewTransformResponses, PostV1JobsByIdReplayData, PostV1JobsByIdReplayErrors, PostV1JobsByIdReplayResponses, PostV1PluginsByNameDisableData, PostV1PluginsByNameDisableErrors, PostV1PluginsByNameDisableResponses, PostV1PluginsByNameEnableData, PostV1PluginsByNameEnableErrors, PostV1PluginsByNameEnableResponses, PostV1PluginsData, PostV1PluginsErrors, PostV1PluginsResponses, PostV1ResearchData, PostV1ResearchErrors, PostV1ResearchResponses, PostV1SchedulesData, PostV1SchedulesErrors, PostV1SchedulesResponses, PostV1ScrapeData, PostV1ScrapeErrors, PostV1ScrapeResponses, PostV1TransformValidateData, PostV1TransformValidateErrors, PostV1TransformValidateResponses, PutV1AuthProfilesByNameData, PutV1AuthProfilesByNameErrors, PutV1AuthProfilesByNameResponses, PutV1PluginsByNameData, PutV1PluginsByNameErrors, PutV1PluginsByNameResponses, RefreshOAuthTokenData, RefreshOAuthTokenErrors, RefreshOAuthTokenResponses, RevokeOAuthTokenData, RevokeOAuthTokenErrors, RevokeOAuthTokenResponses, SubmitChainData, SubmitChainErrors, SubmitChainResponses, TestSelectorData, TestSelectorErrors, TestSelectorResponses, UpdateTemplateData, UpdateTemplateErrors, UpdateTemplateResponses, UpdateWatchData, UpdateWatchErrors, UpdateWatchResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -812,5 +812,90 @@ export const getV1WebhooksDeliveries = <ThrowOnError extends boolean = false>(op
 export const getV1WebhooksDeliveriesById = <ThrowOnError extends boolean = false>(options: Options<GetV1WebhooksDeliveriesByIdData, ThrowOnError>) => (options.client ?? client).get<GetV1WebhooksDeliveriesByIdResponses, GetV1WebhooksDeliveriesByIdErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
     url: '/v1/webhooks/deliveries/{id}',
+    ...options
+});
+
+/**
+ * List all plugins
+ *
+ * Get a list of all installed plugins with their metadata
+ */
+export const getV1Plugins = <ThrowOnError extends boolean = false>(options?: Options<GetV1PluginsData, ThrowOnError>) => (options?.client ?? client).get<GetV1PluginsResponses, GetV1PluginsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins',
+    ...options
+});
+
+/**
+ * Install a plugin
+ *
+ * Install a plugin from a local directory path
+ */
+export const postV1Plugins = <ThrowOnError extends boolean = false>(options: Options<PostV1PluginsData, ThrowOnError>) => (options.client ?? client).post<PostV1PluginsResponses, PostV1PluginsErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Uninstall a plugin
+ *
+ * Remove an installed plugin
+ */
+export const deleteV1PluginsByName = <ThrowOnError extends boolean = false>(options: Options<DeleteV1PluginsByNameData, ThrowOnError>) => (options.client ?? client).delete<DeleteV1PluginsByNameResponses, DeleteV1PluginsByNameErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins/{name}',
+    ...options
+});
+
+/**
+ * Get plugin details
+ *
+ * Get detailed information about a specific plugin
+ */
+export const getV1PluginsByName = <ThrowOnError extends boolean = false>(options: Options<GetV1PluginsByNameData, ThrowOnError>) => (options.client ?? client).get<GetV1PluginsByNameResponses, GetV1PluginsByNameErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins/{name}',
+    ...options
+});
+
+/**
+ * Update plugin configuration
+ *
+ * Update configuration for a specific plugin
+ */
+export const putV1PluginsByName = <ThrowOnError extends boolean = false>(options: Options<PutV1PluginsByNameData, ThrowOnError>) => (options.client ?? client).put<PutV1PluginsByNameResponses, PutV1PluginsByNameErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins/{name}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Enable a plugin
+ *
+ * Enable a previously disabled plugin
+ */
+export const postV1PluginsByNameEnable = <ThrowOnError extends boolean = false>(options: Options<PostV1PluginsByNameEnableData, ThrowOnError>) => (options.client ?? client).post<PostV1PluginsByNameEnableResponses, PostV1PluginsByNameEnableErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins/{name}/enable',
+    ...options
+});
+
+/**
+ * Disable a plugin
+ *
+ * Disable a plugin without removing it
+ */
+export const postV1PluginsByNameDisable = <ThrowOnError extends boolean = false>(options: Options<PostV1PluginsByNameDisableData, ThrowOnError>) => (options.client ?? client).post<PostV1PluginsByNameDisableResponses, PostV1PluginsByNameDisableErrors, ThrowOnError>({
+    security: [{ name: 'X-API-Key', type: 'apiKey' }],
+    url: '/v1/plugins/{name}/disable',
     ...options
 });

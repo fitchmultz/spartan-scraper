@@ -42,6 +42,58 @@ The fetcher uses an adaptive strategy to optimize for performance and reliabilit
 - Output transformers run after pre-output hooks and before post-output hooks.
 - JS per-target scripts are loaded from `DATA_DIR/pipeline_js.json` and applied during headless fetch.
 
+## Plugin System (WASM)
+
+The plugin system enables third-party extensions via sandboxed WASM plugins:
+
+- **Package**: `internal/plugins`
+- **Storage**: `DATA_DIR/plugins/<name>/` (manifest.json + plugin.wasm)
+- **Runtime**: wazero (pure Go, no CGO)
+- **Security**: WASI preview1 with explicit permission model
+
+### Plugin lifecycle
+
+1. **Discovery**: Loader scans `DATA_DIR/plugins/` for manifest.json files
+2. **Validation**: Manifest validated (name, version, hooks, permissions, wasm_path)
+3. **Loading**: WASM module compiled and cached
+4. **Instantiation**: New instance per hook execution with isolated memory
+5. **Execution**: JSON-serialized input/output via exported functions
+
+### Hook interface
+
+Plugins export functions matching hook names:
+- `pre_fetch(input_ptr, input_len) -> output_ptr_with_len`
+- `post_fetch(input_ptr, input_len) -> output_ptr_with_len`
+- `pre_extract`, `post_extract`, `pre_output`, `post_output`
+
+Input/output is JSON-encoded. Memory management via exported `malloc`/`free`.
+
+### Host functions
+
+Available to plugins based on granted permissions:
+- `log(msg_ptr, msg_len)` - Always available
+- `get_config(key_ptr, key_len) -> value_ptr_with_len` - Always available
+- `http_request(...)` - Requires `network` permission
+- `file_access(...)` - Requires `filesystem` permission (restricted to plugin directory)
+- `get_env(key_ptr, key_len)` - Requires `env` permission (only `SPARTAN_PLUGIN_*` vars)
+
+### Manifest schema
+
+```json
+{
+  "name": "header-injector",
+  "version": "1.0.0",
+  "description": "Injects custom headers",
+  "author": "Author Name",
+  "hooks": ["pre_fetch"],
+  "permissions": ["network"],
+  "wasm_path": "plugin.wasm",
+  "config": { "headers": {} },
+  "enabled": true,
+  "priority": 10
+}
+```
+
 ### JS registry example
 
 ```json
