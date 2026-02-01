@@ -16,6 +16,7 @@ import {
 } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
+import { AIExtractSection } from "./AIExtractSection";
 import {
   parseHeaders,
   parseCookies,
@@ -177,6 +178,14 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     const [scrapeUrl, setScrapeUrl] = useState("");
     const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
+    // AI extraction state
+    const [aiEnabled, setAiEnabled] = useState(false);
+    const [aiMode, setAiMode] = useState<"natural_language" | "schema_guided">(
+      "natural_language",
+    );
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [aiFields, setAiFields] = useState("");
+
     const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
     const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
     const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
@@ -207,6 +216,19 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         alert("Scrape URL is required.");
         return;
       }
+      // Build AI extraction options if enabled
+      const aiExtractOptions = aiEnabled
+        ? {
+            enabled: true,
+            mode: aiMode,
+            prompt: aiPrompt || undefined,
+            fields: aiFields
+              .split(",")
+              .map((f) => f.trim())
+              .filter(Boolean),
+          }
+        : undefined;
+
       const request = buildScrapeRequest(
         scrapeUrl,
         headless,
@@ -236,6 +258,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
         device || undefined,
         networkIntercept,
+        aiExtractOptions,
       );
       await onSubmit(request);
     }, [
@@ -256,6 +279,10 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       loginPass,
       extractTemplate,
       extractValidate,
+      aiEnabled,
+      aiMode,
+      aiPrompt,
+      aiFields,
       preProcessors,
       postProcessors,
       transformers,
@@ -446,6 +473,16 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           incremental={incremental}
           setIncremental={setIncremental}
           inputPrefix="scrape"
+        />
+        <AIExtractSection
+          enabled={aiEnabled}
+          setEnabled={setAiEnabled}
+          mode={aiMode}
+          setMode={setAiMode}
+          prompt={aiPrompt}
+          setPrompt={setAiPrompt}
+          fields={aiFields}
+          setFields={setAiFields}
         />
         <WebhookConfig
           webhookUrl={webhookUrl}

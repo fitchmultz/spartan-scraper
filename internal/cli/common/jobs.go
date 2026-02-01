@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -64,6 +65,17 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jo
 		} else if proxyPool != nil {
 			manager.SetProxyPool(proxyPool)
 			slog.Info("proxy pool loaded", "path", cfg.ProxyPoolFile)
+		}
+	}
+
+	// Initialize AI extractor if configured
+	if extract.IsAIEnabled(cfg.AI) {
+		aiExtractor, err := extract.NewAIExtractor(cfg.AI)
+		if err != nil {
+			slog.Warn("failed to initialize AI extractor", "error", err)
+		} else if aiExtractor != nil {
+			manager.SetAIExtractor(aiExtractor)
+			slog.Info("AI extractor initialized", "provider", cfg.AI.Provider, "model", cfg.AI.Model)
 		}
 	}
 

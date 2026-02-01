@@ -43,6 +43,7 @@ type Manager struct {
 	metricsCallback   func(duration time.Duration, success bool, fetcherType, url string)
 	webhookDispatcher *webhook.Dispatcher
 	proxyPool         *fetch.ProxyPool
+	aiExtractor       *extract.AIExtractor
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -339,6 +340,14 @@ func (m *Manager) SetWebhookDispatcher(dispatcher *webhook.Dispatcher) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.webhookDispatcher = dispatcher
+}
+
+// SetAIExtractor sets the AI extractor for the manager.
+// This enables AI-powered extraction for jobs.
+func (m *Manager) SetAIExtractor(extractor *extract.AIExtractor) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.aiExtractor = extractor
 }
 
 // CancelJob attempts to cancel a running or queued job.

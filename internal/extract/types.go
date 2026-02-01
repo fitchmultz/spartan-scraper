@@ -39,6 +39,8 @@ type ExtractOptions struct {
 	Validate        bool            `json:"validate,omitempty"`
 	RejectionPolicy RejectionPolicy `json:"rejectionPolicy,omitempty"`
 	ABTestID        *string         `json:"ab_test_id,omitempty"` // If part of an A/B test
+	// NEW: AI extraction options
+	AI *AIExtractOptions `json:"ai,omitempty"`
 }
 
 type Template struct {
@@ -143,11 +145,12 @@ type NormalizedDocument struct {
 }
 
 type ExecuteInput struct {
-	URL      string
-	HTML     string
-	Options  ExtractOptions
-	DataDir  string
-	Registry *TemplateRegistry
+	URL         string
+	HTML        string
+	Options     ExtractOptions
+	DataDir     string
+	Registry    *TemplateRegistry
+	AIExtractor *AIExtractor // Optional AI extractor for intelligent extraction
 }
 
 type ExecuteOutput struct {

@@ -223,7 +223,17 @@ export function buildScrapeRequest(
   webhook?: WebhookConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
+  aiExtract?: import("../api").AiExtractOptions,
 ): ScrapeRequest {
+  // Merge AI options into extract options if provided
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
+
   return {
     url,
     headless,
@@ -231,7 +241,7 @@ export function buildScrapeRequest(
     timeoutSeconds,
     authProfile: authProfile || undefined,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     webhook,

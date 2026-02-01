@@ -86,6 +86,8 @@ type Request struct {
 	}
 	// WebhookConfig holds webhook configuration for the crawl.
 	WebhookConfig *model.WebhookConfig
+	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
+	AIExtractor *extract.AIExtractor
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -324,11 +326,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 
 		// If changed (or first run), extract and save state
 		output, extractErr := extract.Execute(extract.ExecuteInput{
-			URL:      item.URL,
-			HTML:     extractInput.HTML,
-			Options:  extractInput.Options,
-			DataDir:  extractInput.DataDir,
-			Registry: req.TemplateRegistry,
+			URL:         item.URL,
+			HTML:        extractInput.HTML,
+			Options:     extractInput.Options,
+			DataDir:     extractInput.DataDir,
+			Registry:    req.TemplateRegistry,
+			AIExtractor: req.AIExtractor,
 		})
 		if extractErr != nil {
 			slog.Error("extraction failed", "url", apperrors.SanitizeURL(item.URL), "error", extractErr)

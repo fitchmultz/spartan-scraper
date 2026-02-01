@@ -55,6 +55,12 @@ type CommonFlags struct {
 	ExtractConfig   *string
 	ExtractValidate *bool
 
+	// AI extraction flags
+	AIExtract       *bool
+	AIExtractMode   *string
+	AIExtractPrompt *string
+	AIExtractFields *string
+
 	// Pipeline flags
 	PreProcessors  StringSliceFlag
 	PostProcessors StringSliceFlag
@@ -226,6 +232,12 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		InterceptCaptureResponse: fs.Bool("intercept-response-body", true, "Capture response bodies during interception"),
 		InterceptMaxBodySize:     fs.Int("intercept-max-body-size", 1048576, "Maximum bytes to capture per body (default 1MB)"),
 		InterceptMaxEntries:      fs.Int("intercept-max-entries", 1000, "Maximum number of entries to capture (default 1000)"),
+
+		// AI extraction flags
+		AIExtract:       fs.Bool("ai-extract", false, "Enable AI-powered intelligent extraction (requires AI_PROVIDER config)"),
+		AIExtractMode:   fs.String("ai-mode", "natural_language", "AI extraction mode: natural_language|schema_guided"),
+		AIExtractPrompt: fs.String("ai-prompt", "", "Natural language prompt or schema JSON for AI extraction"),
+		AIExtractFields: fs.String("ai-fields", "", "Comma-separated list of fields to extract with AI"),
 	}
 
 	fs.Var(&cf.PreProcessors, "pre-processor", "Pipeline pre-processor plugin name (repeatable)")

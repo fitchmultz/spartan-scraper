@@ -881,6 +881,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/extract/ai-preview:
+    post:
+      summary: Preview AI-powered extraction
+      description: Extract structured data from HTML using AI/LLM without creating a job
+      operationId: aiExtractPreview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIExtractPreviewRequest'
+      responses:
+        '200':
+          description: AI extraction preview results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIExtractPreviewResponse'
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/extract/ai-template-generate:
+    post:
+      summary: Generate extraction template using AI
+      description: Analyze HTML and generate an extraction template using AI
+      operationId: aiTemplateGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIExtractTemplateGenerateRequest'
+      responses:
+        '200':
+          description: Generated template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIExtractTemplateGenerateResponse'
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/crawl-states:
     get:
       summary: List crawl states
@@ -2521,6 +2605,138 @@ components:
           type: boolean
           default: false
           description: Validate extraction against schema if present
+        ai:
+          $ref: '#/components/schemas/AIExtractOptions'
+    AIExtractOptions:
+      type: object
+      description: AI-powered extraction options
+      properties:
+        enabled:
+          type: boolean
+          description: Enable AI-powered extraction
+        mode:
+          type: string
+          enum: [natural_language, schema_guided]
+          description: AI extraction mode
+        prompt:
+          type: string
+          description: Natural language extraction prompt (for natural_language mode)
+        schema:
+          type: object
+          description: Schema example to guide extraction (for schema_guided mode)
+        fields:
+          type: array
+          items:
+            type: string
+          description: Specific fields to extract
+        use_cache:
+          type: boolean
+          default: true
+          description: Use cached results to reduce API costs
+    AIExtractPreviewRequest:
+      type: object
+      description: Request for AI extraction preview
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL of the page to extract from
+        html:
+          type: string
+          description: HTML content (if not provided, URL must be provided)
+        mode:
+          type: string
+          enum: [natural_language, schema_guided]
+          description: AI extraction mode
+        prompt:
+          type: string
+          description: Natural language extraction prompt
+        schema:
+          type: object
+          description: Schema example to guide extraction
+        fields:
+          type: array
+          items:
+            type: string
+          description: Specific fields to extract
+        headless:
+          type: boolean
+          description: Use headless browser to fetch content
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for headless fetching
+    AIExtractPreviewResponse:
+      type: object
+      description: Response from AI extraction preview
+      properties:
+        fields:
+          type: object
+          description: Extracted fields with their values and sources
+          additionalProperties:
+            $ref: '#/components/schemas/FieldValue'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Overall confidence score (0.0-1.0)
+        explanation:
+          type: string
+          description: Explanation of what was extracted
+        tokens_used:
+          type: integer
+          description: Number of tokens consumed by the LLM
+        cached:
+          type: boolean
+          description: Whether the result was served from cache
+    FieldValue:
+      type: object
+      description: A field value with source information
+      properties:
+        values:
+          type: array
+          items:
+            type: string
+          description: The extracted values
+        source:
+          type: string
+          enum: [selector, jsonld, regex, derived, llm]
+          description: Source of the extraction
+        rawObject:
+          type: string
+          description: JSON-encoded object for complex nested values
+    AIExtractTemplateGenerateRequest:
+      type: object
+      description: Request for AI template generation
+      required:
+        - url
+        - description
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to analyze for template generation
+        description:
+          type: string
+          description: Description of what data to extract
+        sample_fields:
+          type: array
+          items:
+            type: string
+          description: Example fields that should be extracted
+        headless:
+          type: boolean
+          description: Use headless browser to fetch content
+    AIExtractTemplateGenerateResponse:
+      type: object
+      description: Response from AI template generation
+      properties:
+        template:
+          $ref: '#/components/schemas/TemplateDetail'
+        explanation:
+          type: string
+          description: Explanation of the generated template
     PipelineOptions:
       type: object
       properties:

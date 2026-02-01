@@ -142,6 +142,29 @@ type Config struct {
 
 	// Distributed state configuration
 	CrawlStateBackend string // CRAWL_STATE_BACKEND env var (default: "sqlite", options: "sqlite", "redis")
+
+	// AI extraction configuration
+	AI AIConfig
+}
+
+// AIProvider identifies the LLM provider for AI-powered extraction.
+type AIProvider string
+
+const (
+	AIProviderOpenAI    AIProvider = "openai"
+	AIProviderAnthropic AIProvider = "anthropic"
+	AIProviderOllama    AIProvider = "ollama"
+)
+
+// AIConfig holds configuration for AI-powered extraction.
+type AIConfig struct {
+	Provider    AIProvider
+	APIKey      string
+	Model       string
+	TimeoutSecs int
+	MaxTokens   int
+	Temperature float64
+	OllamaURL   string
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -259,6 +282,7 @@ func Load() (Config, error) {
 	cfg = validateAndFixCircuitBreakerConfig(cfg)
 	cfg = validateAndFixRetryConfig(cfg)
 	cfg = validateAndFixQueueConfig(cfg)
+	cfg = validateAndFixAIConfig(cfg)
 
 	return cfg, nil
 }
@@ -579,4 +603,70 @@ func getenvFloat64(key string, fallback float64) float64 {
 		return fallback
 	}
 	return parsed
+}
+
+// validateAndFixAIConfig ensures AI configuration invariants.
+// It logs warnings and applies sensible defaults for invalid configurations.
+func validateAndFixAIConfig(cfg Config) Config {
+	ai := AIConfig{
+		Provider:    AIProvider(getenv("AI_PROVIDER", "")),
+		APIKey:      getenv("AI_API_KEY", ""),
+		Model:       getenv("AI_MODEL", ""),
+		TimeoutSecs: getenvInt("AI_TIMEOUT_SECONDS", 60),
+		MaxTokens:   getenvInt("AI_MAX_TOKENS", 4096),
+		Temperature: getenvFloat64("AI_TEMPERATURE", 0.1),
+		OllamaURL:   getenv("OLLAMA_URL", "http://localhost:11434"),
+	}
+
+	// If AI provider is set, validate it
+	if ai.Provider != "" {
+		validProviders := map[AIProvider]bool{
+			AIProviderOpenAI:    true,
+			AIProviderAnthropic: true,
+			AIProviderOllama:    true,
+		}
+		if !validProviders[ai.Provider] {
+			fmt.Fprintf(os.Stderr, "[WARN] Invalid AI_PROVIDER: %q, AI features disabled\n", ai.Provider)
+			ai.Provider = ""
+		}
+
+		// Validate timeout bounds
+		if ai.TimeoutSecs < 5 {
+			fmt.Fprintf(os.Stderr, "[WARN] AI_TIMEOUT_SECONDS too low (%d), using minimum 5\n", ai.TimeoutSecs)
+			ai.TimeoutSecs = 5
+		}
+		if ai.TimeoutSecs > 300 {
+			fmt.Fprintf(os.Stderr, "[WARN] AI_TIMEOUT_SECONDS too high (%d), using maximum 300\n", ai.TimeoutSecs)
+			ai.TimeoutSecs = 300
+		}
+
+		// Validate temperature bounds
+		if ai.Temperature < 0 || ai.Temperature > 1.0 {
+			fmt.Fprintf(os.Stderr, "[WARN] AI_TEMPERATURE out of range (%f), using 0.1\n", ai.Temperature)
+			ai.Temperature = 0.1
+		}
+
+		// Set default models if not specified
+		if ai.Model == "" {
+			switch ai.Provider {
+			case AIProviderOpenAI:
+				ai.Model = "gpt-4o-mini"
+			case AIProviderAnthropic:
+				ai.Model = "claude-3-haiku-20240307"
+			case AIProviderOllama:
+				ai.Model = "llama3.1"
+			}
+		}
+
+		// Validate API key is present for cloud providers
+		if ai.Provider == AIProviderOpenAI || ai.Provider == AIProviderAnthropic {
+			if ai.APIKey == "" {
+				fmt.Fprintf(os.Stderr, "[WARN] AI_PROVIDER is %s but AI_API_KEY is not set, AI features disabled\n", ai.Provider)
+				ai.Provider = ""
+			}
+		}
+	}
+
+	cfg.AI = ai
+	return cfg
 }

@@ -4,7 +4,9 @@
 package extract
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 )
 
 // Result is the legacy extraction result.
@@ -39,6 +41,43 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 	}
 
 	normalized := Normalize(extracted, tmpl)
+
+	// NEW: If AI extraction is enabled, enhance results
+	if input.Options.AI != nil && input.Options.AI.Enabled && input.AIExtractor != nil {
+		aiResult, err := input.AIExtractor.Extract(context.Background(), AIExtractRequest{
+			HTML:            input.HTML,
+			URL:             input.URL,
+			Mode:            input.Options.AI.Mode,
+			Prompt:          input.Options.AI.Prompt,
+			SchemaExample:   input.Options.AI.Schema,
+			Fields:          input.Options.AI.Fields,
+			MaxContentChars: DefaultMaxContentChars,
+		})
+		if err == nil {
+			// Merge AI-extracted fields with template results
+			if extracted.Fields == nil {
+				extracted.Fields = make(map[string]FieldValue)
+			}
+			for name, value := range aiResult.Fields {
+				extracted.Fields[name] = value
+			}
+			// Also update normalized fields
+			if normalized.Fields == nil {
+				normalized.Fields = make(map[string]FieldValue)
+			}
+			for name, value := range aiResult.Fields {
+				normalized.Fields[name] = value
+			}
+			slog.Debug("AI extraction enhanced results",
+				"url", input.URL,
+				"fields", len(aiResult.Fields),
+				"confidence", aiResult.Confidence,
+				"cached", aiResult.Cached)
+		} else {
+			// AI errors are logged but don't fail extraction
+			slog.Warn("AI extraction failed, continuing with template extraction", "error", err)
+		}
+	}
 
 	if input.Options.Validate && tmpl.Schema != nil {
 		validation := ValidateDocument(normalized, tmpl.Schema)

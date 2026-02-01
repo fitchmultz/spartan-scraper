@@ -49,6 +49,8 @@ type Request struct {
 	Screenshot *fetch.ScreenshotConfig
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
+	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
+	AIExtractor *extract.AIExtractor
 }
 
 // Result contains the outcome of a scrape operation.
@@ -247,11 +249,12 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	}
 
 	output, err := extract.Execute(extract.ExecuteInput{
-		URL:      res.URL,
-		HTML:     extractInput.HTML,
-		Options:  extractInput.Options,
-		DataDir:  extractInput.DataDir,
-		Registry: req.TemplateRegistry,
+		URL:         res.URL,
+		HTML:        extractInput.HTML,
+		Options:     extractInput.Options,
+		DataDir:     extractInput.DataDir,
+		Registry:    req.TemplateRegistry,
+		AIExtractor: req.AIExtractor,
 	})
 	if err != nil {
 		slog.Error("extraction failed", "url", req.URL, "error", err)

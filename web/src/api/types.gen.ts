@@ -59,6 +59,158 @@ export type ExtractOptions = {
      * Validate extraction against schema if present
      */
     validate?: boolean;
+    ai?: AiExtractOptions;
+};
+
+/**
+ * AI-powered extraction options
+ */
+export type AiExtractOptions = {
+    /**
+     * Enable AI-powered extraction
+     */
+    enabled?: boolean;
+    /**
+     * AI extraction mode
+     */
+    mode?: 'natural_language' | 'schema_guided';
+    /**
+     * Natural language extraction prompt (for natural_language mode)
+     */
+    prompt?: string;
+    /**
+     * Schema example to guide extraction (for schema_guided mode)
+     */
+    schema?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Specific fields to extract
+     */
+    fields?: Array<string>;
+    /**
+     * Use cached results to reduce API costs
+     */
+    use_cache?: boolean;
+};
+
+/**
+ * Request for AI extraction preview
+ */
+export type AiExtractPreviewRequest = {
+    /**
+     * URL of the page to extract from
+     */
+    url: string;
+    /**
+     * HTML content (if not provided, URL must be provided)
+     */
+    html?: string;
+    /**
+     * AI extraction mode
+     */
+    mode?: 'natural_language' | 'schema_guided';
+    /**
+     * Natural language extraction prompt
+     */
+    prompt?: string;
+    /**
+     * Schema example to guide extraction
+     */
+    schema?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Specific fields to extract
+     */
+    fields?: Array<string>;
+    /**
+     * Use headless browser to fetch content
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for headless fetching
+     */
+    playwright?: boolean;
+};
+
+/**
+ * Response from AI extraction preview
+ */
+export type AiExtractPreviewResponse = {
+    /**
+     * Extracted fields with their values and sources
+     */
+    fields?: {
+        [key: string]: FieldValue;
+    };
+    /**
+     * Overall confidence score (0.0-1.0)
+     */
+    confidence?: number;
+    /**
+     * Explanation of what was extracted
+     */
+    explanation?: string;
+    /**
+     * Number of tokens consumed by the LLM
+     */
+    tokens_used?: number;
+    /**
+     * Whether the result was served from cache
+     */
+    cached?: boolean;
+};
+
+/**
+ * A field value with source information
+ */
+export type FieldValue = {
+    /**
+     * The extracted values
+     */
+    values?: Array<string>;
+    /**
+     * Source of the extraction
+     */
+    source?: 'selector' | 'jsonld' | 'regex' | 'derived' | 'llm';
+    /**
+     * JSON-encoded object for complex nested values
+     */
+    rawObject?: string;
+};
+
+/**
+ * Request for AI template generation
+ */
+export type AiExtractTemplateGenerateRequest = {
+    /**
+     * URL to analyze for template generation
+     */
+    url: string;
+    /**
+     * Description of what data to extract
+     */
+    description: string;
+    /**
+     * Example fields that should be extracted
+     */
+    sample_fields?: Array<string>;
+    /**
+     * Use headless browser to fetch content
+     */
+    headless?: boolean;
+};
+
+/**
+ * Response from AI template generation
+ */
+export type AiExtractTemplateGenerateResponse = {
+    template?: TemplateDetail;
+    /**
+     * Explanation of the generated template
+     */
+    explanation?: string;
 };
 
 export type PipelineOptions = {
@@ -3512,6 +3664,80 @@ export type TestSelectorResponses = {
 };
 
 export type TestSelectorResponse2 = TestSelectorResponses[keyof TestSelectorResponses];
+
+export type AiExtractPreviewData = {
+    body: AiExtractPreviewRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/extract/ai-preview';
+};
+
+export type AiExtractPreviewErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiExtractPreviewError = AiExtractPreviewErrors[keyof AiExtractPreviewErrors];
+
+export type AiExtractPreviewResponses = {
+    /**
+     * AI extraction preview results
+     */
+    200: AiExtractPreviewResponse;
+};
+
+export type AiExtractPreviewResponse2 = AiExtractPreviewResponses[keyof AiExtractPreviewResponses];
+
+export type AiTemplateGenerateData = {
+    body: AiExtractTemplateGenerateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/extract/ai-template-generate';
+};
+
+export type AiTemplateGenerateErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiTemplateGenerateError = AiTemplateGenerateErrors[keyof AiTemplateGenerateErrors];
+
+export type AiTemplateGenerateResponses = {
+    /**
+     * Generated template
+     */
+    200: AiExtractTemplateGenerateResponse;
+};
+
+export type AiTemplateGenerateResponse = AiTemplateGenerateResponses[keyof AiTemplateGenerateResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

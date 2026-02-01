@@ -149,6 +149,60 @@ Create `DATA_DIR/extract_templates.json`:
 }
 ```
 
+### AI-Powered Extraction
+
+Extract structured data from HTML using LLM (Large Language Model) providers. This feature enables natural language extraction without writing CSS selectors.
+
+**Supported Providers:**
+- **OpenAI** (GPT-4o-mini, GPT-4, etc.)
+- **Anthropic** (Claude 3 Haiku, Sonnet, etc.)
+- **Ollama** (local LLMs like Llama 3.1)
+
+**Configuration** (`.env`):
+```
+AI_PROVIDER=openai              # openai, anthropic, or ollama
+AI_API_KEY=sk-...               # API key for cloud providers
+AI_MODEL=gpt-4o-mini            # Optional: defaults per provider
+AI_TIMEOUT_SECONDS=60           # 5-300 seconds
+AI_MAX_TOKENS=4096
+AI_TEMPERATURE=0.1              # 0.0-1.0 (lower = more consistent)
+OLLAMA_URL=http://localhost:11434  # For local Ollama
+```
+
+**CLI Usage:**
+```bash
+# Natural language extraction
+spartan scrape --url https://example.com --ai-extract --ai-prompt "extract all product names and prices"
+
+# Schema-guided extraction with specific fields
+spartan crawl --url https://example.com --ai-extract --ai-mode schema_guided --ai-fields "title,price,rating"
+```
+
+**API Usage:**
+```bash
+# Preview extraction without creating a job
+curl -sS -X POST "http://localhost:8741/v1/extract/ai-preview" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "html": "<html>...</html>",
+    "mode": "natural_language",
+    "prompt": "Extract all product names and prices",
+    "fields": ["name", "price"]
+  }'
+```
+
+**Extraction Modes:**
+- `natural_language`: Describe what to extract in plain English
+- `schema_guided`: Provide example field names to guide extraction
+
+**Features:**
+- Automatic HTML cleaning (removes scripts, styles, comments)
+- Content-based caching (24h TTL) to reduce API costs
+- Graceful fallback if AI extraction fails
+- Token usage tracking
+- Confidence scores per extraction
+
 ### crawl-states
 
 List incremental crawl states (ETags/Last-Modified tracking).
@@ -393,6 +447,8 @@ Endpoints:
 - `DELETE /v1/schedules/{id}`
 - `GET /v1/templates`
 - `GET /v1/crawl-states`
+- `POST /v1/extract/ai-preview`
+- `POST /v1/extract/ai-template-generate`
 
 OpenAPI: `api/openapi.yaml`
 
@@ -467,6 +523,14 @@ No additional tools (ripgrep, perl, etc.) are required for `make generate`.
 - `RETRY_BASE_MS`
 - `MAX_RESPONSE_BYTES` (default `10485760`)
 - `USE_PLAYWRIGHT`
+- AI extraction (optional):
+  - `AI_PROVIDER` (`openai`, `anthropic`, or `ollama`)
+  - `AI_API_KEY`
+  - `AI_MODEL`
+  - `AI_TIMEOUT_SECONDS` (default `60`)
+  - `AI_MAX_TOKENS` (default `4096`)
+  - `AI_TEMPERATURE` (default `0.1`)
+  - `OLLAMA_URL` (default `http://localhost:11434`)
 - Auth overrides:
   - `AUTH_BASIC`
   - `AUTH_BEARER`

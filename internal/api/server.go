@@ -12,6 +12,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/analytics"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
@@ -28,12 +29,24 @@ type Server struct {
 	analyticsCollector *analytics.Collector
 	analyticsService   *analytics.Service
 	graphqlHandler     *GraphQLHandler
+	aiExtractor        *extract.AIExtractor
 	ctx                context.Context
 	cancel             context.CancelFunc
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Initialize AI extractor if configured
+	var aiExtractor *extract.AIExtractor
+	if extract.IsAIEnabled(cfg.AI) {
+		var err error
+		aiExtractor, err = extract.NewAIExtractor(cfg.AI)
+		if err != nil {
+			slog.Warn("Failed to initialize AI extractor", "error", err)
+		}
+	}
+
 	s := &Server{
 		manager:          manager,
 		store:            store,
@@ -41,6 +54,7 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 		wsHub:            NewHub(),
 		metricsCollector: NewMetricsCollector(),
 		analyticsService: analytics.NewService(store),
+		aiExtractor:      aiExtractor,
 		ctx:              ctx,
 		cancel:           cancel,
 	}
@@ -261,6 +275,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/template-ab-tests/", s.handleABTest)
 	mux.HandleFunc("/graphql", s.handleGraphQL)
 	mux.HandleFunc("/graphql/playground", s.handleGraphQLPlayground)
+
+	// AI extraction endpoints
+	mux.HandleFunc("/v1/extract/ai-preview", s.handleAIExtractPreview)
+	mux.HandleFunc("/v1/extract/ai-template-generate", s.handleAITemplateGenerate)
 
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))

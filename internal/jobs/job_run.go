@@ -188,6 +188,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			MetricsCallback:  m.metricsCallback,
 			Screenshot:       screenshot,
 			ProxyPool:        m.proxyPool,
+			AIExtractor:      m.aiExtractor,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
@@ -275,6 +276,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			ProxyPool:         m.proxyPool,
 			WebhookDispatcher: m.webhookDispatcher,
 			WebhookConfig:     job.ExtractWebhookConfig(),
+			AIExtractor:       m.aiExtractor,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {
