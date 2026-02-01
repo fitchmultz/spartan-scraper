@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0268",
-      "status": "todo",
-      "title": "Fix retention cleanup skipping matching kinds when first batch mismatches",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "retention"
-      ],
-      "scope": [
-        "internal/retention/retention.go",
-        "internal/retention/retention_test.go"
-      ],
-      "evidence": [
-        "path: internal/retention/retention.go :: cleanupByAge :: when opts.Kind filters out all jobs in a batch, len(toDelete)==0 triggers break, so later matching jobs are never considered",
-        "path: internal/retention/retention.go :: cleanupByCount/cleanupByStorage :: same len(toDelete)==0 break causes early exit when first batch contains only other kinds"
-      ],
-      "plan": [
-        "Adjust cleanupByAge/cleanupByCount/cleanupByStorage loops to continue scanning when the current batch has no matching kinds (avoid premature break)",
-        "Add or extend retention tests to cover the scenario where early batches are non-matching kinds but later batches match",
-        "Ensure loop termination still occurs when no more jobs are available to avoid infinite loops",
-        "Verify by running `go test ./internal/retention -run Cleanup` and confirming kind-filtered cleanup deletes the expected jobs"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T03:38:29Z",
-      "updated_at": "2026-02-01T03:38:29Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0269",
       "status": "todo",
       "title": "Treat missing jobs directory as zero storage in GetStorageStats",

@@ -10,6 +10,7 @@ package retention
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -482,5 +483,71 @@ func TestRunCleanupPriorityOrder(t *testing.T) {
 
 	if result.JobsDeleted != 3 {
 		t.Errorf("expected 3 jobs deleted, got %d", result.JobsDeleted)
+	}
+}
+
+// TestCleanupByKindWithMixedBatches verifies that cleanup works correctly when
+// early batches contain only non-matching job kinds but later batches contain
+// matching kinds. This is a regression test for the bug where len(toDelete)==0
+// would cause a break instead of continue, prematurely stopping the scan.
+func TestCleanupByKindWithMixedBatches(t *testing.T) {
+	st, dataDir, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create 110 crawl jobs (fills more than one 100-job batch)
+	// These are created first and will appear in earlier batches
+	for i := 0; i < 110; i++ {
+		job := createTestJob(fmt.Sprintf("crawl-job-%d", i), model.KindCrawl, model.StatusSucceeded, 60)
+		if err := st.Create(ctx, job); err != nil {
+			t.Fatalf("Create crawl job failed: %v", err)
+		}
+	}
+
+	// Create 10 scrape jobs (all old enough for cleanup)
+	// These will appear in later batches due to creation order
+	for i := 0; i < 10; i++ {
+		job := createTestJob(fmt.Sprintf("scrape-job-%d", i), model.KindScrape, model.StatusSucceeded, 60)
+		if err := st.Create(ctx, job); err != nil {
+			t.Fatalf("Create scrape job failed: %v", err)
+		}
+	}
+
+	cfg := config.Config{
+		DataDir:               dataDir,
+		RetentionEnabled:      true,
+		RetentionJobDays:      30, // Jobs older than 30 days should be deleted
+		RetentionMaxJobs:      0,  // unlimited
+		RetentionMaxStorageGB: 0,  // unlimited
+	}
+
+	// Run cleanup filtering only for KindScrape
+	kind := model.KindScrape
+	engine := NewEngine(st, cfg)
+	result, err := engine.RunCleanup(ctx, CleanupOptions{Kind: &kind})
+	if err != nil {
+		t.Fatalf("RunCleanup failed: %v", err)
+	}
+
+	// Verify that all 10 scrape jobs were deleted
+	if result.JobsDeleted != 10 {
+		t.Errorf("expected 10 scrape jobs deleted, got %d", result.JobsDeleted)
+	}
+
+	// Verify that crawl jobs still exist (different kind, should not be affected)
+	for i := 0; i < 110; i++ {
+		_, err := st.Get(ctx, fmt.Sprintf("crawl-job-%d", i))
+		if err != nil {
+			t.Errorf("expected crawl job %d to still exist", i)
+		}
+	}
+
+	// Verify that scrape jobs are deleted
+	for i := 0; i < 10; i++ {
+		_, err := st.Get(ctx, fmt.Sprintf("scrape-job-%d", i))
+		if err == nil {
+			t.Errorf("expected scrape job %d to be deleted", i)
+		}
 	}
 }

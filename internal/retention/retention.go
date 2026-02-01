@@ -157,9 +157,10 @@ func (e *Engine) cleanupByAge(ctx context.Context, opts CleanupOptions) (Cleanup
 	statuses := []model.Status{model.StatusFailed, model.StatusSucceeded, model.StatusCanceled}
 
 	for _, status := range statuses {
+		offset := 0
 		for {
 			// Get batch of old jobs with this status
-			jobs, err := e.store.ListJobsByStatusAndAge(ctx, status, cutoff, store.ListOptions{Limit: 100})
+			jobs, err := e.store.ListJobsByStatusAndAge(ctx, status, cutoff, store.ListOptions{Limit: 100, Offset: offset})
 			if err != nil {
 				return result, err
 			}
@@ -177,7 +178,11 @@ func (e *Engine) cleanupByAge(ctx context.Context, opts CleanupOptions) (Cleanup
 			}
 
 			if len(toDelete) == 0 {
-				break
+				offset += len(jobs)
+				if len(jobs) < 100 {
+					break
+				}
+				continue
 			}
 
 			if opts.DryRun {
@@ -202,6 +207,7 @@ func (e *Engine) cleanupByAge(ctx context.Context, opts CleanupOptions) (Cleanup
 				}
 			}
 
+			offset += len(jobs)
 			if len(jobs) < 100 {
 				break
 			}
@@ -230,32 +236,17 @@ func (e *Engine) cleanupByCount(ctx context.Context, opts CleanupOptions) (Clean
 
 	// Get oldest jobs (prioritize terminal statuses)
 	deleted := 0
+	offset := 0
 	for deleted < toDeleteCount {
 		batchSize := 100
 		if toDeleteCount-deleted < batchSize {
 			batchSize = toDeleteCount - deleted
 		}
 
-		// First try to get failed/canceled jobs
-		var jobs []model.Job
-		for _, status := range []model.Status{model.StatusFailed, model.StatusCanceled, model.StatusSucceeded} {
-			if len(jobs) >= batchSize {
-				break
-			}
-			statusJobs, err := e.store.ListJobsByStatusAndAge(ctx, status, time.Now(), store.ListOptions{Limit: batchSize})
-			if err != nil {
-				return result, err
-			}
-			jobs = append(jobs, statusJobs...)
-		}
-
-		// If no terminal jobs, get any old jobs
-		if len(jobs) == 0 {
-			olderJobs, err := e.store.ListJobsOlderThan(ctx, time.Now(), store.ListOptions{Limit: batchSize})
-			if err != nil {
-				return result, err
-			}
-			jobs = olderJobs
+		// Get oldest jobs using offset
+		jobs, err := e.store.ListJobsOlderThan(ctx, time.Now(), store.ListOptions{Limit: batchSize, Offset: offset})
+		if err != nil {
+			return result, err
 		}
 
 		if len(jobs) == 0 {
@@ -272,7 +263,8 @@ func (e *Engine) cleanupByCount(ctx context.Context, opts CleanupOptions) (Clean
 		}
 
 		if len(toDelete) == 0 {
-			break
+			offset += len(jobs)
+			continue
 		}
 
 		if opts.DryRun {
@@ -298,6 +290,7 @@ func (e *Engine) cleanupByCount(ctx context.Context, opts CleanupOptions) (Clean
 		}
 
 		deleted += len(toDelete)
+		offset += len(jobs)
 	}
 
 	return result, nil
@@ -322,9 +315,10 @@ func (e *Engine) cleanupByStorage(ctx context.Context, opts CleanupOptions) (Cle
 	e.logger.Info("cleanup by storage triggered", "currentMB", stats.TotalStorageMB, "limitGB", e.cfg.RetentionMaxStorageGB, "targetReclaimMB", targetReclaim)
 
 	reclaimed := int64(0)
+	offset := 0
 	for reclaimed < targetReclaim {
 		// Get oldest jobs
-		jobs, err := e.store.ListJobsOlderThan(ctx, time.Now(), store.ListOptions{Limit: 100})
+		jobs, err := e.store.ListJobsOlderThan(ctx, time.Now(), store.ListOptions{Limit: 100, Offset: offset})
 		if err != nil {
 			return result, err
 		}
@@ -342,7 +336,8 @@ func (e *Engine) cleanupByStorage(ctx context.Context, opts CleanupOptions) (Cle
 		}
 
 		if len(toDelete) == 0 {
-			break
+			offset += len(jobs)
+			continue
 		}
 
 		if opts.DryRun {
@@ -368,6 +363,7 @@ func (e *Engine) cleanupByStorage(ctx context.Context, opts CleanupOptions) (Cle
 				)
 			}
 		}
+		offset += len(jobs)
 	}
 
 	return result, nil
