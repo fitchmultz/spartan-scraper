@@ -150,9 +150,9 @@ func ListTemplateNames(dataDir string) ([]string, error) {
 	return names, nil
 }
 
-// getTemplate retrieves a template by name from the registry.
+// GetTemplate retrieves a template by name from the registry.
 // Returns an error if the template is not found.
-func (r *TemplateRegistry) getTemplate(name string) (Template, error) {
+func (r *TemplateRegistry) GetTemplate(name string) (Template, error) {
 	if r == nil {
 		// Fallback to built-ins
 		if t, ok := builtInTemplates[name]; ok {

@@ -2257,6 +2257,310 @@ export type StatisticalResult = {
     effect_size?: number;
 };
 
+/**
+ * Simplified DOM node for visual selector builder
+ */
+export type DomNode = {
+    /**
+     * HTML tag name
+     */
+    tag?: string;
+    /**
+     * Element ID attribute
+     */
+    id?: string;
+    /**
+     * CSS class names
+     */
+    classes?: Array<string>;
+    /**
+     * Other HTML attributes
+     */
+    attributes?: {
+        [key: string]: string;
+    };
+    /**
+     * Text content (truncated)
+     */
+    text?: string;
+    /**
+     * Child elements
+     */
+    children?: Array<DomNode>;
+    /**
+     * CSS path to this element
+     */
+    path?: string;
+    /**
+     * Depth in DOM tree
+     */
+    depth?: number;
+};
+
+/**
+ * A matched DOM element in selector testing
+ */
+export type DomElement = {
+    /**
+     * HTML tag name
+     */
+    tag?: string;
+    /**
+     * Text content (truncated)
+     */
+    text?: string;
+    /**
+     * Outer HTML (truncated)
+     */
+    html?: string;
+    /**
+     * CSS path to this element
+     */
+    path?: string;
+};
+
+/**
+ * Response from the template preview endpoint
+ */
+export type TemplatePreviewResponse = {
+    /**
+     * Fetched URL
+     */
+    url?: string;
+    /**
+     * Page title
+     */
+    title?: string;
+    dom_tree?: DomNode;
+    /**
+     * Time to fetch the page in milliseconds
+     */
+    fetch_time_ms?: number;
+    /**
+     * Fetcher engine used
+     */
+    fetcher?: 'http' | 'chromedp' | 'playwright';
+};
+
+/**
+ * Request to test a CSS selector
+ */
+export type TestSelectorRequest = {
+    /**
+     * URL to test against
+     */
+    url: string;
+    /**
+     * CSS selector to test
+     */
+    selector: string;
+    /**
+     * Use headless browser
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp
+     */
+    playwright?: boolean;
+};
+
+/**
+ * Result of selector testing
+ */
+export type TestSelectorResponse = {
+    /**
+     * The tested selector
+     */
+    selector?: string;
+    /**
+     * Number of matching elements
+     */
+    matches?: number;
+    /**
+     * Matching elements
+     */
+    elements?: Array<DomElement>;
+    /**
+     * Error message if selector is invalid
+     */
+    error?: string;
+};
+
+/**
+ * Full template details response
+ */
+export type TemplateDetail = {
+    /**
+     * Template name
+     */
+    name?: string;
+    /**
+     * Whether this is a built-in template
+     */
+    is_built_in?: boolean;
+    template?: Template;
+};
+
+/**
+ * Extraction template configuration
+ */
+export type Template = {
+    /**
+     * Template name
+     */
+    name?: string;
+    /**
+     * CSS selector rules
+     */
+    selectors?: Array<SelectorRule>;
+    /**
+     * JSON-LD extraction rules
+     */
+    jsonld?: Array<JsonldRule>;
+    /**
+     * Regex extraction rules
+     */
+    regex?: Array<RegexRule>;
+    normalize?: NormalizeSpec;
+};
+
+/**
+ * CSS selector extraction rule
+ */
+export type SelectorRule = {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * CSS selector
+     */
+    selector?: string;
+    /**
+     * Attribute to extract (or "text" for text content)
+     */
+    attr?: string;
+    /**
+     * Whether to extract all matches
+     */
+    all?: boolean;
+    /**
+     * Join string when extracting multiple values
+     */
+    join?: string;
+    /**
+     * Whether to trim whitespace
+     */
+    trim?: boolean;
+    /**
+     * Whether this field is required
+     */
+    required?: boolean;
+};
+
+/**
+ * JSON-LD extraction rule
+ */
+export type JsonldRule = {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * JSON-LD @type to match (e.g., "Article", "Product")
+     */
+    type?: string;
+    /**
+     * Dot-separated path in JSON-LD object (e.g., "author.name")
+     */
+    path?: string;
+    /**
+     * Whether to extract all matches
+     */
+    all?: boolean;
+    /**
+     * Whether this field is required
+     */
+    required?: boolean;
+};
+
+/**
+ * Regex extraction rule
+ */
+export type RegexRule = {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * Regex pattern
+     */
+    pattern?: string;
+    /**
+     * Capture group to extract
+     */
+    group?: number;
+    /**
+     * Whether to extract all matches
+     */
+    all?: boolean;
+    /**
+     * Source to apply regex to
+     */
+    source?: 'text' | 'html' | 'url';
+    /**
+     * Whether this field is required
+     */
+    required?: boolean;
+};
+
+/**
+ * Field normalization configuration
+ */
+export type NormalizeSpec = {
+    /**
+     * Field to use as title
+     */
+    titleField?: string;
+    /**
+     * Field to use as description
+     */
+    descriptionField?: string;
+    /**
+     * Field to use as main text content
+     */
+    textField?: string;
+    /**
+     * Map of normalized keys to field names
+     */
+    metaFields?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * Request to create or update a template
+ */
+export type CreateTemplateRequest = {
+    /**
+     * Template name (must be unique)
+     */
+    name: string;
+    /**
+     * CSS selector rules (at least one required)
+     */
+    selectors: Array<SelectorRule>;
+    /**
+     * Optional JSON-LD extraction rules
+     */
+    jsonld?: Array<JsonldRule>;
+    /**
+     * Optional regex extraction rules
+     */
+    regex?: Array<RegexRule>;
+    normalize?: NormalizeSpec;
+};
+
 export type TrafficReplayRequest = {
     /**
      * Job ID to replay traffic from
@@ -2967,6 +3271,247 @@ export type ListTemplatesResponses = {
 };
 
 export type ListTemplatesResponse = ListTemplatesResponses[keyof ListTemplatesResponses];
+
+export type CreateTemplateData = {
+    body: CreateTemplateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/templates';
+};
+
+export type CreateTemplateErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateTemplateError = CreateTemplateErrors[keyof CreateTemplateErrors];
+
+export type CreateTemplateResponses = {
+    /**
+     * Template created
+     */
+    201: TemplateDetail;
+};
+
+export type CreateTemplateResponse = CreateTemplateResponses[keyof CreateTemplateResponses];
+
+export type DeleteTemplateData = {
+    body?: never;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/v1/templates/{name}';
+};
+
+export type DeleteTemplateErrors = {
+    /**
+     * Forbidden - cannot delete built-in template
+     */
+    403: ErrorResponse;
+    /**
+     * Template not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteTemplateError = DeleteTemplateErrors[keyof DeleteTemplateErrors];
+
+export type DeleteTemplateResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteTemplateResponse = DeleteTemplateResponses[keyof DeleteTemplateResponses];
+
+export type GetTemplateData = {
+    body?: never;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/v1/templates/{name}';
+};
+
+export type GetTemplateErrors = {
+    /**
+     * Template not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetTemplateError = GetTemplateErrors[keyof GetTemplateErrors];
+
+export type GetTemplateResponses = {
+    /**
+     * Template details
+     */
+    200: TemplateDetail;
+};
+
+export type GetTemplateResponse = GetTemplateResponses[keyof GetTemplateResponses];
+
+export type UpdateTemplateData = {
+    body: CreateTemplateRequest;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/v1/templates/{name}';
+};
+
+export type UpdateTemplateErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Forbidden - cannot modify built-in template
+     */
+    403: ErrorResponse;
+    /**
+     * Template not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateTemplateError = UpdateTemplateErrors[keyof UpdateTemplateErrors];
+
+export type UpdateTemplateResponses = {
+    /**
+     * Template updated
+     */
+    200: TemplateDetail;
+};
+
+export type UpdateTemplateResponse = UpdateTemplateResponses[keyof UpdateTemplateResponses];
+
+export type GetTemplatePreviewData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * URL to fetch and analyze
+         */
+        url: string;
+        /**
+         * Use headless browser for fetching
+         */
+        headless?: boolean;
+        /**
+         * Use Playwright instead of Chromedp for headless fetching
+         */
+        playwright?: boolean;
+    };
+    url: '/v1/template-preview';
+};
+
+export type GetTemplatePreviewErrors = {
+    /**
+     * Bad Request - invalid URL
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetTemplatePreviewError = GetTemplatePreviewErrors[keyof GetTemplatePreviewErrors];
+
+export type GetTemplatePreviewResponses = {
+    /**
+     * DOM preview
+     */
+    200: TemplatePreviewResponse;
+};
+
+export type GetTemplatePreviewResponse = GetTemplatePreviewResponses[keyof GetTemplatePreviewResponses];
+
+export type TestSelectorData = {
+    body: TestSelectorRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/template-preview/test-selector';
+};
+
+export type TestSelectorErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type TestSelectorError = TestSelectorErrors[keyof TestSelectorErrors];
+
+export type TestSelectorResponses = {
+    /**
+     * Selector test results
+     */
+    200: TestSelectorResponse;
+};
+
+export type TestSelectorResponse2 = TestSelectorResponses[keyof TestSelectorResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

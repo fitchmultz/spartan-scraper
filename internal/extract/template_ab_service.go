@@ -40,10 +40,10 @@ func NewABTestService(store *store.Store, registry *TemplateRegistry, collector 
 // CreateTest creates a new A/B test.
 func (s *ABTestService) CreateTest(ctx context.Context, test *TemplateABTest) (*TemplateABTest, error) {
 	// Validate templates exist
-	if _, err := s.registry.getTemplate(test.BaselineTemplate); err != nil {
+	if _, err := s.registry.GetTemplate(test.BaselineTemplate); err != nil {
 		return nil, apperrors.Validation("baseline template not found: " + test.BaselineTemplate)
 	}
-	if _, err := s.registry.getTemplate(test.VariantTemplate); err != nil {
+	if _, err := s.registry.GetTemplate(test.VariantTemplate); err != nil {
 		return nil, apperrors.Validation("variant template not found: " + test.VariantTemplate)
 	}
 

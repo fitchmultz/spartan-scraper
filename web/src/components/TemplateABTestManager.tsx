@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 interface ABTest {
   id: string;
@@ -63,6 +64,25 @@ export function TemplateABTestManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<string[]>([]);
+
+  // Fetch available templates
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const response = await fetch("/v1/templates");
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data.templates || []);
+      }
+    } catch {
+      // Silently fail - templates are not critical
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const fetchTests = useCallback(async () => {
     try {
@@ -109,12 +129,31 @@ export function TemplateABTestManager() {
 
       {showCreateForm && (
         <CreateTestForm
+          templates={templates}
           onSuccess={() => {
             setShowCreateForm(false);
             fetchTests();
           }}
           onCancel={() => setShowCreateForm(false)}
         />
+      )}
+
+      {editingTemplate && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern
+        // biome-ignore lint/a11y/useKeyWithClickEvents: handled by escape key in component
+        <div className="modal-overlay" onClick={() => setEditingTemplate(null)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: handled by child component */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: modal content container */}
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <VisualSelectorBuilder
+              onSave={() => {
+                setEditingTemplate(null);
+                fetchTemplates();
+              }}
+              onCancel={() => setEditingTemplate(null)}
+            />
+          </div>
+        </div>
       )}
 
       <div className="ab-test-manager__list">
@@ -124,7 +163,12 @@ export function TemplateABTestManager() {
           </div>
         ) : (
           tests.map((test) => (
-            <ABTestCard key={test.id} test={test} onUpdate={fetchTests} />
+            <ABTestCard
+              key={test.id}
+              test={test}
+              onUpdate={fetchTests}
+              onEditTemplate={setEditingTemplate}
+            />
           ))
         )}
       </div>
@@ -133,11 +177,16 @@ export function TemplateABTestManager() {
 }
 
 interface CreateTestFormProps {
+  templates: string[];
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-function CreateTestForm({ onSuccess, onCancel }: CreateTestFormProps) {
+function CreateTestForm({
+  templates,
+  onSuccess,
+  onCancel,
+}: CreateTestFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [baselineTemplate, setBaselineTemplate] = useState("");
@@ -233,26 +282,36 @@ function CreateTestForm({ onSuccess, onCancel }: CreateTestFormProps) {
       <div className="form-row">
         <div className="form-group">
           <label htmlFor="baseline-template">Baseline Template *</label>
-          <input
+          <select
             id="baseline-template"
-            type="text"
             value={baselineTemplate}
             onChange={(e) => setBaselineTemplate(e.target.value)}
-            placeholder="e.g., article"
             required
-          />
+          >
+            <option value="">Select template...</option>
+            {templates.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
           <label htmlFor="variant-template">Variant Template *</label>
-          <input
+          <select
             id="variant-template"
-            type="text"
             value={variantTemplate}
             onChange={(e) => setVariantTemplate(e.target.value)}
-            placeholder="e.g., product"
             required
-          />
+          >
+            <option value="">Select template...</option>
+            {templates.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -325,9 +384,10 @@ function CreateTestForm({ onSuccess, onCancel }: CreateTestFormProps) {
 interface ABTestCardProps {
   test: ABTest;
   onUpdate: () => void;
+  onEditTemplate: (templateName: string) => void;
 }
 
-function ABTestCard({ test, onUpdate }: ABTestCardProps) {
+function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -488,7 +548,25 @@ function ABTestCard({ test, onUpdate }: ABTestCardProps) {
         <div className="detail-row">
           <span className="detail-label">Templates:</span>
           <span className="detail-value">
-            {test.baseline_template} vs {test.variant_template}
+            {test.baseline_template}
+            <button
+              type="button"
+              className="btn btn--link btn--small"
+              onClick={() => onEditTemplate(test.baseline_template)}
+              title="Edit baseline template"
+            >
+              Edit
+            </button>
+            {" vs "}
+            {test.variant_template}
+            <button
+              type="button"
+              className="btn btn--link btn--small"
+              onClick={() => onEditTemplate(test.variant_template)}
+              title="Edit variant template"
+            >
+              Edit
+            </button>
           </span>
         </div>
         <div className="detail-row">

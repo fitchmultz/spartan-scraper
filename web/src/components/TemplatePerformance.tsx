@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 interface TemplateMetrics {
   hour: string;
@@ -65,6 +66,7 @@ export function TemplatePerformance({
   const [metrics, setMetrics] = useState<TemplateMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -138,7 +140,34 @@ export function TemplatePerformance({
 
   return (
     <div className="template-performance">
-      <h3 className="template-performance__title">{templateName}</h3>
+      <div className="template-performance__header">
+        <h3 className="template-performance__title">{templateName}</h3>
+        <button
+          type="button"
+          className="btn btn--small btn--primary"
+          onClick={() => setIsEditing(true)}
+        >
+          Edit Template
+        </button>
+      </div>
+
+      {isEditing && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern
+        // biome-ignore lint/a11y/useKeyWithClickEvents: handled by escape key in component
+        <div className="modal-overlay" onClick={() => setIsEditing(false)}>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: handled by child component */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: modal content container */}
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <VisualSelectorBuilder
+              onSave={() => {
+                setIsEditing(false);
+                window.location.reload();
+              }}
+              onCancel={() => setIsEditing(false)}
+            />
+          </div>
+        </div>
+      )}
       <div className="template-performance__metrics">
         <MetricCard
           label="Success Rate"

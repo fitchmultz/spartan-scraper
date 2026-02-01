@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from "react";
 import type { CrawlState } from "../api";
+import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 interface InfoSectionsProps {
   profiles: Array<{ name: string; parents: string[] }>;
@@ -39,6 +40,7 @@ export function InfoSections({
   const [jumpInputValue, setJumpInputValue] = useState(
     crawlStatesPage.toString(),
   );
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
 
   useEffect(() => {
     setJumpInputValue(crawlStatesPage.toString());
@@ -84,9 +86,46 @@ export function InfoSections({
         </section>
       )}
 
-      {templates.length > 0 && (
-        <section className="panel" style={{ marginTop: 16 }}>
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <h2>Extraction Templates</h2>
+          <button
+            type="button"
+            className="btn btn--primary btn--small"
+            onClick={() => setShowTemplateBuilder(true)}
+          >
+            Visual Builder
+          </button>
+        </div>
+
+        {showTemplateBuilder && (
+          // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern
+          // biome-ignore lint/a11y/useKeyWithClickEvents: handled by escape key in component
+          <div
+            className="modal-overlay"
+            onClick={() => setShowTemplateBuilder(false)}
+          >
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: handled by child component */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: modal content container */}
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <VisualSelectorBuilder
+                onSave={() => {
+                  setShowTemplateBuilder(false);
+                  window.location.reload();
+                }}
+                onCancel={() => setShowTemplateBuilder(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {templates.length > 0 ? (
           <div className="job-list">
             {templates.map((name) => (
               <div key={name} className="job-item">
@@ -94,8 +133,12 @@ export function InfoSections({
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="job-list-empty">
+            No templates yet. Use the Visual Builder to create one.
+          </div>
+        )}
+      </section>
 
       {crawlStates.length > 0 && (
         <section className="panel" style={{ marginTop: 16 }}>

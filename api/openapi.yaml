@@ -616,6 +616,271 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new template
+      description: Create a custom extraction template
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetail'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/templates/{name}:
+    get:
+      summary: Get template details
+      description: Returns full details of a specific template
+      operationId: getTemplate
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetail'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update template
+      description: Update an existing custom template
+      operationId: updateTemplate
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetail'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - cannot modify built-in template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete custom template
+      description: Delete a custom template (built-in templates cannot be deleted)
+      operationId: deleteTemplate
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          description: Forbidden - cannot delete built-in template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-preview:
+    get:
+      summary: Fetch page DOM structure for selector building
+      description: Fetches a remote page and returns its simplified DOM tree for visual selector building
+      operationId: getTemplatePreview
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: URL to fetch and analyze
+        - name: headless
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Use headless browser for fetching
+        - name: playwright
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Use Playwright instead of Chromedp for headless fetching
+      responses:
+        '200':
+          description: DOM preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatePreviewResponse'
+        '400':
+          description: Bad Request - invalid URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/template-preview/test-selector:
+    post:
+      summary: Test CSS selector against URL
+      description: Tests a CSS selector against a fetched page and returns matching elements
+      operationId: testSelector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestSelectorRequest'
+      responses:
+        '200':
+          description: Selector test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestSelectorResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/crawl-states:
     get:
       summary: List crawl states
@@ -4645,6 +4910,273 @@ components:
         effect_size:
           type: number
           description: Effect size (Cohen's d or odds ratio)
+    DOMNode:
+      type: object
+      description: Simplified DOM node for visual selector builder
+      properties:
+        tag:
+          type: string
+          description: HTML tag name
+        id:
+          type: string
+          description: Element ID attribute
+        classes:
+          type: array
+          items:
+            type: string
+          description: CSS class names
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Other HTML attributes
+        text:
+          type: string
+          description: Text content (truncated)
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DOMNode'
+          description: Child elements
+        path:
+          type: string
+          description: CSS path to this element
+        depth:
+          type: integer
+          description: Depth in DOM tree
+    DOMElement:
+      type: object
+      description: A matched DOM element in selector testing
+      properties:
+        tag:
+          type: string
+          description: HTML tag name
+        text:
+          type: string
+          description: Text content (truncated)
+        html:
+          type: string
+          description: Outer HTML (truncated)
+        path:
+          type: string
+          description: CSS path to this element
+    TemplatePreviewResponse:
+      type: object
+      description: Response from the template preview endpoint
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Fetched URL
+        title:
+          type: string
+          description: Page title
+        dom_tree:
+          $ref: '#/components/schemas/DOMNode'
+          description: Simplified DOM tree
+        fetch_time_ms:
+          type: integer
+          description: Time to fetch the page in milliseconds
+        fetcher:
+          type: string
+          enum: [http, chromedp, playwright]
+          description: Fetcher engine used
+    TestSelectorRequest:
+      type: object
+      description: Request to test a CSS selector
+      required: [url, selector]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to test against
+        selector:
+          type: string
+          description: CSS selector to test
+        headless:
+          type: boolean
+          default: false
+          description: Use headless browser
+        playwright:
+          type: boolean
+          default: false
+          description: Use Playwright instead of Chromedp
+    TestSelectorResponse:
+      type: object
+      description: Result of selector testing
+      properties:
+        selector:
+          type: string
+          description: The tested selector
+        matches:
+          type: integer
+          description: Number of matching elements
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/DOMElement'
+          description: Matching elements
+        error:
+          type: string
+          description: Error message if selector is invalid
+    TemplateDetail:
+      type: object
+      description: Full template details response
+      properties:
+        name:
+          type: string
+          description: Template name
+        is_built_in:
+          type: boolean
+          description: Whether this is a built-in template
+        template:
+          $ref: '#/components/schemas/Template'
+          description: Template configuration
+    Template:
+      type: object
+      description: Extraction template configuration
+      properties:
+        name:
+          type: string
+          description: Template name
+        selectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectorRule'
+          description: CSS selector rules
+        jsonld:
+          type: array
+          items:
+            $ref: '#/components/schemas/JSONLDRule'
+          description: JSON-LD extraction rules
+        regex:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegexRule'
+          description: Regex extraction rules
+        normalize:
+          $ref: '#/components/schemas/NormalizeSpec'
+          description: Field normalization configuration
+    SelectorRule:
+      type: object
+      description: CSS selector extraction rule
+      properties:
+        name:
+          type: string
+          description: Field name
+        selector:
+          type: string
+          description: CSS selector
+        attr:
+          type: string
+          description: Attribute to extract (or "text" for text content)
+        all:
+          type: boolean
+          default: false
+          description: Whether to extract all matches
+        join:
+          type: string
+          description: Join string when extracting multiple values
+        trim:
+          type: boolean
+          default: false
+          description: Whether to trim whitespace
+        required:
+          type: boolean
+          default: false
+          description: Whether this field is required
+    JSONLDRule:
+      type: object
+      description: JSON-LD extraction rule
+      properties:
+        name:
+          type: string
+          description: Field name
+        type:
+          type: string
+          description: JSON-LD @type to match (e.g., "Article", "Product")
+        path:
+          type: string
+          description: Dot-separated path in JSON-LD object (e.g., "author.name")
+        all:
+          type: boolean
+          default: false
+          description: Whether to extract all matches
+        required:
+          type: boolean
+          default: false
+          description: Whether this field is required
+    RegexRule:
+      type: object
+      description: Regex extraction rule
+      properties:
+        name:
+          type: string
+          description: Field name
+        pattern:
+          type: string
+          description: Regex pattern
+        group:
+          type: integer
+          default: 0
+          description: Capture group to extract
+        all:
+          type: boolean
+          default: false
+          description: Whether to extract all matches
+        source:
+          type: string
+          enum: [text, html, url]
+          default: text
+          description: Source to apply regex to
+        required:
+          type: boolean
+          default: false
+          description: Whether this field is required
+    NormalizeSpec:
+      type: object
+      description: Field normalization configuration
+      properties:
+        titleField:
+          type: string
+          description: Field to use as title
+        descriptionField:
+          type: string
+          description: Field to use as description
+        textField:
+          type: string
+          description: Field to use as main text content
+        metaFields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of normalized keys to field names
+    CreateTemplateRequest:
+      type: object
+      description: Request to create or update a template
+      required: [name, selectors]
+      properties:
+        name:
+          type: string
+          description: Template name (must be unique)
+        selectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectorRule'
+          description: CSS selector rules (at least one required)
+        jsonld:
+          type: array
+          items:
+            $ref: '#/components/schemas/JSONLDRule'
+          description: Optional JSON-LD extraction rules
+        regex:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegexRule'
+          description: Optional regex extraction rules
+        normalize:
+          $ref: '#/components/schemas/NormalizeSpec'
+          description: Optional normalization configuration
     TrafficReplayRequest:
       type: object
       required:
