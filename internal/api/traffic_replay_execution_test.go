@@ -54,12 +54,12 @@ func TestHandleTrafficReplayNoTrafficData(t *testing.T) {
 	defer cleanup()
 	ctx := t.Context()
 
-	// Create empty result file
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
-	os.WriteFile(resultPath, []byte(""), 0644)
-
+	// Create empty result file in server's data directory
 	jobID := "test-job-no-traffic"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+	os.WriteFile(resultPath, []byte(""), 0644)
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -105,9 +105,11 @@ func TestHandleTrafficReplayWithTrafficData(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	// Create result file with intercepted traffic
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with intercepted traffic in server's data directory
+	jobID := "test-job-with-traffic"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -137,7 +139,6 @@ func TestHandleTrafficReplayWithTrafficData(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-with-traffic"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -189,9 +190,11 @@ func TestHandleTrafficReplayWithFilter(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	// Create result file with multiple entries
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with multiple entries in server's data directory
+	jobID := "test-job-filter"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -242,7 +245,6 @@ func TestHandleTrafficReplayWithFilter(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-filter"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -298,9 +300,11 @@ func TestHandleTrafficReplayWithComparison(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	// Create result file with intercepted traffic
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with intercepted traffic in server's data directory
+	jobID := "test-job-compare"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -330,7 +334,6 @@ func TestHandleTrafficReplayWithComparison(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-compare"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -386,9 +389,11 @@ func TestHandleTrafficReplayFilterNoMatch(t *testing.T) {
 	defer cleanup()
 	ctx := t.Context()
 
-	// Create result file with intercepted traffic
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with intercepted traffic in server's data directory
+	jobID := "test-job-filter-no-match"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -413,7 +418,6 @@ func TestHandleTrafficReplayFilterNoMatch(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-filter-no-match"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -474,9 +478,11 @@ func TestHandleTrafficReplayWithModifications(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	// Create result file with intercepted traffic
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with intercepted traffic in server's data directory
+	jobID := "test-job-modifications"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -505,7 +511,6 @@ func TestHandleTrafficReplayWithModifications(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-modifications"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,
@@ -561,9 +566,11 @@ func TestHandleTrafficReplayTimeout(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	// Create result file with intercepted traffic
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with intercepted traffic in server's data directory
+	jobID := "test-job-timeout"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entry := struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -588,7 +595,6 @@ func TestHandleTrafficReplayTimeout(t *testing.T) {
 	data, _ := json.Marshal(entry)
 	os.WriteFile(resultPath, append(data, '\n'), 0644)
 
-	jobID := "test-job-timeout"
 	job := model.Job{
 		ID:         jobID,
 		Kind:       model.KindScrape,

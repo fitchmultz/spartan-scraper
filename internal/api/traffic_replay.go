@@ -162,6 +162,11 @@ func (s *Server) loadInterceptedEntries(job model.Job) ([]fetch.InterceptedEntry
 		return nil, apperrors.NotFound("job has no result path")
 	}
 
+	// Validate result path to prevent path traversal attacks
+	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+		return nil, err
+	}
+
 	file, err := os.Open(job.ResultPath)
 	if err != nil {
 		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to open job results", err)

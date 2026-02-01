@@ -46,8 +46,7 @@ func TestHandleJobResultsWithPagination(t *testing.T) {
 		t.Fatalf("job response missing id field")
 	}
 
-	dataDir := t.TempDir()
-	resultDir := filepath.Join(dataDir, "jobs", jobID)
+	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
 	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)
 	}

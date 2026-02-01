@@ -124,9 +124,12 @@ func TestHandleJobResultsGranularErrors(t *testing.T) {
 			expectedMsg:    "job succeeded but no result path was recorded",
 		},
 		{
-			name:           "succeeded - file missing",
-			status:         model.StatusSucceeded,
-			setupFile:      func(jobID string) string { return "/nonexistent/path/results.jsonl" },
+			name:   "succeeded - file missing",
+			status: model.StatusSucceeded,
+			setupFile: func(jobID string) string {
+				// Return a path within the job directory that doesn't exist
+				return filepath.Join(srv.store.DataDir(), "jobs", jobID, "results.jsonl")
+			},
 			expectedStatus: http.StatusNotFound,
 			expectedMsg:    "job succeeded but result file is missing",
 		},
@@ -134,7 +137,9 @@ func TestHandleJobResultsGranularErrors(t *testing.T) {
 			name:   "succeeded - file empty",
 			status: model.StatusSucceeded,
 			setupFile: func(jobID string) string {
-				path := filepath.Join(t.TempDir(), "empty.jsonl")
+				jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+				os.MkdirAll(jobDir, 0755)
+				path := filepath.Join(jobDir, "results.jsonl")
 				os.WriteFile(path, []byte(""), 0644)
 				return path
 			},
@@ -177,5 +182,125 @@ func TestHandleJobResultsGranularErrors(t *testing.T) {
 				t.Errorf("expected error message to contain %q, got %q", tt.expectedMsg, msg)
 			}
 		})
+	}
+}
+
+func TestHandleJobResultsPathTraversal(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name           string
+		resultPath     string
+		expectedStatus int
+		expectedMsg    string
+	}{
+		{
+			name:           "classic traversal",
+			resultPath:     "../../../../etc/passwd",
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "result path outside allowed directory",
+		},
+		{
+			name:           "traversal within jobs dir",
+			resultPath:     "jobs/../etc/passwd",
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "result path outside allowed directory",
+		},
+		{
+			name:           "absolute path outside data dir",
+			resultPath:     "/etc/passwd",
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "result path outside allowed directory",
+		},
+		{
+			name:           "nested traversal",
+			resultPath:     "jobs/valid-job-id/../../../etc/passwd",
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "result path outside allowed directory",
+		},
+		{
+			name:           "traversal with null bytes",
+			resultPath:     "../../../../etc/passwd\x00",
+			expectedStatus: http.StatusBadRequest,
+			expectedMsg:    "result path outside allowed directory",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jobID := "test-job-" + strings.ReplaceAll(tt.name, " ", "-")
+			job := model.Job{
+				ID:         jobID,
+				Kind:       model.KindScrape,
+				Status:     model.StatusSucceeded,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+				ResultPath: tt.resultPath,
+			}
+
+			if err := srv.store.Create(ctx, job); err != nil {
+				t.Fatalf("failed to create job: %v", err)
+			}
+
+			req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
+			rr := httptest.NewRecorder()
+			srv.Routes().ServeHTTP(rr, req)
+
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("expected status %v, got %v", tt.expectedStatus, status)
+			}
+
+			var resp map[string]interface{}
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("failed to parse error response: %v", err)
+			}
+			if msg, ok := resp["error"].(string); !ok || !strings.Contains(msg, tt.expectedMsg) {
+				t.Errorf("expected error message to contain %q, got %q", tt.expectedMsg, msg)
+			}
+		})
+	}
+}
+
+func TestHandleJobResultsValidPath(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create a valid job with a proper result path
+	jobID := "test-valid-job"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	if err := os.MkdirAll(jobDir, 0755); err != nil {
+		t.Fatalf("failed to create job directory: %v", err)
+	}
+
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+	if err := os.WriteFile(resultPath, []byte(`{"url":"https://example.com","content":"test"}`), 0644); err != nil {
+		t.Fatalf("failed to create result file: %v", err)
+	}
+
+	job := model.Job{
+		ID:         jobID,
+		Kind:       model.KindScrape,
+		Status:     model.StatusSucceeded,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		ResultPath: resultPath,
+	}
+
+	if err := srv.store.Create(ctx, job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results", jobID), nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	// Should succeed with 200 OK
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("expected status %v for valid path, got %v", http.StatusOK, status)
 	}
 }

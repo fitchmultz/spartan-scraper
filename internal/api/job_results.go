@@ -58,6 +58,12 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Validate result path to prevent path traversal attacks
+		if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+			writeError(w, r, err)
+			return
+		}
+
 		info, err := os.Stat(job.ResultPath)
 		if err != nil {
 			writeError(w, r, apperrors.NotFound("job succeeded but result file is missing"))
@@ -72,6 +78,13 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, apperrors.NotFound("no results"))
 			return
 		}
+
+		// Validate result path to prevent path traversal attacks
+		if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+			writeError(w, r, err)
+			return
+		}
+
 		info, err := os.Stat(job.ResultPath)
 		if err != nil {
 			writeError(w, r, apperrors.NotFound("no results"))
@@ -261,6 +274,11 @@ func (s *Server) exportWithTransform(
 func (s *Server) loadAllJobResults(job model.Job) ([]any, error) {
 	if job.ResultPath == "" {
 		return []any{}, nil
+	}
+
+	// Validate result path to prevent path traversal attacks
+	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+		return nil, err
 	}
 
 	file, err := os.Open(job.ResultPath)

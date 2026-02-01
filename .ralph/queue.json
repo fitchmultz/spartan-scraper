@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0287",
-      "status": "todo",
-      "title": "Add input validation to job result path to prevent path traversal",
-      "priority": "critical",
-      "tags": [
-        "maintenance",
-        "security",
-        "path-traversal",
-        "api"
-      ],
-      "scope": [
-        "internal/api/job_results.go",
-        "internal/model/job.go"
-      ],
-      "evidence": [
-        "path: internal/api/job_results.go :: handleJobResults :: 'http.ServeFile(w, r, job.ResultPath)' uses path directly from job",
-        "path: internal/api/job_results.go :: loadAllJobResults :: 'file, err := os.Open(job.ResultPath)' no validation",
-        "path: internal/model/job.go :: Job struct :: ResultPath field has no validation constraints",
-        "workflow: job with ResultPath='../../../../etc/passwd' :: API serves arbitrary filesystem files"
-      ],
-      "plan": [
-        "Add ValidateResultPath function to internal/model/job.go",
-        "Validate path is within DATA_DIR/jobs/ directory",
-        "Reject paths containing '..' or path separator traversal",
-        "Update job result handlers to validate path before use",
-        "Add migration to sanitize existing job result paths",
-        "Add unit tests for various path traversal attempts",
-        "Verify by creating job with malicious ResultPath and confirming validation rejection"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0270",
       "status": "todo",
       "title": "Add Visual CSS Selector Builder to Web UI",

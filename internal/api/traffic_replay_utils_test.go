@@ -79,9 +79,11 @@ func TestLoadInterceptedEntries(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	// Create result file with multiple lines (JSONL format)
-	tmpDir := t.TempDir()
-	resultPath := filepath.Join(tmpDir, "results.jsonl")
+	// Create result file with multiple lines (JSONL format) in server's data directory
+	jobID := "test-job-entries"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
 
 	entries := []struct {
 		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
@@ -119,7 +121,7 @@ func TestLoadInterceptedEntries(t *testing.T) {
 	os.WriteFile(resultPath, buf.Bytes(), 0644)
 
 	job := model.Job{
-		ID:         "test-job",
+		ID:         jobID,
 		Kind:       model.KindScrape,
 		Status:     model.StatusSucceeded,
 		ResultPath: resultPath,
@@ -139,11 +141,17 @@ func TestLoadInterceptedEntriesMissingFile(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	// Use a valid path within data directory but for a file that doesn't exist
+	jobID := "test-job-missing"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+
 	job := model.Job{
-		ID:         "test-job",
+		ID:         jobID,
 		Kind:       model.KindScrape,
 		Status:     model.StatusSucceeded,
-		ResultPath: "/nonexistent/path/results.jsonl",
+		ResultPath: resultPath,
 	}
 
 	_, err := srv.loadInterceptedEntries(job)

@@ -268,7 +268,11 @@ func (s *Store) DeleteWithArtifacts(ctx context.Context, id string) error {
 }
 
 // UpdateResultPath updates the result_path field for a job.
+// It validates the path to prevent path traversal attacks before updating.
 func (s *Store) UpdateResultPath(ctx context.Context, id string, resultPath string) error {
+	if err := model.ValidateResultPath(id, resultPath, s.dataDir); err != nil {
+		return err
+	}
 	_, err := s.db.ExecContext(ctx, "UPDATE jobs SET result_path = ? WHERE id = ?", resultPath, id)
 	return err
 }

@@ -3,7 +3,13 @@
 // It does NOT handle job persistence, execution, or state transitions.
 package model
 
-import "time"
+import (
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+)
 
 type Kind string
 
@@ -125,4 +131,34 @@ type Job struct {
 	ChainID          string                 `json:"chainId,omitempty"`          // Optional chain membership
 	UserID           string                 `json:"userId,omitempty"`           // User who created the job
 	WorkspaceID      string                 `json:"workspaceId,omitempty"`      // Workspace the job belongs to
+}
+
+// ValidateResultPath validates that a job's result path is within the allowed directory.
+// It prevents path traversal attacks by ensuring the resolved path is under DATA_DIR/jobs/{jobID}/.
+// Empty paths are considered valid (indicating no results yet).
+func ValidateResultPath(jobID, resultPath, dataDir string) error {
+	if resultPath == "" {
+		return nil // Empty path is valid (no results yet)
+	}
+
+	// Resolve result path to absolute
+	absPath, err := filepath.Abs(resultPath)
+	if err != nil {
+		return apperrors.Validation("invalid result path")
+	}
+
+	// Construct allowed base directory: DATA_DIR/jobs/{jobID}
+	baseDir := filepath.Join(dataDir, "jobs", jobID)
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return apperrors.Internal("failed to resolve base directory")
+	}
+
+	// Ensure the path is within the allowed directory
+	// Add separator to prevent partial path matches (e.g., /data/jobs/1234 vs /data/jobs/12345)
+	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) {
+		return apperrors.Validation("result path outside allowed directory")
+	}
+
+	return nil
 }

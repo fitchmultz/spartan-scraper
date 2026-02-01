@@ -184,6 +184,11 @@ func (s *Server) loadJobResults(job model.Job, limit int) ([]any, error) {
 		return []any{}, nil
 	}
 
+	// Validate result path to prevent path traversal attacks
+	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+		return nil, err
+	}
+
 	file, err := os.Open(job.ResultPath)
 	if err != nil {
 		return nil, apperrors.Wrap(
