@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0282",
-      "status": "todo",
-      "title": "Fix weak randomness in distributed scheduler instance ID generation",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "security",
-        "cryptography",
-        "scheduler"
-      ],
-      "scope": [
-        "internal/scheduler/distributed.go"
-      ],
-      "evidence": [
-        "path: internal/scheduler/distributed.go :: randomString function :: 'b[i] = charset[time.Now().UnixNano()%int64(len(charset))]' uses predictable time-based randomness",
-        "path: internal/scheduler/distributed.go :: generateInstanceID function :: calls randomString with timestamp-based seed",
-        "workflow: multiple scheduler instances starting simultaneously :: high probability of ID collisions due to same nanosecond timestamp",
-        "security: predictable instance IDs allow leader election prediction attacks"
-      ],
-      "plan": [
-        "Replace time-based randomness with crypto/rand in randomString function",
-        "Use rand.Int from crypto/rand to select random characters",
-        "Add collision detection when generating instance IDs",
-        "Add unit test verifying statistical uniqueness of generated IDs",
-        "Verify by running scheduler 1000 times and confirming zero ID collisions"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0283",
       "status": "todo",
       "title": "Add missing request body size limits to auth handlers",

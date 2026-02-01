@@ -24,8 +24,10 @@ package scheduler
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"log/slog"
+	"math/big"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -44,12 +46,16 @@ type DistributedScheduler struct {
 }
 
 // NewDistributedScheduler creates a new distributed scheduler.
-func NewDistributedScheduler(client *redis.Client, keyPrefix string, instanceID string) *DistributedScheduler {
+func NewDistributedScheduler(client *redis.Client, keyPrefix string, instanceID string) (*DistributedScheduler, error) {
 	if keyPrefix == "" {
 		keyPrefix = "spartan:scheduler:"
 	}
 	if instanceID == "" {
-		instanceID = generateInstanceID()
+		var err error
+		instanceID, err = generateInstanceID()
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to generate instance ID", err)
+		}
 	}
 	return &DistributedScheduler{
 		client:       client,
@@ -58,7 +64,7 @@ func NewDistributedScheduler(client *redis.Client, keyPrefix string, instanceID 
 		schedulesKey: keyPrefix + "schedules",
 		instanceID:   instanceID,
 		leaseTTL:     30 * time.Second,
-	}
+	}, nil
 }
 
 // Elect attempts to become the leader.
@@ -236,12 +242,16 @@ type DistributedRunner struct {
 }
 
 // NewDistributedRunner creates a new distributed scheduler runner.
-func NewDistributedRunner(client *redis.Client, dataDir string, manager *jobs.Manager) *DistributedRunner {
+func NewDistributedRunner(client *redis.Client, dataDir string, manager *jobs.Manager) (*DistributedRunner, error) {
+	scheduler, err := NewDistributedScheduler(client, "", "")
+	if err != nil {
+		return nil, err
+	}
 	return &DistributedRunner{
-		scheduler: NewDistributedScheduler(client, "", ""),
+		scheduler: scheduler,
 		dataDir:   dataDir,
 		manager:   manager,
-	}
+	}, nil
 }
 
 // Run starts the distributed scheduler loop.
@@ -363,16 +373,25 @@ func (dr *DistributedRunner) enqueueSchedule(ctx context.Context, schedule Sched
 }
 
 // generateInstanceID creates a unique instance identifier.
-func generateInstanceID() string {
-	return "scheduler-" + time.Now().Format("20060102-150405-") + randomString(6)
+func generateInstanceID() (string, error) {
+	suffix, err := randomString(6)
+	if err != nil {
+		return "", err
+	}
+	return "scheduler-" + time.Now().Format("20060102-150405-") + suffix, nil
 }
 
-// randomString generates a random string of the specified length.
-func randomString(length int) string {
+// randomString generates a cryptographically secure random string of the specified length.
+func randomString(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, length)
+	max := big.NewInt(int64(len(charset)))
 	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", apperrors.Wrap(apperrors.KindInternal, "failed to generate random string", err)
+		}
+		b[i] = charset[n.Int64()]
 	}
-	return string(b)
+	return string(b), nil
 }
