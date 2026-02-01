@@ -56,6 +56,7 @@ func setupTestServer(t *testing.T) (*Server, func()) {
 	srv := NewServer(manager, st, cfg)
 
 	cleanup := func() {
+		srv.Stop()
 		cancel()
 		manager.Wait()
 		st.Close()

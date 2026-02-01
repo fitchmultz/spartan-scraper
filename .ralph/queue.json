@@ -2,47 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0285",
-      "status": "todo",
-      "title": "Add graceful shutdown to WebSocket hub to prevent goroutine leaks",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "reliability",
-        "goroutine-leak",
-        "websocket"
-      ],
-      "scope": [
-        "internal/api/websocket.go",
-        "internal/api/server.go"
-      ],
-      "evidence": [
-        "path: internal/api/websocket.go :: Hub.Run method :: infinite 'for { select { ... } }' loop with no exit condition",
-        "path: internal/api/websocket.go :: Hub struct :: no quit or shutdown channel",
-        "path: internal/api/server.go :: Routes method :: starts Hub.Run() in goroutine but no stop mechanism",
-        "workflow: server restart or shutdown :: Hub goroutine continues running indefinitely"
-      ],
-      "plan": [
-        "Add quit chan struct{} field to Hub struct",
-        "Add Stop() method to Hub that closes quit channel",
-        "Modify Run() to check for quit channel in select statement",
-        "Modify Server.Stop() to call wsHub.Stop()",
-        "Add Wait() method to Hub for graceful shutdown completion",
-        "Add unit test verifying clean hub shutdown",
-        "Verify by running server, checking goroutine count, shutting down, and confirming hub goroutine exits"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0286",
       "status": "todo",
       "title": "Fix missing HTTP client timeouts in API traffic replay handler",

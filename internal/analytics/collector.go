@@ -63,6 +63,7 @@ type Collector struct {
 	metricsCollector MetricsCollector
 	ticker           *time.Ticker
 	stopCh           chan struct{}
+	stopOnce         sync.Once
 	wg               sync.WaitGroup
 	lastAggregation  time.Time
 	mu               sync.Mutex
@@ -93,7 +94,9 @@ func (c *Collector) Start() {
 
 // Stop gracefully shuts down the collector.
 func (c *Collector) Stop() {
-	close(c.stopCh)
+	c.stopOnce.Do(func() {
+		close(c.stopCh)
+	})
 	c.ticker.Stop()
 	c.wg.Wait()
 

@@ -81,6 +81,9 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	mu         sync.RWMutex
+	quit       chan struct{}
+	quitOnce   sync.Once
+	done       sync.WaitGroup
 }
 
 // NewHub creates a new WebSocket hub.
@@ -90,12 +93,16 @@ func NewHub() *Hub {
 		broadcast:  make(chan WSMessage, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		quit:       make(chan struct{}),
 	}
 }
 
 // Run starts the hub's event loop. Must be called in a goroutine.
 func (h *Hub) Run() {
 	slog.Info("starting websocket hub")
+	h.done.Add(1)
+	defer h.done.Done()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -130,8 +137,27 @@ func (h *Hub) Run() {
 					client.conn.Close()
 				}
 			}
+
+		case <-h.quit:
+			slog.Info("stopping websocket hub")
+			return
 		}
 	}
+}
+
+// Stop signals the hub to shut down gracefully.
+// This closes the quit channel which causes Run() to exit.
+// Safe to call multiple times (idempotent).
+func (h *Hub) Stop() {
+	h.quitOnce.Do(func() {
+		close(h.quit)
+	})
+}
+
+// Wait blocks until the hub's Run() goroutine has exited.
+// Call this after Stop() to ensure graceful shutdown.
+func (h *Hub) Wait() {
+	h.done.Wait()
 }
 
 // Broadcast sends a message to all connected clients.

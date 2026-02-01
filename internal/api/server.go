@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -27,9 +28,12 @@ type Server struct {
 	analyticsCollector *analytics.Collector
 	analyticsService   *analytics.Service
 	graphqlHandler     *GraphQLHandler
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{
 		manager:          manager,
 		store:            store,
@@ -37,6 +41,8 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 		wsHub:            NewHub(),
 		metricsCollector: NewMetricsCollector(),
 		analyticsService: analytics.NewService(store),
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 
 	// Start WebSocket hub
@@ -125,6 +131,18 @@ func (s *Server) GetMetricsCollector() *MetricsCollector {
 // This should be called during application shutdown to ensure
 // analytics data is properly flushed to storage.
 func (s *Server) Stop() {
+	// Cancel context to signal goroutines to stop
+	if s.cancel != nil {
+		s.cancel()
+	}
+
+	// Stop WebSocket hub and wait for it to exit
+	if s.wsHub != nil {
+		s.wsHub.Stop()
+		s.wsHub.Wait()
+	}
+
+	// Stop analytics collector
 	if s.analyticsCollector != nil {
 		s.analyticsCollector.Stop()
 	}
@@ -135,10 +153,15 @@ func (s *Server) startMetricsBroadcast() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.syncHostLimiters()
-		snapshot := s.metricsCollector.GetSnapshot()
-		s.wsHub.BroadcastMetrics(snapshot)
+	for {
+		select {
+		case <-ticker.C:
+			s.syncHostLimiters()
+			snapshot := s.metricsCollector.GetSnapshot()
+			s.wsHub.BroadcastMetrics(snapshot)
+		case <-s.ctx.Done():
+			return
+		}
 	}
 }
 
@@ -165,12 +188,17 @@ func (s *Server) subscribeToJobEvents() {
 	s.manager.SubscribeToEvents(eventCh)
 	defer s.manager.UnsubscribeFromEvents(eventCh)
 
-	for event := range eventCh {
-		s.wsHub.BroadcastJobEvent(JobEvent{
-			Type:       JobEventType(event.Type),
-			Job:        event.Job,
-			PrevStatus: event.PrevStatus,
-		})
+	for {
+		select {
+		case event := <-eventCh:
+			s.wsHub.BroadcastJobEvent(JobEvent{
+				Type:       JobEventType(event.Type),
+				Job:        event.Job,
+				PrevStatus: event.PrevStatus,
+			})
+		case <-s.ctx.Done():
+			return
+		}
 	}
 }
 
