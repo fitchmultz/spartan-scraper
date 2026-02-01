@@ -28,6 +28,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -118,6 +119,10 @@ type Config struct {
 	// When false, SSRF protection blocks private IPs, localhost, and link-local addresses.
 	// WARNING: Only enable in trusted environments.
 	AllowInternal bool
+
+	// MaxConcurrentDispatches limits the number of concurrent webhook dispatches (default: 100).
+	// When the limit is reached, additional dispatches are dropped with a timeout error.
+	MaxConcurrentDispatches int
 }
 
 // Dispatcher manages webhook delivery with retry logic.
@@ -130,6 +135,8 @@ type Dispatcher struct {
 	timeout       time.Duration
 	allowInternal bool
 	store         *Store
+	sem           chan struct{} // Semaphore channel for concurrency control
+	droppedCount  atomic.Int64  // Counter for dropped webhooks due to concurrency limit
 }
 
 // NewDispatcher creates a new webhook dispatcher with the given configuration.
@@ -155,6 +162,11 @@ func NewDispatcher(cfg Config) *Dispatcher {
 		timeout = 30 * time.Second
 	}
 
+	maxConcurrent := cfg.MaxConcurrentDispatches
+	if maxConcurrent <= 0 {
+		maxConcurrent = 100
+	}
+
 	return &Dispatcher{
 		client:        &http.Client{Timeout: timeout},
 		secret:        cfg.Secret,
@@ -164,6 +176,7 @@ func NewDispatcher(cfg Config) *Dispatcher {
 		timeout:       timeout,
 		allowInternal: cfg.AllowInternal,
 		store:         nil,
+		sem:           make(chan struct{}, maxConcurrent),
 	}
 }
 
@@ -185,8 +198,9 @@ func (d *Dispatcher) Store() *Store {
 // It executes in a goroutine and returns immediately.
 // The secret parameter overrides the dispatcher's default secret if non-empty.
 // URLs are validated against SSRF attacks before dispatching.
+// When the concurrency limit is reached, dispatches are dropped after a timeout.
 func (d *Dispatcher) Dispatch(ctx context.Context, url string, payload Payload, secret string) {
-	// Validate URL against SSRF before dispatching
+	// Validate URL against SSRF before dispatching (keeps invalid URLs from consuming resources)
 	if err := ValidateURL(url, d.allowInternal); err != nil {
 		slog.Error("webhook URL failed SSRF validation",
 			"url", SanitizeURL(url),
@@ -194,7 +208,33 @@ func (d *Dispatcher) Dispatch(ctx context.Context, url string, payload Payload, 
 			"error", apperrors.SafeMessage(err))
 		return
 	}
-	go d.dispatchWithRetry(ctx, url, payload, secret)
+
+	// Try to acquire semaphore with timeout
+	select {
+	case d.sem <- struct{}{}:
+		// Acquired slot, proceed with dispatch
+		go func() {
+			defer func() { <-d.sem }() // Release slot when done
+			d.dispatchWithRetry(ctx, url, payload, secret)
+		}()
+	case <-ctx.Done():
+		// Context cancelled before acquiring
+		slog.Warn("webhook dispatch canceled - context done",
+			"jobID", payload.JobID,
+			"eventType", payload.EventType)
+	case <-time.After(5 * time.Second):
+		// Could not acquire semaphore in time
+		d.droppedCount.Add(1)
+		slog.Error("webhook dispatch dropped - concurrency limit reached",
+			"jobID", payload.JobID,
+			"eventType", payload.EventType,
+			"url", SanitizeURL(url))
+	}
+}
+
+// DroppedCount returns the number of webhooks dropped due to concurrency limit.
+func (d *Dispatcher) DroppedCount() int64 {
+	return d.droppedCount.Load()
 }
 
 // dispatchWithRetry attempts delivery with exponential backoff.

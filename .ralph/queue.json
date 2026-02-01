@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0281",
-      "status": "todo",
-      "title": "Add goroutine limits to webhook dispatcher to prevent resource exhaustion",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "reliability",
-        "resource-exhaustion",
-        "webhook"
-      ],
-      "scope": [
-        "internal/webhook/dispatcher.go"
-      ],
-      "evidence": [
-        "path: internal/webhook/dispatcher.go :: Dispatch method :: 'go d.dispatchWithRetry(ctx, url, payload, secret)' launches unbounded goroutines",
-        "path: internal/webhook/dispatcher.go :: Dispatcher struct :: no semaphore or worker pool to limit concurrent dispatches",
-        "workflow: high-frequency job events with webhooks configured :: each event spawns new goroutine, potentially thousands under load",
-        "config: .env.example :: WEBHOOK_MAX_RETRIES=3 but no limit on concurrent webhook dispatches"
-      ],
-      "plan": [
-        "Add MaxConcurrentDispatches field to Config struct (default 100)",
-        "Add WEBHOOK_MAX_CONCURRENT env var to .env.example",
-        "Add semaphore channel to Dispatcher struct for concurrency control",
-        "Modify Dispatch to use non-blocking semaphore acquire with timeout",
-        "Add metrics for dropped webhooks due to concurrency limits",
-        "Add unit test simulating 1000 concurrent dispatches verifying goroutine limit",
-        "Verify by running load test with webhook configured and observing bounded goroutine count via pprof"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0282",
       "status": "todo",
       "title": "Fix weak randomness in distributed scheduler instance ID generation",
