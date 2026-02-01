@@ -1,45 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0266",
-      "status": "todo",
-      "title": "Add chain management CLI + Web UI (create/list/submit)",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "chains",
-        "cli",
-        "web"
-      ],
-      "scope": [
-        "api/openapi.yaml",
-        "internal/api/chains.go",
-        "internal/cli",
-        "web/src",
-        "make ci"
-      ],
-      "evidence": [
-        "path: api/openapi.yaml :: /v1/chains :: chain CRUD and submit endpoints exist",
-        "path: internal/cli/help.go :: Commands list :: no chain command exposed",
-        "path: web/src/components/JobList.tsx :: chain badge shown for jobs, but no chain creation UI"
-      ],
-      "plan": [
-        "Add CLI chain subcommands for list/get/create/submit/delete to wrap /v1/chains endpoints",
-        "Add a Web UI chain builder/editor with validation and a submit action to instantiate chains",
-        "Add CLI and Web UI tests for chain CRUD and submit flows",
-        "Verify by running `go test ./internal/cli/manage -run Chain` and `cd web && pnpm run test` and confirming chain jobs submit successfully"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T23:38:27Z",
-      "updated_at": "2026-01-31T23:38:27Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    }
-  ]
+  "tasks": []
 }

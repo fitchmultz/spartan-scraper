@@ -75,6 +75,8 @@ func Run(ctx context.Context) int {
 		return manage.RunRestore(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
+	case "chains":
+		return manage.RunChains(ctx, cfg, os.Args[2:])
 	case "batch":
 		return batch.RunBatch(ctx, cfg, os.Args[2:])
 	case "replay":

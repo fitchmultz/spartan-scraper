@@ -42,6 +42,7 @@ Commands:
   mcp          Run MCP server over stdio
   server       Run API server + workers
   jobs         Manage jobs (list, get, cancel)
+  chains       Manage job chains (create/list/get/submit/delete)
   health       Check system health
   tui          Launch terminal UI
   version      Print version info
@@ -88,6 +89,12 @@ Examples:
   spartan batch cancel <batch-id>
   spartan jobs list
   spartan jobs cancel <id>
+  spartan chains list
+  spartan chains get <chain-id>
+  spartan chains create --file ./my-chain.json
+  spartan chains submit <chain-id>
+  spartan chains submit <chain-id> --overrides ./overrides.json
+  spartan chains delete <chain-id>
   spartan health
   spartan mcp
   spartan server

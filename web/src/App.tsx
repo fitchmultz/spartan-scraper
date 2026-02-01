@@ -24,6 +24,10 @@ import {
   updateWatch,
   deleteWatch,
   checkWatch,
+  listChains,
+  createChain,
+  deleteChain,
+  submitChain,
   type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
@@ -33,6 +37,8 @@ import {
   type Watch,
   type WatchInput,
   type WatchCheckResult,
+  type JobChain,
+  type ChainCreateRequest,
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
@@ -45,6 +51,8 @@ import { ResearchForm, type ResearchFormRef } from "./components/ResearchForm";
 import { BatchForm } from "./components/BatchForm";
 import { BatchList } from "./components/BatchList";
 import { WatchManager } from "./components/WatchManager";
+import { ChainList } from "./components/ChainList";
+import { ChainBuilder } from "./components/ChainBuilder";
 import { useBatches } from "./hooks/useBatches";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
@@ -114,6 +122,11 @@ export function App() {
   // Watch state
   const [watches, setWatches] = useState<Watch[]>([]);
   const [watchesLoading, setWatchesLoading] = useState(false);
+
+  // Chain state
+  const [chains, setChains] = useState<JobChain[]>([]);
+  const [chainsLoading, setChainsLoading] = useState(false);
+  const [showChainBuilder, setShowChainBuilder] = useState(false);
 
   // Load watches
   const refreshWatches = useCallback(async () => {
@@ -187,6 +200,50 @@ export function App() {
   useEffect(() => {
     refreshWatches();
   }, [refreshWatches]);
+
+  // Chain CRUD handlers
+  const refreshChains = useCallback(async () => {
+    setChainsLoading(true);
+    try {
+      const { data, error } = await listChains({ baseUrl: getApiBaseUrl() });
+      if (error) throw error;
+      setChains(data?.chains || []);
+    } catch (err) {
+      console.error("Failed to load chains:", err);
+    } finally {
+      setChainsLoading(false);
+    }
+  }, []);
+
+  const handleCreateChain = useCallback(
+    async (request: ChainCreateRequest) => {
+      const { error } = await createChain({
+        baseUrl: getApiBaseUrl(),
+        body: request,
+      });
+      if (error) throw error;
+      await refreshChains();
+      setShowChainBuilder(false);
+    },
+    [refreshChains],
+  );
+
+  const handleDeleteChain = useCallback(
+    async (id: string) => {
+      const { error } = await deleteChain({
+        baseUrl: getApiBaseUrl(),
+        path: { id },
+      });
+      if (error) throw error;
+      await refreshChains();
+    },
+    [refreshChains],
+  );
+
+  // Load chains on mount
+  useEffect(() => {
+    refreshChains();
+  }, [refreshChains]);
 
   // Batch data management
   const {
@@ -267,6 +324,31 @@ export function App() {
     setJobsPage,
     setCrawlStatesPage,
   } = appData;
+
+  // Chain submit handler (defined after refreshJobs is available)
+  const handleSubmitChain = useCallback(
+    async (id: string, overrides?: Record<string, unknown>) => {
+      // Convert overrides to the expected format
+      const formattedOverrides: { [key: string]: { [key: string]: unknown } } =
+        {};
+      if (overrides) {
+        for (const [key, value] of Object.entries(overrides)) {
+          if (typeof value === "object" && value !== null) {
+            formattedOverrides[key] = value as { [key: string]: unknown };
+          }
+        }
+      }
+      const { error } = await submitChain({
+        baseUrl: getApiBaseUrl(),
+        path: { id },
+        body: { overrides: formattedOverrides },
+      });
+      if (error) throw error;
+      // Refresh jobs to show newly created jobs
+      await refreshJobs();
+    },
+    [refreshJobs],
+  );
 
   const {
     headless,
@@ -911,6 +993,24 @@ export function App() {
           onRefresh={refreshBatches}
           loading={batchesLoading}
         />
+      </section>
+
+      <section id="chains">
+        {showChainBuilder ? (
+          <ChainBuilder
+            onCreate={handleCreateChain}
+            onCancel={() => setShowChainBuilder(false)}
+          />
+        ) : (
+          <ChainList
+            chains={chains}
+            onRefresh={refreshChains}
+            onDelete={handleDeleteChain}
+            onSubmit={handleSubmitChain}
+            loading={chainsLoading}
+            onCreateClick={() => setShowChainBuilder(true)}
+          />
+        )}
       </section>
 
       <section id="jobs">
