@@ -254,7 +254,7 @@ func TestDeleteJobsWithArtifactsBatch(t *testing.T) {
 
 	// Delete job with artifacts
 	ids := []string{job.ID}
-	deleted, spaceReclaimed, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
 	if err != nil {
 		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
 	}
@@ -264,6 +264,9 @@ func TestDeleteJobsWithArtifactsBatch(t *testing.T) {
 	}
 	if spaceReclaimed < 1 {
 		t.Errorf("expected at least 1 MB reclaimed, got %d", spaceReclaimed)
+	}
+	if len(failedIDs) > 0 {
+		t.Errorf("expected no failed IDs, got %v", failedIDs)
 	}
 
 	// Verify artifacts are deleted
@@ -529,5 +532,188 @@ func TestGetStorageStats(t *testing.T) {
 
 	if stats.JobsByStatus[model.StatusFailed] != 1 {
 		t.Errorf("expected 1 failed job, got %d", stats.JobsByStatus[model.StatusFailed])
+	}
+}
+
+func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create two jobs with artifacts
+	job1 := model.Job{
+		ID:        "job-1",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	job2 := model.Job{
+		ID:        "job-2",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := st.Create(ctx, job1); err != nil {
+		t.Fatalf("Create job1 failed: %v", err)
+	}
+	if err := st.Create(ctx, job2); err != nil {
+		t.Fatalf("Create job2 failed: %v", err)
+	}
+
+	// Create artifact directories with files
+	job1Dir := filepath.Join(dataDir, "jobs", job1.ID)
+	if err := os.MkdirAll(job1Dir, 0755); err != nil {
+		t.Fatalf("MkdirAll job1 failed: %v", err)
+	}
+
+	content := []byte("test content data")
+	if err := os.WriteFile(filepath.Join(job1Dir, "file.txt"), content, 0644); err != nil {
+		t.Fatalf("WriteFile job1 failed: %v", err)
+	}
+	// Note: job2 has no artifact directory - this is a valid scenario
+
+	// Delete both jobs
+	ids := []string{job1.ID, job2.ID}
+	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	if err != nil {
+		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
+	}
+
+	// Both jobs should be deleted from DB
+	if deleted != 2 {
+		t.Errorf("expected 2 deleted, got %d", deleted)
+	}
+
+	// Only job1's space should be reclaimed (job2 had no artifacts)
+	expectedMB := (int64(len(content)) + 1024*1024 - 1) / (1024 * 1024)
+	if spaceReclaimed != expectedMB {
+		t.Errorf("expected %d MB reclaimed, got %d", expectedMB, spaceReclaimed)
+	}
+
+	// job2 should not be in failed IDs (missing artifacts is OK, not a failure)
+	if len(failedIDs) > 0 {
+		t.Errorf("expected no failed IDs (job2 had no artifacts), got %v", failedIDs)
+	}
+}
+
+func TestDeleteJobsWithArtifactsBatch_PathTraversalFailure(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create a valid job
+	validJob := model.Job{
+		ID:        "valid-job",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	// Create a job with malicious ID (path traversal)
+	maliciousJob := model.Job{
+		ID:        "../../../etc/passwd",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := st.Create(ctx, validJob); err != nil {
+		t.Fatalf("Create validJob failed: %v", err)
+	}
+	if err := st.Create(ctx, maliciousJob); err != nil {
+		t.Fatalf("Create maliciousJob failed: %v", err)
+	}
+
+	// Create artifact for valid job
+	jobDir := filepath.Join(dataDir, "jobs", validJob.ID)
+	if err := os.MkdirAll(jobDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	content := []byte("test content")
+	if err := os.WriteFile(filepath.Join(jobDir, "file.txt"), content, 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Try to delete both jobs - the malicious one will fail at artifact deletion
+	ids := []string{validJob.ID, maliciousJob.ID}
+	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	if err != nil {
+		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
+	}
+
+	// Both should be deleted from DB
+	if deleted != 2 {
+		t.Errorf("expected 2 deleted, got %d", deleted)
+	}
+
+	// Space from valid job should be reclaimed
+	expectedMB := (int64(len(content)) + 1024*1024 - 1) / (1024 * 1024)
+	if spaceReclaimed != expectedMB {
+		t.Errorf("expected %d MB reclaimed, got %d", expectedMB, spaceReclaimed)
+	}
+
+	// Path traversal ID should be in failed IDs
+	if len(failedIDs) != 1 || failedIDs[0] != maliciousJob.ID {
+		t.Errorf("expected failedIDs to contain malicious ID, got %v", failedIDs)
+	}
+}
+
+func TestDeleteJobsWithArtifactsBatch_NoArtifacts(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create job without artifacts
+	job := model.Job{
+		ID:        "job-no-artifacts",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Params:    map[string]interface{}{"url": "http://example.com"},
+	}
+	if err := st.Create(ctx, job); err != nil {
+		t.Fatalf("Create job failed: %v", err)
+	}
+
+	// Delete job (no artifacts exist)
+	ids := []string{job.ID}
+	deleted, spaceReclaimed, failedIDs, err := st.DeleteJobsWithArtifactsBatch(ctx, ids)
+	if err != nil {
+		t.Fatalf("DeleteJobsWithArtifactsBatch failed: %v", err)
+	}
+
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted, got %d", deleted)
+	}
+	if spaceReclaimed != 0 {
+		t.Errorf("expected 0 MB reclaimed (no artifacts), got %d", spaceReclaimed)
+	}
+	if len(failedIDs) > 0 {
+		t.Errorf("expected no failed IDs (missing artifacts is OK), got %v", failedIDs)
 	}
 }

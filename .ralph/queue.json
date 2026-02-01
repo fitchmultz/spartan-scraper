@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0267",
-      "status": "todo",
-      "title": "Surface artifact deletion failures in retention batch deletes",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "retention",
-        "store"
-      ],
-      "scope": [
-        "internal/store/store_retention.go",
-        "internal/retention/retention.go"
-      ],
-      "evidence": [
-        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: failedDeletions is incremented but never returned or logged, so artifact removal failures are silently ignored",
-        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: spaceReclaimedMB is computed before deletes and returned even if deleteJobArtifacts fails"
-      ],
-      "plan": [
-        "Decide how to surface artifact deletion failures (return aggregated error, include failed IDs in result, or attach to CleanupResult.Errors)",
-        "Adjust DeleteJobsWithArtifactsBatch to report failures and keep spaceReclaimedMB consistent with actual deletions",
-        "Update retention engine handling to propagate/report partial deletion errors",
-        "Add store/retention tests that simulate artifact deletion failure and assert error reporting + spaceReclaimedMB behavior",
-        "Verify by running `go test ./internal/store -run DeleteJobsWithArtifactsBatch` and confirming failures are reported"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-01T03:38:29Z",
-      "updated_at": "2026-02-01T03:38:29Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0268",
       "status": "todo",
       "title": "Fix retention cleanup skipping matching kinds when first batch mismatches",

@@ -60,6 +60,7 @@ type CleanupResult struct {
 	SpaceReclaimedMB   int64
 	Errors             []error
 	Duration           time.Duration
+	FailedJobIDs       []string // Jobs whose artifacts failed to delete
 }
 
 // RunCleanup executes retention policies.
@@ -78,6 +79,7 @@ func (e *Engine) RunCleanup(ctx context.Context, opts CleanupOptions) (CleanupRe
 		ageResult, err := e.cleanupByAge(ctx, opts)
 		result.JobsDeleted += ageResult.JobsDeleted
 		result.SpaceReclaimedMB += ageResult.SpaceReclaimedMB
+		result.FailedJobIDs = append(result.FailedJobIDs, ageResult.FailedJobIDs...)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 		}
@@ -88,6 +90,7 @@ func (e *Engine) RunCleanup(ctx context.Context, opts CleanupOptions) (CleanupRe
 		countResult, err := e.cleanupByCount(ctx, opts)
 		result.JobsDeleted += countResult.JobsDeleted
 		result.SpaceReclaimedMB += countResult.SpaceReclaimedMB
+		result.FailedJobIDs = append(result.FailedJobIDs, countResult.FailedJobIDs...)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 		}
@@ -98,6 +101,7 @@ func (e *Engine) RunCleanup(ctx context.Context, opts CleanupOptions) (CleanupRe
 		storageResult, err := e.cleanupByStorage(ctx, opts)
 		result.JobsDeleted += storageResult.JobsDeleted
 		result.SpaceReclaimedMB += storageResult.SpaceReclaimedMB
+		result.FailedJobIDs = append(result.FailedJobIDs, storageResult.FailedJobIDs...)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 		}
@@ -123,12 +127,16 @@ func (e *Engine) RunCleanup(ctx context.Context, opts CleanupOptions) (CleanupRe
 			"duration", result.Duration,
 		)
 	} else {
-		e.logger.Info("retention cleanup completed",
+		logArgs := []any{
 			"jobsDeleted", result.JobsDeleted,
 			"crawlStatesDeleted", result.CrawlStatesDeleted,
 			"spaceReclaimedMB", result.SpaceReclaimedMB,
 			"duration", result.Duration,
-		)
+		}
+		if len(result.FailedJobIDs) > 0 {
+			logArgs = append(logArgs, "failedArtifactDeletions", len(result.FailedJobIDs))
+		}
+		e.logger.Info("retention cleanup completed", logArgs...)
 	}
 
 	return result, nil
@@ -179,12 +187,19 @@ func (e *Engine) cleanupByAge(ctx context.Context, opts CleanupOptions) (Cleanup
 					result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 				}
 			} else {
-				deleted, spaceMB, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+				deleted, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 				if err != nil {
 					result.Errors = append(result.Errors, err)
 				}
 				result.JobsDeleted += deleted
 				result.SpaceReclaimedMB += spaceMB
+				if len(failedIDs) > 0 {
+					result.FailedJobIDs = append(result.FailedJobIDs, failedIDs...)
+					e.logger.Warn("artifact deletions failed",
+						"count", len(failedIDs),
+						"jobIDs", failedIDs,
+					)
+				}
 			}
 
 			if len(jobs) < 100 {
@@ -267,12 +282,19 @@ func (e *Engine) cleanupByCount(ctx context.Context, opts CleanupOptions) (Clean
 				result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 			}
 		} else {
-			d, spaceMB, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+			d, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 			if err != nil {
 				result.Errors = append(result.Errors, err)
 			}
 			result.JobsDeleted += d
 			result.SpaceReclaimedMB += spaceMB
+			if len(failedIDs) > 0 {
+				result.FailedJobIDs = append(result.FailedJobIDs, failedIDs...)
+				e.logger.Warn("artifact deletions failed",
+					"count", len(failedIDs),
+					"jobIDs", failedIDs,
+				)
+			}
 		}
 
 		deleted += len(toDelete)
@@ -331,13 +353,20 @@ func (e *Engine) cleanupByStorage(ctx context.Context, opts CleanupOptions) (Cle
 				result.SpaceReclaimedMB += (size + 1024*1024 - 1) / (1024 * 1024)
 			}
 		} else {
-			d, spaceMB, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
+			d, spaceMB, failedIDs, err := e.store.DeleteJobsWithArtifactsBatch(ctx, toDelete)
 			if err != nil {
 				result.Errors = append(result.Errors, err)
 			}
 			result.JobsDeleted += d
 			result.SpaceReclaimedMB += spaceMB
 			reclaimed += spaceMB
+			if len(failedIDs) > 0 {
+				result.FailedJobIDs = append(result.FailedJobIDs, failedIDs...)
+				e.logger.Warn("artifact deletions failed",
+					"count", len(failedIDs),
+					"jobIDs", failedIDs,
+				)
+			}
 		}
 	}
 
@@ -449,6 +478,12 @@ func FormatResult(result CleanupResult, dryRun bool) string {
 		mode = "Would delete"
 	}
 
-	return fmt.Sprintf("%s %d jobs, %d crawl states, reclaimed %d MB in %v",
+	msg := fmt.Sprintf("%s %d jobs, %d crawl states, reclaimed %d MB in %v",
 		mode, result.JobsDeleted, result.CrawlStatesDeleted, result.SpaceReclaimedMB, result.Duration)
+
+	if len(result.FailedJobIDs) > 0 {
+		msg += fmt.Sprintf(" (%d artifact deletions failed)", len(result.FailedJobIDs))
+	}
+
+	return msg
 }

@@ -227,40 +227,40 @@ func (s *Store) DeleteJobsBatch(ctx context.Context, ids []string) (int, error) 
 }
 
 // DeleteJobsWithArtifactsBatch deletes jobs and their artifacts in batch.
-// Returns the number of jobs deleted and approximate MB of space reclaimed.
-func (s *Store) DeleteJobsWithArtifactsBatch(ctx context.Context, ids []string) (deletedCount int, spaceReclaimedMB int64, err error) {
+// Returns the number of jobs deleted, actual MB of space reclaimed, and any job IDs whose artifacts failed to delete.
+// Note: Jobs are deleted from the database even if their artifact deletion fails.
+func (s *Store) DeleteJobsWithArtifactsBatch(ctx context.Context, ids []string) (deletedCount int, spaceReclaimedMB int64, failedIDs []string, err error) {
 	if len(ids) == 0 {
-		return 0, 0, nil
+		return 0, 0, nil, nil
 	}
 
-	// Calculate space before deletion
-	var totalBytes int64
-	for _, id := range ids {
-		size, err := s.GetJobStorageSize(ctx, id)
-		if err != nil {
-			// Log but continue - job might not have artifacts
-			continue
-		}
-		totalBytes += size
-	}
-
-	// Delete jobs from database
+	// Delete jobs from database first
 	deleted, err := s.DeleteJobsBatch(ctx, ids)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
-	// Delete artifacts
-	var failedDeletions int
+	// Delete artifacts and track actual space reclaimed and failures
+	var totalBytes int64
 	for _, id := range ids {
+		// Get size before attempting deletion for accurate tracking
+		size, err := s.GetJobStorageSize(ctx, id)
+		if err != nil {
+			// Job might not have artifacts - this is not a failure
+			size = 0
+		}
+
 		if err := s.deleteJobArtifacts(id); err != nil {
-			// Log but continue - we still deleted the DB record
-			failedDeletions++
+			// Artifact deletion failed - track the ID but don't fail the whole operation
+			failedIDs = append(failedIDs, id)
+		} else {
+			// Artifact deletion succeeded - add to reclaimed space
+			totalBytes += size
 		}
 	}
 
 	spaceReclaimedMB = (totalBytes + 1024*1024 - 1) / (1024 * 1024)
-	return deleted, spaceReclaimedMB, nil
+	return deleted, spaceReclaimedMB, failedIDs, nil
 }
 
 // deleteJobArtifacts removes the artifact directory for a job.
