@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0283",
-      "status": "todo",
-      "title": "Add missing request body size limits to auth handlers",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "security",
-        "dos",
-        "api"
-      ],
-      "scope": [
-        "internal/api/auth.go",
-        "internal/api/auth_handlers.go"
-      ],
-      "evidence": [
-        "path: internal/api/auth.go :: handleAuthProfiles :: no MaxBytesReader on request body",
-        "path: internal/api/auth_handlers.go :: handleAuthLogin :: no MaxBytesReader on request body",
-        "path: internal/api/auth_handlers.go :: handleAuthRegister :: no MaxBytesReader on request body",
-        "path: internal/api/util.go :: maxRequestBodySize constant :: defined but not used in all handlers",
-        "workflow: POST /v1/auth/login with 1GB body :: server accepts and attempts to parse huge request"
-      ],
-      "plan": [
-        "Audit all handlers in internal/api/auth.go and internal/api/auth_handlers.go for missing MaxBytesReader",
-        "Add r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize) to all POST/PUT handlers",
-        "Add validation to reject requests with Content-Length > maxRequestBodySize before reading",
-        "Add unit tests for oversized request rejection",
-        "Verify by sending large request body to auth endpoints and confirming 413 status"
-      ],
-      "notes": [],
-      "request": "maintenance scan finding",
-      "created_at": "2026-01-31T21:28:15Z",
-      "updated_at": "2026-01-31T21:28:15Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0284",
       "status": "todo",
       "title": "Fix potential transaction inconsistency in job retention cleanup",

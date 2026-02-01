@@ -102,6 +102,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		status = http.StatusMethodNotAllowed
 	case apperrors.KindUnsupportedMediaType:
 		status = http.StatusUnsupportedMediaType
+	case apperrors.KindRequestEntityTooLarge:
+		status = http.StatusRequestEntityTooLarge
 	default:
 		status = http.StatusInternalServerError
 	}

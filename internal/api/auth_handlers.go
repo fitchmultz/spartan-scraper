@@ -56,7 +56,12 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
+			return
+		}
 		writeError(w, r, apperrors.Validation("invalid request body"))
 		return
 	}
@@ -168,7 +173,12 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req RegisterRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
+			return
+		}
 		writeError(w, r, apperrors.Validation("invalid request body"))
 		return
 	}
