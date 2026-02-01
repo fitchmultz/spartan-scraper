@@ -2,6 +2,328 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0280",
+      "status": "todo",
+      "title": "Fix SSRF vulnerability in webhook dispatcher",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "security",
+        "ssrf",
+        "webhook"
+      ],
+      "scope": [
+        "internal/webhook/dispatcher.go",
+        "internal/api/"
+      ],
+      "evidence": [
+        "path: internal/webhook/dispatcher.go :: package comment :: explicitly states 'This package does NOT: ... Validate webhook URLs against SSRF attacks'",
+        "path: internal/webhook/dispatcher.go :: Dispatch method :: calls dispatchWithRetry in goroutine without URL validation",
+        "path: internal/webhook/dispatcher.go :: attemptDelivery :: creates HTTP request to arbitrary URL without SSRF checks",
+        "workflow: spartan server with WEBHOOK_ENABLED=true :: webhook can be configured to target internal services like 169.254.169.254 (IMDS)"
+      ],
+      "plan": [
+        "Create internal/webhook/ssrf.go with URL validation function",
+        "Add check for private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16)",
+        "Add check for localhost variants (127.0.0.0/8, ::1, localhost)",
+        "Add check for DNS rebinding protection (resolve and validate)",
+        "Integrate SSRF check into Dispatch method before creating goroutine",
+        "Add WEBHOOK_ALLOW_INTERNAL=true env var for testing override",
+        "Add unit tests for SSRF validation with various attack vectors",
+        "Verify by attempting to configure webhook to http://169.254.169.254/latest/meta-data/ and receiving validation error"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0281",
+      "status": "todo",
+      "title": "Add goroutine limits to webhook dispatcher to prevent resource exhaustion",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "resource-exhaustion",
+        "webhook"
+      ],
+      "scope": [
+        "internal/webhook/dispatcher.go"
+      ],
+      "evidence": [
+        "path: internal/webhook/dispatcher.go :: Dispatch method :: 'go d.dispatchWithRetry(ctx, url, payload, secret)' launches unbounded goroutines",
+        "path: internal/webhook/dispatcher.go :: Dispatcher struct :: no semaphore or worker pool to limit concurrent dispatches",
+        "workflow: high-frequency job events with webhooks configured :: each event spawns new goroutine, potentially thousands under load",
+        "config: .env.example :: WEBHOOK_MAX_RETRIES=3 but no limit on concurrent webhook dispatches"
+      ],
+      "plan": [
+        "Add MaxConcurrentDispatches field to Config struct (default 100)",
+        "Add WEBHOOK_MAX_CONCURRENT env var to .env.example",
+        "Add semaphore channel to Dispatcher struct for concurrency control",
+        "Modify Dispatch to use non-blocking semaphore acquire with timeout",
+        "Add metrics for dropped webhooks due to concurrency limits",
+        "Add unit test simulating 1000 concurrent dispatches verifying goroutine limit",
+        "Verify by running load test with webhook configured and observing bounded goroutine count via pprof"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0282",
+      "status": "todo",
+      "title": "Fix weak randomness in distributed scheduler instance ID generation",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "security",
+        "cryptography",
+        "scheduler"
+      ],
+      "scope": [
+        "internal/scheduler/distributed.go"
+      ],
+      "evidence": [
+        "path: internal/scheduler/distributed.go :: randomString function :: 'b[i] = charset[time.Now().UnixNano()%int64(len(charset))]' uses predictable time-based randomness",
+        "path: internal/scheduler/distributed.go :: generateInstanceID function :: calls randomString with timestamp-based seed",
+        "workflow: multiple scheduler instances starting simultaneously :: high probability of ID collisions due to same nanosecond timestamp",
+        "security: predictable instance IDs allow leader election prediction attacks"
+      ],
+      "plan": [
+        "Replace time-based randomness with crypto/rand in randomString function",
+        "Use rand.Int from crypto/rand to select random characters",
+        "Add collision detection when generating instance IDs",
+        "Add unit test verifying statistical uniqueness of generated IDs",
+        "Verify by running scheduler 1000 times and confirming zero ID collisions"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0283",
+      "status": "todo",
+      "title": "Add missing request body size limits to auth handlers",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "security",
+        "dos",
+        "api"
+      ],
+      "scope": [
+        "internal/api/auth.go",
+        "internal/api/auth_handlers.go"
+      ],
+      "evidence": [
+        "path: internal/api/auth.go :: handleAuthProfiles :: no MaxBytesReader on request body",
+        "path: internal/api/auth_handlers.go :: handleAuthLogin :: no MaxBytesReader on request body",
+        "path: internal/api/auth_handlers.go :: handleAuthRegister :: no MaxBytesReader on request body",
+        "path: internal/api/util.go :: maxRequestBodySize constant :: defined but not used in all handlers",
+        "workflow: POST /v1/auth/login with 1GB body :: server accepts and attempts to parse huge request"
+      ],
+      "plan": [
+        "Audit all handlers in internal/api/auth.go and internal/api/auth_handlers.go for missing MaxBytesReader",
+        "Add r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize) to all POST/PUT handlers",
+        "Add validation to reject requests with Content-Length > maxRequestBodySize before reading",
+        "Add unit tests for oversized request rejection",
+        "Verify by sending large request body to auth endpoints and confirming 413 status"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0284",
+      "status": "todo",
+      "title": "Fix potential transaction inconsistency in job retention cleanup",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "data-loss",
+        "transaction",
+        "retention"
+      ],
+      "scope": [
+        "internal/store/store_retention.go",
+        "internal/retention/retention.go"
+      ],
+      "evidence": [
+        "path: internal/store/store_retention.go :: DeleteJobsWithArtifactsBatch :: deletes from DB first, then attempts artifact deletion",
+        "path: internal/store/store_retention.go :: DeleteJobsBatch :: commits transaction before artifact deletion",
+        "workflow: retention cleanup during disk full error :: jobs deleted from DB but artifacts remain orphaned",
+        "data-loss: inconsistent state where DB has no job record but artifacts still consume storage"
+      ],
+      "plan": [
+        "Modify DeleteJobsWithArtifactsBatch to delete artifacts before database transaction",
+        "Add pre-deletion size calculation for accurate space tracking",
+        "Implement two-phase cleanup: mark for deletion -> delete artifacts -> delete DB records",
+        "Add reconciliation job to find and clean orphaned artifacts",
+        "Add unit test simulating disk full scenario during cleanup",
+        "Verify by triggering retention cleanup, injecting disk error, and verifying consistent state"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0285",
+      "status": "todo",
+      "title": "Add graceful shutdown to WebSocket hub to prevent goroutine leaks",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "goroutine-leak",
+        "websocket"
+      ],
+      "scope": [
+        "internal/api/websocket.go",
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "path: internal/api/websocket.go :: Hub.Run method :: infinite 'for { select { ... } }' loop with no exit condition",
+        "path: internal/api/websocket.go :: Hub struct :: no quit or shutdown channel",
+        "path: internal/api/server.go :: Routes method :: starts Hub.Run() in goroutine but no stop mechanism",
+        "workflow: server restart or shutdown :: Hub goroutine continues running indefinitely"
+      ],
+      "plan": [
+        "Add quit chan struct{} field to Hub struct",
+        "Add Stop() method to Hub that closes quit channel",
+        "Modify Run() to check for quit channel in select statement",
+        "Modify Server.Stop() to call wsHub.Stop()",
+        "Add Wait() method to Hub for graceful shutdown completion",
+        "Add unit test verifying clean hub shutdown",
+        "Verify by running server, checking goroutine count, shutting down, and confirming hub goroutine exits"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0286",
+      "status": "todo",
+      "title": "Fix missing HTTP client timeouts in API traffic replay handler",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "reliability",
+        "timeout",
+        "api"
+      ],
+      "scope": [
+        "internal/api/traffic_replay.go"
+      ],
+      "evidence": [
+        "path: internal/api/traffic_replay.go :: handleTrafficReplay :: 'client := &http.Client{}' with no timeout configuration",
+        "path: internal/api/traffic_replay.go :: executeReplayRequest :: uses client without timeout",
+        "workflow: replay request to slow/unresponsive target :: HTTP client hangs indefinitely blocking worker",
+        "comparison: other handlers use 30s timeout, traffic replay uses zero timeout"
+      ],
+      "plan": [
+        "Add configurable timeout for traffic replay requests (default 30s)",
+        "Add REPLAY_REQUEST_TIMEOUT_SECONDS env var to .env.example",
+        "Update handleTrafficReplay to create client with timeout",
+        "Add context.WithTimeout for each replay request",
+        "Add proper error handling for timeout scenarios",
+        "Add unit test verifying timeout behavior",
+        "Verify by triggering replay to blackhole address and confirming timeout after 30s"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0287",
+      "status": "todo",
+      "title": "Add input validation to job result path to prevent path traversal",
+      "priority": "critical",
+      "tags": [
+        "maintenance",
+        "security",
+        "path-traversal",
+        "api"
+      ],
+      "scope": [
+        "internal/api/job_results.go",
+        "internal/model/job.go"
+      ],
+      "evidence": [
+        "path: internal/api/job_results.go :: handleJobResults :: 'http.ServeFile(w, r, job.ResultPath)' uses path directly from job",
+        "path: internal/api/job_results.go :: loadAllJobResults :: 'file, err := os.Open(job.ResultPath)' no validation",
+        "path: internal/model/job.go :: Job struct :: ResultPath field has no validation constraints",
+        "workflow: job with ResultPath='../../../../etc/passwd' :: API serves arbitrary filesystem files"
+      ],
+      "plan": [
+        "Add ValidateResultPath function to internal/model/job.go",
+        "Validate path is within DATA_DIR/jobs/ directory",
+        "Reject paths containing '..' or path separator traversal",
+        "Update job result handlers to validate path before use",
+        "Add migration to sanitize existing job result paths",
+        "Add unit tests for various path traversal attempts",
+        "Verify by creating job with malicious ResultPath and confirming validation rejection"
+      ],
+      "notes": [],
+      "request": "maintenance scan finding",
+      "created_at": "2026-01-31T21:28:15Z",
+      "updated_at": "2026-01-31T21:28:15Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
       "id": "RQ-0270",
       "status": "todo",
       "title": "Add Visual CSS Selector Builder to Web UI",
