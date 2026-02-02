@@ -1,40 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0298",
-      "status": "todo",
-      "title": "Split internal/webhook/dispatcher_test.go (803 LOC) into focused test files",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/webhook/dispatcher_test.go",
-        "wc -l internal/webhook/dispatcher_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/webhook/dispatcher_test.go -> 803"
-      ],
-      "plan": [
-        "Separate dispatcher tests by scenario (success, retries, failures, rate limits) into multiple files.",
-        "Keep shared fixtures in a local test helper file.",
-        "Verify by running go test ./internal/webhook."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: large test files increase cognitive load and complicate adding coverage.",
-        "Minimal fix: split tests into cohesive files without altering behavior."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }
