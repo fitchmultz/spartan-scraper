@@ -1190,6 +1190,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/retention/status:
+    get:
+      summary: Get retention status
+      description: Returns current retention configuration and statistics
+      operationId: getRetentionStatus
+      tags:
+        - Retention
+      responses:
+        '200':
+          description: Retention status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionStatusResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/retention/cleanup:
+    post:
+      summary: Run retention cleanup
+      description: Execute retention cleanup with optional dry-run mode
+      operationId: runRetentionCleanup
+      tags:
+        - Retention
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionCleanupRequest'
+      responses:
+        '200':
+          description: Cleanup completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionCleanupResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/scrape:
     post:
       summary: Scrape a single page
@@ -5229,6 +5299,109 @@ components:
           description: Human-readable error message
       required:
         - error
+
+    RetentionStatusResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Whether retention is enabled
+        jobRetentionDays:
+          type: integer
+          description: Max age for jobs in days (0 = unlimited)
+        crawlStateDays:
+          type: integer
+          description: Max age for crawl states in days (0 = unlimited)
+        maxJobs:
+          type: integer
+          description: Max total jobs to keep (0 = unlimited)
+        maxStorageGB:
+          type: integer
+          description: Max storage in GB (0 = unlimited)
+        totalJobs:
+          type: integer
+          format: int64
+          description: Current total job count
+        jobsEligible:
+          type: integer
+          format: int64
+          description: Jobs eligible for cleanup
+        storageUsedMB:
+          type: integer
+          format: int64
+          description: Current storage usage in MB
+      required:
+        - enabled
+        - jobRetentionDays
+        - crawlStateDays
+        - maxJobs
+        - maxStorageGB
+        - totalJobs
+        - jobsEligible
+        - storageUsedMB
+
+    RetentionCleanupRequest:
+      type: object
+      properties:
+        dryRun:
+          type: boolean
+          description: Preview only, don't delete
+          default: true
+        force:
+          type: boolean
+          description: Run cleanup even if retention is disabled
+        olderThan:
+          type: integer
+          description: Override age threshold (days)
+        kind:
+          type: string
+          enum: [scrape, crawl, research]
+          description: Only cleanup specific job kind
+      required:
+        - dryRun
+
+    RetentionCleanupResponse:
+      type: object
+      properties:
+        jobsDeleted:
+          type: integer
+          description: Number of jobs deleted
+        jobsAttempted:
+          type: integer
+          description: Total jobs attempted to delete
+        crawlStatesDeleted:
+          type: integer
+          format: int64
+          description: Number of crawl states deleted
+        spaceReclaimedMB:
+          type: integer
+          format: int64
+          description: Space reclaimed in MB
+        durationMs:
+          type: integer
+          format: int64
+          description: Operation duration in milliseconds
+        failedJobIDs:
+          type: array
+          items:
+            type: string
+          description: Jobs whose artifacts failed to delete
+        errors:
+          type: array
+          items:
+            type: string
+          description: Error messages encountered
+        dryRun:
+          type: boolean
+          description: Whether this was a dry-run
+      required:
+        - jobsDeleted
+        - jobsAttempted
+        - crawlStatesDeleted
+        - spaceReclaimedMB
+        - durationMs
+        - dryRun
+
     Schedule:
       type: object
       properties:

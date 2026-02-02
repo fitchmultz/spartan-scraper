@@ -1635,6 +1635,95 @@ export type ErrorResponse = {
     error: string;
 };
 
+export type RetentionStatusResponse = {
+    /**
+     * Whether retention is enabled
+     */
+    enabled: boolean;
+    /**
+     * Max age for jobs in days (0 = unlimited)
+     */
+    jobRetentionDays: number;
+    /**
+     * Max age for crawl states in days (0 = unlimited)
+     */
+    crawlStateDays: number;
+    /**
+     * Max total jobs to keep (0 = unlimited)
+     */
+    maxJobs: number;
+    /**
+     * Max storage in GB (0 = unlimited)
+     */
+    maxStorageGB: number;
+    /**
+     * Current total job count
+     */
+    totalJobs: number;
+    /**
+     * Jobs eligible for cleanup
+     */
+    jobsEligible: number;
+    /**
+     * Current storage usage in MB
+     */
+    storageUsedMB: number;
+};
+
+export type RetentionCleanupRequest = {
+    /**
+     * Preview only, don't delete
+     */
+    dryRun: boolean;
+    /**
+     * Run cleanup even if retention is disabled
+     */
+    force?: boolean;
+    /**
+     * Override age threshold (days)
+     */
+    olderThan?: number;
+    /**
+     * Only cleanup specific job kind
+     */
+    kind?: 'scrape' | 'crawl' | 'research';
+};
+
+export type RetentionCleanupResponse = {
+    /**
+     * Number of jobs deleted
+     */
+    jobsDeleted: number;
+    /**
+     * Total jobs attempted to delete
+     */
+    jobsAttempted: number;
+    /**
+     * Number of crawl states deleted
+     */
+    crawlStatesDeleted: number;
+    /**
+     * Space reclaimed in MB
+     */
+    spaceReclaimedMB: number;
+    /**
+     * Operation duration in milliseconds
+     */
+    durationMs: number;
+    /**
+     * Jobs whose artifacts failed to delete
+     */
+    failedJobIDs?: Array<string>;
+    /**
+     * Error messages encountered
+     */
+    errors?: Array<string>;
+    /**
+     * Whether this was a dry-run
+     */
+    dryRun: boolean;
+};
+
 export type Schedule = {
     /**
      * Unique schedule identifier
@@ -4577,6 +4666,72 @@ export type DeleteJobDedupEntriesResponses = {
 };
 
 export type DeleteJobDedupEntriesResponse = DeleteJobDedupEntriesResponses[keyof DeleteJobDedupEntriesResponses];
+
+export type GetRetentionStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/retention/status';
+};
+
+export type GetRetentionStatusErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetRetentionStatusError = GetRetentionStatusErrors[keyof GetRetentionStatusErrors];
+
+export type GetRetentionStatusResponses = {
+    /**
+     * Retention status
+     */
+    200: RetentionStatusResponse;
+};
+
+export type GetRetentionStatusResponse = GetRetentionStatusResponses[keyof GetRetentionStatusResponses];
+
+export type RunRetentionCleanupData = {
+    body: RetentionCleanupRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/retention/cleanup';
+};
+
+export type RunRetentionCleanupErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type RunRetentionCleanupError = RunRetentionCleanupErrors[keyof RunRetentionCleanupErrors];
+
+export type RunRetentionCleanupResponses = {
+    /**
+     * Cleanup completed
+     */
+    200: RetentionCleanupResponse;
+};
+
+export type RunRetentionCleanupResponse = RunRetentionCleanupResponses[keyof RunRetentionCleanupResponses];
 
 export type PostV1ScrapeData = {
     body: ScrapeRequest;

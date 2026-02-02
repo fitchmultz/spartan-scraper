@@ -631,6 +631,80 @@ GET /v1/webhooks/deliveries?job_id=<id>&limit=<n>&offset=<n>
 GET /v1/webhooks/deliveries/<id>
 ```
 
+## Data Retention
+
+Manage data retention policies to control disk usage and prevent storage exhaustion.
+
+### CLI
+
+```bash
+# View retention status
+spartan retention status
+
+# Preview what would be cleaned (dry-run)
+spartan retention cleanup --dry-run
+
+# Run cleanup immediately
+spartan retention cleanup
+
+# Cleanup with overrides
+spartan retention cleanup --older-than=7 --kind=scrape
+spartan retention cleanup --force  # Run even if retention disabled
+```
+
+### Environment Variables
+
+- `RETENTION_ENABLED` - Enable automatic retention (default: false)
+- `RETENTION_JOB_DAYS` - Max age for jobs in days (default: 30, 0 = unlimited)
+- `RETENTION_CRAWL_STATE_DAYS` - Max age for crawl states in days (default: 90, 0 = unlimited)
+- `RETENTION_MAX_JOBS` - Max total jobs to keep (default: 10000, 0 = unlimited)
+- `RETENTION_MAX_STORAGE_GB` - Max storage in GB (default: 10, 0 = unlimited)
+- `RETENTION_CLEANUP_INTERVAL_HOURS` - Hours between cleanup runs (default: 24)
+- `RETENTION_DRY_RUN_DEFAULT` - Default dry-run mode (default: false)
+
+### Web UI
+
+The Data Retention panel (below Webhook Deliveries) provides:
+
+- **Status Overview**: Current storage usage, total jobs, and eligible cleanup count
+- **Configuration Display**: Current retention policy settings
+- **Cleanup Controls**:
+  - Dry-run toggle for safe preview
+  - Optional job kind filter (scrape/crawl/research)
+  - Optional age override
+  - Confirmation dialog for destructive operations
+- **Results Display**: Summary of cleanup operations with space reclaimed
+
+### Safety Features
+
+- Dry-run is the default mode - no data is deleted without explicit confirmation
+- Cleanup shows a confirmation dialog when not in dry-run mode
+- Failed artifact deletions preserve database records (no orphaned metadata)
+- Jobs are prioritized for cleanup: failed first, then succeeded, then others
+
+### API
+
+```
+GET /v1/retention/status
+POST /v1/retention/cleanup
+```
+
+Example:
+```bash
+# Get status
+curl http://localhost:8741/v1/retention/status
+
+# Dry-run cleanup
+curl -X POST http://localhost:8741/v1/retention/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+
+# Actual cleanup with filter
+curl -X POST http://localhost:8741/v1/retention/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false, "kind": "scrape", "olderThan": 7}'
+```
+
 ## Scripts
 
 ### Stress test

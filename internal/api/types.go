@@ -319,3 +319,35 @@ type BodyDiff struct {
 	ReplayedSize int    `json:"replayedSize"`
 	Preview      string `json:"preview,omitempty"`
 }
+
+// RetentionStatusResponse represents the retention system status.
+type RetentionStatusResponse struct {
+	Enabled          bool  `json:"enabled"`
+	JobRetentionDays int   `json:"jobRetentionDays"`
+	CrawlStateDays   int   `json:"crawlStateDays"`
+	MaxJobs          int   `json:"maxJobs"`
+	MaxStorageGB     int   `json:"maxStorageGB"`
+	TotalJobs        int64 `json:"totalJobs"`
+	JobsEligible     int64 `json:"jobsEligible"`
+	StorageUsedMB    int64 `json:"storageUsedMB"`
+}
+
+// RetentionCleanupRequest represents a request to run retention cleanup.
+type RetentionCleanupRequest struct {
+	DryRun    bool   `json:"dryRun"`
+	Force     bool   `json:"force,omitempty"`
+	OlderThan *int   `json:"olderThan,omitempty"` // days
+	Kind      string `json:"kind,omitempty"`      // scrape|crawl|research
+}
+
+// RetentionCleanupResponse represents the result of a retention cleanup operation.
+type RetentionCleanupResponse struct {
+	JobsDeleted        int      `json:"jobsDeleted"`
+	JobsAttempted      int      `json:"jobsAttempted"`
+	CrawlStatesDeleted int64    `json:"crawlStatesDeleted"`
+	SpaceReclaimedMB   int64    `json:"spaceReclaimedMB"`
+	DurationMs         int64    `json:"durationMs"`
+	FailedJobIDs       []string `json:"failedJobIDs,omitempty"`
+	Errors             []string `json:"errors,omitempty"`
+	DryRun             bool     `json:"dryRun"`
+}

@@ -37,6 +37,7 @@ import { WatchContainer } from "./components/watches/WatchContainer";
 import { ExportScheduleContainer } from "./components/export-schedules/ExportScheduleContainer";
 import { FeedContainer } from "./components/feeds/FeedContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
+import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { PresetContainer } from "./components/presets/PresetContainer";
@@ -482,6 +483,8 @@ export function App() {
       <FeedContainer />
 
       <WebhookDeliveryContainer />
+
+      <RetentionStatusPanel />
 
       <InfoSections
         profiles={profiles}
