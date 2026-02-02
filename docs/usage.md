@@ -513,6 +513,43 @@ Preview the production build (after `make build`):
 cd web && pnpm exec vite preview --host 127.0.0.1 --port 4173
 ```
 
+### Export Schedules
+
+The Web UI provides a complete interface for managing automated export schedules. Export schedules automatically export job results when jobs complete matching specified filter criteria.
+
+**Features:**
+- **List View**: See all configured export schedules with status, filters, destination, and format
+- **Create/Edit**: Configure new export schedules with name, filters, destination, and retry settings
+- **Enable/Disable**: Toggle schedules on/off directly from the list
+- **Delete**: Remove schedules with confirmation
+- **History**: View export execution history per schedule with status, timestamps, and stats
+
+**Filter Criteria:**
+- Job kinds (scrape, crawl, research)
+- Job status (completed, succeeded, failed, canceled)
+- Tags (all must match)
+- Has results (only jobs with non-empty results)
+
+**Destination Types:**
+- **Local File**: Save exports to local filesystem path
+- **Webhook**: POST export data to a webhook URL
+- **Cloud Storage**: S3, GCS, or Azure Blob Storage (credentials via environment/IAM)
+
+**Path Templates:**
+Use variables in path templates: `{job_id}`, `{timestamp}`, `{kind}`, `{format}`
+
+Example: `exports/{kind}/{job_id}-{timestamp}.{format}`
+
+**CLI Parity:**
+The Web UI mirrors the functionality of:
+```
+spartan manage export-schedule list
+spartan manage export-schedule create --name "..." ...
+spartan manage export-schedule update --id "..." ...
+spartan manage export-schedule delete --id "..."
+spartan manage export-schedule history --id "..."
+```
+
 ## Scripts
 
 ### Stress test

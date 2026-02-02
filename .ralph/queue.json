@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0310",
-      "status": "todo",
-      "title": "Add Web UI for export schedules and history",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "web",
-        "export",
-        "automation"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "web/src/components",
-        "internal/api/export_schedules.go",
-        "internal/cli/manage/export_schedule.go",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "Opportunity type: integration / feature gap",
-        "Export schedules are fully implemented in API and CLI (internal/api/export_schedules.go, internal/cli/manage/export_schedule.go) including history and cloud destinations.",
-        "Web UI has no export schedule component and App does not render one (web/src/App.tsx; no export schedule components in web/src/components)."
-      ],
-      "plan": [
-        "Create an ExportScheduleManager component to list, create, enable/disable, delete schedules and view history using /v1/export-schedules endpoints.",
-        "Wire the new manager into web/src/App.tsx with a clear section anchor and navigation affordance.",
-        "Add form validation and error handling for destination-specific fields (cloud/local/webhook).",
-        "Add component tests for CRUD + history view using mocked API responses.",
-        "Update docs/usage.md to include export schedule UI workflow and CLI parity notes.",
-        "Verify by running `cd web && pnpm run test` and manually checking the UI via `make web-dev` for list/create/history flows."
-      ],
-      "notes": [
-        "Why it matters: scheduled exports eliminate manual runs and enable continuous delivery to S3/GCS/Azure/webhooks.",
-        "Proposed approach: MVS delivers list/create/history with local and webhook destinations; expand to cloud destination testing, presets, and bulk enable/disable.",
-        "Risks/mitigations: config complexity and secret handling; mitigate with validation, inline help, and no secret echo in UI.",
-        "Acceptance criteria: UI CRUD + history works; API errors surfaced; tests cover form validation and history rendering; docs updated."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-02T18:31:24Z",
-      "updated_at": "2026-02-02T18:31:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0311",
       "status": "todo",
       "title": "Surface feed monitoring in the Web UI",
