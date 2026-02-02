@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0307",
-      "status": "todo",
-      "title": "Document exporter DB connection env vars in .env.example",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/exporter/database_helpers.go",
-        ".env.example"
-      ],
-      "evidence": [
-        "internal/exporter/database_helpers.go:29-35 reads SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL.",
-        "rg -n SPARTAN_POSTGRES_URL|SPARTAN_MYSQL_URL|SPARTAN_MONGODB_URL .env.example returns no matches (missing documentation)."
-      ],
-      "plan": [
-        "Add a database exporter section to .env.example documenting SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, and SPARTAN_MONGODB_URL.",
-        "Ensure comments clarify precedence vs. config-provided connection strings.",
-        "Verify by running `rg -n \"SPARTAN_POSTGRES_URL|SPARTAN_MYSQL_URL|SPARTAN_MONGODB_URL\" .env.example`."
-      ],
-      "notes": [
-        "Principles: DRY (C), Least astonishment (G)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0308",
       "status": "todo",
       "title": "Fix Biome lint warnings by using import type",
