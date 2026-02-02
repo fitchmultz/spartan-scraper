@@ -1875,25 +1875,6 @@ textarea:focus-visible {
   }
 }
 
-/* Joyride tooltip customization to match theme */
-.__floater__body {
-  background: var(--panel) !important;
-  border: 1px solid var(--stroke) !important;
-  border-radius: 18px !important;
-  color: var(--text) !important;
-}
-
-/* Ensure joyride overlay is above other elements */
-.__floater {
-  z-index: 1000 !important;
-}
-
-/* Onboarding spotlight styling */
-.react-joyride__spotlight {
-  border-radius: 12px !important;
-  border: 2px solid var(--accent) !important;
-}
-
 /* Onboarding tooltip button hover effects */
 .react-joyride__tooltip button:hover {
   opacity: 0.9;

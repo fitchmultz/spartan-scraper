@@ -2,43 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0289",
-      "status": "todo",
-      "title": "Remove !important from Joyride styles to satisfy Biome lint",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/src/index.css",
-        "make ci",
-        "cd web && pnpm exec biome lint ."
-      ],
-      "evidence": [
-        "make ci -> biome lint warnings: web/src/index.css:1880, 1881, 1882, 1883, 1888, 1893, 1894 lint/complexity/noImportantStyles",
-        "Warnings show !important usage in .__floater__body, .__floater, .react-joyride__spotlight styles"
-      ],
-      "plan": [
-        "Adjust the Joyride selectors or load order to avoid !important (e.g., increase specificity with scoped selectors or move overrides after vendor styles).",
-        "Confirm visual parity for onboarding tooltip/spotlight styling.",
-        "Verify by running cd web && pnpm exec biome lint . and ensuring the noImportantStyles warnings are gone."
-      ],
-      "notes": [
-        "Principles violated: G (Least astonishment), H (Operational hygiene).",
-        "Why it matters: lint warnings make CI noisy and normalize ignored style violations, which hides real regressions.",
-        "Minimal fix: remove !important by increasing selector specificity or adjusting style import order."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0290",
       "status": "todo",
       "title": "Reduce web build chunk size warning (>500 kB) via code-splitting",
