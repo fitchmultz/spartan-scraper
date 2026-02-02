@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0296",
-      "status": "todo",
-      "title": "Split internal/crawl/crawl.go (743 LOC) into cohesive files",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/crawl/crawl.go",
-        "wc -l internal/crawl/crawl.go"
-      ],
-      "evidence": [
-        "wc -l internal/crawl/crawl.go -> 743"
-      ],
-      "plan": [
-        "Extract crawler orchestration, worker logic, and utility helpers into separate files within internal/crawl.",
-        "Keep exported types/functions unchanged unless strictly necessary.",
-        "Verify by running go test ./internal/crawl."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: larger files increase coupling between crawler stages and make targeted changes risky.",
-        "Minimal fix: split by responsibility without behavior changes."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0297",
       "status": "todo",
       "title": "Split internal/store/store_retention_test.go (901 LOC) into focused test files",

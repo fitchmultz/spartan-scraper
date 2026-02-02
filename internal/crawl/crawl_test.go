@@ -501,18 +501,18 @@ func TestRun_WithDuplicateDetection(t *testing.T) {
 		t.Fatal("expected results, got none")
 	}
 
-	// Find the duplicate page result
-	var duplicateResult *PageResult
+	// Check that at least one page is marked as a duplicate
+	// (either /page1 or /duplicate, depending on which was processed second)
+	var foundDuplicate bool
 	for i := range results {
-		if results[i].URL == srv.URL+"/duplicate" {
-			duplicateResult = &results[i]
+		if results[i].DuplicateOf != "" {
+			foundDuplicate = true
 			break
 		}
 	}
 
-	// The duplicate page should be marked as a duplicate
-	if duplicateResult != nil && duplicateResult.DuplicateOf == "" {
-		t.Errorf("expected /duplicate to be marked as duplicate, but DuplicateOf is empty")
+	if !foundDuplicate {
+		t.Errorf("expected at least one page to be marked as duplicate, but none were")
 	}
 
 	// Check that simhash is computed for all results
