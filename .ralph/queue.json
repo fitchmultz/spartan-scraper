@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0303",
-      "status": "todo",
-      "title": "Handle crypto/rand errors when generating webhook IDs",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/webhook/dispatcher.go"
-      ],
-      "evidence": [
-        "internal/webhook/dispatcher.go:38-41 calls rand.Read(b) without checking the error or read count."
-      ],
-      "plan": [
-        "Update generateID to handle rand.Read errors (e.g., return error or use injectable reader with fallback).",
-        "Adjust call site to handle the new error path (skip record creation or log+fallback).",
-        "Add a unit test that injects a failing reader to assert error handling/fallback behavior.",
-        "Verify by running `go test ./internal/webhook`."
-      ],
-      "notes": [
-        "Principles: Security baseline (I), Make bugs hard to write (E)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0304",
       "status": "todo",
       "title": "Harden e2e postJob helper with timeout and marshal error handling",

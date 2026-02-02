@@ -34,11 +34,14 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
-// generateID creates a unique identifier for delivery records.
-func generateID() string {
+// generateID creates a unique identifier for delivery records using the provided reader.
+// Returns an error if the reader fails to provide sufficient random bytes.
+func generateID(r io.Reader) (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := io.ReadFull(r, b); err != nil {
+		return "", fmt.Errorf("failed to generate random ID: %w", err)
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // EventType represents the type of webhook event.
@@ -263,20 +266,28 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 	// Create delivery record if store is available
 	var record *DeliveryRecord
 	if d.store != nil {
-		record = &DeliveryRecord{
-			ID:        generateID(),
-			EventID:   payload.EventID,
-			EventType: payload.EventType,
-			JobID:     payload.JobID,
-			URL:       url,
-			Status:    DeliveryStatusPending,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
-		if err := d.store.CreateRecord(ctx, record); err != nil {
-			slog.Warn("failed to create delivery record", "error", err, "jobID", payload.JobID)
-			// Continue without tracking
-			record = nil
+		id, err := generateID(rand.Reader)
+		if err != nil {
+			slog.Error("failed to generate delivery record ID, continuing without tracking",
+				"error", err,
+				"jobID", payload.JobID,
+				"eventType", payload.EventType)
+		} else {
+			record = &DeliveryRecord{
+				ID:        id,
+				EventID:   payload.EventID,
+				EventType: payload.EventType,
+				JobID:     payload.JobID,
+				URL:       url,
+				Status:    DeliveryStatusPending,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			if err := d.store.CreateRecord(ctx, record); err != nil {
+				slog.Warn("failed to create delivery record", "error", err, "jobID", payload.JobID)
+				// Continue without tracking
+				record = nil
+			}
 		}
 	}
 
