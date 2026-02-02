@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0291",
-      "status": "todo",
-      "title": "Split internal/cli/batch/batch.go (1237 LOC) into cohesive files",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/cli/batch/batch.go",
-        "wc -l internal/cli/batch/batch.go"
-      ],
-      "evidence": [
-        "wc -l internal/cli/batch/batch.go -> 1237"
-      ],
-      "plan": [
-        "Identify logical responsibility seams (config parsing, job setup, execution, reporting) and extract into new files within internal/cli/batch.",
-        "Keep public API unchanged; ensure helper functions remain package-private.",
-        "Verify by running go test ./internal/cli/batch and make test-ci."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: large files make change review error-prone and increase coupling between unrelated CLI behaviors.",
-        "Minimal fix: extract cohesive groups into smaller files without changing behavior."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0292",
       "status": "todo",
       "title": "Split web/src/App.tsx (1081 LOC) into smaller components",
