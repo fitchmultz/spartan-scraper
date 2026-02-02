@@ -2106,6 +2106,265 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /v1/feeds:
+    get:
+      summary: List all feeds
+      operationId: listFeeds
+      responses:
+        '200':
+          description: List of feeds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedList'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new feed
+      operationId: createFeed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedInput'
+      responses:
+        '201':
+          description: Feed created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/feeds/{id}:
+    get:
+      summary: Get a feed by ID
+      operationId: getFeed
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Feed ID
+      responses:
+        '200':
+          description: Feed details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '404':
+          description: Feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a feed
+      operationId: updateFeed
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Feed ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedInput'
+      responses:
+        '200':
+          description: Feed updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a feed
+      operationId: deleteFeed
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Feed ID
+      responses:
+        '204':
+          description: Feed deleted
+        '404':
+          description: Feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/feeds/{id}/check:
+    post:
+      summary: Manually check a feed for new items
+      operationId: checkFeed
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Feed ID
+      responses:
+        '200':
+          description: Check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedCheckResult'
+        '404':
+          description: Feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/feeds/{id}/items:
+    get:
+      summary: List seen items for a feed
+      operationId: listFeedItems
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Feed ID
+      responses:
+        '200':
+          description: List of seen items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedItemList'
+        '404':
+          description: Feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/metrics:
     get:
       summary: Get performance metrics
@@ -3772,6 +4031,205 @@ components:
           type: number
           format: float
           description: Similarity score between screenshots (0-1)
+
+    Feed:
+      type: object
+      required: [id, url, feedType, intervalSeconds, enabled, autoScrape, createdAt]
+      properties:
+        id:
+          type: string
+          description: Unique feed identifier (UUID)
+        url:
+          type: string
+          format: uri
+          description: URL of the RSS/Atom feed
+        feedType:
+          type: string
+          enum: [rss, atom, auto]
+          default: auto
+          description: Feed type (auto-detect if not specified)
+        intervalSeconds:
+          type: integer
+          minimum: 60
+          description: Check interval in seconds (min 60)
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the feed is active
+        autoScrape:
+          type: boolean
+          default: true
+          description: Whether to create scrape jobs for new items
+        extractOptions:
+          type: object
+          additionalProperties:
+            type: string
+          description: Options to pass to scrape jobs for new items
+        createdAt:
+          type: string
+          format: date-time
+          description: When the feed was created
+        lastCheckedAt:
+          type: string
+          format: date-time
+          description: When the feed was last checked
+        lastError:
+          type: string
+          description: Last error message if check failed
+        consecutiveFailures:
+          type: integer
+          default: 0
+          description: Number of consecutive check failures
+        status:
+          type: string
+          enum: [active, error, disabled]
+          description: Current feed status
+
+    FeedInput:
+      type: object
+      required: [url, intervalSeconds]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL of the RSS/Atom feed
+        feedType:
+          type: string
+          enum: [rss, atom, auto]
+          default: auto
+          description: Feed type (auto-detect if not specified)
+        intervalSeconds:
+          type: integer
+          minimum: 60
+          default: 3600
+          description: Check interval in seconds (min 60)
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the feed is active
+        autoScrape:
+          type: boolean
+          default: true
+          description: Whether to create scrape jobs for new items
+        extractOptions:
+          type: object
+          additionalProperties:
+            type: string
+          description: Options to pass to scrape jobs for new items
+
+    FeedList:
+      type: object
+      required: [feeds]
+      properties:
+        feeds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feed'
+          description: List of all feeds
+
+    FeedItem:
+      type: object
+      required: [guid, title, link]
+      properties:
+        guid:
+          type: string
+          description: Unique item identifier (GUID or link)
+        title:
+          type: string
+          description: Item title
+        link:
+          type: string
+          format: uri
+          description: Item link URL
+        description:
+          type: string
+          description: Item description/summary
+        pubDate:
+          type: string
+          format: date-time
+          description: Item publication date
+        author:
+          type: string
+          description: Item author
+        categories:
+          type: array
+          items:
+            type: string
+          description: Item categories/tags
+
+    SeenFeedItem:
+      type: object
+      required: [guid, title, link, seenAt]
+      properties:
+        guid:
+          type: string
+          description: Unique item identifier (GUID or link)
+        title:
+          type: string
+          description: Item title
+        link:
+          type: string
+          format: uri
+          description: Item link URL
+        description:
+          type: string
+          description: Item description/summary
+        pubDate:
+          type: string
+          format: date-time
+          description: Item publication date
+        author:
+          type: string
+          description: Item author
+        categories:
+          type: array
+          items:
+            type: string
+          description: Item categories/tags
+        seenAt:
+          type: string
+          format: date-time
+          description: When this item was first seen
+
+    FeedItemList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeenFeedItem'
+          description: List of seen feed items
+
+    FeedCheckResult:
+      type: object
+      required: [feedId, checkedAt, newItems, totalItems]
+      properties:
+        feedId:
+          type: string
+          description: ID of the feed that was checked
+        checkedAt:
+          type: string
+          format: date-time
+          description: When the check was performed
+        newItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedItem'
+          description: New items found in this check
+        totalItems:
+          type: integer
+          description: Total items in the feed
+        feedTitle:
+          type: string
+          description: Feed title from the feed metadata
+        feedDesc:
+          type: string
+          description: Feed description from the feed metadata
+        error:
+          type: string
+          description: Error message if check failed
+
     WebhookPayload:
       type: object
       description: Payload sent to webhook endpoints on job events

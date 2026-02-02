@@ -933,6 +933,199 @@ export type WatchCheckResult = {
     visualSimilarity?: number;
 };
 
+export type Feed = {
+    /**
+     * Unique feed identifier (UUID)
+     */
+    id: string;
+    /**
+     * URL of the RSS/Atom feed
+     */
+    url: string;
+    /**
+     * Feed type (auto-detect if not specified)
+     */
+    feedType: 'rss' | 'atom' | 'auto';
+    /**
+     * Check interval in seconds (min 60)
+     */
+    intervalSeconds: number;
+    /**
+     * Whether the feed is active
+     */
+    enabled: boolean;
+    /**
+     * Whether to create scrape jobs for new items
+     */
+    autoScrape: boolean;
+    /**
+     * Options to pass to scrape jobs for new items
+     */
+    extractOptions?: {
+        [key: string]: string;
+    };
+    /**
+     * When the feed was created
+     */
+    createdAt: string;
+    /**
+     * When the feed was last checked
+     */
+    lastCheckedAt?: string;
+    /**
+     * Last error message if check failed
+     */
+    lastError?: string;
+    /**
+     * Number of consecutive check failures
+     */
+    consecutiveFailures?: number;
+    /**
+     * Current feed status
+     */
+    status?: 'active' | 'error' | 'disabled';
+};
+
+export type FeedInput = {
+    /**
+     * URL of the RSS/Atom feed
+     */
+    url: string;
+    /**
+     * Feed type (auto-detect if not specified)
+     */
+    feedType?: 'rss' | 'atom' | 'auto';
+    /**
+     * Check interval in seconds (min 60)
+     */
+    intervalSeconds: number;
+    /**
+     * Whether the feed is active
+     */
+    enabled?: boolean;
+    /**
+     * Whether to create scrape jobs for new items
+     */
+    autoScrape?: boolean;
+    /**
+     * Options to pass to scrape jobs for new items
+     */
+    extractOptions?: {
+        [key: string]: string;
+    };
+};
+
+export type FeedList = {
+    /**
+     * List of all feeds
+     */
+    feeds: Array<Feed>;
+};
+
+export type FeedItem = {
+    /**
+     * Unique item identifier (GUID or link)
+     */
+    guid: string;
+    /**
+     * Item title
+     */
+    title: string;
+    /**
+     * Item link URL
+     */
+    link: string;
+    /**
+     * Item description/summary
+     */
+    description?: string;
+    /**
+     * Item publication date
+     */
+    pubDate?: string;
+    /**
+     * Item author
+     */
+    author?: string;
+    /**
+     * Item categories/tags
+     */
+    categories?: Array<string>;
+};
+
+export type SeenFeedItem = {
+    /**
+     * Unique item identifier (GUID or link)
+     */
+    guid: string;
+    /**
+     * Item title
+     */
+    title: string;
+    /**
+     * Item link URL
+     */
+    link: string;
+    /**
+     * Item description/summary
+     */
+    description?: string;
+    /**
+     * Item publication date
+     */
+    pubDate?: string;
+    /**
+     * Item author
+     */
+    author?: string;
+    /**
+     * Item categories/tags
+     */
+    categories?: Array<string>;
+    /**
+     * When this item was first seen
+     */
+    seenAt: string;
+};
+
+export type FeedItemList = {
+    /**
+     * List of seen feed items
+     */
+    items: Array<SeenFeedItem>;
+};
+
+export type FeedCheckResult = {
+    /**
+     * ID of the feed that was checked
+     */
+    feedId: string;
+    /**
+     * When the check was performed
+     */
+    checkedAt: string;
+    /**
+     * New items found in this check
+     */
+    newItems: Array<FeedItem>;
+    /**
+     * Total items in the feed
+     */
+    totalItems: number;
+    /**
+     * Feed title from the feed metadata
+     */
+    feedTitle?: string;
+    /**
+     * Feed description from the feed metadata
+     */
+    feedDesc?: string;
+    /**
+     * Error message if check failed
+     */
+    error?: string;
+};
+
 /**
  * Payload sent to webhook endpoints on job events
  */
@@ -4936,6 +5129,270 @@ export type CheckWatchResponses = {
 };
 
 export type CheckWatchResponse = CheckWatchResponses[keyof CheckWatchResponses];
+
+export type ListFeedsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/feeds';
+};
+
+export type ListFeedsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListFeedsError = ListFeedsErrors[keyof ListFeedsErrors];
+
+export type ListFeedsResponses = {
+    /**
+     * List of feeds
+     */
+    200: FeedList;
+};
+
+export type ListFeedsResponse = ListFeedsResponses[keyof ListFeedsResponses];
+
+export type CreateFeedData = {
+    body: FeedInput;
+    path?: never;
+    query?: never;
+    url: '/v1/feeds';
+};
+
+export type CreateFeedErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateFeedError = CreateFeedErrors[keyof CreateFeedErrors];
+
+export type CreateFeedResponses = {
+    /**
+     * Feed created
+     */
+    201: Feed;
+};
+
+export type CreateFeedResponse = CreateFeedResponses[keyof CreateFeedResponses];
+
+export type DeleteFeedData = {
+    body?: never;
+    path: {
+        /**
+         * Feed ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/feeds/{id}';
+};
+
+export type DeleteFeedErrors = {
+    /**
+     * Feed not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteFeedError = DeleteFeedErrors[keyof DeleteFeedErrors];
+
+export type DeleteFeedResponses = {
+    /**
+     * Feed deleted
+     */
+    204: void;
+};
+
+export type DeleteFeedResponse = DeleteFeedResponses[keyof DeleteFeedResponses];
+
+export type GetFeedData = {
+    body?: never;
+    path: {
+        /**
+         * Feed ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/feeds/{id}';
+};
+
+export type GetFeedErrors = {
+    /**
+     * Feed not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetFeedError = GetFeedErrors[keyof GetFeedErrors];
+
+export type GetFeedResponses = {
+    /**
+     * Feed details
+     */
+    200: Feed;
+};
+
+export type GetFeedResponse = GetFeedResponses[keyof GetFeedResponses];
+
+export type UpdateFeedData = {
+    body: FeedInput;
+    path: {
+        /**
+         * Feed ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/feeds/{id}';
+};
+
+export type UpdateFeedErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Feed not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateFeedError = UpdateFeedErrors[keyof UpdateFeedErrors];
+
+export type UpdateFeedResponses = {
+    /**
+     * Feed updated
+     */
+    200: Feed;
+};
+
+export type UpdateFeedResponse = UpdateFeedResponses[keyof UpdateFeedResponses];
+
+export type CheckFeedData = {
+    body?: never;
+    path: {
+        /**
+         * Feed ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/feeds/{id}/check';
+};
+
+export type CheckFeedErrors = {
+    /**
+     * Feed not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CheckFeedError = CheckFeedErrors[keyof CheckFeedErrors];
+
+export type CheckFeedResponses = {
+    /**
+     * Check completed
+     */
+    200: FeedCheckResult;
+};
+
+export type CheckFeedResponse = CheckFeedResponses[keyof CheckFeedResponses];
+
+export type ListFeedItemsData = {
+    body?: never;
+    path: {
+        /**
+         * Feed ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/feeds/{id}/items';
+};
+
+export type ListFeedItemsErrors = {
+    /**
+     * Feed not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListFeedItemsError = ListFeedItemsErrors[keyof ListFeedItemsErrors];
+
+export type ListFeedItemsResponses = {
+    /**
+     * List of seen items
+     */
+    200: FeedItemList;
+};
+
+export type ListFeedItemsResponse = ListFeedItemsResponses[keyof ListFeedItemsResponses];
 
 export type GetMetricsData = {
     body?: never;
