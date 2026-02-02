@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0292",
-      "status": "todo",
-      "title": "Split web/src/App.tsx (1081 LOC) into smaller components",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/src/App.tsx",
-        "wc -l web/src/App.tsx"
-      ],
-      "evidence": [
-        "wc -l web/src/App.tsx -> 1081"
-      ],
-      "plan": [
-        "Extract layout, provider wiring, and route composition into dedicated components/modules under web/src.",
-        "Keep routing behavior stable and reuse existing tests.",
-        "Verify by running cd web && pnpm run test and cd web && pnpm run build."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: oversized root components increase merge conflicts and make routing changes risky.",
-        "Minimal fix: split into smaller components without changing runtime behavior."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0293",
       "status": "todo",
       "title": "Split web/src/components/WatchManager.tsx (1037 LOC)",

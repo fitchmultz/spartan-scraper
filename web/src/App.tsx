@@ -10,104 +10,38 @@
  * - Viewing real-time job status and manager state
  * - Browsing and analyzing job results
  *
+ * The component has been refactored to use container components for each
+ * major functional area, reducing its size and improving maintainability.
+ *
  * @module App
  */
 
-import {
-  useCallback,
-  useRef,
-  useEffect,
-  useState,
-  Suspense,
-  lazy,
-} from "react";
+import { useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import {
   deleteV1JobsById,
   postV1Crawl,
   postV1Research,
   postV1Scrape,
-  listWatches,
-  createWatch,
-  updateWatch,
-  deleteWatch,
-  checkWatch,
-  listChains,
-  createChain,
-  deleteChain,
-  submitChain,
   type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
-  type BatchScrapeRequest,
-  type BatchCrawlRequest,
-  type BatchResearchRequest,
-  type Watch,
-  type WatchInput,
-  type WatchCheckResult,
-  type JobChain,
-  type ChainCreateRequest,
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
 import { InfoSections } from "./components/InfoSections";
-import { BatchList } from "./components/BatchList";
-import { ChainList } from "./components/ChainList";
-
-// Lazy load heavy components to reduce initial bundle size
-const MetricsDashboard = lazy(() =>
-  import("./components/MetricsDashboard").then((mod) => ({
-    default: mod.MetricsDashboard,
-  })),
-);
-const ResultsExplorer = lazy(() =>
-  import("./components/ResultsExplorer").then((mod) => ({
-    default: mod.ResultsExplorer,
-  })),
-);
-const WatchManager = lazy(() =>
-  import("./components/WatchManager").then((mod) => ({
-    default: mod.WatchManager,
-  })),
-);
-const ChainBuilder = lazy(() =>
-  import("./components/ChainBuilder").then((mod) => ({
-    default: mod.ChainBuilder,
-  })),
-);
-
-// Lazy load form components (large components only needed when user interacts with forms)
-const ScrapeForm = lazy(() =>
-  import("./components/ScrapeForm").then((mod) => ({
-    default: mod.ScrapeForm,
-  })),
-);
-const CrawlForm = lazy(() =>
-  import("./components/CrawlForm").then((mod) => ({
-    default: mod.CrawlForm,
-  })),
-);
-const ResearchForm = lazy(() =>
-  import("./components/ResearchForm").then((mod) => ({
-    default: mod.ResearchForm,
-  })),
-);
-const BatchForm = lazy(() =>
-  import("./components/BatchForm").then((mod) => ({
-    default: mod.BatchForm,
-  })),
-);
-
-// Re-export types from lazy-loaded components
-type ScrapeFormRef = import("./components/ScrapeForm").ScrapeFormRef;
-type CrawlFormRef = import("./components/CrawlForm").CrawlFormRef;
-type ResearchFormRef = import("./components/ResearchForm").ResearchFormRef;
-import { useBatches } from "./hooks/useBatches";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
-import { QuickStartPanel } from "./components/QuickStartPanel";
-import { SavePresetDialog } from "./components/SavePresetDialog";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { OnboardingFlow } from "./components/OnboardingFlow";
+import { WatchContainer } from "./components/watches/WatchContainer";
+import { ChainContainer } from "./components/chains/ChainContainer";
+import { BatchContainer } from "./components/batches/BatchContainer";
+import { PresetContainer } from "./components/presets/PresetContainer";
+import {
+  JobSubmissionContainer,
+  type JobSubmissionContainerRef,
+} from "./components/jobs/JobSubmissionContainer";
+import { ResultsContainer } from "./components/results/ResultsContainer";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
@@ -122,6 +56,14 @@ import {
 } from "./lib/job-actions";
 import { getApiBaseUrl } from "./lib/api-config";
 import type { JobPreset, JobType } from "./types/presets";
+import { useState } from "react";
+
+// Lazy load heavy components to reduce initial bundle size
+const MetricsDashboard = lazy(() =>
+  import("./components/MetricsDashboard").then((mod) => ({
+    default: mod.MetricsDashboard,
+  })),
+);
 
 export function App() {
   const appData = useAppData();
@@ -152,161 +94,33 @@ export function App() {
     isMac,
   } = useKeyboard();
 
-  // Form refs for programmatic submission
-  const scrapeFormRef = useRef<ScrapeFormRef>(null);
-  const crawlFormRef = useRef<CrawlFormRef>(null);
-  const researchFormRef = useRef<ResearchFormRef>(null);
-
   // Active tab state for preset filtering
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
 
-  // Batch form state
-  const [batchTab, setBatchTab] = useState<"scrape" | "crawl" | "research">(
-    "scrape",
-  );
-  const [batchUrls, setBatchUrls] = useState("");
-  const [batchQuery, setBatchQuery] = useState("");
+  // Ref for JobSubmissionContainer to access form methods
+  const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
 
-  // Watch state
-  const [watches, setWatches] = useState<Watch[]>([]);
-  const [watchesLoading, setWatchesLoading] = useState(false);
-
-  // Chain state
-  const [chains, setChains] = useState<JobChain[]>([]);
-  const [chainsLoading, setChainsLoading] = useState(false);
-  const [showChainBuilder, setShowChainBuilder] = useState(false);
-
-  // Load watches
-  const refreshWatches = useCallback(async () => {
-    setWatchesLoading(true);
-    try {
-      const { data, error } = await listWatches({ baseUrl: getApiBaseUrl() });
-      if (error) {
-        console.error("Failed to load watches:", error);
-        return;
-      }
-      setWatches(data?.watches || []);
-    } catch (err) {
-      console.error("Error loading watches:", err);
-    } finally {
-      setWatchesLoading(false);
-    }
-  }, []);
-
-  // Watch CRUD handlers
-  const handleCreateWatch = useCallback(
-    async (input: WatchInput) => {
-      const { error } = await createWatch({
-        baseUrl: getApiBaseUrl(),
-        body: input,
-      });
-      if (error) throw error;
-      await refreshWatches();
-    },
-    [refreshWatches],
-  );
-
-  const handleUpdateWatch = useCallback(
-    async (id: string, input: WatchInput) => {
-      const { error } = await updateWatch({
-        baseUrl: getApiBaseUrl(),
-        path: { id },
-        body: input,
-      });
-      if (error) throw error;
-      await refreshWatches();
-    },
-    [refreshWatches],
-  );
-
-  const handleDeleteWatch = useCallback(
-    async (id: string) => {
-      const { error } = await deleteWatch({
-        baseUrl: getApiBaseUrl(),
-        path: { id },
-      });
-      if (error) throw error;
-      await refreshWatches();
-    },
-    [refreshWatches],
-  );
-
-  const handleCheckWatch = useCallback(
-    async (id: string): Promise<WatchCheckResult | undefined> => {
-      const { data, error } = await checkWatch({
-        baseUrl: getApiBaseUrl(),
-        path: { id },
-      });
-      if (error) throw error;
-      await refreshWatches();
-      return data;
-    },
-    [refreshWatches],
-  );
-
-  // Load watches on mount
-  useEffect(() => {
-    refreshWatches();
-  }, [refreshWatches]);
-
-  // Chain CRUD handlers
-  const refreshChains = useCallback(async () => {
-    setChainsLoading(true);
-    try {
-      const { data, error } = await listChains({ baseUrl: getApiBaseUrl() });
-      if (error) throw error;
-      setChains(data?.chains || []);
-    } catch (err) {
-      console.error("Failed to load chains:", err);
-    } finally {
-      setChainsLoading(false);
-    }
-  }, []);
-
-  const handleCreateChain = useCallback(
-    async (request: ChainCreateRequest) => {
-      const { error } = await createChain({
-        baseUrl: getApiBaseUrl(),
-        body: request,
-      });
-      if (error) throw error;
-      await refreshChains();
-      setShowChainBuilder(false);
-    },
-    [refreshChains],
-  );
-
-  const handleDeleteChain = useCallback(
-    async (id: string) => {
-      const { error } = await deleteChain({
-        baseUrl: getApiBaseUrl(),
-        path: { id },
-      });
-      if (error) throw error;
-      await refreshChains();
-    },
-    [refreshChains],
-  );
-
-  // Load chains on mount
-  useEffect(() => {
-    refreshChains();
-  }, [refreshChains]);
-
-  // Batch data management
   const {
-    batches,
-    batchJobs,
-    loading: batchesLoading,
-    refreshBatches,
-    cancelBatch,
-    submitBatchScrape,
-    submitBatchCrawl,
-    submitBatchResearch,
-  } = useBatches();
+    jobs,
+    profiles,
+    schedules,
+    templates,
+    crawlStates,
+    managerStatus,
+    metrics,
+    jobsTotal,
+    jobsPage,
+    crawlStatesTotal,
+    crawlStatesPage,
+    error,
+    loading,
+    connectionState,
+    refreshJobs,
+    setJobsPage,
+    setCrawlStatesPage,
+  } = appData;
 
-  // Save preset dialog state
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const { selectedJobId, loadResults } = resultsState;
 
   // Handle navigation from keyboard shortcuts
   const handleNavigate = useCallback((view: "jobs" | "results" | "forms") => {
@@ -321,12 +135,12 @@ export function App() {
   // Handle form submission from command palette
   const handleSubmitForm = useCallback(
     async (formType: "scrape" | "crawl" | "research") => {
-      if (formType === "scrape" && scrapeFormRef.current) {
-        await scrapeFormRef.current.submit();
-      } else if (formType === "crawl" && crawlFormRef.current) {
-        await crawlFormRef.current.submit();
-      } else if (formType === "research" && researchFormRef.current) {
-        await researchFormRef.current.submit();
+      if (formType === "scrape") {
+        await jobSubmissionRef.current?.submitScrape();
+      } else if (formType === "crawl") {
+        await jobSubmissionRef.current?.submitCrawl();
+      } else if (formType === "research") {
+        await jobSubmissionRef.current?.submitResearch();
       }
     },
     [],
@@ -352,135 +166,6 @@ export function App() {
       );
     };
   }, [handleNavigate]);
-
-  const {
-    jobs,
-    profiles,
-    schedules,
-    templates,
-    crawlStates,
-    managerStatus,
-    metrics,
-    jobsTotal,
-    jobsPage,
-    crawlStatesTotal,
-    crawlStatesPage,
-    error,
-    loading,
-    connectionState,
-    refreshJobs,
-    setJobsPage,
-    setCrawlStatesPage,
-  } = appData;
-
-  // Chain submit handler (defined after refreshJobs is available)
-  const handleSubmitChain = useCallback(
-    async (id: string, overrides?: Record<string, unknown>) => {
-      // Convert overrides to the expected format
-      const formattedOverrides: { [key: string]: { [key: string]: unknown } } =
-        {};
-      if (overrides) {
-        for (const [key, value] of Object.entries(overrides)) {
-          if (typeof value === "object" && value !== null) {
-            formattedOverrides[key] = value as { [key: string]: unknown };
-          }
-        }
-      }
-      const { error } = await submitChain({
-        baseUrl: getApiBaseUrl(),
-        path: { id },
-        body: { overrides: formattedOverrides },
-      });
-      if (error) throw error;
-      // Refresh jobs to show newly created jobs
-      await refreshJobs();
-    },
-    [refreshJobs],
-  );
-
-  const {
-    headless,
-    usePlaywright,
-    timeoutSeconds,
-    authProfile,
-    authBasic,
-    headersRaw,
-    cookiesRaw,
-    queryRaw,
-    loginUrl,
-    loginUserSelector,
-    loginPassSelector,
-    loginSubmitSelector,
-    loginUser,
-    loginPass,
-    extractTemplate,
-    extractValidate,
-    preProcessors,
-    postProcessors,
-    transformers,
-    incremental,
-    maxDepth,
-    maxPages,
-    webhookUrl,
-    webhookEvents,
-    webhookSecret,
-    interceptEnabled,
-    interceptURLPatterns,
-    interceptResourceTypes,
-    interceptCaptureRequestBody,
-    interceptCaptureResponseBody,
-    interceptMaxBodySize,
-    setHeadless,
-    setUsePlaywright,
-    setTimeoutSeconds,
-    setAuthProfile,
-    setAuthBasic,
-    setHeadersRaw,
-    setCookiesRaw,
-    setQueryRaw,
-    setLoginUrl,
-    setLoginUserSelector,
-    setLoginPassSelector,
-    setLoginSubmitSelector,
-    setLoginUser,
-    setLoginPass,
-    setExtractTemplate,
-    setExtractValidate,
-    setPreProcessors,
-    setPostProcessors,
-    setTransformers,
-    setIncremental,
-    setMaxDepth,
-    setMaxPages,
-    setWebhookUrl,
-    setWebhookEvents,
-    setWebhookSecret,
-    setInterceptEnabled,
-    setInterceptURLPatterns,
-    setInterceptResourceTypes,
-    setInterceptCaptureRequestBody,
-    setInterceptCaptureResponseBody,
-    setInterceptMaxBodySize,
-    applyPreset,
-  } = formState;
-
-  const {
-    selectedJobId,
-    resultItems,
-    selectedResultIndex,
-    resultSummary,
-    resultConfidence,
-    resultEvidence,
-    resultClusters,
-    resultCitations,
-    rawResult,
-    resultFormat,
-    currentPage,
-    totalResults,
-    loadResults,
-    setSelectedResultIndex,
-    setCurrentPage,
-  } = resultsState;
 
   const handleSubmitScrape = useCallback(
     async (request: ScrapeRequest) => {
@@ -521,59 +206,6 @@ export function App() {
     [refreshJobs],
   );
 
-  // Batch submission handlers
-  const handleSubmitBatchScrape = useCallback(
-    async (request: BatchScrapeRequest) => {
-      try {
-        await submitBatchScrape(request);
-        setBatchUrls("");
-      } catch (err) {
-        console.error("Failed to submit batch scrape:", err);
-        alert(`Failed to submit batch: ${String(err)}`);
-      }
-    },
-    [submitBatchScrape],
-  );
-
-  const handleSubmitBatchCrawl = useCallback(
-    async (request: BatchCrawlRequest) => {
-      try {
-        await submitBatchCrawl(request);
-        setBatchUrls("");
-      } catch (err) {
-        console.error("Failed to submit batch crawl:", err);
-        alert(`Failed to submit batch: ${String(err)}`);
-      }
-    },
-    [submitBatchCrawl],
-  );
-
-  const handleSubmitBatchResearch = useCallback(
-    async (request: BatchResearchRequest) => {
-      try {
-        await submitBatchResearch(request);
-        setBatchUrls("");
-        setBatchQuery("");
-      } catch (err) {
-        console.error("Failed to submit batch research:", err);
-        alert(`Failed to submit batch: ${String(err)}`);
-      }
-    },
-    [submitBatchResearch],
-  );
-
-  const handleCancelBatch = useCallback(
-    async (batchId: string) => {
-      try {
-        await cancelBatch(batchId);
-      } catch (err) {
-        console.error("Failed to cancel batch:", err);
-        alert(`Failed to cancel batch: ${String(err)}`);
-      }
-    },
-    [cancelBatch],
-  );
-
   const cancelJob = useCallback(
     async (jobId: string) => {
       try {
@@ -610,89 +242,78 @@ export function App() {
         }
         await refreshJobs();
         if (selectedJobId === jobId) {
-          resultsState.loadResults("");
+          loadResults("");
         }
       } catch (err) {
         console.error(String(err));
       }
     },
-    [refreshJobs, selectedJobId, resultsState],
+    [refreshJobs, selectedJobId, loadResults],
   );
 
   // Find active (running) job for command palette
   const activeJob = jobs.find((job) => job.status === "running");
 
-  // Handle preset selection
-  const handleSelectPreset = useCallback(
-    (preset: JobPreset) => {
-      // Switch to the appropriate tab
-      setActiveTab(preset.jobType);
-
-      // Apply preset config to form state
-      applyPreset(preset.config);
-
-      // Set URL/query if provided in preset
-      if (preset.config.url) {
-        if (preset.jobType === "scrape" && scrapeFormRef.current) {
-          scrapeFormRef.current.setUrl(preset.config.url);
-        } else if (preset.jobType === "crawl" && crawlFormRef.current) {
-          crawlFormRef.current.setUrl(preset.config.url);
-        }
+  // Handle preset selection - coordinate with form refs for URL/query setting
+  const handleSelectPreset = useCallback((preset: JobPreset) => {
+    // Set URL/query if provided in preset (form refs are in JobSubmissionContainer)
+    if (preset.config.url) {
+      if (preset.jobType === "scrape") {
+        jobSubmissionRef.current?.setScrapeUrl(preset.config.url);
+      } else if (preset.jobType === "crawl") {
+        jobSubmissionRef.current?.setCrawlUrl(preset.config.url);
       }
-      if (preset.config.query && researchFormRef.current) {
-        researchFormRef.current.setQuery(preset.config.query);
-      }
-      if (preset.config.urls && researchFormRef.current) {
-        // Note: ResearchForm doesn't have setUrls, we'd need to add it
-        // For now, just log it
-        console.log("Would set URLs:", preset.config.urls);
-      }
-
-      // Scroll to forms section
-      const formsSection = document.getElementById("forms");
-      if (formsSection) {
-        formsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    },
-    [applyPreset],
-  );
-
-  // Handle save preset
-  const handleSavePreset = useCallback(() => {
-    setIsSaveDialogOpen(true);
+    }
+    if (preset.config.query) {
+      jobSubmissionRef.current?.setResearchQuery(preset.config.query);
+    }
   }, []);
 
-  // Get current config from active form
+  // Get current config from active form - simplified for container approach
   const getCurrentConfig = useCallback(() => {
-    switch (activeTab) {
-      case "scrape":
-        return scrapeFormRef.current?.getConfig() ?? {};
-      case "crawl":
-        return crawlFormRef.current?.getConfig() ?? {};
-      case "research":
-        return researchFormRef.current?.getConfig() ?? {};
-      default:
-        return {};
-    }
-  }, [activeTab]);
-
-  // Handle save preset confirmation
-  const handleConfirmSavePreset = useCallback(
-    (name: string, description: string) => {
-      const config = getCurrentConfig();
-      savePreset(name, description, activeTab, config);
-      setIsSaveDialogOpen(false);
-    },
-    [activeTab, getCurrentConfig, savePreset],
-  );
+    // Return current form state as preset config
+    return {
+      headless: formState.headless,
+      usePlaywright: formState.usePlaywright,
+      timeoutSeconds: formState.timeoutSeconds,
+      authProfile: formState.authProfile,
+      authBasic: formState.authBasic,
+      headersRaw: formState.headersRaw,
+      cookiesRaw: formState.cookiesRaw,
+      queryRaw: formState.queryRaw,
+      loginUrl: formState.loginUrl,
+      loginUserSelector: formState.loginUserSelector,
+      loginPassSelector: formState.loginPassSelector,
+      loginSubmitSelector: formState.loginSubmitSelector,
+      loginUser: formState.loginUser,
+      loginPass: formState.loginPass,
+      extractTemplate: formState.extractTemplate,
+      extractValidate: formState.extractValidate,
+      preProcessors: formState.preProcessors,
+      postProcessors: formState.postProcessors,
+      transformers: formState.transformers,
+      incremental: formState.incremental,
+      maxDepth: formState.maxDepth,
+      maxPages: formState.maxPages,
+      webhookUrl: formState.webhookUrl,
+      webhookEvents: formState.webhookEvents,
+      webhookSecret: formState.webhookSecret,
+      interceptEnabled: formState.interceptEnabled,
+      interceptURLPatterns: formState.interceptURLPatterns,
+      interceptResourceTypes: formState.interceptResourceTypes,
+      interceptCaptureRequestBody: formState.interceptCaptureRequestBody,
+      interceptCaptureResponseBody: formState.interceptCaptureResponseBody,
+      interceptMaxBodySize: formState.interceptMaxBodySize,
+    };
+  }, [formState]);
 
   // Get current URL for preset matching
   const getCurrentUrl = useCallback(() => {
     switch (activeTab) {
       case "scrape":
-        return scrapeFormRef.current?.getUrl() ?? "";
+        return jobSubmissionRef.current?.getScrapeUrl() ?? "";
       case "crawl":
-        return crawlFormRef.current?.getUrl() ?? "";
+        return jobSubmissionRef.current?.getCrawlUrl() ?? "";
       default:
         return "";
     }
@@ -704,8 +325,8 @@ export function App() {
         loading={loading}
         managerStatus={managerStatus}
         jobsCount={jobs.length}
-        headless={headless}
-        usePlaywright={usePlaywright}
+        headless={formState.headless}
+        usePlaywright={formState.usePlaywright}
         theme={theme}
         resolvedTheme={resolvedTheme}
         onThemeChange={setTheme}
@@ -727,22 +348,15 @@ export function App() {
         onRestartTour={resetOnboarding}
       />
 
-      <div data-tour="quickstart">
-        <QuickStartPanel
-          presets={presets}
-          activeJobType={activeTab}
-          onSelectPreset={handleSelectPreset}
-          onSavePreset={handleSavePreset}
-          currentUrl={getCurrentUrl()}
-        />
-      </div>
-
-      <SavePresetDialog
-        isOpen={isSaveDialogOpen}
-        onClose={() => setIsSaveDialogOpen(false)}
-        jobType={activeTab}
-        currentConfig={getCurrentConfig()}
-        onSave={handleConfirmSavePreset}
+      <PresetContainer
+        presets={presets}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        applyPreset={formState.applyPreset}
+        savePreset={savePreset}
+        getCurrentConfig={getCurrentConfig}
+        getCurrentUrl={getCurrentUrl}
+        onSelectPreset={handleSelectPreset}
       />
 
       <KeyboardShortcutsHelp
@@ -773,309 +387,72 @@ export function App() {
         <MetricsDashboard metrics={metrics} connectionState={connectionState} />
       </Suspense>
 
-      <Suspense
-        fallback={<div className="loading-placeholder">Loading forms...</div>}
-      >
-        <section id="forms" className="grid" data-tour="form-types">
-          <ScrapeForm
-            ref={scrapeFormRef}
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
-            incremental={incremental}
-            setIncremental={setIncremental}
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
-            profiles={profiles}
-            onSubmit={handleSubmitScrape}
-            loading={loading}
-            interceptEnabled={interceptEnabled}
-            setInterceptEnabled={setInterceptEnabled}
-            interceptURLPatterns={interceptURLPatterns}
-            setInterceptURLPatterns={setInterceptURLPatterns}
-            interceptResourceTypes={interceptResourceTypes}
-            setInterceptResourceTypes={setInterceptResourceTypes}
-            interceptCaptureRequestBody={interceptCaptureRequestBody}
-            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-            interceptCaptureResponseBody={interceptCaptureResponseBody}
-            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-            interceptMaxBodySize={interceptMaxBodySize}
-            setInterceptMaxBodySize={setInterceptMaxBodySize}
-          />
+      <JobSubmissionContainer
+        ref={jobSubmissionRef}
+        formState={formState}
+        onSubmitScrape={handleSubmitScrape}
+        onSubmitCrawl={handleSubmitCrawl}
+        onSubmitResearch={handleSubmitResearch}
+        loading={loading}
+        profiles={profiles}
+      />
 
-          <CrawlForm
-            ref={crawlFormRef}
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
-            incremental={incremental}
-            setIncremental={setIncremental}
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
-            profiles={profiles}
-            onSubmit={handleSubmitCrawl}
-            loading={loading}
-            interceptEnabled={interceptEnabled}
-            setInterceptEnabled={setInterceptEnabled}
-            interceptURLPatterns={interceptURLPatterns}
-            setInterceptURLPatterns={setInterceptURLPatterns}
-            interceptResourceTypes={interceptResourceTypes}
-            setInterceptResourceTypes={setInterceptResourceTypes}
-            interceptCaptureRequestBody={interceptCaptureRequestBody}
-            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-            interceptCaptureResponseBody={interceptCaptureResponseBody}
-            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-            interceptMaxBodySize={interceptMaxBodySize}
-            setInterceptMaxBodySize={setInterceptMaxBodySize}
-          />
+      <BatchContainer
+        headless={formState.headless}
+        setHeadless={formState.setHeadless}
+        usePlaywright={formState.usePlaywright}
+        setUsePlaywright={formState.setUsePlaywright}
+        timeoutSeconds={formState.timeoutSeconds}
+        setTimeoutSeconds={formState.setTimeoutSeconds}
+        authProfile={formState.authProfile}
+        setAuthProfile={formState.setAuthProfile}
+        authBasic={formState.authBasic}
+        setAuthBasic={formState.setAuthBasic}
+        headersRaw={formState.headersRaw}
+        setHeadersRaw={formState.setHeadersRaw}
+        cookiesRaw={formState.cookiesRaw}
+        setCookiesRaw={formState.setCookiesRaw}
+        queryRaw={formState.queryRaw}
+        setQueryRaw={formState.setQueryRaw}
+        loginUrl={formState.loginUrl}
+        setLoginUrl={formState.setLoginUrl}
+        loginUserSelector={formState.loginUserSelector}
+        setLoginUserSelector={formState.setLoginUserSelector}
+        loginPassSelector={formState.loginPassSelector}
+        setLoginPassSelector={formState.setLoginPassSelector}
+        loginSubmitSelector={formState.loginSubmitSelector}
+        setLoginSubmitSelector={formState.setLoginSubmitSelector}
+        loginUser={formState.loginUser}
+        setLoginUser={formState.setLoginUser}
+        loginPass={formState.loginPass}
+        setLoginPass={formState.setLoginPass}
+        extractTemplate={formState.extractTemplate}
+        setExtractTemplate={formState.setExtractTemplate}
+        extractValidate={formState.extractValidate}
+        setExtractValidate={formState.setExtractValidate}
+        preProcessors={formState.preProcessors}
+        setPreProcessors={formState.setPreProcessors}
+        postProcessors={formState.postProcessors}
+        setPostProcessors={formState.setPostProcessors}
+        transformers={formState.transformers}
+        setTransformers={formState.setTransformers}
+        incremental={formState.incremental}
+        setIncremental={formState.setIncremental}
+        maxDepth={formState.maxDepth}
+        setMaxDepth={formState.setMaxDepth}
+        maxPages={formState.maxPages}
+        setMaxPages={formState.setMaxPages}
+        webhookUrl={formState.webhookUrl}
+        setWebhookUrl={formState.setWebhookUrl}
+        webhookEvents={formState.webhookEvents}
+        setWebhookEvents={formState.setWebhookEvents}
+        webhookSecret={formState.webhookSecret}
+        setWebhookSecret={formState.setWebhookSecret}
+        profiles={profiles}
+        loading={loading}
+      />
 
-          <ResearchForm
-            ref={researchFormRef}
-            maxDepth={maxDepth}
-            setMaxDepth={setMaxDepth}
-            maxPages={maxPages}
-            setMaxPages={setMaxPages}
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
-            profiles={profiles}
-            onSubmit={handleSubmitResearch}
-            loading={loading}
-            interceptEnabled={interceptEnabled}
-            setInterceptEnabled={setInterceptEnabled}
-            interceptURLPatterns={interceptURLPatterns}
-            setInterceptURLPatterns={setInterceptURLPatterns}
-            interceptResourceTypes={interceptResourceTypes}
-            setInterceptResourceTypes={setInterceptResourceTypes}
-            interceptCaptureRequestBody={interceptCaptureRequestBody}
-            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-            interceptCaptureResponseBody={interceptCaptureResponseBody}
-            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-            interceptMaxBodySize={interceptMaxBodySize}
-            setInterceptMaxBodySize={setInterceptMaxBodySize}
-          />
-
-          <BatchForm
-            activeTab={batchTab}
-            setActiveTab={setBatchTab}
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
-            incremental={incremental}
-            setIncremental={setIncremental}
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
-            profiles={profiles}
-            urlsInput={batchUrls}
-            setUrlsInput={setBatchUrls}
-            maxDepth={maxDepth}
-            setMaxDepth={setMaxDepth}
-            maxPages={maxPages}
-            setMaxPages={setMaxPages}
-            query={batchQuery}
-            setQuery={setBatchQuery}
-            onSubmitScrape={handleSubmitBatchScrape}
-            onSubmitCrawl={handleSubmitBatchCrawl}
-            onSubmitResearch={handleSubmitBatchResearch}
-            loading={loading}
-          />
-        </section>
-      </Suspense>
-
-      <section id="batches">
-        <BatchList
-          batches={batches}
-          jobs={batchJobs}
-          onViewStatus={refreshBatches}
-          onCancel={handleCancelBatch}
-          onRefresh={refreshBatches}
-          loading={batchesLoading}
-        />
-      </section>
-
-      <section id="chains">
-        {showChainBuilder ? (
-          <Suspense
-            fallback={
-              <div className="loading-placeholder">
-                Loading chain builder...
-              </div>
-            }
-          >
-            <ChainBuilder
-              onCreate={handleCreateChain}
-              onCancel={() => setShowChainBuilder(false)}
-            />
-          </Suspense>
-        ) : (
-          <ChainList
-            chains={chains}
-            onRefresh={refreshChains}
-            onDelete={handleDeleteChain}
-            onSubmit={handleSubmitChain}
-            loading={chainsLoading}
-            onCreateClick={() => setShowChainBuilder(true)}
-          />
-        )}
-      </section>
+      <ChainContainer onChainSubmit={refreshJobs} />
 
       <section id="jobs">
         <JobList
@@ -1093,52 +470,9 @@ export function App() {
         />
       </section>
 
-      <section id="results">
-        <Suspense
-          fallback={
-            <div className="loading-placeholder">
-              Loading results explorer...
-            </div>
-          }
-        >
-          <ResultsExplorer
-            jobId={selectedJobId}
-            resultItems={resultItems}
-            selectedResultIndex={selectedResultIndex}
-            setSelectedResultIndex={setSelectedResultIndex}
-            resultSummary={resultSummary}
-            resultConfidence={resultConfidence}
-            resultEvidence={resultEvidence}
-            resultClusters={resultClusters}
-            resultCitations={resultCitations}
-            rawResult={rawResult}
-            resultFormat={resultFormat}
-            currentPage={currentPage}
-            totalResults={totalResults}
-            resultsPerPage={100}
-            onLoadPage={setCurrentPage}
-            availableJobs={jobs}
-          />
-        </Suspense>
-      </section>
+      <ResultsContainer resultsState={resultsState} jobs={jobs} />
 
-      <section id="watches">
-        <Suspense
-          fallback={
-            <div className="loading-placeholder">Loading watch manager...</div>
-          }
-        >
-          <WatchManager
-            watches={watches}
-            onRefresh={refreshWatches}
-            onCreate={handleCreateWatch}
-            onUpdate={handleUpdateWatch}
-            onDelete={handleDeleteWatch}
-            onCheck={handleCheckWatch}
-            loading={watchesLoading}
-          />
-        </Suspense>
-      </section>
+      <WatchContainer />
 
       <InfoSections
         profiles={profiles}
