@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0306",
-      "status": "todo",
-      "title": "Document queue/redis/crawl-state env vars in .env.example",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/config/config.go",
-        ".env.example"
-      ],
-      "evidence": [
-        "internal/config/config.go:134-144 defines QUEUE_BACKEND, REDIS_ADDR, REDIS_PASSWORD, REDIS_DB, REDIS_KEY_PREFIX, CRAWL_STATE_BACKEND.",
-        "rg -n QUEUE_BACKEND|REDIS_ADDR|REDIS_PASSWORD|REDIS_DB|REDIS_KEY_PREFIX|CRAWL_STATE_BACKEND .env.example returns no matches (missing documentation)."
-      ],
-      "plan": [
-        "Add a dedicated section in .env.example documenting queue backend and Redis/crawl state variables with defaults.",
-        "Align comments with config defaults and valid values.",
-        "Verify by running `rg -n \"QUEUE_BACKEND|REDIS_ADDR|REDIS_PASSWORD|REDIS_DB|REDIS_KEY_PREFIX|CRAWL_STATE_BACKEND\" .env.example`."
-      ],
-      "notes": [
-        "Principles: DRY (C), Operational hygiene (H)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0307",
       "status": "todo",
       "title": "Document exporter DB connection env vars in .env.example",
