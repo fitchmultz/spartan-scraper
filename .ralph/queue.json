@@ -1,4 +1,400 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0288",
+      "status": "todo",
+      "title": "Honor context cancellation during backoff/poll sleeps",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/fetch/chromedp_fetcher.go",
+        "internal/fetch/playwright_fetcher.go",
+        "internal/queue/redis.go",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go"
+      ],
+      "evidence": [
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/queue/redis.go:168 time.Sleep(time.Second)",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/chromedp_fetcher.go:80 time.Sleep(delay)",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/chromedp_fetcher.go:469 time.Sleep(pollInterval)",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:82 time.Sleep(delay)",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:472 time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)",
+        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:596 time.Sleep(time.Duration(pollMs) * time.Millisecond)"
+      ],
+      "plan": [
+        "Introduce a small helper (e.g., sleepWithContext) in an appropriate internal package to block until either the timer fires or ctx is canceled.",
+        "Replace the production time.Sleep calls in chromedp_fetcher.go, playwright_fetcher.go, and queue/redis.go with the context-aware helper and propagate ctx cancellation where needed.",
+        "Add focused tests that assert cancellation returns quickly instead of waiting the full delay.",
+        "Verify by running go test ./internal/fetch ./internal/queue and confirming tests pass and cancellation-aware behavior is covered."
+      ],
+      "notes": [
+        "Principles violated: F (Fail fast appropriately), H (Operational hygiene).",
+        "Why it matters: context cancellation (shutdowns, timeouts, request aborts) is delayed by hard sleeps, which can stall workers and make shutdowns slow or flaky.",
+        "Minimal fix: replace blocking sleeps with a ctx-aware sleep helper and cover cancellation in tests."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0289",
+      "status": "todo",
+      "title": "Remove !important from Joyride styles to satisfy Biome lint",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/src/index.css",
+        "make ci",
+        "cd web && pnpm exec biome lint ."
+      ],
+      "evidence": [
+        "make ci -> biome lint warnings: web/src/index.css:1880, 1881, 1882, 1883, 1888, 1893, 1894 lint/complexity/noImportantStyles",
+        "Warnings show !important usage in .__floater__body, .__floater, .react-joyride__spotlight styles"
+      ],
+      "plan": [
+        "Adjust the Joyride selectors or load order to avoid !important (e.g., increase specificity with scoped selectors or move overrides after vendor styles).",
+        "Confirm visual parity for onboarding tooltip/spotlight styling.",
+        "Verify by running cd web && pnpm exec biome lint . and ensuring the noImportantStyles warnings are gone."
+      ],
+      "notes": [
+        "Principles violated: G (Least astonishment), H (Operational hygiene).",
+        "Why it matters: lint warnings make CI noisy and normalize ignored style violations, which hides real regressions.",
+        "Minimal fix: remove !important by increasing selector specificity or adjusting style import order."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0290",
+      "status": "todo",
+      "title": "Reduce web build chunk size warning (>500 kB) via code-splitting",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/",
+        "cd web && pnpm run build"
+      ],
+      "evidence": [
+        "make ci -> pnpm run build warns: 'Some chunks are larger than 500 kB after minification' and suggests dynamic import/manualChunks"
+      ],
+      "plan": [
+        "Identify the largest chunk contributors (e.g., route-level or feature-level bundles) and choose a minimal split target.",
+        "Introduce dynamic imports or rollup manualChunks configuration to split the large bundle without changing runtime behavior.",
+        "Verify by running cd web && pnpm run build and confirming the chunk-size warning is gone or below the configured threshold."
+      ],
+      "notes": [
+        "Principles violated: H (Operational hygiene), E (Make bugs hard to write) via performance regressions that are harder to notice.",
+        "Why it matters: oversized bundles slow initial load and can regress UX on constrained devices.",
+        "Minimal fix: split the largest routes/components into lazy-loaded chunks."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0291",
+      "status": "todo",
+      "title": "Split internal/cli/batch/batch.go (1237 LOC) into cohesive files",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/cli/batch/batch.go",
+        "wc -l internal/cli/batch/batch.go"
+      ],
+      "evidence": [
+        "wc -l internal/cli/batch/batch.go -> 1237"
+      ],
+      "plan": [
+        "Identify logical responsibility seams (config parsing, job setup, execution, reporting) and extract into new files within internal/cli/batch.",
+        "Keep public API unchanged; ensure helper functions remain package-private.",
+        "Verify by running go test ./internal/cli/batch and make test-ci."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: large files make change review error-prone and increase coupling between unrelated CLI behaviors.",
+        "Minimal fix: extract cohesive groups into smaller files without changing behavior."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0292",
+      "status": "todo",
+      "title": "Split web/src/App.tsx (1081 LOC) into smaller components",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "wc -l web/src/App.tsx"
+      ],
+      "evidence": [
+        "wc -l web/src/App.tsx -> 1081"
+      ],
+      "plan": [
+        "Extract layout, provider wiring, and route composition into dedicated components/modules under web/src.",
+        "Keep routing behavior stable and reuse existing tests.",
+        "Verify by running cd web && pnpm run test and cd web && pnpm run build."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: oversized root components increase merge conflicts and make routing changes risky.",
+        "Minimal fix: split into smaller components without changing runtime behavior."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0293",
+      "status": "todo",
+      "title": "Split web/src/components/WatchManager.tsx (1037 LOC)",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/src/components/WatchManager.tsx",
+        "wc -l web/src/components/WatchManager.tsx"
+      ],
+      "evidence": [
+        "wc -l web/src/components/WatchManager.tsx -> 1037"
+      ],
+      "plan": [
+        "Extract repeated UI sections and data hooks into subcomponents/hooks under web/src/components/watch/ (or similar).",
+        "Ensure props and state boundaries remain clear and reduce file size below 1000 LOC.",
+        "Verify by running cd web && pnpm run test and cd web && pnpm run build."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: large UI modules are difficult to test and review, increasing regression risk.",
+        "Minimal fix: split into cohesive subcomponents and hooks without altering behavior."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0294",
+      "status": "todo",
+      "title": "Split internal/distributed/redis_lock_test.go (1485 LOC) into focused test files",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/distributed/redis_lock_test.go",
+        "wc -l internal/distributed/redis_lock_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/distributed/redis_lock_test.go -> 1485"
+      ],
+      "plan": [
+        "Group tests by behavior (acquire/release, renew, contention, expiry) and move each group into its own *_test.go file.",
+        "Keep helper functions in a shared testutil file where appropriate.",
+        "Verify by running go test ./internal/distributed."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: extremely large test files make it hard to isolate failures and add new cases safely.",
+        "Minimal fix: split tests into coherent files without changing assertions."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0295",
+      "status": "todo",
+      "title": "Modularize web/src/index.css (2771 LOC) into smaller CSS files",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/src/index.css",
+        "wc -l web/src/index.css"
+      ],
+      "evidence": [
+        "wc -l web/src/index.css -> 2771"
+      ],
+      "plan": [
+        "Split index.css into themed sections (base, layout, components, utilities) and import them in a stable order.",
+        "Preserve selector specificity and avoid visual regressions.",
+        "Verify by running cd web && pnpm run build and spot-checking key screens."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: monolithic CSS makes scope and overrides hard to reason about, increasing styling regressions.",
+        "Minimal fix: split CSS into smaller files with clear boundaries while keeping the cascade order."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0296",
+      "status": "todo",
+      "title": "Split internal/crawl/crawl.go (743 LOC) into cohesive files",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/crawl/crawl.go",
+        "wc -l internal/crawl/crawl.go"
+      ],
+      "evidence": [
+        "wc -l internal/crawl/crawl.go -> 743"
+      ],
+      "plan": [
+        "Extract crawler orchestration, worker logic, and utility helpers into separate files within internal/crawl.",
+        "Keep exported types/functions unchanged unless strictly necessary.",
+        "Verify by running go test ./internal/crawl."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: larger files increase coupling between crawler stages and make targeted changes risky.",
+        "Minimal fix: split by responsibility without behavior changes."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0297",
+      "status": "todo",
+      "title": "Split internal/store/store_retention_test.go (901 LOC) into focused test files",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/store/store_retention_test.go",
+        "wc -l internal/store/store_retention_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/store/store_retention_test.go -> 901"
+      ],
+      "plan": [
+        "Group retention tests by feature (jobs, crawl states, artifacts) and split into multiple *_test.go files.",
+        "Extract shared helpers into a testutil file if needed.",
+        "Verify by running go test ./internal/store."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: oversized test files are difficult to maintain and make failures harder to triage.",
+        "Minimal fix: split by responsibility while keeping assertions intact."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0298",
+      "status": "todo",
+      "title": "Split internal/webhook/dispatcher_test.go (803 LOC) into focused test files",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/webhook/dispatcher_test.go",
+        "wc -l internal/webhook/dispatcher_test.go"
+      ],
+      "evidence": [
+        "wc -l internal/webhook/dispatcher_test.go -> 803"
+      ],
+      "plan": [
+        "Separate dispatcher tests by scenario (success, retries, failures, rate limits) into multiple files.",
+        "Keep shared fixtures in a local test helper file.",
+        "Verify by running go test ./internal/webhook."
+      ],
+      "notes": [
+        "Principles violated: D (Localize change/SoC), A (KISS).",
+        "Why it matters: large test files increase cognitive load and complicate adding coverage.",
+        "Minimal fix: split tests into cohesive files without altering behavior."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T14:19:37Z",
+      "updated_at": "2026-02-02T14:19:37Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
