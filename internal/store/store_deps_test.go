@@ -261,6 +261,89 @@ func TestGetDependentJobs(t *testing.T) {
 	}
 }
 
+func TestGetDependentJobsNoSubstringMatch(t *testing.T) {
+	dataDir := t.TempDir()
+	s, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+
+	// Create a job with ID "12"
+	job12 := model.Job{
+		ID:        "12",
+		Kind:      model.KindScrape,
+		Status:    model.StatusSucceeded,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Params:    map[string]interface{}{},
+	}
+
+	err = s.Create(ctx, job12)
+	if err != nil {
+		t.Fatalf("Create job 12 failed: %v", err)
+	}
+
+	// Create a job that depends on "123" (not "12")
+	jobDependsOn123 := model.Job{
+		ID:               "depends-on-123",
+		Kind:             model.KindScrape,
+		Status:           model.StatusQueued,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+		Params:           map[string]interface{}{},
+		DependsOn:        []string{"123"},
+		DependencyStatus: model.DependencyStatusPending,
+	}
+
+	err = s.Create(ctx, jobDependsOn123)
+	if err != nil {
+		t.Fatalf("Create job depending on 123 failed: %v", err)
+	}
+
+	// Create a job that depends on "12" (should match)
+	jobDependsOn12 := model.Job{
+		ID:               "depends-on-12",
+		Kind:             model.KindCrawl,
+		Status:           model.StatusQueued,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+		Params:           map[string]interface{}{},
+		DependsOn:        []string{"12"},
+		DependencyStatus: model.DependencyStatusPending,
+	}
+
+	err = s.Create(ctx, jobDependsOn12)
+	if err != nil {
+		t.Fatalf("Create job depending on 12 failed: %v", err)
+	}
+
+	// Get jobs that depend on "12"
+	dependents, err := s.GetDependentJobs(ctx, "12")
+	if err != nil {
+		t.Fatalf("GetDependentJobs failed: %v", err)
+	}
+
+	// Should only return 1 job (the one that depends on "12", not "123")
+	if len(dependents) != 1 {
+		t.Errorf("Expected 1 dependent job, got %d", len(dependents))
+	}
+
+	// Verify the correct job is returned
+	if len(dependents) > 0 && dependents[0].ID != "depends-on-12" {
+		t.Errorf("Expected depends-on-12, got %s", dependents[0].ID)
+	}
+
+	// Verify the job depending on "123" is NOT returned
+	for _, d := range dependents {
+		if d.ID == "depends-on-123" {
+			t.Error("Did not expect depends-on-123 in results (substring false positive)")
+		}
+	}
+}
+
 func TestGetJobsByChain(t *testing.T) {
 	dataDir := t.TempDir()
 	s, err := Open(dataDir)

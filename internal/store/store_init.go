@@ -154,7 +154,7 @@ func (s *Store) prepareStatements() error {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update dependency status statement", err)
 	}
 
-	s.stmtGetDependentJobs, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on like ?`)
+	s.stmtGetDependentJobs, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on is not null and depends_on != '' and exists (select 1 from json_each(depends_on) where value = ?)`)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get dependent jobs statement", err)
 	}

@@ -2,38 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0300",
-      "status": "todo",
-      "title": "Fix dependent job lookup to avoid LIKE false positives",
-      "priority": "high",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/store/store_jobs.go"
-      ],
-      "evidence": [
-        "internal/store/store_jobs.go:300-305 builds SQL pattern %\"jobID\"% and uses LIKE against depends_on JSON, which can match substrings (e.g., jobID=\"12\" matches \"123\")."
-      ],
-      "plan": [
-        "Replace LIKE matching with an exact JSON match using json_each (SQLite) or equivalent JSON query for the store backend.",
-        "Add/extend store tests to cover substring cases (e.g., depends_on contains \"123\" should not match \"12\").",
-        "Verify by running `go test ./internal/store` and confirming the new test passes."
-      ],
-      "notes": [
-        "Principles: Make bugs hard to write (E), Least astonishment (G)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0301",
       "status": "todo",
       "title": "Propagate context into AI extraction to allow cancellation/timeouts",

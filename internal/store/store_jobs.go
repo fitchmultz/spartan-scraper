@@ -298,11 +298,10 @@ func (s *Store) UpdateDependencyStatus(ctx context.Context, jobID string, status
 }
 
 // GetDependentJobs returns jobs that depend on the given job ID.
-// Uses a LIKE query to find jobs where depends_on contains the job ID.
+// Uses SQLite's json_each() function to find jobs where depends_on contains the job ID.
+// This performs exact JSON array element matching, avoiding false positives from substring matches.
 func (s *Store) GetDependentJobs(ctx context.Context, jobID string) ([]model.Job, error) {
-	// Use JSON array pattern matching: %"jobID"%
-	pattern := `%"` + jobID + `"%`
-	rows, err := s.stmtGetDependentJobs.QueryContext(ctx, pattern)
+	rows, err := s.stmtGetDependentJobs.QueryContext(ctx, jobID)
 	if err != nil {
 		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to query dependent jobs", err)
 	}
