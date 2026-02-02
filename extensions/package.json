@@ -1,0 +1,17 @@
+{
+  "name": "spartan-scraper-extension",
+  "version": "0.1.0",
+  "description": "Browser extension for Spartan Scraper",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "cp -r popup/*.html popup/*.css dist/popup/ && cp -r options/*.html options/*.css dist/options/ && cp manifest.json dist/ && cp -r icons dist/",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "package": "npm run clean && npm run build && cd dist && zip -r ../spartan-scraper-extension.zip ."
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.3.3"
+  }
+}

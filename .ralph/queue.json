@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0277",
-      "status": "todo",
-      "title": "Create Browser Extension for Quick Scraping",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "browser-extension",
-        "ux",
-        "integration"
-      ],
-      "scope": [
-        "extensions/",
-        "internal/api/",
-        "api/openapi.yaml"
-      ],
-      "evidence": [
-        "path: README.md :: usage examples :: all require terminal or web UI, no browser integration",
-        "path: docs/usage.md :: CLI examples :: no browser bookmarklet or extension mentioned",
-        "workflow: user browsing must manually copy URL, open terminal, and run spartan command",
-        "external: https://chrome.google.com/webstore :: popular scrapers like Web Scraper, Instant Data Scraper have browser extensions"
-      ],
-      "plan": [
-        "Create extensions/ directory with Chrome/Firefox extension manifest",
-        "Build popup UI for quick scrape with template selection",
-        "Implement context menu integration (right-click any page to scrape)",
-        "Add visual selector picker directly in browser page",
-        "Create 'Send to Spartan' button that submits to API with current URL",
-        "Implement extraction preview in extension popup",
-        "Add API key authentication for extension requests",
-        "Create installation documentation and publish to Chrome Web Store",
-        "Verify by installing extension, navigating to a webpage, right-clicking, and selecting 'Scrape with Spartan'"
-      ],
-      "notes": [],
-      "request": "innovation scan finding",
-      "created_at": "2026-01-31T21:24:49Z",
-      "updated_at": "2026-01-31T21:24:49Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0278",
       "status": "todo",
       "title": "Add Cross-Job Content Deduplication Service",

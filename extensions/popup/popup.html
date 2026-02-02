@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spartan Scraper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div class="logo">
+          <span class="logo-icon">S</span>
+          <span class="logo-text">Spartan</span>
+        </div>
+        <button id="settingsBtn" class="icon-btn" title="Settings">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+            ></path>
+          </svg>
+        </button>
+      </header>
+
+      <main class="main">
+        <!-- Configuration Warning -->
+        <div id="configWarning" class="alert alert-warning hidden">
+          <span class="alert-icon">⚠️</span>
+          <span class="alert-text">API key required</span>
+          <button id="configureBtn" class="btn btn-sm btn-secondary">
+            Configure
+          </button>
+        </div>
+
+        <!-- URL Input -->
+        <div class="form-group">
+          <label for="urlInput" class="form-label">URL to scrape</label>
+          <input
+            type="url"
+            id="urlInput"
+            class="form-input"
+            placeholder="https://example.com"
+            readonly
+          />
+        </div>
+
+        <!-- Template Selection -->
+        <div class="form-group">
+          <label for="templateSelect" class="form-label">Template</label>
+          <select id="templateSelect" class="form-select">
+            <option value="">Loading templates...</option>
+          </select>
+          <span class="form-hint">Select an extraction template</span>
+        </div>
+
+        <!-- Options -->
+        <div class="form-group form-group-inline">
+          <label class="checkbox-label">
+            <input type="checkbox" id="headlessCheck" checked />
+            <span>Use headless browser</span>
+          </label>
+        </div>
+
+        <!-- Scrape Button -->
+        <button id="scrapeBtn" class="btn btn-primary btn-full">
+          <span id="scrapeBtnText">Scrape Page</span>
+          <span id="scrapeBtnLoader" class="loader hidden"></span>
+        </button>
+
+        <!-- Status Section -->
+        <div id="statusSection" class="status-section hidden">
+          <div class="status-header">
+            <span class="status-label">Job Status</span>
+            <span id="statusBadge" class="status-badge">queued</span>
+          </div>
+          <div id="statusMessage" class="status-message"></div>
+          <div id="statusActions" class="status-actions hidden">
+            <a
+              id="viewResultsLink"
+              href="#"
+              target="_blank"
+              class="btn btn-sm btn-secondary"
+            >
+              View Results
+            </a>
+          </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorDisplay" class="alert alert-error hidden">
+          <span class="alert-icon">❌</span>
+          <span id="errorText" class="alert-text"></span>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <span class="footer-text">Spartan Scraper v0.1.0</span>
+      </footer>
+    </div>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

@@ -3,6 +3,7 @@ SHELL := /bin/bash
 APP_NAME := spartan
 BIN_DIR := bin
 WEB_DIR := web
+EXTENSION_DIR := extensions
 DATA_DIR := .data
 
 # Installation directory (respects XDG_BIN_HOME if set, otherwise ~/.local/bin)
@@ -18,11 +19,12 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
            -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=$(COMMIT) \
            -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=$(DATE)"
 
-.PHONY: install update lint type-check format clean test test-ci generate build ci web-dev
+.PHONY: install update lint type-check format clean test test-ci generate build ci web-dev extension-install extension-build extension-clean
 
 install:
 	go mod download
 	cd $(WEB_DIR) && pnpm install
+	cd $(EXTENSION_DIR) && pnpm install
 
 update:
 	@echo "Updating Go dependencies..."
@@ -30,6 +32,7 @@ update:
 	go mod tidy
 	@echo "Updating pnpm dependencies..."
 	cd $(WEB_DIR) && pnpm update
+	cd $(EXTENSION_DIR) && pnpm update
 	@echo "Dependency update complete. Review changes before committing."
 
 lint:
@@ -49,8 +52,9 @@ format:
 # Preserves: Source-controlled lock files (go.sum, web/pnpm-lock.yaml)
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)
-	rm -rf node_modules $(WEB_DIR)/node_modules
+	rm -rf node_modules $(WEB_DIR)/node_modules $(EXTENSION_DIR)/node_modules
 	cd $(WEB_DIR) && rm -rf dist
+	cd $(EXTENSION_DIR) && rm -rf dist
 	rm -f $(INSTALL_DIR)/$(APP_NAME)
 	find . -type f -name "*.test" -delete
 	find . -type f -name "*.out" -delete
@@ -86,3 +90,19 @@ ci-slow: build
 
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev
+
+# Extension targets
+extension-install:
+	cd $(EXTENSION_DIR) && pnpm install
+
+extension-build:
+	cd $(EXTENSION_DIR) && pnpm run build
+
+extension-dev:
+	cd $(EXTENSION_DIR) && pnpm run dev
+
+extension-clean:
+	cd $(EXTENSION_DIR) && pnpm run clean
+
+extension-package: extension-build
+	cd $(EXTENSION_DIR) && pnpm run package
