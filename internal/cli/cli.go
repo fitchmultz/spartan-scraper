@@ -55,6 +55,8 @@ func Run(ctx context.Context) int {
 
 	case "auth":
 		return manage.RunAuth(ctx, cfg, os.Args[2:])
+	case "form":
+		return manage.RunForm(ctx, cfg, os.Args[2:])
 	case "render-profiles":
 		return manage.RunRenderProfiles(ctx, cfg, os.Args[2:])
 	case "pipeline-js":

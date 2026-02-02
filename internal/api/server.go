@@ -292,6 +292,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/dedup/stats", s.handleDedupStats)
 	mux.HandleFunc("/v1/dedup/job/", s.handleDedupJobDelete)
 
+	// Form endpoints
+	mux.HandleFunc("/v1/forms/detect", s.handleForms)
+	mux.HandleFunc("/v1/forms/fill", s.handleForms)
+
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
 

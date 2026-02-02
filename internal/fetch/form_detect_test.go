@@ -373,3 +373,291 @@ func BenchmarkFormDetector(b *testing.B) {
 		}
 	}
 }
+
+// TestFormDetector_DetectAllForms tests the general form detection for all form types.
+func TestFormDetector_DetectAllForms(t *testing.T) {
+	tests := []struct {
+		name            string
+		html            string
+		expectForms     int
+		expectType      FormType
+		expectFields    int
+		expectAllFields bool
+	}{
+		{
+			name: "search_form",
+			html: `
+				<html>
+				<body>
+					<form action="/search">
+						<input type="search" name="q" placeholder="Search...">
+						<button type="submit">Search</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     1,
+			expectType:      FormTypeSearch,
+			expectFields:    1, // search input only (button not in AllFields)
+			expectAllFields: true,
+		},
+		{
+			name: "contact_form",
+			html: `
+				<html>
+				<body>
+					<form action="/contact">
+						<input type="text" name="name" placeholder="Your Name">
+						<input type="email" name="email" placeholder="Email">
+						<textarea name="message" placeholder="Message"></textarea>
+						<button type="submit">Send</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     1,
+			expectType:      FormTypeContact,
+			expectFields:    3, // name, email, message (button not in AllFields)
+			expectAllFields: true,
+		},
+		{
+			name: "newsletter_form",
+			html: `
+				<html>
+				<body>
+					<form class="newsletter">
+						<input type="email" name="email" placeholder="Subscribe to newsletter">
+						<button type="submit">Subscribe</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     1,
+			expectType:      FormTypeNewsletter,
+			expectFields:    1, // email only (button not in AllFields)
+			expectAllFields: true,
+		},
+		{
+			name: "checkout_form",
+			html: `
+				<html>
+				<body>
+					<form action="/checkout">
+						<input type="text" name="address" placeholder="Street Address">
+						<input type="text" name="city" placeholder="City">
+						<input type="text" name="zip" placeholder="ZIP Code">
+						<button type="submit">Complete Order</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     1,
+			expectType:      FormTypeCheckout,
+			expectFields:    3, // address, city, zip (button not in AllFields)
+			expectAllFields: true,
+		},
+		{
+			name: "survey_form",
+			html: `
+				<html>
+				<body>
+					<form class="survey">
+						<p>Rate our service</p>
+						<input type="radio" name="rating" value="1">
+						<input type="radio" name="rating" value="2">
+						<input type="radio" name="rating" value="3">
+						<input type="checkbox" name="subscribe">
+						<button type="submit">Submit</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     1,
+			expectType:      FormTypeSurvey,
+			expectFields:    4, // 3 radio + 1 checkbox (button not in AllFields)
+			expectAllFields: true,
+		},
+		{
+			name: "multiple_form_types",
+			html: `
+				<html>
+				<body>
+					<form id="search">
+						<input type="text" name="q" placeholder="Search">
+						<button>Search</button>
+					</form>
+					<form id="contact">
+						<input type="email" name="email">
+						<textarea name="message"></textarea>
+						<button>Send</button>
+					</form>
+				</body>
+				</html>
+			`,
+			expectForms:     2,
+			expectAllFields: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			detector := NewFormDetector()
+			forms, err := detector.DetectAllForms(tt.html)
+			if err != nil {
+				t.Fatalf("DetectAllForms() error = %v", err)
+			}
+
+			if len(forms) != tt.expectForms {
+				t.Errorf("expected %d forms, got %d", tt.expectForms, len(forms))
+			}
+
+			if tt.expectForms == 0 {
+				return
+			}
+
+			// Check the first form
+			form := forms[0]
+
+			if tt.expectType != "" && form.FormType != tt.expectType {
+				t.Errorf("expected form type %s, got %s", tt.expectType, form.FormType)
+			}
+
+			if tt.expectAllFields && len(form.AllFields) == 0 {
+				t.Errorf("expected AllFields to be populated, got empty")
+			}
+
+			if tt.expectFields > 0 && len(form.AllFields) != tt.expectFields {
+				t.Errorf("expected %d fields, got %d", tt.expectFields, len(form.AllFields))
+			}
+
+			// Verify form attributes are extracted
+			if form.FormSelector == "" {
+				t.Error("expected non-empty form selector")
+			}
+		})
+	}
+}
+
+// TestFormDetector_DetectFormsByType tests filtering forms by type.
+func TestFormDetector_DetectFormsByType(t *testing.T) {
+	html := `
+		<html>
+		<body>
+			<form id="search">
+				<input type="text" name="q" placeholder="Search">
+				<button>Search</button>
+			</form>
+			<form id="contact">
+				<input type="email" name="email">
+				<textarea name="message"></textarea>
+				<button>Send</button>
+			</form>
+			<form id="login">
+				<input type="text" name="username">
+				<input type="password" name="password">
+				<button>Login</button>
+			</form>
+		</body>
+		</html>
+	`
+
+	detector := NewFormDetector()
+
+	// Test filtering by search type
+	searchForms, err := detector.DetectFormsByType(html, FormTypeSearch)
+	if err != nil {
+		t.Fatalf("DetectFormsByType() error = %v", err)
+	}
+	if len(searchForms) != 1 {
+		t.Errorf("expected 1 search form, got %d", len(searchForms))
+	}
+
+	// Test filtering by contact type
+	contactForms, err := detector.DetectFormsByType(html, FormTypeContact)
+	if err != nil {
+		t.Fatalf("DetectFormsByType() error = %v", err)
+	}
+	if len(contactForms) != 1 {
+		t.Errorf("expected 1 contact form, got %d", len(contactForms))
+	}
+
+	// Test filtering by login type
+	loginForms, err := detector.DetectFormsByType(html, FormTypeLogin)
+	if err != nil {
+		t.Fatalf("DetectFormsByType() error = %v", err)
+	}
+	if len(loginForms) != 1 {
+		t.Errorf("expected 1 login form, got %d", len(loginForms))
+	}
+
+	// Test filtering by non-existent type
+	newsletterForms, err := detector.DetectFormsByType(html, FormTypeNewsletter)
+	if err != nil {
+		t.Fatalf("DetectFormsByType() error = %v", err)
+	}
+	if len(newsletterForms) != 0 {
+		t.Errorf("expected 0 newsletter forms, got %d", len(newsletterForms))
+	}
+}
+
+// TestFormDetector_DetectFormFields tests extracting fields from a specific form.
+func TestFormDetector_DetectFormFields(t *testing.T) {
+	html := `
+		<html>
+		<body>
+			<form id="contact-form" action="/contact" method="POST">
+				<input type="text" name="name" placeholder="Your Name" required>
+				<input type="email" name="email" placeholder="Email">
+				<textarea name="message" placeholder="Message"></textarea>
+				<select name="country">
+					<option value="us">US</option>
+					<option value="uk">UK</option>
+				</select>
+				<button type="submit">Send</button>
+			</form>
+		</body>
+		</html>
+	`
+
+	detector := NewFormDetector()
+	fields, err := detector.DetectFormFields(html, "#contact-form")
+	if err != nil {
+		t.Fatalf("DetectFormFields() error = %v", err)
+	}
+
+	// name, email, message, country (submit button not in AllFields)
+	if len(fields) != 4 {
+		t.Errorf("expected 4 fields, got %d", len(fields))
+	}
+
+	for _, field := range fields {
+		if field.Selector == "" {
+			t.Error("expected non-empty selector for field")
+		}
+		if field.FieldType == "" {
+			t.Error("expected non-empty field type")
+		}
+		if field.FieldName == "" {
+			t.Error("expected non-empty field name")
+		}
+	}
+}
+
+// TestFormDetector_DetectFormFields_NotFound tests error handling for missing forms.
+func TestFormDetector_DetectFormFields_NotFound(t *testing.T) {
+	html := `
+		<html>
+		<body>
+			<form id="other-form">
+				<input type="text" name="field">
+			</form>
+		</body>
+		</html>
+	`
+
+	detector := NewFormDetector()
+	_, err := detector.DetectFormFields(html, "#nonexistent")
+	if err == nil {
+		t.Error("expected error for non-existent form selector")
+	}
+}

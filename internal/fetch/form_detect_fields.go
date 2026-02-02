@@ -247,5 +247,198 @@ func (d *FormDetector) analyzeSubmitButton(btn *goquery.Selection, btnType strin
 		MatchValue:   "submit",
 		Confidence:   confidence,
 		MatchReasons: reasons,
+		FieldType:    FieldTypeSubmit,
 	}
+}
+
+// findAllFormFields extracts all fields from a form with their semantic types.
+func (d *FormDetector) findAllFormFields(formElem *goquery.Selection) []FieldMatch {
+	var fields []FieldMatch
+
+	// Find all input elements
+	formElem.Find("input").Each(func(i int, input *goquery.Selection) {
+		fieldType := d.classifyFieldType(input)
+		if fieldType == FieldTypeHidden {
+			return // Skip hidden fields
+		}
+
+		field := d.createFieldMatch(input, fieldType)
+		fields = append(fields, field)
+	})
+
+	// Find all textarea elements
+	formElem.Find("textarea").Each(func(i int, textarea *goquery.Selection) {
+		fieldType := d.classifyTextareaType(textarea)
+		field := d.createFieldMatch(textarea, fieldType)
+		fields = append(fields, field)
+	})
+
+	// Find all select elements
+	formElem.Find("select").Each(func(i int, selectElem *goquery.Selection) {
+		fieldType := d.classifySelectType(selectElem)
+		field := d.createFieldMatch(selectElem, fieldType)
+		fields = append(fields, field)
+	})
+
+	return fields
+}
+
+// createFieldMatch creates a FieldMatch from an element.
+func (d *FormDetector) createFieldMatch(elem *goquery.Selection, fieldType FieldType) FieldMatch {
+	selector := d.generateSelector(elem)
+	placeholder, _ := elem.Attr("placeholder")
+	required, _ := elem.Attr("required")
+
+	// Determine field name for API usage
+	fieldName := d.determineFieldName(elem, fieldType)
+
+	return FieldMatch{
+		Selector:     selector,
+		Attribute:    d.determineBestAttribute(elem, 0, nil),
+		MatchValue:   d.determineMatchValue(elem, 0, nil),
+		Confidence:   0.5, // Base confidence for general fields
+		MatchReasons: []string{"detected as " + string(fieldType)},
+		FieldType:    fieldType,
+		FieldName:    fieldName,
+		Required:     required != "",
+		Placeholder:  placeholder,
+	}
+}
+
+// determineFieldName generates a human-readable field name for API usage.
+func (d *FormDetector) determineFieldName(elem *goquery.Selection, fieldType FieldType) string {
+	// Try name attribute first
+	name, _ := elem.Attr("name")
+	if name != "" {
+		return name
+	}
+
+	// Try ID next
+	id, _ := elem.Attr("id")
+	if id != "" {
+		return id
+	}
+
+	// Try placeholder as fallback
+	placeholder, _ := elem.Attr("placeholder")
+	if placeholder != "" {
+		return placeholder
+	}
+
+	// Fallback to field type with index
+	return string(fieldType)
+}
+
+// findFieldByType finds a field by its semantic type.
+func (d *FormDetector) findFieldByType(formElem *goquery.Selection, fieldType FieldType) *FieldMatch {
+	fields := d.findAllFormFields(formElem)
+	for _, field := range fields {
+		if field.FieldType == fieldType {
+			return &field
+		}
+	}
+	return nil
+}
+
+// findFieldByPattern finds a field matching name/id patterns.
+func (d *FormDetector) findFieldByPattern(formElem *goquery.Selection, patterns []string) *FieldMatch {
+	var bestMatch *FieldMatch
+	bestScore := 0.0
+
+	fields := d.findAllFormFields(formElem)
+	for _, field := range fields {
+		score := 0.0
+		fieldName := strings.ToLower(field.FieldName)
+
+		for _, pattern := range patterns {
+			lowerPattern := strings.ToLower(pattern)
+			if fieldName == lowerPattern {
+				score = 1.0
+				break
+			} else if strings.Contains(fieldName, lowerPattern) {
+				score = 0.7
+			}
+		}
+
+		if score > bestScore {
+			bestScore = score
+			match := field
+			match.Confidence = score
+			bestMatch = &match
+		}
+	}
+
+	return bestMatch
+}
+
+// findSearchField finds a search query input field.
+func (d *FormDetector) findSearchField(formElem *goquery.Selection) *FieldMatch {
+	// First try: input[type="search"]
+	searchInput := formElem.Find("input[type='search']").First()
+	if searchInput.Length() > 0 {
+		match := d.createFieldMatch(searchInput, FieldTypeSearch)
+		return &match
+	}
+
+	// Second try: input with search-like name
+	patterns := []string{"search", "query", "q", "keyword", "term"}
+	return d.findFieldByPattern(formElem, patterns)
+}
+
+// findEmailField finds an email input field.
+func (d *FormDetector) findEmailField(formElem *goquery.Selection) *FieldMatch {
+	// First try: input[type="email"]
+	emailInput := formElem.Find("input[type='email']").First()
+	if emailInput.Length() > 0 {
+		match := d.createFieldMatch(emailInput, FieldTypeEmail)
+		return &match
+	}
+
+	// Second try: input with email-like name
+	patterns := []string{"email", "e-mail", "mail"}
+	return d.findFieldByPattern(formElem, patterns)
+}
+
+// findPhoneField finds a phone number input field.
+func (d *FormDetector) findPhoneField(formElem *goquery.Selection) *FieldMatch {
+	// First try: input[type="tel"]
+	phoneInput := formElem.Find("input[type='tel']").First()
+	if phoneInput.Length() > 0 {
+		match := d.createFieldMatch(phoneInput, FieldTypePhone)
+		return &match
+	}
+
+	// Second try: input with phone-like name
+	patterns := []string{"phone", "tel", "mobile", "cell", "fax"}
+	return d.findFieldByPattern(formElem, patterns)
+}
+
+// findAddressFields finds all address-related fields.
+func (d *FormDetector) findAddressFields(formElem *goquery.Selection) []FieldMatch {
+	var addressFields []FieldMatch
+	patterns := []string{"address", "street", "city", "state", "province", "zip", "postal", "country"}
+
+	fields := d.findAllFormFields(formElem)
+	for _, field := range fields {
+		fieldName := strings.ToLower(field.FieldName)
+		for _, pattern := range patterns {
+			if strings.Contains(fieldName, pattern) {
+				field.FieldType = FieldTypeAddress
+				addressFields = append(addressFields, field)
+				break
+			}
+		}
+	}
+
+	return addressFields
+}
+
+// findTextareaField finds a textarea field (for messages, comments, etc).
+func (d *FormDetector) findTextareaField(formElem *goquery.Selection) *FieldMatch {
+	textarea := formElem.Find("textarea").First()
+	if textarea.Length() > 0 {
+		match := d.createFieldMatch(textarea, FieldTypeTextarea)
+		return &match
+	}
+	return nil
 }
