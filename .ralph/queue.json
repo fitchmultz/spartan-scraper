@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0316",
-      "status": "todo",
-      "title": "Add AI template generator to the templates UI",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "web",
-        "ai",
-        "templates"
-      ],
-      "scope": [
-        "internal/api/ai_extract.go",
-        "web/src/components",
-        "web/src/api/index.ts",
-        "docs/usage.md"
-      ],
-      "evidence": [
-        "Opportunity type: feature gap",
-        "AI template generation endpoint exists (internal/api/ai_extract.go, POST /v1/extract/ai-template-generate) and is documented in docs/usage.md.",
-        "No web UI surface calls aiTemplateGenerate (search in web/src shows no usage)."
-      ],
-      "plan": [
-        "Add a Generate-with-AI modal in the templates section accepting URL/HTML + prompt/fields.",
-        "Call aiTemplateGenerate, preview the generated template, and allow save to templates store.",
-        "Add error handling for missing AI config and API failures.",
-        "Add tests for successful generation and failure states.",
-        "Update docs/usage.md with UI steps and cost/limit notes.",
-        "Verify by running `cd web && pnpm run test` and using `make web-dev` to generate a template."
-      ],
-      "notes": [
-        "Why it matters: AI-assisted template creation removes manual selector work and speeds onboarding.",
-        "Proposed approach: MVS adds UI flow with preview/save; expand to iterative refinement and diff against existing templates.",
-        "Risks/mitigations: API costs and prompt quality; mitigate with token limits and guidance.",
-        "Acceptance criteria: UI can generate and save templates; errors surfaced; tests cover modal flow; docs updated."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-02T18:31:24Z",
-      "updated_at": "2026-02-02T18:31:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0317",
       "status": "todo",
       "title": "Create UI + CLI editors for render profiles and pipeline JS",

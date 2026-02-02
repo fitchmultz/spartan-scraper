@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
+import { AITemplateGenerator } from "./AITemplateGenerator";
 import { getV1TemplateMetrics, getV1TemplateComparison } from "../api";
 import type { TemplateMetrics, TemplateComparison } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -61,6 +62,7 @@ export function TemplatePerformance({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -144,14 +146,32 @@ export function TemplatePerformance({
     <div className="template-performance">
       <div className="template-performance__header">
         <h3 className="template-performance__title">{templateName}</h3>
-        <button
-          type="button"
-          className="btn btn--small btn--primary"
-          onClick={() => setIsEditing(true)}
-        >
-          Edit Template
-        </button>
+        <div className="template-performance__actions">
+          <button
+            type="button"
+            className="btn btn--small btn--secondary"
+            onClick={() => setIsAIGeneratorOpen(true)}
+          >
+            <span className="mr-1">✨</span> Generate with AI
+          </button>
+          <button
+            type="button"
+            className="btn btn--small btn--primary"
+            onClick={() => setIsEditing(true)}
+          >
+            Edit Template
+          </button>
+        </div>
       </div>
+
+      <AITemplateGenerator
+        isOpen={isAIGeneratorOpen}
+        onClose={() => setIsAIGeneratorOpen(false)}
+        onTemplateSaved={() => {
+          setIsAIGeneratorOpen(false);
+          window.location.reload();
+        }}
+      />
 
       {isEditing && (
         // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern

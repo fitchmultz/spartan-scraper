@@ -41,6 +41,7 @@ import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { DedupExplorer } from "./components/DedupExplorer";
 import { TemplatePerformance } from "./components/TemplatePerformance";
 import { TemplateABTestManager } from "./components/TemplateABTestManager";
+import { AITemplateGenerator } from "./components/AITemplateGenerator";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { PresetContainer } from "./components/presets/PresetContainer";
@@ -103,6 +104,9 @@ export function App() {
 
   // Active tab state for preset filtering
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
+
+  // AI Template Generator modal state
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
 
   // Ref for JobSubmissionContainer to access form methods
   const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
@@ -494,7 +498,16 @@ export function App() {
       </section>
 
       <section id="templates-insights" className="templates-insights-section">
-        <h2>Templates Insights</h2>
+        <div className="templates-insights__header">
+          <h2>Templates Insights</h2>
+          <button
+            type="button"
+            className="btn btn--small btn--secondary"
+            onClick={() => setIsAIGeneratorOpen(true)}
+          >
+            <span className="mr-1">✨</span> Generate with AI
+          </button>
+        </div>
         <div className="templates-insights__content">
           {templates.length > 0 ? (
             <>
@@ -517,6 +530,15 @@ export function App() {
           )}
         </div>
       </section>
+
+      <AITemplateGenerator
+        isOpen={isAIGeneratorOpen}
+        onClose={() => setIsAIGeneratorOpen(false)}
+        onTemplateSaved={() => {
+          setIsAIGeneratorOpen(false);
+          window.location.reload();
+        }}
+      />
 
       <InfoSections
         profiles={profiles}

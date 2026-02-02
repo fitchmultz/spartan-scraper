@@ -285,6 +285,39 @@ curl -sS -X POST "http://localhost:8741/v1/extract/ai-preview" \
 - Token usage tracking
 - Confidence scores per extraction
 
+### AI-Powered Template Generation
+
+Generate extraction templates automatically using AI. This feature analyzes a web page and creates CSS selectors based on your description.
+
+**Web UI:**
+1. Navigate to the "Templates Insights" section
+2. Click the "Generate with AI" button
+3. Enter the target URL and describe what data to extract
+4. Optionally provide sample field names to guide the AI
+5. Toggle "Use headless browser" for JavaScript-rendered content
+6. Click "Generate Template" and review the results
+7. Enter a name for the template and click "Save Template"
+
+**API Usage:**
+```bash
+# Generate a template from a URL
+curl -sS -X POST "http://localhost:8741/v1/extract/ai-template-generate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/products",
+    "description": "Extract product name, price, and rating",
+    "sample_fields": ["name", "price", "rating"],
+    "headless": true
+  }'
+```
+
+**Cost and Limit Notes:**
+- Template generation uses AI provider tokens (costs apply based on your provider)
+- Each generation request fetches and analyzes the target page
+- Consider using `headless: true` for JavaScript-heavy sites (increases processing time)
+- Generated templates may require refinement for complex pages
+- Use the Visual Selector Builder to edit templates after generation
+
 ### crawl-states
 
 List incremental crawl states (ETags/Last-Modified tracking).
