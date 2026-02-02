@@ -16,10 +16,10 @@
  */
 
 import { useState, useCallback } from "react";
-import {
-  type BatchScrapeRequest,
-  type BatchCrawlRequest,
-  type BatchResearchRequest,
+import type {
+  BatchScrapeRequest,
+  BatchCrawlRequest,
+  BatchResearchRequest,
 } from "../../api";
 import type { Profile } from "../../hooks/useAppData";
 import { useBatches } from "../../hooks/useBatches";

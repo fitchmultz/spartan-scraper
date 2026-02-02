@@ -16,11 +16,7 @@
  */
 
 import { useRef, Suspense, lazy, forwardRef, useImperativeHandle } from "react";
-import {
-  type ScrapeRequest,
-  type CrawlRequest,
-  type ResearchRequest,
-} from "../../api";
+import type { ScrapeRequest, CrawlRequest, ResearchRequest } from "../../api";
 import type { Profile } from "../../hooks/useAppData";
 import type { FormState, FormActions } from "../../hooks/useFormState";
 

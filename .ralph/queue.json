@@ -2,40 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0308",
-      "status": "todo",
-      "title": "Fix Biome lint warnings by using import type",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/src/components/batches/BatchContainer.tsx",
-        "web/src/components/jobs/JobSubmissionContainer.tsx",
-        "make ci"
-      ],
-      "evidence": [
-        "make ci -> biome lint warnings:\nsrc/components/batches/BatchContainer.tsx:19:8 lint/style/useImportType\nsrc/components/jobs/JobSubmissionContainer.tsx:19:8 lint/style/useImportType"
-      ],
-      "plan": [
-        "Update the two component files to use `import type` for type-only imports from ../../api.",
-        "Run `cd web && pnpm exec biome lint .` to confirm warnings are cleared.",
-        "Verify `make lint` remains clean."
-      ],
-      "notes": [
-        "Principles: Operational hygiene (H), KISS (A)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0309",
       "status": "todo",
       "title": "Remove unused createRequestContext helper",
