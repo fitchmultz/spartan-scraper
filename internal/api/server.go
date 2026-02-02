@@ -286,6 +286,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/extract/ai-preview", s.handleAIExtractPreview)
 	mux.HandleFunc("/v1/extract/ai-template-generate", s.handleAITemplateGenerate)
 
+	// Deduplication endpoints
+	mux.HandleFunc("/v1/dedup/duplicates", s.handleDedupDuplicates)
+	mux.HandleFunc("/v1/dedup/history", s.handleDedupHistory)
+	mux.HandleFunc("/v1/dedup/stats", s.handleDedupStats)
+	mux.HandleFunc("/v1/dedup/job/", s.handleDedupJobDelete)
+
 	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
 

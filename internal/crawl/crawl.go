@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/dedup"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -77,6 +78,13 @@ type Request struct {
 	// SimHashThreshold is the maximum Hamming distance for content to be considered a duplicate.
 	// Default is 3. Lower values require more similarity (0 = exact match).
 	SimHashThreshold int
+	// CrossJobDedup enables cross-job duplicate detection using ContentIndex.
+	// When enabled, the crawler queries the ContentIndex before fetching to detect
+	// if similar content has been indexed by previous jobs.
+	CrossJobDedup bool
+	// CrossJobDedupThreshold is the Hamming distance threshold for cross-job duplicate detection.
+	// Default is 3 (near-duplicates).
+	CrossJobDedupThreshold int
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
 	// WebhookDispatcher is an optional dispatcher for page crawled events.
@@ -88,6 +96,17 @@ type Request struct {
 	WebhookConfig *model.WebhookConfig
 	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
 	AIExtractor *extract.AIExtractor
+	// ContentIndex for cross-job deduplication. If nil, cross-job dedup is disabled.
+	ContentIndex ContentIndex
+}
+
+// ContentIndex provides cross-job content deduplication capabilities.
+// This is a subset of the dedup.ContentIndex interface for crawl's needs.
+type ContentIndex interface {
+	// Index stores a content fingerprint for a URL.
+	Index(ctx context.Context, jobID, url string, simhash uint64) error
+	// FindDuplicates returns URLs with similar content across all jobs.
+	FindDuplicates(ctx context.Context, simhash uint64, threshold int) ([]dedup.DuplicateMatch, error)
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -98,16 +117,25 @@ type CrawlStateStore interface {
 
 // PageResult represents the scraping result for a single page during a crawl.
 type PageResult struct {
-	URL         string                     `json:"url"`
-	Status      int                        `json:"status"`
-	Title       string                     `json:"title"`
-	Text        string                     `json:"text"`
-	Links       []string                   `json:"links"`
-	Metadata    extract.Result             `json:"metadata"` // Legacy
-	Extracted   extract.Extracted          `json:"extracted"`
-	Normalized  extract.NormalizedDocument `json:"normalized"`
-	SimHash     uint64                     `json:"simhash"`               // Content fingerprint for duplicate detection
-	DuplicateOf string                     `json:"duplicateOf,omitempty"` // URL of original page if this is a duplicate
+	URL                string                     `json:"url"`
+	Status             int                        `json:"status"`
+	Title              string                     `json:"title"`
+	Text               string                     `json:"text"`
+	Links              []string                   `json:"links"`
+	Metadata           extract.Result             `json:"metadata"` // Legacy
+	Extracted          extract.Extracted          `json:"extracted"`
+	Normalized         extract.NormalizedDocument `json:"normalized"`
+	SimHash            uint64                     `json:"simhash"`                      // Content fingerprint for duplicate detection
+	DuplicateOf        string                     `json:"duplicateOf,omitempty"`        // URL of original page if this is a duplicate (same crawl)
+	CrossJobDuplicates []CrossJobDuplicate        `json:"crossJobDuplicates,omitempty"` // Duplicates found in other jobs
+}
+
+// CrossJobDuplicate represents a duplicate match from a different job.
+type CrossJobDuplicate struct {
+	JobID     string `json:"jobId"`
+	URL       string `json:"url"`
+	Distance  int    `json:"distance"`
+	IndexedAt string `json:"indexedAt"`
 }
 
 // Run executes a crawl request. It concurrently fetches and processes pages
@@ -125,6 +153,9 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	}
 	if req.SimHashThreshold < 0 {
 		req.SimHashThreshold = 3 // default threshold
+	}
+	if req.CrossJobDedupThreshold <= 0 {
+		req.CrossJobDedupThreshold = 3 // default threshold
 	}
 
 	registry := req.Registry
@@ -388,7 +419,7 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 			SimHash:    pageSimHash,
 		}
 
-		// Check for near-duplicate content if enabled
+		// Check for near-duplicate content if enabled (within same crawl)
 		if req.SkipDuplicates && pageSimHash != 0 {
 			simhashMu.Lock()
 			isDuplicate := false
@@ -411,6 +442,38 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 				seenSimHashes[pageSimHash] = item.URL
 			}
 			simhashMu.Unlock()
+		}
+
+		// Cross-job deduplication: check against previously indexed content
+		if req.CrossJobDedup && req.ContentIndex != nil && pageSimHash != 0 {
+			matches, err := req.ContentIndex.FindDuplicates(ctx, pageSimHash, req.CrossJobDedupThreshold)
+			if err != nil {
+				slog.Warn("failed to query cross-job duplicates", "url", apperrors.SanitizeURL(item.URL), "error", err)
+			} else if len(matches) > 0 {
+				// Filter out matches from the current job
+				var crossJobMatches []CrossJobDuplicate
+				for _, match := range matches {
+					if match.JobID != req.RequestID {
+						crossJobMatches = append(crossJobMatches, CrossJobDuplicate{
+							JobID:     match.JobID,
+							URL:       match.URL,
+							Distance:  match.Distance,
+							IndexedAt: match.IndexedAt.Format(time.RFC3339),
+						})
+					}
+				}
+				if len(crossJobMatches) > 0 {
+					result.CrossJobDuplicates = crossJobMatches
+					slog.Info("found cross-job duplicates", "url", apperrors.SanitizeURL(item.URL), "count", len(crossJobMatches))
+				}
+			}
+		}
+
+		// Index the content fingerprint for cross-job deduplication
+		if req.ContentIndex != nil && pageSimHash != 0 {
+			if err := req.ContentIndex.Index(ctx, req.RequestID, item.URL, pageSimHash); err != nil {
+				slog.Warn("failed to index content fingerprint", "url", apperrors.SanitizeURL(item.URL), "error", err)
+			}
 		}
 
 		finalResult, err := applyCrawlOutputPipeline(ctx, registry, baseCtx, result)

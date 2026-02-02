@@ -234,6 +234,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		respectRobotsTxt := toBool(job.Params["respectRobotsTxt"], false)
 		skipDuplicates := toBool(job.Params["skipDuplicates"], false)
 		simHashThreshold := toInt(job.Params["simHashThreshold"], 3)
+		crossJobDedup := toBool(job.Params["crossJobDedup"], false)
+		crossJobDedupThreshold := toInt(job.Params["crossJobDedupThreshold"], 3)
 
 		// Create robots cache if enabled
 		var robotsCache *crawl.Cache
@@ -241,42 +243,51 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			robotsCache = crawl.NewCache(nil, time.Hour)
 		}
 
+		// Get content index for cross-job deduplication
+		var contentIndex crawl.ContentIndex
+		if crossJobDedup {
+			contentIndex = m.contentIndex
+		}
+
 		results, err := crawl.Run(jobCtx, crawl.Request{
-			URL:               url,
-			RequestID:         getJobRequestID(job),
-			MaxDepth:          maxDepth,
-			MaxPages:          maxPages,
-			Concurrency:       m.maxConcurrency,
-			Headless:          headless,
-			UsePlaywright:     usePlaywright,
-			Auth:              auth,
-			Extract:           extractOpts,
-			Pipeline:          pipelineOpts,
-			Timeout:           time.Duration(timeoutSecs) * time.Second,
-			UserAgent:         m.userAgent,
-			Limiter:           m.limiter,
-			MaxRetries:        reqRetries(m.maxRetries),
-			RetryBase:         m.retryBase,
-			MaxResponseBytes:  m.maxResponseBytes,
-			DataDir:           m.DataDir,
-			Incremental:       incremental,
-			Store:             m.store,
-			Registry:          m.pipelineRegistry,
-			JSRegistry:        m.jsRegistry,
-			TemplateRegistry:  m.templateRegistry,
-			MetricsCallback:   m.metricsCallback,
-			SitemapURL:        sitemapURL,
-			SitemapOnly:       sitemapOnly,
-			IncludePatterns:   includePatterns,
-			ExcludePatterns:   excludePatterns,
-			Screenshot:        screenshot,
-			RobotsCache:       robotsCache,
-			SkipDuplicates:    skipDuplicates,
-			SimHashThreshold:  simHashThreshold,
-			ProxyPool:         m.proxyPool,
-			WebhookDispatcher: m.webhookDispatcher,
-			WebhookConfig:     job.ExtractWebhookConfig(),
-			AIExtractor:       m.aiExtractor,
+			URL:                    url,
+			RequestID:              getJobRequestID(job),
+			MaxDepth:               maxDepth,
+			MaxPages:               maxPages,
+			Concurrency:            m.maxConcurrency,
+			Headless:               headless,
+			UsePlaywright:          usePlaywright,
+			Auth:                   auth,
+			Extract:                extractOpts,
+			Pipeline:               pipelineOpts,
+			Timeout:                time.Duration(timeoutSecs) * time.Second,
+			UserAgent:              m.userAgent,
+			Limiter:                m.limiter,
+			MaxRetries:             reqRetries(m.maxRetries),
+			RetryBase:              m.retryBase,
+			MaxResponseBytes:       m.maxResponseBytes,
+			DataDir:                m.DataDir,
+			Incremental:            incremental,
+			Store:                  m.store,
+			Registry:               m.pipelineRegistry,
+			JSRegistry:             m.jsRegistry,
+			TemplateRegistry:       m.templateRegistry,
+			MetricsCallback:        m.metricsCallback,
+			SitemapURL:             sitemapURL,
+			SitemapOnly:            sitemapOnly,
+			IncludePatterns:        includePatterns,
+			ExcludePatterns:        excludePatterns,
+			Screenshot:             screenshot,
+			RobotsCache:            robotsCache,
+			SkipDuplicates:         skipDuplicates,
+			SimHashThreshold:       simHashThreshold,
+			CrossJobDedup:          crossJobDedup,
+			CrossJobDedupThreshold: crossJobDedupThreshold,
+			ProxyPool:              m.proxyPool,
+			WebhookDispatcher:      m.webhookDispatcher,
+			WebhookConfig:          job.ExtractWebhookConfig(),
+			AIExtractor:            m.aiExtractor,
+			ContentIndex:           contentIndex,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

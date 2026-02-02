@@ -1046,6 +1046,150 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/dedup/duplicates:
+    get:
+      summary: Find duplicate content
+      description: Find URLs with similar content across all jobs using simhash
+      operationId: findDuplicates
+      parameters:
+        - in: query
+          name: simhash
+          required: true
+          schema:
+            type: integer
+            format: uint64
+          description: The simhash value to find duplicates for
+        - in: query
+          name: threshold
+          schema:
+            type: integer
+            default: 3
+            minimum: 0
+            maximum: 64
+          description: Hamming distance threshold (0=exact match, 3=near-duplicates, 8=similar)
+      responses:
+        '200':
+          description: List of duplicate matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DuplicateMatch'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dedup/history:
+    get:
+      summary: Get content history for URL
+      description: Returns all indexed entries for a URL across jobs
+      operationId: getContentHistory
+      parameters:
+        - in: query
+          name: url
+          required: true
+          schema:
+            type: string
+          description: The URL to get content history for
+      responses:
+        '200':
+          description: List of content entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentEntry'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dedup/stats:
+    get:
+      summary: Get deduplication statistics
+      description: Returns statistics about indexed content and duplicates
+      operationId: getDedupStats
+      responses:
+        '200':
+          description: Deduplication statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DedupStats'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/dedup/job/{jobId}:
+    delete:
+      summary: Remove dedup entries for a job
+      description: Deletes all content fingerprints associated with a job
+      operationId: deleteJobDedupEntries
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+          description: The job ID to remove entries for
+      responses:
+        '204':
+          description: Entries deleted successfully
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/scrape:
     post:
       summary: Scrape a single page
@@ -4930,6 +5074,26 @@ components:
           $ref: '#/components/schemas/DeviceEmulation'
         networkIntercept:
           $ref: '#/components/schemas/NetworkInterceptConfig'
+        skipDuplicates:
+          type: boolean
+          default: false
+          description: Enable near-duplicate content detection during crawling
+        simHashThreshold:
+          type: integer
+          default: 3
+          minimum: 0
+          maximum: 64
+          description: Maximum Hamming distance for content to be considered a duplicate (within same crawl)
+        crossJobDedup:
+          type: boolean
+          default: false
+          description: Enable cross-job duplicate detection using content index
+        crossJobDedupThreshold:
+          type: integer
+          default: 3
+          minimum: 0
+          maximum: 64
+          description: Hamming distance threshold for cross-job duplicate detection
     ResearchRequest:
       type: object
       required: [query, urls]
@@ -5200,6 +5364,73 @@ components:
         jobId:
           type: string
           description: ID of the job that last scraped this URL
+    DuplicateMatch:
+      type: object
+      description: A potential duplicate content match from another job
+      required:
+        - jobId
+        - url
+        - simhash
+        - distance
+        - indexedAt
+      properties:
+        jobId:
+          type: string
+          description: ID of the job that indexed this content
+        url:
+          type: string
+          description: URL of the duplicate content
+        simhash:
+          type: integer
+          format: uint64
+          description: Simhash fingerprint of the content
+        distance:
+          type: integer
+          description: Hamming distance from the query simhash (lower = more similar)
+        indexedAt:
+          type: string
+          format: date-time
+          description: When this content was indexed
+    ContentEntry:
+      type: object
+      description: A single indexed content fingerprint
+      required:
+        - jobId
+        - simhash
+        - indexedAt
+      properties:
+        jobId:
+          type: string
+          description: ID of the job that indexed this content
+        simhash:
+          type: integer
+          format: uint64
+          description: Simhash fingerprint of the content
+        indexedAt:
+          type: string
+          format: date-time
+          description: When this content was indexed
+    DedupStats:
+      type: object
+      description: Deduplication statistics
+      required:
+        - totalIndexed
+        - uniqueUrls
+        - uniqueJobs
+        - duplicatePairs
+      properties:
+        totalIndexed:
+          type: integer
+          description: Total number of content fingerprints indexed
+        uniqueUrls:
+          type: integer
+          description: Number of unique URLs indexed
+        uniqueJobs:
+          type: integer
+          description: Number of unique jobs that have indexed content
+        duplicatePairs:
+          type: integer
+          description: Number of URLs that appear in multiple jobs
     WSMessage:
       type: object
       description: WebSocket message envelope

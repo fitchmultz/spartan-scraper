@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/dedup"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -45,6 +46,7 @@ type Manager struct {
 	proxyPool         *fetch.ProxyPool
 	aiExtractor       *extract.AIExtractor
 	exportTrigger     ExportTriggerInterface
+	contentIndex      dedup.ContentIndex
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -408,4 +410,19 @@ func (m *Manager) GetProxyPool() *fetch.ProxyPool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.proxyPool
+}
+
+// SetContentIndex sets the content index for cross-job deduplication.
+// This enables the crawler to detect and report duplicates across different jobs.
+func (m *Manager) SetContentIndex(index dedup.ContentIndex) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.contentIndex = index
+}
+
+// GetContentIndex returns the current content index, or nil if not set.
+func (m *Manager) GetContentIndex() dedup.ContentIndex {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.contentIndex
 }

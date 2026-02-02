@@ -1533,6 +1533,22 @@ export type CrawlRequest = {
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
     networkIntercept?: NetworkInterceptConfig;
+    /**
+     * Enable near-duplicate content detection during crawling
+     */
+    skipDuplicates?: boolean;
+    /**
+     * Maximum Hamming distance for content to be considered a duplicate (within same crawl)
+     */
+    simHashThreshold?: number;
+    /**
+     * Enable cross-job duplicate detection using content index
+     */
+    crossJobDedup?: boolean;
+    /**
+     * Hamming distance threshold for cross-job duplicate detection
+     */
+    crossJobDedupThreshold?: number;
 };
 
 export type ResearchRequest = {
@@ -1706,6 +1722,72 @@ export type CrawlState = {
      * ID of the job that last scraped this URL
      */
     jobId?: string;
+};
+
+/**
+ * A potential duplicate content match from another job
+ */
+export type DuplicateMatch = {
+    /**
+     * ID of the job that indexed this content
+     */
+    jobId: string;
+    /**
+     * URL of the duplicate content
+     */
+    url: string;
+    /**
+     * Simhash fingerprint of the content
+     */
+    simhash: number;
+    /**
+     * Hamming distance from the query simhash (lower = more similar)
+     */
+    distance: number;
+    /**
+     * When this content was indexed
+     */
+    indexedAt: string;
+};
+
+/**
+ * A single indexed content fingerprint
+ */
+export type ContentEntry = {
+    /**
+     * ID of the job that indexed this content
+     */
+    jobId: string;
+    /**
+     * Simhash fingerprint of the content
+     */
+    simhash: number;
+    /**
+     * When this content was indexed
+     */
+    indexedAt: string;
+};
+
+/**
+ * Deduplication statistics
+ */
+export type DedupStats = {
+    /**
+     * Total number of content fingerprints indexed
+     */
+    totalIndexed: number;
+    /**
+     * Number of unique URLs indexed
+     */
+    uniqueUrls: number;
+    /**
+     * Number of unique jobs that have indexed content
+     */
+    uniqueJobs: number;
+    /**
+     * Number of URLs that appear in multiple jobs
+     */
+    duplicatePairs: number;
 };
 
 /**
@@ -4348,6 +4430,153 @@ export type ListCrawlStatesResponses = {
 };
 
 export type ListCrawlStatesResponse = ListCrawlStatesResponses[keyof ListCrawlStatesResponses];
+
+export type FindDuplicatesData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * The simhash value to find duplicates for
+         */
+        simhash: number;
+        /**
+         * Hamming distance threshold (0=exact match, 3=near-duplicates, 8=similar)
+         */
+        threshold?: number;
+    };
+    url: '/v1/dedup/duplicates';
+};
+
+export type FindDuplicatesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type FindDuplicatesError = FindDuplicatesErrors[keyof FindDuplicatesErrors];
+
+export type FindDuplicatesResponses = {
+    /**
+     * List of duplicate matches
+     */
+    200: Array<DuplicateMatch>;
+};
+
+export type FindDuplicatesResponse = FindDuplicatesResponses[keyof FindDuplicatesResponses];
+
+export type GetContentHistoryData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * The URL to get content history for
+         */
+        url: string;
+    };
+    url: '/v1/dedup/history';
+};
+
+export type GetContentHistoryErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetContentHistoryError = GetContentHistoryErrors[keyof GetContentHistoryErrors];
+
+export type GetContentHistoryResponses = {
+    /**
+     * List of content entries
+     */
+    200: Array<ContentEntry>;
+};
+
+export type GetContentHistoryResponse = GetContentHistoryResponses[keyof GetContentHistoryResponses];
+
+export type GetDedupStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/dedup/stats';
+};
+
+export type GetDedupStatsErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetDedupStatsError = GetDedupStatsErrors[keyof GetDedupStatsErrors];
+
+export type GetDedupStatsResponses = {
+    /**
+     * Deduplication statistics
+     */
+    200: DedupStats;
+};
+
+export type GetDedupStatsResponse = GetDedupStatsResponses[keyof GetDedupStatsResponses];
+
+export type DeleteJobDedupEntriesData = {
+    body?: never;
+    path: {
+        /**
+         * The job ID to remove entries for
+         */
+        jobId: string;
+    };
+    query?: never;
+    url: '/v1/dedup/job/{jobId}';
+};
+
+export type DeleteJobDedupEntriesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteJobDedupEntriesError = DeleteJobDedupEntriesErrors[keyof DeleteJobDedupEntriesErrors];
+
+export type DeleteJobDedupEntriesResponses = {
+    /**
+     * Entries deleted successfully
+     */
+    204: void;
+};
+
+export type DeleteJobDedupEntriesResponse = DeleteJobDedupEntriesResponses[keyof DeleteJobDedupEntriesResponses];
 
 export type PostV1ScrapeData = {
     body: ScrapeRequest;
