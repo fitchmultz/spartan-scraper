@@ -79,7 +79,9 @@ func (f *PlaywrightFetcher) Fetch(ctx context.Context, req Request, prof RenderP
 		}
 		delay := backoff(baseDelay, attempt)
 		slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-		time.Sleep(delay)
+		if err := SleepWithContext(ctx, delay); err != nil {
+			return Result{}, err
+		}
 	}
 
 	slog.Error("Playwright fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
@@ -462,14 +464,16 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	slog.Debug("navigation complete", "url", apperrors.SanitizeURL(req.URL), "status", statusCode)
 
 	slog.Debug("waiting for page to be ready", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode)
-	if err := f.performWait(page, prof.Wait, timeoutFloat); err != nil {
+	if err := f.performWait(ctx, page, prof.Wait, timeoutFloat); err != nil {
 		slog.Warn("wait strategy failed or timed out", "url", apperrors.SanitizeURL(req.URL), "mode", prof.Wait.Mode, "error", err)
 		// Fall through to capture whatever we have
 	}
 
 	if prof.Wait.ExtraSleepMs > 0 {
 		slog.Debug("extra sleep", "url", apperrors.SanitizeURL(req.URL), "ms", prof.Wait.ExtraSleepMs)
-		time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)
+		if err := SleepWithContext(ctx, time.Duration(prof.Wait.ExtraSleepMs)*time.Millisecond); err != nil {
+			return Result{}, err
+		}
 	}
 
 	for _, selector := range req.WaitSelectors {
@@ -545,7 +549,7 @@ func (f *PlaywrightFetcher) fetchOnce(ctx context.Context, req Request, prof Ren
 	}, nil
 }
 
-func (f *PlaywrightFetcher) performWait(page playwright.Page, policy RenderWaitPolicy, timeout float64) error {
+func (f *PlaywrightFetcher) performWait(ctx context.Context, page playwright.Page, policy RenderWaitPolicy, timeout float64) error {
 	if err := page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{State: playwright.LoadStateDomcontentloaded}); err != nil {
 		return err
 	}
@@ -559,12 +563,12 @@ func (f *PlaywrightFetcher) performWait(page playwright.Page, policy RenderWaitP
 			return err
 		}
 	case RenderWaitModeStability:
-		return f.waitForStability(page, policy)
+		return f.waitForStability(ctx, page, policy)
 	}
 	return nil
 }
 
-func (f *PlaywrightFetcher) waitForStability(page playwright.Page, policy RenderWaitPolicy) error {
+func (f *PlaywrightFetcher) waitForStability(ctx context.Context, page playwright.Page, policy RenderWaitPolicy) error {
 	pollMs := policy.StabilityPollMs
 	if pollMs <= 0 {
 		pollMs = 200
@@ -593,7 +597,9 @@ func (f *PlaywrightFetcher) waitForStability(page playwright.Page, policy Render
 			return nil
 		}
 		lastLen = curLen
-		time.Sleep(time.Duration(pollMs) * time.Millisecond)
+		if err := SleepWithContext(ctx, time.Duration(pollMs)*time.Millisecond); err != nil {
+			return err
+		}
 	}
 	return nil
 }

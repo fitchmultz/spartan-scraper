@@ -41,9 +41,9 @@ func isSuccessStatus(status int) bool {
 	return status >= 200 && status < 400
 }
 
-// sleepWithContext sleeps for the given duration or until the context is cancelled.
+// SleepWithContext sleeps for the given duration or until the context is cancelled.
 // Returns ctx.Err() if cancelled, nil otherwise.
-func sleepWithContext(ctx context.Context, d time.Duration) error {
+func SleepWithContext(ctx context.Context, d time.Duration) error {
 	select {
 	case <-time.After(d):
 		return nil
@@ -238,7 +238,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 			delay := backoff(baseDelay, attempt)
 			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-			if err := sleepWithContext(ctx, delay); err != nil {
+			if err := SleepWithContext(ctx, delay); err != nil {
 				return Result{}, err
 			}
 			continue
@@ -284,7 +284,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 			delay := backoff(baseDelay, attempt)
 			slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-			if err := sleepWithContext(ctx, delay); err != nil {
+			if err := SleepWithContext(ctx, delay); err != nil {
 				return Result{}, err
 			}
 			continue
@@ -312,7 +312,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, req Request) (Result, error) {
 			}
 
 			slog.Debug("retrying HTTP request based on status code", "url", apperrors.SanitizeURL(req.URL), "status", resp.StatusCode, "attempt", attempt, "delay", delay)
-			if err := sleepWithContext(ctx, delay); err != nil {
+			if err := SleepWithContext(ctx, delay); err != nil {
 				return Result{}, err
 			}
 			continue

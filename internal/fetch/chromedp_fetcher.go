@@ -77,7 +77,9 @@ func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderPro
 		}
 		delay := backoff(baseDelay, attempt)
 		slog.Debug("backing off before retry", "url", apperrors.SanitizeURL(req.URL), "delay", delay)
-		time.Sleep(delay)
+		if err := SleepWithContext(ctx, delay); err != nil {
+			return Result{}, err
+		}
 	}
 
 	slog.Error("Chromedp fetch max retries exceeded", "url", apperrors.SanitizeURL(req.URL))
@@ -466,7 +468,9 @@ func (f *ChromedpFetcher) waitForStability(ctx context.Context, policy RenderWai
 		}
 
 		lastLen = curLen
-		time.Sleep(pollInterval)
+		if err := SleepWithContext(ctx, pollInterval); err != nil {
+			return err
+		}
 	}
 	return nil
 }

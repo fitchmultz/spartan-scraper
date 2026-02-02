@@ -159,3 +159,86 @@ func TestHTTPFetch_ContextCancellationDuringBackoffConnectionError(t *testing.T)
 		}
 	}
 }
+
+// TestSleepWithContext_NormalCompletion verifies that SleepWithContext returns
+// nil when the sleep completes normally without cancellation.
+func TestSleepWithContext_NormalCompletion(t *testing.T) {
+	ctx := context.Background()
+	start := time.Now()
+	err := SleepWithContext(ctx, 50*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Errorf("expected nil error, got %v", err)
+	}
+
+	// Should have slept for at least the requested duration
+	if elapsed < 45*time.Millisecond {
+		t.Errorf("sleep was too short: %v (expected ~50ms)", elapsed)
+	}
+}
+
+// TestSleepWithContext_CancellationDuringSleep verifies that SleepWithContext
+// returns context.Canceled immediately when the context is cancelled during sleep.
+func TestSleepWithContext_CancellationDuringSleep(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel after a short delay
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := SleepWithContext(ctx, 5*time.Second)
+	elapsed := time.Since(start)
+
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+
+	// Should return quickly, not after the full 5 second sleep
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("sleep took too long after cancellation: %v (expected < 200ms)", elapsed)
+	}
+}
+
+// TestSleepWithContext_AlreadyCancelled verifies that SleepWithContext returns
+// immediately when the context is already cancelled before the call.
+func TestSleepWithContext_AlreadyCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately before sleep
+
+	start := time.Now()
+	err := SleepWithContext(ctx, 5*time.Second)
+	elapsed := time.Since(start)
+
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+
+	// Should return almost immediately
+	if elapsed > 50*time.Millisecond {
+		t.Errorf("sleep took too long for already-cancelled context: %v (expected < 50ms)", elapsed)
+	}
+}
+
+// TestSleepWithContext_DeadlineExceeded verifies that SleepWithContext returns
+// context.DeadlineExceeded when the context deadline expires during sleep.
+func TestSleepWithContext_DeadlineExceeded(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	err := SleepWithContext(ctx, 5*time.Second)
+	elapsed := time.Since(start)
+
+	if err != context.DeadlineExceeded {
+		t.Errorf("expected context.DeadlineExceeded, got %v", err)
+	}
+
+	// Should return quickly when deadline expires
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("sleep took too long after deadline: %v (expected < 200ms)", elapsed)
+	}
+}

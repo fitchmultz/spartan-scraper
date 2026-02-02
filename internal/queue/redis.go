@@ -165,8 +165,12 @@ func (r *Redis) Subscribe(ctx context.Context, handler Handler) error {
 				return ctx.Err()
 			default:
 				slog.Error("redis stream read error", "error", err)
-				time.Sleep(time.Second)
-				continue
+				select {
+				case <-time.After(time.Second):
+					continue
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			}
 		}
 

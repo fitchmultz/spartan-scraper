@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0288",
-      "status": "todo",
-      "title": "Honor context cancellation during backoff/poll sleeps",
-      "priority": "high",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/fetch/chromedp_fetcher.go",
-        "internal/fetch/playwright_fetcher.go",
-        "internal/queue/redis.go",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go"
-      ],
-      "evidence": [
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/queue/redis.go:168 time.Sleep(time.Second)",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/chromedp_fetcher.go:80 time.Sleep(delay)",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/chromedp_fetcher.go:469 time.Sleep(pollInterval)",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:82 time.Sleep(delay)",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:472 time.Sleep(time.Duration(prof.Wait.ExtraSleepMs) * time.Millisecond)",
-        "rg -n \"time.Sleep(\" internal/fetch internal/queue/redis.go -> internal/fetch/playwright_fetcher.go:596 time.Sleep(time.Duration(pollMs) * time.Millisecond)"
-      ],
-      "plan": [
-        "Introduce a small helper (e.g., sleepWithContext) in an appropriate internal package to block until either the timer fires or ctx is canceled.",
-        "Replace the production time.Sleep calls in chromedp_fetcher.go, playwright_fetcher.go, and queue/redis.go with the context-aware helper and propagate ctx cancellation where needed.",
-        "Add focused tests that assert cancellation returns quickly instead of waiting the full delay.",
-        "Verify by running go test ./internal/fetch ./internal/queue and confirming tests pass and cancellation-aware behavior is covered."
-      ],
-      "notes": [
-        "Principles violated: F (Fail fast appropriately), H (Operational hygiene).",
-        "Why it matters: context cancellation (shutdowns, timeouts, request aborts) is delayed by hard sleeps, which can stall workers and make shutdowns slow or flaky.",
-        "Minimal fix: replace blocking sleeps with a ctx-aware sleep helper and cover cancellation in tests."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0289",
       "status": "todo",
       "title": "Remove !important from Joyride styles to satisfy Biome lint",

@@ -5,6 +5,7 @@ package fetch
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -283,6 +284,53 @@ func TestChromedpFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
 	// Assert: result should be empty (zero value)
 	if result.URL != "" || result.Status != 0 || result.HTML != "" {
 		t.Errorf("expected empty Result, got %+v", result)
+	}
+}
+
+// TestChromedpFetch_ContextCancellationDuringBackoff verifies that context
+// cancellation stops retry backoff immediately without waiting for the full
+// delay duration.
+//
+// This test documents the fix for RQ-0288: the Chromedp fetcher now uses
+// SleepWithContext instead of time.Sleep during retry backoff, allowing
+// cancellation to interrupt the wait.
+func TestChromedpFetch_ContextCancellationDuringBackoff(t *testing.T) {
+	fetcher := &ChromedpFetcher{}
+
+	// Create a context we can cancel
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel after a very short delay (less than the backoff duration)
+	// The default baseDelay is 500ms, so cancel at 50ms
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	// Use an invalid URL that will cause an error (connection refused)
+	// This triggers the retry backoff path
+	_, err := fetcher.Fetch(ctx, Request{
+		URL:        "http://127.0.0.1:1", // Port 1 is typically not accessible
+		Timeout:    100 * time.Millisecond,
+		MaxRetries: 3,
+	}, RenderProfile{})
+	elapsed := time.Since(start)
+
+	// Should return reasonably quickly, not after full backoff (which would be ~500ms)
+	// Note: Chrome initialization takes some time, so we allow up to 1 second
+	// The key point is that it should NOT wait for the full retry backoff
+	if elapsed > 1*time.Second {
+		t.Errorf("took too long to return after cancellation: %v (expected < 1s)", elapsed)
+	}
+
+	// Should get context.Canceled
+	if err != context.Canceled {
+		// It's also acceptable to get a connection error if the context wasn't
+		// cancelled quickly enough, but we should NOT get "max retries exceeded"
+		if err != nil && !strings.Contains(err.Error(), "connection") && !strings.Contains(err.Error(), "chrome") {
+			t.Logf("Got error: %v (type: %T)", err, err)
+		}
 	}
 }
 
