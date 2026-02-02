@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0293",
-      "status": "todo",
-      "title": "Split web/src/components/WatchManager.tsx (1037 LOC)",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/src/components/WatchManager.tsx",
-        "wc -l web/src/components/WatchManager.tsx"
-      ],
-      "evidence": [
-        "wc -l web/src/components/WatchManager.tsx -> 1037"
-      ],
-      "plan": [
-        "Extract repeated UI sections and data hooks into subcomponents/hooks under web/src/components/watch/ (or similar).",
-        "Ensure props and state boundaries remain clear and reduce file size below 1000 LOC.",
-        "Verify by running cd web && pnpm run test and cd web && pnpm run build."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: large UI modules are difficult to test and review, increasing regression risk.",
-        "Minimal fix: split into cohesive subcomponents and hooks without altering behavior."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0294",
       "status": "todo",
       "title": "Split internal/distributed/redis_lock_test.go (1485 LOC) into focused test files",
