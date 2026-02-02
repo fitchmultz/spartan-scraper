@@ -1,4 +1,465 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0310",
+      "status": "todo",
+      "title": "Add Web UI for export schedules and history",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "web",
+        "export",
+        "automation"
+      ],
+      "scope": [
+        "web/src/App.tsx",
+        "web/src/components",
+        "internal/api/export_schedules.go",
+        "internal/cli/manage/export_schedule.go",
+        "api/openapi.yaml"
+      ],
+      "evidence": [
+        "Opportunity type: integration / feature gap",
+        "Export schedules are fully implemented in API and CLI (internal/api/export_schedules.go, internal/cli/manage/export_schedule.go) including history and cloud destinations.",
+        "Web UI has no export schedule component and App does not render one (web/src/App.tsx; no export schedule components in web/src/components)."
+      ],
+      "plan": [
+        "Create an ExportScheduleManager component to list, create, enable/disable, delete schedules and view history using /v1/export-schedules endpoints.",
+        "Wire the new manager into web/src/App.tsx with a clear section anchor and navigation affordance.",
+        "Add form validation and error handling for destination-specific fields (cloud/local/webhook).",
+        "Add component tests for CRUD + history view using mocked API responses.",
+        "Update docs/usage.md to include export schedule UI workflow and CLI parity notes.",
+        "Verify by running `cd web && pnpm run test` and manually checking the UI via `make web-dev` for list/create/history flows."
+      ],
+      "notes": [
+        "Why it matters: scheduled exports eliminate manual runs and enable continuous delivery to S3/GCS/Azure/webhooks.",
+        "Proposed approach: MVS delivers list/create/history with local and webhook destinations; expand to cloud destination testing, presets, and bulk enable/disable.",
+        "Risks/mitigations: config complexity and secret handling; mitigate with validation, inline help, and no secret echo in UI.",
+        "Acceptance criteria: UI CRUD + history works; API errors surfaced; tests cover form validation and history rendering; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0311",
+      "status": "todo",
+      "title": "Surface feed monitoring in the Web UI",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "web",
+        "feeds",
+        "monitoring"
+      ],
+      "scope": [
+        "web/src/components/FeedManager.tsx",
+        "web/src/App.tsx",
+        "internal/api/feed.go",
+        "internal/cli/manage/feed.go",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "Opportunity type: feature gap / UX improvement",
+        "Feed monitoring is implemented in API and CLI (internal/api/feed.go, internal/cli/manage/feed.go).",
+        "FeedManager component exists but is not mounted anywhere in the UI (web/src/components/FeedManager.tsx; no App.tsx usage)."
+      ],
+      "plan": [
+        "Add a FeedContainer or integrate FeedManager into App with API calls for list/create/update/delete/check/items.",
+        "Expose feed monitoring as a dedicated section with empty state and actions.",
+        "Add UI hooks for manual checks and feed item viewing with error feedback.",
+        "Add tests for create/update/check flows with mocked API responses.",
+        "Document feed monitoring in docs/usage.md (CLI + Web UI parity).",
+        "Verify by running `cd web && pnpm run test` and creating/checking a feed via `make web-dev`."
+      ],
+      "notes": [
+        "Why it matters: RSS/Atom monitoring is a core workflow for ongoing research and alerts; UI access reduces friction vs CLI-only.",
+        "Proposed approach: MVS lists feeds, creates/edits, checks now, and shows seen items; expand to notifications and linking items to scrape jobs.",
+        "Risks/mitigations: scheduler concurrency limits; mitigate with clear status and rate hints.",
+        "Acceptance criteria: UI can CRUD feeds, run checks, and display items; tests cover happy/failure paths; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0312",
+      "status": "todo",
+      "title": "Add webhook delivery dashboard for debugging",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "web",
+        "webhook",
+        "reliability"
+      ],
+      "scope": [
+        "internal/api/webhook_handlers.go",
+        "web/src/api/sdk.gen.ts",
+        "web/src/App.tsx",
+        "web/src/components"
+      ],
+      "evidence": [
+        "Opportunity type: reliability / UX improvement",
+        "Webhook delivery history endpoints exist (internal/api/webhook_handlers.go, /v1/webhooks/deliveries).",
+        "Web UI does not expose webhook delivery records or details (no components; App.tsx has no webhook section)."
+      ],
+      "plan": [
+        "Create a WebhookDeliveries component to list deliveries with filters (job ID, status) and drill-down detail.",
+        "Wire it into App.tsx and add navigation anchor.",
+        "Add client-side pagination and display retry counts/latency.",
+        "Add tests for list and detail rendering with mocked API responses.",
+        "Update docs/usage.md with webhook delivery troubleshooting section.",
+        "Verify by running `cd web && pnpm run test` and viewing deliveries via `make web-dev` with sample data."
+      ],
+      "notes": [
+        "Why it matters: failed webhooks are a common integration failure; delivery visibility reduces debugging time and missed downstream processing.",
+        "Proposed approach: MVS read-only list + detail view; expand to retry/resend and alerting hooks.",
+        "Risks/mitigations: large delivery history; mitigate with pagination and filters.",
+        "Acceptance criteria: UI shows deliveries and detail payload; errors surfaced; tests cover filters; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0313",
+      "status": "todo",
+      "title": "Expose retention status and cleanup controls in Web UI",
+      "priority": "high",
+      "tags": [
+        "innovation",
+        "reliability",
+        "cost",
+        "retention",
+        "web"
+      ],
+      "scope": [
+        "internal/retention/retention.go",
+        "internal/cli/manage/retention.go",
+        "web/src/components",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "Opportunity type: cost / reliability",
+        "Retention engine + CLI exist (internal/retention/retention.go, internal/cli/manage/retention.go) with status + cleanup options.",
+        "docs/usage.md and Web UI do not mention or expose retention controls (no retention section in App.tsx)."
+      ],
+      "plan": [
+        "Add a RetentionStatus panel that calls the retention status endpoint and displays storage/job stats.",
+        "Add a cleanup action with dry-run default and clear warnings.",
+        "Surface retention config values and link to .env settings.",
+        "Add tests covering dry-run and cleanup action flows with mocked responses.",
+        "Update docs/usage.md with retention section and safety notes.",
+        "Verify by running `cd web && pnpm run test` and manually triggering dry-run cleanup in `make web-dev`."
+      ],
+      "notes": [
+        "Why it matters: retention controls prevent disk exhaustion and keep long-running instances stable.",
+        "Proposed approach: MVS read-only status + dry-run cleanup; expand to policy editing and scheduled cleanup review.",
+        "Risks/mitigations: accidental deletion; mitigate with dry-run default and explicit confirmations.",
+        "Acceptance criteria: status panel displays key metrics; cleanup action works; tests cover confirmation path; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0314",
+      "status": "todo",
+      "title": "Make Dedup Explorer accessible in the Web UI",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "web",
+        "dedup",
+        "quality"
+      ],
+      "scope": [
+        "web/src/components/DedupExplorer.tsx",
+        "web/src/App.tsx",
+        "internal/api/dedup.go",
+        "internal/dedup"
+      ],
+      "evidence": [
+        "Opportunity type: UX improvement / reliability",
+        "Dedup endpoints exist (internal/api/dedup.go) and a UI component is already implemented (web/src/components/DedupExplorer.tsx).",
+        "The Dedup Explorer is not mounted in App.tsx, making the capability effectively hidden."
+      ],
+      "plan": [
+        "Add DedupExplorer section to App.tsx with API base URL passed in.",
+        "Add navigation anchor and brief guidance text for simhash/threshold usage.",
+        "Wire optional delete-by-job action if needed for cleanup.",
+        "Add tests that validate search/history/stats rendering with mocked API responses.",
+        "Document dedup UI usage in docs/usage.md.",
+        "Verify by running `cd web && pnpm run test` and exercising the UI in `make web-dev`."
+      ],
+      "notes": [
+        "Why it matters: duplicate detection improves crawl efficiency and prevents wasted storage/compute.",
+        "Proposed approach: MVS makes the existing explorer visible; expand to job-level cleanup and export of duplicate reports.",
+        "Risks/mitigations: large datasets; mitigate with pagination and cautionary messaging.",
+        "Acceptance criteria: explorer is reachable, searches work, stats render; tests cover errors; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0315",
+      "status": "todo",
+      "title": "Expose template performance + A/B testing UI",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "web",
+        "templates",
+        "quality"
+      ],
+      "scope": [
+        "web/src/components/TemplatePerformance.tsx",
+        "web/src/components/TemplateABTestManager.tsx",
+        "web/src/App.tsx",
+        "internal/api/template_metrics_handler.go"
+      ],
+      "evidence": [
+        "Opportunity type: reliability / UX improvement",
+        "Template metrics endpoints exist (internal/api/template_metrics_handler.go) and UI components are implemented (TemplatePerformance, TemplateABTestManager).",
+        "These components are not referenced in App.tsx, so the capability is hidden from users."
+      ],
+      "plan": [
+        "Add a Templates Insights section that renders TemplatePerformance and TemplateABTestManager.",
+        "Wire data loading to /v1/template-metrics and comparison endpoints with error handling.",
+        "Add a lightweight empty state when no metrics are available.",
+        "Add tests for metrics rendering and AB test creation flows.",
+        "Update docs/usage.md with template performance and A/B testing guidance.",
+        "Verify by running `cd web && pnpm run test` and reviewing the section in `make web-dev`."
+      ],
+      "notes": [
+        "Why it matters: measuring template accuracy/success rates improves extraction quality and reduces regressions.",
+        "Proposed approach: MVS exposes existing dashboards; expand to experiment tagging and automated recommendations.",
+        "Risks/mitigations: small sample sizes; mitigate with warnings and minimum sample thresholds.",
+        "Acceptance criteria: UI renders metrics and A/B results; tests cover empty + populated states; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0316",
+      "status": "todo",
+      "title": "Add AI template generator to the templates UI",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "web",
+        "ai",
+        "templates"
+      ],
+      "scope": [
+        "internal/api/ai_extract.go",
+        "web/src/components",
+        "web/src/api/index.ts",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "Opportunity type: feature gap",
+        "AI template generation endpoint exists (internal/api/ai_extract.go, POST /v1/extract/ai-template-generate) and is documented in docs/usage.md.",
+        "No web UI surface calls aiTemplateGenerate (search in web/src shows no usage)."
+      ],
+      "plan": [
+        "Add a Generate-with-AI modal in the templates section accepting URL/HTML + prompt/fields.",
+        "Call aiTemplateGenerate, preview the generated template, and allow save to templates store.",
+        "Add error handling for missing AI config and API failures.",
+        "Add tests for successful generation and failure states.",
+        "Update docs/usage.md with UI steps and cost/limit notes.",
+        "Verify by running `cd web && pnpm run test` and using `make web-dev` to generate a template."
+      ],
+      "notes": [
+        "Why it matters: AI-assisted template creation removes manual selector work and speeds onboarding.",
+        "Proposed approach: MVS adds UI flow with preview/save; expand to iterative refinement and diff against existing templates.",
+        "Risks/mitigations: API costs and prompt quality; mitigate with token limits and guidance.",
+        "Acceptance criteria: UI can generate and save templates; errors surfaced; tests cover modal flow; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0317",
+      "status": "todo",
+      "title": "Create UI + CLI editors for render profiles and pipeline JS",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "web",
+        "config",
+        "ux"
+      ],
+      "scope": [
+        "internal/cli/manage/render_profiles.go",
+        "internal/cli/manage/pipeline_js_mgmt.go",
+        "docs/usage.md",
+        "web/src/components"
+      ],
+      "evidence": [
+        "Opportunity type: UX improvement / integration",
+        "Render profiles and pipeline JS are configured via JSON files and CLI only supports list (internal/cli/manage/render_profiles.go, internal/cli/manage/pipeline_js_mgmt.go).",
+        "docs/usage.md instructs manual edits to DATA_DIR/render_profiles.json and pipeline_js.json; Web UI lacks editors."
+      ],
+      "plan": [
+        "Add CRUD CLI subcommands for render-profiles and pipeline-js (add/update/delete) with validation.",
+        "Build Web UI editors with form validation and JSON preview for each config type.",
+        "Wire editors into App.tsx with clear sections and empty-state guidance.",
+        "Add tests for CLI parsing/validation and UI form validation.",
+        "Update docs/usage.md with new commands and UI workflows.",
+        "Verify by running `make test-ci` and manually creating a profile in `make web-dev`."
+      ],
+      "notes": [
+        "Why it matters: render profiles and per-target JS are core to scraping reliability; editing JSON by hand is error-prone.",
+        "Proposed approach: MVS provides form-based editors + CLI CRUD; expand to per-host testing and profile import/export.",
+        "Risks/mitigations: invalid config breaks scraping; mitigate with schema validation and dry-run tests.",
+        "Acceptance criteria: CRUD works via CLI + UI; validation blocks bad configs; tests cover both; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0318",
+      "status": "todo",
+      "title": "Add OAuth2 CLI support for auth profiles",
+      "priority": "medium",
+      "tags": [
+        "innovation",
+        "cli",
+        "oauth",
+        "auth"
+      ],
+      "scope": [
+        "internal/api/auth.go",
+        "internal/cli/manage/auth.go",
+        "docs/usage.md"
+      ],
+      "evidence": [
+        "Opportunity type: integration / feature gap",
+        "OAuth endpoints are implemented in API (internal/api/auth.go) and Web UI exposes OAuth config (web/src/components/AuthConfig.tsx).",
+        "CLI has no OAuth subcommands (rg internal/cli shows no oauth references)."
+      ],
+      "plan": [
+        "Add `spartan auth oauth` subcommands: discover, initiate, refresh, revoke, and token-status.",
+        "For initiate, print authorization URL and instructions; optional local callback helper for token capture.",
+        "Store/retrieve tokens via existing OAuth store in internal/auth.",
+        "Add CLI tests covering expected outputs and error paths.",
+        "Update docs/usage.md with OAuth CLI examples and security notes.",
+        "Verify by running `go test ./internal/cli/...` and a manual OAuth flow against a test provider."
+      ],
+      "notes": [
+        "Why it matters: OAuth-protected targets are common; CLI parity enables automation and headless use.",
+        "Proposed approach: MVS adds non-interactive initiate/refresh/revoke; expand to local callback capture and PKCE helpers.",
+        "Risks/mitigations: secrets exposure; mitigate by redacting tokens in logs and requiring explicit output flags.",
+        "Acceptance criteria: OAuth CLI flows work; tests cover failures; docs updated."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    },
+    {
+      "id": "RQ-0319",
+      "status": "todo",
+      "title": "Refresh docs for hidden CLI + API surfaces (watch/feed/batch/chains/retention/GraphQL/WS)",
+      "priority": "low",
+      "tags": [
+        "innovation",
+        "docs",
+        "ux"
+      ],
+      "scope": [
+        "docs/usage.md",
+        "docs/architecture.md",
+        "internal/cli/help.go",
+        "internal/api/server.go"
+      ],
+      "evidence": [
+        "Opportunity type: UX improvement",
+        "docs/usage.md lists primary CLI commands but omits detailed sections for watch, feed, batch, chains, retention, export-schedule, and GraphQL/WS endpoints.",
+        "CLI help includes these subcommands (internal/cli/help.go) and API exposes /graphql and /v1/ws (internal/api/server.go)."
+      ],
+      "plan": [
+        "Audit CLI help and OpenAPI for missing docs sections.",
+        "Add concise usage sections for watch/feed/batch/chains/retention/export-schedule.",
+        "Document GraphQL and WebSocket endpoints with minimal examples.",
+        "Add a short capability matrix linking CLI/API/Web UI features.",
+        "Verify by running `rg 'watch|feed|batch|chains|retention' docs/usage.md` and ensuring coverage."
+      ],
+      "notes": [
+        "Why it matters: hidden capabilities reduce adoption and create support churn; docs are the fastest path to unlock value.",
+        "Proposed approach: MVS adds missing sections and examples; expand to dedicated docs pages per feature.",
+        "Risks/mitigations: doc drift; mitigate with references to CLI help and OpenAPI as source of truth.",
+        "Acceptance criteria: docs cover all listed capabilities with examples; no contradictions with CLI help."
+      ],
+      "request": "innovation scan finding",
+      "created_at": "2026-02-02T18:31:24Z",
+      "updated_at": "2026-02-02T18:31:24Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-innovation"
+      }
+    }
+  ]
 }
