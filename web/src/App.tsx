@@ -38,6 +38,7 @@ import { ExportScheduleContainer } from "./components/export-schedules/ExportSch
 import { FeedContainer } from "./components/feeds/FeedContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
 import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
+import { DedupExplorer } from "./components/DedupExplorer";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { PresetContainer } from "./components/presets/PresetContainer";
@@ -485,6 +486,10 @@ export function App() {
       <WebhookDeliveryContainer />
 
       <RetentionStatusPanel />
+
+      <section id="dedup">
+        <DedupExplorer />
+      </section>
 
       <InfoSections
         profiles={profiles}

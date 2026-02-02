@@ -705,6 +705,84 @@ curl -X POST http://localhost:8741/v1/retention/cleanup \
   -d '{"dryRun": false, "kind": "scrape", "olderThan": 7}'
 ```
 
+## Content Deduplication
+
+The Deduplication Explorer provides a visual interface for analyzing content fingerprints and finding duplicate pages across jobs. This helps improve crawl efficiency and prevent wasted storage.
+
+### How Deduplication Works
+
+Spartan uses [simhash](https://en.wikipedia.org/wiki/SimHash) fingerprints to detect similar content:
+- Each page's content is hashed into a 64-bit simhash value
+- Similar pages will have simhash values with small Hamming distances
+- The system tracks content across all jobs to detect duplicates
+
+**Distance Thresholds:**
+- **0 bits**: Exact match (identical content)
+- **1-3 bits**: Near duplicate (very similar content)
+- **4-8 bits**: Similar (related content)
+- **9-16 bits**: Distinct (different content)
+
+### Web UI
+
+The Deduplication panel provides three tabs:
+
+1. **Find Duplicates** - Search for similar content by simhash:
+   - Enter a simhash value to find matching content
+   - Adjust the threshold slider to control similarity (0-16)
+   - Results show matching URLs with their Hamming distance
+
+2. **URL History** - View all indexed versions of a URL:
+   - Enter a URL to see its content history across jobs
+   - Shows simhash values and when each version was indexed
+   - Useful for tracking content changes over time
+
+3. **Statistics** - Overview of deduplication data:
+   - Total content fingerprints indexed
+   - Number of unique URLs
+   - Number of jobs with indexed content
+   - Count of duplicate URLs across jobs
+
+### API
+
+```
+GET /v1/dedup/duplicates?simhash={simhash}&threshold={threshold}
+GET /v1/dedup/history?url={url}
+GET /v1/dedup/stats
+DELETE /v1/dedup/job/{jobId}
+```
+
+Example:
+```bash
+# Find duplicates for a simhash
+curl "http://localhost:8741/v1/dedup/duplicates?simhash=1234567890&threshold=3"
+
+# Get content history for a URL
+curl "http://localhost:8741/v1/dedup/history?url=https://example.com/page"
+
+# Get deduplication statistics
+curl "http://localhost:8741/v1/dedup/stats"
+
+# Clean up dedup entries for a deleted job
+curl -X DELETE "http://localhost:8741/v1/dedup/job/abc123"
+```
+
+### CLI
+
+Deduplication data is automatically managed during job execution. To clean up entries for deleted jobs:
+
+```bash
+# Remove dedup entries for a specific job
+spartan jobs delete --id <job-id>
+# This automatically cleans up associated dedup entries
+```
+
+### Use Cases
+
+- **Pre-crawl checking**: Query if a URL has been indexed recently to avoid redundant crawling
+- **Content analysis**: Identify near-duplicate pages on your site for consolidation
+- **Change detection**: Track when content at a URL has significantly changed
+- **Storage optimization**: Identify duplicate content across jobs for cleanup
+
 ## Scripts
 
 ### Stress test

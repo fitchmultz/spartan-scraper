@@ -9,33 +9,17 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import {
+  findDuplicates,
+  getContentHistory,
+  getDedupStats,
+  type DuplicateMatch,
+  type ContentEntry,
+  type DedupStats,
+} from "../api";
+import { getApiBaseUrl } from "../lib/api-config";
 
-interface DuplicateMatch {
-  jobId: string;
-  url: string;
-  simhash: number;
-  distance: number;
-  indexedAt: string;
-}
-
-interface ContentEntry {
-  jobId: string;
-  simhash: number;
-  indexedAt: string;
-}
-
-interface DedupStats {
-  totalIndexed: number;
-  uniqueUrls: number;
-  uniqueJobs: number;
-  duplicatePairs: number;
-}
-
-interface DedupExplorerProps {
-  apiBaseUrl?: string;
-}
-
-export function DedupExplorer({ apiBaseUrl = "" }: DedupExplorerProps) {
+export function DedupExplorer() {
   const [activeTab, setActiveTab] = useState<"search" | "history" | "stats">(
     "search",
   );
@@ -58,23 +42,31 @@ export function DedupExplorer({ apiBaseUrl = "" }: DedupExplorerProps) {
     setError(null);
 
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/v1/dedup/duplicates?simhash=${simhash}&threshold=${threshold}`,
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to fetch duplicates");
+      const simhashNum = Number.parseInt(simhash, 10);
+      if (Number.isNaN(simhashNum)) {
+        setError("Invalid simhash value");
+        setLoading(false);
+        return;
       }
+      const response = await findDuplicates({
+        baseUrl: getApiBaseUrl(),
+        query: {
+          simhash: simhashNum,
+          threshold: threshold,
+        },
+      });
 
-      const data = await response.json();
-      setDuplicates(data);
+      if (response.data) {
+        setDuplicates(response.data);
+      } else if (response.error) {
+        setError(String(response.error));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  }, [simhash, threshold, apiBaseUrl]);
+  }, [simhash, threshold]);
 
   const fetchHistory = useCallback(async () => {
     if (!url) {
@@ -86,44 +78,45 @@ export function DedupExplorer({ apiBaseUrl = "" }: DedupExplorerProps) {
     setError(null);
 
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/v1/dedup/history?url=${encodeURIComponent(url)}`,
-      );
+      const response = await getContentHistory({
+        baseUrl: getApiBaseUrl(),
+        query: {
+          url: url,
+        },
+      });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to fetch history");
+      if (response.data) {
+        setHistory(response.data);
+      } else if (response.error) {
+        setError(String(response.error));
       }
-
-      const data = await response.json();
-      setHistory(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  }, [url, apiBaseUrl]);
+  }, [url]);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/dedup/stats`);
+      const response = await getDedupStats({
+        baseUrl: getApiBaseUrl(),
+      });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to fetch stats");
+      if (response.data) {
+        setStats(response.data);
+      } else if (response.error) {
+        setError(String(response.error));
       }
-
-      const data = await response.json();
-      setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   // Load stats on initial mount
   useEffect(() => {
