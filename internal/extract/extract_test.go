@@ -4,7 +4,9 @@
 package extract
 
 import (
+	"context"
 	"testing"
+	"time"
 )
 
 func TestApplyTemplate(t *testing.T) {
@@ -162,4 +164,212 @@ func TestExecuteWithRegistry(t *testing.T) {
 	if !ok || len(f.Values) == 0 || f.Values[0] != "Hello World" {
 		t.Errorf("expected field 'custom_field' to be 'Hello World', got %v", f.Values)
 	}
+}
+
+// mockLLMProvider is a test stub that captures context for verification
+type mockLLMProvider struct {
+	capturedContext context.Context
+	extractCalled   bool
+	result          AIExtractResult
+	err             error
+	delay           time.Duration
+}
+
+func (m *mockLLMProvider) Extract(ctx context.Context, req AIExtractRequest) (AIExtractResult, error) {
+	m.capturedContext = ctx
+	m.extractCalled = true
+
+	// Simulate work that respects context cancellation
+	if m.delay > 0 {
+		select {
+		case <-time.After(m.delay):
+			return m.result, m.err
+		case <-ctx.Done():
+			return AIExtractResult{}, ctx.Err()
+		}
+	}
+
+	return m.result, m.err
+}
+
+func (m *mockLLMProvider) HealthCheck(ctx context.Context) error {
+	return nil
+}
+
+// TestExecute_ContextPropagation verifies that context is propagated to AIExtractor
+func TestExecute_ContextPropagation(t *testing.T) {
+	mock := &mockLLMProvider{
+		result: AIExtractResult{
+			Fields: map[string]FieldValue{
+				"test_field": {Values: []string{"test_value"}, Source: FieldSourceDerived},
+			},
+			Confidence: 0.95,
+		},
+	}
+
+	// Create AIExtractor with mock provider
+	extractor := &AIExtractor{
+		provider: mock,
+		cache:    &mockAICache{},
+	}
+
+	// Create a context with a value to verify propagation
+	type contextKey string
+	ctxKey := contextKey("test_key")
+	ctx := context.WithValue(context.Background(), ctxKey, "test_value")
+
+	html := "<html><body>Test content</body></html>"
+	input := ExecuteInput{
+		URL:  "http://example.com",
+		HTML: html,
+		Options: ExtractOptions{
+			AI: &AIExtractOptions{
+				Enabled: true,
+				Mode:    AIModeNaturalLanguage,
+				Fields:  []string{"test_field"},
+			},
+		},
+		AIExtractor: extractor,
+		Context:     ctx,
+	}
+
+	_, err := Execute(input)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	if !mock.extractCalled {
+		t.Fatal("AIExtractor.Extract was not called")
+	}
+
+	if mock.capturedContext == nil {
+		t.Fatal("Context was not propagated to AIExtractor")
+	}
+
+	// Verify the context value was propagated
+	if val := mock.capturedContext.Value(ctxKey); val != "test_value" {
+		t.Errorf("Expected context value 'test_value', got %v", val)
+	}
+}
+
+// TestExecute_ContextCancellation verifies that context cancellation is respected
+func TestExecute_ContextCancellation(t *testing.T) {
+	mock := &mockLLMProvider{
+		result: AIExtractResult{
+			Fields: map[string]FieldValue{
+				"test_field": {Values: []string{"test_value"}, Source: FieldSourceDerived},
+			},
+		},
+		delay: 100 * time.Millisecond, // Simulate slow extraction
+	}
+
+	extractor := &AIExtractor{
+		provider: mock,
+		cache:    &mockAICache{},
+	}
+
+	// Create a context that will be cancelled immediately
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	html := "<html><body>Test content</body></html>"
+	input := ExecuteInput{
+		URL:  "http://example.com",
+		HTML: html,
+		Options: ExtractOptions{
+			AI: &AIExtractOptions{
+				Enabled: true,
+				Mode:    AIModeNaturalLanguage,
+				Fields:  []string{"test_field"},
+			},
+		},
+		AIExtractor: extractor,
+		Context:     ctx,
+	}
+
+	// Execute should complete but AI extraction may fail due to cancelled context
+	// The error is logged but not returned (AI errors don't fail extraction)
+	_, err := Execute(input)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	// Verify the cancelled context was passed
+	if !mock.extractCalled {
+		t.Fatal("AIExtractor.Extract was not called")
+	}
+
+	if mock.capturedContext.Err() != context.Canceled {
+		t.Errorf("Expected cancelled context, got: %v", mock.capturedContext.Err())
+	}
+}
+
+// TestExecute_NilContextFallback verifies that nil context falls back to background
+func TestExecute_NilContextFallback(t *testing.T) {
+	mock := &mockLLMProvider{
+		result: AIExtractResult{
+			Fields: map[string]FieldValue{
+				"test_field": {Values: []string{"test_value"}, Source: FieldSourceDerived},
+			},
+			Confidence: 0.95,
+		},
+	}
+
+	extractor := &AIExtractor{
+		provider: mock,
+		cache:    &mockAICache{},
+	}
+
+	html := "<html><body>Test content</body></html>"
+	input := ExecuteInput{
+		URL:  "http://example.com",
+		HTML: html,
+		Options: ExtractOptions{
+			AI: &AIExtractOptions{
+				Enabled: true,
+				Mode:    AIModeNaturalLanguage,
+				Fields:  []string{"test_field"},
+			},
+		},
+		AIExtractor: extractor,
+		Context:     nil, // Explicitly nil
+	}
+
+	_, err := Execute(input)
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	if !mock.extractCalled {
+		t.Fatal("AIExtractor.Extract was not called")
+	}
+
+	if mock.capturedContext == nil {
+		t.Fatal("Context should not be nil (should fallback to background)")
+	}
+
+	// Verify it's a background context (no error)
+	if mock.capturedContext.Err() != nil {
+		t.Errorf("Expected background context (no error), got: %v", mock.capturedContext.Err())
+	}
+}
+
+// mockAICache is a simple in-memory cache for testing
+type mockAICache struct {
+	data map[string]*AIExtractResult
+}
+
+func (m *mockAICache) Get(key string) (*AIExtractResult, bool) {
+	if m.data == nil {
+		return nil, false
+	}
+	val, ok := m.data[key]
+	return val, ok
+}
+
+func (m *mockAICache) Set(key string, result *AIExtractResult) {
+	if m.data == nil {
+		m.data = make(map[string]*AIExtractResult)
+	}
+	m.data[key] = result
 }

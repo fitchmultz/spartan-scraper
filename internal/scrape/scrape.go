@@ -255,6 +255,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		DataDir:     extractInput.DataDir,
 		Registry:    req.TemplateRegistry,
 		AIExtractor: req.AIExtractor,
+		Context:     ctx,
 	})
 	if err != nil {
 		slog.Error("extraction failed", "url", req.URL, "error", err)

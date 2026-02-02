@@ -183,6 +183,7 @@ func processPage(
 		DataDir:     extractInput.DataDir,
 		Registry:    req.TemplateRegistry,
 		AIExtractor: req.AIExtractor,
+		Context:     ctx,
 	})
 	if extractErr != nil {
 		slog.Error("extraction failed", "url", apperrors.SanitizeURL(item.URL), "error", extractErr)

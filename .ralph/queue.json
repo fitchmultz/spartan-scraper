@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0301",
-      "status": "todo",
-      "title": "Propagate context into AI extraction to allow cancellation/timeouts",
-      "priority": "high",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/extract/extract.go",
-        "internal/crawl/worker.go",
-        "internal/scrape/scrape.go"
-      ],
-      "evidence": [
-        "internal/extract/extract.go:46-54 calls AIExtractor.Extract(context.Background(), ...) which ignores caller cancellation.",
-        "internal/crawl/worker.go:179-186 and internal/scrape/scrape.go:251-258 call extract.Execute without any context parameter to propagate timeouts."
-      ],
-      "plan": [
-        "Add a context field/parameter to extract.Execute (or add ExecuteWithContext) and pass it through to AIExtractor.Extract.",
-        "Update scrape and crawl call sites to pass their request/job context into extraction.",
-        "Add extract tests with a stub AIExtractor that asserts context cancellation is respected.",
-        "Verify by running `go test ./internal/extract ./internal/scrape ./internal/crawl`."
-      ],
-      "notes": [
-        "Principles: Fail fast (F), Operational hygiene (H), Make bugs hard to write (E)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0302",
       "status": "todo",
       "title": "Increase robots.txt scanner buffer to avoid false parse failures",

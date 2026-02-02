@@ -44,7 +44,12 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 
 	// NEW: If AI extraction is enabled, enhance results
 	if input.Options.AI != nil && input.Options.AI.Enabled && input.AIExtractor != nil {
-		aiResult, err := input.AIExtractor.Extract(context.Background(), AIExtractRequest{
+		// Use provided context or fall back to background for backward compatibility
+		ctx := input.Context
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		aiResult, err := input.AIExtractor.Extract(ctx, AIExtractRequest{
 			HTML:            input.HTML,
 			URL:             input.URL,
 			Mode:            input.Options.AI.Mode,

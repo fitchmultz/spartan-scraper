@@ -4,6 +4,7 @@
 package extract
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -150,7 +151,8 @@ type ExecuteInput struct {
 	Options     ExtractOptions
 	DataDir     string
 	Registry    *TemplateRegistry
-	AIExtractor *AIExtractor // Optional AI extractor for intelligent extraction
+	AIExtractor *AIExtractor    // Optional AI extractor for intelligent extraction
+	Context     context.Context // Optional context for cancellation/timeout propagation
 }
 
 type ExecuteOutput struct {
