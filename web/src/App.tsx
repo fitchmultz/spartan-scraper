@@ -13,7 +13,14 @@
  * @module App
  */
 
-import { useCallback, useRef, useEffect, useState } from "react";
+import {
+  useCallback,
+  useRef,
+  useEffect,
+  useState,
+  Suspense,
+  lazy,
+} from "react";
 import {
   deleteV1JobsById,
   postV1Crawl,
@@ -42,17 +49,58 @@ import {
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
-import { MetricsDashboard } from "./components/MetricsDashboard";
-import { ResultsExplorer } from "./components/ResultsExplorer";
 import { InfoSections } from "./components/InfoSections";
-import { ScrapeForm, type ScrapeFormRef } from "./components/ScrapeForm";
-import { CrawlForm, type CrawlFormRef } from "./components/CrawlForm";
-import { ResearchForm, type ResearchFormRef } from "./components/ResearchForm";
-import { BatchForm } from "./components/BatchForm";
 import { BatchList } from "./components/BatchList";
-import { WatchManager } from "./components/WatchManager";
 import { ChainList } from "./components/ChainList";
-import { ChainBuilder } from "./components/ChainBuilder";
+
+// Lazy load heavy components to reduce initial bundle size
+const MetricsDashboard = lazy(() =>
+  import("./components/MetricsDashboard").then((mod) => ({
+    default: mod.MetricsDashboard,
+  })),
+);
+const ResultsExplorer = lazy(() =>
+  import("./components/ResultsExplorer").then((mod) => ({
+    default: mod.ResultsExplorer,
+  })),
+);
+const WatchManager = lazy(() =>
+  import("./components/WatchManager").then((mod) => ({
+    default: mod.WatchManager,
+  })),
+);
+const ChainBuilder = lazy(() =>
+  import("./components/ChainBuilder").then((mod) => ({
+    default: mod.ChainBuilder,
+  })),
+);
+
+// Lazy load form components (large components only needed when user interacts with forms)
+const ScrapeForm = lazy(() =>
+  import("./components/ScrapeForm").then((mod) => ({
+    default: mod.ScrapeForm,
+  })),
+);
+const CrawlForm = lazy(() =>
+  import("./components/CrawlForm").then((mod) => ({
+    default: mod.CrawlForm,
+  })),
+);
+const ResearchForm = lazy(() =>
+  import("./components/ResearchForm").then((mod) => ({
+    default: mod.ResearchForm,
+  })),
+);
+const BatchForm = lazy(() =>
+  import("./components/BatchForm").then((mod) => ({
+    default: mod.BatchForm,
+  })),
+);
+
+// Re-export types from lazy-loaded components
+type ScrapeFormRef = import("./components/ScrapeForm").ScrapeFormRef;
+type CrawlFormRef = import("./components/CrawlForm").CrawlFormRef;
+type ResearchFormRef = import("./components/ResearchForm").ResearchFormRef;
 import { useBatches } from "./hooks/useBatches";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
@@ -719,270 +767,278 @@ export function App() {
         onStepChange={goToStep}
       />
 
-      <MetricsDashboard metrics={metrics} connectionState={connectionState} />
+      <Suspense
+        fallback={<div className="loading-placeholder">Loading metrics...</div>}
+      >
+        <MetricsDashboard metrics={metrics} connectionState={connectionState} />
+      </Suspense>
 
-      <section id="forms" className="grid" data-tour="form-types">
-        <ScrapeForm
-          ref={scrapeFormRef}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          profiles={profiles}
-          onSubmit={handleSubmitScrape}
-          loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
-        />
+      <Suspense
+        fallback={<div className="loading-placeholder">Loading forms...</div>}
+      >
+        <section id="forms" className="grid" data-tour="form-types">
+          <ScrapeForm
+            ref={scrapeFormRef}
+            headless={headless}
+            setHeadless={setHeadless}
+            usePlaywright={usePlaywright}
+            setUsePlaywright={setUsePlaywright}
+            timeoutSeconds={timeoutSeconds}
+            setTimeoutSeconds={setTimeoutSeconds}
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            incremental={incremental}
+            setIncremental={setIncremental}
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            profiles={profiles}
+            onSubmit={handleSubmitScrape}
+            loading={loading}
+            interceptEnabled={interceptEnabled}
+            setInterceptEnabled={setInterceptEnabled}
+            interceptURLPatterns={interceptURLPatterns}
+            setInterceptURLPatterns={setInterceptURLPatterns}
+            interceptResourceTypes={interceptResourceTypes}
+            setInterceptResourceTypes={setInterceptResourceTypes}
+            interceptCaptureRequestBody={interceptCaptureRequestBody}
+            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+            interceptCaptureResponseBody={interceptCaptureResponseBody}
+            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+            interceptMaxBodySize={interceptMaxBodySize}
+            setInterceptMaxBodySize={setInterceptMaxBodySize}
+          />
 
-        <CrawlForm
-          ref={crawlFormRef}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          profiles={profiles}
-          onSubmit={handleSubmitCrawl}
-          loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
-        />
+          <CrawlForm
+            ref={crawlFormRef}
+            headless={headless}
+            setHeadless={setHeadless}
+            usePlaywright={usePlaywright}
+            setUsePlaywright={setUsePlaywright}
+            timeoutSeconds={timeoutSeconds}
+            setTimeoutSeconds={setTimeoutSeconds}
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            incremental={incremental}
+            setIncremental={setIncremental}
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            profiles={profiles}
+            onSubmit={handleSubmitCrawl}
+            loading={loading}
+            interceptEnabled={interceptEnabled}
+            setInterceptEnabled={setInterceptEnabled}
+            interceptURLPatterns={interceptURLPatterns}
+            setInterceptURLPatterns={setInterceptURLPatterns}
+            interceptResourceTypes={interceptResourceTypes}
+            setInterceptResourceTypes={setInterceptResourceTypes}
+            interceptCaptureRequestBody={interceptCaptureRequestBody}
+            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+            interceptCaptureResponseBody={interceptCaptureResponseBody}
+            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+            interceptMaxBodySize={interceptMaxBodySize}
+            setInterceptMaxBodySize={setInterceptMaxBodySize}
+          />
 
-        <ResearchForm
-          ref={researchFormRef}
-          maxDepth={maxDepth}
-          setMaxDepth={setMaxDepth}
-          maxPages={maxPages}
-          setMaxPages={setMaxPages}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          profiles={profiles}
-          onSubmit={handleSubmitResearch}
-          loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
-        />
+          <ResearchForm
+            ref={researchFormRef}
+            maxDepth={maxDepth}
+            setMaxDepth={setMaxDepth}
+            maxPages={maxPages}
+            setMaxPages={setMaxPages}
+            headless={headless}
+            setHeadless={setHeadless}
+            usePlaywright={usePlaywright}
+            setUsePlaywright={setUsePlaywright}
+            timeoutSeconds={timeoutSeconds}
+            setTimeoutSeconds={setTimeoutSeconds}
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            profiles={profiles}
+            onSubmit={handleSubmitResearch}
+            loading={loading}
+            interceptEnabled={interceptEnabled}
+            setInterceptEnabled={setInterceptEnabled}
+            interceptURLPatterns={interceptURLPatterns}
+            setInterceptURLPatterns={setInterceptURLPatterns}
+            interceptResourceTypes={interceptResourceTypes}
+            setInterceptResourceTypes={setInterceptResourceTypes}
+            interceptCaptureRequestBody={interceptCaptureRequestBody}
+            setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
+            interceptCaptureResponseBody={interceptCaptureResponseBody}
+            setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
+            interceptMaxBodySize={interceptMaxBodySize}
+            setInterceptMaxBodySize={setInterceptMaxBodySize}
+          />
 
-        <BatchForm
-          activeTab={batchTab}
-          setActiveTab={setBatchTab}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          profiles={profiles}
-          urlsInput={batchUrls}
-          setUrlsInput={setBatchUrls}
-          maxDepth={maxDepth}
-          setMaxDepth={setMaxDepth}
-          maxPages={maxPages}
-          setMaxPages={setMaxPages}
-          query={batchQuery}
-          setQuery={setBatchQuery}
-          onSubmitScrape={handleSubmitBatchScrape}
-          onSubmitCrawl={handleSubmitBatchCrawl}
-          onSubmitResearch={handleSubmitBatchResearch}
-          loading={loading}
-        />
-      </section>
+          <BatchForm
+            activeTab={batchTab}
+            setActiveTab={setBatchTab}
+            headless={headless}
+            setHeadless={setHeadless}
+            usePlaywright={usePlaywright}
+            setUsePlaywright={setUsePlaywright}
+            timeoutSeconds={timeoutSeconds}
+            setTimeoutSeconds={setTimeoutSeconds}
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            incremental={incremental}
+            setIncremental={setIncremental}
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            profiles={profiles}
+            urlsInput={batchUrls}
+            setUrlsInput={setBatchUrls}
+            maxDepth={maxDepth}
+            setMaxDepth={setMaxDepth}
+            maxPages={maxPages}
+            setMaxPages={setMaxPages}
+            query={batchQuery}
+            setQuery={setBatchQuery}
+            onSubmitScrape={handleSubmitBatchScrape}
+            onSubmitCrawl={handleSubmitBatchCrawl}
+            onSubmitResearch={handleSubmitBatchResearch}
+            loading={loading}
+          />
+        </section>
+      </Suspense>
 
       <section id="batches">
         <BatchList
@@ -997,10 +1053,18 @@ export function App() {
 
       <section id="chains">
         {showChainBuilder ? (
-          <ChainBuilder
-            onCreate={handleCreateChain}
-            onCancel={() => setShowChainBuilder(false)}
-          />
+          <Suspense
+            fallback={
+              <div className="loading-placeholder">
+                Loading chain builder...
+              </div>
+            }
+          >
+            <ChainBuilder
+              onCreate={handleCreateChain}
+              onCancel={() => setShowChainBuilder(false)}
+            />
+          </Suspense>
         ) : (
           <ChainList
             chains={chains}
@@ -1030,36 +1094,50 @@ export function App() {
       </section>
 
       <section id="results">
-        <ResultsExplorer
-          jobId={selectedJobId}
-          resultItems={resultItems}
-          selectedResultIndex={selectedResultIndex}
-          setSelectedResultIndex={setSelectedResultIndex}
-          resultSummary={resultSummary}
-          resultConfidence={resultConfidence}
-          resultEvidence={resultEvidence}
-          resultClusters={resultClusters}
-          resultCitations={resultCitations}
-          rawResult={rawResult}
-          resultFormat={resultFormat}
-          currentPage={currentPage}
-          totalResults={totalResults}
-          resultsPerPage={100}
-          onLoadPage={setCurrentPage}
-          availableJobs={jobs}
-        />
+        <Suspense
+          fallback={
+            <div className="loading-placeholder">
+              Loading results explorer...
+            </div>
+          }
+        >
+          <ResultsExplorer
+            jobId={selectedJobId}
+            resultItems={resultItems}
+            selectedResultIndex={selectedResultIndex}
+            setSelectedResultIndex={setSelectedResultIndex}
+            resultSummary={resultSummary}
+            resultConfidence={resultConfidence}
+            resultEvidence={resultEvidence}
+            resultClusters={resultClusters}
+            resultCitations={resultCitations}
+            rawResult={rawResult}
+            resultFormat={resultFormat}
+            currentPage={currentPage}
+            totalResults={totalResults}
+            resultsPerPage={100}
+            onLoadPage={setCurrentPage}
+            availableJobs={jobs}
+          />
+        </Suspense>
       </section>
 
       <section id="watches">
-        <WatchManager
-          watches={watches}
-          onRefresh={refreshWatches}
-          onCreate={handleCreateWatch}
-          onUpdate={handleUpdateWatch}
-          onDelete={handleDeleteWatch}
-          onCheck={handleCheckWatch}
-          loading={watchesLoading}
-        />
+        <Suspense
+          fallback={
+            <div className="loading-placeholder">Loading watch manager...</div>
+          }
+        >
+          <WatchManager
+            watches={watches}
+            onRefresh={refreshWatches}
+            onCreate={handleCreateWatch}
+            onUpdate={handleUpdateWatch}
+            onDelete={handleDeleteWatch}
+            onCheck={handleCheckWatch}
+            loading={watchesLoading}
+          />
+        </Suspense>
       </section>
 
       <InfoSections

@@ -26,5 +26,15 @@ export default defineConfig(({ mode }) => {
         "/healthz": apiTarget,
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor libraries into separate chunks
+            "vendor-react": ["react", "react-dom"],
+          },
+        },
+      },
+    },
   };
 });

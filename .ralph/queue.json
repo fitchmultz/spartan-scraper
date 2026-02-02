@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0290",
-      "status": "todo",
-      "title": "Reduce web build chunk size warning (>500 kB) via code-splitting",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/",
-        "cd web && pnpm run build"
-      ],
-      "evidence": [
-        "make ci -> pnpm run build warns: 'Some chunks are larger than 500 kB after minification' and suggests dynamic import/manualChunks"
-      ],
-      "plan": [
-        "Identify the largest chunk contributors (e.g., route-level or feature-level bundles) and choose a minimal split target.",
-        "Introduce dynamic imports or rollup manualChunks configuration to split the large bundle without changing runtime behavior.",
-        "Verify by running cd web && pnpm run build and confirming the chunk-size warning is gone or below the configured threshold."
-      ],
-      "notes": [
-        "Principles violated: H (Operational hygiene), E (Make bugs hard to write) via performance regressions that are harder to notice.",
-        "Why it matters: oversized bundles slow initial load and can regress UX on constrained devices.",
-        "Minimal fix: split the largest routes/components into lazy-loaded chunks."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0291",
       "status": "todo",
       "title": "Split internal/cli/batch/batch.go (1237 LOC) into cohesive files",
