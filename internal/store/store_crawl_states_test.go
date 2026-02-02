@@ -196,3 +196,54 @@ func TestStoreCountCrawlStates(t *testing.T) {
 		t.Errorf("expected 3 crawl states, got %d", count)
 	}
 }
+
+func TestDeleteCrawlStatesOlderThan(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := Open(dataDir)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer st.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Create crawl states with different ages
+	oldState := model.CrawlState{
+		URL:         "http://old.example.com",
+		LastScraped: now.AddDate(0, 0, -100),
+		ContentHash: "abc123",
+	}
+	newState := model.CrawlState{
+		URL:         "http://new.example.com",
+		LastScraped: now.AddDate(0, 0, -5),
+		ContentHash: "def456",
+	}
+
+	if err := st.UpsertCrawlState(ctx, oldState); err != nil {
+		t.Fatalf("UpsertCrawlState old failed: %v", err)
+	}
+	if err := st.UpsertCrawlState(ctx, newState); err != nil {
+		t.Fatalf("UpsertCrawlState new failed: %v", err)
+	}
+
+	// Delete crawl states older than 60 days
+	cutoff := now.AddDate(0, 0, -60)
+	deleted, err := st.DeleteCrawlStatesOlderThan(ctx, cutoff)
+	if err != nil {
+		t.Fatalf("DeleteCrawlStatesOlderThan failed: %v", err)
+	}
+
+	if deleted != 1 {
+		t.Errorf("expected 1 deleted crawl state, got %d", deleted)
+	}
+
+	// Verify remaining crawl state
+	states, err := st.ListCrawlStates(ctx, ListCrawlStatesOptions{})
+	if err != nil {
+		t.Fatalf("ListCrawlStates failed: %v", err)
+	}
+	if len(states) != 1 {
+		t.Errorf("expected 1 remaining crawl state, got %d", len(states))
+	}
+}

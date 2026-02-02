@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0297",
-      "status": "todo",
-      "title": "Split internal/store/store_retention_test.go (901 LOC) into focused test files",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/store/store_retention_test.go",
-        "wc -l internal/store/store_retention_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/store/store_retention_test.go -> 901"
-      ],
-      "plan": [
-        "Group retention tests by feature (jobs, crawl states, artifacts) and split into multiple *_test.go files.",
-        "Extract shared helpers into a testutil file if needed.",
-        "Verify by running go test ./internal/store."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: oversized test files are difficult to maintain and make failures harder to triage.",
-        "Minimal fix: split by responsibility while keeping assertions intact."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0298",
       "status": "todo",
       "title": "Split internal/webhook/dispatcher_test.go (803 LOC) into focused test files",
