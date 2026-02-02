@@ -582,6 +582,55 @@ Feed settings:
 - **Enabled**: Whether the feed is actively checked
 - **Auto-scrape**: Automatically create scrape jobs for new items
 
+## Webhook Delivery Debugging
+
+Debug and monitor webhook delivery history to troubleshoot integration issues.
+
+### API
+
+- `GET /v1/webhooks/deliveries` - List webhook deliveries with optional job_id filter and pagination (limit/offset)
+- `GET /v1/webhooks/deliveries/{id}` - Get detailed information about a specific delivery
+
+### Web UI
+
+The Webhook Deliveries section provides a visual dashboard for:
+
+1. **Viewing deliveries** - See all webhook deliveries with status, timestamps, and metadata
+2. **Filtering** - Filter by job ID or status (pending, delivered, failed)
+3. **Pagination** - Navigate through delivery history with server-side pagination
+4. **Detail view** - Drill down into individual deliveries to see full request/response details
+
+Delivery statuses:
+- **Pending** - Webhook is queued for delivery
+- **Delivered** - Webhook was successfully delivered (2xx response)
+- **Failed** - Webhook delivery failed after all retry attempts
+
+The detail view shows:
+- Delivery metadata (ID, event type, job ID, URL)
+- Status and number of attempts
+- Response code (if available)
+- Timestamps (created, updated, delivered)
+- Error message (if failed)
+- Full technical details (JSON)
+
+### Common Error Patterns
+
+**Connection timeouts**: Check that the webhook URL is accessible from the server and firewalls allow outbound connections.
+
+**4xx errors**: Verify the webhook endpoint is configured correctly. Common issues include wrong URL path, missing authentication headers, or incorrect payload format.
+
+**5xx errors**: The receiving server is experiencing issues. Check the receiving service's logs and health status.
+
+**SSL/TLS errors**: Ensure the webhook URL uses valid SSL certificates. For self-signed certificates, you may need to configure the receiving server appropriately.
+
+### CLI Parity
+
+The Web UI mirrors the functionality of:
+```
+GET /v1/webhooks/deliveries?job_id=<id>&limit=<n>&offset=<n>
+GET /v1/webhooks/deliveries/<id>
+```
+
 ## Scripts
 
 ### Stress test

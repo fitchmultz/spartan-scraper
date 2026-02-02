@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0312",
-      "status": "todo",
-      "title": "Add webhook delivery dashboard for debugging",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "web",
-        "webhook",
-        "reliability"
-      ],
-      "scope": [
-        "internal/api/webhook_handlers.go",
-        "web/src/api/sdk.gen.ts",
-        "web/src/App.tsx",
-        "web/src/components"
-      ],
-      "evidence": [
-        "Opportunity type: reliability / UX improvement",
-        "Webhook delivery history endpoints exist (internal/api/webhook_handlers.go, /v1/webhooks/deliveries).",
-        "Web UI does not expose webhook delivery records or details (no components; App.tsx has no webhook section)."
-      ],
-      "plan": [
-        "Create a WebhookDeliveries component to list deliveries with filters (job ID, status) and drill-down detail.",
-        "Wire it into App.tsx and add navigation anchor.",
-        "Add client-side pagination and display retry counts/latency.",
-        "Add tests for list and detail rendering with mocked API responses.",
-        "Update docs/usage.md with webhook delivery troubleshooting section.",
-        "Verify by running `cd web && pnpm run test` and viewing deliveries via `make web-dev` with sample data."
-      ],
-      "notes": [
-        "Why it matters: failed webhooks are a common integration failure; delivery visibility reduces debugging time and missed downstream processing.",
-        "Proposed approach: MVS read-only list + detail view; expand to retry/resend and alerting hooks.",
-        "Risks/mitigations: large delivery history; mitigate with pagination and filters.",
-        "Acceptance criteria: UI shows deliveries and detail payload; errors surfaced; tests cover filters; docs updated."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-02T18:31:24Z",
-      "updated_at": "2026-02-02T18:31:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0313",
       "status": "todo",
       "title": "Expose retention status and cleanup controls in Web UI",
