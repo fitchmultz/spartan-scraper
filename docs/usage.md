@@ -550,6 +550,38 @@ spartan manage export-schedule delete --id "..."
 spartan manage export-schedule history --id "..."
 ```
 
+## Feed Monitoring
+
+Monitor RSS/Atom feeds and automatically create scrape jobs for new items.
+
+### CLI
+
+- `spartan feed add --url <url> [--type rss|atom|auto] [--interval <seconds>] [--auto-scrape]` - Add a feed
+- `spartan feed list [--all]` - List all feeds
+- `spartan feed get --id <id>` - Get feed details
+- `spartan feed update --id <id> [options]` - Update a feed
+- `spartan feed delete --id <id>` - Delete a feed
+- `spartan feed check --id <id>` - Manually check a feed
+- `spartan feed items --id <id>` - List seen items for a feed
+- `spartan feed start` - Start the feed scheduler daemon
+
+### Web UI
+
+The Feed Manager section provides a visual interface for:
+
+1. **Viewing feeds** - See all configured feeds with status, last check time, and error state
+2. **Adding feeds** - Enter URL, select type (auto/rss/atom), set check interval
+3. **Editing feeds** - Modify feed settings (URL, interval, auto-scrape)
+4. **Checking feeds** - Manually trigger a check and see new items found
+5. **Viewing items** - Browse all seen items for a feed with links
+
+Feed settings:
+- **URL**: RSS/Atom feed URL
+- **Type**: Auto-detect, RSS 2.0, or Atom 1.0
+- **Check interval**: How often to poll (minimum 60 seconds)
+- **Enabled**: Whether the feed is actively checked
+- **Auto-scrape**: Automatically create scrape jobs for new items
+
 ## Scripts
 
 ### Stress test

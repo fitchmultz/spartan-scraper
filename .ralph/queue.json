@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0311",
-      "status": "todo",
-      "title": "Surface feed monitoring in the Web UI",
-      "priority": "high",
-      "tags": [
-        "innovation",
-        "web",
-        "feeds",
-        "monitoring"
-      ],
-      "scope": [
-        "web/src/components/FeedManager.tsx",
-        "web/src/App.tsx",
-        "internal/api/feed.go",
-        "internal/cli/manage/feed.go",
-        "docs/usage.md"
-      ],
-      "evidence": [
-        "Opportunity type: feature gap / UX improvement",
-        "Feed monitoring is implemented in API and CLI (internal/api/feed.go, internal/cli/manage/feed.go).",
-        "FeedManager component exists but is not mounted anywhere in the UI (web/src/components/FeedManager.tsx; no App.tsx usage)."
-      ],
-      "plan": [
-        "Add a FeedContainer or integrate FeedManager into App with API calls for list/create/update/delete/check/items.",
-        "Expose feed monitoring as a dedicated section with empty state and actions.",
-        "Add UI hooks for manual checks and feed item viewing with error feedback.",
-        "Add tests for create/update/check flows with mocked API responses.",
-        "Document feed monitoring in docs/usage.md (CLI + Web UI parity).",
-        "Verify by running `cd web && pnpm run test` and creating/checking a feed via `make web-dev`."
-      ],
-      "notes": [
-        "Why it matters: RSS/Atom monitoring is a core workflow for ongoing research and alerts; UI access reduces friction vs CLI-only.",
-        "Proposed approach: MVS lists feeds, creates/edits, checks now, and shows seen items; expand to notifications and linking items to scrape jobs.",
-        "Risks/mitigations: scheduler concurrency limits; mitigate with clear status and rate hints.",
-        "Acceptance criteria: UI can CRUD feeds, run checks, and display items; tests cover happy/failure paths; docs updated."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-02T18:31:24Z",
-      "updated_at": "2026-02-02T18:31:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0312",
       "status": "todo",
       "title": "Add webhook delivery dashboard for debugging",
