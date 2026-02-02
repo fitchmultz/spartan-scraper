@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0299",
-      "status": "todo",
-      "title": "Add request body size limits for AI extract endpoints",
-      "priority": "high",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/api/ai_extract.go",
-        "internal/api/scrape.go"
-      ],
-      "evidence": [
-        "internal/api/ai_extract.go:61-63 decodes JSON without wrapping r.Body in http.MaxBytesReader.",
-        "internal/api/scrape.go:28 shows other handlers enforcing maxRequestBodySize via http.MaxBytesReader."
-      ],
-      "plan": [
-        "Wrap AI extract handlers with http.MaxBytesReader(w, r.Body, maxRequestBodySize) before decoding.",
-        "Use json.Decoder with DisallowUnknownFields to match other JSON handlers if consistent with API expectations.",
-        "Add focused tests in internal/api (ai_extract_test.go) for oversized payload rejection.",
-        "Verify by running `go test ./internal/api` and confirming AI handler tests pass."
-      ],
-      "notes": [
-        "Principles: Security baseline (I), Fail fast (F), Least astonishment (G)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0300",
       "status": "todo",
       "title": "Fix dependent job lookup to avoid LIKE false positives",

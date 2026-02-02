@@ -52,14 +52,26 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Enforce body size limit BEFORE any other processing (security: prevent DoS)
+	if r.ContentLength > maxRequestBodySize {
+		writeError(w, r, apperrors.RequestEntityTooLarge("request body too large"))
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	// Validate AI config is available
 	if s.aiExtractor == nil {
 		writeError(w, r, apperrors.Validation("AI extraction is not configured. Set AI_PROVIDER and AI_API_KEY environment variables."))
 		return
 	}
-
 	var req AIExtractPreviewRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
+			return
+		}
 		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
 		return
 	}
@@ -119,14 +131,26 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Enforce body size limit BEFORE any other processing (security: prevent DoS)
+	if r.ContentLength > maxRequestBodySize {
+		writeError(w, r, apperrors.RequestEntityTooLarge("request body too large"))
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	// Validate AI config is available
 	if s.aiExtractor == nil {
 		writeError(w, r, apperrors.Validation("AI extraction is not configured. Set AI_PROVIDER and AI_API_KEY environment variables."))
 		return
 	}
-
 	var req AIExtractTemplateGenerateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
+			return
+		}
 		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
 		return
 	}
