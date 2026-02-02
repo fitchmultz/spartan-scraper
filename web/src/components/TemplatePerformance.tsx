@@ -9,15 +9,9 @@
 
 import { useState, useEffect } from "react";
 import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
-
-interface TemplateMetrics {
-  hour: string;
-  template_name: string;
-  extractions_total: number;
-  extractions_success: number;
-  field_coverage_avg: number;
-  avg_extraction_time_ms: number;
-}
+import { getV1TemplateMetrics, getV1TemplateComparison } from "../api";
+import type { TemplateMetrics, TemplateComparison } from "../api";
+import { getApiBaseUrl } from "../lib/api-config";
 
 interface TemplatePerformanceProps {
   templateName: string;
@@ -77,16 +71,20 @@ export function TemplatePerformance({
           Date.now() - 7 * 24 * 60 * 60 * 1000,
         ).toISOString();
 
-        const response = await fetch(
-          `/v1/template-metrics?template=${encodeURIComponent(templateName)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-        );
+        const { data, error: apiError } = await getV1TemplateMetrics({
+          baseUrl: getApiBaseUrl(),
+          query: {
+            template: templateName,
+            from,
+            to,
+          },
+        });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch metrics");
+        if (apiError) {
+          throw new Error(String(apiError));
         }
 
-        const data = await response.json();
-        setMetrics(data.metrics || []);
+        setMetrics(data?.metrics || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -110,26 +108,30 @@ export function TemplatePerformance({
   if (metrics.length === 0) {
     return (
       <div className="template-performance empty">
-        No metrics available for template "{templateName}"
+        <p>No metrics available for template &quot;{templateName}&quot;</p>
+        <p className="empty-hint">
+          Run jobs with this template to collect performance data.
+        </p>
       </div>
     );
   }
 
   // Aggregate metrics
   const totalExtractions = metrics.reduce(
-    (sum, m) => sum + m.extractions_total,
+    (sum, m) => sum + (m.extractions_total || 0),
     0,
   );
   const totalSuccess = metrics.reduce(
-    (sum, m) => sum + m.extractions_success,
+    (sum, m) => sum + (m.extractions_success || 0),
     0,
   );
   const avgSuccessRate =
     totalExtractions > 0 ? (totalSuccess / totalExtractions) * 100 : 0;
   const avgFieldCoverage =
-    metrics.reduce((sum, m) => sum + m.field_coverage_avg, 0) / metrics.length;
+    metrics.reduce((sum, m) => sum + (m.field_coverage_avg || 0), 0) /
+    metrics.length;
   const avgExtractionTime =
-    metrics.reduce((sum, m) => sum + m.avg_extraction_time_ms, 0) /
+    metrics.reduce((sum, m) => sum + (m.avg_extraction_time_ms || 0), 0) /
     metrics.length;
 
   const getSuccessRateColor = () => {
@@ -206,37 +208,11 @@ interface TemplateComparisonViewProps {
   templateB: string;
 }
 
-interface ComparisonData {
-  template_a: string;
-  template_b: string;
-  template_a_metrics: {
-    sample_size: number;
-    success_rate: number;
-    field_coverage: number;
-    avg_extraction_time_ms: number;
-  };
-  template_b_metrics: {
-    sample_size: number;
-    success_rate: number;
-    field_coverage: number;
-    avg_extraction_time_ms: number;
-  };
-  statistical_test: {
-    test_type: string;
-    p_value: number;
-    is_significant: boolean;
-    confidence_interval: [number, number];
-    effect_size: number;
-  };
-  winner: string | null;
-  recommendation: string;
-}
-
 export function TemplateComparisonView({
   templateA,
   templateB,
 }: TemplateComparisonViewProps) {
-  const [comparison, setComparison] = useState<ComparisonData | null>(null);
+  const [comparison, setComparison] = useState<TemplateComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -249,16 +225,21 @@ export function TemplateComparisonView({
           Date.now() - 7 * 24 * 60 * 60 * 1000,
         ).toISOString();
 
-        const response = await fetch(
-          `/v1/template-comparison?template_a=${encodeURIComponent(templateA)}&template_b=${encodeURIComponent(templateB)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-        );
+        const { data, error: apiError } = await getV1TemplateComparison({
+          baseUrl: getApiBaseUrl(),
+          query: {
+            template_a: templateA,
+            template_b: templateB,
+            from,
+            to,
+          },
+        });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch comparison");
+        if (apiError) {
+          throw new Error(String(apiError));
         }
 
-        const data = await response.json();
-        setComparison(data);
+        setComparison(data || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -282,13 +263,16 @@ export function TemplateComparisonView({
   if (!comparison) {
     return (
       <div className="template-comparison empty">
-        No comparison data available
+        <p>No comparison data available</p>
+        <p className="empty-hint">
+          Run jobs with both templates to generate comparison data.
+        </p>
       </div>
     );
   }
 
   const getSignificanceBadge = () => {
-    if (comparison.statistical_test.is_significant) {
+    if (comparison.statistical_test?.is_significant) {
       return (
         <span className="badge badge--success">Statistically Significant</span>
       );
@@ -300,8 +284,7 @@ export function TemplateComparisonView({
     if (!comparison.winner) {
       return <span className="badge badge--neutral">No Winner</span>;
     }
-    const winnerName =
-      comparison.winner === "template_a" ? templateA : templateB;
+    const winnerName = comparison.winner === "baseline" ? templateA : templateB;
     return <span className="badge badge--success">Winner: {winnerName}</span>;
   };
 
@@ -321,25 +304,29 @@ export function TemplateComparisonView({
           <div className="comparison-metric">
             <span className="metric-label">Success Rate:</span>
             <span className="metric-value">
-              {comparison.template_a_metrics.success_rate.toFixed(1)}%
+              {comparison.baseline_metrics?.success_rate?.toFixed(1) ?? "N/A"}%
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Field Coverage:</span>
             <span className="metric-value">
-              {(comparison.template_a_metrics.field_coverage * 100).toFixed(1)}%
+              {(
+                (comparison.baseline_metrics?.field_coverage ?? 0) * 100
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Avg Time:</span>
             <span className="metric-value">
-              {comparison.template_a_metrics.avg_extraction_time_ms}ms
+              {comparison.baseline_metrics?.avg_extraction_time_ms ?? "N/A"}ms
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Samples:</span>
             <span className="metric-value">
-              {comparison.template_a_metrics.sample_size.toLocaleString()}
+              {comparison.baseline_metrics?.sample_size?.toLocaleString() ??
+                "N/A"}
             </span>
           </div>
         </div>
@@ -349,25 +336,29 @@ export function TemplateComparisonView({
           <div className="comparison-metric">
             <span className="metric-label">Success Rate:</span>
             <span className="metric-value">
-              {comparison.template_b_metrics.success_rate.toFixed(1)}%
+              {comparison.variant_metrics?.success_rate?.toFixed(1) ?? "N/A"}%
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Field Coverage:</span>
             <span className="metric-value">
-              {(comparison.template_b_metrics.field_coverage * 100).toFixed(1)}%
+              {(
+                (comparison.variant_metrics?.field_coverage ?? 0) * 100
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Avg Time:</span>
             <span className="metric-value">
-              {comparison.template_b_metrics.avg_extraction_time_ms}ms
+              {comparison.variant_metrics?.avg_extraction_time_ms ?? "N/A"}ms
             </span>
           </div>
           <div className="comparison-metric">
             <span className="metric-label">Samples:</span>
             <span className="metric-value">
-              {comparison.template_b_metrics.sample_size.toLocaleString()}
+              {comparison.variant_metrics?.sample_size?.toLocaleString() ??
+                "N/A"}
             </span>
           </div>
         </div>
@@ -378,26 +369,33 @@ export function TemplateComparisonView({
         <div className="stat-row">
           <span className="stat-label">Test Type:</span>
           <span className="stat-value">
-            {comparison.statistical_test.test_type}
+            {comparison.statistical_test?.test_type ?? "N/A"}
           </span>
         </div>
         <div className="stat-row">
           <span className="stat-label">P-Value:</span>
           <span className="stat-value">
-            {comparison.statistical_test.p_value.toFixed(4)}
+            {comparison.statistical_test?.p_value?.toFixed(4) ?? "N/A"}
           </span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Confidence Interval:</span>
           <span className="stat-value">
-            [{comparison.statistical_test.confidence_interval[0].toFixed(3)},{" "}
-            {comparison.statistical_test.confidence_interval[1].toFixed(3)}]
+            [
+            {comparison.statistical_test?.confidence_interval?.[0]?.toFixed(
+              3,
+            ) ?? "N/A"}
+            ,{" "}
+            {comparison.statistical_test?.confidence_interval?.[1]?.toFixed(
+              3,
+            ) ?? "N/A"}
+            ]
           </span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Effect Size:</span>
           <span className="stat-value">
-            {comparison.statistical_test.effect_size.toFixed(3)}
+            {comparison.statistical_test?.effect_size?.toFixed(3) ?? "N/A"}
           </span>
         </div>
       </div>

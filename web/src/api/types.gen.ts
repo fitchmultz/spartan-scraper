@@ -6734,3 +6734,620 @@ export type PostV1PluginsByNameDisableResponses = {
 };
 
 export type PostV1PluginsByNameDisableResponse = PostV1PluginsByNameDisableResponses[keyof PostV1PluginsByNameDisableResponses];
+
+export type GetV1TemplateMetricsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Filter by template name (optional)
+         */
+        template?: string;
+        /**
+         * Start time (RFC3339)
+         */
+        from: string;
+        /**
+         * End time (RFC3339)
+         */
+        to: string;
+    };
+    url: '/v1/template-metrics';
+};
+
+export type GetV1TemplateMetricsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1TemplateMetricsError = GetV1TemplateMetricsErrors[keyof GetV1TemplateMetricsErrors];
+
+export type GetV1TemplateMetricsResponses = {
+    /**
+     * Template metrics
+     */
+    200: {
+        metrics?: Array<TemplateMetrics>;
+    };
+};
+
+export type GetV1TemplateMetricsResponse = GetV1TemplateMetricsResponses[keyof GetV1TemplateMetricsResponses];
+
+export type GetV1TemplateComparisonData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * First template name
+         */
+        template_a: string;
+        /**
+         * Second template name
+         */
+        template_b: string;
+        /**
+         * Start time (RFC3339)
+         */
+        from: string;
+        /**
+         * End time (RFC3339)
+         */
+        to: string;
+    };
+    url: '/v1/template-comparison';
+};
+
+export type GetV1TemplateComparisonErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1TemplateComparisonError = GetV1TemplateComparisonErrors[keyof GetV1TemplateComparisonErrors];
+
+export type GetV1TemplateComparisonResponses = {
+    /**
+     * Template comparison with statistical analysis
+     */
+    200: TemplateComparison;
+};
+
+export type GetV1TemplateComparisonResponse = GetV1TemplateComparisonResponses[keyof GetV1TemplateComparisonResponses];
+
+export type GetV1TemplateAbTestsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter by test status
+         */
+        status?: 'pending' | 'running' | 'paused' | 'completed';
+    };
+    url: '/v1/template-ab-tests';
+};
+
+export type GetV1TemplateAbTestsErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1TemplateAbTestsError = GetV1TemplateAbTestsErrors[keyof GetV1TemplateAbTestsErrors];
+
+export type GetV1TemplateAbTestsResponses = {
+    /**
+     * List of A/B tests
+     */
+    200: {
+        tests?: Array<TemplateAbTest>;
+    };
+};
+
+export type GetV1TemplateAbTestsResponse = GetV1TemplateAbTestsResponses[keyof GetV1TemplateAbTestsResponses];
+
+export type PostV1TemplateAbTestsData = {
+    body: TemplateAbTest;
+    path?: never;
+    query?: never;
+    url: '/v1/template-ab-tests';
+};
+
+export type PostV1TemplateAbTestsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1TemplateAbTestsError = PostV1TemplateAbTestsErrors[keyof PostV1TemplateAbTestsErrors];
+
+export type PostV1TemplateAbTestsResponses = {
+    /**
+     * Created test
+     */
+    201: TemplateAbTest;
+};
+
+export type PostV1TemplateAbTestsResponse = PostV1TemplateAbTestsResponses[keyof PostV1TemplateAbTestsResponses];
+
+export type DeleteV1TemplateAbTestsByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}';
+};
+
+export type DeleteV1TemplateAbTestsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteV1TemplateAbTestsByIdError = DeleteV1TemplateAbTestsByIdErrors[keyof DeleteV1TemplateAbTestsByIdErrors];
+
+export type DeleteV1TemplateAbTestsByIdResponses = {
+    /**
+     * Deleted successfully
+     */
+    204: void;
+};
+
+export type DeleteV1TemplateAbTestsByIdResponse = DeleteV1TemplateAbTestsByIdResponses[keyof DeleteV1TemplateAbTestsByIdResponses];
+
+export type GetV1TemplateAbTestsByIdData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}';
+};
+
+export type GetV1TemplateAbTestsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1TemplateAbTestsByIdError = GetV1TemplateAbTestsByIdErrors[keyof GetV1TemplateAbTestsByIdErrors];
+
+export type GetV1TemplateAbTestsByIdResponses = {
+    /**
+     * A/B test details
+     */
+    200: TemplateAbTest;
+};
+
+export type GetV1TemplateAbTestsByIdResponse = GetV1TemplateAbTestsByIdResponses[keyof GetV1TemplateAbTestsByIdResponses];
+
+export type PatchV1TemplateAbTestsByIdData = {
+    body: TemplateAbTest;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}';
+};
+
+export type PatchV1TemplateAbTestsByIdErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PatchV1TemplateAbTestsByIdError = PatchV1TemplateAbTestsByIdErrors[keyof PatchV1TemplateAbTestsByIdErrors];
+
+export type PatchV1TemplateAbTestsByIdResponses = {
+    /**
+     * Updated test
+     */
+    200: TemplateAbTest;
+};
+
+export type PatchV1TemplateAbTestsByIdResponse = PatchV1TemplateAbTestsByIdResponses[keyof PatchV1TemplateAbTestsByIdResponses];
+
+export type PostV1TemplateAbTestsByIdStartData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}/start';
+};
+
+export type PostV1TemplateAbTestsByIdStartErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1TemplateAbTestsByIdStartError = PostV1TemplateAbTestsByIdStartErrors[keyof PostV1TemplateAbTestsByIdStartErrors];
+
+export type PostV1TemplateAbTestsByIdStartResponses = {
+    /**
+     * Test started
+     */
+    200: {
+        status?: string;
+        test_id?: string;
+    };
+};
+
+export type PostV1TemplateAbTestsByIdStartResponse = PostV1TemplateAbTestsByIdStartResponses[keyof PostV1TemplateAbTestsByIdStartResponses];
+
+export type PostV1TemplateAbTestsByIdStopData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}/stop';
+};
+
+export type PostV1TemplateAbTestsByIdStopErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1TemplateAbTestsByIdStopError = PostV1TemplateAbTestsByIdStopErrors[keyof PostV1TemplateAbTestsByIdStopErrors];
+
+export type PostV1TemplateAbTestsByIdStopResponses = {
+    /**
+     * Test stopped
+     */
+    200: {
+        status?: string;
+        test_id?: string;
+    };
+};
+
+export type PostV1TemplateAbTestsByIdStopResponse = PostV1TemplateAbTestsByIdStopResponses[keyof PostV1TemplateAbTestsByIdStopResponses];
+
+export type GetV1TemplateAbTestsByIdResultsData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}/results';
+};
+
+export type GetV1TemplateAbTestsByIdResultsErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1TemplateAbTestsByIdResultsError = GetV1TemplateAbTestsByIdResultsErrors[keyof GetV1TemplateAbTestsByIdResultsErrors];
+
+export type GetV1TemplateAbTestsByIdResultsResponses = {
+    /**
+     * Test results with statistical analysis
+     */
+    200: TemplateComparison;
+};
+
+export type GetV1TemplateAbTestsByIdResultsResponse = GetV1TemplateAbTestsByIdResultsResponses[keyof GetV1TemplateAbTestsByIdResultsResponses];
+
+export type PostV1TemplateAbTestsByIdAutoSelectData = {
+    body?: never;
+    path: {
+        /**
+         * Test ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/template-ab-tests/{id}/auto-select';
+};
+
+export type PostV1TemplateAbTestsByIdAutoSelectErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type PostV1TemplateAbTestsByIdAutoSelectError = PostV1TemplateAbTestsByIdAutoSelectErrors[keyof PostV1TemplateAbTestsByIdAutoSelectErrors];
+
+export type PostV1TemplateAbTestsByIdAutoSelectResponses = {
+    /**
+     * Winner selection result
+     */
+    200: TemplateComparison;
+};
+
+export type PostV1TemplateAbTestsByIdAutoSelectResponse = PostV1TemplateAbTestsByIdAutoSelectResponses[keyof PostV1TemplateAbTestsByIdAutoSelectResponses];
+
+export type PostV1AuthLoginData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/login';
+};
+
+export type PostV1AuthLoginErrors = {
+    /**
+     * Invalid credentials
+     */
+    401: ErrorResponse;
+};
+
+export type PostV1AuthLoginError = PostV1AuthLoginErrors[keyof PostV1AuthLoginErrors];
+
+export type PostV1AuthLoginResponses = {
+    /**
+     * Login successful
+     */
+    200: LoginResponse;
+};
+
+export type PostV1AuthLoginResponse = PostV1AuthLoginResponses[keyof PostV1AuthLoginResponses];
+
+export type PostV1AuthLogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/logout';
+};
+
+export type PostV1AuthLogoutResponses = {
+    /**
+     * Logout successful
+     */
+    200: {
+        status?: string;
+    };
+};
+
+export type PostV1AuthLogoutResponse = PostV1AuthLogoutResponses[keyof PostV1AuthLogoutResponses];
+
+export type PostV1AuthRegisterData = {
+    body: RegisterRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/register';
+};
+
+export type PostV1AuthRegisterErrors = {
+    /**
+     * Validation error
+     */
+    400: ErrorResponse;
+};
+
+export type PostV1AuthRegisterError = PostV1AuthRegisterErrors[keyof PostV1AuthRegisterErrors];
+
+export type PostV1AuthRegisterResponses = {
+    /**
+     * User created
+     */
+    201: User;
+};
+
+export type PostV1AuthRegisterResponse = PostV1AuthRegisterResponses[keyof PostV1AuthRegisterResponses];
+
+export type GetV1AuthMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/me';
+};
+
+export type GetV1AuthMeErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ErrorResponse;
+};
+
+export type GetV1AuthMeError = GetV1AuthMeErrors[keyof GetV1AuthMeErrors];
+
+export type GetV1AuthMeResponses = {
+    /**
+     * Current user info
+     */
+    200: LoginResponse;
+};
+
+export type GetV1AuthMeResponse = GetV1AuthMeResponses[keyof GetV1AuthMeResponses];
+
+export type GetV1WorkspacesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/workspaces';
+};
+
+export type GetV1WorkspacesErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ErrorResponse;
+};
+
+export type GetV1WorkspacesError = GetV1WorkspacesErrors[keyof GetV1WorkspacesErrors];
+
+export type GetV1WorkspacesResponses = {
+    /**
+     * List of workspaces
+     */
+    200: {
+        workspaces?: Array<Workspace>;
+    };
+};
+
+export type GetV1WorkspacesResponse = GetV1WorkspacesResponses[keyof GetV1WorkspacesResponses];
+
+export type PostV1WorkspacesData = {
+    body: {
+        name: string;
+        description?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/workspaces';
+};
+
+export type PostV1WorkspacesErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ErrorResponse;
+};
+
+export type PostV1WorkspacesError = PostV1WorkspacesErrors[keyof PostV1WorkspacesErrors];
+
+export type PostV1WorkspacesResponses = {
+    /**
+     * Workspace created
+     */
+    201: Workspace;
+};
+
+export type PostV1WorkspacesResponse = PostV1WorkspacesResponses[keyof PostV1WorkspacesResponses];
+
+export type GetV1WorkspacesByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/workspaces/{id}';
+};
+
+export type GetV1WorkspacesByIdErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ErrorResponse;
+    /**
+     * Access denied
+     */
+    403: ErrorResponse;
+    /**
+     * Workspace not found
+     */
+    404: ErrorResponse;
+};
+
+export type GetV1WorkspacesByIdError = GetV1WorkspacesByIdErrors[keyof GetV1WorkspacesByIdErrors];
+
+export type GetV1WorkspacesByIdResponses = {
+    /**
+     * Workspace details
+     */
+    200: Workspace;
+};
+
+export type GetV1WorkspacesByIdResponse = GetV1WorkspacesByIdResponses[keyof GetV1WorkspacesByIdResponses];
+
+export type GetV1WorkspacesByIdMembersData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/workspaces/{id}/members';
+};
+
+export type GetV1WorkspacesByIdMembersErrors = {
+    /**
+     * Not authenticated
+     */
+    401: unknown;
+};
+
+export type GetV1WorkspacesByIdMembersResponses = {
+    /**
+     * List of members
+     */
+    200: {
+        members?: Array<WorkspaceMember>;
+    };
+};
+
+export type GetV1WorkspacesByIdMembersResponse = GetV1WorkspacesByIdMembersResponses[keyof GetV1WorkspacesByIdMembersResponses];

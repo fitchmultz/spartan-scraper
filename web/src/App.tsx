@@ -39,6 +39,8 @@ import { FeedContainer } from "./components/feeds/FeedContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
 import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { DedupExplorer } from "./components/DedupExplorer";
+import { TemplatePerformance } from "./components/TemplatePerformance";
+import { TemplateABTestManager } from "./components/TemplateABTestManager";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { PresetContainer } from "./components/presets/PresetContainer";
@@ -489,6 +491,31 @@ export function App() {
 
       <section id="dedup">
         <DedupExplorer />
+      </section>
+
+      <section id="templates-insights" className="templates-insights-section">
+        <h2>Templates Insights</h2>
+        <div className="templates-insights__content">
+          {templates.length > 0 ? (
+            <>
+              <div className="template-performance-panel">
+                <h3>Template Performance</h3>
+                <TemplatePerformance templateName={templates[0]} />
+              </div>
+              <div className="template-ab-tests-panel">
+                <h3>A/B Testing</h3>
+                <TemplateABTestManager />
+              </div>
+            </>
+          ) : (
+            <div className="templates-insights__empty">
+              <p>
+                No templates available. Create templates to see performance
+                metrics and run A/B tests.
+              </p>
+            </div>
+          )}
+        </div>
       </section>
 
       <InfoSections

@@ -188,6 +188,49 @@ Create `DATA_DIR/extract_templates.json`:
 }
 ```
 
+### Template Performance & A/B Testing
+
+Monitor template accuracy and run A/B tests to optimize extraction quality.
+
+**Web UI:**
+Navigate to the "Templates Insights" section to view performance metrics and manage A/B tests.
+
+**Template Performance:**
+- View success rates, field coverage, and extraction times per template
+- Metrics are aggregated hourly and retained for 7 days
+- Compare templates to identify the best performing extraction strategy
+
+**A/B Testing:**
+Create experiments comparing two templates:
+- **Baseline**: The current template
+- **Variant**: The new template to test
+- **Allocation**: Traffic split between templates (e.g., 50/50)
+- **Success Criteria**: Minimum improvement threshold and required field coverage
+- **Sample Size**: Minimum samples before declaring a winner
+- **Confidence Level**: Statistical significance threshold (90%, 95%, 99%)
+
+**Test Lifecycle:**
+1. **Pending**: Test created but not started
+2. **Running**: Actively routing traffic to both templates
+3. **Paused**: Temporarily stopped
+4. **Completed**: Winner selected or test ended
+
+**API Endpoints:**
+- `GET /v1/template-metrics` - Retrieve hourly performance metrics
+- `GET /v1/template-comparison` - Compare two templates with statistical analysis
+- `GET /v1/template-ab-tests` - List all A/B tests
+- `POST /v1/template-ab-tests` - Create a new A/B test
+- `POST /v1/template-ab-tests/{id}/start` - Start a test
+- `POST /v1/template-ab-tests/{id}/stop` - Stop a test
+- `GET /v1/template-ab-tests/{id}/results` - Get test results
+- `POST /v1/template-ab-tests/{id}/auto-select` - Auto-select the winning template
+
+**Best Practices:**
+- Run tests for at least 100 samples per variant before making decisions
+- Use 95% confidence level for production decisions
+- Monitor field coverage, not just success rates
+- Consider extraction time when comparing templates
+
 ### AI-Powered Extraction
 
 Extract structured data from HTML using LLM (Large Language Model) providers. This feature enables natural language extraction without writing CSS selectors.

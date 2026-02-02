@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0315",
-      "status": "todo",
-      "title": "Expose template performance + A/B testing UI",
-      "priority": "medium",
-      "tags": [
-        "innovation",
-        "web",
-        "templates",
-        "quality"
-      ],
-      "scope": [
-        "web/src/components/TemplatePerformance.tsx",
-        "web/src/components/TemplateABTestManager.tsx",
-        "web/src/App.tsx",
-        "internal/api/template_metrics_handler.go"
-      ],
-      "evidence": [
-        "Opportunity type: reliability / UX improvement",
-        "Template metrics endpoints exist (internal/api/template_metrics_handler.go) and UI components are implemented (TemplatePerformance, TemplateABTestManager).",
-        "These components are not referenced in App.tsx, so the capability is hidden from users."
-      ],
-      "plan": [
-        "Add a Templates Insights section that renders TemplatePerformance and TemplateABTestManager.",
-        "Wire data loading to /v1/template-metrics and comparison endpoints with error handling.",
-        "Add a lightweight empty state when no metrics are available.",
-        "Add tests for metrics rendering and AB test creation flows.",
-        "Update docs/usage.md with template performance and A/B testing guidance.",
-        "Verify by running `cd web && pnpm run test` and reviewing the section in `make web-dev`."
-      ],
-      "notes": [
-        "Why it matters: measuring template accuracy/success rates improves extraction quality and reduces regressions.",
-        "Proposed approach: MVS exposes existing dashboards; expand to experiment tagging and automated recommendations.",
-        "Risks/mitigations: small sample sizes; mitigate with warnings and minimum sample thresholds.",
-        "Acceptance criteria: UI renders metrics and A/B results; tests cover empty + populated states; docs updated."
-      ],
-      "request": "innovation scan finding",
-      "created_at": "2026-02-02T18:31:24Z",
-      "updated_at": "2026-02-02T18:31:24Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-innovation"
-      }
-    },
-    {
       "id": "RQ-0316",
       "status": "todo",
       "title": "Add AI template generator to the templates UI",

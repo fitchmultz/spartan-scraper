@@ -9,58 +9,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
-
-interface ABTest {
-  id: string;
-  name: string;
-  description: string;
-  baseline_template: string;
-  variant_template: string;
-  allocation: Record<string, number>;
-  start_time: string;
-  end_time?: string;
-  status: "pending" | "running" | "paused" | "completed";
-  success_criteria: {
-    metric: string;
-    min_improvement: number;
-    required_fields: string[];
-    min_field_coverage: number;
-  };
-  min_sample_size: number;
-  confidence_level: number;
-  winner?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ComparisonMetrics {
-  sample_size: number;
-  success_rate: number;
-  field_coverage: number;
-  avg_extraction_time_ms: number;
-}
-
-interface StatisticalResult {
-  test_type: string;
-  p_value: number;
-  is_significant: boolean;
-  confidence_interval: [number, number];
-  effect_size: number;
-}
-
-interface TestResultsData {
-  test_id: string;
-  baseline_template: string;
-  variant_template: string;
-  baseline_metrics: ComparisonMetrics;
-  variant_metrics: ComparisonMetrics;
-  statistical_test: StatisticalResult;
-  winner: string | null;
-  recommendation: string;
-}
+import {
+  getV1TemplateAbTests,
+  postV1TemplateAbTests,
+  deleteV1TemplateAbTestsById,
+  postV1TemplateAbTestsByIdStart,
+  postV1TemplateAbTestsByIdStop,
+  getV1TemplateAbTestsByIdResults,
+  postV1TemplateAbTestsByIdAutoSelect,
+  listTemplates,
+} from "../api";
+import type { TemplateAbTest, TemplateComparison } from "../api";
+import { getApiBaseUrl } from "../lib/api-config";
 
 export function TemplateABTestManager() {
-  const [tests, setTests] = useState<ABTest[]>([]);
+  const [tests, setTests] = useState<TemplateAbTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -70,9 +33,10 @@ export function TemplateABTestManager() {
   // Fetch available templates
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await fetch("/v1/templates");
-      if (response.ok) {
-        const data = await response.json();
+      const { data, error } = await listTemplates({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (!error && data) {
         setTemplates(data.templates || []);
       }
     } catch {
@@ -87,14 +51,15 @@ export function TemplateABTestManager() {
   const fetchTests = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/v1/template-ab-tests");
+      const { data, error } = await getV1TemplateAbTests({
+        baseUrl: getApiBaseUrl(),
+      });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch A/B tests");
+      if (error) {
+        throw new Error(String(error));
       }
 
-      const data = await response.json();
-      setTests(data.tests || []);
+      setTests(data?.tests || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -159,7 +124,18 @@ export function TemplateABTestManager() {
       <div className="ab-test-manager__list">
         {tests.length === 0 ? (
           <div className="ab-test-manager__empty">
-            No A/B tests yet. Create one to compare template performance.
+            <p>No A/B tests yet.</p>
+            <p className="empty-hint">
+              Create one to compare template performance and find the best
+              extraction strategy.
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setShowCreateForm(true)}
+            >
+              Create Your First Test
+            </button>
           </div>
         ) : (
           tests.map((test) => (
@@ -214,10 +190,9 @@ function CreateTestForm({
       setSubmitting(true);
       setError(null);
 
-      const response = await fetch("/v1/template-ab-tests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { error } = await postV1TemplateAbTests({
+        baseUrl: getApiBaseUrl(),
+        body: {
           name,
           description,
           baseline_template: baselineTemplate,
@@ -234,12 +209,11 @@ function CreateTestForm({
           },
           min_sample_size: minSampleSize,
           confidence_level: confidenceLevel,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create test");
+      if (error) {
+        throw new Error(String(error));
       }
 
       onSuccess();
@@ -382,7 +356,7 @@ function CreateTestForm({
 }
 
 interface ABTestCardProps {
-  test: ABTest;
+  test: TemplateAbTest;
   onUpdate: () => void;
   onEditTemplate: (templateName: string) => void;
 }
@@ -399,22 +373,22 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
       completed: "badge--info",
     };
 
+    const status = test.status ?? "pending";
     return (
-      <span className={`badge ${statusClasses[test.status] || ""}`}>
-        {test.status}
-      </span>
+      <span className={`badge ${statusClasses[status] || ""}`}>{status}</span>
     );
   };
 
   const handleStart = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/v1/template-ab-tests/${test.id}/start`, {
-        method: "POST",
+      const { error } = await postV1TemplateAbTestsByIdStart({
+        baseUrl: getApiBaseUrl(),
+        path: { id: test.id ?? "" },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to start test");
+      if (error) {
+        throw new Error(String(error));
       }
 
       onUpdate();
@@ -428,12 +402,13 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
   const handleStop = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/v1/template-ab-tests/${test.id}/stop`, {
-        method: "POST",
+      const { error } = await postV1TemplateAbTestsByIdStop({
+        baseUrl: getApiBaseUrl(),
+        path: { id: test.id || "" },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to stop test");
+      if (error) {
+        throw new Error(String(error));
       }
 
       onUpdate();
@@ -451,12 +426,13 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
 
     try {
       setLoading(true);
-      const response = await fetch(`/v1/template-ab-tests/${test.id}`, {
-        method: "DELETE",
+      const { error } = await deleteV1TemplateAbTestsById({
+        baseUrl: getApiBaseUrl(),
+        path: { id: test.id || "" },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete test");
+      if (error) {
+        throw new Error(String(error));
       }
 
       onUpdate();
@@ -552,7 +528,7 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
             <button
               type="button"
               className="btn btn--link btn--small"
-              onClick={() => onEditTemplate(test.baseline_template)}
+              onClick={() => onEditTemplate(test.baseline_template ?? "")}
               title="Edit baseline template"
             >
               Edit
@@ -562,7 +538,7 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
             <button
               type="button"
               className="btn btn--link btn--small"
-              onClick={() => onEditTemplate(test.variant_template)}
+              onClick={() => onEditTemplate(test.variant_template ?? "")}
               title="Edit variant template"
             >
               Edit
@@ -572,7 +548,8 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
         <div className="detail-row">
           <span className="detail-label">Allocation:</span>
           <span className="detail-value">
-            {test.allocation.baseline || 50}% / {test.allocation.variant || 50}%
+            {test.allocation?.baseline ?? 50}% /{" "}
+            {test.allocation?.variant ?? 50}%
           </span>
         </div>
         <div className="detail-row">
@@ -582,14 +559,14 @@ function ABTestCard({ test, onUpdate, onEditTemplate }: ABTestCardProps) {
         <div className="detail-row">
           <span className="detail-label">Confidence:</span>
           <span className="detail-value">
-            {(test.confidence_level * 100).toFixed(0)}%
+            {((test.confidence_level ?? 0.95) * 100).toFixed(0)}%
           </span>
         </div>
       </div>
 
       {getProgress()}
 
-      {showResults && <TestResults testId={test.id} />}
+      {showResults && test.id && <TestResults testId={test.id} />}
     </div>
   );
 }
@@ -599,7 +576,7 @@ interface TestResultsProps {
 }
 
 function TestResults({ testId }: TestResultsProps) {
-  const [results, setResults] = useState<TestResultsData | null>(null);
+  const [results, setResults] = useState<TemplateComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -607,14 +584,16 @@ function TestResults({ testId }: TestResultsProps) {
     const fetchResults = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/v1/template-ab-tests/${testId}/results`);
+        const { data, error } = await getV1TemplateAbTestsByIdResults({
+          baseUrl: getApiBaseUrl(),
+          path: { id: testId },
+        });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch results");
+        if (error) {
+          throw new Error(String(error));
         }
 
-        const data = await response.json();
-        setResults(data);
+        setResults(data || null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -647,19 +626,22 @@ function TestResults({ testId }: TestResultsProps) {
           <div className="metric">
             <span className="metric-label">Success Rate:</span>
             <span className="metric-value">
-              {results.baseline_metrics.success_rate.toFixed(1)}%
+              {results.baseline_metrics?.success_rate?.toFixed(1) ?? "N/A"}%
             </span>
           </div>
           <div className="metric">
             <span className="metric-label">Field Coverage:</span>
             <span className="metric-value">
-              {(results.baseline_metrics.field_coverage * 100).toFixed(1)}%
+              {((results.baseline_metrics?.field_coverage ?? 0) * 100).toFixed(
+                1,
+              )}
+              %
             </span>
           </div>
           <div className="metric">
             <span className="metric-label">Samples:</span>
             <span className="metric-value">
-              {results.baseline_metrics.sample_size.toLocaleString()}
+              {results.baseline_metrics?.sample_size?.toLocaleString() ?? "N/A"}
             </span>
           </div>
         </div>
@@ -669,19 +651,22 @@ function TestResults({ testId }: TestResultsProps) {
           <div className="metric">
             <span className="metric-label">Success Rate:</span>
             <span className="metric-value">
-              {results.variant_metrics.success_rate.toFixed(1)}%
+              {results.variant_metrics?.success_rate?.toFixed(1) ?? "N/A"}%
             </span>
           </div>
           <div className="metric">
             <span className="metric-label">Field Coverage:</span>
             <span className="metric-value">
-              {(results.variant_metrics.field_coverage * 100).toFixed(1)}%
+              {((results.variant_metrics?.field_coverage ?? 0) * 100).toFixed(
+                1,
+              )}
+              %
             </span>
           </div>
           <div className="metric">
             <span className="metric-label">Samples:</span>
             <span className="metric-value">
-              {results.variant_metrics.sample_size.toLocaleString()}
+              {results.variant_metrics?.sample_size?.toLocaleString() ?? "N/A"}
             </span>
           </div>
         </div>
@@ -691,26 +676,27 @@ function TestResults({ testId }: TestResultsProps) {
         <div className="stat-row">
           <span className="stat-label">P-Value:</span>
           <span className="stat-value">
-            {results.statistical_test.p_value.toFixed(4)}
+            {results.statistical_test?.p_value?.toFixed(4) ?? "N/A"}
           </span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Significant:</span>
           <span
             className={`stat-value ${
-              results.statistical_test.is_significant ? "success" : "neutral"
+              results.statistical_test?.is_significant ? "success" : "neutral"
             }`}
           >
-            {results.statistical_test.is_significant ? "Yes" : "No"}
+            {results.statistical_test?.is_significant ? "Yes" : "No"}
           </span>
         </div>
       </div>
 
       <div className="test-results__recommendation">
-        <strong>Recommendation:</strong> {results.recommendation}
+        <strong>Recommendation:</strong>{" "}
+        {results.recommendation ?? "No recommendation available"}
       </div>
 
-      {!results.winner && results.statistical_test.is_significant && (
+      {!results.winner && results.statistical_test?.is_significant && (
         <AutoSelectButton
           testId={testId}
           onUpdate={() => window.location.reload()}
@@ -739,15 +725,13 @@ function AutoSelectButton({ testId, onUpdate }: AutoSelectButtonProps) {
 
     try {
       setLoading(true);
-      const response = await fetch(
-        `/v1/template-ab-tests/${testId}/auto-select`,
-        {
-          method: "POST",
-        },
-      );
+      const { error } = await postV1TemplateAbTestsByIdAutoSelect({
+        baseUrl: getApiBaseUrl(),
+        path: { id: testId },
+      });
 
-      if (!response.ok) {
-        throw new Error("Failed to auto-select winner");
+      if (error) {
+        throw new Error(String(error));
       }
 
       onUpdate();
