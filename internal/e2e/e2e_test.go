@@ -111,7 +111,7 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	waitForHealth(t, client, port)
 
-	jobID := postJob(t, port, "/v1/scrape", map[string]interface{}{
+	jobID := postJob(t, client, port, "/v1/scrape", map[string]interface{}{
 		"url":            "https://example.com",
 		"headless":       false,
 		"playwright":     false,
@@ -351,10 +351,13 @@ func waitForHealth(t *testing.T, client *http.Client, port int) {
 	t.Fatalf("server not healthy on port %d", port)
 }
 
-func postJob(t *testing.T, port int, path string, body map[string]interface{}) string {
+func postJob(t *testing.T, client *http.Client, port int, path string, body map[string]interface{}) string {
 	t.Helper()
-	data, _ := json.Marshal(body)
-	resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d%s", port, path), "application/json", bytes.NewReader(data))
+	data, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("post job marshal: %v", err)
+	}
+	resp, err := client.Post(fmt.Sprintf("http://127.0.0.1:%d%s", port, path), "application/json", bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("post job: %v", err)
 	}

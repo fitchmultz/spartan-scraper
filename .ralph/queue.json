@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0304",
-      "status": "todo",
-      "title": "Harden e2e postJob helper with timeout and marshal error handling",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/e2e/e2e_test.go"
-      ],
-      "evidence": [
-        "internal/e2e/e2e_test.go:354-357 uses http.Post (no timeout) and ignores json.Marshal errors (data, _ := json.Marshal(body))."
-      ],
-      "plan": [
-        "Replace http.Post with a shared http.Client that has a timeout (or pass client into postJob).",
-        "Handle json.Marshal errors by failing the test with t.Fatalf.",
-        "Update call sites to use the new helper signature.",
-        "Verify by running `go test ./internal/e2e -run TestE2E` (or the relevant e2e suite)."
-      ],
-      "notes": [
-        "Principles: Fail fast (F), Operational hygiene (H)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0305",
       "status": "todo",
       "title": "Sync .env with .env.example to restore config parity",
