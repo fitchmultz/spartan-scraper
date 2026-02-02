@@ -1,4 +1,375 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0299",
+      "status": "todo",
+      "title": "Add request body size limits for AI extract endpoints",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/api/ai_extract.go",
+        "internal/api/scrape.go"
+      ],
+      "evidence": [
+        "internal/api/ai_extract.go:61-63 decodes JSON without wrapping r.Body in http.MaxBytesReader.",
+        "internal/api/scrape.go:28 shows other handlers enforcing maxRequestBodySize via http.MaxBytesReader."
+      ],
+      "plan": [
+        "Wrap AI extract handlers with http.MaxBytesReader(w, r.Body, maxRequestBodySize) before decoding.",
+        "Use json.Decoder with DisallowUnknownFields to match other JSON handlers if consistent with API expectations.",
+        "Add focused tests in internal/api (ai_extract_test.go) for oversized payload rejection.",
+        "Verify by running `go test ./internal/api` and confirming AI handler tests pass."
+      ],
+      "notes": [
+        "Principles: Security baseline (I), Fail fast (F), Least astonishment (G)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0300",
+      "status": "todo",
+      "title": "Fix dependent job lookup to avoid LIKE false positives",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/store/store_jobs.go"
+      ],
+      "evidence": [
+        "internal/store/store_jobs.go:300-305 builds SQL pattern %\"jobID\"% and uses LIKE against depends_on JSON, which can match substrings (e.g., jobID=\"12\" matches \"123\")."
+      ],
+      "plan": [
+        "Replace LIKE matching with an exact JSON match using json_each (SQLite) or equivalent JSON query for the store backend.",
+        "Add/extend store tests to cover substring cases (e.g., depends_on contains \"123\" should not match \"12\").",
+        "Verify by running `go test ./internal/store` and confirming the new test passes."
+      ],
+      "notes": [
+        "Principles: Make bugs hard to write (E), Least astonishment (G)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0301",
+      "status": "todo",
+      "title": "Propagate context into AI extraction to allow cancellation/timeouts",
+      "priority": "high",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/extract/extract.go",
+        "internal/crawl/worker.go",
+        "internal/scrape/scrape.go"
+      ],
+      "evidence": [
+        "internal/extract/extract.go:46-54 calls AIExtractor.Extract(context.Background(), ...) which ignores caller cancellation.",
+        "internal/crawl/worker.go:179-186 and internal/scrape/scrape.go:251-258 call extract.Execute without any context parameter to propagate timeouts."
+      ],
+      "plan": [
+        "Add a context field/parameter to extract.Execute (or add ExecuteWithContext) and pass it through to AIExtractor.Extract.",
+        "Update scrape and crawl call sites to pass their request/job context into extraction.",
+        "Add extract tests with a stub AIExtractor that asserts context cancellation is respected.",
+        "Verify by running `go test ./internal/extract ./internal/scrape ./internal/crawl`."
+      ],
+      "notes": [
+        "Principles: Fail fast (F), Operational hygiene (H), Make bugs hard to write (E)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0302",
+      "status": "todo",
+      "title": "Increase robots.txt scanner buffer to avoid false parse failures",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/crawl/robots.go"
+      ],
+      "evidence": [
+        "internal/crawl/robots.go:172-177 creates bufio.Scanner without setting a larger buffer; scanner will error on lines >64K.",
+        "internal/crawl/robots.go:244 returns error on scanner.Err, causing fail-open behavior for oversized robots.txt files."
+      ],
+      "plan": [
+        "Set scanner.Buffer with an explicit max token size (e.g., 1MB) before Scan() loop.",
+        "Add a robots parser test with a long directive line to ensure parsing succeeds and does not fail-open.",
+        "Verify by running `go test ./internal/crawl`."
+      ],
+      "notes": [
+        "Principles: Fail fast (F) and Security baseline (I) due to compliance fail-open on parse errors."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0303",
+      "status": "todo",
+      "title": "Handle crypto/rand errors when generating webhook IDs",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/webhook/dispatcher.go"
+      ],
+      "evidence": [
+        "internal/webhook/dispatcher.go:38-41 calls rand.Read(b) without checking the error or read count."
+      ],
+      "plan": [
+        "Update generateID to handle rand.Read errors (e.g., return error or use injectable reader with fallback).",
+        "Adjust call site to handle the new error path (skip record creation or log+fallback).",
+        "Add a unit test that injects a failing reader to assert error handling/fallback behavior.",
+        "Verify by running `go test ./internal/webhook`."
+      ],
+      "notes": [
+        "Principles: Security baseline (I), Make bugs hard to write (E)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0304",
+      "status": "todo",
+      "title": "Harden e2e postJob helper with timeout and marshal error handling",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/e2e/e2e_test.go"
+      ],
+      "evidence": [
+        "internal/e2e/e2e_test.go:354-357 uses http.Post (no timeout) and ignores json.Marshal errors (data, _ := json.Marshal(body))."
+      ],
+      "plan": [
+        "Replace http.Post with a shared http.Client that has a timeout (or pass client into postJob).",
+        "Handle json.Marshal errors by failing the test with t.Fatalf.",
+        "Update call sites to use the new helper signature.",
+        "Verify by running `go test ./internal/e2e -run TestE2E` (or the relevant e2e suite)."
+      ],
+      "notes": [
+        "Principles: Fail fast (F), Operational hygiene (H)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0305",
+      "status": "todo",
+      "title": "Sync .env with .env.example to restore config parity",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        ".env",
+        ".env.example",
+        "diff -u .env.example .env"
+      ],
+      "evidence": [
+        "diff -u .env.example .env shows missing keys in .env, e.g.:\n-REPLAY_REQUEST_TIMEOUT_SECONDS=30\n-WEBHOOK_MAX_CONCURRENT=100\n-WEBHOOK_ALLOW_INTERNAL=false\n-AI_PROVIDER=...\n-OLLAMA_URL=http://localhost:11434"
+      ],
+      "plan": [
+        "Add the missing keys to .env so it mirrors .env.example while keeping safe defaults.",
+        "Double-check comments to ensure alignment and avoid introducing real secrets.",
+        "Verify by running `diff -u .env.example .env` and confirming no unexpected deletions remain."
+      ],
+      "notes": [
+        "Principles: DRY (C) and Least astonishment (G) for configuration sources of truth."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0306",
+      "status": "todo",
+      "title": "Document queue/redis/crawl-state env vars in .env.example",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/config/config.go",
+        ".env.example"
+      ],
+      "evidence": [
+        "internal/config/config.go:134-144 defines QUEUE_BACKEND, REDIS_ADDR, REDIS_PASSWORD, REDIS_DB, REDIS_KEY_PREFIX, CRAWL_STATE_BACKEND.",
+        "rg -n QUEUE_BACKEND|REDIS_ADDR|REDIS_PASSWORD|REDIS_DB|REDIS_KEY_PREFIX|CRAWL_STATE_BACKEND .env.example returns no matches (missing documentation)."
+      ],
+      "plan": [
+        "Add a dedicated section in .env.example documenting queue backend and Redis/crawl state variables with defaults.",
+        "Align comments with config defaults and valid values.",
+        "Verify by running `rg -n \"QUEUE_BACKEND|REDIS_ADDR|REDIS_PASSWORD|REDIS_DB|REDIS_KEY_PREFIX|CRAWL_STATE_BACKEND\" .env.example`."
+      ],
+      "notes": [
+        "Principles: DRY (C), Operational hygiene (H)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0307",
+      "status": "todo",
+      "title": "Document exporter DB connection env vars in .env.example",
+      "priority": "medium",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/exporter/database_helpers.go",
+        ".env.example"
+      ],
+      "evidence": [
+        "internal/exporter/database_helpers.go:29-35 reads SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL.",
+        "rg -n SPARTAN_POSTGRES_URL|SPARTAN_MYSQL_URL|SPARTAN_MONGODB_URL .env.example returns no matches (missing documentation)."
+      ],
+      "plan": [
+        "Add a database exporter section to .env.example documenting SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, and SPARTAN_MONGODB_URL.",
+        "Ensure comments clarify precedence vs. config-provided connection strings.",
+        "Verify by running `rg -n \"SPARTAN_POSTGRES_URL|SPARTAN_MYSQL_URL|SPARTAN_MONGODB_URL\" .env.example`."
+      ],
+      "notes": [
+        "Principles: DRY (C), Least astonishment (G)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0308",
+      "status": "todo",
+      "title": "Fix Biome lint warnings by using import type",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "web/src/components/batches/BatchContainer.tsx",
+        "web/src/components/jobs/JobSubmissionContainer.tsx",
+        "make ci"
+      ],
+      "evidence": [
+        "make ci -> biome lint warnings:\nsrc/components/batches/BatchContainer.tsx:19:8 lint/style/useImportType\nsrc/components/jobs/JobSubmissionContainer.tsx:19:8 lint/style/useImportType"
+      ],
+      "plan": [
+        "Update the two component files to use `import type` for type-only imports from ../../api.",
+        "Run `cd web && pnpm exec biome lint .` to confirm warnings are cleared.",
+        "Verify `make lint` remains clean."
+      ],
+      "notes": [
+        "Principles: Operational hygiene (H), KISS (A)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0309",
+      "status": "todo",
+      "title": "Remove unused createRequestContext helper",
+      "priority": "low",
+      "tags": [
+        "maintenance"
+      ],
+      "scope": [
+        "internal/api/ai_extract.go"
+      ],
+      "evidence": [
+        "rg -n \"createRequestContext\" internal/api shows only the definition in internal/api/ai_extract.go:149-150 (no references)."
+      ],
+      "plan": [
+        "Delete createRequestContext or wire it into handlers if intended.",
+        "Ensure any imports are cleaned up after removal.",
+        "Verify by running `rg -n \"createRequestContext\" internal/api` and `go test ./internal/api`."
+      ],
+      "notes": [
+        "Principles: YAGNI (B), KISS (A)."
+      ],
+      "request": "maintenance scan finding",
+      "created_at": "2026-02-02T16:50:43Z",
+      "updated_at": "2026-02-02T16:50:43Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
