@@ -1884,6 +1884,246 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/export-schedules:
+    get:
+      summary: List export schedules
+      description: Returns all automated export schedules
+      operationId: listExportSchedules
+      responses:
+        '200':
+          description: Export schedule list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportScheduleListResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create an export schedule
+      description: Creates a new automated export schedule
+      operationId: createExportSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportScheduleRequest'
+      responses:
+        '200':
+          description: Export schedule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSchedule'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/export-schedules/{id}:
+    get:
+      summary: Get an export schedule
+      description: Returns a single export schedule by ID
+      operationId: getExportSchedule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSchedule'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update an export schedule
+      description: Updates an existing export schedule
+      operationId: updateExportSchedule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportScheduleRequest'
+      responses:
+        '200':
+          description: Export schedule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSchedule'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete an export schedule
+      description: Deletes an export schedule by ID
+      operationId: deleteExportSchedule
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/export-schedules/{id}/history:
+    get:
+      summary: Get export schedule history
+      description: Returns export history for a specific schedule
+      operationId: getExportScheduleHistory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Export history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportHistoryResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/watch:
     get:
       summary: List all watches
@@ -2965,6 +3205,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2978,6 +3220,221 @@ components:
       name: spartan_session
       description: Session cookie for web UI authentication
   schemas:
+
+    ExportSchedule:
+      type: object
+      required:
+        - id
+        - name
+        - enabled
+        - filters
+        - export
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the export schedule
+        name:
+          type: string
+          description: Human-readable name for the schedule
+        enabled:
+          type: boolean
+          description: Whether the schedule is active
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        filters:
+          $ref: '#/components/schemas/ExportFilters'
+        export:
+          $ref: '#/components/schemas/ExportConfig'
+        retry:
+          $ref: '#/components/schemas/ExportRetryConfig'
+
+    ExportScheduleRequest:
+      type: object
+      required:
+        - name
+        - filters
+        - export
+      properties:
+        name:
+          type: string
+          description: Human-readable name for the schedule
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the schedule should be active
+        filters:
+          $ref: '#/components/schemas/ExportFilters'
+        export:
+          $ref: '#/components/schemas/ExportConfig'
+        retry:
+          $ref: '#/components/schemas/ExportRetryConfig'
+
+    ExportScheduleListResponse:
+      type: object
+      properties:
+        schedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportSchedule'
+
+    ExportFilters:
+      type: object
+      description: Filter criteria for matching jobs to export
+      properties:
+        job_kinds:
+          type: array
+          items:
+            type: string
+            enum: [scrape, crawl, research]
+          description: Job kinds to match (empty = all kinds)
+        job_status:
+          type: array
+          items:
+            type: string
+            enum: [completed, failed, succeeded, canceled]
+          description: Job statuses to match (empty = completed only)
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags that must all be present on the job
+        has_results:
+          type: boolean
+          description: Only match jobs with non-empty results
+
+    ExportConfig:
+      type: object
+      required:
+        - format
+        - destination_type
+      properties:
+        format:
+          type: string
+          enum: [json, jsonl, md, csv, xlsx, parquet, har, pdf]
+          description: Export format
+        destination_type:
+          type: string
+          enum: [s3, gcs, azure, local, webhook]
+          description: Export destination type
+        cloud_config:
+          $ref: '#/components/schemas/CloudExportConfig'
+        local_path:
+          type: string
+          description: Local file path template (for local destination)
+        webhook_url:
+          type: string
+          format: uri
+          description: Webhook URL (for webhook destination)
+        path_template:
+          type: string
+          description: Path template with variables {job_id}, {timestamp}, {kind}, {format}
+
+    CloudExportConfig:
+      type: object
+      required:
+        - provider
+        - bucket
+      properties:
+        provider:
+          type: string
+          enum: [s3, gcs, azure]
+          description: Cloud provider
+        bucket:
+          type: string
+          description: Bucket/container name
+        path:
+          type: string
+          description: Path template with variables
+        region:
+          type: string
+          description: Region (for S3)
+        storageClass:
+          type: string
+          description: Storage class (for S3)
+        contentFormat:
+          type: string
+          enum: [json, jsonl, md, csv, xlsx, parquet, har]
+          description: Content format for cloud export
+        contentType:
+          type: string
+          description: Content type override
+
+    ExportRetryConfig:
+      type: object
+      properties:
+        max_retries:
+          type: integer
+          default: 3
+          minimum: 0
+          description: Maximum number of retry attempts
+        base_delay_ms:
+          type: integer
+          default: 1000
+          minimum: 100
+          description: Base retry delay in milliseconds
+
+    ExportHistoryResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportHistoryRecord'
+        total:
+          type: integer
+          description: Total number of records
+        limit:
+          type: integer
+          description: Limit used for query
+        offset:
+          type: integer
+          description: Offset used for query
+
+    ExportHistoryRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique record identifier
+        schedule_id:
+          type: string
+          description: Export schedule ID
+        job_id:
+          type: string
+          description: Job ID that was exported
+        status:
+          type: string
+          enum: [pending, success, failed]
+          description: Export status
+        destination:
+          type: string
+          description: Destination where export was sent
+        exported_at:
+          type: string
+          format: date-time
+          description: When export was initiated
+        completed_at:
+          type: string
+          format: date-time
+          description: When export completed (null if pending)
+        error_message:
+          type: string
+          description: Error message if export failed
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+        export_size:
+          type: integer
+          description: Size of exported data in bytes
+        record_count:
+          type: integer
+          description: Number of records exported
     User:
       type: object
       properties:

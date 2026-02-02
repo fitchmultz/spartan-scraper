@@ -63,6 +63,8 @@ func Run(ctx context.Context) int {
 		return manage.RunExport(ctx, cfg, os.Args[2:])
 	case "schedule":
 		return manage.RunSchedule(ctx, cfg, os.Args[2:])
+	case "export-schedule":
+		return manage.RunExportSchedule(ctx, cfg, os.Args[2:])
 	case "templates":
 		return manage.RunTemplates(ctx, cfg, os.Args[2:])
 	case "crawl-states":

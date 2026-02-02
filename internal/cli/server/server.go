@@ -42,6 +42,20 @@ Notes:
 	defer st.Close()
 
 	manager := common.InitJobManager(serverCtx, cfg, st)
+
+	// Initialize export trigger for automated export scheduling
+	exportStorage := scheduler.NewExportStorage(cfg.DataDir)
+	exportHistoryStore := scheduler.NewExportHistoryStore(cfg.DataDir)
+	exportTrigger := scheduler.NewExportTrigger(cfg.DataDir, exportStorage, exportHistoryStore, manager, nil)
+	if err := exportTrigger.Start(); err != nil {
+		slog.Error("failed to start export trigger", "error", err)
+		return 1
+	}
+	defer exportTrigger.Stop()
+
+	// Connect export trigger to job manager
+	manager.SetExportTrigger(exportTrigger)
+
 	go func() {
 		if err := scheduler.Run(serverCtx, cfg.DataDir, manager, cfg); err != nil {
 			slog.Error("scheduler error", "error", err)

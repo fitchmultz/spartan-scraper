@@ -250,6 +250,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/jobs/batch/", s.handleBatchGet)
 	mux.HandleFunc("/v1/schedules", s.handleSchedules)
 	mux.HandleFunc("/v1/schedules/", s.handleSchedule)
+	mux.HandleFunc("/v1/export-schedules", s.handleExportSchedules)
+	mux.HandleFunc("/v1/export-schedules/", s.handleExportScheduleDetail)
 	mux.HandleFunc("/v1/watch", s.handleWatches)
 	mux.HandleFunc("/v1/watch/", s.handleWatchCheckWrapper)
 	mux.HandleFunc("/v1/feeds", s.handleFeeds)

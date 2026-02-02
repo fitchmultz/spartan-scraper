@@ -4,6 +4,201 @@ export type ClientOptions = {
     baseUrl: 'http://localhost:8741' | (string & {});
 };
 
+export type ExportSchedule = {
+    /**
+     * Unique identifier for the export schedule
+     */
+    id: string;
+    /**
+     * Human-readable name for the schedule
+     */
+    name: string;
+    /**
+     * Whether the schedule is active
+     */
+    enabled: boolean;
+    /**
+     * Creation timestamp
+     */
+    created_at?: string;
+    /**
+     * Last update timestamp
+     */
+    updated_at?: string;
+    filters: ExportFilters;
+    export: ExportConfig;
+    retry?: ExportRetryConfig;
+};
+
+export type ExportScheduleRequest = {
+    /**
+     * Human-readable name for the schedule
+     */
+    name: string;
+    /**
+     * Whether the schedule should be active
+     */
+    enabled?: boolean;
+    filters: ExportFilters;
+    export: ExportConfig;
+    retry?: ExportRetryConfig;
+};
+
+export type ExportScheduleListResponse = {
+    schedules?: Array<ExportSchedule>;
+};
+
+/**
+ * Filter criteria for matching jobs to export
+ */
+export type ExportFilters = {
+    /**
+     * Job kinds to match (empty = all kinds)
+     */
+    job_kinds?: Array<'scrape' | 'crawl' | 'research'>;
+    /**
+     * Job statuses to match (empty = completed only)
+     */
+    job_status?: Array<'completed' | 'failed' | 'succeeded' | 'canceled'>;
+    /**
+     * Tags that must all be present on the job
+     */
+    tags?: Array<string>;
+    /**
+     * Only match jobs with non-empty results
+     */
+    has_results?: boolean;
+};
+
+export type ExportConfig = {
+    /**
+     * Export format
+     */
+    format: 'json' | 'jsonl' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har' | 'pdf';
+    /**
+     * Export destination type
+     */
+    destination_type: 's3' | 'gcs' | 'azure' | 'local' | 'webhook';
+    cloud_config?: CloudExportConfig;
+    /**
+     * Local file path template (for local destination)
+     */
+    local_path?: string;
+    /**
+     * Webhook URL (for webhook destination)
+     */
+    webhook_url?: string;
+    /**
+     * Path template with variables {job_id}, {timestamp}, {kind}, {format}
+     */
+    path_template?: string;
+};
+
+export type CloudExportConfig = {
+    /**
+     * Cloud provider
+     */
+    provider: 's3' | 'gcs' | 'azure';
+    /**
+     * Bucket/container name
+     */
+    bucket: string;
+    /**
+     * Path template with variables
+     */
+    path?: string;
+    /**
+     * Region (for S3)
+     */
+    region?: string;
+    /**
+     * Storage class (for S3)
+     */
+    storageClass?: string;
+    /**
+     * Content format for cloud export
+     */
+    contentFormat?: 'json' | 'jsonl' | 'md' | 'csv' | 'xlsx' | 'parquet' | 'har';
+    /**
+     * Content type override
+     */
+    contentType?: string;
+};
+
+export type ExportRetryConfig = {
+    /**
+     * Maximum number of retry attempts
+     */
+    max_retries?: number;
+    /**
+     * Base retry delay in milliseconds
+     */
+    base_delay_ms?: number;
+};
+
+export type ExportHistoryResponse = {
+    records?: Array<ExportHistoryRecord>;
+    /**
+     * Total number of records
+     */
+    total?: number;
+    /**
+     * Limit used for query
+     */
+    limit?: number;
+    /**
+     * Offset used for query
+     */
+    offset?: number;
+};
+
+export type ExportHistoryRecord = {
+    /**
+     * Unique record identifier
+     */
+    id?: string;
+    /**
+     * Export schedule ID
+     */
+    schedule_id?: string;
+    /**
+     * Job ID that was exported
+     */
+    job_id?: string;
+    /**
+     * Export status
+     */
+    status?: 'pending' | 'success' | 'failed';
+    /**
+     * Destination where export was sent
+     */
+    destination?: string;
+    /**
+     * When export was initiated
+     */
+    exported_at?: string;
+    /**
+     * When export completed (null if pending)
+     */
+    completed_at?: string;
+    /**
+     * Error message if export failed
+     */
+    error_message?: string;
+    /**
+     * Number of retry attempts
+     */
+    retry_count?: number;
+    /**
+     * Size of exported data in bytes
+     */
+    export_size?: number;
+    /**
+     * Number of records exported
+     */
+    record_count?: number;
+};
+
 export type User = {
     id?: string;
     email?: string;
@@ -4903,6 +5098,227 @@ export type DeleteV1SchedulesByIdResponses = {
 };
 
 export type DeleteV1SchedulesByIdResponse = DeleteV1SchedulesByIdResponses[keyof DeleteV1SchedulesByIdResponses];
+
+export type ListExportSchedulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/export-schedules';
+};
+
+export type ListExportSchedulesErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type ListExportSchedulesError = ListExportSchedulesErrors[keyof ListExportSchedulesErrors];
+
+export type ListExportSchedulesResponses = {
+    /**
+     * Export schedule list
+     */
+    200: ExportScheduleListResponse;
+};
+
+export type ListExportSchedulesResponse = ListExportSchedulesResponses[keyof ListExportSchedulesResponses];
+
+export type CreateExportScheduleData = {
+    body: ExportScheduleRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/export-schedules';
+};
+
+export type CreateExportScheduleErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type CreateExportScheduleError = CreateExportScheduleErrors[keyof CreateExportScheduleErrors];
+
+export type CreateExportScheduleResponses = {
+    /**
+     * Export schedule created
+     */
+    200: ExportSchedule;
+};
+
+export type CreateExportScheduleResponse = CreateExportScheduleResponses[keyof CreateExportScheduleResponses];
+
+export type DeleteExportScheduleData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/export-schedules/{id}';
+};
+
+export type DeleteExportScheduleErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteExportScheduleError = DeleteExportScheduleErrors[keyof DeleteExportScheduleErrors];
+
+export type DeleteExportScheduleResponses = {
+    /**
+     * Deleted
+     */
+    204: void;
+};
+
+export type DeleteExportScheduleResponse = DeleteExportScheduleResponses[keyof DeleteExportScheduleResponses];
+
+export type GetExportScheduleData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/export-schedules/{id}';
+};
+
+export type GetExportScheduleErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetExportScheduleError = GetExportScheduleErrors[keyof GetExportScheduleErrors];
+
+export type GetExportScheduleResponses = {
+    /**
+     * Export schedule
+     */
+    200: ExportSchedule;
+};
+
+export type GetExportScheduleResponse = GetExportScheduleResponses[keyof GetExportScheduleResponses];
+
+export type UpdateExportScheduleData = {
+    body: ExportScheduleRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/export-schedules/{id}';
+};
+
+export type UpdateExportScheduleErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateExportScheduleError = UpdateExportScheduleErrors[keyof UpdateExportScheduleErrors];
+
+export type UpdateExportScheduleResponses = {
+    /**
+     * Export schedule updated
+     */
+    200: ExportSchedule;
+};
+
+export type UpdateExportScheduleResponse = UpdateExportScheduleResponses[keyof UpdateExportScheduleResponses];
+
+export type GetExportScheduleHistoryData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/export-schedules/{id}/history';
+};
+
+export type GetExportScheduleHistoryErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetExportScheduleHistoryError = GetExportScheduleHistoryErrors[keyof GetExportScheduleHistoryErrors];
+
+export type GetExportScheduleHistoryResponses = {
+    /**
+     * Export history
+     */
+    200: ExportHistoryResponse;
+};
+
+export type GetExportScheduleHistoryResponse = GetExportScheduleHistoryResponses[keyof GetExportScheduleHistoryResponses];
 
 export type ListWatchesData = {
     body?: never;

@@ -44,6 +44,7 @@ type Manager struct {
 	webhookDispatcher *webhook.Dispatcher
 	proxyPool         *fetch.ProxyPool
 	aiExtractor       *extract.AIExtractor
+	exportTrigger     ExportTriggerInterface
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -296,6 +297,11 @@ func (m *Manager) publishEvent(event JobEvent) {
 			m.dispatchWebhook(event, cfg)
 		}
 	}
+
+	// Notify export trigger if configured
+	if m.exportTrigger != nil {
+		m.exportTrigger.HandleJobEvent(event)
+	}
 }
 
 // dispatchWebhook sends a webhook notification for a job event.
@@ -348,6 +354,20 @@ func (m *Manager) SetAIExtractor(extractor *extract.AIExtractor) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.aiExtractor = extractor
+}
+
+// ExportTriggerInterface defines the interface for export triggers.
+// This is implemented by scheduler.ExportTrigger.
+type ExportTriggerInterface interface {
+	HandleJobEvent(event JobEvent)
+}
+
+// SetExportTrigger sets the export trigger for the manager.
+// This should be called before Start() if automated export scheduling is desired.
+func (m *Manager) SetExportTrigger(trigger ExportTriggerInterface) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.exportTrigger = trigger
 }
 
 // CancelJob attempts to cancel a running or queued job.
