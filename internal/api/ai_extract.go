@@ -169,8 +169,3 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 	// Return an error directing clients to use the job system
 	writeError(w, r, apperrors.Validation("AI template generation requires HTML content. Use the job system to fetch and analyze URLs, or fetch client-side and use the template-preview endpoint."))
 }
-
-// createRequestContext creates a context with timeout for requests.
-func createRequestContext(timeoutSecs int) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
-}

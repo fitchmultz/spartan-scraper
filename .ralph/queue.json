@@ -1,37 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0309",
-      "status": "todo",
-      "title": "Remove unused createRequestContext helper",
-      "priority": "low",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/api/ai_extract.go"
-      ],
-      "evidence": [
-        "rg -n \"createRequestContext\" internal/api shows only the definition in internal/api/ai_extract.go:149-150 (no references)."
-      ],
-      "plan": [
-        "Delete createRequestContext or wire it into handlers if intended.",
-        "Ensure any imports are cleaned up after removal.",
-        "Verify by running `rg -n \"createRequestContext\" internal/api` and `go test ./internal/api`."
-      ],
-      "notes": [
-        "Principles: YAGNI (B), KISS (A)."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    }
-  ]
+  "tasks": []
 }
