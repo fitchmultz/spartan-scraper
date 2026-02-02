@@ -2,39 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0302",
-      "status": "todo",
-      "title": "Increase robots.txt scanner buffer to avoid false parse failures",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/crawl/robots.go"
-      ],
-      "evidence": [
-        "internal/crawl/robots.go:172-177 creates bufio.Scanner without setting a larger buffer; scanner will error on lines >64K.",
-        "internal/crawl/robots.go:244 returns error on scanner.Err, causing fail-open behavior for oversized robots.txt files."
-      ],
-      "plan": [
-        "Set scanner.Buffer with an explicit max token size (e.g., 1MB) before Scan() loop.",
-        "Add a robots parser test with a long directive line to ensure parsing succeeds and does not fail-open.",
-        "Verify by running `go test ./internal/crawl`."
-      ],
-      "notes": [
-        "Principles: Fail fast (F) and Security baseline (I) due to compliance fail-open on parse errors."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T16:50:43Z",
-      "updated_at": "2026-02-02T16:50:43Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0303",
       "status": "todo",
       "title": "Handle crypto/rand errors when generating webhook IDs",

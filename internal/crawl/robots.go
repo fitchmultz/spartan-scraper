@@ -171,6 +171,8 @@ func (c *Cache) fetchRobotsTxt(host string) (*Ruleset, error) {
 // parseRobotsTxt parses robots.txt content into a Ruleset.
 func parseRobotsTxt(r io.Reader) (*Ruleset, error) {
 	scanner := bufio.NewScanner(r)
+	// Increase buffer to handle lines up to 1MB (default 64KB is too small for some robots.txt files)
+	scanner.Buffer(make([]byte, 4096), 1024*1024)
 	var groups []agentGroup
 	var currentGroup *agentGroup
 

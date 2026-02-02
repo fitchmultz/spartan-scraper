@@ -427,3 +427,30 @@ func TestCache_FailOpen(t *testing.T) {
 		t.Errorf("should fail open and allow URL on server error")
 	}
 }
+
+func TestParseRobotsTxt_OversizedLine(t *testing.T) {
+	// Create a robots.txt with a line > 64KB (default scanner limit)
+	// This tests that we can parse files with very long lines without hitting bufio.ErrTooLarge
+	longPath := strings.Repeat("/a", 35000) // Creates a path > 70KB
+	content := fmt.Sprintf(`User-agent: *
+Disallow: %s
+Allow: /public/
+`, longPath)
+
+	ruleset, err := parseRobotsTxt(strings.NewReader(content))
+	if err != nil {
+		t.Fatalf("parseRobotsTxt failed on oversized line: %v", err)
+	}
+
+	specificRules := ruleset.ForUserAgent("TestBot")
+
+	// The long path should be disallowed
+	if specificRules.IsAllowed(longPath) {
+		t.Errorf("longPath should be disallowed")
+	}
+
+	// Other paths should still be allowed
+	if !specificRules.IsAllowed("/public/") {
+		t.Errorf("/public/ should be allowed")
+	}
+}
