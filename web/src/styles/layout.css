@@ -1,0 +1,111 @@
+/**
+ * Spartan Scraper Web UI - Layout Utilities
+ *
+ * Grid, flex row, and panel layout utilities.
+ * Depends on theme.css for CSS variables.
+ *
+ * @module styles/layout.css
+ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px clamp(20px, 5vw, 72px) 64px;
+}
+
+.hero {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: center;
+}
+
+.hero-card {
+  padding: 28px 32px;
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 183, 0, 0.18),
+    rgba(255, 123, 0, 0.08)
+  );
+  border: 1px solid rgba(255, 183, 0, 0.25);
+  box-shadow: var(--shadow);
+}
+
+.hero-card h1 {
+  margin: 0 0 8px;
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -0.02em;
+}
+
+.hero-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .kicker {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .kicker {
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.stats {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(15, 17, 21, 0.7);
+  border: 1px solid var(--stroke);
+}
+
+[data-theme="light"] .stats {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .stats {
+    background: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.stats h3 {
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}

@@ -1,0 +1,119 @@
+/**
+ * Spartan Scraper Web UI - Base Styles
+ *
+ * Global reset, box-sizing, transitions, and base element styles.
+ * Depends on theme.css for CSS variables.
+ *
+ * @module styles/base.css
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+/* Smooth theme transitions for all theme-aware properties */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Disable transitions for elements that shouldn't animate */
+.skeleton,
+.skeleton * {
+  /* biome-ignore lint/complexity/noImportantStyles: intentional override for skeleton loading state */
+  transition: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px circle at 15% -10%, #3a1d00 0%, transparent 60%),
+    radial-gradient(900px circle at 80% 0%, #1b2a3a 0%, transparent 55%),
+    var(--bg);
+  color: var(--text);
+}
+
+/* Light theme body background gradients */
+[data-theme="light"] body {
+  background:
+    radial-gradient(1200px circle at 15% -10%, #fff8e7 0%, transparent 60%),
+    radial-gradient(900px circle at 80% 0%, #e8f4fc 0%, transparent 55%),
+    var(--bg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) body {
+    background:
+      radial-gradient(1200px circle at 15% -10%, #fff8e7 0%, transparent 60%),
+      radial-gradient(900px circle at 80% 0%, #e8f4fc 0%, transparent 55%),
+      var(--bg);
+  }
+}
+
+#root {
+  min-height: 100vh;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 14, 0.8);
+  color: var(--text);
+  font-family: inherit;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) input,
+  :root:not([data-theme]) select,
+  :root:not([data-theme]) textarea {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+}
+
+input[type="checkbox"] {
+  width: auto;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+}
+
+[data-theme="light"] pre {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) pre {
+    background: rgba(0, 0, 0, 0.04);
+  }
+}

@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0295",
-      "status": "todo",
-      "title": "Modularize web/src/index.css (2771 LOC) into smaller CSS files",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "web/src/index.css",
-        "wc -l web/src/index.css"
-      ],
-      "evidence": [
-        "wc -l web/src/index.css -> 2771"
-      ],
-      "plan": [
-        "Split index.css into themed sections (base, layout, components, utilities) and import them in a stable order.",
-        "Preserve selector specificity and avoid visual regressions.",
-        "Verify by running cd web && pnpm run build and spot-checking key screens."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: monolithic CSS makes scope and overrides hard to reason about, increasing styling regressions.",
-        "Minimal fix: split CSS into smaller files with clear boundaries while keeping the cascade order."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0296",
       "status": "todo",
       "title": "Split internal/crawl/crawl.go (743 LOC) into cohesive files",

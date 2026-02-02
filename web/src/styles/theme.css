@@ -1,0 +1,53 @@
+/**
+ * Spartan Scraper Web UI - Theme Variables
+ *
+ * CSS custom properties for light/dark themes with automatic system
+ * preference detection fallback. No dependencies.
+ *
+ * @module styles/theme.css
+ */
+
+/* Base variables (dark theme as default to match existing design) */
+:root {
+  color-scheme: light dark;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+
+  /* Dark theme colors (default) */
+  --bg: #0b0b0d;
+  --bg-alt: #17171c;
+  --panel: #1d1f26;
+  --accent: #f7b500;
+  --accent-strong: #ff7b00;
+  --text: #f2f2f5;
+  --muted: #b3b6c2;
+  --stroke: rgba(255, 255, 255, 0.08);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* Light theme override via data attribute */
+[data-theme="light"] {
+  --bg: #fafafa;
+  --bg-alt: #f0f0f5;
+  --panel: #ffffff;
+  --accent: #e5a000;
+  --accent-strong: #d46a00;
+  --text: #1a1a1f;
+  --muted: #6b6b7b;
+  --stroke: rgba(0, 0, 0, 0.08);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+}
+
+/* System preference fallback (when no data-theme is set) */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fafafa;
+    --bg-alt: #f0f0f5;
+    --panel: #ffffff;
+    --accent: #e5a000;
+    --accent-strong: #d46a00;
+    --text: #1a1a1f;
+    --muted: #6b6b7b;
+    --stroke: rgba(0, 0, 0, 0.08);
+    --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  }
+}
