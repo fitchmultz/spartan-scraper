@@ -2,41 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0294",
-      "status": "todo",
-      "title": "Split internal/distributed/redis_lock_test.go (1485 LOC) into focused test files",
-      "priority": "medium",
-      "tags": [
-        "maintenance"
-      ],
-      "scope": [
-        "internal/distributed/redis_lock_test.go",
-        "wc -l internal/distributed/redis_lock_test.go"
-      ],
-      "evidence": [
-        "wc -l internal/distributed/redis_lock_test.go -> 1485"
-      ],
-      "plan": [
-        "Group tests by behavior (acquire/release, renew, contention, expiry) and move each group into its own *_test.go file.",
-        "Keep helper functions in a shared testutil file where appropriate.",
-        "Verify by running go test ./internal/distributed."
-      ],
-      "notes": [
-        "Principles violated: D (Localize change/SoC), A (KISS).",
-        "Why it matters: extremely large test files make it hard to isolate failures and add new cases safely.",
-        "Minimal fix: split tests into coherent files without changing assertions."
-      ],
-      "request": "maintenance scan finding",
-      "created_at": "2026-02-02T14:19:37Z",
-      "updated_at": "2026-02-02T14:19:37Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0295",
       "status": "todo",
       "title": "Modularize web/src/index.css (2771 LOC) into smaller CSS files",
