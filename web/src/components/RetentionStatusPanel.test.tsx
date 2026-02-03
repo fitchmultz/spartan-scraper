@@ -48,6 +48,12 @@ describe("RetentionStatusPanel", () => {
   });
 
   it("renders loading state initially", () => {
+    // Override mock to return a never-resolving promise to prevent
+    // post-test state updates that trigger act() warnings
+    vi.mocked(api.getRetentionStatus).mockReturnValue(
+      new Promise(() => {}) as ReturnType<typeof api.getRetentionStatus>,
+    );
+
     render(<RetentionStatusPanel />);
     expect(screen.getByText(/loading retention status/i)).toBeInTheDocument();
   });

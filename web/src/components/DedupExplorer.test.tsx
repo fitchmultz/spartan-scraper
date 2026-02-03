@@ -59,6 +59,12 @@ describe("DedupExplorer", () => {
   });
 
   it("renders with search tab active by default", () => {
+    // Override mock to return a never-resolving promise to prevent
+    // post-test state updates that trigger act() warnings
+    vi.mocked(api.getDedupStats).mockReturnValue(
+      new Promise(() => {}) as ReturnType<typeof api.getDedupStats>,
+    );
+
     render(<DedupExplorer />);
     expect(screen.getByText(/find duplicates/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/simhash value/i)).toBeInTheDocument();
@@ -190,6 +196,12 @@ describe("DedupExplorer", () => {
   });
 
   it("adjusts threshold with slider", () => {
+    // Override mock to return a never-resolving promise to prevent
+    // post-test state updates that trigger act() warnings
+    vi.mocked(api.getDedupStats).mockReturnValue(
+      new Promise(() => {}) as ReturnType<typeof api.getDedupStats>,
+    );
+
     render(<DedupExplorer />);
 
     const slider = screen.getByLabelText(/threshold/i);
