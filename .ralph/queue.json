@@ -2,6 +2,41 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0321",
+      "status": "todo",
+      "title": "Fix React act() warnings in RetentionStatusPanel and DedupExplorer tests",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "react",
+        "vitest",
+        "web"
+      ],
+      "scope": [
+        "web/src/components/RetentionStatusPanel.test.tsx",
+        "web/src/components/DedupExplorer.test.tsx"
+      ],
+      "evidence": [
+        "Test output shows: 'An update to RetentionStatusPanel inside a test was not wrapped in act(...)'",
+        "Test output shows: 'An update to DedupExplorer inside a test was not wrapped in act(...)'",
+        "Affected tests: RetentionStatusPanel > renders loading state initially, DedupExplorer > renders with search tab active by default, DedupExplorer > adjusts threshold with slider"
+      ],
+      "plan": [
+        "Read the test files to understand current test structure and identify state updates not wrapped in act()",
+        "Wrap state-updating operations in act() from @testing-library/react",
+        "Run tests to verify warnings are resolved",
+        "Run make ci to ensure no regressions"
+      ],
+      "notes": [],
+      "request": "FIX ALL INSTANCES OF THIS ERROR: React state updates in tests not wrapped in act(...)",
+      "created_at": "2026-02-03T14:20:00Z",
+      "updated_at": "2026-02-03T14:20:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0320",
       "status": "todo",
       "title": "Optimize Vite build chunking to resolve large chunk warnings",
