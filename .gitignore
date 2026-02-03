@@ -5,10 +5,10 @@
 /web/node_modules/
 /web/dist/
 out/stress/
-.ralph/lock
-.ralph/cache
 scripts/.test-tmp/
-!.ralph/queue.json
-.ralph/done.json
-.ralph/config.json
-.ralph/README.md
+.ralph/lock
+.ralph/cache/plans
+.ralph/cache/phase2_final
+.ralph/cache/queue.json.backup*
+.ralph/cache/parallel/state.json
+.ralph/cache/session.json

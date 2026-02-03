@@ -1,0 +1,604 @@
+{
+  "version": 1,
+  "first_task_completed_at": "2026-01-30T15:37:14.721042000Z",
+  "last_updated_at": "2026-02-02T21:48:26.326600000Z",
+  "daily": {
+    "2026-01-30": {
+      "date": "2026-01-30",
+      "completed_count": 13,
+      "tasks": [
+        {
+          "id": "RQ-0201",
+          "title": "Add content deduplication during crawling",
+          "completed_at": "2026-01-30T15:37:14.721042000Z"
+        },
+        {
+          "id": "RQ-0202",
+          "title": "Implement content change detection for monitoring",
+          "completed_at": "2026-01-30T16:09:39.639539000Z"
+        },
+        {
+          "id": "RQ-0203",
+          "title": "Add data retention policies and automatic cleanup",
+          "completed_at": "2026-01-30T16:41:48.985765000Z"
+        },
+        {
+          "id": "RQ-0204",
+          "title": "Implement proxy rotation and proxy pool management",
+          "completed_at": "2026-01-30T17:26:16.932188000Z"
+        },
+        {
+          "id": "RQ-0205",
+          "title": "Add OAuth 2.0 and OIDC authentication flow support",
+          "completed_at": "2026-01-30T18:00:10.023800000Z"
+        },
+        {
+          "id": "RQ-0206",
+          "title": "Add JSON Schema validation for extracted data",
+          "completed_at": "2026-01-30T18:31:16.351282000Z"
+        },
+        {
+          "id": "RQ-0207",
+          "title": "Implement backup and restore commands",
+          "completed_at": "2026-01-30T18:45:55.666812000Z"
+        },
+        {
+          "id": "RQ-0208",
+          "title": "Add JMESPath/JSONata data transformation support",
+          "completed_at": "2026-01-30T20:08:39.766517000Z"
+        },
+        {
+          "id": "RQ-0209",
+          "title": "Implement circuit breaker and advanced retry strategies",
+          "completed_at": "2026-01-30T21:19:50.701776000Z"
+        },
+        {
+          "id": "RQ-0210",
+          "title": "Add RateLimit header and Retry-After compliance",
+          "completed_at": "2026-01-30T21:49:14.438882000Z"
+        },
+        {
+          "id": "RQ-0211",
+          "title": "Expand webhook event types and add granular notifications",
+          "completed_at": "2026-01-30T22:43:41.078847000Z"
+        },
+        {
+          "id": "RQ-0212",
+          "title": "Add more device emulation presets and custom device config",
+          "completed_at": "2026-01-30T23:11:49.849436000Z"
+        },
+        {
+          "id": "RQ-0213",
+          "title": "Implement automatic form detection and intelligent login",
+          "completed_at": "2026-01-30T23:35:42.918183000Z"
+        }
+      ]
+    },
+    "2026-01-31": {
+      "date": "2026-01-31",
+      "completed_count": 45,
+      "tasks": [
+        {
+          "id": "RQ-0214",
+          "title": "Add comprehensive analytics dashboard and reporting",
+          "completed_at": "2026-01-31T00:16:56.530173000Z"
+        },
+        {
+          "id": "RQ-0215",
+          "title": "Add GraphQL API endpoint for flexible queries",
+          "completed_at": "2026-01-31T00:56:02.188679000Z"
+        },
+        {
+          "id": "RQ-0216",
+          "title": "Implement extraction template A/B testing framework",
+          "completed_at": "2026-01-31T01:37:00.562568000Z"
+        },
+        {
+          "id": "RQ-0222",
+          "title": "Make run_ci.sh portable and add CLI help",
+          "completed_at": "2026-01-31T11:53:02.262030000Z"
+        },
+        {
+          "id": "RQ-0223",
+          "title": "Sync .env and .env.example with config env vars",
+          "completed_at": "2026-01-31T11:57:27.539370000Z"
+        },
+        {
+          "id": "RQ-0224",
+          "title": "Implement TransformPreview apply path in ResultsExplorer",
+          "completed_at": "2026-01-31T12:19:06.356146000Z"
+        },
+        {
+          "id": "RQ-0225",
+          "title": "Split store_analytics.go into smaller cohesive modules",
+          "completed_at": "2026-01-31T12:30:10.035683000Z"
+        },
+        {
+          "id": "RQ-0226",
+          "title": "Split chromedp_fetcher.go to stay under size limits",
+          "completed_at": "2026-01-31T12:45:35.137250000Z"
+        },
+        {
+          "id": "RQ-0227",
+          "title": "Break up retry_test.go into focused test files",
+          "completed_at": "2026-01-31T12:56:40.820172000Z"
+        },
+        {
+          "id": "RQ-0228",
+          "title": "Split playwright_fetcher.go into smaller modules",
+          "completed_at": "2026-01-31T13:06:03.199907000Z"
+        },
+        {
+          "id": "RQ-0229",
+          "title": "Split exporter/database.go by responsibility",
+          "completed_at": "2026-01-31T13:17:04.977180000Z"
+        },
+        {
+          "id": "RQ-0230",
+          "title": "Split proxy_pool_test.go into smaller test files",
+          "completed_at": "2026-01-31T13:28:36.485549000Z"
+        },
+        {
+          "id": "RQ-0231",
+          "title": "Split http_fetcher_test.go into scenario-focused files",
+          "completed_at": "2026-01-31T13:38:26.775453000Z"
+        },
+        {
+          "id": "RQ-0232",
+          "title": "Split api/transform_test.go into focused test modules",
+          "completed_at": "2026-01-31T13:45:07.598882000Z"
+        },
+        {
+          "id": "RQ-0233",
+          "title": "Split exporter/cloud_test.go for maintainability",
+          "completed_at": "2026-01-31T13:53:04.995896000Z"
+        },
+        {
+          "id": "RQ-0234",
+          "title": "Split form_detect.go into smaller files",
+          "completed_at": "2026-01-31T14:07:25.897198000Z"
+        },
+        {
+          "id": "RQ-0235",
+          "title": "Split proxy_pool.go into smaller components",
+          "completed_at": "2026-01-31T14:18:40.261651000Z"
+        },
+        {
+          "id": "RQ-0236",
+          "title": "Split graphql/resolvers.go to meet size guidelines",
+          "completed_at": "2026-01-31T14:28:47.560623000Z"
+        },
+        {
+          "id": "RQ-0237",
+          "title": "Add top-of-file docstrings in apperrors package files",
+          "completed_at": "2026-01-31T14:34:46.904710000Z"
+        },
+        {
+          "id": "RQ-0238",
+          "title": "Add top-of-file docstrings in config tests and utilities",
+          "completed_at": "2026-01-31T14:39:10.884652000Z"
+        },
+        {
+          "id": "RQ-0239",
+          "title": "Add top-of-file docstrings in jobs helpers and tests",
+          "completed_at": "2026-01-31T14:44:10.153538000Z"
+        },
+        {
+          "id": "RQ-0240",
+          "title": "Add top-of-file docstrings across CLI tests and manage commands",
+          "completed_at": "2026-01-31T14:49:37.405842000Z"
+        },
+        {
+          "id": "RQ-0241",
+          "title": "Add top-of-file docstrings in API/buildinfo/crawl/research/scrape tests",
+          "completed_at": "2026-01-31T14:59:53.668003000Z"
+        },
+        {
+          "id": "RQ-0242",
+          "title": "Add top-of-file docstrings in model/store/ui/fsutil/webhook tests",
+          "completed_at": "2026-01-31T15:10:07.947696000Z"
+        },
+        {
+          "id": "RQ-0243",
+          "title": "Add top-of-file docstrings in web tests and Vite config",
+          "completed_at": "2026-01-31T15:13:55.982083000Z"
+        },
+        {
+          "id": "RQ-0217",
+          "title": "Add request/response inspection and traffic replay",
+          "completed_at": "2026-01-31T16:20:45.213193000Z"
+        },
+        {
+          "id": "RQ-0218",
+          "title": "Implement distributed crawling with Redis/RabbitMQ worker queues",
+          "completed_at": "2026-01-31T16:49:39.716936000Z"
+        },
+        {
+          "id": "RQ-0219",
+          "title": "Add CAPTCHA detection and solving service integration",
+          "completed_at": "2026-01-31T17:19:19.541208000Z"
+        },
+        {
+          "id": "RQ-0220",
+          "title": "Add multi-user support and team workspaces",
+          "completed_at": "2026-01-31T18:06:17.942138000Z"
+        },
+        {
+          "id": "RQ-0244",
+          "title": "Validate distributed lock and leader-election TTLs to avoid non-expiring keys",
+          "completed_at": "2026-01-31T18:33:28.992940000Z"
+        },
+        {
+          "id": "RQ-0245",
+          "title": "Handle crypto/rand.Read failures when generating Redis lock tokens",
+          "completed_at": "2026-01-31T18:39:31.836379000Z"
+        },
+        {
+          "id": "RQ-0246",
+          "title": "Replace RedisRegistry ListWorkers KEYS usage with SCAN to avoid blocking",
+          "completed_at": "2026-01-31T18:47:53.830893000Z"
+        },
+        {
+          "id": "RQ-0247",
+          "title": "Fix NewRedisRegistry return type (avoid pointer-to-interface)",
+          "completed_at": "2026-01-31T18:53:15.279562000Z"
+        },
+        {
+          "id": "RQ-0248",
+          "title": "Wrap RedisRegistry Register/Unregister errors with apperrors",
+          "completed_at": "2026-01-31T18:59:43.613251000Z"
+        },
+        {
+          "id": "RQ-0249",
+          "title": "Standardize HTTPFetcher errors on apperrors for consistency",
+          "completed_at": "2026-01-31T19:09:15.487129000Z"
+        },
+        {
+          "id": "RQ-0250",
+          "title": "Add test coverage for internal/distributed package",
+          "completed_at": "2026-01-31T19:20:32.939035000Z"
+        },
+        {
+          "id": "RQ-0251",
+          "title": "Add test coverage for internal/analytics package",
+          "completed_at": "2026-01-31T19:35:33.741183000Z"
+        },
+        {
+          "id": "RQ-0252",
+          "title": "Sync .env and .env.example to keep configuration aligned",
+          "completed_at": "2026-01-31T19:39:22.958676000Z"
+        },
+        {
+          "id": "RQ-0253",
+          "title": "Ignore root node_modules and clean stray directory",
+          "completed_at": "2026-01-31T19:43:28.442692000Z"
+        },
+        {
+          "id": "RQ-0254",
+          "title": "Move module docstrings above package lines in listed Go files",
+          "completed_at": "2026-01-31T19:48:36.939484000Z"
+        },
+        {
+          "id": "RQ-0255",
+          "title": "Split internal/fetch/limiter_test.go into smaller cohesive test files",
+          "completed_at": "2026-01-31T20:01:53.363582000Z"
+        },
+        {
+          "id": "RQ-0256",
+          "title": "Split internal/api/traffic_replay_test.go into smaller files",
+          "completed_at": "2026-01-31T20:17:45.893852000Z"
+        },
+        {
+          "id": "RQ-0257",
+          "title": "Split internal/users/user_service_test.go into smaller files",
+          "completed_at": "2026-01-31T20:27:27.080154000Z"
+        },
+        {
+          "id": "RQ-0258",
+          "title": "Refactor internal/fetch/types.go to stay under size guidelines",
+          "completed_at": "2026-01-31T20:38:22.525417000Z"
+        },
+        {
+          "id": "RQ-0259",
+          "title": "Harden restore archive path traversal checks",
+          "completed_at": "2026-01-31T23:49:33.295100000Z"
+        }
+      ]
+    },
+    "2026-02-01": {
+      "date": "2026-02-01",
+      "completed_count": 19,
+      "tasks": [
+        {
+          "id": "RQ-0260",
+          "title": "Fix GraphQL createJob to set ResultPath and validate inputs",
+          "completed_at": "2026-02-01T00:04:33.286675000Z"
+        },
+        {
+          "id": "RQ-0261",
+          "title": "Preserve request body bytes across job persistence/recovery",
+          "completed_at": "2026-02-01T00:13:11.014692000Z"
+        },
+        {
+          "id": "RQ-0262",
+          "title": "Require --force when restore target data dir is non-empty",
+          "completed_at": "2026-02-01T00:24:25.914791000Z"
+        },
+        {
+          "id": "RQ-0263",
+          "title": "Add batch job submission workflow (CLI + Web UI)",
+          "completed_at": "2026-02-01T01:02:33.344206000Z"
+        },
+        {
+          "id": "RQ-0264",
+          "title": "Expose watch monitoring via API + Web UI",
+          "completed_at": "2026-02-01T01:32:18.948754000Z"
+        },
+        {
+          "id": "RQ-0265",
+          "title": "Expose network interception config and traffic replay controls in UI/CLI",
+          "completed_at": "2026-02-01T01:58:40.997970000Z"
+        },
+        {
+          "id": "RQ-0266",
+          "title": "Add chain management CLI + Web UI (create/list/submit)",
+          "completed_at": "2026-02-01T02:15:09.462092000Z"
+        },
+        {
+          "id": "RQ-0267",
+          "title": "Surface artifact deletion failures in retention batch deletes",
+          "completed_at": "2026-02-01T04:04:40.066439000Z"
+        },
+        {
+          "id": "RQ-0268",
+          "title": "Fix retention cleanup skipping matching kinds when first batch mismatches",
+          "completed_at": "2026-02-01T04:15:42.966660000Z"
+        },
+        {
+          "id": "RQ-0269",
+          "title": "Treat missing jobs directory as zero storage in GetStorageStats",
+          "completed_at": "2026-02-01T04:21:22.269332000Z"
+        },
+        {
+          "id": "RQ-0280",
+          "title": "Fix SSRF vulnerability in webhook dispatcher",
+          "completed_at": "2026-02-01T04:47:59.805024000Z"
+        },
+        {
+          "id": "RQ-0281",
+          "title": "Add goroutine limits to webhook dispatcher to prevent resource exhaustion",
+          "completed_at": "2026-02-01T04:58:17.791560000Z"
+        },
+        {
+          "id": "RQ-0282",
+          "title": "Fix weak randomness in distributed scheduler instance ID generation",
+          "completed_at": "2026-02-01T05:09:06.812353000Z"
+        },
+        {
+          "id": "RQ-0283",
+          "title": "Add missing request body size limits to auth handlers",
+          "completed_at": "2026-02-01T05:19:36.736698000Z"
+        },
+        {
+          "id": "RQ-0285",
+          "title": "Add graceful shutdown to WebSocket hub to prevent goroutine leaks",
+          "completed_at": "2026-02-01T05:55:20.707904000Z"
+        },
+        {
+          "id": "RQ-0286",
+          "title": "Fix missing HTTP client timeouts in API traffic replay handler",
+          "completed_at": "2026-02-01T06:13:01.405552000Z"
+        },
+        {
+          "id": "RQ-0270",
+          "title": "Add Visual CSS Selector Builder to Web UI",
+          "completed_at": "2026-02-01T16:07:10.864435000Z"
+        },
+        {
+          "id": "RQ-0272",
+          "title": "Add Screenshot Comparison and Visual Change Detection",
+          "completed_at": "2026-02-01T20:12:35.483145000Z"
+        },
+        {
+          "id": "RQ-0273",
+          "title": "Build Plugin System for Third-Party Extensions",
+          "completed_at": "2026-02-01T22:29:49.293398000Z"
+        }
+      ]
+    },
+    "2026-02-02": {
+      "date": "2026-02-02",
+      "completed_count": 33,
+      "tasks": [
+        {
+          "id": "RQ-0275",
+          "title": "Add RSS/Atom Feed Monitoring and Parsing",
+          "completed_at": "2026-02-02T00:04:40.858208000Z"
+        },
+        {
+          "id": "RQ-0276",
+          "title": "Build Automated Export Scheduling System",
+          "completed_at": "2026-02-02T00:44:57.461594000Z"
+        },
+        {
+          "id": "RQ-0277",
+          "title": "Create Browser Extension for Quick Scraping",
+          "completed_at": "2026-02-02T01:04:56.803058000Z"
+        },
+        {
+          "id": "RQ-0278",
+          "title": "Add Cross-Job Content Deduplication Service",
+          "completed_at": "2026-02-02T01:53:01.723791000Z"
+        },
+        {
+          "id": "RQ-0279",
+          "title": "Implement Automatic Form Discovery and Filling",
+          "completed_at": "2026-02-02T03:12:35.423693000Z"
+        },
+        {
+          "id": "RQ-0288",
+          "title": "Honor context cancellation during backoff/poll sleeps",
+          "completed_at": "2026-02-02T14:54:57.316152000Z"
+        },
+        {
+          "id": "RQ-0289",
+          "title": "Remove !important from Joyride styles to satisfy Biome lint",
+          "completed_at": "2026-02-02T14:59:27.739870000Z"
+        },
+        {
+          "id": "RQ-0290",
+          "title": "Reduce web build chunk size warning (>500 kB) via code-splitting",
+          "completed_at": "2026-02-02T15:07:19.968840000Z"
+        },
+        {
+          "id": "RQ-0291",
+          "title": "Split internal/cli/batch/batch.go (1237 LOC) into cohesive files",
+          "completed_at": "2026-02-02T15:15:55.669189000Z"
+        },
+        {
+          "id": "RQ-0292",
+          "title": "Split web/src/App.tsx (1159 LOC) into smaller components",
+          "completed_at": "2026-02-02T15:38:04.410053000Z"
+        },
+        {
+          "id": "RQ-0293",
+          "title": "Split web/src/components/WatchManager.tsx (1037 LOC)",
+          "completed_at": "2026-02-02T15:49:02.038857000Z"
+        },
+        {
+          "id": "RQ-0294",
+          "title": "Split internal/distributed/redis_lock_test.go (1485 LOC) into focused test files",
+          "completed_at": "2026-02-02T15:59:36.151367000Z"
+        },
+        {
+          "id": "RQ-0295",
+          "title": "Modularize web/src/index.css (2752 LOC) into smaller CSS files",
+          "completed_at": "2026-02-02T16:12:46.710120000Z"
+        },
+        {
+          "id": "RQ-0296",
+          "title": "Split internal/crawl/crawl.go (743 LOC) into cohesive files",
+          "completed_at": "2026-02-02T16:22:05.229373000Z"
+        },
+        {
+          "id": "RQ-0297",
+          "title": "Split internal/store/store_retention_test.go (901 LOC) into focused test files",
+          "completed_at": "2026-02-02T16:28:33.747284000Z"
+        },
+        {
+          "id": "RQ-0298",
+          "title": "Split internal/webhook/dispatcher_test.go (803 LOC) into focused test files",
+          "completed_at": "2026-02-02T16:37:15.625606000Z"
+        },
+        {
+          "id": "RQ-0299",
+          "title": "Add request body size limits for AI extract endpoints",
+          "completed_at": "2026-02-02T17:09:06.057591000Z"
+        },
+        {
+          "id": "RQ-0301",
+          "title": "Propagate context into AI extraction to allow cancellation/timeouts",
+          "completed_at": "2026-02-02T17:39:10.167200000Z"
+        },
+        {
+          "id": "RQ-0302",
+          "title": "Increase robots.txt scanner buffer to avoid false parse failures",
+          "completed_at": "2026-02-02T17:45:28.400614000Z"
+        },
+        {
+          "id": "RQ-0303",
+          "title": "Handle crypto/rand errors when generating webhook IDs",
+          "completed_at": "2026-02-02T17:54:10.515645000Z"
+        },
+        {
+          "id": "RQ-0304",
+          "title": "Harden e2e postJob helper with timeout and marshal error handling",
+          "completed_at": "2026-02-02T18:00:03.661414000Z"
+        },
+        {
+          "id": "RQ-0305",
+          "title": "Sync .env with .env.example to restore config parity",
+          "completed_at": "2026-02-02T18:05:18.631705000Z"
+        },
+        {
+          "id": "RQ-0306",
+          "title": "Document queue/redis/crawl-state env vars in .env.example",
+          "completed_at": "2026-02-02T18:10:25.987179000Z"
+        },
+        {
+          "id": "RQ-0307",
+          "title": "Document exporter DB connection env vars in .env.example",
+          "completed_at": "2026-02-02T18:14:47.761054000Z"
+        },
+        {
+          "id": "RQ-0308",
+          "title": "Fix Biome lint warnings by using import type",
+          "completed_at": "2026-02-02T18:19:24.814702000Z"
+        },
+        {
+          "id": "RQ-0309",
+          "title": "Remove unused createRequestContext helper",
+          "completed_at": "2026-02-02T18:26:32.194991000Z"
+        },
+        {
+          "id": "RQ-0310",
+          "title": "Add Web UI for export schedules and history",
+          "completed_at": "2026-02-02T19:00:48.827039000Z"
+        },
+        {
+          "id": "RQ-0311",
+          "title": "Surface feed monitoring in the Web UI",
+          "completed_at": "2026-02-02T19:16:57.944767000Z"
+        },
+        {
+          "id": "RQ-0312",
+          "title": "Add webhook delivery dashboard for debugging",
+          "completed_at": "2026-02-02T19:36:01.157608000Z"
+        },
+        {
+          "id": "RQ-0313",
+          "title": "Expose retention status and cleanup controls in Web UI",
+          "completed_at": "2026-02-02T19:58:14.698665000Z"
+        },
+        {
+          "id": "RQ-0314",
+          "title": "Make Dedup Explorer accessible in the Web UI",
+          "completed_at": "2026-02-02T20:25:38.477585000Z"
+        },
+        {
+          "id": "RQ-0315",
+          "title": "Expose template performance + A/B testing UI",
+          "completed_at": "2026-02-02T21:24:05.605210000Z"
+        },
+        {
+          "id": "RQ-0316",
+          "title": "Add AI template generator to the templates UI",
+          "completed_at": "2026-02-02T21:48:26.326598000Z"
+        }
+      ]
+    }
+  },
+  "streak": {
+    "current_streak": 4,
+    "longest_streak": 4,
+    "last_completed_date": "2026-02-02"
+  },
+  "total_completed": 110,
+  "milestones": [
+    {
+      "threshold": 10,
+      "achieved_at": "2026-01-30T21:49:14.438889000Z",
+      "celebrated": true
+    },
+    {
+      "threshold": 50,
+      "achieved_at": "2026-01-31T19:35:33.741189000Z",
+      "celebrated": true
+    },
+    {
+      "threshold": 100,
+      "achieved_at": "2026-02-02T18:10:25.987183000Z",
+      "celebrated": true
+    }
+  ]
+}
