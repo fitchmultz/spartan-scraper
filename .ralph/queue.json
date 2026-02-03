@@ -2,6 +2,76 @@
   "version": 1,
   "tasks": [
     {
+      "id": "RQ-0321",
+      "status": "todo",
+      "title": "Fix React act() warnings in RetentionStatusPanel and DedupExplorer tests",
+      "priority": "medium",
+      "tags": [
+        "testing",
+        "react",
+        "vitest",
+        "web"
+      ],
+      "scope": [
+        "web/src/components/RetentionStatusPanel.test.tsx",
+        "web/src/components/DedupExplorer.test.tsx"
+      ],
+      "evidence": [
+        "Test output shows: 'An update to RetentionStatusPanel inside a test was not wrapped in act(...)'",
+        "Test output shows: 'An update to DedupExplorer inside a test was not wrapped in act(...)'",
+        "Affected tests: RetentionStatusPanel > renders loading state initially, DedupExplorer > renders with search tab active by default, DedupExplorer > adjusts threshold with slider"
+      ],
+      "plan": [
+        "Read the test files to understand current test structure and identify state updates not wrapped in act()",
+        "Wrap state-updating operations in act() from @testing-library/react",
+        "Run tests to verify warnings are resolved",
+        "Run make ci to ensure no regressions"
+      ],
+      "notes": [],
+      "request": "FIX ALL INSTANCES OF THIS ERROR: React state updates in tests not wrapped in act(...)",
+      "created_at": "2026-02-03T14:20:00Z",
+      "updated_at": "2026-02-03T14:20:00Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0320",
+      "status": "todo",
+      "title": "Optimize Vite build chunking to resolve large chunk warnings",
+      "priority": "low",
+      "tags": [
+        "build",
+        "performance",
+        "web",
+        "vite"
+      ],
+      "scope": [
+        "web/vite.config.ts",
+        "web/src/"
+      ],
+      "evidence": [
+        "Vite build warning: Some chunks are larger than 500 kB after minification",
+        "Recommendation from Vite: Use dynamic import() to code-split, or build.rollupOptions.output.manualChunks"
+      ],
+      "plan": [
+        "Analyze current chunk sizes and identify large dependencies causing warnings",
+        "Implement dynamic imports for routes or heavy components to enable code splitting",
+        "Configure manualChunks in vite.config.ts to group vendor dependencies logically",
+        "Verify build warnings are resolved and measure impact on initial load time",
+        "Run make ci to ensure no regressions"
+      ],
+      "notes": [],
+      "request": "(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.",
+      "created_at": "2026-02-03T14:17:32Z",
+      "updated_at": "2026-02-03T14:17:32Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
       "id": "RQ-0317",
       "status": "todo",
       "title": "Create UI + CLI editors for render profiles and pipeline JS",
