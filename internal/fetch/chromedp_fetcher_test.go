@@ -180,6 +180,7 @@ func TestNetworkTracker(t *testing.T) {
 
 		var wg sync.WaitGroup
 		for i := 0; i < 50; i++ {
+			i := i
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -245,6 +246,42 @@ func TestChromedpFetcher_Fetch_NetworkIdle_Integration(t *testing.T) {
 	assert.Equal(t, 200, result.Status)
 	assert.Equal(t, RenderEngineChromedp, result.Engine)
 	assert.NotZero(t, result.FetchedAt)
+}
+
+func TestShouldUseChromedpCISandboxBypass(t *testing.T) {
+	t.Run("disabled without CI env", func(t *testing.T) {
+		t.Setenv("CI", "")
+		if shouldUseChromedpCISandboxBypass() {
+			t.Fatal("expected CI sandbox bypass to be disabled when CI is unset")
+		}
+	})
+
+	t.Run("enabled with CI env", func(t *testing.T) {
+		t.Setenv("CI", "1")
+		if !shouldUseChromedpCISandboxBypass() {
+			t.Fatal("expected CI sandbox bypass to be enabled when CI is set")
+		}
+	})
+}
+
+func TestAppendChromedpCIFlags(t *testing.T) {
+	t.Run("preserves options when CI is disabled", func(t *testing.T) {
+		t.Setenv("CI", "")
+		base := []chromedp.ExecAllocatorOption{chromedp.UserAgent("Spartan")}
+		got := appendChromedpCIFlags(base)
+		if len(got) != len(base) {
+			t.Fatalf("expected %d options, got %d", len(base), len(got))
+		}
+	})
+
+	t.Run("adds CI-safe sandbox bypass flags", func(t *testing.T) {
+		t.Setenv("CI", "1")
+		base := []chromedp.ExecAllocatorOption{chromedp.UserAgent("Spartan")}
+		got := appendChromedpCIFlags(base)
+		if len(got) != len(base)+2 {
+			t.Fatalf("expected %d options, got %d", len(base)+2, len(got))
+		}
+	})
 }
 
 // TestChromedpFetch_ContextCancellationDuringLimiterWait verifies that context

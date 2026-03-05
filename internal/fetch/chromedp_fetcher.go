@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -89,6 +90,7 @@ func (f *ChromedpFetcher) Fetch(ctx context.Context, req Request, prof RenderPro
 func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof RenderProfile, timeout time.Duration) (Result, error) {
 	slog.Debug("starting Chromedp allocator", "url", apperrors.SanitizeURL(req.URL), "timeout", timeout)
 	allocatorOpts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
+	allocatorOpts = appendChromedpCIFlags(allocatorOpts)
 	if req.UserAgent != "" {
 		allocatorOpts = append(allocatorOpts, chromedp.UserAgent(req.UserAgent))
 	}
@@ -473,6 +475,22 @@ func (f *ChromedpFetcher) waitForStability(ctx context.Context, policy RenderWai
 		}
 	}
 	return nil
+}
+
+func appendChromedpCIFlags(opts []chromedp.ExecAllocatorOption) []chromedp.ExecAllocatorOption {
+	if !shouldUseChromedpCISandboxBypass() {
+		return opts
+	}
+
+	return append(
+		opts,
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+	)
+}
+
+func shouldUseChromedpCISandboxBypass() bool {
+	return os.Getenv("CI") != ""
 }
 
 func isAbortErr(err error) bool {

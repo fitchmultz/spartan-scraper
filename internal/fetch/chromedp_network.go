@@ -40,39 +40,31 @@ type responseTracker struct {
 func (t *networkTracker) onEvent(ev any) {
 	switch ev := ev.(type) {
 	case *network.EventRequestWillBeSent:
-		if atomic.LoadInt32(&t.firstSeen) == 0 {
-			atomic.StoreInt32(&t.firstSeen, 1)
-			atomic.StoreInt32(&t.inflight, 1)
-		} else {
-			atomic.AddInt32(&t.inflight, 1)
-		}
+		atomic.StoreInt32(&t.firstSeen, 1)
+		newCount := atomic.AddInt32(&t.inflight, 1)
 		t.resetIdleSince()
-		slog.Debug("request started", "requestId", ev.RequestID, "inflight", atomic.LoadInt32(&t.inflight))
+		slog.Debug("request started", "requestId", ev.RequestID, "inflight", newCount)
 
 	case *network.EventLoadingFinished:
-		if atomic.LoadInt32(&t.firstSeen) == 0 {
-			atomic.StoreInt32(&t.firstSeen, 1)
+		atomic.StoreInt32(&t.firstSeen, 1)
+		newCount := atomic.AddInt32(&t.inflight, -1)
+		if newCount < 0 {
+			slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
 			atomic.StoreInt32(&t.inflight, 0)
-		} else {
-			newCount := atomic.AddInt32(&t.inflight, -1)
-			slog.Debug("request finished", "requestId", ev.RequestID, "inflight", newCount)
-			if newCount < 0 {
-				slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
-			}
+			newCount = 0
 		}
+		slog.Debug("request finished", "requestId", ev.RequestID, "inflight", newCount)
 		t.checkIdle()
 
 	case *network.EventLoadingFailed:
-		if atomic.LoadInt32(&t.firstSeen) == 0 {
-			atomic.StoreInt32(&t.firstSeen, 1)
+		atomic.StoreInt32(&t.firstSeen, 1)
+		newCount := atomic.AddInt32(&t.inflight, -1)
+		if newCount < 0 {
+			slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
 			atomic.StoreInt32(&t.inflight, 0)
-		} else {
-			newCount := atomic.AddInt32(&t.inflight, -1)
-			slog.Debug("request failed", "requestId", ev.RequestID, "inflight", newCount)
-			if newCount < 0 {
-				slog.Warn("inflight counter went negative", "count", newCount, "requestId", ev.RequestID)
-			}
+			newCount = 0
 		}
+		slog.Debug("request failed", "requestId", ev.RequestID, "inflight", newCount)
 		t.checkIdle()
 	}
 }
