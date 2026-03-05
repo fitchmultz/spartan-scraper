@@ -1,0 +1,274 @@
+/**
+ * Job List Component
+ *
+ * Displays the list of active/completed jobs with their status, kind, timestamps,
+ * and error messages. Provides action buttons for viewing results, canceling running
+ * jobs, and deleting completed jobs. Supports refresh to update job states.
+ * Includes connection status indicator for WebSocket/polling state.
+ *
+ * @module JobList
+ */
+import { useState, useEffect } from "react";
+import { statusClass } from "../lib/form-utils";
+import type { JobEntry } from "../types";
+
+interface JobListProps {
+  jobs: JobEntry[];
+  error: string | null;
+  onViewResults: (jobId: string, format: string, page: number) => void;
+  onCancel: (jobId: string) => void;
+  onDelete: (jobId: string) => void;
+  onRefresh: () => void;
+  currentPage: number;
+  totalJobs: number;
+  jobsPerPage: number;
+  onPageChange: (page: number) => void;
+  connectionState?: "connected" | "disconnected" | "reconnecting" | "polling";
+}
+
+function ConnectionIndicator({
+  state,
+}: {
+  state: "connected" | "disconnected" | "reconnecting" | "polling";
+}) {
+  const indicatorStyle: React.CSSProperties = {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    display: "inline-block",
+    marginRight: 6,
+  };
+
+  const containerStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 12,
+    color: "#666",
+    padding: "4px 8px",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 4,
+  };
+
+  switch (state) {
+    case "connected":
+      return (
+        <span
+          style={containerStyle}
+          title="WebSocket connected - real-time updates"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#22c55e" }} />
+          Live
+        </span>
+      );
+    case "reconnecting":
+      return (
+        <span style={containerStyle} title="Reconnecting to WebSocket...">
+          <span
+            style={{
+              ...indicatorStyle,
+              backgroundColor: "#f59e0b",
+              animation: "pulse 1s infinite",
+            }}
+          />
+          Reconnecting
+        </span>
+      );
+    case "polling":
+      return (
+        <span
+          style={containerStyle}
+          title="Using polling fallback (4s interval)"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#6b7280" }} />
+          Polling
+        </span>
+      );
+    case "disconnected":
+      return (
+        <span
+          style={containerStyle}
+          title="Disconnected - using polling fallback"
+        >
+          <span style={{ ...indicatorStyle, backgroundColor: "#ef4444" }} />
+          Disconnected
+        </span>
+      );
+    default:
+      return null;
+  }
+}
+
+export function JobList({
+  jobs,
+  error,
+  onViewResults,
+  onCancel,
+  onDelete,
+  onRefresh,
+  currentPage,
+  totalJobs,
+  jobsPerPage,
+  onPageChange,
+  connectionState = "polling",
+}: JobListProps) {
+  const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
+
+  useEffect(() => {
+    setJumpInputValue(currentPage.toString());
+  }, [currentPage]);
+
+  const maxPage = Math.ceil(totalJobs / jobsPerPage);
+
+  return (
+    <section className="panel">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>Active Jobs</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ConnectionIndicator state={connectionState} />
+          <button type="button" className="secondary" onClick={onRefresh}>
+            Refresh
+          </button>
+        </div>
+      </div>
+      {error ? <p className="error">{error}</p> : null}
+
+      {totalJobs > jobsPerPage ? (
+        <div className="pagination-controls" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            Previous
+          </button>
+
+          <span className="pagination-info">
+            Page {currentPage} of {maxPage} ({totalJobs} total jobs)
+          </span>
+
+          <button
+            type="button"
+            disabled={currentPage >= maxPage}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            Next
+          </button>
+
+          <div className="pagination-jump">
+            <input
+              type="number"
+              min="1"
+              max={maxPage}
+              value={jumpInputValue}
+              onChange={(e) => {
+                const page = parseInt(e.target.value, 10);
+                if (Number.isInteger(page) && page >= 1 && page <= maxPage) {
+                  setJumpInputValue(e.target.value);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const page = parseInt(jumpInputValue, 10);
+                if (page >= 1 && page <= maxPage) {
+                  onPageChange(page);
+                }
+              }}
+            >
+              Go
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="job-list" style={{ marginTop: 12 }}>
+        {jobs.length === 0 ? (
+          <div>No jobs yet. Submit a scrape or crawl.</div>
+        ) : (
+          jobs.map((job) => (
+            <div key={job.id} className="job-item">
+              <div>{job.id}</div>
+              <div>
+                <span className={`badge ${statusClass(job.status ?? "")}`}>
+                  {job.status}
+                </span>{" "}
+                {job.kind}
+                {job.dependencyStatus && job.dependencyStatus !== "ready" ? (
+                  <span
+                    className={`badge ${statusClass(job.dependencyStatus)}`}
+                    style={{ marginLeft: 8 }}
+                    title={
+                      job.dependencyStatus === "pending"
+                        ? "Waiting for dependencies"
+                        : "Dependency failed"
+                    }
+                  >
+                    deps: {job.dependencyStatus}
+                  </span>
+                ) : null}
+                {job.chainId ? (
+                  <span
+                    className="badge"
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: "#e0e7ff",
+                      color: "#4338ca",
+                    }}
+                    title={`Part of chain ${job.chainId}`}
+                  >
+                    chain
+                  </span>
+                ) : null}
+              </div>
+              {job.dependsOn && job.dependsOn.length > 0 ? (
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  Depends on: {job.dependsOn.slice(0, 3).join(", ")}
+                  {job.dependsOn.length > 3
+                    ? ` +${job.dependsOn.length - 3} more`
+                    : ""}
+                </div>
+              ) : null}
+              <div>Updated: {job.updatedAt}</div>
+              {job.error ? <div>Error: {job.error}</div> : null}
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {job.status === "succeeded" ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => onViewResults(job.id ?? "", "jsonl", 1)}
+                  >
+                    View Results
+                  </button>
+                ) : null}
+                {job.status === "queued" || job.status === "running" ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => onCancel(job.id ?? "")}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => onDelete(job.id ?? "")}
+                  style={{ color: "#ff6b6b" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}

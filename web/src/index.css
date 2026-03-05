@@ -1,0 +1,28 @@
+/**
+ * Spartan Scraper Web UI - Global Styles Entry Point
+ *
+ * Imports all CSS modules in dependency order.
+ *
+ * @module index.css
+ */
+
+/* 1. Foundation: Variables must be first */
+@import "./styles/theme.css";
+
+/* 2. Base: Reset and global styles depend on theme */
+@import "./styles/base.css";
+
+/* 3. Layout: Utilities depend on theme */
+@import "./styles/layout.css";
+
+/* 4. Primitives: Components depend on theme + layout */
+@import "./styles/components.css";
+
+/* 5. Animations: Keyframes and utilities */
+@import "./styles/animations.css";
+
+/* 6. Features: Complex UI features depend on all above */
+@import "./styles/features.css";
+
+/* 7. Tools: Specialized tools depend on everything */
+@import "./styles/tools.css";

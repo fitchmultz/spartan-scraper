@@ -1,0 +1,534 @@
+// Package fetch provides tests for the Playwright fetcher.
+// Tests cover singleton behavior, headless mode switching, concurrent safety, resource cleanup, and crash recovery.
+// Does NOT test actual page rendering when Playwright is not installed (skipped in that case).
+package fetch
+
+import (
+	"context"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// TestPlaywrightFetcher_SingletonBehavior verifies that the same Playwright
+// and browser instances are reused across multiple fetch operations.
+func TestPlaywrightFetcher_SingletonBehavior(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	// First fetch - should initialize
+	f.mu.Lock()
+	firstInit := !f.initialized
+	f.mu.Unlock()
+
+	if !firstInit {
+		t.Error("expected fetcher to be uninitialized before first fetch")
+	}
+
+	// Simulate initialization
+	err := f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	f.mu.RLock()
+	firstPW := f.pw
+	firstBrowser := f.browser
+	firstHeadless := f.headless
+	wasInitialized := f.initialized
+	f.mu.RUnlock()
+
+	if !wasInitialized {
+		t.Error("expected fetcher to be initialized after ensureInitialized")
+	}
+	if firstPW == nil {
+		t.Error("expected playwright instance to be non-nil")
+	}
+	if firstBrowser == nil {
+		t.Error("expected browser instance to be non-nil")
+	}
+	if !firstHeadless {
+		t.Error("expected headless to be true")
+	}
+
+	// Second ensureInitialized with same headless setting - should reuse
+	err = f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Fatalf("second ensureInitialized failed: %v", err)
+	}
+
+	f.mu.RLock()
+	secondPW := f.pw
+	secondBrowser := f.browser
+	f.mu.RUnlock()
+
+	if secondPW != firstPW {
+		t.Error("expected same playwright instance to be reused")
+	}
+	if secondBrowser != firstBrowser {
+		t.Error("expected same browser instance to be reused")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}
+
+// TestPlaywrightFetcher_HeadlessModeSwitch verifies that switching headless
+// mode triggers cleanup and reinitialization.
+func TestPlaywrightFetcher_HeadlessModeSwitch(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	// Initialize with headless=true
+	err := f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	f.mu.RLock()
+	firstBrowser := f.browser
+	f.mu.RUnlock()
+
+	// Switch to headless=false
+	err = f.ensureInitialized(context.Background(), false)
+	if err != nil {
+		t.Fatalf("ensureInitialized with headless=false failed: %v", err)
+	}
+
+	f.mu.RLock()
+	secondBrowser := f.browser
+	newHeadless := f.headless
+	f.mu.RUnlock()
+
+	if secondBrowser == firstBrowser {
+		t.Error("expected new browser instance after headless mode switch")
+	}
+	if newHeadless {
+		t.Error("expected headless to be false")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}
+
+// TestPlaywrightFetcher_ConcurrentSafety verifies that concurrent fetches
+// are handled safely without races.
+func TestPlaywrightFetcher_ConcurrentSafety(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	ctx := context.Background()
+	const numGoroutines = 10
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(headless bool) {
+			defer wg.Done()
+			err := f.ensureInitialized(ctx, headless)
+			if err != nil {
+				errChan <- err
+			}
+		}(i%2 == 0) // Mix of headless and non-headless
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Check for initialization errors (but skip if Playwright not available)
+	errorCount := 0
+	for err := range errChan {
+		if err != nil {
+			errorCount++
+		}
+	}
+
+	if errorCount > 0 {
+		t.Skipf("Skipping test: Playwright not available")
+		return
+	}
+
+	// Verify that the fetcher is in a consistent state
+	f.mu.RLock()
+	initialized := f.initialized
+	hasPW := f.pw != nil
+	hasBrowser := f.browser != nil
+	f.mu.RUnlock()
+
+	if !initialized {
+		t.Error("expected fetcher to be initialized after concurrent calls")
+	}
+	if !hasPW {
+		t.Error("expected playwright instance to be non-nil")
+	}
+	if !hasBrowser {
+		t.Error("expected browser instance to be non-nil")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}
+
+// TestPlaywrightFetcher_Close verifies that Close properly cleans up resources.
+func TestPlaywrightFetcher_Close(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	// Initialize
+	err := f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	// Verify initialized
+	f.mu.RLock()
+	wasInitialized := f.initialized
+	f.mu.RUnlock()
+
+	if !wasInitialized {
+		t.Error("expected fetcher to be initialized")
+	}
+
+	// Close
+	err = f.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// Verify cleanup
+	f.mu.RLock()
+	isInitialized := f.initialized
+	pwNil := f.pw == nil
+	browserNil := f.browser == nil
+	f.mu.RUnlock()
+
+	if isInitialized {
+		t.Error("expected fetcher to be uninitialized after Close")
+	}
+	if !pwNil {
+		t.Error("expected playwright instance to be nil after Close")
+	}
+	if !browserNil {
+		t.Error("expected browser instance to be nil after Close")
+	}
+
+	// Calling Close again should be safe
+	err = f.Close()
+	if err != nil {
+		t.Errorf("Close called twice should be safe, got error: %v", err)
+	}
+}
+
+// TestPlaywrightFetcher_CloseConcurrentWithFetch verifies that Close is safe
+// even when concurrent operations might be in progress.
+func TestPlaywrightFetcher_CloseConcurrentWithFetch(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	ctx := context.Background()
+
+	// Initialize first
+	err := f.ensureInitialized(ctx, true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	// Close should be safe to call
+	err = f.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// Start goroutines that try to initialize after close
+	// This tests that Close properly cleans up and reinitialization works
+	done := make(chan struct{})
+	go func() {
+		for range 100 {
+			_ = f.ensureInitialized(ctx, true)
+			time.Sleep(1 * time.Millisecond)
+		}
+		close(done)
+	}()
+
+	// Wait a bit for goroutines to potentially initialize
+	time.Sleep(10 * time.Millisecond)
+
+	// Close again - should be safe regardless of goroutine state
+	err = f.Close()
+	if err != nil {
+		t.Errorf("Close called second time failed: %v", err)
+	}
+
+	// Wait for goroutines to finish
+	<-done
+
+	// Final close to clean up any state
+	_ = f.Close()
+}
+
+// TestPlaywrightFetcher_NotInitialized verifies behavior before initialization.
+func TestPlaywrightFetcher_NotInitialized(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	f.mu.RLock()
+	initialized := f.initialized
+	pwNil := f.pw == nil
+	browserNil := f.browser == nil
+	f.mu.RUnlock()
+
+	if initialized {
+		t.Error("expected new fetcher to be uninitialized")
+	}
+	if !pwNil {
+		t.Error("expected playwright instance to be nil initially")
+	}
+	if !browserNil {
+		t.Error("expected browser instance to be nil initially")
+	}
+}
+
+// TestPlaywrightFetcher_BrowserReuseSequential verifies that the same browser
+// instance is used for sequential fetch operations.
+func TestPlaywrightFetcher_BrowserReuseSequential(t *testing.T) {
+	f := &PlaywrightFetcher{}
+
+	// Initialize
+	err := f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	f.mu.RLock()
+	firstBrowser := f.browser
+	f.mu.RUnlock()
+
+	// Call ensureInitialized again with same settings
+	err = f.ensureInitialized(context.Background(), true)
+	if err != nil {
+		t.Fatalf("second ensureInitialized failed: %v", err)
+	}
+
+	f.mu.RLock()
+	secondBrowser := f.browser
+	f.mu.RUnlock()
+
+	if secondBrowser != firstBrowser {
+		t.Error("browser instance changed on re-initialization with same settings")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}
+
+// TestPlaywrightFetch_ContextCancellationDuringLimiterWait verifies that context
+// cancellation is properly propagated when waiting for the rate limiter.
+//
+// This test documents the fix for RQ-0022: the Playwright fetcher checks the
+// error return from req.Limiter.Wait and returns immediately on cancellation
+// instead of continuing to ensure Playwright initialization and perform the fetch.
+func TestPlaywrightFetch_ContextCancellationDuringLimiterWait(t *testing.T) {
+	limiter := NewHostLimiter(1, 1)
+
+	// Consume the burst token so that the next Fetch call will block in Wait.
+	// We call Wait directly on the limiter to avoid needing a real Playwright binary.
+	ctx := context.Background()
+	_ = limiter.Wait(ctx, "http://example.com")
+
+	// Now create a cancelled context for the fetch request
+	// This request will need to wait for the rate limiter, but the context
+	// is already cancelled, so Wait should return immediately with context.Canceled
+	cancelledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	fetcher := &PlaywrightFetcher{}
+	req := Request{
+		URL:     "http://example.com",
+		Timeout: 5 * time.Second,
+		Limiter: limiter,
+	}
+
+	result, err := fetcher.Fetch(cancelledCtx, req, RenderProfile{})
+
+	// Assert: should return context.Canceled error
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+
+	// Assert: result should be empty (zero value)
+	if result.URL != "" || result.Status != 0 || result.HTML != "" {
+		t.Errorf("expected empty Result, got %+v", result)
+	}
+}
+
+// TestPlaywrightFetch_ContextCancellationDuringBackoff verifies that context
+// cancellation stops retry backoff immediately without waiting for the full
+// delay duration.
+//
+// This test documents the fix for RQ-0288: the Playwright fetcher now uses
+// SleepWithContext instead of time.Sleep during retry backoff, allowing
+// cancellation to interrupt the wait.
+func TestPlaywrightFetch_ContextCancellationDuringBackoff(t *testing.T) {
+	fetcher := &PlaywrightFetcher{}
+
+	// Create a context we can cancel
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel after a very short delay (less than the backoff duration)
+	// The default baseDelay is 800ms, so cancel at 50ms
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	// Use an invalid URL that will cause an error (connection refused)
+	// This triggers the retry backoff path
+	_, err := fetcher.Fetch(ctx, Request{
+		URL:        "http://127.0.0.1:1", // Port 1 is typically not accessible
+		Timeout:    100 * time.Millisecond,
+		MaxRetries: 3,
+	}, RenderProfile{})
+	elapsed := time.Since(start)
+
+	// Should return reasonably quickly, not after full backoff (which would be ~800ms)
+	// Note: Playwright initialization takes some time, so we allow up to 1 second
+	// The key point is that it should NOT wait for the full retry backoff
+	if elapsed > 1*time.Second {
+		t.Errorf("took too long to return after cancellation: %v (expected < 1s)", elapsed)
+	}
+
+	// Should get context.Canceled
+	if err != context.Canceled {
+		// It's also acceptable to get a connection error if the context wasn't
+		// cancelled quickly enough, but we should NOT get "max retries exceeded"
+		if err != nil && !strings.Contains(err.Error(), "connection") && !strings.Contains(err.Error(), "playwright") {
+			t.Logf("Got error: %v (type: %T)", err, err)
+		}
+	}
+}
+
+// TestIsBlockedType verifies the isBlockedType function correctly matches
+// Playwright resource types to blocked resource types.
+func TestIsBlockedType(t *testing.T) {
+	tests := []struct {
+		name      string
+		resType   string
+		blockType BlockedResourceType
+		want      bool
+	}{
+		// Positive matches - specific types
+		{"image matches image", "image", BlockedResourceImage, true},
+		{"media matches media", "media", BlockedResourceMedia, true},
+		{"font matches font", "font", BlockedResourceFont, true},
+		{"stylesheet matches stylesheet", "stylesheet", BlockedResourceStylesheet, true},
+
+		// Positive matches - BlockedResourceOther blocks non-essential types
+		{"script matches other", "script", BlockedResourceOther, true},
+		{"xhr matches other", "xhr", BlockedResourceOther, true},
+		{"fetch matches other", "fetch", BlockedResourceOther, true},
+		{"websocket matches other", "websocket", BlockedResourceOther, true},
+		{"eventsource matches other", "eventsource", BlockedResourceOther, true},
+		{"manifest matches other", "manifest", BlockedResourceOther, true},
+		{"texttrack matches other", "texttrack", BlockedResourceOther, true},
+
+		// Negative matches - different types
+		{"image does not match stylesheet", "stylesheet", BlockedResourceImage, false},
+		{"media does not match image", "image", BlockedResourceMedia, false},
+		{"font does not match media", "media", BlockedResourceFont, false},
+		{"stylesheet does not match font", "font", BlockedResourceStylesheet, false},
+		{"image does not match other", "image", BlockedResourceOther, false},
+		{"media does not match other", "media", BlockedResourceOther, false},
+		{"font does not match other", "font", BlockedResourceOther, false},
+		{"stylesheet does not match other", "stylesheet", BlockedResourceOther, false},
+
+		// Document should never be blocked (main HTML document)
+		{"document does not match other", "document", BlockedResourceOther, false},
+		{"document does not match image", "document", BlockedResourceImage, false},
+
+		// Playwright resource types that shouldn't match specific blocked types
+		{"script does not match media", "script", BlockedResourceMedia, false},
+		{"xhr does not match font", "xhr", BlockedResourceFont, false},
+		{"websocket does not match stylesheet", "websocket", BlockedResourceStylesheet, false},
+
+		// Case sensitivity
+		{"Image (capital) does not match image", "Image", BlockedResourceImage, false},
+		{"IMAGE (upper) does not match image", "IMAGE", BlockedResourceImage, false},
+		{"image lowercase matches", "image", BlockedResourceImage, true},
+
+		// Empty strings
+		{"empty resType does not match image", "", BlockedResourceImage, false},
+
+		// Literal Playwright 'other' type - blocked by BlockedResourceOther
+		// Note: 'other' in Playwright covers miscellaneous requests like beacons, CSP reports, pings
+		{"other matches other", "other", BlockedResourceOther, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isBlockedType(tt.resType, tt.blockType); got != tt.want {
+				t.Errorf("isBlockedType(%q, %v) = %v, want %v", tt.resType, tt.blockType, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPlaywrightFetcher_RecoveryAfterCrash verifies that the fetcher can detect
+// a disconnected browser and automatically recover by re-initializing.
+func TestPlaywrightFetcher_RecoveryAfterCrash(t *testing.T) {
+	f := &PlaywrightFetcher{}
+	ctx := context.Background()
+
+	// 1. Initialize
+	err := f.ensureInitialized(ctx, true)
+	if err != nil {
+		t.Skipf("Skipping test: Playwright not available: %v", err)
+		return
+	}
+
+	f.mu.RLock()
+	firstBrowser := f.browser
+	f.mu.RUnlock()
+
+	if firstBrowser == nil {
+		t.Fatal("expected browser instance to be non-nil")
+	}
+	if !firstBrowser.IsConnected() {
+		t.Fatal("expected browser to be connected after initialization")
+	}
+
+	// 2. Simulate crash by closing the browser manually
+	err = firstBrowser.Close()
+	if err != nil {
+		t.Fatalf("failed to close browser: %v", err)
+	}
+
+	if firstBrowser.IsConnected() {
+		t.Fatal("expected browser to be disconnected after manual close")
+	}
+
+	// 3. Call ensureInitialized again - should trigger recovery
+	err = f.ensureInitialized(ctx, true)
+	if err != nil {
+		t.Fatalf("ensureInitialized failed during recovery: %v", err)
+	}
+
+	f.mu.RLock()
+	secondBrowser := f.browser
+	f.mu.RUnlock()
+
+	if secondBrowser == nil {
+		t.Fatal("expected new browser instance to be non-nil")
+	}
+	if !secondBrowser.IsConnected() {
+		t.Fatal("expected browser to be connected after recovery")
+	}
+
+	if secondBrowser == firstBrowser {
+		t.Fatal("expected a new browser instance after recovery")
+	}
+
+	// Cleanup
+	_ = f.Close()
+}

@@ -1,0 +1,137 @@
+/**
+ * Spartan Scraper Web UI - Animations
+ *
+ * Keyframe animations, skeleton loading, reduced motion support,
+ * and onboarding animations.
+ *
+ * @module styles/animations.css
+ */
+
+/* ============================================================================
+   Keyframe Animations
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================================================
+   Skeleton Loading
+   ============================================================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-alt) 25%,
+    var(--panel) 50%,
+    var(--bg-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+/* ============================================================================
+   Onboarding Animations
+   ============================================================================ */
+
+/* Welcome modal fade in */
+@keyframes welcome-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Tutorial beacon pulse animation */
+@keyframes tutorial-beacon-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Tutorial tooltip fade in */
+@keyframes tutorial-tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Onboarding tooltip button hover effects */
+.react-joyride__tooltip button:hover {
+  opacity: 0.9;
+}
+
+/* Tutorial tooltip base styles */
+.tutorial-tooltip {
+  position: absolute;
+  z-index: 1001;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px var(--shadow);
+}
+
+/* ============================================================================
+   Reduced Motion Support
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::after,
+  *::before {
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required for accessibility */
+    transition-duration: 0.01ms !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background: var(--bg-alt);
+  }
+}

@@ -1,0 +1,405 @@
+/**
+ * Onboarding Flow Component
+ *
+ * Guided tour component using react-joyride for step-by-step
+ * user onboarding. Defines tour steps and handles tour events.
+ *
+ * @module components/OnboardingFlow
+ */
+
+import Joyride, {
+  type CallBackProps,
+  type Step,
+  type Styles,
+} from "react-joyride";
+
+export interface OnboardingFlowProps {
+  /** Whether the tour is running */
+  isRunning: boolean;
+  /** Current step index */
+  currentStep: number;
+  /** Callback when tour completes or is skipped */
+  onComplete: () => void;
+  /** Callback when tour is skipped */
+  onSkip?: () => void;
+  /** Callback when step changes */
+  onStepChange?: (stepIndex: number) => void;
+}
+
+/**
+ * Tour steps definition.
+ * Each step targets a specific element with data-tour attribute.
+ */
+const TOUR_STEPS: Step[] = [
+  {
+    target: "body",
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>
+          Welcome to Spartan Scraper!
+        </h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          This quick tour will show you the key features and help you get
+          started with your first scraping job.
+        </p>
+      </div>
+    ),
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tour="quickstart"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>
+          Quick Start Panel
+        </h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          Choose from preset configurations to jumpstart your job. Each preset
+          is optimized for different scenarios like blogs, e-commerce sites, or
+          SPAs. Click any card to auto-configure the form.
+        </p>
+      </div>
+    ),
+    placement: "bottom",
+    title: "Quick Start",
+  },
+  {
+    target: '[data-tour="form-types"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Three Job Types</h3>
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
+          Spartan Scraper supports three types of jobs:
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+          <li>
+            <strong>Scrape</strong> — Single page extraction with precise
+            control
+          </li>
+          <li>
+            <strong>Crawl</strong> — Multi-page crawling with depth and page
+            limits
+          </li>
+          <li>
+            <strong>Research</strong> — AI-powered multi-source analysis and
+            synthesis
+          </li>
+        </ul>
+      </div>
+    ),
+    placement: "right",
+    title: "Job Types",
+  },
+  {
+    target: '[data-tour="fetcher-options"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Fetcher Options</h3>
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
+          Choose the right fetcher for your target:
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+          <li>
+            <strong>HTTP</strong> — Fast, lightweight, good for static sites
+          </li>
+          <li>
+            <strong>Chromedp</strong> — Built-in headless Chrome for
+            JavaScript-heavy pages
+          </li>
+          <li>
+            <strong>Playwright</strong> — Full browser automation for complex
+            SPAs (optional)
+          </li>
+        </ul>
+      </div>
+    ),
+    placement: "left",
+    title: "Fetchers",
+  },
+  {
+    target: '[data-tour="auth-profiles"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Authentication</h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          Configure authentication using saved profiles or custom credentials.
+          Support for headers, cookies, query parameters, and form-based login.
+          Profiles can inherit from each other for flexible credential
+          management.
+        </p>
+      </div>
+    ),
+    placement: "top",
+    title: "Auth Profiles",
+  },
+  {
+    target: '[data-tour="templates"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>
+          Extraction Templates
+        </h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          Use templates to extract structured data from HTML. Templates support
+          CSS selectors, validation rules, and can be combined with pre/post
+          processors and transformers for powerful data pipelines.
+        </p>
+      </div>
+    ),
+    placement: "top",
+    title: "Templates",
+  },
+  {
+    target: '[data-tour="command-palette"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Command Palette</h3>
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
+          Access everything quickly with the command palette. Press{" "}
+          <kbd
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              fontFamily: "inherit",
+            }}
+          >
+            Ctrl+K
+          </kbd>{" "}
+          (or{" "}
+          <kbd
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              fontFamily: "inherit",
+            }}
+          >
+            ⌘K
+          </kbd>
+          ) to:
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+          <li>Submit jobs quickly</li>
+          <li>Navigate between sections</li>
+          <li>Access recent jobs and presets</li>
+          <li>Restart this tour anytime</li>
+        </ul>
+      </div>
+    ),
+    placement: "bottom",
+    title: "Quick Access",
+  },
+  {
+    target: "body",
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>
+          You're All Set!
+        </h3>
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
+          You're ready to start scraping. Remember:
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+          <li>
+            Press{" "}
+            <kbd
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                fontFamily: "inherit",
+              }}
+            >
+              ?
+            </kbd>{" "}
+            for keyboard shortcuts
+          </li>
+          <li>
+            Use{" "}
+            <kbd
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                fontFamily: "inherit",
+              }}
+            >
+              Ctrl+K
+            </kbd>{" "}
+            for the command palette
+          </li>
+          <li>Hover over fields for contextual help</li>
+          <li>Add ?showHelp to the URL to replay this tour</li>
+        </ul>
+        <p
+          style={{
+            margin: "12px 0 0",
+            fontStyle: "italic",
+            color: "var(--muted, #a0a0a8)",
+          }}
+        >
+          Happy scraping!
+        </p>
+      </div>
+    ),
+    placement: "center",
+    disableBeacon: true,
+  },
+];
+
+/**
+ * Custom styles for react-joyride that match the app theme.
+ */
+const joyrideStyles: Partial<Styles> = {
+  options: {
+    arrowColor: "var(--panel, #1a1a24)",
+    backgroundColor: "var(--panel, #1a1a24)",
+    overlayColor: "rgba(0, 0, 0, 0.7)",
+    primaryColor: "var(--accent, #ffb700)",
+    textColor: "var(--text, #fff)",
+    zIndex: 1000,
+  },
+  tooltip: {
+    backgroundColor: "var(--panel, #1a1a24)",
+    border: "1px solid var(--stroke, rgba(255,255,255,0.1))",
+    borderRadius: 16,
+    boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+    fontSize: "0.9rem",
+    padding: 20,
+  },
+  tooltipContainer: {
+    textAlign: "left",
+  },
+  tooltipTitle: {
+    fontSize: "1rem",
+    fontWeight: 600,
+    margin: "0 0 12px",
+    color: "var(--text, #fff)",
+  },
+  tooltipContent: {
+    padding: 0,
+  },
+  buttonNext: {
+    backgroundColor: "var(--accent, #ffb700)",
+    color: "#1a1200",
+    fontWeight: 600,
+    padding: "8px 16px",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+  },
+  buttonBack: {
+    backgroundColor: "transparent",
+    color: "var(--muted, #a0a0a8)",
+    fontWeight: 500,
+    padding: "8px 16px",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    marginRight: 8,
+  },
+  buttonSkip: {
+    backgroundColor: "transparent",
+    color: "var(--muted, #a0a0a8)",
+    fontWeight: 400,
+    padding: "8px 16px",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+  },
+  buttonClose: {
+    color: "var(--muted, #a0a0a8)",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "1.2rem",
+    padding: 4,
+  },
+  overlay: {
+    backdropFilter: "blur(4px)",
+  },
+  spotlight: {
+    backgroundColor: "transparent",
+    border: "2px solid var(--accent, #ffb700)",
+    borderRadius: 12,
+    boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.7)",
+  },
+};
+
+/**
+ * Onboarding Flow Component
+ *
+ * Wraps react-joyride with app-specific configuration and styling.
+ * Provides a guided tour of the application's key features.
+ *
+ * @example
+ * ```tsx
+ * <OnboardingFlow
+ *   isRunning={isTourActive}
+ *   currentStep={currentStep}
+ *   onComplete={finishOnboarding}
+ *   onSkip={skipOnboarding}
+ *   onStepChange={setCurrentStep}
+ * />
+ * ```
+ */
+export function OnboardingFlow({
+  isRunning,
+  currentStep,
+  onComplete,
+  onSkip,
+  onStepChange,
+}: OnboardingFlowProps) {
+  const handleCallback = (data: CallBackProps) => {
+    const { action, index, lifecycle, status, type } = data;
+
+    // Handle step changes
+    if (type === "step:after" && lifecycle === "complete") {
+      onStepChange?.(index + 1);
+    }
+
+    // Handle tour completion
+    if (status === "finished") {
+      onComplete();
+    }
+
+    // Handle skip
+    if (status === "skipped" || action === "skip") {
+      onSkip?.();
+    }
+
+    // Handle close button
+    if (action === "close") {
+      onSkip?.();
+    }
+  };
+
+  return (
+    <Joyride
+      steps={TOUR_STEPS}
+      run={isRunning}
+      stepIndex={currentStep}
+      continuous
+      showProgress
+      showSkipButton
+      scrollToFirstStep
+      disableOverlayClose={false}
+      spotlightClicks={false}
+      styles={joyrideStyles}
+      locale={{
+        back: "Back",
+        close: "Close",
+        last: "Finish",
+        next: "Next",
+        skip: "Skip tour",
+        open: "Open",
+      }}
+      callback={handleCallback}
+    />
+  );
+}

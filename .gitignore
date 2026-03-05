@@ -1,0 +1,33 @@
+# Binary and build output
+/.bin/
+/bin/
+/web/dist/
+/extensions/dist/
+/out/
+
+# Local runtime data and caches
+/.data/
+/.ralph/
+/.scratchpad.md
+/scripts/.test-tmp/
+
+# Dependencies
+/node_modules/
+/web/node_modules/
+/extensions/node_modules/
+
+# Environment files (keep examples)
+.env
+.env.*
+!.env.example
+/web/.env
+/web/.env.*
+!web/.env.example
+/extensions/.env
+/extensions/.env.*
+!extensions/.env.example
+.envrc
+
+# Logs
+*.log
+/web/openapi-ts-error-*.log
