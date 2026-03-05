@@ -1,0 +1,29 @@
+# Evidence Map
+
+This map links repository artifacts to production-readiness outcomes.
+
+## Reliability and correctness
+
+- Deterministic PR gate: `make ci-pr` (`Makefile`, `.github/workflows/ci-pr.yml`)
+- Full local gate: `make ci` (`Makefile`)
+- High-signal tests: Go unit/integration + web Vitest (`internal/**`, `web/src/**/*.test.ts*`)
+
+## Security and public-readiness
+
+- Public hygiene scanner: `make audit-public` (`scripts/public_audit.mjs`)
+- Secret/signature checks + history artifact checks: `scripts/public_audit.mjs`
+- WebSocket origin hardening: `internal/api/server.go`, `internal/api/server_websocket_origin_test.go`
+- Safe defaults docs: `README.md`, `.env.example`, `docs/usage.md`, `SECURITY.md`
+
+## Developer productivity and onboarding
+
+- One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`
+- Lockfile-strict installs for deterministic setup: `Makefile`
+- Reviewer runbook: `docs/reviewer_checklist.md`
+- Release runbook: `RELEASING.md`, `docs/release_readiness.md`
+
+## Operational discipline
+
+- Split CI profiles by cost/risk: `docs/ci.md`, workflows in `.github/workflows/`
+- Nightly/manual heavy checks separated from PR-required checks: `ci-slow.yml`
+- Runtime safety controls (timeouts/auth): `internal/config/config.go`, `internal/cli/server/server.go`, `internal/api/middleware.go`

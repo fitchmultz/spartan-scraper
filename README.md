@@ -75,6 +75,7 @@ Open `http://localhost:5173`.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
 - [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): timestamped UI dogfood evidence bundles.
+- [docs/role-evidence/evidence-map.md](docs/role-evidence/evidence-map.md): production-readiness evidence pack (demo/workshop/cookbook/ops).
 
 ### CLI examples
 

@@ -12,6 +12,7 @@ This index helps contributors and reviewers navigate documentation quickly.
 - [Performance Notes](performance.md) — tuning and scaling guidance.
 - [Landscape](landscape.md) — ecosystem positioning and key project trade-offs.
 - [Dogfood Evidence](evidence/dogfood/README.md) — timestamped UI validation bundles with repro artifacts.
+- [Role Evidence Pack](role-evidence/evidence-map.md) — demo/workshop/cookbook/ops artifacts for reviewer trust.
 
 ## Related Repository Docs
 
