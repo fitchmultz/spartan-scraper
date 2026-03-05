@@ -36,6 +36,40 @@ This report captures the current public-release hardening status for Spartan Scr
    - `internal/config` now avoids retention warnings on untouched defaults (warns only when retention limits are explicitly overridden while retention is disabled).
    - `.env.example` no longer uses inline comment values that can be parsed as invalid AI provider strings.
 
+## UI Public-Readiness Remediation (2026-03-05)
+
+P0 issue fixed in this pass:
+
+- **Batch UI crash after submit** (`Cannot read properties of undefined ...`) is fixed.
+- Root cause: generated API client returned serialized JSON strings for batch endpoints; hook code assumed object payloads.
+- Remediation: `web/src/hooks/useBatches.ts` now parses serialized payloads, validates required batch fields, normalizes kind/status/stats/jobs, and rejects malformed payloads safely.
+- Regression tests added: `web/src/hooks/useBatches.test.ts` now covers serialized payload parsing and missing-ID rejection.
+
+Live browser verification receipts (agent-browser):
+
+- Verified on 2026-03-05 with `agent-browser` against the live app at `http://localhost:5173`.
+- Covered batch scrape, batch crawl, and batch research submit flows.
+- Result: each flow completed without a page runtime error and the UI remained interactive after the batch row rendered.
+
+## CI Matrix
+
+PR required (deterministic, resource-capped):
+
+- `make ci-pr`
+  - clean-tree guard
+  - audit-public
+  - lockfile-strict install
+  - generate + format + type-check + lint + build
+  - `test-ci` with capped vitest workers
+
+Nightly/manual heavy:
+
+- `make ci-slow` (stress + e2e)
+
+Manual release-tier:
+
+- `make secret-scan` (full-history secret scan)
+
 ## Top Risks and Mitigations
 
 1. **Tracked local/build/cache artifacts leaking into commits**
@@ -62,12 +96,17 @@ This report captures the current public-release hardening status for Spartan Scr
    - Keep `make audit-public` as fast deterministic gate.
    - Run `make secret-scan` in pre-tag/manual release workflow.
 
-## Validation Snapshot
+## Validation Snapshot (latest pass)
+
+- `make ci` ✅ (2026-03-05)
+- browser-driven batch regression verification ✅
+  - batch scrape/crawl/research submit flows verified in the live UI with `agent-browser`
+
+Last-known additional checks (run outside this focused UI fix pass):
 
 - `make audit-public` ✅
 - `make secret-scan` ✅
 - `make ci-pr` ✅
-- `make ci` ✅
 - `make ci-slow` ✅
 
 ## Reviewer Validation Path

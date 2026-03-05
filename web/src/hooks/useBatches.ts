@@ -1,10 +1,9 @@
 /**
- * Hook for batch data management
- *
- * Fetches batch list, provides refresh, handles polling for updates.
- * Manages batch state including job listings for expanded batches.
- *
- * @module useBatches
+ * Purpose: Manage batch job lifecycle state for the web UI.
+ * Responsibilities: Persist tracked batches, submit batch jobs, refresh status/jobs, and expose polling-driven updates.
+ * Scope: Client-side batch state and API orchestration for scrape/crawl/research batches only.
+ * Usage: Call `useBatches()` from UI containers that render batch forms/lists and wire returned actions to controls.
+ * Invariants/Assumptions: Batch entries always include normalized non-negative stats; localStorage data may be malformed and must be sanitized.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -13,7 +12,6 @@ import {
   postV1JobsBatchScrape,
   postV1JobsBatchCrawl,
   postV1JobsBatchResearch,
-  type BatchStatusResponse,
   type BatchScrapeRequest,
   type BatchCrawlRequest,
   type BatchResearchRequest,
@@ -45,16 +43,291 @@ export type BatchEntry = {
   updatedAt: string;
 };
 
-function mapBatchResponse(response: BatchStatusResponse): BatchEntry {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toNonNegativeNumber(value: unknown): number {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 0;
+  }
+  return value < 0 ? 0 : value;
+}
+
+function isBatchKind(value: unknown): value is BatchEntry["kind"] {
+  return value === "scrape" || value === "crawl" || value === "research";
+}
+
+function isBatchStatus(value: unknown): value is BatchEntry["status"] {
+  return (
+    value === "pending" ||
+    value === "processing" ||
+    value === "completed" ||
+    value === "failed" ||
+    value === "partial" ||
+    value === "canceled"
+  );
+}
+
+function isJobStatus(value: unknown): value is Job["status"] {
+  return (
+    value === "queued" ||
+    value === "running" ||
+    value === "succeeded" ||
+    value === "failed" ||
+    value === "canceled"
+  );
+}
+
+function formatApiError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function parseJsonIfString(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    throw new Error("Server returned malformed JSON payload");
+  }
+}
+
+function toBatchPayload(value: unknown): Record<string, unknown> {
+  const parsed = parseJsonIfString(value);
+  if (!isRecord(parsed)) {
+    throw new Error("Server returned unexpected payload shape");
+  }
+
+  if (isRecord(parsed.batch)) {
+    return parsed.batch;
+  }
+
+  return parsed;
+}
+
+function readBatchID(payload: Record<string, unknown>): string {
+  const fromId = typeof payload.id === "string" ? payload.id : "";
+  if (fromId) {
+    return fromId;
+  }
+
+  const fromBatchId =
+    typeof payload.batchId === "string" ? payload.batchId : "";
+  if (fromBatchId) {
+    return fromBatchId;
+  }
+
+  throw new Error("Batch response missing id");
+}
+
+function readIsoDate(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  return fallback;
+}
+
+function readBatchJobs(payload: Record<string, unknown>): Job[] | undefined {
+  if (!("jobs" in payload)) {
+    return undefined;
+  }
+
+  if (!Array.isArray(payload.jobs)) {
+    return [];
+  }
+
+  const jobs: Job[] = [];
+  for (const rawJob of payload.jobs) {
+    if (!isRecord(rawJob)) {
+      continue;
+    }
+
+    const id = typeof rawJob.id === "string" ? rawJob.id : "";
+    if (!id) {
+      continue;
+    }
+
+    const createdAt = readIsoDate(rawJob.createdAt, new Date(0).toISOString());
+    const updatedAt = readIsoDate(rawJob.updatedAt, createdAt);
+
+    jobs.push({
+      id,
+      kind: isBatchKind(rawJob.kind) ? rawJob.kind : "scrape",
+      status: isJobStatus(rawJob.status) ? rawJob.status : "queued",
+      createdAt,
+      updatedAt,
+    });
+  }
+
+  return jobs;
+}
+
+export function createEmptyBatchStats(): BatchEntry["stats"] {
   return {
-    id: response.id,
-    kind: response.kind as BatchEntry["kind"],
-    status: response.status as BatchEntry["status"],
-    jobCount: response.jobCount,
-    stats: response.stats,
-    createdAt: response.createdAt,
-    updatedAt: response.updatedAt,
+    queued: 0,
+    running: 0,
+    succeeded: 0,
+    failed: 0,
+    canceled: 0,
   };
+}
+
+export function normalizeBatchStats(
+  stats: Partial<Record<keyof BatchEntry["stats"], unknown>> | undefined,
+): BatchEntry["stats"] {
+  return {
+    queued: toNonNegativeNumber(stats?.queued),
+    running: toNonNegativeNumber(stats?.running),
+    succeeded: toNonNegativeNumber(stats?.succeeded),
+    failed: toNonNegativeNumber(stats?.failed),
+    canceled: toNonNegativeNumber(stats?.canceled),
+  };
+}
+
+export function deriveBatchStatsFromJobs(
+  jobs: readonly Pick<Job, "status">[] | undefined,
+  jobCount: number,
+): BatchEntry["stats"] {
+  const stats = createEmptyBatchStats();
+
+  if (!jobs || jobs.length === 0) {
+    stats.queued = toNonNegativeNumber(jobCount);
+    return stats;
+  }
+
+  for (const job of jobs) {
+    if (job.status === "queued") {
+      stats.queued += 1;
+    } else if (job.status === "running") {
+      stats.running += 1;
+    } else if (job.status === "succeeded") {
+      stats.succeeded += 1;
+    } else if (job.status === "failed") {
+      stats.failed += 1;
+    } else if (job.status === "canceled") {
+      stats.canceled += 1;
+    }
+  }
+
+  const totalCounted =
+    stats.queued +
+    stats.running +
+    stats.succeeded +
+    stats.failed +
+    stats.canceled;
+  if (totalCounted === 0 && jobCount > 0) {
+    stats.queued = toNonNegativeNumber(jobCount);
+  }
+
+  return stats;
+}
+
+export function mapBatchStatusResponse(response: unknown): BatchEntry {
+  const payload = toBatchPayload(response);
+  const createdAt = readIsoDate(payload.createdAt, new Date(0).toISOString());
+  const updatedAt = readIsoDate(payload.updatedAt, createdAt);
+  const rawStats = isRecord(payload.stats)
+    ? {
+        queued: payload.stats.queued,
+        running: payload.stats.running,
+        succeeded: payload.stats.succeeded,
+        failed: payload.stats.failed,
+        canceled: payload.stats.canceled,
+      }
+    : undefined;
+
+  return {
+    id: readBatchID(payload),
+    kind: isBatchKind(payload.kind) ? payload.kind : "scrape",
+    status: isBatchStatus(payload.status) ? payload.status : "pending",
+    jobCount: toNonNegativeNumber(payload.jobCount),
+    stats: normalizeBatchStats(rawStats),
+    createdAt,
+    updatedAt,
+  };
+}
+
+export function mapBatchCreateResponse(response: unknown): BatchEntry {
+  const payload = toBatchPayload(response);
+  const createdAt = readIsoDate(payload.createdAt, new Date(0).toISOString());
+  const jobs = readBatchJobs(payload);
+  const reportedJobCount = toNonNegativeNumber(payload.jobCount);
+  const jobCount =
+    reportedJobCount > 0
+      ? reportedJobCount
+      : jobs && jobs.length > 0
+        ? jobs.length
+        : 0;
+
+  return {
+    id: readBatchID(payload),
+    kind: isBatchKind(payload.kind) ? payload.kind : "scrape",
+    status: isBatchStatus(payload.status) ? payload.status : "pending",
+    jobCount,
+    stats: deriveBatchStatsFromJobs(jobs, jobCount),
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+export function normalizeStoredBatchEntries(input: unknown): BatchEntry[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const normalized: BatchEntry[] = [];
+  for (const entry of input) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+
+    const id = typeof entry.id === "string" ? entry.id : "";
+    if (!id) {
+      continue;
+    }
+
+    const createdAt =
+      typeof entry.createdAt === "string"
+        ? entry.createdAt
+        : new Date(0).toISOString();
+    const updatedAt =
+      typeof entry.updatedAt === "string" ? entry.updatedAt : createdAt;
+
+    const rawStats = isRecord(entry.stats)
+      ? {
+          queued: entry.stats.queued,
+          running: entry.stats.running,
+          succeeded: entry.stats.succeeded,
+          failed: entry.stats.failed,
+          canceled: entry.stats.canceled,
+        }
+      : undefined;
+
+    normalized.push({
+      id,
+      kind: isBatchKind(entry.kind) ? entry.kind : "scrape",
+      status: isBatchStatus(entry.status) ? entry.status : "pending",
+      jobCount: toNonNegativeNumber(entry.jobCount),
+      stats: normalizeBatchStats(rawStats),
+      createdAt,
+      updatedAt,
+    });
+  }
+
+  return normalized;
 }
 
 export function useBatches() {
@@ -69,8 +342,9 @@ export function useBatches() {
     try {
       const stored = localStorage.getItem("spartan_batches");
       if (stored) {
-        const parsed = JSON.parse(stored) as BatchEntry[];
-        setBatches(parsed);
+        const parsed = JSON.parse(stored) as unknown;
+        const normalized = normalizeStoredBatchEntries(parsed);
+        setBatches(normalized);
       }
     } catch {
       // Ignore localStorage errors
@@ -96,14 +370,14 @@ export function useBatches() {
       });
 
       if (apiError) {
-        throw new Error(String(apiError));
+        throw new Error(formatApiError(apiError));
       }
 
       if (!data) {
         throw new Error("No data returned");
       }
 
-      return data as BatchStatusResponse;
+      return parseJsonIfString(data);
     },
     [],
   );
@@ -113,7 +387,7 @@ export function useBatches() {
     async (batchId: string) => {
       try {
         const response = await getBatchStatus(batchId, true);
-        const updated = mapBatchResponse(response);
+        const updated = mapBatchStatusResponse(response);
 
         setBatches((current) => {
           const existing = current.find((b) => b.id === batchId);
@@ -130,10 +404,12 @@ export function useBatches() {
         });
 
         // Store jobs if included
-        if (response.jobs) {
+        const payload = toBatchPayload(response);
+        const jobs = readBatchJobs(payload);
+        if (jobs) {
           setBatchJobs((current) => {
             const next = new Map(current);
-            next.set(batchId, response.jobs as Job[]);
+            next.set(batchId, jobs);
             return next;
           });
         }
@@ -174,7 +450,7 @@ export function useBatches() {
       });
 
       if (apiError) {
-        throw new Error(String(apiError));
+        throw new Error(formatApiError(apiError));
       }
 
       // Refresh to get updated status
@@ -192,16 +468,14 @@ export function useBatches() {
       });
 
       if (apiError) {
-        throw new Error(String(apiError));
+        throw new Error(formatApiError(apiError));
       }
 
       if (!data) {
         throw new Error("No response from server");
       }
 
-      // Add to tracked batches
-      const response = data as BatchStatusResponse;
-      const entry = mapBatchResponse(response);
+      const entry = mapBatchCreateResponse(data);
 
       setBatches((current) => {
         const newBatches = [entry, ...current];
@@ -209,9 +483,13 @@ export function useBatches() {
         return newBatches;
       });
 
+      void refreshBatch(entry.id).catch(() => {
+        // Best-effort refresh to hydrate authoritative stats.
+      });
+
       return entry;
     },
-    [saveBatches],
+    [refreshBatch, saveBatches],
   );
 
   // Submit batch crawl
@@ -223,15 +501,14 @@ export function useBatches() {
       });
 
       if (apiError) {
-        throw new Error(String(apiError));
+        throw new Error(formatApiError(apiError));
       }
 
       if (!data) {
         throw new Error("No response from server");
       }
 
-      const response = data as BatchStatusResponse;
-      const entry = mapBatchResponse(response);
+      const entry = mapBatchCreateResponse(data);
 
       setBatches((current) => {
         const newBatches = [entry, ...current];
@@ -239,9 +516,13 @@ export function useBatches() {
         return newBatches;
       });
 
+      void refreshBatch(entry.id).catch(() => {
+        // Best-effort refresh to hydrate authoritative stats.
+      });
+
       return entry;
     },
-    [saveBatches],
+    [refreshBatch, saveBatches],
   );
 
   // Submit batch research
@@ -253,15 +534,14 @@ export function useBatches() {
       });
 
       if (apiError) {
-        throw new Error(String(apiError));
+        throw new Error(formatApiError(apiError));
       }
 
       if (!data) {
         throw new Error("No response from server");
       }
 
-      const response = data as BatchStatusResponse;
-      const entry = mapBatchResponse(response);
+      const entry = mapBatchCreateResponse(data);
 
       setBatches((current) => {
         const newBatches = [entry, ...current];
@@ -269,9 +549,13 @@ export function useBatches() {
         return newBatches;
       });
 
+      void refreshBatch(entry.id).catch(() => {
+        // Best-effort refresh to hydrate authoritative stats.
+      });
+
       return entry;
     },
-    [saveBatches],
+    [refreshBatch, saveBatches],
   );
 
   // Remove a batch from tracking

@@ -89,6 +89,7 @@ Expected:
 - UI loads without console/runtime errors
 - command palette and onboarding interactions are functional
 - API-backed sections render expected empty/loading states
+- batch forms submit successfully in all three modes (`Batch scrape`, `Batch crawl`, `Batch research`) without runtime crashes
 
 ## 6) Public-release hygiene check
 
