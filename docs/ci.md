@@ -13,7 +13,7 @@ This repository uses **local CI as the source of truth** through Makefile target
 ### GitHub workflow mapping
 
 - **PR required**: `.github/workflows/ci-pr.yml` → `make ci-pr`
-- **Nightly/manual heavy**: `.github/workflows/ci-slow.yml` → `make ci-slow` (deterministic local fixture)
+- **Nightly/manual heavy**: `.github/workflows/ci-slow.yml` → `make ci-slow` (deterministic local fixture with Playwright provisioning)
 
 ### PR-equivalent gate (`make ci-pr`)
 
@@ -56,7 +56,7 @@ Useful during active development before commit.
 make ci-slow
 ```
 
-Runs deterministic heavy checks against the shared local fixture:
+Runs deterministic heavy checks against the shared local fixture. Before the heavy lane runs, `make ci-slow` installs Playwright browsers via `make install-playwright` so clean machines and GitHub runners do not depend on a pre-warmed browser cache.
 
 - `./scripts/stress_test.sh`
 - `go test -v ./internal/e2e/...`
@@ -92,7 +92,7 @@ These timings are practical targets on GitHub-hosted `ubuntu-latest` runners and
 
 - `make ci-pr`: ~8-15 minutes (deterministic, resource-capped)
 - `make ci`: ~8-15 minutes (same checks without clean-tree assertions)
-- `make ci-slow`: ~10-20 minutes (deterministic heavy lane)
+- `make ci-slow`: ~10-20 minutes (deterministic heavy lane, including Playwright provisioning on clean machines)
 - `make ci-network`: variable (live-network dependency)
 - `make secret-scan`: ~1-5 minutes (repo history size dependent)
 
@@ -106,7 +106,7 @@ Local expectations stay similar:
 
 - `make ci-pr`: medium (installs + build + tests)
 - `make ci`: medium (same pipeline, no clean-tree assertions)
-- `make ci-slow`: medium-high (deterministic heavy lane)
+- `make ci-slow`: medium-high (deterministic heavy lane; highest on first run when Playwright is provisioned)
 - `make ci-network`: variable/high (live-network smoke)
 - `make secret-scan`: medium (full-history scan)
 

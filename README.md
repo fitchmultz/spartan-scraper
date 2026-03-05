@@ -176,11 +176,7 @@ If you change the backend `PORT` in the root `.env`, you must also update `VITE_
 - Auth vault is stored in `.data/auth_vault.json` (profiles + presets + inheritance).
 - Render profiles (adaptive rules) are stored in `.data/render_profiles.json`.
 - Rate limiting + retries are configurable via `.env`.
-- Playwright can be enabled with `USE_PLAYWRIGHT=1` or `--playwright` (CLI/API). Install browsers with:
-
-```bash
-go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps
-```
+- Playwright can be enabled with `USE_PLAYWRIGHT=1` or `--playwright` (CLI/API). Install browsers with `make install-playwright`. `make ci-slow` provisions Playwright automatically for clean-machine heavy runs.
 
 ## Toolchain
 
@@ -195,14 +191,14 @@ Pinned in `.tool-versions`:
 GitHub workflow split:
 
 - **PR required:** `.github/workflows/ci-pr.yml` (`make ci-pr`)
-- **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`, deterministic local-fixture heavy lane)
+- **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`, deterministic local-fixture heavy lane that provisions Playwright browsers)
 
 ```bash
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
 make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
 make ci            # Full local gate (includes install + build + tests)
-make ci-slow       # Deterministic heavy stress/e2e checks (local fixture)
+make ci-slow       # Deterministic heavy stress/e2e checks (local fixture; provisions Playwright)
 make ci-network     # Optional live-Internet smoke validation
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
 make ci-manual      # Manual full heavy sweep (ci-slow + ci-network)

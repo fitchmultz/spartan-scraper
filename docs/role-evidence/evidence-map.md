@@ -17,7 +17,7 @@ This map links repository artifacts to production-readiness outcomes.
 
 ## Developer productivity and onboarding
 
-- One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`, `make ci-network`
+- One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`, `make ci-network` (`make ci-slow` provisions Playwright for clean-machine heavy verification)
 - Lockfile-strict installs for deterministic setup: `Makefile`
 - Reviewer runbook: `docs/reviewer_checklist.md`
 - Release runbook: `RELEASING.md`, `docs/release_readiness.md`

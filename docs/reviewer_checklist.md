@@ -122,4 +122,4 @@ Expected:
 make ci-slow
 ```
 
-Use for deterministic stress/e2e confidence, not as part of every local inner loop. Run `make ci-network` separately if you want live-Internet smoke validation.
+Use for deterministic stress/e2e confidence, not as part of every local inner loop. The target provisions Playwright automatically so the result is meaningful on a clean machine. Run `make ci-network` separately if you want live-Internet smoke validation.

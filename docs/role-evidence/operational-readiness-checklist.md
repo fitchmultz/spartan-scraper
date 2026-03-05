@@ -10,7 +10,7 @@
 
 - [ ] `make ci-pr` passes from a clean tree
 - [ ] `make ci` passes locally
-- [ ] `make ci-slow` run for deterministic release confidence
+- [ ] `make ci-slow` run for deterministic release confidence on a clean machine (Playwright is provisioned by the target)
 - [ ] `make ci-network` run if live-Internet smoke validation is desired before release
 
 ## Runtime safety

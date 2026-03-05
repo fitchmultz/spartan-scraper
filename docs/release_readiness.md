@@ -9,7 +9,7 @@ This report captures the current public-release hardening status for Spartan Scr
 - **Stack:** Go 1.25.6 backend/CLI + React/TypeScript web UI (Vite, Vitest, Biome)
 - **Primary entrypoints:** `./bin/spartan server`, `make web-dev`, `make ci-pr`
 - **Deterministic PR-equivalent gate:** `make ci-pr`
-- **Heavy confidence gate:** `make ci-slow` (nightly/manual deterministic heavy lane)
+- **Heavy confidence gate:** `make ci-slow` (nightly/manual deterministic heavy lane with Playwright provisioning)
 - **Public hygiene gate:** `make audit-public`
 - **Deep history secret gate (manual release-tier):** `make secret-scan`
 
@@ -64,7 +64,7 @@ PR required (deterministic, resource-capped):
 
 Nightly/manual heavy:
 
-- `make ci-slow` (deterministic stress + e2e via local fixture)
+- `make ci-slow` (deterministic stress + e2e via local fixture, provisioning Playwright on clean machines)
 
 Optional live-network smoke:
 
@@ -112,6 +112,7 @@ Last-known additional checks (run outside this focused UI fix pass):
 - `make secret-scan` ✅
 - `make ci-pr` ✅
 - `make ci-slow` ✅
+- GitHub-hosted `ci-slow` now provisions Playwright instead of assuming a machine-local browser install ✅
 - `make ci-network` optional/manual
 
 ## Reviewer Validation Path

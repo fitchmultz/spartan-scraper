@@ -73,7 +73,7 @@ Use local gates before and after tuning changes:
 
 ```bash
 make ci
-make ci-slow
+make ci-slow  # provisions Playwright before deterministic heavy checks
 make ci-network
 ```
 

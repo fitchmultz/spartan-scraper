@@ -13,7 +13,7 @@
 
 `make ci` runs: `audit-public → install → generate → format → type-check → lint → build → test-ci`
 `make ci-pr` runs the same pipeline with `verify-clean-tree` before and after (clean git state required).
-GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-pr.yml`; heavy nightly/manual checks in `.github/workflows/ci-slow.yml`.
+GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-pr.yml`; heavy nightly/manual checks in `.github/workflows/ci-slow.yml`, and `make ci-slow` now provisions Playwright so clean machines/runners exercise the same auth/browser path.
 
 **CRITICAL**: Never end a turn with a failing `make ci`. If `make ci` fails, fix all failures before completing your work.
 
@@ -34,7 +34,7 @@ make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
 make ci-pr            # PR-equivalent deterministic gate (requires clean git state)
 make ci               # Full CI pipeline: audit-public, install, generate, format, type-check, lint, build, test-ci
-make ci-slow          # Deterministic heavy stress + e2e checks (local fixture)
+make ci-slow          # Deterministic heavy stress + e2e checks (local fixture; provisions Playwright)
 make ci-network       # Optional live-Internet smoke validation
 make ci-manual        # Manual full heavy profile (ci-slow + ci-network)
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override

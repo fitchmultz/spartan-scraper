@@ -25,7 +25,7 @@ This document describes the local release process for Spartan Scraper.
    ```bash
    make ci-pr
    make ci
-   make ci-slow
+   make ci-slow          # provisions Playwright for clean-machine heavy validation
    make ci-network
    ```
 

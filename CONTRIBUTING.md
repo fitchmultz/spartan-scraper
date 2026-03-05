@@ -46,7 +46,7 @@ make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest workers capped by CI_VITEST_MAX_WORKERS)
 make ci-pr            # PR-equivalent deterministic gate (clean git state required)
 make ci               # Full local CI pipeline (audit-public, install, generate, format, type-check, lint, build, test-ci)
-make ci-slow          # Deterministic heavy stress + e2e checks (local fixture)
+make ci-slow          # Deterministic heavy stress + e2e checks (local fixture; provisions Playwright)
 make ci-network       # Optional live-Internet smoke validation
 make ci-manual        # Manual full heavy CI profile (ci-slow + ci-network)
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
@@ -59,11 +59,11 @@ make web-dev          # Start web dev server (http://localhost:5173)
 Use CI profiles intentionally based on scope (mirrors GitHub workflows):
 
 - `.github/workflows/ci-pr.yml` → required PR checks (`make ci-pr`)
-- `.github/workflows/ci-slow.yml` → nightly/manual deterministic heavy checks (`make ci-slow`)
+- `.github/workflows/ci-slow.yml` → nightly/manual deterministic heavy checks (`make ci-slow`, with Playwright provisioning)
 
 - **PR-equivalent gate**: `make ci-pr` (requires clean git state)
 - **Full local gate**: `make ci` (includes dependency install + build)
-- **Heavy/nightly checks**: `make ci-slow` (deterministic local fixture)
+- **Heavy/nightly checks**: `make ci-slow` (deterministic local fixture with Playwright provisioning)
 - **Optional live smoke**: `make ci-network`
 - **Manual full pre-release sweep**: `make ci-manual` + `make secret-scan`
 

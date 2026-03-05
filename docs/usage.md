@@ -1536,7 +1536,7 @@ Both `make ci-pr` and `make ci` validate:
 - Scheduler (job creation via interval)
 - Web (TypeScript build + unit tests)
 
-`make ci-slow` executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`) against the shared local fixture, which validate:
+`make ci-slow` provisions Playwright on clean machines, then executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`) against the shared local fixture, which validate:
 - Deterministic scrape/crawl/research targets
 - Full end-to-end workflows (CLI → API → Worker → Exporter)
 - Local auth fixture flows and headless behaviors

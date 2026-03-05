@@ -22,8 +22,10 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
 # Resource control: cap Vitest workers for deterministic CI CPU usage
 CI_VITEST_MAX_WORKERS ?= 2
 GITLEAKS_VERSION ?= v8.24.2
+PLAYWRIGHT_GO_VERSION ?= v0.5200.1
+PLAYWRIGHT_INSTALL_CMD := go run github.com/playwright-community/playwright-go/cmd/playwright@$(PLAYWRIGHT_GO_VERSION) install --with-deps
 
-.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
+.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
 
 audit-public:
 	node $(CURDIR)/scripts/public_audit.mjs
@@ -95,6 +97,9 @@ install-bin: build
 	@cp $(BIN_DIR)/$(APP_NAME) $(INSTALL_DIR)/$(APP_NAME)
 	@echo "Installed: $(INSTALL_DIR)/$(APP_NAME)"
 
+install-playwright:
+	$(PLAYWRIGHT_INSTALL_CMD)
+
 # Full local CI profile (developer-friendly; no clean-tree precondition)
 ci: audit-public install generate format type-check lint build test-ci
 
@@ -118,7 +123,7 @@ verify-clean-tree:
 # PR-equivalent deterministic gate (must run from clean git state)
 ci-pr: verify-clean-tree audit-public install generate format type-check lint build test-ci verify-clean-tree
 
-ci-slow: install build
+ci-slow: install install-playwright build
 	./scripts/stress_test.sh
 	go test -v ./internal/e2e/...
 
