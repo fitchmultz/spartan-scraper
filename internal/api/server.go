@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/analytics"
@@ -319,6 +320,11 @@ func (s *Server) Routes() http.Handler {
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	if !isAllowedWebSocketOrigin(r.Header.Get("Origin")) {
+		http.Error(w, "forbidden websocket origin", http.StatusForbidden)
+		return
+	}
+
 	// Upgrade HTTP to WebSocket
 	conn, _, _, err := ws.UpgradeHTTP(r, w)
 	if err != nil {
@@ -357,4 +363,19 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 	}
+}
+
+// isAllowedWebSocketOrigin validates browser-originated WebSocket upgrades.
+// Empty Origin is allowed for non-browser clients.
+func isAllowedWebSocketOrigin(origin string) bool {
+	if origin == "" {
+		return true
+	}
+
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return false
+	}
+
+	return isLocalhost(parsed.Hostname())
 }

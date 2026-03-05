@@ -164,6 +164,37 @@ func TestNormalizeAuthKeySuffix(t *testing.T) {
 	}
 }
 
+func TestHasExplicitRetentionLimitOverrides(t *testing.T) {
+	keys := []string{
+		"RETENTION_JOB_DAYS",
+		"RETENTION_CRAWL_STATE_DAYS",
+		"RETENTION_MAX_JOBS",
+		"RETENTION_MAX_STORAGE_GB",
+	}
+
+	for _, key := range keys {
+		k := key
+		if err := os.Unsetenv(k); err != nil {
+			t.Fatalf("failed to unset %s: %v", k, err)
+		}
+		t.Cleanup(func() {
+			_ = os.Unsetenv(k)
+		})
+	}
+
+	if hasExplicitRetentionLimitOverrides() {
+		t.Fatal("expected no explicit retention overrides when env vars are unset")
+	}
+
+	if err := os.Setenv("RETENTION_MAX_JOBS", "250"); err != nil {
+		t.Fatalf("failed to set RETENTION_MAX_JOBS: %v", err)
+	}
+
+	if !hasExplicitRetentionLimitOverrides() {
+		t.Fatal("expected explicit retention override detection when retention env var is set")
+	}
+}
+
 func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	// This test is primarily validated by running with the race detector:
 	//   go test -race ./...

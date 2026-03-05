@@ -21,7 +21,7 @@ GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-p
 
 ```bash
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
-make install          # Download Go deps + install pnpm deps
+make install          # Download Go deps + install pnpm deps (lockfile-strict)
 make update           # Update all Go/pnpm deps to latest (review before committing)
 make generate         # Generate TS API client from openapi.yaml
 make format           # Format Go (gofmt) and TS (biome)
@@ -30,7 +30,7 @@ make lint             # Lint Go (go vet) and TS (biome)
 make build            # Build Go binary + web assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
-make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS)
+make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
 make ci-pr            # PR-equivalent deterministic gate (requires clean git state)
 make ci               # Full CI pipeline: audit-public, install, generate, format, type-check, lint, build, test-ci
 make ci-slow          # Heavy stress + e2e checks (network required)

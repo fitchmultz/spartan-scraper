@@ -132,6 +132,7 @@ Open `http://localhost:5173`.
 ./bin/spartan server
 
 # Expose API on all interfaces (use with caution)
+# API key auth is auto-enforced when BIND_ADDR is non-localhost.
 BIND_ADDR=0.0.0.0 ./bin/spartan server
 
 # Launch TUI
@@ -149,6 +150,8 @@ make web-dev
 Open `http://localhost:5173` for the UI.
 
 The dev server proxies API requests to `http://localhost:8741` by default.
+WebSocket upgrades to `/v1/ws` accept browser origins from loopback hosts only (`localhost`, `127.0.0.1`, `::1`).
+Non-browser clients without an `Origin` header remain supported.
 If you change the backend `PORT` in the root `.env`, you must also update `VITE_API_BASE_URL` in `web/.env` to match.
 
 ## Architecture at a glance

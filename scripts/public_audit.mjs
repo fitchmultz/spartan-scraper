@@ -106,6 +106,11 @@ const TRACKED_PATH_RULES = [
 	},
 	{
 		id: 'tracked-artifact',
+		description: 'Tracked compiled binary output should be ignored',
+		pattern: /^bin\//,
+	},
+	{
+		id: 'tracked-artifact',
 		description: 'Tracked OpenAPI codegen error logs should be ignored',
 		pattern: /^web\/openapi-ts-error-.*\.log$/,
 	},
@@ -126,6 +131,11 @@ const HISTORY_PATH_RULES = [
 		id: 'history-artifact',
 		description: 'Tracked local data directory exists in branch history',
 		pathspec: '.data',
+	},
+	{
+		id: 'history-artifact',
+		description: 'Tracked compiled binary output exists in branch history',
+		pathspec: 'bin',
 	},
 ];
 

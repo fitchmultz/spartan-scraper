@@ -39,6 +39,7 @@ verify-clean-tree
 ```
 
 Use this to ensure generation/format steps do not create uncommitted drift.
+`install` uses lockfile-strict dependency resolution (`pnpm install --frozen-lockfile`) for deterministic results.
 
 ### Full local gate (`make ci`)
 

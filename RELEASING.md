@@ -12,7 +12,7 @@ This document describes the local release process for Spartan Scraper.
 
 - Toolchain installed per `.tool-versions`.
 - Clean working tree (`git status` shows no unstaged/uncommitted changes).
-- Local CI is green (`make ci`).
+- Local CI is green (`make ci-pr` and `make ci`).
 
 ## Release Steps
 
@@ -23,24 +23,32 @@ This document describes the local release process for Spartan Scraper.
 2. **Run full local verification**
 
    ```bash
+   make ci-pr
    make ci
    make ci-slow
    ```
 
-3. **Create release commit**
+3. **Run deep history secret scan (manual release-tier check)**
+
+   ```bash
+   # Example (if gitleaks is installed locally)
+   gitleaks detect --source . --log-opts="--all"
+   ```
+
+4. **Create release commit**
 
    ```bash
    git add CHANGELOG.md
    git commit -m "release: vX.Y.Z"
    ```
 
-4. **Tag release**
+5. **Tag release**
 
    ```bash
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    ```
 
-5. **Push commit and tag**
+6. **Push commit and tag**
 
    ```bash
    git push origin main
@@ -64,7 +72,9 @@ make build VERSION=vX.Y.Z
 ## Verification Checklist
 
 - [ ] `make audit-public` passes
+- [ ] `make ci-pr` passes
 - [ ] `make ci` passes
+- [ ] deep history secret scan run and reviewed
 - [ ] `CHANGELOG.md` updated
 - [ ] tag created and pushed
 - [ ] release notes drafted from changelog entries

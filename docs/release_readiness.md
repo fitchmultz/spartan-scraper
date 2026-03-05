@@ -2,80 +2,71 @@
 
 Date: 2026-03-05
 
-This report captures current public-release hardening status for Spartan Scraper.
+This report captures the current public-release hardening status for Spartan Scraper.
 
 ## Current State
 
 - **Stack:** Go 1.25.6 backend/CLI + React/TypeScript web UI (Vite, Vitest, Biome)
 - **Primary entrypoints:** `./bin/spartan server`, `make web-dev`, `make ci-pr`
-- **Deterministic gate:** `make ci-pr`
+- **Deterministic PR-equivalent gate:** `make ci-pr`
 - **Heavy confidence gate:** `make ci-slow` (nightly/manual only)
 - **Public hygiene gate:** `make audit-public`
 
-## Top 10 Risks and Mitigations
+## P0 Hardening Completed in This Pass
 
-1. **Tracked local artifact leakage (`.ralph`, `.data`, `out`, `node_modules`, `dist`)**
-   - Mitigation: hardened ignore rules + automated path checks in `scripts/public_audit.mjs`.
+1. **Audit gate now catches tracked binary artifacts (`bin/`)**
+   - Updated `scripts/public_audit.mjs` tracked-path and branch-history path rules.
+   - Added regression tests in `scripts/public_audit.test.mjs`.
 
-2. **Secret exposure in tracked files**
-   - Mitigation: `make audit-public` now scans source/config/docs for high-confidence secret patterns (OpenAI, GitHub, AWS, Slack, private key blocks).
+2. **WebSocket origin safety for browser clients**
+   - Added loopback-origin enforcement for `/v1/ws` in `internal/api/server.go`.
+   - Policy: browser origins must be loopback (`localhost`, `127.0.0.1`, `::1`); non-browser clients without `Origin` remain supported.
+   - Added route/security tests in `internal/api/server_websocket_origin_test.go`.
 
-3. **Absolute-path and placeholder leaks in public docs**
-   - Mitigation: automated content scans in `scripts/public_audit.mjs` across docs/metadata.
+3. **Deterministic installs by default**
+   - `Makefile` now uses `pnpm install --frozen-lockfile` for `install` and `extension-install`.
+   - `test-ci` now runs web tests with `NODE_OPTIONS=` to avoid inherited shell-level noise in CI output.
 
-4. **History hygiene blind spots before publish**
-   - Mitigation: branch-history checks in `make audit-public` + documented sanitized baseline reset on March 5, 2026.
+4. **Documentation alignment**
+   - Updated `README.md`, `.env.example`, and `docs/usage.md` with explicit API auth auto-enforcement and WebSocket origin behavior.
+   - Updated `docs/reviewer_checklist.md` with explicit WebSocket origin validation steps.
 
-5. **PR gate drift between local and CI environments**
-   - Mitigation: `make ci-pr` is the required PR-equivalent pipeline locally and in `.github/workflows/ci-pr.yml`.
+5. **First-run warning cleanup**
+   - `internal/config` now avoids retention warnings on untouched defaults (warns only when retention limits are explicitly overridden while retention is disabled).
+   - `.env.example` no longer uses inline comment values that can be parsed as invalid AI provider strings.
 
-6. **Resource-heavy checks saturating PR runs**
-   - Mitigation: heavy checks isolated to `.github/workflows/ci-slow.yml` (nightly/manual) and Vitest workers capped with `CI_VITEST_MAX_WORKERS=2`.
+## Top Risks and Mitigations
 
-7. **Onboarding completion failure in UI**
-   - Mitigation: onboarding step-count source of truth + Joyride callback hardening (`web/src/lib/onboarding.ts`, `web/src/components/OnboardingFlow.tsx`) with regression tests.
+1. **Tracked local/build/cache artifacts leaking into commits**
+   - Mitigation: hardened `.gitignore` + `make audit-public` path checks (including `bin/`).
 
-8. **Keyboard help shortcut inconsistency (`?`)**
-   - Mitigation: shortcut matcher normalization fix in `web/src/hooks/useKeyboard.ts` + targeted tests.
+2. **Secret exposure in tracked source/config/docs**
+   - Mitigation: secret signature scanning in `scripts/public_audit.mjs`.
 
-9. **Command palette focus not reliably capturing typing**
-   - Mitigation: explicit focus handoff to command input on open in `web/src/components/CommandPalette.tsx`.
+3. **History hygiene blind spots**
+   - Mitigation: branch-history artifact checks in `make audit-public` plus documented release checklist.
 
-10. **WebSocket callback instability under API outage**
-    - Mitigation: callback-ref stabilization + disconnect-path cleanup in `web/src/hooks/useWebSocket.ts`, covered by regression tests.
+4. **Cross-site localhost WebSocket abuse**
+   - Mitigation: `/v1/ws` now rejects non-loopback browser origins with `403`.
 
-## Remaining Known Issues and Next Steps
+5. **PR gate nondeterminism from mutable dependency installs**
+   - Mitigation: lockfile-strict install (`pnpm --frozen-lockfile`) in Make targets used by CI.
 
-1. **`ci-slow` variance in network/e2e environments**
-   - Next step: keep nightly/manual-only policy; track failure patterns in CI artifacts before tightening as PR-required.
+## Remaining Known Issues / Next Steps
 
-2. **Dogfood evidence bundle size growth over time**
-   - Next step: keep evidence logs truncated and prefer screenshot-first bundles; store long raw traces externally when needed.
+1. **`ci-slow` network/e2e variance**
+   - Keep nightly/manual-only policy; use artifacts to track flaky signatures before promoting checks.
 
-3. **Post-fix live UI verification artifacts**
-   - Next step: append a short post-remediation browser pass to `docs/evidence/dogfood/2026-03-05-focused-ui/`.
-
-## Before/After DX Notes
-
-### Before
-- Reviewer-critical UI paths had reproducible failures (onboarding completion, `?` help shortcut, command-palette input focus, WS instability under outage).
-- Public audit focused on path/content hygiene but not explicit secret signatures.
-
-### After
-- UI regressions above are fixed with dedicated tests:
-  - `web/src/components/OnboardingFlow.test.tsx`
-  - `web/src/hooks/useOnboarding.test.ts`
-  - `web/src/hooks/useKeyboard.test.ts`
-  - `web/src/hooks/useWebSocket.test.ts`
-- Public-readiness gate now includes high-confidence secret detection via `make audit-public`.
-- Local deterministic pipeline remains green with `make ci` and `make ci-pr`.
+2. **Deep git-history secret scan is still a release-tier/manual concern**
+   - Keep `make audit-public` as fast deterministic gate.
+   - Run a deep-history scanner (for example, Gitleaks) in pre-tag/manual release workflow.
 
 ## Validation Snapshot
 
 - `make audit-public` ✅
+- `make ci-pr` ✅
 - `make ci` ✅
-- Web tests: 18 files / 231 tests passing ✅
 
 ## Reviewer Validation Path
 
-Use `docs/reviewer_checklist.md` for copy/paste verification of setup, run, CI-equivalent checks, and public-readiness checks.
+Use `docs/reviewer_checklist.md` for copy/paste validation of setup, CI-equivalent checks, API/WS safety, and public-hygiene checks.

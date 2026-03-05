@@ -46,8 +46,29 @@ Expected:
 
 - health endpoint returns `ok: true`
 - server logs are clean and actionable
+- if you launch with `BIND_ADDR=0.0.0.0`, non-health API routes require `X-API-Key`
 
-## 4) Web UI smoke check
+## 4) WebSocket origin safety check
+
+Terminal A:
+
+```bash
+./bin/spartan server
+```
+
+Terminal B:
+
+```bash
+# blocked: non-loopback browser Origin
+curl -i -H "Origin: https://example.com" http://127.0.0.1:8741/v1/ws
+```
+
+Expected:
+
+- response is `403 Forbidden`
+- body includes `forbidden websocket origin`
+
+## 5) Web UI smoke check
 
 Terminal A:
 
@@ -69,7 +90,7 @@ Expected:
 - command palette and onboarding interactions are functional
 - API-backed sections render expected empty/loading states
 
-## 5) Public-release hygiene check
+## 6) Public-release hygiene check
 
 ```bash
 make audit-public
@@ -83,7 +104,7 @@ Expected:
 - no tracked local/build/cache artifacts
 - no branch-history residue for blocked artifact paths
 
-## 6) Optional heavy confidence checks
+## 7) Optional heavy confidence checks
 
 ```bash
 make ci-slow

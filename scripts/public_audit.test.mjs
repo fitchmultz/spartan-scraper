@@ -135,6 +135,15 @@ async function run() {
 		assertEqual(findings[0].ruleId, 'tracked-artifact', 'Expected tracked-artifact rule ID');
 	});
 
+	await test('findPathFindings catches tracked binary artifacts', () => {
+		const findings = module.findPathFindings('bin/spartan');
+		assert(findings.length > 0, 'Expected at least one finding for bin path');
+		assert(
+			findings.some(finding => finding.description.includes('compiled binary')),
+			'Expected compiled binary finding description',
+		);
+	});
+
 	await test('findContentFindings catches absolute paths and placeholders', () => {
 		const findings = module.findContentFindings(
 			'docs/example.md',
@@ -170,6 +179,13 @@ async function run() {
 		const root = process.cwd();
 		assert(module.branchExists(root, 'HEAD'), 'Expected HEAD ref to exist');
 		assertEqual(module.branchExists(root, 'definitely-not-a-real-ref'), false, 'Expected fake ref to fail');
+	});
+
+	await test('HISTORY_PATH_RULES includes compiled binary path scanning', () => {
+		assert(
+			module.HISTORY_PATH_RULES.some(rule => rule.pathspec === 'bin'),
+			'Expected history path rules to include bin pathspec',
+		);
 	});
 
 	await test('dedupeFindings removes exact duplicates', () => {

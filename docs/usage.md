@@ -964,6 +964,7 @@ Base URL: `http://${BIND_ADDR}:${PORT}` (defaults to `http://127.0.0.1:8741`).
 
 Note: if you set `BIND_ADDR=0.0.0.0` (bind all interfaces), clients should connect via
 `http://127.0.0.1:${PORT}` locally or via the machine's LAN IP/hostname from other devices.
+When `BIND_ADDR` is non-localhost, API key auth is auto-enforced even if `API_AUTH_ENABLED=false`.
 
 Endpoints:
 - `GET /healthz`
@@ -1074,9 +1075,11 @@ Manager status:
 }
 ```
 
-**Authentication:**
+**Authentication and Origin Policy:**
 - When API auth is enforced (`API_AUTH_ENABLED=true`), clients must include the `X-API-Key` header during the WebSocket upgrade.
-- **Note:** Browsers cannot set custom headers on WebSocket connections. For browser-based clients, the WebSocket endpoint at `/v1/ws` is intended for local/non-authenticated use. Remote usage requires additional authentication mechanisms (e.g., cookie-based auth or query parameter tokens).
+- Browser-originated WebSocket upgrades are accepted only from loopback origins (`localhost`, `127.0.0.1`, `::1`).
+- Non-browser clients that do not send an `Origin` header are still supported.
+- **Note:** Browsers cannot set custom headers on WebSocket connections. For browser-based clients, `/v1/ws` is intended for local usage unless you deploy an alternate browser-compatible auth strategy (for example, session cookies behind a trusted proxy).
 
 See `api/openapi.yaml` for the canonical message schema definitions.
 

@@ -363,10 +363,11 @@ func validateAndFixRetentionConfig(cfg Config) Config {
 		cfg.RetentionCleanupIntervalHours = 24
 	}
 
-	// Log warning if retention is disabled but limits are set
+	// Log warning if retention is disabled but custom limits are explicitly set.
+	// Defaults in code are intentionally non-zero and should not warn on first run.
 	if !cfg.RetentionEnabled {
 		hasLimits := cfg.RetentionJobDays > 0 || cfg.RetentionMaxJobs > 0 || cfg.RetentionMaxStorageGB > 0
-		if hasLimits {
+		if hasLimits && hasExplicitRetentionLimitOverrides() {
 			fmt.Fprintf(os.Stderr, "[WARN] Retention limits are set but RETENTION_ENABLED is false; cleanup will not run automatically\n")
 		}
 	}
@@ -467,6 +468,23 @@ func validateAndFixQueueConfig(cfg Config) Config {
 	}
 
 	return cfg
+}
+
+func hasExplicitRetentionLimitOverrides() bool {
+	keys := []string{
+		"RETENTION_JOB_DAYS",
+		"RETENTION_CRAWL_STATE_DAYS",
+		"RETENTION_MAX_JOBS",
+		"RETENTION_MAX_STORAGE_GB",
+	}
+
+	for _, key := range keys {
+		if _, ok := os.LookupEnv(key); ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 func validateDataDir(dataDir string) error {

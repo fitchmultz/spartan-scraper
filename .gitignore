@@ -31,3 +31,4 @@
 # Logs
 *.log
 /web/openapi-ts-error-*.log
+/web/.vitest-localstorage*

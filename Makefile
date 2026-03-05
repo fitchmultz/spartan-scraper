@@ -29,8 +29,8 @@ audit-public:
 
 install:
 	go mod download
-	cd $(WEB_DIR) && pnpm install
-	cd $(EXTENSION_DIR) && pnpm install
+	cd $(WEB_DIR) && pnpm install --frozen-lockfile
+	cd $(EXTENSION_DIR) && pnpm install --frozen-lockfile
 
 update:
 	@echo "Updating Go dependencies..."
@@ -74,7 +74,7 @@ test-ci:
 	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 5m
 	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	node $(CURDIR)/scripts/public_audit.test.mjs
-	cd $(WEB_DIR) && CI=1 pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
+	cd $(WEB_DIR) && CI=1 NODE_OPTIONS=--localstorage-file=.vitest-localstorage pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
 
 generate:
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
@@ -125,7 +125,7 @@ web-dev:
 
 # Extension targets
 extension-install:
-	cd $(EXTENSION_DIR) && pnpm install
+	cd $(EXTENSION_DIR) && pnpm install --frozen-lockfile
 
 extension-build:
 	cd $(EXTENSION_DIR) && pnpm run build
