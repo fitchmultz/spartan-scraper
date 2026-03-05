@@ -19,6 +19,9 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
            -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=$(COMMIT) \
            -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=$(DATE)"
 
+# Resource control: cap Vitest workers for deterministic CI CPU usage
+CI_VITEST_MAX_WORKERS ?= 2
+
 .PHONY: audit-public install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
 
 audit-public:
@@ -71,7 +74,7 @@ test-ci:
 	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 5m
 	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	node $(CURDIR)/scripts/public_audit.test.mjs
-	cd $(WEB_DIR) && CI=1 pnpm run test -- --run
+	cd $(WEB_DIR) && CI=1 pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
 
 generate:
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
@@ -111,7 +114,7 @@ verify-clean-tree:
 # PR-equivalent deterministic gate (must run from clean git state)
 ci-pr: verify-clean-tree audit-public install generate format type-check lint build test-ci verify-clean-tree
 
-ci-slow: build
+ci-slow: install build
 	./scripts/stress_test.sh
 	go test -v ./internal/e2e/...
 

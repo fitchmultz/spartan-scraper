@@ -10,6 +10,11 @@ This repository uses **local CI as the source of truth** through Makefile target
 
 ## CI profiles
 
+### GitHub workflow mapping
+
+- **PR required**: `.github/workflows/ci-pr.yml` → `make ci-pr`
+- **Nightly/manual heavy**: `.github/workflows/ci-slow.yml` → `make ci-slow`
+
 ### PR-equivalent gate (`make ci-pr`)
 
 Use from a **clean git state**.
@@ -65,7 +70,19 @@ Alias for `make ci-slow` to make intent explicit in scripts.
 
 ## Runtime and resource guidance
 
-Typical expectations on a modern laptop:
+These timings are practical targets on GitHub-hosted `ubuntu-latest` runners and modern local laptops:
+
+- `make ci-pr`: ~8-15 minutes (deterministic, resource-capped)
+- `make ci`: ~8-15 minutes (same checks without clean-tree assertions)
+- `make ci-slow`: ~20-60+ minutes (network/e2e/stress variability)
+
+Resource controls:
+
+- Vitest worker count is capped with `CI_VITEST_MAX_WORKERS` (default `2` in `Makefile`).
+- PR workflow uses `concurrency` cancellation to avoid redundant parallel runs.
+- Heavy checks are isolated to nightly/manual workflow to avoid saturating PR runners.
+
+Local expectations stay similar:
 
 - `make ci-pr`: medium (installs + build + tests)
 - `make ci`: medium (same pipeline, no clean-tree assertions)

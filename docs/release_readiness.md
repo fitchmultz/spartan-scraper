@@ -1,6 +1,6 @@
 # Release Readiness Report
 
-This is a living report for public-release hardening.
+This report captures the current public-release hardening state.
 
 ## Scope
 
@@ -9,13 +9,13 @@ Goal: ensure the repository is reviewable with minimal friction by engineers and
 ## Top risks and mitigations
 
 1. **Public artifact leakage (`.ralph`, `out`, `.data`, `node_modules`, `dist`)**
-   - Mitigation: hardened `.gitignore` and `make audit-public` checks for tracked artifacts.
+   - Mitigation: removed tracked local runtime artifacts, hardened `.gitignore`, and enforced `make audit-public` checks.
 
 2. **Local path / placeholder text leaks in docs**
    - Mitigation: `scripts/public_audit.mjs` scans docs and metadata for absolute paths and placeholder contacts.
 
 3. **History hygiene blind spots on release branches**
-   - Mitigation: public audit now scans current branch history for blocked artifact paths and targeted historical content leakage (`docs/landscape.md`).
+   - Mitigation: public audit scans branch history, and `main` history was reset on **March 5, 2026** to a sanitized public baseline before publish.
 
 4. **Inconsistent issue/PR quality from contributors**
    - Mitigation: added issue templates and PR checklist under `.github/`.
@@ -49,13 +49,12 @@ Goal: ensure the repository is reviewable with minimal friction by engineers and
 
 1. `ci-slow` is intentionally network/e2e heavy and can be flaky outside controlled environments.
 2. Browser-driven Playwright workflows remain opt-in because of install/runtime cost.
-3. If publishing from a previously private history, maintainers should confirm remote branch history was sanitized per release policy.
 
 ## Release checklist
 
-- [ ] `make audit-public`
-- [ ] `make ci-pr` on a clean working tree
+- [x] `make audit-public`
+- [x] `make ci-pr` on a clean working tree
 - [ ] reviewer smoke path validated (`docs/reviewer_checklist.md`)
-- [ ] docs links valid and up to date
-- [ ] no sensitive values in tracked config files
-- [ ] release notes updated in `CHANGELOG.md`
+- [x] docs links valid and up to date
+- [x] no sensitive values in tracked config files
+- [x] release notes updated in `CHANGELOG.md`

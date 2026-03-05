@@ -1,6 +1,7 @@
 # Spartan Scraper
 
-[![CI: make ci](https://img.shields.io/badge/CI-make%20ci-1f6feb)](./Makefile)
+[![CI PR](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml)
+[![CI Slow](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fitchmultz/spartan-scraper)](https://goreportcard.com/report/github.com/fitchmultz/spartan-scraper)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8)
@@ -186,10 +187,16 @@ Pinned in `.tool-versions`:
 
 ## Local CI
 
+GitHub workflow split:
+
+- **PR required:** `.github/workflows/ci-pr.yml` (`make ci-pr`)
+- **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`)
+
 ```bash
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/placeholders
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
 make ci            # Full local gate (includes install + build + tests)
 make ci-slow       # Heavy stress/e2e checks (network required)
+CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
 make ci-manual     # Alias for manual heavy profile
 ```

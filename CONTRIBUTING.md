@@ -42,18 +42,22 @@ make lint             # Lint Go (go vet) and TS (biome)
 make build            # Build Go binary + web assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
-make test-ci          # Run Go tests (excluding e2e) + web tests
+make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest workers capped by CI_VITEST_MAX_WORKERS)
 make ci-pr            # PR-equivalent deterministic gate (clean git state required)
 make ci               # Full local CI pipeline (audit-public, install, generate, format, type-check, lint, build, test-ci)
 make ci-slow          # Heavy stress + e2e checks (network required)
 make ci-manual        # Alias for manual heavy CI profile
+CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
 make clean            # Remove build artifacts, dependencies, node_modules, installed binary
 make web-dev          # Start web dev server (http://localhost:5173)
 ```
 
 ### Local CI Gate
 
-Use CI profiles intentionally based on scope:
+Use CI profiles intentionally based on scope (mirrors GitHub workflows):
+
+- `.github/workflows/ci-pr.yml` → required PR checks (`make ci-pr`)
+- `.github/workflows/ci-slow.yml` → nightly/manual heavy checks (`make ci-slow`)
 
 - **PR-equivalent gate**: `make ci-pr` (requires clean git state)
 - **Full local gate**: `make ci` (includes dependency install + build)
