@@ -340,7 +340,7 @@ export function WelcomeModal({
           >
             ?
           </kbd>{" "}
-          anytime for keyboard shortcuts
+          for keyboard shortcuts (when focus is outside text inputs)
         </div>
       </div>
     </div>

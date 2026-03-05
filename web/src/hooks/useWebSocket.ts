@@ -62,6 +62,15 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL,
   } = options;
 
+  const onMessageRef = useRef(onMessage);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+
+  // Keep latest callbacks without forcing reconnects.
+  onMessageRef.current = onMessage;
+  onConnectRef.current = onConnect;
+  onDisconnectRef.current = onDisconnect;
+
   const clearReconnectTimeout = useCallback(() => {
     if (reconnectTimeoutRef.current !== null) {
       window.clearTimeout(reconnectTimeoutRef.current);
@@ -94,11 +103,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
+      return;
     }
 
     setState("disconnected");
-    onDisconnect?.();
-  }, [clearReconnectTimeout, clearHeartbeatInterval, onDisconnect]);
+    onDisconnectRef.current?.();
+  }, [clearReconnectTimeout, clearHeartbeatInterval]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -122,7 +132,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         reconnectAttemptsRef.current = 0;
         setState("connected");
         setError(null);
-        onConnect?.();
+        onConnectRef.current?.();
 
         // Subscribe to job events
         send({ type: "subscribe_jobs", timestamp: Date.now(), payload: null });
@@ -137,7 +147,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as WSMessage;
-          onMessage?.(msg);
+          onMessageRef.current?.(msg);
         } catch (err) {
           console.error("Failed to parse WebSocket message:", err);
         }
@@ -167,7 +177,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
           }, backoff);
         }
 
-        onDisconnect?.();
+        onDisconnectRef.current?.();
       };
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -188,9 +198,6 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }, [
     url,
-    onMessage,
-    onConnect,
-    onDisconnect,
     reconnectInterval,
     maxReconnectInterval,
     heartbeatInterval,

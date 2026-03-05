@@ -115,7 +115,8 @@ export function KeyboardShortcutsHelp({
 
         <div className="shortcuts-help-footer">
           <span className="shortcuts-help-hint">
-            Press <kbd>?</kbd> anytime to open this help
+            Press <kbd>?</kbd> to open this help when focus is outside text
+            inputs
           </span>
         </div>
       </div>

@@ -162,7 +162,13 @@ function matchesShortcut(
   if (hasMeta !== event.metaKey) return false;
   if (hasCtrl !== event.ctrlKey) return false;
   if (hasAlt !== event.altKey) return false;
-  if (hasShift !== event.shiftKey) return false;
+
+  // `?` requires Shift on many keyboard layouts even when the
+  // logical shortcut should be represented as a single key.
+  const allowsImplicitShift =
+    key === "?" && !hasShift && !hasMeta && !hasCtrl && !hasAlt;
+
+  if (!allowsImplicitShift && hasShift !== event.shiftKey) return false;
 
   return true;
 }

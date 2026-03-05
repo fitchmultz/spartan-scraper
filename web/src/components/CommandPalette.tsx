@@ -8,7 +8,7 @@
  * @module CommandPalette
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Command } from "cmdk";
 import type { JobEntry } from "../types";
 import type { JobPreset } from "../types/presets";
@@ -89,12 +89,24 @@ export function CommandPalette({
   onRestartTour,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset search when opening
   useEffect(() => {
     if (isOpen) {
       setSearch("");
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+      inputRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(raf);
   }, [isOpen]);
 
   // Handle keyboard shortcuts within palette
@@ -282,9 +294,11 @@ export function CommandPalette({
       >
         <div className="command-palette-header">
           <Command.Input
+            ref={inputRef}
             className="command-palette-input"
             placeholder="Type a command or search..."
             aria-label="Search commands"
+            autoFocus
           />
         </div>
 

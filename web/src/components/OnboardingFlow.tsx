@@ -8,10 +8,14 @@
  */
 
 import Joyride, {
+  ACTIONS,
+  EVENTS,
+  STATUS,
   type CallBackProps,
   type Step,
   type Styles,
 } from "react-joyride";
+import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
 
 export interface OnboardingFlowProps {
   /** Whether the tour is running */
@@ -214,7 +218,7 @@ const TOUR_STEPS: Step[] = [
             >
               ?
             </kbd>{" "}
-            for keyboard shortcuts
+            for keyboard shortcuts (outside text inputs)
           </li>
           <li>
             Use{" "}
@@ -248,6 +252,12 @@ const TOUR_STEPS: Step[] = [
     disableBeacon: true,
   },
 ];
+
+if (import.meta.env.DEV && TOUR_STEPS.length !== ONBOARDING_TOTAL_STEPS) {
+  console.warn(
+    `[OnboardingFlow] TOUR_STEPS has ${TOUR_STEPS.length} steps but ONBOARDING_TOTAL_STEPS is ${ONBOARDING_TOTAL_STEPS}.`,
+  );
+}
 
 /**
  * Custom styles for react-joyride that match the app theme.
@@ -356,25 +366,29 @@ export function OnboardingFlow({
   onStepChange,
 }: OnboardingFlowProps) {
   const handleCallback = (data: CallBackProps) => {
-    const { action, index, lifecycle, status, type } = data;
+    const { action, index, status, type } = data;
 
-    // Handle step changes
-    if (type === "step:after" && lifecycle === "complete") {
-      onStepChange?.(index + 1);
+    const isTerminal = status === STATUS.FINISHED || status === STATUS.SKIPPED;
+    const isStepEvent =
+      type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND;
+    const isNavigationalAction =
+      action === ACTIONS.NEXT || action === ACTIONS.PREV;
+
+    if (!isTerminal && isStepEvent && isNavigationalAction) {
+      const direction = action === ACTIONS.PREV ? -1 : 1;
+      onStepChange?.(index + direction);
     }
 
-    // Handle tour completion
-    if (status === "finished") {
+    if (status === STATUS.FINISHED) {
       onComplete();
+      return;
     }
 
-    // Handle skip
-    if (status === "skipped" || action === "skip") {
-      onSkip?.();
-    }
-
-    // Handle close button
-    if (action === "close") {
+    if (
+      status === STATUS.SKIPPED ||
+      action === ACTIONS.SKIP ||
+      action === ACTIONS.CLOSE
+    ) {
       onSkip?.();
     }
   };
