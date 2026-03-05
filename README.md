@@ -195,14 +195,15 @@ Pinned in `.tool-versions`:
 GitHub workflow split:
 
 - **PR required:** `.github/workflows/ci-pr.yml` (`make ci-pr`)
-- **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`)
+- **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`, deterministic local-fixture heavy lane)
 
 ```bash
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
 make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
 make ci            # Full local gate (includes install + build + tests)
-make ci-slow       # Heavy stress/e2e checks (network required)
+make ci-slow       # Deterministic heavy stress/e2e checks (local fixture)
+make ci-network     # Optional live-Internet smoke validation
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
-make ci-manual     # Alias for manual heavy profile
+make ci-manual      # Manual full heavy sweep (ci-slow + ci-network)
 ```

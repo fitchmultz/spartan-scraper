@@ -5,7 +5,7 @@ This repository uses **local CI as the source of truth** through Makefile target
 ## Why this structure
 
 - Keep PR checks deterministic and resource-aware.
-- Keep expensive network/e2e checks opt-in or scheduled.
+- Keep expensive live-network checks opt-in while preserving a deterministic heavy lane.
 - Make local and CI-equivalent commands identical.
 
 ## CI profiles
@@ -13,7 +13,7 @@ This repository uses **local CI as the source of truth** through Makefile target
 ### GitHub workflow mapping
 
 - **PR required**: `.github/workflows/ci-pr.yml` → `make ci-pr`
-- **Nightly/manual heavy**: `.github/workflows/ci-slow.yml` → `make ci-slow`
+- **Nightly/manual heavy**: `.github/workflows/ci-slow.yml` → `make ci-slow` (deterministic local fixture)
 
 ### PR-equivalent gate (`make ci-pr`)
 
@@ -56,18 +56,26 @@ Useful during active development before commit.
 make ci-slow
 ```
 
-Runs stress + e2e checks that may require network and more CPU/RAM:
+Runs deterministic heavy checks against the shared local fixture:
 
 - `./scripts/stress_test.sh`
 - `go test -v ./internal/e2e/...`
 
-### Manual alias (`make ci-manual`)
+### Optional live-network smoke (`make ci-network`)
+
+```bash
+make ci-network
+```
+
+Runs the stress profile against live Internet targets. Keep this manual/optional because third-party uptime is outside the repo's control.
+
+### Manual full sweep (`make ci-manual`)
 
 ```bash
 make ci-manual
 ```
 
-Alias for `make ci-slow` to make intent explicit in scripts.
+Runs both `make ci-slow` and `make ci-network`.
 
 ### Manual release-tier secret scan (`make secret-scan`)
 
@@ -84,7 +92,8 @@ These timings are practical targets on GitHub-hosted `ubuntu-latest` runners and
 
 - `make ci-pr`: ~8-15 minutes (deterministic, resource-capped)
 - `make ci`: ~8-15 minutes (same checks without clean-tree assertions)
-- `make ci-slow`: ~20-60+ minutes (network/e2e/stress variability)
+- `make ci-slow`: ~10-20 minutes (deterministic heavy lane)
+- `make ci-network`: variable (live-network dependency)
 - `make secret-scan`: ~1-5 minutes (repo history size dependent)
 
 Resource controls:
@@ -97,7 +106,8 @@ Local expectations stay similar:
 
 - `make ci-pr`: medium (installs + build + tests)
 - `make ci`: medium (same pipeline, no clean-tree assertions)
-- `make ci-slow`: high (network/e2e/stress)
+- `make ci-slow`: medium-high (deterministic heavy lane)
+- `make ci-network`: variable/high (live-network smoke)
 - `make secret-scan`: medium (full-history scan)
 
 Recommended usage:
@@ -105,7 +115,8 @@ Recommended usage:
 - **PR / merge readiness**: `make ci-pr`
 - **Inner dev loop**: targeted commands (`make test-ci`, `make lint`, `make type-check`) and periodic `make ci`
 - **Nightly confidence sweep**: `make ci-slow`
-- **Manual pre-release sweep**: `make ci-slow` + `make secret-scan`
+- **Optional live smoke**: `make ci-network`
+- **Manual pre-release sweep**: `make ci-manual` + `make secret-scan`
 
 ## Convenience wrapper
 
@@ -115,4 +126,5 @@ Use `run_ci.sh` when you want profile-based invocation:
 ./run_ci.sh --profile pr
 ./run_ci.sh --profile full
 ./run_ci.sh --profile slow
+./run_ci.sh --profile network
 ```

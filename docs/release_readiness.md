@@ -9,7 +9,7 @@ This report captures the current public-release hardening status for Spartan Scr
 - **Stack:** Go 1.25.6 backend/CLI + React/TypeScript web UI (Vite, Vitest, Biome)
 - **Primary entrypoints:** `./bin/spartan server`, `make web-dev`, `make ci-pr`
 - **Deterministic PR-equivalent gate:** `make ci-pr`
-- **Heavy confidence gate:** `make ci-slow` (nightly/manual only)
+- **Heavy confidence gate:** `make ci-slow` (nightly/manual deterministic heavy lane)
 - **Public hygiene gate:** `make audit-public`
 - **Deep history secret gate (manual release-tier):** `make secret-scan`
 
@@ -64,7 +64,11 @@ PR required (deterministic, resource-capped):
 
 Nightly/manual heavy:
 
-- `make ci-slow` (stress + e2e)
+- `make ci-slow` (deterministic stress + e2e via local fixture)
+
+Optional live-network smoke:
+
+- `make ci-network`
 
 Manual release-tier:
 
@@ -89,8 +93,8 @@ Manual release-tier:
 
 ## Remaining Known Issues / Next Steps
 
-1. **`ci-slow` network/e2e variance**
-   - Keep nightly/manual-only policy; use artifacts to track flaky signatures before promoting checks.
+1. **`ci-network` depends on third-party uptime**
+   - Keep it optional/manual; do not treat live-network failures as deterministic repo regressions without reproduction.
 
 2. **Deep git-history secret scan is still a release-tier/manual concern**
    - Keep `make audit-public` as fast deterministic gate.
@@ -108,6 +112,7 @@ Last-known additional checks (run outside this focused UI fix pass):
 - `make secret-scan` ✅
 - `make ci-pr` ✅
 - `make ci-slow` ✅
+- `make ci-network` optional/manual
 
 ## Reviewer Validation Path
 

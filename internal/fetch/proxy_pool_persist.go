@@ -1,6 +1,22 @@
 // Package fetch provides HTTP and headless browser content fetching capabilities.
-// It handles request routing, rate limiting, retry logic, and render profiles.
-// It does NOT handle content extraction or parsing.
+//
+// Purpose:
+//   - Load and validate persisted proxy-pool configuration.
+//
+// Responsibilities:
+//   - Read proxy-pool JSON files.
+//   - Distinguish optional default absence from explicit user misconfiguration.
+//
+// Scope:
+//   - Proxy-pool persistence helpers only.
+//
+// Usage:
+//   - LoadProxyPoolFromFile(path) for strict loading.
+//   - ProxyPoolFromConfig(path, explicit) for optional startup loading.
+//
+// Invariants/Assumptions:
+//   - Missing default optional proxy-pool files are silent.
+//   - Explicit proxy-pool paths still surface errors.
 package fetch
 
 import (
@@ -8,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
@@ -31,21 +46,21 @@ func LoadProxyPoolFromFile(path string) (*ProxyPool, error) {
 	return NewProxyPool(config)
 }
 
-// ProxyPoolFromConfig creates a proxy pool from the global config.
-// Returns nil if no proxy pool is configured.
-func ProxyPoolFromConfig(dataDir string) (*ProxyPool, error) {
-	if dataDir == "" {
-		dataDir = ".data"
+// ProxyPoolFromConfig creates a proxy pool from configured startup settings.
+// Missing files are silent only when the default optional path is implied.
+func ProxyPoolFromConfig(path string, explicit bool) (*ProxyPool, error) {
+	if path == "" {
+		return nil, nil
 	}
 
-	path := filepath.Join(dataDir, "proxy_pool.json")
-
-	// Check if file exists
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			if !explicit {
+				return nil, nil
+			}
+			return nil, apperrors.NotFound(fmt.Sprintf("proxy pool config file not found: %s", path))
 		}
-		return nil, err
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to stat proxy pool config", err)
 	}
 
 	return LoadProxyPoolFromFile(path)

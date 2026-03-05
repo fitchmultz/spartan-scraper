@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   ci-slow:
-    name: Nightly / Manual Heavy Checks
+    name: Nightly / Manual Deterministic Heavy Checks
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:

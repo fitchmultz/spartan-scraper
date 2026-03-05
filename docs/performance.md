@@ -74,6 +74,7 @@ Use local gates before and after tuning changes:
 ```bash
 make ci
 make ci-slow
+make ci-network
 ```
 
 For stress and e2e checks, compare:

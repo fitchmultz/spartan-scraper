@@ -17,7 +17,7 @@ This map links repository artifacts to production-readiness outcomes.
 
 ## Developer productivity and onboarding
 
-- One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`
+- One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`, `make ci-network`
 - Lockfile-strict installs for deterministic setup: `Makefile`
 - Reviewer runbook: `docs/reviewer_checklist.md`
 - Release runbook: `RELEASING.md`, `docs/release_readiness.md`
@@ -25,5 +25,5 @@ This map links repository artifacts to production-readiness outcomes.
 ## Operational discipline
 
 - Split CI profiles by cost/risk: `docs/ci.md`, workflows in `.github/workflows/`
-- Nightly/manual heavy checks separated from PR-required checks: `ci-slow.yml`
+- Deterministic heavy checks separated from PR-required checks, with optional live smoke kept manual: `ci-slow.yml`, `Makefile`
 - Runtime safety controls (timeouts/auth): `internal/config/config.go`, `internal/cli/server/server.go`, `internal/api/middleware.go`

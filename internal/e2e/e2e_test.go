@@ -1,7 +1,22 @@
-// Package e2e provides end-to-end integration tests for the core CLI, API, MCP, and scheduler workflows.
-// Tests cover CLI commands (scrape, crawl, research, auth, schedule, export), server API endpoints,
-// MCP stdio protocol, and TUI smoke tests using a compiled binary.
-// Does NOT test external authentication flows or web frontend preview.
+// Package e2e provides deterministic end-to-end integration tests for core product workflows.
+//
+// Purpose:
+//   - Validate CLI, API, MCP, scheduler, export, and TUI flows against stable local infrastructure.
+//
+// Responsibilities:
+//   - Build the test binary once per package run.
+//   - Execute isolated command and server flows from temp working directories.
+//   - Assert end-to-end behavior through the local test fixture and API surface.
+//
+// Scope:
+//   - Core workflow coverage only; auth and web preview live in separate e2e test files.
+//
+// Usage:
+//   - Runs as part of go test ./internal/e2e/...
+//
+// Invariants/Assumptions:
+//   - Uses temp working directories so local .env files do not leak into tests.
+//   - Uses the shared deterministic local fixture instead of third-party websites.
 package e2e
 
 import (
@@ -24,6 +39,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/testsite"
 )
 
 var spartanPath string
@@ -82,17 +98,18 @@ func TestCLIHTTPFlow(t *testing.T) {
 	dataDir := t.TempDir()
 	outDir := t.TempDir()
 	env := baseEnv(dataDir)
+	site := testsite.Start(t)
 
 	scrapeOut := filepath.Join(outDir, "scrape.json")
-	runOK(t, env, "scrape", "--url", "https://example.com", "--wait", "--wait-timeout", "60", "--out", scrapeOut)
+	runOK(t, env, "scrape", "--url", site.ScrapeURL(), "--wait", "--wait-timeout", "60", "--out", scrapeOut)
 	assertJSONContains(t, scrapeOut, "Example Domain")
 
 	crawlOut := filepath.Join(outDir, "crawl.jsonl")
-	runOK(t, env, "crawl", "--url", "https://httpbin.dev/links/5/0", "--max-depth", "1", "--max-pages", "5", "--wait", "--wait-timeout", "90", "--out", crawlOut)
+	runOK(t, env, "crawl", "--url", site.CrawlRootURL(), "--max-depth", "1", "--max-pages", "5", "--wait", "--wait-timeout", "90", "--out", crawlOut)
 	requireLineCount(t, crawlOut, 2)
 
 	researchOut := filepath.Join(outDir, "research.jsonl")
-	runOK(t, env, "research", "--query", "example", "--urls", "https://example.com,https://httpbin.dev/html", "--wait", "--wait-timeout", "60", "--out", researchOut)
+	runOK(t, env, "research", "--query", "example", "--urls", strings.Join(site.ResearchURLs(), ","), "--wait", "--wait-timeout", "60", "--out", researchOut)
 	assertJSONContains(t, researchOut, `"summary"`)
 }
 
@@ -101,18 +118,19 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	port := freePort(t)
 	env := baseEnv(dataDir)
 	env = append(env, "PORT="+strconv.Itoa(port))
+	site := testsite.Start(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srvCmd, cleanup := startProcess(ctx, t, env, projectRoot, spartanPath, "server")
+	srvCmd, cleanup := startProcess(ctx, t, env, t.TempDir(), spartanPath, "server")
 	defer cleanup()
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	waitForHealth(t, client, port)
 
 	jobID := postJob(t, client, port, "/v1/scrape", map[string]interface{}{
-		"url":            "https://example.com",
+		"url":            site.ScrapeURL(),
 		"headless":       false,
 		"playwright":     false,
 		"timeoutSeconds": 30,
@@ -124,7 +142,7 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	runOK(t, env, "export", "--job-id", jobID, "--format", "md", "--out", exportOut)
 	assertFileNotEmpty(t, exportOut)
 
-	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", "https://example.com")
+	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", site.ScrapeURL())
 	waitForJobs(t, client, port, 1)
 
 	runOK(t, env, "mcp", "--help")
@@ -147,7 +165,7 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	}
 
 	mcpCallOut := runMCP(t, env, []string{
-		`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com","preProcessors":["prep1","prep2"],"postProcessors":["post1"],"transformers":["trans1"],"incremental":true}}}`,
+		fmt.Sprintf(`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":%q,"preProcessors":["prep1","prep2"],"postProcessors":["post1"],"transformers":["trans1"],"incremental":true}}}`, site.ScrapeURL()),
 	})
 	if strings.Contains(mcpCallOut, `"error"`) && strings.Contains(mcpCallOut, `"message"`) {
 		var resp map[string]interface{}
@@ -179,7 +197,7 @@ func run(t *testing.T, env []string, args ...string) error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, spartanPath, args...)
-	cmd.Dir = projectRoot
+	cmd.Dir = t.TempDir()
 	cmd.Env = append(os.Environ(), env...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -272,7 +290,7 @@ func runMCP(t *testing.T, env []string, lines []string) string {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, spartanPath, "mcp")
-	cmd.Dir = projectRoot
+	cmd.Dir = t.TempDir()
 	cmd.Env = append(os.Environ(), env...)
 	if runtime.GOOS != "windows" {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

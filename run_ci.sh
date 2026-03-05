@@ -7,7 +7,7 @@
 #
 # RESPONSIBILITIES:
 #   - Changes to the repository root (script-relative)
-#   - Runs a selected Makefile CI target (`ci-pr`, `ci`, `ci-slow`, `ci-manual`)
+#   - Runs a selected Makefile CI target (`ci-pr`, `ci`, `ci-slow`, `ci-network`, `ci-manual`)
 #   - Provides a clear help menu with examples and exit codes
 #
 # NON-GOALS:
@@ -41,6 +41,7 @@ Options:
                             pr      -> make ci-pr
                             full    -> make ci
                             slow    -> make ci-slow
+                            network -> make ci-network
                             manual  -> make ci-manual
 
 Examples:
@@ -50,8 +51,11 @@ Examples:
   # Fast PR-equivalent gate (requires clean git state)
   ./run_ci.sh --profile pr
 
-  # Slow network/e2e checks
+  # Deterministic heavy stress/e2e checks
   ./run_ci.sh --profile slow
+
+  # Optional live-Internet smoke validation
+  ./run_ci.sh --profile network
 
 Exit codes:
   0   CI profile passed
@@ -99,12 +103,15 @@ case "$PROFILE" in
     slow)
         TARGET="ci-slow"
         ;;
+    network)
+        TARGET="ci-network"
+        ;;
     manual)
         TARGET="ci-manual"
         ;;
     *)
         echo "Error: Invalid profile '$PROFILE'" >&2
-        echo "Valid profiles: pr, full, slow, manual" >&2
+        echo "Valid profiles: pr, full, slow, network, manual" >&2
         exit 2
         ;;
 esac

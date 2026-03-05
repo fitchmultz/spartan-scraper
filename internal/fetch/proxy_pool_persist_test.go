@@ -1,4 +1,21 @@
-// Package fetch provides HTTP and headless browser content fetching capabilities.
+// Package fetch provides tests for proxy-pool persistence helpers.
+//
+// Purpose:
+//   - Validate proxy-pool persistence behavior for strict loads and optional startup loads.
+//
+// Responsibilities:
+//   - Cover missing-file, invalid-JSON, and successful-load cases.
+//   - Verify default optional paths stay silent while explicit misconfigurations fail cleanly.
+//
+// Scope:
+//   - Proxy-pool persistence helpers only.
+//
+// Usage:
+//   - Runs as part of go test ./internal/fetch/...
+//
+// Invariants/Assumptions:
+//   - Optional default startup paths do not emit hard errors when absent.
+//   - Explicit configured paths still surface not_found errors.
 package fetch
 
 import (
@@ -83,9 +100,10 @@ func TestLoadProxyPoolFromFile(t *testing.T) {
 
 func TestProxyPoolFromConfig(t *testing.T) {
 	tmpDir := t.TempDir()
+	defaultPath := filepath.Join(tmpDir, "proxy_pool.json")
 
-	t.Run("file does not exist", func(t *testing.T) {
-		pool, err := ProxyPoolFromConfig(tmpDir)
+	t.Run("missing implicit default path is silent", func(t *testing.T) {
+		pool, err := ProxyPoolFromConfig(defaultPath, false)
 		if err != nil {
 			t.Errorf("Expected no error for missing file, got %v", err)
 		}
@@ -94,13 +112,20 @@ func TestProxyPoolFromConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("empty dataDir defaults to .data", func(t *testing.T) {
-		// Create .data directory with proxy pool file
-		dataDir := filepath.Join(tmpDir, ".data")
-		if err := os.MkdirAll(dataDir, 0755); err != nil {
-			t.Fatalf("Failed to create .data directory: %v", err)
+	t.Run("missing explicit path returns not found", func(t *testing.T) {
+		pool, err := ProxyPoolFromConfig(defaultPath, true)
+		if err == nil {
+			t.Fatal("Expected error for explicit missing file")
 		}
+		if !apperrors.IsKind(err, apperrors.KindNotFound) {
+			t.Fatalf("Expected not_found error, got %v", apperrors.KindOf(err))
+		}
+		if pool != nil {
+			t.Error("Expected nil pool for missing explicit file")
+		}
+	})
 
+	t.Run("configured file loads", func(t *testing.T) {
 		config := ProxyPoolConfig{
 			Proxies: []ProxyEntry{
 				{ID: "proxy-1", URL: "http://proxy1.example.com:8080"},
@@ -108,16 +133,11 @@ func TestProxyPoolFromConfig(t *testing.T) {
 		}
 
 		data, _ := json.Marshal(config)
-		if err := os.WriteFile(filepath.Join(dataDir, "proxy_pool.json"), data, 0644); err != nil {
+		if err := os.WriteFile(defaultPath, data, 0644); err != nil {
 			t.Fatalf("Failed to write proxy pool file: %v", err)
 		}
 
-		// Change to tmpDir so .data is relative
-		origDir, _ := os.Getwd()
-		os.Chdir(tmpDir)
-		defer os.Chdir(origDir)
-
-		pool, err := ProxyPoolFromConfig("")
+		pool, err := ProxyPoolFromConfig(defaultPath, true)
 		if err != nil {
 			t.Errorf("ProxyPoolFromConfig failed: %v", err)
 		}

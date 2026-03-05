@@ -23,7 +23,7 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
 CI_VITEST_MAX_WORKERS ?= 2
 GITLEAKS_VERSION ?= v8.24.2
 
-.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
+.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
 
 audit-public:
 	node $(CURDIR)/scripts/public_audit.mjs
@@ -122,7 +122,10 @@ ci-slow: install build
 	./scripts/stress_test.sh
 	go test -v ./internal/e2e/...
 
-ci-manual: ci-slow
+ci-network: install build
+	./scripts/stress_test.sh --network
+
+ci-manual: ci-slow ci-network
 
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev

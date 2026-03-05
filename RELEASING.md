@@ -26,6 +26,7 @@ This document describes the local release process for Spartan Scraper.
    make ci-pr
    make ci
    make ci-slow
+   make ci-network
    ```
 
 3. **Run deep history secret scan (manual release-tier check)**

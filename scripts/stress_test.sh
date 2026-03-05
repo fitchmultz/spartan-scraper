@@ -1,21 +1,35 @@
 #!/usr/bin/env bash
 #
-# Stress-test Spartan Scraper using real targets (no mocks).
+# Purpose:
+#   - Exercise deterministic CLI, API, MCP, scheduler, exporter, and web flows end-to-end.
+#
+# Responsibilities:
+#   - Start the product server and the local fixture server.
+#   - Run scrape/crawl/research flows through CLI and API.
+#   - Optionally run a live-network smoke profile.
+#
+# Scope:
+#   - Heavy local validation only; this script is not a deploy tool.
 #
 # Usage:
-#   stress_test.sh [options]
+#   - scripts/stress_test.sh
+#   - scripts/stress_test.sh --network --targets https://example.com
 #
-# Example:
-#   stress_test.sh --openai-docs --use-playwright --headless
+# Invariants/Assumptions:
+#   - Default mode is deterministic and uses only loopback fixture targets.
+#   - Live-network validation is opt-in via --network.
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DATA_DIR_DEFAULT="${ROOT_DIR}/.data"
 OUT_DIR_DEFAULT="${ROOT_DIR}/out/stress"
+WORK_DIR_DEFAULT="$(mktemp -d "${TMPDIR:-/tmp}/spartan-stress.XXXXXX")"
+SPARTAN_BIN="${ROOT_DIR}/bin/spartan"
+FIXTURE_HOST_DEFAULT="127.0.0.1"
+SERVER_HOST_DEFAULT="127.0.0.1"
 
 OPENAI_DOCS="https://platform.openai.com/docs"
-TEST_TARGETS_DEFAULT=(
+NETWORK_TARGETS_DEFAULT=(
   "https://example.com"
   "https://httpbin.org/html"
   "https://quotes.toscrape.com"
@@ -24,14 +38,17 @@ TEST_TARGETS_DEFAULT=(
 
 usage() {
   cat <<'USAGE'
-Stress-test Spartan Scraper (real targets, no mocks).
+Stress-test Spartan Scraper.
 
 Usage:
   scripts/stress_test.sh [options]
 
 Options:
-  --data-dir <path>          Data directory (default: .data)
+  --data-dir <path>          Data directory (default: <work-dir>/data)
   --out-dir <path>           Output directory (default: out/stress)
+  --work-dir <path>          Command working directory (default: temp dir)
+  --fixture-addr <host:port> Local fixture listen address (default: ephemeral 127.0.0.1 port)
+  --network                  Use live Internet targets instead of the local fixture
   --openai-docs              Include https://platform.openai.com/docs
   --targets <csv>            Comma-separated extra targets
   --use-playwright           Use Playwright for headless runs
@@ -50,11 +67,13 @@ Options:
   --help                      Show help
 
 Examples:
-  scripts/stress_test.sh --openai-docs --use-playwright --headless
+  scripts/stress_test.sh
+  scripts/stress_test.sh --network --targets https://news.ycombinator.com,https://example.com
   scripts/stress_test.sh --targets https://news.ycombinator.com,https://example.com
 
 Notes:
-  - Uses real targets only. No mocks.
+  - Default mode uses a deterministic local fixture.
+  - --network opts into live Internet smoke validation.
   - Uses CLI + API + MCP + scheduler + exporter.
 
 Prerequisites:
@@ -81,8 +100,8 @@ check_prereqs() {
   fi
 
   echo "Checking browser availability..."
-  # Force headless for the check to ensure we actually test browser presence
-  if ! ./bin/spartan scrape --url "https://example.com" --headless $PLAYWRIGHT_FLAG --timeout 10 >/dev/null 2>&1; then
+  # Force headless for the check to ensure we actually test browser presence.
+  if ! run_spartan scrape --url "$BROWSER_CHECK_URL" --headless $PLAYWRIGHT_FLAG --timeout 10 >/dev/null 2>&1; then
      echo "Warning: Headless browser check failed. Tests might fail if they require a browser."
      echo "Run with --headless --use-playwright to test specific configurations."
   fi
@@ -100,12 +119,18 @@ parse_json_field() {
   fi
 }
 
-DATA_DIR="$DATA_DIR_DEFAULT"
+DATA_DIR=""
+DATA_DIR_EXPLICIT=0
 OUT_DIR="$OUT_DIR_DEFAULT"
+WORK_DIR="$WORK_DIR_DEFAULT"
+FIXTURE_ADDR=""
+FIXTURE_ADDR_EXPLICIT=0
 INCLUDE_OPENAI=0
 EXTRA_TARGETS=()
 USE_PLAYWRIGHT=0
 FORCE_HEADLESS=0
+USE_NETWORK_TARGETS=0
+SERVER_PORT=""
 TIMEOUT_SECS=30
 WAIT_TIMEOUT_SECS=600
 CONCURRENCY=6
@@ -120,8 +145,11 @@ SKIP_WEB=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --data-dir) DATA_DIR="$2"; shift 2 ;;
+    --data-dir) DATA_DIR="$2"; DATA_DIR_EXPLICIT=1; shift 2 ;;
     --out-dir) OUT_DIR="$2"; shift 2 ;;
+    --work-dir) WORK_DIR="$2"; shift 2 ;;
+    --fixture-addr) FIXTURE_ADDR="$2"; FIXTURE_ADDR_EXPLICIT=1; shift 2 ;;
+    --network) USE_NETWORK_TARGETS=1; shift ;;
     --openai-docs) INCLUDE_OPENAI=1; shift ;;
     --targets)
       IFS=',' read -r -a EXTRA_TARGETS <<< "$2"
@@ -158,25 +186,47 @@ fi
 # Build first so spartan binary exists for check_prereqs
 make build >/dev/null
 
-check_prereqs
+run_spartan() {
+  (
+    cd "$WORK_DIR"
+    "$SPARTAN_BIN" "$@"
+  )
+}
+
+reserve_fixture_addr() {
+  local host="$1"
+  node -e '
+    const host = process.argv[1];
+    const net = require("net");
+    const server = net.createServer();
+    server.listen(0, host, () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        console.error("failed to reserve fixture port");
+        process.exit(1);
+      }
+      console.log(`${host}:${address.port}`);
+      server.close();
+    });
+    server.on("error", (error) => {
+      console.error(error.message);
+      process.exit(1);
+    });
+  ' "$host"
+}
 
 mkdir -p "$OUT_DIR"
-
-TARGETS=("${TEST_TARGETS_DEFAULT[@]}")
-if [[ "$INCLUDE_OPENAI" == "1" ]]; then
-  TARGETS+=("$OPENAI_DOCS")
+mkdir -p "$WORK_DIR"
+if [[ "$DATA_DIR_EXPLICIT" == "0" ]]; then
+  DATA_DIR="${WORK_DIR}/data"
 fi
-if [[ ${#EXTRA_TARGETS[@]} -gt 0 ]]; then
-  for t in "${EXTRA_TARGETS[@]}"; do
-    if [[ -n "$t" ]]; then
-      TARGETS+=("$t")
-    fi
-  done
-fi
-
-cd "$ROOT_DIR"
+mkdir -p "$DATA_DIR"
 
 export DATA_DIR
+if [[ -z "$SERVER_PORT" ]]; then
+  SERVER_PORT="$(reserve_fixture_addr "$SERVER_HOST_DEFAULT" | awk -F: '{print $NF}')"
+fi
+export PORT="$SERVER_PORT"
 export RATE_LIMIT_QPS
 export RATE_LIMIT_BURST
 export MAX_CONCURRENCY="$CONCURRENCY"
@@ -197,6 +247,10 @@ mkdir -p "$LOG_DIR"
 
 cleanup() {
   echo "Cleaning up..."
+  if [[ -n "${FIXTURE_PID:-}" ]]; then
+    kill "$FIXTURE_PID" >/dev/null 2>&1 || true
+    wait "$FIXTURE_PID" >/dev/null 2>&1 || true
+  fi
   if [[ -n "${SERVER_PID:-}" ]]; then
     # Use pkill -P to kill child processes (like chrome) if supported,
     # or just kill the process group if we had started it with one.
@@ -205,6 +259,9 @@ cleanup() {
     kill "$SERVER_PID" >/dev/null 2>&1 || true
     # Wait for server to exit
     wait "$SERVER_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${WORK_DIR:-}" && "$WORK_DIR" == "${WORK_DIR_DEFAULT}" ]]; then
+    rm -rf "$WORK_DIR"
   fi
 }
 trap cleanup EXIT
@@ -216,7 +273,7 @@ wait_job_api() {
   echo "Waiting for $description to complete..."
   while true; do
     local output
-    output=$(curl -fsS "http://127.0.0.1:8741/v1/jobs/${job_id}" 2>&1) || {
+    output=$(curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${job_id}" 2>&1) || {
       echo "Error fetching job status: $output"
       return 1
     }
@@ -245,74 +302,112 @@ wait_job_api() {
 }
 
 wait_for_health() {
+  local url="$1"
+  local label="${2:-service}"
   local deadline=$((SECONDS + 30))
-  echo "Waiting for server to become healthy..."
+  echo "Waiting for ${label} to become healthy..."
   while true; do
-    if curl -fsS "http://127.0.0.1:8741/healthz" >/dev/null 2>&1; then
-      echo "Server is healthy."
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      echo "${label} is healthy."
       return 0
     fi
     if [[ "$SECONDS" -ge "$deadline" ]]; then
-      echo "Timeout waiting for server health"
+      echo "Timeout waiting for ${label} health"
       return 1
     fi
     sleep 1
   done
 }
 
-./bin/spartan server >"$LOG_DIR/server.log" 2>&1 &
+if [[ "$USE_NETWORK_TARGETS" == "1" ]]; then
+  TARGETS=("${NETWORK_TARGETS_DEFAULT[@]}")
+  BROWSER_CHECK_URL="${TARGETS[0]}"
+else
+  if [[ "$FIXTURE_ADDR_EXPLICIT" == "0" ]]; then
+    FIXTURE_ADDR="$(reserve_fixture_addr "$FIXTURE_HOST_DEFAULT")"
+  fi
+  FIXTURE_BASE_URL="http://${FIXTURE_ADDR}"
+  go run ./scripts/serve_testsite.go --addr "$FIXTURE_ADDR" >"$LOG_DIR/fixture.log" 2>&1 &
+  FIXTURE_PID=$!
+  wait_for_health "${FIXTURE_BASE_URL}/healthz" "fixture" || {
+    echo "Fixture failed to start. See $LOG_DIR/fixture.log"
+    exit 1
+  }
+  TARGETS=(
+    "${FIXTURE_BASE_URL}/"
+    "${FIXTURE_BASE_URL}/html"
+    "${FIXTURE_BASE_URL}/research/pricing"
+    "${FIXTURE_BASE_URL}/research/faq"
+  )
+  BROWSER_CHECK_URL="${FIXTURE_BASE_URL}/"
+fi
+
+if [[ "$INCLUDE_OPENAI" == "1" ]]; then
+  TARGETS+=("$OPENAI_DOCS")
+fi
+if [[ ${#EXTRA_TARGETS[@]} -gt 0 ]]; then
+  for t in "${EXTRA_TARGETS[@]}"; do
+    if [[ -n "$t" ]]; then
+      TARGETS+=("$t")
+    fi
+  done
+fi
+
+check_prereqs
+
+run_spartan server >"$LOG_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 
-wait_for_health || {
+wait_for_health "http://127.0.0.1:${SERVER_PORT}/healthz" "server" || {
   echo "Server failed to start. See $LOG_DIR/server.log"
   exit 1
 }
 
 for target in "${TARGETS[@]}"; do
-  ./bin/spartan scrape --url "$target" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/scrape-$(echo "$target" | sed 's#https\?://##;s#[/:]#_#g').json" >/dev/null
+  run_spartan scrape --url "$target" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/scrape-$(echo "$target" | sed 's#https\?://##;s#[/:]#_#g').json" >/dev/null
  done
 
 for target in "${TARGETS[@]}"; do
-  ./bin/spartan crawl --url "$target" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --max-depth "$MAX_DEPTH" --max-pages "$MAX_PAGES" --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/crawl-$(echo "$target" | sed 's#https\?://##;s#[/:]#_#g').jsonl" >/dev/null
+  run_spartan crawl --url "$target" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --max-depth "$MAX_DEPTH" --max-pages "$MAX_PAGES" --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/crawl-$(echo "$target" | sed 's#https\?://##;s#[/:]#_#g').jsonl" >/dev/null
  done
 
 RESEARCH_URLS=$(IFS=,; echo "${TARGETS[*]}")
-./bin/spartan research --query "$RESEARCH_QUERY" --urls "$RESEARCH_URLS" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/research.jsonl" >/dev/null
+run_spartan research --query "$RESEARCH_QUERY" --urls "$RESEARCH_URLS" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/research.jsonl" >/dev/null
 
-SCRAPE_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/scrape" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
+SCRAPE_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/scrape" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
 SCRAPE_JOB_ID=$(echo "$SCRAPE_JOB" | parse_json_field "id")
 wait_job_api "$SCRAPE_JOB_ID"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${SCRAPE_JOB_ID}" >"$OUT_DIR/api-job.json"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${SCRAPE_JOB_ID}/results" >"$OUT_DIR/api-results.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${SCRAPE_JOB_ID}" >"$OUT_DIR/api-job.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${SCRAPE_JOB_ID}/results" >"$OUT_DIR/api-results.json"
 
-CRAWL_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/crawl" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
+CRAWL_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/crawl" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
 CRAWL_JOB_ID=$(echo "$CRAWL_JOB" | parse_json_field "id")
 wait_job_api "$CRAWL_JOB_ID"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${CRAWL_JOB_ID}" >"$OUT_DIR/api-crawl-job.json"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${CRAWL_JOB_ID}/results" >"$OUT_DIR/api-crawl-results.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${CRAWL_JOB_ID}" >"$OUT_DIR/api-crawl-job.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${CRAWL_JOB_ID}/results" >"$OUT_DIR/api-crawl-results.json"
 
-RESEARCH_JOB=$(curl -fsS -X POST "http://127.0.0.1:8741/v1/research" -H "Content-Type: application/json" -d "{\"query\":\"${RESEARCH_QUERY}\",\"urls\":[\"${TARGETS[0]}\",\"${TARGETS[1]}\"] ,\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
+RESEARCH_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/research" -H "Content-Type: application/json" -d "{\"query\":\"${RESEARCH_QUERY}\",\"urls\":[\"${TARGETS[0]}\",\"${TARGETS[1]}\"] ,\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
 RESEARCH_JOB_ID=$(echo "$RESEARCH_JOB" | parse_json_field "id")
 wait_job_api "$RESEARCH_JOB_ID"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${RESEARCH_JOB_ID}" >"$OUT_DIR/api-research-job.json"
-curl -fsS "http://127.0.0.1:8741/v1/jobs/${RESEARCH_JOB_ID}/results" >"$OUT_DIR/api-research-results.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}" >"$OUT_DIR/api-research-job.json"
+curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}/results" >"$OUT_DIR/api-research-results.json"
 
-LATEST_JOB_ID=$(./bin/spartan export --job-id $(ls -t "$DATA_DIR/jobs" | head -n 1) --format md --out "$OUT_DIR/export-latest.md" | tail -n 1 || true)
+run_spartan export --job-id "$RESEARCH_JOB_ID" --format md --out "$OUT_DIR/export-latest.md" >/dev/null
 
 if [[ "$SKIP_SCHEDULER" == "0" ]]; then
-  ./bin/spartan schedule add --kind scrape --interval 5 --url "${TARGETS[0]}" --timeout "$TIMEOUT_SECS" >/dev/null
+  run_spartan schedule add --kind scrape --interval 5 --url "${TARGETS[0]}" --timeout "$TIMEOUT_SECS" >/dev/null
   sleep 7
-  ./bin/spartan schedule list >"$OUT_DIR/schedules.txt"
+  run_spartan schedule list >"$OUT_DIR/schedules.txt"
 fi
 
 if [[ "$SKIP_MCP" == "0" ]]; then
-  printf '{"id":1,"method":"initialize"}\n' | ./bin/spartan mcp >/dev/null
-  printf '{"id":2,"method":"tools/list"}\n' | ./bin/spartan mcp >"$OUT_DIR/mcp-tools.json"
-  printf '{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"%s","headless":false}}}\n' "${TARGETS[0]}" | ./bin/spartan mcp >"$OUT_DIR/mcp-scrape.json"
+  printf '{"id":1,"method":"initialize"}\n' | run_spartan mcp >/dev/null
+  printf '{"id":2,"method":"tools/list"}\n' | run_spartan mcp >"$OUT_DIR/mcp-tools.json"
+  printf '{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"%s","headless":false}}}\n' "${TARGETS[0]}" | run_spartan mcp >"$OUT_DIR/mcp-scrape.json"
 fi
 
 if [[ "$SKIP_WEB" == "0" ]]; then
-  (cd web && pnpm run build) >/dev/null
+  (cd "$ROOT_DIR/web" && pnpm run build) >/dev/null
 fi
 
 echo "Stress test completed. Outputs in $OUT_DIR"

@@ -417,13 +417,19 @@ Extract structured data from HTML using LLM (Large Language Model) providers. Th
 
 **Configuration** (`.env`):
 ```
-AI_PROVIDER=openai              # openai, anthropic, or ollama
-AI_API_KEY=sk-...               # API key for cloud providers
-AI_MODEL=gpt-4o-mini            # Optional: defaults per provider
-AI_TIMEOUT_SECONDS=60           # 5-300 seconds
+# AI provider: openai | anthropic | ollama
+AI_PROVIDER=openai
+# API key for cloud providers
+AI_API_KEY=sk-...
+# Optional: defaults per provider
+AI_MODEL=gpt-4o-mini
+# Timeout in seconds (5-300)
+AI_TIMEOUT_SECONDS=60
 AI_MAX_TOKENS=4096
-AI_TEMPERATURE=0.1              # 0.0-1.0 (lower = more consistent)
-OLLAMA_URL=http://localhost:11434  # For local Ollama
+# 0.0-1.0 (lower = more consistent)
+AI_TEMPERATURE=0.1
+# For local Ollama
+OLLAMA_URL=http://localhost:11434
 ```
 
 **CLI Usage:**
@@ -1530,10 +1536,12 @@ Both `make ci-pr` and `make ci` validate:
 - Scheduler (job creation via interval)
 - Web (TypeScript build + unit tests)
 
-`make ci-slow` (Stress/Network) executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`), which validate:
-- Real-world targets (no mocks)
+`make ci-slow` executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`) against the shared local fixture, which validate:
+- Deterministic scrape/crawl/research targets
 - Full end-to-end workflows (CLI → API → Worker → Exporter)
-- External auth targets and headless behaviors
+- Local auth fixture flows and headless behaviors
 - Web preview smoke test
 
-`make ci-manual` is an alias for `make ci-slow` for manual/scheduled heavy sweeps.
+`make ci-network` runs the stress profile against live Internet targets.
+
+`make ci-manual` runs both `make ci-slow` and `make ci-network` for manual/scheduled heavy sweeps.

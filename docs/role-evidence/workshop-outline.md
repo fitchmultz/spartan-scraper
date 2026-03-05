@@ -35,4 +35,4 @@ Engineers evaluating production-grade repo hardening and local-first CI discipli
 
 - Dirty git tree before `make ci-pr`
 - Local env differences causing unexpected behavior
-- Treating `ci-slow` variability as PR-gate regressions
+- Treating `ci-network` variability as if it were a deterministic PR-gate regression

@@ -10,7 +10,8 @@
 
 - [ ] `make ci-pr` passes from a clean tree
 - [ ] `make ci` passes locally
-- [ ] `make ci-slow` run for release confidence (nightly/manual profile)
+- [ ] `make ci-slow` run for deterministic release confidence
+- [ ] `make ci-network` run if live-Internet smoke validation is desired before release
 
 ## Runtime safety
 

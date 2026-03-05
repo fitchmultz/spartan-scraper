@@ -1,11 +1,27 @@
 // Package common contains CLI helpers for job manager wiring.
 //
-// It does NOT define job execution behavior; internal/jobs does that.
+// Purpose:
+//   - Build and configure shared runtime dependencies for job-oriented commands.
+//
+// Responsibilities:
+//   - Construct job managers from loaded config.
+//   - Wire optional proxy-pool and AI integrations.
+//
+// Scope:
+//   - CLI-side dependency assembly only.
+//
+// Usage:
+//   - Call InitJobManager from CLI entrypoints after config/store initialization.
+//
+// Invariants/Assumptions:
+//   - Missing optional default proxy-pool files stay silent on startup.
+//   - Explicit misconfiguration still surfaces as warnings.
 package common
 
 import (
 	"context"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
@@ -58,7 +74,8 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jo
 
 	// Initialize proxy pool if configured
 	if cfg.ProxyPoolFile != "" {
-		proxyPool, err := fetch.LoadProxyPoolFromFile(cfg.ProxyPoolFile)
+		_, proxyPoolExplicit := os.LookupEnv("PROXY_POOL_FILE")
+		proxyPool, err := fetch.ProxyPoolFromConfig(cfg.ProxyPoolFile, proxyPoolExplicit)
 		if err != nil {
 			// Log warning but don't fail - proxy pool is optional
 			slog.Warn("failed to load proxy pool", "path", cfg.ProxyPoolFile, "error", err)
