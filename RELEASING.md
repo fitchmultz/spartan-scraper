@@ -31,8 +31,7 @@ This document describes the local release process for Spartan Scraper.
 3. **Run deep history secret scan (manual release-tier check)**
 
    ```bash
-   # Example (if gitleaks is installed locally)
-   gitleaks detect --source . --log-opts="--all"
+   make secret-scan
    ```
 
 4. **Create release commit**
@@ -74,7 +73,7 @@ make build VERSION=vX.Y.Z
 - [ ] `make audit-public` passes
 - [ ] `make ci-pr` passes
 - [ ] `make ci` passes
-- [ ] deep history secret scan run and reviewed
+- [ ] `make secret-scan` run and reviewed
 - [ ] `CHANGELOG.md` updated
 - [ ] tag created and pushed
 - [ ] release notes drafted from changelog entries

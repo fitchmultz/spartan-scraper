@@ -13,7 +13,8 @@ import (
 )
 
 func TestHandleCrawlPlaywright(t *testing.T) {
-	srv, cleanup := setupTestServer(t)
+	// No workers: this test validates request parameter persistence, not crawl execution.
+	srv, cleanup := setupTestServerWithConcurrency(t, 0)
 	defer cleanup()
 
 	tests := []struct {

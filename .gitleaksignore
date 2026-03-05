@@ -1,0 +1,22 @@
+# Purpose: Baseline of reviewed false positives for gitleaks history scans.
+# Scope: Allows known test-fixture and documentation placeholders only.
+# Usage: Consumed automatically by gitleaks during make secret-scan.
+# Invariants: New fingerprints must be manually reviewed before adding.
+2f61f7ca9c82b31245ba1e8b82e13acaf850c57f:internal/captcha/captcha_test.go:generic-api-key:42
+2f61f7ca9c82b31245ba1e8b82e13acaf850c57f:internal/captcha/captcha_test.go:generic-api-key:532
+2f61f7ca9c82b31245ba1e8b82e13acaf850c57f:internal/captcha/captcha_test.go:generic-api-key:533
+3265919be68e974195c25855d45fb64bc0a707ef:examples/plugins/sample-plugin/README.md:curl-auth-header:59
+3265919be68e974195c25855d45fb64bc0a707ef:examples/plugins/sample-plugin/README.md:curl-auth-header:65
+65f80753fc826e2d3a072a65c7e88cef09ee3691:internal/sessions/session_store_test.go:generic-api-key:478
+79580d513d64c5c29c479a243650d3189b454819:internal/captcha/captcha_test.go:generic-api-key:42
+79580d513d64c5c29c479a243650d3189b454819:internal/captcha/captcha_test.go:generic-api-key:532
+79580d513d64c5c29c479a243650d3189b454819:internal/captcha/captcha_test.go:generic-api-key:533
+8d6034016c0607e7fa21d2cfd7813e909f56e352:examples/plugins/sample-plugin/README.md:curl-auth-header:59
+8d6034016c0607e7fa21d2cfd7813e909f56e352:examples/plugins/sample-plugin/README.md:curl-auth-header:65
+d90dd9d3b1922c72e786a2f9d10e25d6c0b6a9ef:internal/sessions/session_store_test.go:generic-api-key:478
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:examples/plugins/sample-plugin/README.md:curl-auth-header:59
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:examples/plugins/sample-plugin/README.md:curl-auth-header:65
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generic-api-key:42
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generic-api-key:532
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generic-api-key:533
+f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/sessions/session_store_test.go:generic-api-key:478

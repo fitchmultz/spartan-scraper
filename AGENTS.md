@@ -21,6 +21,7 @@ GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-p
 
 ```bash
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
+make secret-scan      # Deep git-history secret scan (manual/nightly release-tier)
 make install          # Download Go deps + install pnpm deps (lockfile-strict)
 make update           # Update all Go/pnpm deps to latest (review before committing)
 make generate         # Generate TS API client from openapi.yaml

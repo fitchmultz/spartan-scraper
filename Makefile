@@ -21,11 +21,15 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
 
 # Resource control: cap Vitest workers for deterministic CI CPU usage
 CI_VITEST_MAX_WORKERS ?= 2
+GITLEAKS_VERSION ?= v8.24.2
 
-.PHONY: audit-public install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
+.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin ci ci-pr ci-slow ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
 
 audit-public:
 	node $(CURDIR)/scripts/public_audit.mjs
+
+secret-scan:
+	go run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) detect --source $(CURDIR) --log-opts="--all" --gitleaks-ignore-path $(CURDIR)/.gitleaksignore --redact --no-banner
 
 install:
 	go mod download

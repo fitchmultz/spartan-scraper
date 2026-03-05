@@ -104,7 +104,18 @@ Expected:
 - no tracked local/build/cache artifacts
 - no branch-history residue for blocked artifact paths
 
-## 7) Optional heavy confidence checks
+## 7) Optional deep history secret scan
+
+```bash
+make secret-scan
+```
+
+Expected:
+
+- no unreviewed high-confidence secrets in full git history
+- scan succeeds using the committed `.gitleaksignore` baseline
+
+## 8) Optional heavy confidence checks
 
 ```bash
 make ci-slow

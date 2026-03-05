@@ -69,6 +69,15 @@ make ci-manual
 
 Alias for `make ci-slow` to make intent explicit in scripts.
 
+### Manual release-tier secret scan (`make secret-scan`)
+
+```bash
+make secret-scan
+```
+
+Runs a pinned Gitleaks history scan (`--log-opts="--all"`) with the reviewed false-positive baseline from `.gitleaksignore`.
+Keep this out of PR-required checks to preserve deterministic runtime budgets; run it before releases and in manual sweeps.
+
 ## Runtime and resource guidance
 
 These timings are practical targets on GitHub-hosted `ubuntu-latest` runners and modern local laptops:
@@ -76,6 +85,7 @@ These timings are practical targets on GitHub-hosted `ubuntu-latest` runners and
 - `make ci-pr`: ~8-15 minutes (deterministic, resource-capped)
 - `make ci`: ~8-15 minutes (same checks without clean-tree assertions)
 - `make ci-slow`: ~20-60+ minutes (network/e2e/stress variability)
+- `make secret-scan`: ~1-5 minutes (repo history size dependent)
 
 Resource controls:
 
@@ -88,12 +98,14 @@ Local expectations stay similar:
 - `make ci-pr`: medium (installs + build + tests)
 - `make ci`: medium (same pipeline, no clean-tree assertions)
 - `make ci-slow`: high (network/e2e/stress)
+- `make secret-scan`: medium (full-history scan)
 
 Recommended usage:
 
 - **PR / merge readiness**: `make ci-pr`
 - **Inner dev loop**: targeted commands (`make test-ci`, `make lint`, `make type-check`) and periodic `make ci`
-- **Nightly/manual confidence sweep**: `make ci-slow`
+- **Nightly confidence sweep**: `make ci-slow`
+- **Manual pre-release sweep**: `make ci-slow` + `make secret-scan`
 
 ## Convenience wrapper
 

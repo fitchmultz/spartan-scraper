@@ -33,6 +33,7 @@ The Makefile is the canonical interface for all development tasks:
 
 ```bash
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
+make secret-scan      # Deep git-history secret scan (manual/release-tier)
 make install          # Download Go deps + install pnpm deps
 make update           # Update all Go/pnpm deps to latest (review before committing)
 make generate         # Generate TS API client from openapi.yaml
@@ -61,7 +62,8 @@ Use CI profiles intentionally based on scope (mirrors GitHub workflows):
 
 - **PR-equivalent gate**: `make ci-pr` (requires clean git state)
 - **Full local gate**: `make ci` (includes dependency install + build)
-- **Heavy/nightly/manual checks**: `make ci-slow` (or `make ci-manual`)
+- **Heavy/nightly checks**: `make ci-slow` (or `make ci-manual`)
+- **Manual pre-release secret sweep**: `make secret-scan`
 
 `make ci-pr` and `make ci` run:
 

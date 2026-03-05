@@ -199,6 +199,7 @@ GitHub workflow split:
 
 ```bash
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
+make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
 make ci            # Full local gate (includes install + build + tests)
 make ci-slow       # Heavy stress/e2e checks (network required)

@@ -15,13 +15,18 @@ import (
 )
 
 func setupTestServer(t *testing.T) (*Server, func()) {
+	return setupTestServerWithConcurrency(t, 4)
+}
+
+// setupTestServerWithConcurrency allows tests to disable workers when they only need to validate enqueue behavior.
+func setupTestServerWithConcurrency(t *testing.T, maxConcurrency int) (*Server, func()) {
 	t.Helper()
 	dataDir := t.TempDir()
 	cfg := config.Config{
 		DataDir:            dataDir,
 		RequestTimeoutSecs: 30,
 		ReplayTimeoutSecs:  30,
-		MaxConcurrency:     4,
+		MaxConcurrency:     maxConcurrency,
 		RateLimitQPS:       10,
 		RateLimitBurst:     20,
 		MaxRetries:         3,

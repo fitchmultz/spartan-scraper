@@ -11,6 +11,7 @@ This report captures the current public-release hardening status for Spartan Scr
 - **Deterministic PR-equivalent gate:** `make ci-pr`
 - **Heavy confidence gate:** `make ci-slow` (nightly/manual only)
 - **Public hygiene gate:** `make audit-public`
+- **Deep history secret gate (manual release-tier):** `make secret-scan`
 
 ## P0 Hardening Completed in This Pass
 
@@ -43,8 +44,8 @@ This report captures the current public-release hardening status for Spartan Scr
 2. **Secret exposure in tracked source/config/docs**
    - Mitigation: secret signature scanning in `scripts/public_audit.mjs`.
 
-3. **History hygiene blind spots**
-   - Mitigation: branch-history artifact checks in `make audit-public` plus documented release checklist.
+3. **History secret hygiene blind spots**
+   - Mitigation: `make secret-scan` (pinned Gitleaks full-history scan with reviewed `.gitleaksignore` baseline) plus branch-history artifact checks in `make audit-public`.
 
 4. **Cross-site localhost WebSocket abuse**
    - Mitigation: `/v1/ws` now rejects non-loopback browser origins with `403`.
@@ -59,13 +60,15 @@ This report captures the current public-release hardening status for Spartan Scr
 
 2. **Deep git-history secret scan is still a release-tier/manual concern**
    - Keep `make audit-public` as fast deterministic gate.
-   - Run a deep-history scanner (for example, Gitleaks) in pre-tag/manual release workflow.
+   - Run `make secret-scan` in pre-tag/manual release workflow.
 
 ## Validation Snapshot
 
 - `make audit-public` ✅
+- `make secret-scan` ✅
 - `make ci-pr` ✅
 - `make ci` ✅
+- `make ci-slow` ✅
 
 ## Reviewer Validation Path
 
