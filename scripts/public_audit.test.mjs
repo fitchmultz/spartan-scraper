@@ -120,6 +120,15 @@ async function run() {
 		assertEqual(module.shouldScanContent('internal/cli/cli.go'), false, 'Expected source Go file to be excluded');
 	});
 
+	await test('shouldScanSecrets scans source and config surfaces', () => {
+		assert(module.shouldScanSecrets('internal/cli/cli.go'), 'Expected Go source to be secret-scanned');
+		assert(module.shouldScanSecrets('web/src/App.tsx'), 'Expected TSX source to be secret-scanned');
+		assert(module.shouldScanSecrets('web/package.json'), 'Expected web root config to be secret-scanned');
+		assert(module.shouldScanSecrets('.github/workflows/ci-pr.yml'), 'Expected workflow YAML to be secret-scanned');
+		assert(module.shouldScanSecrets('.env.example'), 'Expected .env.example to be secret-scanned');
+		assertEqual(module.shouldScanSecrets('assets/logo.png'), false, 'Expected binary asset path to be excluded');
+	});
+
 	await test('findPathFindings catches tracked artifact directories', () => {
 		const findings = module.findPathFindings('.ralph/done.json');
 		assert(findings.length > 0, 'Expected at least one finding for .ralph path');
@@ -132,6 +141,16 @@ async function run() {
 			'Path /Users/tester/private.txt\nCONTACT_EMAIL_TO_BE_UPDATED_WHEN_PUBLIC',
 		);
 		assertEqual(findings.length, 2, 'Expected both abs-path and placeholder findings');
+	});
+
+	await test('findSecretFindings catches high-confidence secret patterns', () => {
+		const token = `sk-proj-${'ABCDEFGHIJKLMNOPQRSTUVWXYZ12345'}`;
+		const findings = module.findSecretFindings(
+			'internal/example.go',
+			`OPENAI_API_KEY=${token}`,
+		);
+		assertEqual(findings.length, 1, 'Expected one secret finding');
+		assertEqual(findings[0].ruleId, 'secret-openai', 'Expected OpenAI secret rule ID');
 	});
 
 	await test('parseArgs supports branch and history toggles', () => {

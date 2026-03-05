@@ -79,6 +79,7 @@ Expected:
 
 - no absolute local path leaks
 - no placeholder contact strings
+- no high-confidence secret patterns
 - no tracked local/build/cache artifacts
 - no branch-history residue for blocked artifact paths
 

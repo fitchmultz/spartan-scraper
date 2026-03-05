@@ -74,6 +74,7 @@ Open `http://localhost:5173`.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
+- [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): timestamped UI dogfood evidence bundles.
 
 ### CLI examples
 
@@ -193,7 +194,7 @@ GitHub workflow split:
 - **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`)
 
 ```bash
-make audit-public  # Scan tracked files + branch history for public-readiness leaks/placeholders
+make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
 make ci            # Full local gate (includes install + build + tests)
 make ci-slow       # Heavy stress/e2e checks (network required)

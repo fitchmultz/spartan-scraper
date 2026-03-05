@@ -3,8 +3,8 @@
 /**
  * Purpose: Prevent accidental publication of sensitive or low-signal repository content.
  * Responsibilities: Scan tracked files for leak indicators (absolute paths, placeholder contacts),
- *   tracked local/build artifacts that should not be committed, and high-risk history residue in the
- *   current branch.
+ *   high-confidence secret patterns, tracked local/build artifacts that should not be committed, and
+ *   high-risk history residue in the current branch.
  * Scope: Repository metadata/docs, tracked file paths, and branch history hygiene checks only; does
  *   not lint source logic.
  * Usage: node scripts/public_audit.mjs [--json] [--branch <ref>] [--no-history] [--help]
@@ -35,6 +35,34 @@ const CONTENT_RULES = [
 	},
 ];
 
+const SECRET_RULES = [
+	{
+		id: 'secret-openai',
+		description: 'Potential OpenAI API key detected',
+		pattern: /\bsk-(?:proj-)?[A-Za-z0-9]{20,}\b/,
+	},
+	{
+		id: 'secret-github',
+		description: 'Potential GitHub token detected',
+		pattern: /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/,
+	},
+	{
+		id: 'secret-aws',
+		description: 'Potential AWS access key detected',
+		pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/,
+	},
+	{
+		id: 'secret-slack',
+		description: 'Potential Slack token detected',
+		pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
+	},
+	{
+		id: 'secret-private-key',
+		description: 'Private key material detected',
+		pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/,
+	},
+];
+
 const CONTENT_SCAN_PATHS = [
 	/^[^/]+\.md$/,
 	/^docs\/.*\.md$/,
@@ -42,6 +70,12 @@ const CONTENT_SCAN_PATHS = [
 	/^\.env\.example$/,
 	/^web\/\.env\.example$/,
 	/^extensions\/\.env\.example$/,
+];
+
+const SECRET_SCAN_PATHS = [
+	/^[^/]+\.(?:md|json|ya?ml|toml|ini|conf|sh|zsh|bash|env|txt)$/,
+	/^(?:docs|scripts|cmd|internal|api|web|extensions|\.github)\/.*\.(?:go|ts|tsx|js|mjs|cjs|json|ya?ml|md|sh|sql|txt)$/,
+	/^(?:\.env\.example|web\/\.env\.example|extensions\/\.env\.example)$/,
 ];
 
 const TRACKED_PATH_RULES = [
@@ -199,6 +233,10 @@ function shouldScanContent(filePath) {
 	return CONTENT_SCAN_PATHS.some(pattern => pattern.test(filePath));
 }
 
+function shouldScanSecrets(filePath) {
+	return SECRET_SCAN_PATHS.some(pattern => pattern.test(filePath));
+}
+
 function isTrackedEnvFile(filePath) {
 	if (filePath.endsWith('.env.example')) {
 		return false;
@@ -245,14 +283,14 @@ function findPathFindings(filePath) {
 	return findings;
 }
 
-function findContentFindings(filePath, content) {
+function findRuleFindings(filePath, content, rules) {
 	const findings = [];
 	const lines = content.split(/\r?\n/);
 
 	for (let index = 0; index < lines.length; index++) {
 		const line = lines[index];
 
-		for (const rule of CONTENT_RULES) {
+		for (const rule of rules) {
 			const match = line.match(rule.pattern);
 			if (!match) {
 				continue;
@@ -269,6 +307,14 @@ function findContentFindings(filePath, content) {
 	}
 
 	return findings;
+}
+
+function findContentFindings(filePath, content) {
+	return findRuleFindings(filePath, content, CONTENT_RULES);
+}
+
+function findSecretFindings(filePath, content) {
+	return findRuleFindings(filePath, content, SECRET_RULES);
 }
 
 function historyHasPath(root, ref, pathspec) {
@@ -346,7 +392,10 @@ function findHistoryContentFindings(root, ref) {
 				continue;
 			}
 
-			const revisionFindings = findContentFindings(filePath, content);
+			const revisionFindings = [
+				...findContentFindings(filePath, content),
+				...findSecretFindings(filePath, content),
+			];
 			for (const finding of revisionFindings) {
 				findings.push({
 					...finding,
@@ -392,13 +441,20 @@ function runAudit(options = { branch: DEFAULT_BRANCH_REF, includeHistory: true }
 	for (const filePath of files) {
 		findings.push(...findPathFindings(filePath));
 
-		if (!shouldScanContent(filePath)) {
+		const scanContent = shouldScanContent(filePath);
+		const scanSecrets = shouldScanSecrets(filePath);
+		if (!scanContent && !scanSecrets) {
 			continue;
 		}
 
 		try {
 			const content = readFileSync(join(root, filePath), 'utf8');
-			findings.push(...findContentFindings(filePath, content));
+			if (scanContent) {
+				findings.push(...findContentFindings(filePath, content));
+			}
+			if (scanSecrets) {
+				findings.push(...findSecretFindings(filePath, content));
+			}
 		} catch {
 			// Ignore unreadable files; this audit only targets plaintext tracked files.
 		}
@@ -479,9 +535,13 @@ export {
 	DEFAULT_BRANCH_REF,
 	HISTORY_CONTENT_SCAN_FILES,
 	HISTORY_PATH_RULES,
+	SECRET_RULES,
+	SECRET_SCAN_PATHS,
 	dedupeFindings,
 	findHistoryContentFindings,
 	findHistoryPathFindings,
+	findRuleFindings,
+	findSecretFindings,
 	TRACKED_PATH_RULES,
 	branchExists,
 	findContentFindings,
@@ -493,6 +553,7 @@ export {
 	readHistoryFile,
 	runAudit,
 	shouldScanContent,
+	shouldScanSecrets,
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
