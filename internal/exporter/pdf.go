@@ -9,9 +9,11 @@ package exporter
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -290,7 +292,9 @@ ol li a { color: #3498db; word-break: break-all; }
 // generatePDF generates a PDF from HTML content using Chromedp.
 func generatePDF(ctx context.Context, html string, w io.Writer) error {
 	// Create a new allocator context
-	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, chromedp.DefaultExecAllocatorOptions[:]...)
+	allocatorOpts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
+	allocatorOpts = appendChromedpCIFlags(allocatorOpts)
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, allocatorOpts...)
 	defer cancelAlloc()
 
 	// Create a new browser context
@@ -301,8 +305,8 @@ func generatePDF(ctx context.Context, html string, w io.Writer) error {
 	ctx, cancelTimeout := context.WithTimeout(browserCtx, 30*time.Second)
 	defer cancelTimeout()
 
-	// Navigate to a data URL with the HTML content
-	dataURL := "data:text/html;charset=utf-8," + html
+	// Use a base64 data URL so PDF generation is not sensitive to HTML escaping.
+	dataURL := "data:text/html;charset=utf-8;base64," + base64.StdEncoding.EncodeToString([]byte(html))
 
 	var pdfData []byte
 	err := chromedp.Run(ctx,
@@ -333,6 +337,18 @@ func generatePDF(ctx context.Context, html string, w io.Writer) error {
 	}
 
 	return nil
+}
+
+func appendChromedpCIFlags(opts []chromedp.ExecAllocatorOption) []chromedp.ExecAllocatorOption {
+	if os.Getenv("CI") == "" {
+		return opts
+	}
+
+	return append(
+		opts,
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+	)
 }
 
 // escapeHTML escapes HTML special characters.

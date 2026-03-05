@@ -243,6 +243,7 @@ func TestFindChrome(t *testing.T) {
 		{
 			name: "Finds Chrome on macOS",
 			setupMock: func() {
+				currentOS = "darwin"
 				lookPath = func(file string) (string, error) {
 					return "", &exec.Error{Name: file, Err: errors.New("not found")}
 				}
@@ -254,6 +255,7 @@ func TestFindChrome(t *testing.T) {
 				}
 			},
 			teardownMock: func() {
+				currentOS = runtime.GOOS
 				lookPath = exec.LookPath
 				osStat = os.Stat
 			},
