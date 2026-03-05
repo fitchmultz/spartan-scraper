@@ -58,12 +58,12 @@ spartan plugin enable --name sample-plugin
 # Install
 curl -X POST http://localhost:8080/v1/plugins \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "X-API-Key: ${SPARTAN_API_KEY}" \
   -d '{"source": "/path/to/sample-plugin"}'
 
 # Enable
 curl -X POST http://localhost:8080/v1/plugins/sample-plugin/enable \
-  -H "X-API-Key: your-api-key"
+  -H "X-API-Key: ${SPARTAN_API_KEY}"
 ```
 
 ## Configuration

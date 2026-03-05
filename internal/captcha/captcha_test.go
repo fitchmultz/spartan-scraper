@@ -39,7 +39,7 @@ func TestDetectReCAPTCHAV2(t *testing.T) {
 <html>
 <head><title>Test</title></head>
 <body>
-<div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+<div class="g-recaptcha" data-sitekey="test-site-key"></div>
 <script src="https://www.google.com/recaptcha/api.js"></script>
 </body>
 </html>`
@@ -55,7 +55,7 @@ func TestDetectReCAPTCHAV2(t *testing.T) {
 	if detection.Type != CaptchaTypeReCAPTCHAV2 {
 		t.Errorf("expected type %s, got %s", CaptchaTypeReCAPTCHAV2, detection.Type)
 	}
-	if detection.SiteKey != "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" {
+	if detection.SiteKey != "test-site-key" {
 		t.Errorf("expected site key, got %s", detection.SiteKey)
 	}
 }
@@ -529,8 +529,8 @@ func TestExtractSiteKey(t *testing.T) {
 		input string
 		want  string
 	}{
-		{`sitekey: "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"`, "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"},
-		{`data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"`, "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"},
+		{`sitekey: "test-site-key"`, "test-site-key"},
+		{`data-sitekey="test-site-key"`, "test-site-key"},
 		{"no site key here", ""},
 	}
 

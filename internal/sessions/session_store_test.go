@@ -474,8 +474,8 @@ func TestHashToken(t *testing.T) {
 			token: "simple-token-123",
 		},
 		{
-			name:  "hex token",
-			token: "abcdef1234567890abcdef1234567890",
+			name:  "mixed token",
+			token: "token-abcdef-12345",
 		},
 		{
 			name:  "empty token",
