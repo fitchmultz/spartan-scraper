@@ -1,0 +1,10 @@
+{
+  "activeElement": {
+    "ariaLabel": "Search commands",
+    "placeholder": "Type a command or search...",
+    "tag": "INPUT",
+    "value": "restart"
+  },
+  "commandValue": null,
+  "targetValue": null
+}
