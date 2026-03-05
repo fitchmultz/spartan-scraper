@@ -292,7 +292,7 @@ func TestHandleJobRouting(t *testing.T) {
 }
 
 func TestHandleJobForceDelete(t *testing.T) {
-	srv, cleanup := setupTestServer(t)
+	srv, cleanup := setupTestServerWithConcurrency(t, 0)
 	defer cleanup()
 
 	body := `{"url": "https://example.com"}`
