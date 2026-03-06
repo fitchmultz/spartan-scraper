@@ -153,7 +153,8 @@ Open `http://localhost:5173` for the UI.
 The dev server proxies API requests to `http://localhost:8741` by default.
 WebSocket upgrades to `/v1/ws` accept browser origins from loopback hosts only (`localhost`, `127.0.0.1`, `::1`).
 Non-browser clients without an `Origin` header remain supported.
-If you change the backend `PORT` in the root `.env`, you must also update `VITE_API_BASE_URL` in `web/.env` to match.
+If you run the backend on a different local port, set `DEV_API_PROXY_TARGET=http://127.0.0.1:<port>` in `web/.env` so the dev proxy stays same-origin.
+Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser should call a remote API directly.
 
 ## Architecture at a glance
 

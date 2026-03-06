@@ -471,15 +471,19 @@ func validateAndFixQueueConfig(cfg Config) Config {
 }
 
 func hasExplicitRetentionLimitOverrides() bool {
-	keys := []string{
-		"RETENTION_JOB_DAYS",
-		"RETENTION_CRAWL_STATE_DAYS",
-		"RETENTION_MAX_JOBS",
-		"RETENTION_MAX_STORAGE_GB",
+	defaults := map[string]string{
+		"RETENTION_JOB_DAYS":         "30",
+		"RETENTION_CRAWL_STATE_DAYS": "90",
+		"RETENTION_MAX_JOBS":         "10000",
+		"RETENTION_MAX_STORAGE_GB":   "10",
 	}
 
-	for _, key := range keys {
-		if _, ok := os.LookupEnv(key); ok {
+	for key, defaultValue := range defaults {
+		value, ok := lookupEnvNormalized(key)
+		if !ok {
+			continue
+		}
+		if value != "" && value != defaultValue {
 			return true
 		}
 	}
@@ -561,16 +565,44 @@ func normalizeAuthKeySuffix(raw string) string {
 }
 
 func getenv(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := lookupEnvNormalized(key)
+	if !ok || value == "" {
 		return fallback
 	}
 	return value
 }
 
-func getenvInt(key string, fallback int) int {
-	value := os.Getenv(key)
+func lookupEnvNormalized(key string) (string, bool) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return "", false
+	}
+	return normalizeEnvValue(value), true
+}
+
+func normalizeEnvValue(value string) string {
+	trimmedLeft := strings.TrimLeft(value, " \t")
+	if strings.HasPrefix(trimmedLeft, "#") {
+		return ""
+	}
+
+	if idx := strings.Index(value, " #"); idx >= 0 {
+		return strings.TrimSpace(value[:idx])
+	}
+	if idx := strings.Index(value, "\t#"); idx >= 0 {
+		return strings.TrimSpace(value[:idx])
+	}
+
+	value = strings.TrimSpace(value)
 	if value == "" {
+		return ""
+	}
+	return value
+}
+
+func getenvInt(key string, fallback int) int {
+	value, ok := lookupEnvNormalized(key)
+	if !ok || value == "" {
 		return fallback
 	}
 	parsed, err := strconv.Atoi(value)
@@ -582,8 +614,8 @@ func getenvInt(key string, fallback int) int {
 }
 
 func getenvInt64(key string, fallback int64) int64 {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := lookupEnvNormalized(key)
+	if !ok || value == "" {
 		return fallback
 	}
 	parsed, err := strconv.ParseInt(value, 10, 64)
@@ -595,8 +627,8 @@ func getenvInt64(key string, fallback int64) int64 {
 }
 
 func getenvBool(key string, fallback bool) bool {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := lookupEnvNormalized(key)
+	if !ok || value == "" {
 		return fallback
 	}
 	switch strings.ToLower(value) {
@@ -611,8 +643,8 @@ func getenvBool(key string, fallback bool) bool {
 }
 
 func getenvFloat64(key string, fallback float64) float64 {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := lookupEnvNormalized(key)
+	if !ok || value == "" {
 		return fallback
 	}
 	parsed, err := strconv.ParseFloat(value, 64)

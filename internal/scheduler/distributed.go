@@ -35,6 +35,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const schedulerInstanceIDSuffixLength = 10
+
 // DistributedScheduler provides distributed scheduling with leader election.
 type DistributedScheduler struct {
 	client       *redis.Client
@@ -374,7 +376,7 @@ func (dr *DistributedRunner) enqueueSchedule(ctx context.Context, schedule Sched
 
 // generateInstanceID creates a unique instance identifier.
 func generateInstanceID() (string, error) {
-	suffix, err := randomString(6)
+	suffix, err := randomString(schedulerInstanceIDSuffixLength)
 	if err != nil {
 		return "", err
 	}

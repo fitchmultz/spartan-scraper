@@ -85,7 +85,7 @@ func TestGenerateInstanceIDFormat(t *testing.T) {
 		t.Fatalf("generateInstanceID() returned error: %v", err)
 	}
 
-	// Format should be: scheduler-YYYYMMDD-HHMMSS-XXXXXX
+	// Format should be: scheduler-YYYYMMDD-HHMMSS-<random suffix>
 	if !strings.HasPrefix(id, "scheduler-") {
 		t.Errorf("generateInstanceID() returned ID without 'scheduler-' prefix: %s", id)
 	}
@@ -96,10 +96,15 @@ func TestGenerateInstanceIDFormat(t *testing.T) {
 		t.Errorf("generateInstanceID() returned ID with wrong format, expected 4 parts, got %d: %s", len(parts), id)
 	}
 
-	// Check that the random suffix has correct length (6 characters)
+	// Check that the random suffix has correct length.
 	suffix := parts[len(parts)-1]
-	if len(suffix) != 6 {
-		t.Errorf("generateInstanceID() returned ID with suffix length %d, want 6: %s", len(suffix), id)
+	if len(suffix) != schedulerInstanceIDSuffixLength {
+		t.Errorf(
+			"generateInstanceID() returned ID with suffix length %d, want %d: %s",
+			len(suffix),
+			schedulerInstanceIDSuffixLength,
+			id,
+		)
 	}
 }
 

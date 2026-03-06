@@ -4,10 +4,13 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -43,6 +46,10 @@ type requestIDResponseWriter struct {
 	requestID string
 }
 
+func (rw *requestIDResponseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
 func (rw *requestIDResponseWriter) WriteHeader(code int) {
 	if rw.requestID != "" {
 		rw.Header().Set("X-Request-ID", rw.requestID)
@@ -55,6 +62,38 @@ func (rw *requestIDResponseWriter) Write(p []byte) (int, error) {
 		rw.Header().Set("X-Request-ID", rw.requestID)
 	}
 	return rw.ResponseWriter.Write(p)
+}
+
+func (rw *requestIDResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := rw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func (rw *requestIDResponseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *requestIDResponseWriter) Push(target string, opts *http.PushOptions) error {
+	pusher, ok := rw.ResponseWriter.(http.Pusher)
+	if !ok {
+		return http.ErrNotSupported
+	}
+	return pusher.Push(target, opts)
+}
+
+func (rw *requestIDResponseWriter) ReadFrom(reader io.Reader) (int64, error) {
+	if rw.requestID != "" {
+		rw.Header().Set("X-Request-ID", rw.requestID)
+	}
+	if readFrom, ok := rw.ResponseWriter.(io.ReaderFrom); ok {
+		return readFrom.ReadFrom(reader)
+	}
+	return io.Copy(rw.ResponseWriter, reader)
 }
 
 func writeJSON(w http.ResponseWriter, payload interface{}) {
@@ -341,7 +380,50 @@ type loggingResponseWriter struct {
 	statusCode int
 }
 
+func (lrw *loggingResponseWriter) Unwrap() http.ResponseWriter {
+	return lrw.ResponseWriter
+}
+
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
 	lrw.ResponseWriter.WriteHeader(code)
+}
+
+func (lrw *loggingResponseWriter) Write(p []byte) (int, error) {
+	if lrw.statusCode == 0 {
+		lrw.statusCode = http.StatusOK
+	}
+	return lrw.ResponseWriter.Write(p)
+}
+
+func (lrw *loggingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := lrw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func (lrw *loggingResponseWriter) Flush() {
+	if flusher, ok := lrw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (lrw *loggingResponseWriter) Push(target string, opts *http.PushOptions) error {
+	pusher, ok := lrw.ResponseWriter.(http.Pusher)
+	if !ok {
+		return http.ErrNotSupported
+	}
+	return pusher.Push(target, opts)
+}
+
+func (lrw *loggingResponseWriter) ReadFrom(reader io.Reader) (int64, error) {
+	if lrw.statusCode == 0 {
+		lrw.statusCode = http.StatusOK
+	}
+	if readFrom, ok := lrw.ResponseWriter.(io.ReaderFrom); ok {
+		return readFrom.ReadFrom(reader)
+	}
+	return io.Copy(lrw.ResponseWriter, reader)
 }

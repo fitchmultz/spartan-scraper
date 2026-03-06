@@ -19,6 +19,7 @@ Global entry points:
 - `spartan render-profiles`
 - `spartan pipeline-js`
 - `spartan templates`
+- `spartan form`
 - `spartan crawl-states`
 - `spartan export`
 - `spartan export-schedule`
@@ -501,10 +502,12 @@ curl -sS -X POST "http://localhost:8741/v1/extract/ai-template-generate" \
 
 ### crawl-states
 
-List incremental crawl states (ETags/Last-Modified tracking).
+Inspect and manage incremental crawl states (ETags/Last-Modified tracking).
 
 ```
 spartan crawl-states list [--limit <n>]
+spartan crawl-states delete --url <url>
+spartan crawl-states clear
 ```
 
 ### Render Profiles

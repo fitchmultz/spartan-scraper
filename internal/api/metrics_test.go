@@ -4,6 +4,7 @@
 package api
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -174,6 +175,34 @@ func TestMetricsCollector_StartRequest(t *testing.T) {
 	mc.StartRequest()
 	if mc.activeRequests != 2 {
 		t.Errorf("expected activeRequests 2, got %d", mc.activeRequests)
+	}
+}
+
+func TestMetricsCollector_CallbackTracksRequestLifecycle(t *testing.T) {
+	mc := NewMetricsCollector()
+	callback := mc.Callback()
+
+	callback(0, true, "", "https://example.com/start")
+	if got := atomic.LoadInt64(&mc.activeRequests); got != 1 {
+		t.Fatalf("expected activeRequests 1 after start marker, got %d", got)
+	}
+
+	callback(125*time.Millisecond, true, "http", "https://example.com/done")
+	if got := atomic.LoadInt64(&mc.activeRequests); got != 0 {
+		t.Fatalf("expected activeRequests 0 after completion, got %d", got)
+	}
+	if got := atomic.LoadUint64(&mc.totalRequests); got != 1 {
+		t.Fatalf("expected totalRequests 1 after completion, got %d", got)
+	}
+}
+
+func TestMetricsCollector_RecordRequestDoesNotGoNegative(t *testing.T) {
+	mc := NewMetricsCollector()
+
+	mc.RecordRequest(100*time.Millisecond, true, "http", "https://example.com/path")
+
+	if got := atomic.LoadInt64(&mc.activeRequests); got != 0 {
+		t.Fatalf("expected activeRequests to stay at 0, got %d", got)
 	}
 }
 

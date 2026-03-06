@@ -179,6 +179,19 @@ type MetricsCollector struct {
 	retention time.Duration
 }
 
+// Callback adapts the collector to the fetch-layer metrics callback contract.
+// A zero duration is treated as a request start marker; non-zero durations
+// record completed request outcomes.
+func (m *MetricsCollector) Callback() func(duration time.Duration, success bool, fetcherType, rawURL string) {
+	return func(duration time.Duration, success bool, fetcherType, rawURL string) {
+		if duration <= 0 {
+			m.StartRequest()
+			return
+		}
+		m.RecordRequest(duration, success, fetcherType, rawURL)
+	}
+}
+
 // NewMetricsCollector creates a new metrics collector
 func NewMetricsCollector() *MetricsCollector {
 	return &MetricsCollector{
@@ -221,7 +234,7 @@ func (m *MetricsCollector) RecordRequest(duration time.Duration, success bool, f
 	}
 
 	// Update counters
-	atomic.AddInt64(&m.activeRequests, -1)
+	m.finishRequest()
 	atomic.AddUint64(&m.totalRequests, 1)
 	if success {
 		atomic.AddUint64(&m.successCount, 1)
@@ -261,6 +274,18 @@ func (m *MetricsCollector) RecordRequest(duration time.Duration, success bool, f
 // StartRequest marks the beginning of a request (for active request counting)
 func (m *MetricsCollector) StartRequest() {
 	atomic.AddInt64(&m.activeRequests, 1)
+}
+
+func (m *MetricsCollector) finishRequest() {
+	for {
+		current := atomic.LoadInt64(&m.activeRequests)
+		if current <= 0 {
+			return
+		}
+		if atomic.CompareAndSwapInt64(&m.activeRequests, current, current-1) {
+			return
+		}
+	}
 }
 
 // RecordJobDuration records a job duration measurement

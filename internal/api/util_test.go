@@ -4,9 +4,12 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -413,6 +416,120 @@ func TestRequestIDResponseWriterWriteHeader(t *testing.T) {
 
 	if reqID := rr.Header().Get("X-Request-ID"); reqID != "test-header-123" {
 		t.Errorf("X-Request-ID header not set on WriteHeader(): got %q, want %q", reqID, "test-header-123")
+	}
+}
+
+type hijackableRecorder struct {
+	*httptest.ResponseRecorder
+	hijacked bool
+}
+
+func (r *hijackableRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	r.hijacked = true
+	return nil, nil, nil
+}
+
+func TestRequestIDResponseWriterImplementsHijacker(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			t.Fatal("request ID response writer should preserve http.Hijacker")
+		}
+		if _, _, err := hijacker.Hijack(); err != nil {
+			t.Fatalf("Hijack() failed: %v", err)
+		}
+	})
+
+	middleware := requestIDMiddleware(handler)
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := &hijackableRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	middleware.ServeHTTP(rr, req)
+
+	if !rr.hijacked {
+		t.Fatal("expected wrapped response writer to forward Hijack()")
+	}
+}
+
+func TestRequestIDResponseWriterSupportsResponseControllerHijack(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, _, err := http.NewResponseController(w).Hijack(); err != nil {
+			t.Fatalf("response controller hijack failed: %v", err)
+		}
+	})
+
+	middleware := requestIDMiddleware(handler)
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := &hijackableRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	middleware.ServeHTTP(rr, req)
+
+	if !rr.hijacked {
+		t.Fatal("expected response controller hijack to reach wrapped writer")
+	}
+}
+
+func TestRequestIDResponseWriterImplementsReadFrom(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		readerFrom, ok := w.(io.ReaderFrom)
+		if !ok {
+			t.Fatal("request ID response writer should preserve io.ReaderFrom")
+		}
+		if _, err := readerFrom.ReadFrom(strings.NewReader("copied body")); err != nil {
+			t.Fatalf("ReadFrom() failed: %v", err)
+		}
+	})
+
+	middleware := requestIDMiddleware(handler)
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.Header.Set("X-Request-ID", "test-readfrom-123")
+	rr := httptest.NewRecorder()
+
+	middleware.ServeHTTP(rr, req)
+
+	if body := rr.Body.String(); body != "copied body" {
+		t.Fatalf("expected copied body, got %q", body)
+	}
+	if reqID := rr.Header().Get("X-Request-ID"); reqID != "test-readfrom-123" {
+		t.Fatalf("expected X-Request-ID header on ReadFrom path, got %q", reqID)
+	}
+}
+
+func TestLoggingResponseWriterImplementsHijacker(t *testing.T) {
+	handler := loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			t.Fatal("logging response writer should preserve http.Hijacker")
+		}
+		if _, _, err := hijacker.Hijack(); err != nil {
+			t.Fatalf("Hijack() failed: %v", err)
+		}
+	}))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := &hijackableRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	handler.ServeHTTP(rr, req)
+
+	if !rr.hijacked {
+		t.Fatal("expected logging response writer to forward Hijack()")
+	}
+}
+
+func TestLoggingResponseWriterSupportsResponseControllerHijack(t *testing.T) {
+	handler := loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, _, err := http.NewResponseController(w).Hijack(); err != nil {
+			t.Fatalf("response controller hijack failed: %v", err)
+		}
+	}))
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := &hijackableRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	handler.ServeHTTP(rr, req)
+
+	if !rr.hijacked {
+		t.Fatal("expected response controller hijack to reach wrapped writer")
 	}
 }
 

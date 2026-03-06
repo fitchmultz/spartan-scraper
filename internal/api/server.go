@@ -69,8 +69,9 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	// Start periodic metrics broadcasting
 	go s.startMetricsBroadcast()
 
-	// Set up metrics callback for fetch operations
-	s.manager.SetMetricsCallback(s.metricsCollector.RecordRequest)
+	// Set up metrics callback for fetch operations.
+	// The fetch layer emits a zero-duration start marker before completion.
+	s.manager.SetMetricsCallback(s.metricsCollector.Callback())
 
 	// Initialize webhook dispatcher if configured
 	if cfg.Webhook.Enabled || cfg.Webhook.Secret != "" {

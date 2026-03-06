@@ -42,6 +42,10 @@ make clean            # Remove build artifacts, dependencies, node_modules, inst
 make web-dev          # Start web dev server (http://localhost:5173)
 ```
 
+### Recent Learned Patterns
+
+- Local web development should keep browser requests same-origin through the Vite proxy. Use `DEV_API_PROXY_TARGET` when the backend is not on `http://127.0.0.1:8741`; reserve `VITE_API_BASE_URL` for intentional browser-visible cross-origin deployments.
+
 ### Testing Guidelines
 
 - **Go tests**: Use `go test ./...` with `CI=1` for consistent output

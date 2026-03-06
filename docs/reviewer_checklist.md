@@ -80,6 +80,8 @@ Terminal B:
 
 ```bash
 make web-dev
+# If the backend is not on 8741:
+# DEV_API_PROXY_TARGET=http://127.0.0.1:<port> make web-dev
 ```
 
 Open <http://localhost:5173>.

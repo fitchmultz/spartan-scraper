@@ -195,6 +195,52 @@ func TestHasExplicitRetentionLimitOverrides(t *testing.T) {
 	}
 }
 
+func TestHasExplicitRetentionLimitOverrides_IgnoresDefaultValues(t *testing.T) {
+	t.Setenv("RETENTION_JOB_DAYS", "30")
+	t.Setenv("RETENTION_CRAWL_STATE_DAYS", "90")
+	t.Setenv("RETENTION_MAX_JOBS", "10000")
+	t.Setenv("RETENTION_MAX_STORAGE_GB", "10")
+
+	if hasExplicitRetentionLimitOverrides() {
+		t.Fatal("expected default retention values to not count as explicit overrides")
+	}
+}
+
+func TestGetenv_NormalizesInlineComments(t *testing.T) {
+	t.Setenv("TEST_VALUE_EMPTY_COMMENT", "   # comment only")
+	t.Setenv("TEST_VALUE_TRAILING_COMMENT", "60   # trailing comment")
+	t.Setenv("TEST_VALUE_HASH_LITERAL", "abc#123")
+
+	if got := getenv("TEST_VALUE_EMPTY_COMMENT", "fallback"); got != "fallback" {
+		t.Fatalf("expected fallback for comment-only value, got %q", got)
+	}
+	if got := getenvInt("TEST_VALUE_TRAILING_COMMENT", 10); got != 60 {
+		t.Fatalf("expected trailing comment to be stripped before int parse, got %d", got)
+	}
+	if got := getenv("TEST_VALUE_HASH_LITERAL", "fallback"); got != "abc#123" {
+		t.Fatalf("expected literal hash value to be preserved, got %q", got)
+	}
+}
+
+func TestLoad_IgnoresCommentOnlyAIProvider(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("AI_PROVIDER", "   # openai")
+	t.Setenv("AI_API_KEY", "   # sk-...")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.AI.Provider != "" {
+		t.Fatalf("expected comment-only AI_PROVIDER to be treated as empty, got %q", cfg.AI.Provider)
+	}
+	if cfg.AI.APIKey != "" {
+		t.Fatalf("expected comment-only AI_API_KEY to be treated as empty, got %q", cfg.AI.APIKey)
+	}
+}
+
 func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	// This test is primarily validated by running with the race detector:
 	//   go test -race ./...
