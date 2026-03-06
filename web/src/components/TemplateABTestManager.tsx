@@ -7,20 +7,20 @@
  * @module TemplateABTestManager
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
+import { useCallback, useEffect, useState } from "react";
+import type { TemplateAbTest, TemplateComparison } from "../api";
 import {
-  getV1TemplateAbTests,
-  postV1TemplateAbTests,
   deleteV1TemplateAbTestsById,
+  getV1TemplateAbTests,
+  getV1TemplateAbTestsByIdResults,
+  listTemplates,
+  postV1TemplateAbTests,
+  postV1TemplateAbTestsByIdAutoSelect,
   postV1TemplateAbTestsByIdStart,
   postV1TemplateAbTestsByIdStop,
-  getV1TemplateAbTestsByIdResults,
-  postV1TemplateAbTestsByIdAutoSelect,
-  listTemplates,
 } from "../api";
-import type { TemplateAbTest, TemplateComparison } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 export function TemplateABTestManager() {
   const [tests, setTests] = useState<TemplateAbTest[]>([]);

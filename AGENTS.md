@@ -48,6 +48,8 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - `PROXY_POOL_FILE=` is the explicit disable path for the optional proxy pool. Preserve empty overrides in config loading so fresh CLI smoke runs stay warning-free when users intentionally turn the feature off.
 - `useWebSocket` should defer its initial connect by one tick and ignore stale/manual socket errors. React `StrictMode` double-mount in Vite dev otherwise produces a false `WebSocket ... closed before the connection is established` warning even when the transport is healthy.
 - Export schedule history is wired through `ExportScheduleManager`; keep regression coverage at the manager level so browser-harness ref flakiness does not masquerade as a product bug.
+- The web shell must declare a real favicon asset. Otherwise fresh browser sessions emit a load-time `/favicon.ico` 404 even when the app itself is healthy.
+- Template A/B handlers must return OpenAPI-shaped JSON (`id`, `baseline_template`, `success_criteria`, etc.), not raw `store.TemplateABTestRecord` fields. Returning store records breaks live UI rendering and triggers React key warnings.
 
 ### Testing Guidelines
 

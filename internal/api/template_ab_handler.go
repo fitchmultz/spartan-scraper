@@ -10,6 +10,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 // handleABTests handles requests to /v1/template-ab-tests
@@ -77,10 +78,15 @@ func (s *Server) handleABTest(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListABTests(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 
-	tests, err := s.store.ListABTests(r.Context(), status)
+	records, err := s.store.ListABTests(r.Context(), status)
 	if err != nil {
 		writeError(w, r, err)
 		return
+	}
+
+	tests := make([]*extract.TemplateABTest, 0, len(records))
+	for i := range records {
+		tests = append(tests, templateABRecordToResponse(&records[i]))
 	}
 
 	writeJSON(w, map[string]interface{}{
@@ -165,7 +171,7 @@ func (s *Server) handleGetABTest(w http.ResponseWriter, r *http.Request, testID 
 		return
 	}
 
-	writeJSON(w, record)
+	writeJSON(w, templateABRecordToResponse(record))
 }
 
 // handleUpdateABTest handles PATCH /v1/template-ab-tests/{id}
@@ -226,7 +232,7 @@ func (s *Server) handleUpdateABTest(w http.ResponseWriter, r *http.Request, test
 		return
 	}
 
-	writeJSON(w, record)
+	writeJSON(w, templateABRecordToResponse(record))
 }
 
 // handleDeleteABTest handles DELETE /v1/template-ab-tests/{id}
@@ -301,4 +307,34 @@ func (s *Server) handleAutoSelectWinner(w http.ResponseWriter, r *http.Request, 
 	}
 
 	writeJSON(w, comparison)
+}
+
+func templateABRecordToResponse(record *store.TemplateABTestRecord) *extract.TemplateABTest {
+	var allocation map[string]int
+	if record.AllocationJSON != "" {
+		_ = json.Unmarshal([]byte(record.AllocationJSON), &allocation)
+	}
+
+	var successCriteria extract.SuccessCriteria
+	if record.SuccessCriteriaJSON != "" {
+		_ = json.Unmarshal([]byte(record.SuccessCriteriaJSON), &successCriteria)
+	}
+
+	return &extract.TemplateABTest{
+		ID:               record.ID,
+		Name:             record.Name,
+		Description:      record.Description,
+		BaselineTemplate: record.BaselineTemplate,
+		VariantTemplate:  record.VariantTemplate,
+		Allocation:       allocation,
+		StartTime:        record.StartTime,
+		EndTime:          record.EndTime,
+		Status:           extract.ABTestStatus(record.Status),
+		SuccessCriteria:  successCriteria,
+		MinSampleSize:    record.MinSampleSize,
+		ConfidenceLevel:  record.ConfidenceLevel,
+		Winner:           record.Winner,
+		CreatedAt:        record.CreatedAt,
+		UpdatedAt:        record.UpdatedAt,
+	}
 }
