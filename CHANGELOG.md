@@ -13,7 +13,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - `make audit-public` target integrated into `make ci`.
 - Documentation index (`docs/README.md`) for faster navigation.
 - Repository hygiene metadata (`.editorconfig`, `.gitattributes`).
-- Reviewer-focused docs: `docs/reviewer_checklist.md`, `docs/release_readiness.md`, and `docs/ci.md`.
+- Validation and release docs: `docs/validation_checklist.md`, `docs/release_readiness.md`, and `docs/ci.md`.
 - `make ci-pr` and `make ci-manual` targets plus profile support in `run_ci.sh`.
 - GitHub Actions workflows for fast PR checks (`.github/workflows/ci-pr.yml`) and heavy nightly/manual checks (`.github/workflows/ci-slow.yml`).
 
@@ -23,7 +23,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - Updated contributing and policy docs for public issue/security workflows.
 - Expanded `.gitignore` to block env files, local caches, logs, and build artifacts.
 - `make build` now builds artifacts only; `make install-bin` handles binary install side effects explicitly.
-- `docs/architecture.md` now starts with a concise reviewer-oriented overview section.
+- `docs/architecture.md` now starts with a concise quick overview section.
 - History reset to a sanitized public baseline and force-updated `main` to remove legacy private artifacts from branch history.
 - Removed tracked local runtime artifacts (`.ralph/*`, `out/smoke_test/*`) from the repository tree.
 

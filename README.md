@@ -11,7 +11,7 @@ Spartan Scraper is a local-first scraping workbench for turning a URL into a cle
 
 It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, and only reach for headless browsers when a target actually needs them.
 
-If you are evaluating it quickly, start with the 5-minute demo below. If you are integrating it into a real workflow, the API, MCP server, schedules, and local artifact model all build on that same core path.
+If you want the fastest path in, start with the 5-minute demo below. If you are integrating it into a real workflow, the API, MCP server, schedules, and local artifact model all build on that same core path.
 
 ## Why It Exists
 

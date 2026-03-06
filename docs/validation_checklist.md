@@ -1,6 +1,6 @@
 # Validation Checklist
 
-This checklist is designed for a quick, high-confidence review.
+This checklist is designed for a quick, high-confidence validation pass.
 
 ## 1) Build + test gate
 
