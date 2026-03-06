@@ -7,7 +7,48 @@
 ![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6)
 
-A high‑performance, Go‑first web scraping + automation standard for all future projects.
+Spartan Scraper is a local-first scraping workbench for turning a URL into a clean result, a bounded crawl, or a research job without standing up cloud infrastructure.
+
+It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, and only reach for headless browsers when a target actually needs them.
+
+## Why It Exists
+
+- Start from a URL and get something useful quickly: extracted content, crawl output, or a research bundle.
+- Keep everything local by default: jobs, artifacts, auth profiles, schedules, and render rules stay on disk.
+- Use the same job model everywhere: Web UI, CLI, API, TUI, and MCP all operate on the same persisted workflows.
+- Stay practical for real sites: HTTP-first by default, Chromedp/Playwright when pages are JS-heavy or need login flows.
+
+## 5-Minute Demo
+
+```bash
+git clone <repo-url>
+cd spartan-scraper
+
+make install
+make generate
+make build
+
+# terminal 1
+./bin/spartan server
+
+# terminal 2
+make web-dev
+```
+
+Open `http://localhost:5173`, submit a scrape job for `https://example.com`, and expect:
+
+- the dashboard to show a new job move into `succeeded`
+- the results panel to include `Example Domain`
+- the metrics widget to show a live WebSocket connection
+
+If you want a CLI-only proof first:
+
+```bash
+./bin/spartan scrape --url https://example.com --out ./out/example.json
+cat ./out/example.json
+```
+
+Expected output includes the page title text `Example Domain`.
 
 ## Goals
 
@@ -36,6 +77,12 @@ make build
 make install-bin
 ```
 
+After the server is running, the fastest way to see value is:
+
+1. Open the Web UI at `http://localhost:5173`
+2. Submit a scrape for `https://example.com`
+3. Confirm the saved result contains `Example Domain`
+
 ## Reviewer Quickstart
 
 ```bash
@@ -54,6 +101,12 @@ make web-dev
 ```
 
 Open `http://localhost:5173`.
+
+## Why Agents And Developers Use It
+
+- Agents get an MCP surface, a deterministic local API, and a persistent job store they can inspect and reuse.
+- Developers get one local system for UI, CLI, and API validation instead of separate throwaway scripts.
+- Reviewers get reproducible CI, generated API types, and stored artifacts that make behavior easier to verify.
 
 ## Community
 
@@ -74,7 +127,7 @@ Open `http://localhost:5173`.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
-- [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): timestamped UI dogfood evidence bundles.
+- [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): curated UI verification evidence.
 - [docs/role-evidence/evidence-map.md](docs/role-evidence/evidence-map.md): production-readiness evidence pack (demo/workshop/cookbook/ops).
 
 ### CLI examples
@@ -95,7 +148,7 @@ Open `http://localhost:5173`.
   --login-pass-selector '#password' \
   --login-submit-selector 'button[type=submit]' \
   --login-user you@example.com \
-  --login-pass '***' \
+  --login-pass 'demo-password' \
   --out ./out/dashboard.json
 
 # Crawl a site (depth-limited)
@@ -115,7 +168,7 @@ Open `http://localhost:5173`.
 ./bin/spartan mcp
 
 # Auth profiles
-./bin/spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
+./bin/spartan auth set --name acme --auth-basic user:pass --header "X-API-Key: token-from-provider"
 ./bin/spartan scrape --url https://example.com --auth-profile acme
 
 # Extraction Templates
@@ -155,6 +208,14 @@ WebSocket upgrades to `/v1/ws` accept browser origins from loopback hosts only (
 Non-browser clients without an `Origin` header remain supported.
 If you run the backend on a different local port, set `DEV_API_PROXY_TARGET=http://127.0.0.1:<port>` in `web/.env` so the dev proxy stays same-origin.
 Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser should call a remote API directly.
+
+## Interfaces
+
+- Web UI for job submission, monitoring, and admin workflows
+- CLI for scripting and local automation
+- REST + GraphQL APIs for integrations
+- MCP server for agent orchestration
+- TUI for terminal-first inspection
 
 ## Architecture at a glance
 
