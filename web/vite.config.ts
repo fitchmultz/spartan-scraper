@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      target: "baseline-widely-available",
       rollupOptions: {
         output: {
           manualChunks: chunkNameForModuleId,

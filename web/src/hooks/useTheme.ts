@@ -8,7 +8,7 @@
  * @module useTheme
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useEffectEvent } from "react";
 
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -134,20 +134,22 @@ export function useTheme(): UseThemeReturn {
     }
   }, [applyTheme]);
 
+  const handleSystemPreferenceChange = useEffectEvent(() => {
+    if (theme === "system") {
+      applyTheme("system");
+    }
+  });
+
   // Listen for system preference changes
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (theme === "system") {
-        applyTheme("system");
-      }
-    };
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [theme, applyTheme]);
+    mediaQuery.addEventListener("change", handleSystemPreferenceChange);
+    return () =>
+      mediaQuery.removeEventListener("change", handleSystemPreferenceChange);
+  }, []);
 
   /**
    * Explicitly set the theme.

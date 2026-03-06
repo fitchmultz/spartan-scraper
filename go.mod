@@ -1,6 +1,7 @@
 module github.com/fitchmultz/spartan-scraper
 
 go 1.26
+toolchain go1.26.1
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260128011058-8636f8732409
 

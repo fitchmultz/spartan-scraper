@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "node",
+    "moduleDetection": "force",
     "lib": ["ES2022", "DOM"],
     "strict": true,
     "esModuleInterop": true,
