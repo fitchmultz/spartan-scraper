@@ -14,13 +14,24 @@ const STORAGE_KEYS = {
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+type SettingsStorage = {
+  [STORAGE_KEYS.SETTINGS]?: ExtensionSettings;
+};
+
+type TemplateCacheStorage = {
+  [STORAGE_KEYS.CACHED_TEMPLATES]?: string[];
+  [STORAGE_KEYS.TEMPLATES_CACHE_TIME]?: number;
+};
+
 /**
  * Get extension settings from chrome.storage.sync
  * Returns default settings if none are stored.
  */
 export async function getSettings(): Promise<ExtensionSettings> {
   try {
-    const result = await chrome.storage.sync.get(STORAGE_KEYS.SETTINGS);
+    const result = await chrome.storage.sync.get<SettingsStorage>(
+      STORAGE_KEYS.SETTINGS,
+    );
     const stored = result[STORAGE_KEYS.SETTINGS];
 
     if (stored) {
@@ -85,7 +96,7 @@ export async function cacheTemplates(templates: string[]): Promise<void> {
  */
 export async function getCachedTemplates(): Promise<string[] | null> {
   try {
-    const result = await chrome.storage.local.get([
+    const result = await chrome.storage.local.get<TemplateCacheStorage>([
       STORAGE_KEYS.CACHED_TEMPLATES,
       STORAGE_KEYS.TEMPLATES_CACHE_TIME,
     ]);

@@ -1462,9 +1462,9 @@ Outputs: `out/stress/`
 
 This project uses a polyglot toolchain. The following are required:
 
-- **Go** 1.25.6 (CLI + API + TUI)
-- **Node.js** 24.13.0 (web frontend + OpenAPI generation)
-- **pnpm** 10.28.0 (Node package manager)
+- **Go** 1.26.1 (CLI + API + TUI)
+- **Node.js** 24.14.0 (web frontend + OpenAPI generation)
+- **pnpm** 10.30.3 (Node package manager)
 
 Tool versions are pinned in `.tool-versions`. Use `asdf` or `mise` to install.
 
@@ -1538,6 +1538,7 @@ Both `make ci-pr` and `make ci` validate:
 - MCP (tools list + scrape_page)
 - Scheduler (job creation via interval)
 - Web (TypeScript build + unit tests)
+- Extension (TypeScript compile + packaged asset build)
 
 `make ci-slow` provisions Playwright on clean machines, then executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`) against the shared local fixture, which validate:
 - Deterministic scrape/crawl/research targets

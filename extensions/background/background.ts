@@ -16,6 +16,7 @@ import type { Message, TabInfo } from "../shared/types.js";
 
 // Context menu ID
 const CONTEXT_MENU_ID = "spartan-scrape";
+type SessionStorage = { contextMenuUrl?: string };
 
 /**
  * Initialize extension on install/update
@@ -121,8 +122,13 @@ async function getCurrentTabInfo(): Promise<TabInfo> {
   const tab = tabs[0];
 
   // Check if there's a context menu URL stored
-  const session = await chrome.storage.session.get("contextMenuUrl");
-  const url = session.contextMenuUrl || tab.url;
+  const session =
+    await chrome.storage.session.get<SessionStorage>("contextMenuUrl");
+  const url = session.contextMenuUrl ?? tab.url;
+
+  if (!url) {
+    throw new Error("No active tab URL found");
+  }
 
   // Clear the context menu URL
   if (session.contextMenuUrl) {

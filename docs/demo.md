@@ -8,9 +8,9 @@ Start the local server, open the UI, run one scrape, and confirm that Spartan Sc
 
 ## Prerequisites
 
-- Go `1.25.6`
-- Node `24.13.0`
-- pnpm `10.28.0`
+- Go `1.26.1`
+- Node `24.14.0`
+- pnpm `10.30.3`
 
 ## Steps
 

@@ -4,7 +4,7 @@
 [![CI Slow](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fitchmultz/spartan-scraper)](https://goreportcard.com/report/github.com/fitchmultz/spartan-scraper)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8)
+![Go Version](https://img.shields.io/badge/Go-1.26.1-00ADD8)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6)
 
 Spartan Scraper is a local-first scraping workbench for turning a URL into a clean result, a bounded crawl, or a research job without standing up cloud infrastructure.
@@ -69,7 +69,7 @@ Spartan Scraper is currently **pre-1.0** and actively evolving. Public APIs and 
 ## Quickstart
 
 ```bash
-# Quick install (CLI-focused; requires Go 1.25+)
+# Quick install (CLI-focused; requires Go 1.26+)
 go install github.com/fitchmultz/spartan-scraper/cmd/spartan@latest
 
 # Full local setup (recommended for contributors and operators)
@@ -247,9 +247,9 @@ Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser 
 
 Pinned in `.tool-versions`:
 
-- Go `1.25.6`
-- Node `24.13.0`
-- pnpm `10.28.0`
+- Go `1.26.1`
+- Node `24.14.0`
+- pnpm `10.30.3`
 
 ## Local CI
 
@@ -262,7 +262,7 @@ GitHub workflow split:
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
 make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
-make ci            # Full local gate (includes install + build + tests)
+make ci            # Full local gate (Go + web + extension install/build/tests)
 make ci-slow       # Deterministic heavy stress/e2e checks (local fixture; provisions Playwright)
 make ci-network     # Optional live-Internet smoke validation
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override

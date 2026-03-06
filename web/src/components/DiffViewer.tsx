@@ -224,9 +224,9 @@ function CrawlDiffView({
 
   return (
     <div className="diff-list">
-      {items.map((entry, index) => (
+      {items.map((entry) => (
         <CrawlDiffItem
-          key={`${entry.type}-${entry.item.url}-${index}`}
+          key={`${entry.type}-${entry.item.url}-${entry.changes?.map((change) => change.field).join(",") || "unchanged"}`}
           item={entry.item}
           type={entry.type}
           changes={entry.changes}

@@ -80,6 +80,21 @@ function getResourceTypeLabel(type?: string): string {
   return type;
 }
 
+/**
+ * Compute a stable key for a captured traffic entry.
+ */
+function getTrafficEntryKey(entry: InterceptedEntry): string {
+  return (
+    entry.request?.requestId ||
+    [
+      entry.request?.url || "unknown-url",
+      entry.request?.method || "GET",
+      entry.request?.timestamp || entry.response?.timestamp || "no-timestamp",
+      entry.response?.status?.toString() || "no-status",
+    ].join("::")
+  );
+}
+
 export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -296,9 +311,9 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.map((entry, index) => (
+              {filteredEntries.map((entry) => (
                 <tr
-                  key={`${entry.request?.requestId || index}-${index}`}
+                  key={getTrafficEntryKey(entry)}
                   className={selectedEntry === entry ? "selected" : ""}
                   onClick={() => setSelectedEntry(entry)}
                 >

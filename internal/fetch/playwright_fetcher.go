@@ -139,7 +139,7 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 	if err != nil {
 		return apperrors.Wrap(
 			apperrors.KindInternal,
-			"failed to initialize Playwright: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps' (see README.md for details)",
+			"failed to initialize Playwright: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps' (see README.md for details)",
 			err,
 		)
 	}
@@ -158,7 +158,7 @@ func (f *PlaywrightFetcher) ensureInitialized(ctx context.Context, headless bool
 		pw.Stop()
 		return apperrors.Wrap(
 			apperrors.KindInternal,
-			"failed to launch Playwright browser: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps' (see README.md for details)",
+			"failed to launch Playwright browser: ensure Playwright is installed with 'go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps' (see README.md for details)",
 			err,
 		)
 	}

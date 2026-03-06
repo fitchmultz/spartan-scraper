@@ -5,7 +5,11 @@
  * background script to perform scraping operations.
  */
 
-import type { Job, JobStatus, TabInfo } from "../shared/types.js";
+import type { ExtensionSettings, Job, JobStatus, TabInfo } from "../shared/types.js";
+
+type SettingsStorage = {
+  spartan_settings?: ExtensionSettings;
+};
 
 // DOM Elements
 const urlInput = document.getElementById("urlInput") as HTMLInputElement;
@@ -194,7 +198,8 @@ function startPolling(jobId: string): void {
           statusActions.classList.remove("hidden");
 
           // Set up view results link
-          const settings = await chrome.storage.sync.get("spartan_settings");
+          const settings =
+            await chrome.storage.sync.get<SettingsStorage>("spartan_settings");
           const apiUrl = settings.spartan_settings?.apiUrl || "http://localhost:8741";
           viewResultsLink.href = `${apiUrl}/web/jobs/${jobId}`;
         } else if (job.status === "failed") {

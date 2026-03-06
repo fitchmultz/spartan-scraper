@@ -106,7 +106,7 @@ function EvidenceScatterPlot({
       const y = chartHeight - confidence * chartHeight + padding.top;
       return { item, x, y, confidence };
     });
-  }, [evidence, chartWidth, chartHeight]);
+  }, [evidence, chartHeight, chartWidth, padding.left, padding.top]);
 
   return (
     <div className="evidence-chart-section">

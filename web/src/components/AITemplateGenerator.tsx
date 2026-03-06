@@ -371,9 +371,9 @@ export function AITemplateGenerator({
                 {state.generatedTemplate.selectors &&
                 state.generatedTemplate.selectors.length > 0 ? (
                   <div className="selectors-list space-y-2">
-                    {state.generatedTemplate.selectors.map((selector, idx) => (
+                    {state.generatedTemplate.selectors.map((selector) => (
                       <div
-                        key={`${selector.name}-${idx}`}
+                        key={`${selector.name}-${selector.selector}-${selector.attr || "text"}`}
                         className="selector-item p-2 bg-slate-800 rounded border border-slate-700"
                       >
                         <div className="flex justify-between items-center">

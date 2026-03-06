@@ -21,8 +21,8 @@ LDFLAGS := -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo
 
 # Resource control: cap Vitest workers for deterministic CI CPU usage
 CI_VITEST_MAX_WORKERS ?= 2
-GITLEAKS_VERSION ?= v8.24.2
-PLAYWRIGHT_GO_VERSION ?= v0.5200.1
+GITLEAKS_VERSION ?= v8.30.0
+PLAYWRIGHT_GO_VERSION ?= v0.5700.1
 PLAYWRIGHT_INSTALL_CMD := go run github.com/playwright-community/playwright-go/cmd/playwright@$(PLAYWRIGHT_GO_VERSION) install --with-deps
 
 .PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
@@ -53,6 +53,7 @@ lint:
 
 type-check:
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit
+	cd $(EXTENSION_DIR) && pnpm exec tsc --noEmit
 
 format:
 	gofmt -w ./cmd ./internal
@@ -90,6 +91,7 @@ build:
 	mkdir -p $(BIN_DIR)
 	go build $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
+	cd $(EXTENSION_DIR) && pnpm run build
 
 install-bin: build
 	@echo "Installing $(APP_NAME) to $(INSTALL_DIR)..."

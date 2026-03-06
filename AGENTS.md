@@ -26,9 +26,9 @@ make install          # Download Go deps + install pnpm deps (lockfile-strict)
 make update           # Update all Go/pnpm deps to latest (review before committing)
 make generate         # Generate TS API client from openapi.yaml
 make format           # Format Go (gofmt) and TS (biome)
-make type-check       # Type-check TS (biome/tsc)
+make type-check       # Type-check web + extension TS
 make lint             # Lint Go (go vet) and TS (biome)
-make build            # Build Go binary + web assets (no install side effects)
+make build            # Build Go binary + web + extension assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
@@ -52,6 +52,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Export schedule history is wired through `ExportScheduleManager`; keep regression coverage at the manager level so browser-harness ref flakiness does not masquerade as a product bug.
 - The web shell must declare a real favicon asset. Otherwise fresh browser sessions emit a load-time `/favicon.ico` 404 even when the app itself is healthy.
 - Template A/B handlers must return OpenAPI-shaped JSON (`id`, `baseline_template`, `success_criteria`, etc.), not raw `store.TemplateABTestRecord` fields. Returning store records breaks live UI rendering and triggers React key warnings.
+- When upgrading Biome, update `web/biome.json`'s `$schema` URL in the same change. Newer Biome releases hard-fail lint if the config schema version lags the CLI.
 
 ### Testing Guidelines
 
@@ -137,7 +138,7 @@ docs/                 # Documentation (usage, architecture, landscape)
 - **HTTP**: Default fetcher
 - **Chromedp**: Headless Chromium (built-in, always available)
 - **Playwright**: Optional for JS-heavy pages — enable with `USE_PLAYWRIGHT=1` or `--playwright` flag
-- **Install Playwright**: `go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps`
+- **Install Playwright**: `go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps`
 
 ### Robots.txt
 
@@ -166,9 +167,9 @@ See `internal/apperrors/README.md` for detailed usage patterns and examples.
 
 Pinned in `.tool-versions`:
 
-- Go `1.25.6`
-- Node `24.13.0`
-- pnpm `10.28.0`
+- Go `1.26.1`
+- Node `24.14.0`
+- pnpm `10.30.3`
 
 ## Commit & Pull Request Guidelines
 

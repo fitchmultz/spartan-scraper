@@ -271,7 +271,7 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
               {detectedForms.map((form, index) => (
                 <button
                   type="button"
-                  key={`form-${form.formIndex}-${index}`}
+                  key={`form-${form.formIndex}-${form.formSelector}`}
                   className={`form-card ${selectedFormIndex === index ? "selected" : ""}`}
                   onClick={() => setSelectedFormIndex(index)}
                   aria-pressed={selectedFormIndex === index}
@@ -299,9 +299,9 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
           <div className="section">
             <h3>Form Fields</h3>
             <div className="fields-table">
-              {selectedForm.allFields?.map((field, index) => (
+              {selectedForm.allFields?.map((field) => (
                 <div
-                  key={`field-${field.fieldName}-${index}`}
+                  key={`${field.fieldName}-${field.selector}-${field.attribute}`}
                   className="field-row"
                 >
                   <label

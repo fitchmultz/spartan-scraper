@@ -6,16 +6,16 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Prerequisites
 
-- Go 1.25.6
-- Node 24.13.0
-- pnpm 10.28.0
+- Go 1.26.1
+- Node 24.14.0
+- pnpm 10.30.3
 
 ### Quick Setup
 
 ```bash
 make install          # Download Go deps + install pnpm deps
 make generate         # Generate TS API client from openapi.yaml
-make build            # Build Go binary + web assets
+make build            # Build Go binary + web + extension assets
 make install-bin      # Optional: install built binary to ~/.local/bin
 ```
 
@@ -38,9 +38,9 @@ make install          # Download Go deps + install pnpm deps
 make update           # Update all Go/pnpm deps to latest (review before committing)
 make generate         # Generate TS API client from openapi.yaml
 make format           # Format Go (gofmt) and TS (biome)
-make type-check       # Type-check TS (biome/tsc)
+make type-check       # Type-check web + extension TS
 make lint             # Lint Go (go vet) and TS (biome)
-make build            # Build Go binary + web assets (no install side effects)
+make build            # Build Go binary + web + extension assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest workers capped by CI_VITEST_MAX_WORKERS)
@@ -62,7 +62,7 @@ Use CI profiles intentionally based on scope (mirrors GitHub workflows):
 - `.github/workflows/ci-slow.yml` → nightly/manual deterministic heavy checks (`make ci-slow`, with Playwright provisioning)
 
 - **PR-equivalent gate**: `make ci-pr` (requires clean git state)
-- **Full local gate**: `make ci` (includes dependency install + build)
+- **Full local gate**: `make ci` (includes dependency install plus Go/web/extension verification)
 - **Heavy/nightly checks**: `make ci-slow` (deterministic local fixture with Playwright provisioning)
 - **Optional live smoke**: `make ci-network`
 - **Manual full pre-release sweep**: `make ci-manual` + `make secret-scan`
@@ -218,7 +218,7 @@ See [SECURITY.md](SECURITY.md) for instructions on how to report security vulner
 
 Install Playwright browsers:
 ```bash
-go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.1 install --with-deps
+go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps
 ```
 
 ## Questions?
