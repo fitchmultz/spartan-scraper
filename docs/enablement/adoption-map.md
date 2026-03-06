@@ -22,7 +22,7 @@ Use it as supporting material after you understand the product itself. It is not
 - One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`, `make ci-network` (`make ci-slow` provisions Playwright for clean-machine heavy verification)
 - Lockfile-strict installs for deterministic setup: `Makefile`
 - Validation runbook: `docs/validation_checklist.md`
-- Release runbook: `RELEASING.md`, `docs/release_readiness.md`
+- Release runbook: `RELEASING.md`, `docs/validation_checklist.md`
 
 ## Operational discipline
 

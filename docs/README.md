@@ -12,7 +12,7 @@ This index helps contributors, operators, and maintainers navigate documentation
 
 - [Usage Guide](usage.md) — CLI/API/Web/MCP commands, flags, and workflows.
 - [Architecture](architecture.md) — module boundaries, data flow, and system design.
-- [Release Readiness](release_readiness.md) — hardening report, top risks, and release checklist.
+- [Release Workflow](../RELEASING.md) — release process and pre-tag checklist.
 - [CI Strategy](ci.md) — local CI profiles, runtime expectations, and resource guidance.
 - [Performance Notes](performance.md) — tuning and scaling guidance.
 - [Landscape](landscape.md) — ecosystem positioning and key project trade-offs.

@@ -13,7 +13,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - `make audit-public` target integrated into `make ci`.
 - Documentation index (`docs/README.md`) for faster navigation.
 - Repository hygiene metadata (`.editorconfig`, `.gitattributes`).
-- Validation and release docs: `docs/validation_checklist.md`, `docs/release_readiness.md`, and `docs/ci.md`.
+- Validation and release docs: `docs/validation_checklist.md`, `RELEASING.md`, and `docs/ci.md`.
 - `make ci-pr` and `make ci-manual` targets plus profile support in `run_ci.sh`.
 - GitHub Actions workflows for fast PR checks (`.github/workflows/ci-pr.yml`) and heavy nightly/manual checks (`.github/workflows/ci-slow.yml`).
 

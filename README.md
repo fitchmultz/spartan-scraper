@@ -128,7 +128,7 @@ Open `http://localhost:5173`.
 - [docs/architecture.md](docs/architecture.md): system structure and flow.
 - [docs/demo.md](docs/demo.md): a fast clone-to-value walkthrough with expected output.
 - [docs/validation_checklist.md](docs/validation_checklist.md): copy/paste validation steps for setup, runtime checks, and public-readiness smoke tests.
-- [docs/release_readiness.md](docs/release_readiness.md): release hardening report and risk log.
+- [RELEASING.md](RELEASING.md): release workflow and pre-tag checklist.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
