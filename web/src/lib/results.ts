@@ -17,6 +17,7 @@ export interface ResultsResponse {
   data?: unknown[];
   raw?: string;
   isBinary?: boolean;
+  totalCount?: number;
 }
 
 /**
@@ -174,7 +175,15 @@ export async function loadResults(
 
     if (format === "jsonl") {
       const text = await response.text();
-      return parseJsonlResults(text);
+      const parsed = parseJsonlResults(text);
+      const totalCountHeader = response.headers.get("X-Total-Count");
+      if (totalCountHeader) {
+        const totalCount = Number.parseInt(totalCountHeader, 10);
+        if (Number.isFinite(totalCount)) {
+          return { ...parsed, totalCount };
+        }
+      }
+      return parsed;
     } else if (format === "xlsx" || format === "parquet") {
       // For binary formats, convert to base64 for transport
       const buffer = await response.arrayBuffer();

@@ -17,7 +17,6 @@ import type {
   CitationItem,
 } from "../types";
 import { loadResults as loadResultsUtil } from "../lib/results";
-import { buildApiUrl } from "../lib/api-config";
 
 const RESULTS_PER_PAGE = 100;
 
@@ -121,17 +120,8 @@ export function useResultsState(): ResultsState & ResultsActions {
       }
 
       if (format === "jsonl" && result.data) {
-        try {
-          const resultsUrl = buildApiUrl(
-            `/v1/jobs/${jobId}/results?format=${format}&limit=${RESULTS_PER_PAGE}&offset=${(page - 1) * RESULTS_PER_PAGE}`,
-          );
-          const response = await fetch(resultsUrl, { method: "HEAD" });
-          const totalCountStr = response.headers.get("X-Total-Count");
-          if (totalCountStr) {
-            setTotalResults(parseInt(totalCountStr, 10));
-          }
-        } catch {
-          // Ignore header fetch errors; results are still valid
+        if (typeof result.totalCount === "number") {
+          setTotalResults(result.totalCount);
         }
 
         setResultItems(result.data as ResultItem[]);

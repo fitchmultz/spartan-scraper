@@ -3,8 +3,9 @@
  *
  * Tests error handling behavior and JSONL parsing logic in isolation.
  */
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  loadResults,
   parseJsonlResults,
   buildResultsUrl,
   parseErrorResponse,
@@ -16,6 +17,11 @@ const validNDJSON = JSON.stringify({
   title: "Test",
   text: "Content",
   links: [],
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("parseErrorResponse", () => {
@@ -262,5 +268,25 @@ describe("buildResultsUrl", () => {
       "jmespath",
     );
     expect(url).not.toContain("transform_language");
+  });
+});
+
+describe("loadResults", () => {
+  it("returns X-Total-Count from the original jsonl response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({
+        "X-Total-Count": "42",
+      }),
+      text: async () => `${validNDJSON}\n`,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await loadResults("job-1", "jsonl", 1, 100);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.error).toBeUndefined();
+    expect(result.totalCount).toBe(42);
+    expect(result.data).toEqual([JSON.parse(validNDJSON)]);
   });
 });

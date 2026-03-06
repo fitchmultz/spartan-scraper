@@ -241,6 +241,21 @@ func TestLoad_IgnoresCommentOnlyAIProvider(t *testing.T) {
 	}
 }
 
+func TestLoad_AllowsEmptyProxyPoolFileOverride(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("PROXY_POOL_FILE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.ProxyPoolFile != "" {
+		t.Fatalf("expected explicit empty PROXY_POOL_FILE to disable proxy pool loading, got %q", cfg.ProxyPoolFile)
+	}
+}
+
 func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	// This test is primarily validated by running with the race detector:
 	//   go test -race ./...

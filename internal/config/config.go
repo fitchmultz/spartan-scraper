@@ -209,7 +209,7 @@ func Load() (Config, error) {
 		ProxyURL:      getenv("PROXY_URL", ""),
 		ProxyUsername: getenv("PROXY_USERNAME", ""),
 		ProxyPassword: getenv("PROXY_PASSWORD", ""),
-		ProxyPoolFile: getenv("PROXY_POOL_FILE", filepath.Join(dataDir, "proxy_pool.json")),
+		ProxyPoolFile: getenvAllowEmpty("PROXY_POOL_FILE", filepath.Join(dataDir, "proxy_pool.json")),
 
 		// Webhook configuration
 		Webhook: WebhookConfig{
@@ -567,6 +567,14 @@ func normalizeAuthKeySuffix(raw string) string {
 func getenv(key, fallback string) string {
 	value, ok := lookupEnvNormalized(key)
 	if !ok || value == "" {
+		return fallback
+	}
+	return value
+}
+
+func getenvAllowEmpty(key, fallback string) string {
+	value, ok := lookupEnvNormalized(key)
+	if !ok {
 		return fallback
 	}
 	return value
