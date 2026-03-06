@@ -4,8 +4,8 @@
  * @module useWebSocket.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useWebSocket } from "./useWebSocket";
 
 class MockWebSocket {
@@ -29,7 +29,7 @@ class MockWebSocket {
   readyState = MockWebSocket.CONNECTING;
   onopen: (() => void) | null = null;
   onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   send = vi.fn();
 
@@ -47,16 +47,23 @@ class MockWebSocket {
     this.readyState = MockWebSocket.OPEN;
     this.onopen?.();
   }
+
+  triggerError() {
+    this.onerror?.(new Event("error"));
+  }
 }
 
 describe("useWebSocket", () => {
   beforeEach(() => {
     vi.stubGlobal("WebSocket", MockWebSocket);
     MockWebSocket.reset();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("does not reconnect when callback props change", () => {
@@ -80,6 +87,10 @@ describe("useWebSocket", () => {
         },
       },
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     expect(MockWebSocket.instances).toHaveLength(1);
 
@@ -110,6 +121,10 @@ describe("useWebSocket", () => {
       },
     );
 
+    act(() => {
+      vi.runAllTimers();
+    });
+
     expect(MockWebSocket.instances).toHaveLength(1);
 
     rerender({ onConnect: latestOnConnect });
@@ -123,5 +138,47 @@ describe("useWebSocket", () => {
     expect(latestOnConnect).toHaveBeenCalledTimes(1);
 
     unmount();
+  });
+
+  it("ignores stale socket errors after manual disconnect", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const { unmount } = renderHook(() =>
+      useWebSocket({
+        url: "ws://localhost:8741/v1/ws",
+      }),
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    const ws = MockWebSocket.latest();
+
+    unmount();
+
+    act(() => {
+      ws.triggerError();
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("cancels the initial connect during immediate unmount", () => {
+    const { unmount } = renderHook(() =>
+      useWebSocket({
+        url: "ws://localhost:8741/v1/ws",
+      }),
+    );
+
+    unmount();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(0);
   });
 });

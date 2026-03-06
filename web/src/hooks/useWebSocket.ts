@@ -7,7 +7,7 @@
  * @module useWebSocket
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type WSConnectionState =
   | "connecting"
@@ -46,6 +46,7 @@ const DEFAULT_HEARTBEAT_INTERVAL = 30000;
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const [state, setState] = useState<WSConnectionState>("disconnected");
   const [error, setError] = useState<Error | null>(null);
+  const initialConnectTimeoutRef = useRef<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
@@ -78,11 +79,22 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }, []);
 
+  const clearInitialConnectTimeout = useCallback(() => {
+    if (initialConnectTimeoutRef.current !== null) {
+      window.clearTimeout(initialConnectTimeoutRef.current);
+      initialConnectTimeoutRef.current = null;
+    }
+  }, []);
+
   const clearHeartbeatInterval = useCallback(() => {
     if (heartbeatIntervalRef.current !== null) {
       window.clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
+  }, []);
+
+  const isStaleSocket = useCallback((socket: WebSocket) => {
+    return wsRef.current !== socket;
   }, []);
 
   const send = useCallback((msg: WSMessage) => {
@@ -97,18 +109,24 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const disconnect = useCallback(() => {
     isManualDisconnectRef.current = true;
+    clearInitialConnectTimeout();
     clearReconnectTimeout();
     clearHeartbeatInterval();
 
     if (wsRef.current) {
-      wsRef.current.close();
+      const ws = wsRef.current;
       wsRef.current = null;
+      ws.close();
       return;
     }
 
     setState("disconnected");
     onDisconnectRef.current?.();
-  }, [clearReconnectTimeout, clearHeartbeatInterval]);
+  }, [
+    clearInitialConnectTimeout,
+    clearReconnectTimeout,
+    clearHeartbeatInterval,
+  ]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -129,6 +147,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (isStaleSocket(ws) || isManualDisconnectRef.current) {
+          ws.close();
+          return;
+        }
+
         reconnectAttemptsRef.current = 0;
         setState("connected");
         setError(null);
@@ -154,12 +177,20 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       };
 
       ws.onerror = (event) => {
+        if (isStaleSocket(ws) || isManualDisconnectRef.current) {
+          return;
+        }
+
         const err = new Error("WebSocket error");
         setError(err);
         console.error("WebSocket error:", event);
       };
 
       ws.onclose = () => {
+        if (isStaleSocket(ws)) {
+          return;
+        }
+
         clearHeartbeatInterval();
         wsRef.current = null;
         setState("disconnected");
@@ -202,24 +233,35 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     maxReconnectInterval,
     heartbeatInterval,
     send,
+    isStaleSocket,
     clearReconnectTimeout,
     clearHeartbeatInterval,
   ]);
 
   useEffect(() => {
-    connect();
+    initialConnectTimeoutRef.current = window.setTimeout(() => {
+      initialConnectTimeoutRef.current = null;
+      connect();
+    }, 0);
 
     return () => {
       isManualDisconnectRef.current = true;
+      clearInitialConnectTimeout();
       clearReconnectTimeout();
       clearHeartbeatInterval();
 
       if (wsRef.current) {
-        wsRef.current.close();
+        const ws = wsRef.current;
         wsRef.current = null;
+        ws.close();
       }
     };
-  }, [connect, clearReconnectTimeout, clearHeartbeatInterval]);
+  }, [
+    connect,
+    clearInitialConnectTimeout,
+    clearReconnectTimeout,
+    clearHeartbeatInterval,
+  ]);
 
   return { state, error, send, connect, disconnect };
 }
