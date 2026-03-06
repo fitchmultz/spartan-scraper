@@ -45,6 +45,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 ### Recent Learned Patterns
 
 - Public-facing docs should stay value-first: lead README with the core URL-to-result workflow, keep a fast 5-minute demo near the top, and point evidence docs at the smallest set of high-signal verification artifacts instead of archival inventories.
+- Keep reviewer-facing and enablement material secondary to the real product path. Top-level docs should send readers through README → demo → reviewer checklist before optional role/evidence packs.
 - Local web development should keep browser requests same-origin through the Vite proxy. Use `DEV_API_PROXY_TARGET` when the backend is not on `http://127.0.0.1:8741`; reserve `VITE_API_BASE_URL` for intentional browser-visible cross-origin deployments.
 - `PROXY_POOL_FILE=` is the explicit disable path for the optional proxy pool. Preserve empty overrides in config loading so fresh CLI smoke runs stay warning-free when users intentionally turn the feature off.
 - `useWebSocket` should defer its initial connect by one tick and ignore stale/manual socket errors. React `StrictMode` double-mount in Vite dev otherwise produces a false `WebSocket ... closed before the connection is established` warning even when the transport is healthy.

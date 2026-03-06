@@ -11,6 +11,8 @@ Spartan Scraper is a local-first scraping workbench for turning a URL into a cle
 
 It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, and only reach for headless browsers when a target actually needs them.
 
+If you are evaluating it quickly, start with the 5-minute demo below. If you are integrating it into a real workflow, the API, MCP server, schedules, and local artifact model all build on that same core path.
+
 ## Why It Exists
 
 - Start from a URL and get something useful quickly: extracted content, crawl output, or a research bundle.
@@ -50,7 +52,9 @@ cat ./out/example.json
 
 Expected output includes the page title text `Example Domain`.
 
-## Goals
+For a more guided version with expected checkpoints, see [docs/demo.md](docs/demo.md).
+
+## What It Covers
 
 - Single pages, full websites, and deep research workflows.
 - Works for static HTML and JS‑heavy sites (headless Chromium or Playwright).
@@ -102,7 +106,7 @@ make web-dev
 
 Open `http://localhost:5173`.
 
-## Why Agents And Developers Use It
+## Developer And Agent Workflows
 
 - Agents get an MCP surface, a deterministic local API, and a persistent job store they can inspect and reuse.
 - Developers get one local system for UI, CLI, and API validation instead of separate throwaway scripts.
@@ -122,13 +126,14 @@ Open `http://localhost:5173`.
 - [docs/README.md](docs/README.md): docs index and navigation.
 - [docs/usage.md](docs/usage.md): CLI/API/Web/MCP entry points and flags.
 - [docs/architecture.md](docs/architecture.md): system structure and flow.
+- [docs/demo.md](docs/demo.md): a fast clone-to-value walkthrough with expected output.
 - [docs/reviewer_checklist.md](docs/reviewer_checklist.md): copy/paste reviewer validation steps.
 - [docs/release_readiness.md](docs/release_readiness.md): release hardening report and risk log.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
 - [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): curated UI verification evidence.
-- [docs/role-evidence/evidence-map.md](docs/role-evidence/evidence-map.md): production-readiness evidence pack (demo/workshop/cookbook/ops).
+- [docs/role-evidence/evidence-map.md](docs/role-evidence/evidence-map.md): optional demo/workshop/cookbook/ops material derived from the project.
 
 ### CLI examples
 

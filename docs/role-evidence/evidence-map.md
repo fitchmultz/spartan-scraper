@@ -1,6 +1,8 @@
 # Evidence Map
 
-This map links repository artifacts to production-readiness outcomes.
+This map links real project artifacts to outcomes that matter in deployment, enablement, and operational adoption.
+
+Use it as supporting material after you understand the product itself. It is not the primary entrypoint for the repo.
 
 ## Reliability and correctness
 
