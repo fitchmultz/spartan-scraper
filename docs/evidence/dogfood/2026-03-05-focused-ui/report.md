@@ -3,10 +3,10 @@
 Date: 2026-03-05
 Target: http://localhost:5173 (API: http://127.0.0.1:8741)
 Session: `spartan-ui-dogfood`
-Scope: Reviewer-critical UX paths (onboarding, command palette, shortcuts, API-failure behavior)
+Scope: High-signal UX paths (onboarding, command palette, shortcuts, API-failure behavior)
 
 ## Summary
-I found 5 concrete UX issues with reproducible evidence (screenshots + videos). Two are critical for reviewer confidence:
+I found 5 concrete UX issues with reproducible evidence (screenshots + videos). Two are critical for first-run usability and stability:
 1) onboarding tour cannot be completed reliably,
 2) API outage triggers runaway console error spam plus repeated React max-depth errors.
 
