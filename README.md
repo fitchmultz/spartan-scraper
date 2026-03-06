@@ -132,8 +132,6 @@ Open `http://localhost:5173`.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
-- [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): curated UI verification evidence.
-- [docs/enablement/adoption-map.md](docs/enablement/adoption-map.md): optional demo/workshop/cookbook/ops material derived from the project.
 
 ### CLI examples
 

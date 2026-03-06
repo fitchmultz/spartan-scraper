@@ -1,4 +1,0 @@
-max_update_depth_in_console=0
-max_update_depth_in_errors=0
-websocket_error_lines=1
-failed_fetch_manager_lines=11

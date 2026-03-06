@@ -1,3 +1,0 @@
-max_update_depth_count=0
-websocket_count=0
-refused_count=0

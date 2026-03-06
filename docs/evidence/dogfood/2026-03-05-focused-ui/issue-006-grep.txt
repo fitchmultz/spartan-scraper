@@ -1,2 +1,0 @@
-277:- button "Skip tour" [ref=e277]
-278:- button "Next (Step 1 of 8)" [ref=e278]

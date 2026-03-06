@@ -16,8 +16,6 @@ This index helps contributors, operators, and maintainers navigate documentation
 - [CI Strategy](ci.md) — local CI profiles, runtime expectations, and resource guidance.
 - [Performance Notes](performance.md) — tuning and scaling guidance.
 - [Landscape](landscape.md) — ecosystem positioning and key project trade-offs.
-- [Dogfood Evidence](evidence/dogfood/README.md) — curated UI validation packs and supporting artifacts.
-- [Enablement Guides](enablement/adoption-map.md) — optional demo/workshop/cookbook/ops material derived from the project.
 
 ## Related Repository Docs
 

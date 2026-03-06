@@ -79,4 +79,4 @@ Expected result:
 
 - `make ci` for the full local gate
 - `docs/validation_checklist.md` for a broader validation pass
-- `docs/evidence/dogfood/README.md` for curated browser-driven UI verification receipts
+- `docs/architecture.md` for the system structure and trade-offs

@@ -1,1 +1,0 @@
-SEARCH="?showHelp=1"
