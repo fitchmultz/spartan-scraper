@@ -1,4 +1,4 @@
-# Reviewer Validation Checklist
+# Validation Checklist
 
 This checklist is designed for a quick, high-confidence review.
 

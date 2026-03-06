@@ -1,6 +1,6 @@
 # 5-Minute Demo
 
-This is the fastest honest path from clone to visible value.
+This is the fastest path from clone to visible value.
 
 ## Goal
 
@@ -68,7 +68,7 @@ Expected result:
 
 - the JSON output includes the title/content text `Example Domain`
 
-## What This Demonstrates
+## What You Verify
 
 - local-first job execution
 - persisted artifacts
@@ -78,5 +78,5 @@ Expected result:
 ## If You Want A Deeper Check
 
 - `make ci` for the full local gate
-- `docs/reviewer_checklist.md` for a skeptic-friendly validation path
+- `docs/validation_checklist.md` for a broader validation pass
 - `docs/evidence/dogfood/README.md` for curated browser-driven UI verification receipts

@@ -1,4 +1,4 @@
-# Evidence Map
+# Adoption Map
 
 This map links real project artifacts to outcomes that matter in deployment, enablement, and operational adoption.
 
@@ -21,7 +21,7 @@ Use it as supporting material after you understand the product itself. It is not
 
 - One-command pipelines: `make ci`, `make ci-pr`, `make ci-slow`, `make ci-network` (`make ci-slow` provisions Playwright for clean-machine heavy verification)
 - Lockfile-strict installs for deterministic setup: `Makefile`
-- Reviewer runbook: `docs/reviewer_checklist.md`
+- Validation runbook: `docs/validation_checklist.md`
 - Release runbook: `RELEASING.md`, `docs/release_readiness.md`
 
 ## Operational discipline

@@ -24,7 +24,7 @@
 - [ ] `CHANGELOG.md` updated
 - [ ] `RELEASING.md` checklist completed
 - [ ] Deep history secret scan run (manual release-tier)
-- [ ] Reviewer checklist executed (`docs/reviewer_checklist.md`)
+- [ ] Validation checklist executed (`docs/validation_checklist.md`)
 
 ## Rollout/rollback notes
 

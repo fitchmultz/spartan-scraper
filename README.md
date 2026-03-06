@@ -72,7 +72,7 @@ Spartan Scraper is currently **pre-1.0** and actively evolving. Public APIs and 
 # Quick install (CLI-focused; requires Go 1.25+)
 go install github.com/fitchmultz/spartan-scraper/cmd/spartan@latest
 
-# Full local setup (recommended for contributors/reviewers)
+# Full local setup (recommended for contributors and operators)
 make install
 make generate
 make build
@@ -87,7 +87,7 @@ After the server is running, the fastest way to see value is:
 2. Submit a scrape for `https://example.com`
 3. Confirm the saved result contains `Example Domain`
 
-## Reviewer Quickstart
+## Validation Quickstart
 
 ```bash
 git clone <repo-url>
@@ -110,7 +110,7 @@ Open `http://localhost:5173`.
 
 - Agents get an MCP surface, a deterministic local API, and a persistent job store they can inspect and reuse.
 - Developers get one local system for UI, CLI, and API validation instead of separate throwaway scripts.
-- Reviewers get reproducible CI, generated API types, and stored artifacts that make behavior easier to verify.
+- Teams get reproducible CI, generated API types, and stored artifacts that make behavior easier to verify.
 
 ## Community
 
@@ -127,13 +127,13 @@ Open `http://localhost:5173`.
 - [docs/usage.md](docs/usage.md): CLI/API/Web/MCP entry points and flags.
 - [docs/architecture.md](docs/architecture.md): system structure and flow.
 - [docs/demo.md](docs/demo.md): a fast clone-to-value walkthrough with expected output.
-- [docs/reviewer_checklist.md](docs/reviewer_checklist.md): copy/paste reviewer validation steps.
+- [docs/validation_checklist.md](docs/validation_checklist.md): copy/paste validation steps for setup, runtime checks, and public-readiness smoke tests.
 - [docs/release_readiness.md](docs/release_readiness.md): release hardening report and risk log.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
 - [docs/performance.md](docs/performance.md): tuning and scaling guidance.
 - [docs/landscape.md](docs/landscape.md): ecosystem positioning and design trade-offs.
 - [docs/evidence/dogfood/README.md](docs/evidence/dogfood/README.md): curated UI verification evidence.
-- [docs/role-evidence/evidence-map.md](docs/role-evidence/evidence-map.md): optional demo/workshop/cookbook/ops material derived from the project.
+- [docs/enablement/adoption-map.md](docs/enablement/adoption-map.md): optional demo/workshop/cookbook/ops material derived from the project.
 
 ### CLI examples
 

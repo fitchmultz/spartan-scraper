@@ -1,6 +1,6 @@
 # Dogfood Evidence
 
-This directory is the curated UI verification record for Spartan Scraper. It exists to show a reviewer two things quickly:
+This directory is the curated UI verification record for Spartan Scraper. It exists to show two things quickly:
 
 - issues were found in a real browser, not guessed from static review
 - fixes were re-validated with concrete receipts after remediation

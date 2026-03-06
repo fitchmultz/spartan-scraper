@@ -1,6 +1,6 @@
 # Architecture
 
-## Reviewer overview (2-minute read)
+## Quick overview (2-minute read)
 
 Spartan Scraper is a **local-first scraping platform** built around a single job model shared by CLI, API, TUI, Web UI, and MCP.
 

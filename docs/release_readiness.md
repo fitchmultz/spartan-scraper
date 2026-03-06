@@ -30,7 +30,7 @@ This report captures the current public-release hardening status for Spartan Scr
 
 4. **Documentation alignment**
    - Updated `README.md`, `.env.example`, and `docs/usage.md` with explicit API auth auto-enforcement and WebSocket origin behavior.
-   - Updated `docs/reviewer_checklist.md` with explicit WebSocket origin validation steps.
+   - Updated `docs/validation_checklist.md` with explicit WebSocket origin validation steps.
 
 5. **First-run warning cleanup**
    - `internal/config` now avoids retention warnings on untouched defaults (warns only when retention limits are explicitly overridden while retention is disabled).
@@ -115,6 +115,6 @@ Last-known additional checks (run outside this focused UI fix pass):
 - GitHub-hosted `ci-slow` now provisions Playwright instead of assuming a machine-local browser install ✅
 - `make ci-network` optional/manual
 
-## Reviewer Validation Path
+## Validation Path
 
-Use `docs/reviewer_checklist.md` for copy/paste validation of setup, CI-equivalent checks, API/WS safety, and public-hygiene checks.
+Use `docs/validation_checklist.md` for copy/paste validation of setup, CI-equivalent checks, API/WS safety, and public-hygiene checks.
