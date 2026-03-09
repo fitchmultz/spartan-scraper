@@ -9,7 +9,8 @@
  * @module ResultsViewer
  */
 import { useState, useEffect } from "react";
-import { statusClass, isCrawlResultItem } from "../lib/form-utils";
+import { isCrawlResultItem } from "../lib/form-utils";
+import { getSimpleHttpStatusClass } from "../lib/http-status";
 import { NormalizedView } from "./NormalizedView";
 import type {
   ResultItem,
@@ -256,8 +257,9 @@ export function ResultsViewer({
                       <div className="result-item-header">
                         <span className="result-item-url">{item.url}</span>
                         <span
-                          className={`badge ${statusClass(
-                            String(item.status),
+                          className={`badge ${getSimpleHttpStatusClass(
+                            item.status,
+                            { emptyWhenZero: true },
                           )}`}
                         >
                           {item.status}

@@ -9,7 +9,7 @@
  * @module JobList
  */
 import { useState, useEffect } from "react";
-import { statusClass } from "../lib/form-utils";
+import { getJobStatusBadgeClass } from "../lib/job-status";
 import type { JobEntry } from "../types";
 
 interface JobListProps {
@@ -196,13 +196,13 @@ export function JobList({
             <div key={job.id} className="job-item">
               <div>{job.id}</div>
               <div>
-                <span className={`badge ${statusClass(job.status ?? "")}`}>
+                <span className={`badge ${getJobStatusBadgeClass(job.status)}`}>
                   {job.status}
                 </span>{" "}
                 {job.kind}
                 {job.dependencyStatus && job.dependencyStatus !== "ready" ? (
                   <span
-                    className={`badge ${statusClass(job.dependencyStatus)}`}
+                    className={`badge ${getJobStatusBadgeClass(job.dependencyStatus)}`}
                     style={{ marginLeft: 8 }}
                     title={
                       job.dependencyStatus === "pending"

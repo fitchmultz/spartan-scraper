@@ -82,6 +82,9 @@ describe("chunkNameForModuleId", () => {
       expect(chunkNameForModuleId("/src/lib/http-status.ts")).toBe(
         "feature-shared",
       );
+      expect(chunkNameForModuleId("/src/lib/job-status.ts")).toBe(
+        "feature-shared",
+      );
       expect(chunkNameForModuleId("/src/lib/batch-utils.ts")).toBe(
         "feature-shared",
       );

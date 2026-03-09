@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Command } from "cmdk";
+import { getJobStatusIcon } from "../lib/job-status";
 import type { JobEntry } from "../types";
 import type { JobPreset } from "../types/presets";
 
@@ -48,26 +49,6 @@ type CommandItem = {
   disabled?: boolean;
   onSelect: () => void;
 };
-
-/**
- * Format job status for display with icon.
- */
-function getStatusIcon(status: JobEntry["status"]): string {
-  switch (status) {
-    case "running":
-      return "▶️";
-    case "succeeded":
-      return "✅";
-    case "failed":
-      return "❌";
-    case "canceled":
-      return "⏹️";
-    case "queued":
-      return "⏳";
-    default:
-      return "📄";
-  }
-}
 
 /**
  * Command Palette Component
@@ -222,7 +203,7 @@ export function CommandPalette({
     for (const job of recentJobs) {
       list.push({
         id: `job-${job.id}`,
-        label: `${getStatusIcon(job.status)} ${job.kind}: ${job.id.slice(0, 8)}`,
+        label: `${getJobStatusIcon(job.status)} ${job.kind}: ${job.id.slice(0, 8)}`,
         icon: job.id === activeJobId ? "▶️" : undefined,
         group: "jobs",
         onSelect: () => {

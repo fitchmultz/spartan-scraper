@@ -4,7 +4,7 @@
  * Shared utility functions for parsing raw form inputs (headers, cookies, query params)
  * and building structured request objects for the API. Provides type-safe builders
  * for ScrapeRequest, CrawlRequest, and ResearchRequest, along with type guards for
- * result item discrimination and status CSS class mapping.
+ * result item discrimination.
  *
  * @module form-utils
  */
@@ -290,19 +290,4 @@ export function isResearchResultItem(
     "clusters" in item ||
     "citations" in item;
   return isNotCrawl && hasResearchField;
-}
-
-export function statusClass(status: string): string {
-  switch (status) {
-    case "succeeded":
-      return "success";
-    case "failed":
-      return "failed";
-    case "canceled":
-      return "failed";
-    case "running":
-      return "running";
-    default:
-      return "";
-  }
 }
