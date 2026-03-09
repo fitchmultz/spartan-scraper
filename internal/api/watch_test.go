@@ -1,5 +1,21 @@
-// Package api provides HTTP handlers for watch monitoring endpoints.
-// This file contains tests for the watch API handlers.
+// Package api provides HTTP handler tests for watch monitoring endpoints.
+//
+// Purpose:
+// - Verify watch CRUD and manual-check behavior through the API layer.
+//
+// Responsibilities:
+// - Assert defaults and validation for create/update requests.
+// - Cover delete and manual-check not-found semantics.
+// - Confirm watch payloads round-trip through storage-backed handlers.
+//
+// Scope:
+// - `/v1/watch` route behavior only.
+//
+// Usage:
+// - Run with `go test ./internal/api`.
+//
+// Invariants/Assumptions:
+// - Tests use setupTestServer with isolated temp-backed storage.
 package api
 
 import (
@@ -267,6 +283,52 @@ func TestHandleUpdateWatch(t *testing.T) {
 	}
 }
 
+func TestHandleUpdateWatchPreservesOmittedOptionalFields(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	storage := watch.NewFileStorage(srv.cfg.DataDir)
+	enabled := false
+	threshold := 0.25
+	created, err := storage.Add(&watch.Watch{
+		URL:                 "https://example.com/original",
+		IntervalSeconds:     3600,
+		Enabled:             enabled,
+		DiffFormat:          "html-inline",
+		VisualDiffThreshold: threshold,
+	})
+	if err != nil {
+		t.Fatalf("failed to seed watch: %v", err)
+	}
+
+	body := []byte(`{"url":"https://example.com/updated"}`)
+	req := httptest.NewRequest(http.MethodPut, "/v1/watch/"+created.ID, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp WatchResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+	if resp.URL != "https://example.com/updated" {
+		t.Fatalf("expected updated URL, got %s", resp.URL)
+	}
+	if resp.Enabled {
+		t.Fatalf("expected enabled to remain false")
+	}
+	if resp.DiffFormat != "html-inline" {
+		t.Fatalf("expected diff format to remain html-inline, got %s", resp.DiffFormat)
+	}
+	if resp.VisualDiffThreshold != threshold {
+		t.Fatalf("expected threshold %.2f, got %.2f", threshold, resp.VisualDiffThreshold)
+	}
+}
+
 func TestHandleDeleteWatch(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -516,12 +578,13 @@ func TestCreateWatchWithScreenshotFields(t *testing.T) {
 	defer cleanup()
 
 	enabled := true
+	threshold := 0.15
 	reqBody := WatchRequest{
 		URL:                 "https://example.com/screenshot",
 		IntervalSeconds:     3600,
 		Enabled:             &enabled,
 		ScreenshotEnabled:   true,
-		VisualDiffThreshold: 0.15,
+		VisualDiffThreshold: &threshold,
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(body))
@@ -562,5 +625,28 @@ func TestCreateWatchWithScreenshotFields(t *testing.T) {
 	}
 	if getResp.VisualDiffThreshold != 0.15 {
 		t.Errorf("Expected visualDiffThreshold to round-trip as 0.15, got %f", getResp.VisualDiffThreshold)
+	}
+}
+
+func TestCreateWatchDefaultsVisualDiffThreshold(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := []byte(`{"url":"https://example.com/default-threshold","intervalSeconds":3600,"screenshotEnabled":true}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp WatchResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+	if resp.VisualDiffThreshold != 0.1 {
+		t.Fatalf("expected default threshold 0.1, got %f", resp.VisualDiffThreshold)
 	}
 }

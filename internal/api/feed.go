@@ -1,6 +1,22 @@
 // Package api provides HTTP handlers for feed monitoring endpoints.
-// Feed handlers support CRUD operations and manual check triggering
-// for RSS/Atom feed monitoring.
+//
+// Purpose:
+// - Expose CRUD and manual-check endpoints for monitored feeds.
+//
+// Responsibilities:
+// - Decode and normalize feed API requests.
+// - Map storage-layer not-found errors to stable API responses.
+// - Return consistent response payloads for feed resources and check results.
+//
+// Scope:
+// - `/v1/feeds` and nested feed detail routes only.
+//
+// Usage:
+// - Mounted by Server.Routes for feed management and manual check operations.
+//
+// Invariants/Assumptions:
+// - Create requests apply schema defaults for optional booleans and feed type.
+// - Update requests preserve existing values when optional fields are omitted.
 package api
 
 import (
@@ -17,8 +33,8 @@ type FeedRequest struct {
 	URL             string            `json:"url"`
 	FeedType        string            `json:"feedType,omitempty"`
 	IntervalSeconds int               `json:"intervalSeconds"`
-	Enabled         bool              `json:"enabled"`
-	AutoScrape      bool              `json:"autoScrape"`
+	Enabled         *bool             `json:"enabled,omitempty"`
+	AutoScrape      *bool             `json:"autoScrape,omitempty"`
 	ExtractOptions  map[string]string `json:"extractOptions,omitempty"`
 }
 
@@ -89,6 +105,56 @@ func toFeedItemResponse(item feed.SeenItem) FeedItemResponse {
 	}
 }
 
+func buildFeedFromRequest(req FeedRequest) *feed.Feed {
+	if req.IntervalSeconds <= 0 {
+		req.IntervalSeconds = 3600
+	}
+	if strings.TrimSpace(req.FeedType) == "" {
+		req.FeedType = string(feed.FeedTypeAuto)
+	}
+
+	return &feed.Feed{
+		URL:             req.URL,
+		FeedType:        feed.FeedType(req.FeedType),
+		IntervalSeconds: req.IntervalSeconds,
+		Enabled:         valueOr(req.Enabled, true),
+		AutoScrape:      valueOr(req.AutoScrape, true),
+		ExtractOptions:  req.ExtractOptions,
+	}
+}
+
+func applyFeedRequest(existing *feed.Feed, req FeedRequest) {
+	existing.URL = req.URL
+	if req.IntervalSeconds > 0 {
+		existing.IntervalSeconds = req.IntervalSeconds
+	}
+	if strings.TrimSpace(req.FeedType) != "" {
+		existing.FeedType = feed.FeedType(req.FeedType)
+	}
+	if req.Enabled != nil {
+		existing.Enabled = *req.Enabled
+	}
+	if req.AutoScrape != nil {
+		existing.AutoScrape = *req.AutoScrape
+	}
+	if req.ExtractOptions != nil {
+		existing.ExtractOptions = req.ExtractOptions
+	}
+}
+
+func getFeedOrWriteError(w http.ResponseWriter, r *http.Request, storage *feed.FileStorage, id string) (*feed.Feed, bool) {
+	feedItem, err := storage.Get(id)
+	if err != nil {
+		if feed.IsNotFoundError(err) {
+			writeError(w, r, apperrors.NotFound("feed not found"))
+			return nil, false
+		}
+		writeError(w, r, err)
+		return nil, false
+	}
+	return feedItem, true
+}
+
 // handleFeeds handles requests to /v1/feeds
 func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -139,22 +205,7 @@ func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set defaults
-	if req.IntervalSeconds == 0 {
-		req.IntervalSeconds = 3600
-	}
-	if req.FeedType == "" {
-		req.FeedType = "auto"
-	}
-
-	newFeed := &feed.Feed{
-		URL:             req.URL,
-		FeedType:        feed.FeedType(req.FeedType),
-		IntervalSeconds: req.IntervalSeconds,
-		Enabled:         req.Enabled,
-		AutoScrape:      req.AutoScrape,
-		ExtractOptions:  req.ExtractOptions,
-	}
+	newFeed := buildFeedFromRequest(req)
 
 	if err := newFeed.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -194,13 +245,8 @@ func (s *Server) handleFeedDetail(w http.ResponseWriter, r *http.Request) {
 // handleGetFeed retrieves a single feed.
 func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request, id string) {
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	feedItem, err := storage.Get(id)
-	if err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
+	feedItem, ok := getFeedOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 	writeJSON(w, toFeedResponse(*feedItem))
@@ -214,25 +260,13 @@ func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id str
 		return
 	}
 
-	// Get existing feed to preserve createdAt and other immutable fields
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	existing, err := storage.Get(id)
-	if err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
+	existing, ok := getFeedOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 
-	// Update fields
-	existing.URL = req.URL
-	existing.FeedType = feed.FeedType(req.FeedType)
-	existing.IntervalSeconds = req.IntervalSeconds
-	existing.Enabled = req.Enabled
-	existing.AutoScrape = req.AutoScrape
-	existing.ExtractOptions = req.ExtractOptions
+	applyFeedRequest(existing, req)
 
 	if err := existing.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -250,13 +284,7 @@ func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id str
 // handleDeleteFeed deletes a feed.
 func (s *Server) handleDeleteFeed(w http.ResponseWriter, r *http.Request, id string) {
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	// Check if feed exists first
-	if _, err := storage.Get(id); err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
+	if _, ok := getFeedOrWriteError(w, r, storage, id); !ok {
 		return
 	}
 	if err := storage.Delete(id); err != nil {
@@ -280,13 +308,8 @@ func (s *Server) handleFeedCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	feedItem, err := storage.Get(id)
-	if err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
+	feedItem, ok := getFeedOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 
@@ -347,14 +370,8 @@ func (s *Server) handleFeedItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if feed exists
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	if _, err := storage.Get(id); err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
+	if _, ok := getFeedOrWriteError(w, r, storage, id); !ok {
 		return
 	}
 

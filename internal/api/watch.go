@@ -1,6 +1,22 @@
 // Package api provides HTTP handlers for watch monitoring endpoints.
-// Watch handlers support CRUD operations and manual check triggering
-// for content change monitoring.
+//
+// Purpose:
+// - Expose CRUD and manual-check endpoints for configured watches.
+//
+// Responsibilities:
+// - Decode and normalize watch API requests.
+// - Map storage not-found errors to stable HTTP responses.
+// - Return consistent watch and check-result payloads.
+//
+// Scope:
+// - `/v1/watch` and nested watch detail routes only.
+//
+// Usage:
+// - Mounted by Server.Routes for watch management and manual checks.
+//
+// Invariants/Assumptions:
+// - Create requests apply schema defaults for omitted optionals.
+// - Update requests preserve existing optional values when they are omitted.
 package api
 
 import (
@@ -31,7 +47,7 @@ type WatchRequest struct {
 	ExtractMode         string                  `json:"extractMode,omitempty"`
 	ScreenshotEnabled   bool                    `json:"screenshotEnabled,omitempty"`
 	ScreenshotConfig    *fetch.ScreenshotConfig `json:"screenshotConfig,omitempty"`
-	VisualDiffThreshold float64                 `json:"visualDiffThreshold,omitempty"`
+	VisualDiffThreshold *float64                `json:"visualDiffThreshold,omitempty"`
 }
 
 // WatchResponse represents a watch in API responses.
@@ -111,6 +127,73 @@ func toWatchResponse(w watch.Watch) WatchResponse {
 	}
 }
 
+func buildWatchFromRequest(req WatchRequest) *watch.Watch {
+	if req.IntervalSeconds <= 0 {
+		req.IntervalSeconds = 3600
+	}
+	if strings.TrimSpace(req.DiffFormat) == "" {
+		req.DiffFormat = "unified"
+	}
+	threshold := valueOr(req.VisualDiffThreshold, 0.1)
+
+	return &watch.Watch{
+		URL:                 req.URL,
+		Selector:            req.Selector,
+		IntervalSeconds:     req.IntervalSeconds,
+		Enabled:             valueOr(req.Enabled, true),
+		DiffFormat:          req.DiffFormat,
+		WebhookConfig:       req.WebhookConfig,
+		NotifyOnChange:      req.NotifyOnChange,
+		MinChangeSize:       req.MinChangeSize,
+		IgnorePatterns:      req.IgnorePatterns,
+		Headless:            req.Headless,
+		UsePlaywright:       req.UsePlaywright,
+		ExtractMode:         req.ExtractMode,
+		ScreenshotEnabled:   req.ScreenshotEnabled,
+		ScreenshotConfig:    req.ScreenshotConfig,
+		VisualDiffThreshold: threshold,
+	}
+}
+
+func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
+	existing.URL = req.URL
+	existing.Selector = req.Selector
+	if req.IntervalSeconds > 0 {
+		existing.IntervalSeconds = req.IntervalSeconds
+	}
+	if req.Enabled != nil {
+		existing.Enabled = *req.Enabled
+	}
+	if strings.TrimSpace(req.DiffFormat) != "" {
+		existing.DiffFormat = req.DiffFormat
+	}
+	existing.WebhookConfig = req.WebhookConfig
+	existing.NotifyOnChange = req.NotifyOnChange
+	existing.MinChangeSize = req.MinChangeSize
+	existing.IgnorePatterns = req.IgnorePatterns
+	existing.Headless = req.Headless
+	existing.UsePlaywright = req.UsePlaywright
+	existing.ExtractMode = req.ExtractMode
+	existing.ScreenshotEnabled = req.ScreenshotEnabled
+	existing.ScreenshotConfig = req.ScreenshotConfig
+	if req.VisualDiffThreshold != nil {
+		existing.VisualDiffThreshold = *req.VisualDiffThreshold
+	}
+}
+
+func getWatchOrWriteError(w http.ResponseWriter, r *http.Request, storage *watch.FileStorage, id string) (*watch.Watch, bool) {
+	watchItem, err := storage.Get(id)
+	if err != nil {
+		if _, ok := err.(*watch.NotFoundError); ok {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return nil, false
+		}
+		writeError(w, r, err)
+		return nil, false
+	}
+	return watchItem, true
+}
+
 // handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
 func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
@@ -157,36 +240,7 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set defaults
-	if req.IntervalSeconds == 0 {
-		req.IntervalSeconds = 3600
-	}
-	if req.DiffFormat == "" {
-		req.DiffFormat = "unified"
-	}
-	// Default enabled to true if not specified (OpenAPI default)
-	enabled := true
-	if req.Enabled != nil {
-		enabled = *req.Enabled
-	}
-
-	newWatch := &watch.Watch{
-		URL:                 req.URL,
-		Selector:            req.Selector,
-		IntervalSeconds:     req.IntervalSeconds,
-		Enabled:             enabled,
-		DiffFormat:          req.DiffFormat,
-		WebhookConfig:       req.WebhookConfig,
-		NotifyOnChange:      req.NotifyOnChange,
-		MinChangeSize:       req.MinChangeSize,
-		IgnorePatterns:      req.IgnorePatterns,
-		Headless:            req.Headless,
-		UsePlaywright:       req.UsePlaywright,
-		ExtractMode:         req.ExtractMode,
-		ScreenshotEnabled:   req.ScreenshotEnabled,
-		ScreenshotConfig:    req.ScreenshotConfig,
-		VisualDiffThreshold: req.VisualDiffThreshold,
-	}
+	newWatch := buildWatchFromRequest(req)
 
 	if err := newWatch.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -226,13 +280,8 @@ func (s *Server) handleWatch(w http.ResponseWriter, r *http.Request) {
 // handleGetWatch retrieves a single watch.
 func (s *Server) handleGetWatch(w http.ResponseWriter, r *http.Request, id string) {
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	watchItem, err := storage.Get(id)
-	if err != nil {
-		if _, ok := err.(*watch.NotFoundError); ok {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return
-		}
-		writeError(w, r, err)
+	watchItem, ok := getWatchOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 	writeJSON(w, toWatchResponse(*watchItem))
@@ -246,36 +295,13 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 		return
 	}
 
-	// Get existing watch to preserve createdAt and other immutable fields
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	existing, err := storage.Get(id)
-	if err != nil {
-		if _, ok := err.(*watch.NotFoundError); ok {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return
-		}
-		writeError(w, r, err)
+	existing, ok := getWatchOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 
-	// Update fields
-	existing.URL = req.URL
-	existing.Selector = req.Selector
-	existing.IntervalSeconds = req.IntervalSeconds
-	if req.Enabled != nil {
-		existing.Enabled = *req.Enabled
-	}
-	existing.DiffFormat = req.DiffFormat
-	existing.WebhookConfig = req.WebhookConfig
-	existing.NotifyOnChange = req.NotifyOnChange
-	existing.MinChangeSize = req.MinChangeSize
-	existing.IgnorePatterns = req.IgnorePatterns
-	existing.Headless = req.Headless
-	existing.UsePlaywright = req.UsePlaywright
-	existing.ExtractMode = req.ExtractMode
-	existing.ScreenshotEnabled = req.ScreenshotEnabled
-	existing.ScreenshotConfig = req.ScreenshotConfig
-	existing.VisualDiffThreshold = req.VisualDiffThreshold
+	applyWatchRequest(existing, req)
 
 	if err := existing.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -293,13 +319,7 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 // handleDeleteWatch deletes a watch.
 func (s *Server) handleDeleteWatch(w http.ResponseWriter, r *http.Request, id string) {
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	// Check if watch exists first
-	if _, err := storage.Get(id); err != nil {
-		if _, ok := err.(*watch.NotFoundError); ok {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return
-		}
-		writeError(w, r, err)
+	if _, ok := getWatchOrWriteError(w, r, storage, id); !ok {
 		return
 	}
 	if err := storage.Delete(id); err != nil {
@@ -323,13 +343,8 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	watchItem, err := storage.Get(id)
-	if err != nil {
-		if _, ok := err.(*watch.NotFoundError); ok {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return
-		}
-		writeError(w, r, err)
+	watchItem, ok := getWatchOrWriteError(w, r, storage, id)
+	if !ok {
 		return
 	}
 
