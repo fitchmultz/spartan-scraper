@@ -87,6 +87,7 @@ export function chunkNameForModuleId(id: string): string | undefined {
       normalizedId.includes("/src/lib/batch-utils.ts") ||
       normalizedId.includes("/src/lib/watch-utils.ts") ||
       normalizedId.includes("/src/lib/formatting.ts") ||
+      normalizedId.includes("/src/lib/http-status.ts") ||
       normalizedId.includes("/src/lib/input-parsing.ts") ||
       normalizedId.includes("/src/lib/webhook-utils.ts")
     ) {

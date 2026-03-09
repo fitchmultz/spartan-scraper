@@ -16,6 +16,7 @@ import {
   formatMillisecondsAsDuration,
   truncateMiddle,
 } from "../lib/formatting";
+import { getDetailedHttpStatusClass } from "../lib/http-status";
 
 interface TrafficInspectorProps {
   entries: InterceptedEntry[];
@@ -42,18 +43,6 @@ function formatBytes(bytes?: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / k ** i).toFixed(1)} ${sizes[i]}`;
-}
-
-/**
- * Get status code class for styling.
- */
-function getStatusClass(status?: number): string {
-  if (status === undefined || status === null) return "unknown";
-  if (status >= 200 && status < 300) return "success";
-  if (status >= 300 && status < 400) return "redirect";
-  if (status >= 400 && status < 500) return "client-error";
-  if (status >= 500) return "server-error";
-  return "unknown";
 }
 
 /**
@@ -317,7 +306,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
                   <td className="status-cell">
                     {entry.response ? (
                       <span
-                        className={`status ${getStatusClass(entry.response.status)}`}
+                        className={`status ${getDetailedHttpStatusClass(entry.response.status)}`}
                       >
                         {entry.response.status}
                       </span>
@@ -425,7 +414,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
                     <div className="detail-row">
                       <span className="detail-label">Status:</span>
                       <span
-                        className={`detail-value status ${getStatusClass(selectedEntry.response.status)}`}
+                        className={`detail-value status ${getDetailedHttpStatusClass(selectedEntry.response.status)}`}
                       >
                         {selectedEntry.response.status}{" "}
                         {selectedEntry.response.statusText}

@@ -14,6 +14,8 @@ import type {
   FieldChange,
 } from "../lib/diff-utils";
 import { getCrawlDiffStats, getResearchDiffStats } from "../lib/diff-utils";
+import { truncateEnd } from "../lib/formatting";
+import { getSimpleHttpStatusClass } from "../lib/http-status";
 import type { CrawlResultItem, Job } from "../types";
 
 interface DiffViewerProps {
@@ -45,14 +47,6 @@ function formatValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.length} items]`;
   if (typeof value === "object") return "{...}";
   return String(value);
-}
-
-/**
- * Truncate text to a maximum length.
- */
-function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}...`;
 }
 
 /**
@@ -96,11 +90,11 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
         <div className="diff-field-values">
           <div className="diff-field-old">
             <span className="diff-field-label">Before:</span>
-            <pre>{truncate(formatValue(change.oldValue), 200)}</pre>
+            <pre>{truncateEnd(formatValue(change.oldValue), 200, "")}</pre>
           </div>
           <div className="diff-field-new">
             <span className="diff-field-label">After:</span>
-            <pre>{truncate(formatValue(change.newValue), 200)}</pre>
+            <pre>{truncateEnd(formatValue(change.newValue), 200, "")}</pre>
           </div>
         </div>
       )}
@@ -132,9 +126,9 @@ function CrawlDiffItem({
           {type === "unchanged" && "="}
         </span>
         <span className="diff-item-url" title={item.url}>
-          {truncate(item.url, 60)}
+          {truncateEnd(item.url, 60, "")}
         </span>
-        <span className={`badge ${getStatusBadgeClass(item.status)}`}>
+        <span className={`badge ${getSimpleHttpStatusClass(item.status)}`}>
           {item.status}
         </span>
         {changes && changes.length > 0 && (
@@ -148,7 +142,7 @@ function CrawlDiffItem({
         )}
       </div>
       {item.title && (
-        <div className="diff-item-title">{truncate(item.title, 80)}</div>
+        <div className="diff-item-title">{truncateEnd(item.title, 80, "")}</div>
       )}
       {showDetails && changes && changes.length > 0 && (
         <div className="diff-item-changes">
@@ -159,15 +153,6 @@ function CrawlDiffItem({
       )}
     </div>
   );
-}
-
-/**
- * Get CSS class for HTTP status code.
- */
-function getStatusBadgeClass(status: number): string {
-  if (status >= 200 && status < 300) return "success";
-  if (status >= 400) return "failed";
-  return "running";
 }
 
 /**

@@ -8,6 +8,7 @@
  * @module TreeView
  */
 import { useCallback, useMemo, useRef, useState } from "react";
+import { getSimpleHttpStatusClass } from "../lib/http-status";
 import type { TreeNode } from "../lib/tree-utils";
 import { flattenTree, filterTreeNodes } from "../lib/tree-utils";
 
@@ -31,16 +32,6 @@ interface TreeViewProps {
 const ITEM_HEIGHT = 36;
 const VIRTUALIZATION_THRESHOLD = 50;
 const CONTAINER_HEIGHT = 400;
-
-/**
- * Get CSS class for HTTP status code badge.
- */
-function getStatusBadgeClass(status: number): string {
-  if (status === 0) return "";
-  if (status >= 200 && status < 300) return "success";
-  if (status >= 400) return "failed";
-  return "running";
-}
 
 /**
  * Chevron icon for expand/collapse indicator.
@@ -197,7 +188,7 @@ function TreeItem({
       </span>
       {node.status > 0 && (
         <span
-          className={`tree-item-status badge ${getStatusBadgeClass(node.status)}`}
+          className={`tree-item-status badge ${getSimpleHttpStatusClass(node.status, { emptyWhenZero: true })}`}
         >
           {node.status}
         </span>

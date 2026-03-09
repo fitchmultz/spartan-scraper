@@ -8,6 +8,7 @@
  */
 import { useState, useCallback } from "react";
 import type { JobChain, ChainCreateRequest } from "../api";
+import { formatDateTime } from "../lib/formatting";
 
 export type { ChainCreateRequest };
 
@@ -18,11 +19,6 @@ interface ChainListProps {
   onSubmit: (id: string, overrides?: Record<string, unknown>) => Promise<void>;
   loading?: boolean;
   onCreateClick?: () => void;
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleString();
 }
 
 export function ChainList({
@@ -292,8 +288,8 @@ export function ChainList({
                   >
                     <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
                       <div>ID: {chain.id}</div>
-                      <div>Created: {formatDate(chain.createdAt)}</div>
-                      <div>Updated: {formatDate(chain.updatedAt)}</div>
+                      <div>Created: {formatDateTime(chain.createdAt)}</div>
+                      <div>Updated: {formatDateTime(chain.updatedAt)}</div>
                       <div>Nodes: {chain.definition.nodes.length}</div>
                       <div>Edges: {chain.definition.edges.length}</div>
                     </div>
