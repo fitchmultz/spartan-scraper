@@ -8,12 +8,10 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/users"
 )
 
 // handleUsers handles GET /v1/users - list users (admin only in future)
@@ -23,22 +21,18 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current user ID
-	currentUserID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
-		return
-	}
-
-	// For now, just return the current user
-	userService := users.NewService(s.store)
-	user, err := userService.GetUser(r.Context(), currentUserID)
+	currentUserID, err := currentUserID(r)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	user, err := s.userService().GetUser(r.Context(), currentUserID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, map[string]any{"users": []*model.User{user}})
 }
 
@@ -65,40 +59,26 @@ func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {
 
 // handleGetUser handles GET /v1/users/{id}
 func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request, id string) {
-	// Users can only get their own profile for now
-	currentUserID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
-		return
-	}
-
-	if id != "me" && id != currentUserID {
-		writeError(w, r, apperrors.Permission("can only view your own profile"))
-		return
-	}
-
-	userService := users.NewService(s.store)
-	user, err := userService.GetUser(r.Context(), currentUserID)
+	currentUserID, err := currentUserIDForResource(r, id, "view")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	user, err := s.userService().GetUser(r.Context(), currentUserID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, user)
 }
 
 // handleUpdateUser handles PUT /v1/users/{id}
 func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request, id string) {
-	// Users can only update their own profile
-	currentUserID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
-		return
-	}
-
-	if id != "me" && id != currentUserID {
-		writeError(w, r, apperrors.Permission("can only update your own profile"))
+	currentUserID, err := currentUserIDForResource(r, id, "update")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -106,12 +86,12 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request, id str
 		Name      string `json:"name"`
 		AvatarURL string `json:"avatarUrl"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 	user, err := userService.GetUser(r.Context(), currentUserID)
 	if err != nil {
 		writeError(w, r, err)
@@ -130,29 +110,21 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request, id str
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	writeJSON(w, user)
 }
 
 // handleDeleteUser handles DELETE /v1/users/{id}
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request, id string) {
-	// Users can only delete their own account
-	currentUserID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
-		return
-	}
-
-	if id != "me" && id != currentUserID {
-		writeError(w, r, apperrors.Permission("can only delete your own account"))
-		return
-	}
-
-	userService := users.NewService(s.store)
-	if err := userService.DeleteUser(r.Context(), currentUserID); err != nil {
+	currentUserID, err := currentUserIDForResource(r, id, "delete")
+	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	if err := s.userService().DeleteUser(r.Context(), currentUserID); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeNoContent(w)
 }

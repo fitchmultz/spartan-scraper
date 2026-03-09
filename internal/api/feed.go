@@ -4,7 +4,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -134,17 +133,9 @@ func (s *Server) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateFeed creates a new feed.
 func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req FeedRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -177,9 +168,7 @@ func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, toFeedResponse(*created))
+	writeCreatedJSON(w, toFeedResponse(*created))
 }
 
 // handleFeedDetail handles requests to /v1/feeds/{id}
@@ -219,17 +208,9 @@ func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request, id string
 
 // handleUpdateFeed updates an existing feed.
 func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id string) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req FeedRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -282,7 +263,7 @@ func (s *Server) handleDeleteFeed(w http.ResponseWriter, r *http.Request, id str
 		writeError(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // handleFeedCheck handles requests to /v1/feeds/{id}/check

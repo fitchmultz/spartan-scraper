@@ -7,9 +7,11 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"runtime/debug"
@@ -20,6 +22,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/users"
 	"github.com/google/uuid"
 )
 
@@ -96,11 +99,62 @@ func (rw *requestIDResponseWriter) ReadFrom(reader io.Reader) (int64, error) {
 	return io.Copy(rw.ResponseWriter, reader)
 }
 
-func writeJSON(w http.ResponseWriter, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+func writeJSON(w http.ResponseWriter, payload any) {
+	setJSONContentType(w)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		slog.Error("failed to encode json response", "error", err)
 	}
+}
+
+func writeJSONStatus(w http.ResponseWriter, status int, payload any) {
+	setJSONContentType(w)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		slog.Error("failed to encode json response", "error", err)
+	}
+}
+
+func writeNoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func setJSONContentType(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+}
+
+func isJSONContentType(contentType string) bool {
+	if strings.TrimSpace(contentType) == "" {
+		return false
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+	return mediaType == "application/json"
+}
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
+	if !isJSONContentType(r.Header.Get("Content-Type")) {
+		return apperrors.UnsupportedMediaType("content-type must be application/json")
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err)
+		}
+		return apperrors.Validation("invalid JSON: " + err.Error())
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return apperrors.Validation("invalid JSON: request body must contain a single JSON value")
+		}
+		return apperrors.Validation("invalid JSON: " + err.Error())
+	}
+	return nil
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string, requestID string) {
@@ -187,6 +241,29 @@ func parseIntParamStrict(s string, paramName string) (int, error) {
 		return 0, apperrors.Validation(fmt.Sprintf("invalid %s: cannot be negative", paramName))
 	}
 	return val, nil
+}
+
+func (s *Server) userService() *users.Service {
+	return users.NewService(s.store)
+}
+
+func currentUserID(r *http.Request) (string, error) {
+	userID, ok := GetUserIDFromContext(r.Context())
+	if !ok {
+		return "", apperrors.Permission("not authenticated")
+	}
+	return userID, nil
+}
+
+func currentUserIDForResource(r *http.Request, id string, action string) (string, error) {
+	userID, err := currentUserID(r)
+	if err != nil {
+		return "", err
+	}
+	if id != "me" && id != userID {
+		return "", apperrors.Permission("can only " + action + " your own profile")
+	}
+	return userID, nil
 }
 
 func resolveAuthForRequest(cfg config.Config, url string, profile string, override *fetch.AuthOptions) (fetch.AuthOptions, error) {

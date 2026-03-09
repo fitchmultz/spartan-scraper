@@ -55,8 +55,8 @@ func (s *Server) handlePreviewTransform(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req TransformPreviewRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -138,8 +138,8 @@ func (s *Server) handleValidateTransform(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req TransformValidateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 

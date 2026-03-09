@@ -107,8 +107,8 @@ func (s *Server) handleCreateABTest(w http.ResponseWriter, r *http.Request) {
 		ConfidenceLevel  float64                 `json:"confidence_level"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -159,8 +159,7 @@ func (s *Server) handleCreateABTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, createdTest)
+	writeCreatedJSON(w, createdTest)
 }
 
 // handleGetABTest handles GET /v1/template-ab-tests/{id}
@@ -198,8 +197,8 @@ func (s *Server) handleUpdateABTest(w http.ResponseWriter, r *http.Request, test
 		ConfidenceLevel *float64                 `json:"confidence_level,omitempty"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -242,7 +241,7 @@ func (s *Server) handleDeleteABTest(w http.ResponseWriter, r *http.Request, test
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // handleStartABTest handles POST /v1/template-ab-tests/{id}/start

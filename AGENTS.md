@@ -52,6 +52,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Export schedule history is wired through `ExportScheduleManager`; keep regression coverage at the manager level so browser-harness ref flakiness does not masquerade as a product bug.
 - The web shell must declare a real favicon asset. Otherwise fresh browser sessions emit a load-time `/favicon.ico` 404 even when the app itself is healthy.
 - Template A/B handlers must return OpenAPI-shaped JSON (`id`, `baseline_template`, `success_criteria`, etc.), not raw `store.TemplateABTestRecord` fields. Returning store records breaks live UI rendering and triggers React key warnings.
+- API handlers should use `decodeJSONBody`, `writeJSONStatus`/`writeCreatedJSON`, and the shared current-user helpers instead of hand-rolled JSON decoding or `WriteHeader` + `writeJSON` sequences. That keeps `Content-Type`, body limits, unknown-field rejection, and auth checks consistent.
 - When upgrading Biome, update `web/biome.json`'s `$schema` URL in the same change. Newer Biome releases hard-fail lint if the config schema version lags the CLI.
 - Keep `go.mod`'s `toolchain` line aligned with the pinned Go patch version in `.tool-versions`; current Go docs treat it as the suggested reproducible main-module toolchain.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.

@@ -18,7 +18,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -186,17 +185,9 @@ func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ExportScheduleRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -245,7 +236,7 @@ func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
 		// The export trigger will be notified via reload
 	}
 
-	writeJSON(w, toExportScheduleResponse(*created))
+	writeCreatedJSON(w, toExportScheduleResponse(*created))
 }
 
 func (s *Server) getExportSchedule(w http.ResponseWriter, r *http.Request, id string) {
@@ -264,11 +255,6 @@ func (s *Server) getExportSchedule(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id string) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
 	store := scheduler.NewExportStorage(s.cfg.DataDir)
 
 	// Get existing schedule
@@ -282,12 +268,9 @@ func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req ExportScheduleRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -321,7 +304,7 @@ func (s *Server) deleteExportSchedule(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 func toExportScheduleResponse(schedule scheduler.ExportSchedule) ExportScheduleResponse {

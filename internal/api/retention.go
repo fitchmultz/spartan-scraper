@@ -15,9 +15,7 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -74,17 +72,9 @@ func (s *Server) handleRetentionCleanup(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req RetentionCleanupRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 

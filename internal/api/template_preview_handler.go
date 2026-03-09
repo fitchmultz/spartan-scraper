@@ -3,7 +3,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -155,8 +154,8 @@ func (s *Server) handleTestSelector(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req TestSelectorRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 

@@ -4,7 +4,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -152,17 +151,9 @@ func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateWatch creates a new watch.
 func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req WatchRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -209,9 +200,7 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, toWatchResponse(*created))
+	writeCreatedJSON(w, toWatchResponse(*created))
 }
 
 // handleWatch handles requests to /v1/watch/{id}
@@ -251,17 +240,9 @@ func (s *Server) handleGetWatch(w http.ResponseWriter, r *http.Request, id strin
 
 // handleUpdateWatch updates an existing watch.
 func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id string) {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req WatchRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -325,7 +306,7 @@ func (s *Server) handleDeleteWatch(w http.ResponseWriter, r *http.Request, id st
 		writeError(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // handleWatchCheck handles requests to /v1/watch/{id}/check

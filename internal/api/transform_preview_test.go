@@ -5,7 +5,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -68,7 +67,7 @@ func TestHandlePreviewTransform_JMESPathSuccess(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -160,7 +159,7 @@ func TestHandlePreviewTransform_JSONataSuccess(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -226,7 +225,7 @@ func TestHandlePreviewTransform_InvalidExpression(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -257,7 +256,7 @@ func TestHandlePreviewTransform_JobNotFound(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/non-existent-job/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/non-existent-job/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -294,7 +293,7 @@ func TestHandlePreviewTransform_JobNoResults(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -341,7 +340,7 @@ func TestHandlePreviewTransform_JobNotReady(t *testing.T) {
 			}
 			body, _ := json.Marshal(reqBody)
 
-			req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+			req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
 
@@ -398,7 +397,7 @@ func TestHandlePreviewTransform_LimitBounds(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -415,7 +414,7 @@ func TestHandlePreviewTransform_LimitBounds(t *testing.T) {
 	reqBody.Limit = 200
 	body, _ = json.Marshal(reqBody)
 
-	req = httptest.NewRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", bytes.NewReader(body))
+	req = newJSONRequest("POST", "/v1/jobs/"+jobID+"/preview-transform", body)
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 

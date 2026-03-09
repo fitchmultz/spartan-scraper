@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 )
 
 func TestContentTypeForExtension(t *testing.T) {
@@ -257,6 +259,78 @@ func TestContextRequestID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWriteJSONStatusSetsJSONContentType(t *testing.T) {
+	recorder := httptest.NewRecorder()
+
+	writeJSONStatus(recorder, http.StatusCreated, map[string]string{"status": "ok"})
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected application/json content type, got %q", got)
+	}
+	if !strings.Contains(recorder.Body.String(), `"status":"ok"`) {
+		t.Fatalf("expected JSON body, got %s", recorder.Body.String())
+	}
+}
+
+func TestDecodeJSONBody(t *testing.T) {
+	type payload struct {
+		Name string `json:"name"`
+	}
+
+	t.Run("accepts JSON content type with charset", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(`{"name":"spartan"}`))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		recorder := httptest.NewRecorder()
+
+		var got payload
+		if err := decodeJSONBody(recorder, req, &got); err != nil {
+			t.Fatalf("expected decode to succeed, got %v", err)
+		}
+		if got.Name != "spartan" {
+			t.Fatalf("expected decoded payload, got %+v", got)
+		}
+	})
+
+	t.Run("rejects unknown fields", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(`{"name":"spartan","extra":true}`))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		var got payload
+		err := decodeJSONBody(recorder, req, &got)
+		if err == nil || !apperrors.IsKind(err, apperrors.KindValidation) {
+			t.Fatalf("expected validation error, got %v", err)
+		}
+	})
+
+	t.Run("rejects multiple JSON values", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(`{"name":"spartan"}{"name":"extra"}`))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		var got payload
+		err := decodeJSONBody(recorder, req, &got)
+		if err == nil || !strings.Contains(apperrors.SafeMessage(err), "single JSON value") {
+			t.Fatalf("expected single-value validation error, got %v", err)
+		}
+	})
+
+	t.Run("rejects oversized bodies", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(`{"name":"`+strings.Repeat("a", maxRequestBodySize+1)+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		var got payload
+		err := decodeJSONBody(recorder, req, &got)
+		if err == nil || !apperrors.IsKind(err, apperrors.KindRequestEntityTooLarge) {
+			t.Fatalf("expected request-too-large error, got %v", err)
+		}
+	})
 }
 
 func TestRequestIDMiddleware(t *testing.T) {

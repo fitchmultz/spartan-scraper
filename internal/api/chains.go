@@ -63,8 +63,8 @@ func (s *Server) handleListChains(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 	var req ChainCreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -84,8 +84,7 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, chain)
+	writeCreatedJSON(w, chain)
 }
 
 func (s *Server) handleChain(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +132,7 @@ func (s *Server) handleDeleteChain(w http.ResponseWriter, r *http.Request, id st
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
@@ -147,8 +146,8 @@ func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
 	chainID := parts[2]
 
 	var req ChainSubmitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -158,6 +157,5 @@ func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, ChainSubmitResponse{Jobs: jobs})
+	writeCreatedJSON(w, ChainSubmitResponse{Jobs: jobs})
 }

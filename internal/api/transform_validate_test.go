@@ -12,6 +12,12 @@ import (
 	"testing"
 )
 
+func newJSONRequest(method string, path string, body []byte) *http.Request {
+	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
 func TestHandleValidateTransform_ValidJMESPath(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -22,7 +28,7 @@ func TestHandleValidateTransform_ValidJMESPath(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -58,7 +64,7 @@ func TestHandleValidateTransform_ValidJSONata(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -90,7 +96,7 @@ func TestHandleValidateTransform_InvalidJMESPath(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -126,7 +132,7 @@ func TestHandleValidateTransform_InvalidJSONata(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -158,7 +164,7 @@ func TestHandleValidateTransform_InvalidLanguage(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
@@ -177,7 +183,7 @@ func TestHandleValidateTransform_MissingExpression(t *testing.T) {
 	}
 	body, _ := json.Marshal(reqBody)
 
-	req := httptest.NewRequest("POST", "/v1/transform/validate", bytes.NewReader(body))
+	req := newJSONRequest("POST", "/v1/transform/validate", body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 

@@ -10,13 +10,11 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/users"
 )
 
 // handleWorkspaces handles GET/POST /v1/workspaces
@@ -33,28 +31,26 @@ func (s *Server) handleWorkspaces(w http.ResponseWriter, r *http.Request) {
 
 // handleListWorkspaces handles GET /v1/workspaces
 func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
-		return
-	}
-
-	userService := users.NewService(s.store)
-	workspaces, err := userService.ListUserWorkspaces(r.Context(), userID)
+	userID, err := currentUserID(r)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	workspaces, err := s.userService().ListUserWorkspaces(r.Context(), userID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, map[string]any{"workspaces": workspaces})
 }
 
 // handleCreateWorkspace handles POST /v1/workspaces
 func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -62,8 +58,8 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -72,7 +68,7 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 	workspace, err := userService.CreateWorkspace(r.Context(), userID, req.Name, req.Description)
 	if err != nil {
 		writeError(w, r, err)
@@ -84,8 +80,7 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		"name": workspace.Name,
 	})
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, workspace)
+	writeCreatedJSON(w, workspace)
 }
 
 // handleWorkspace handles GET/PUT/DELETE /v1/workspaces/{id} and members sub-routes
@@ -119,13 +114,13 @@ func (s *Server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
 
 // handleGetWorkspace handles GET /v1/workspaces/{id}
 func (s *Server) handleGetWorkspace(w http.ResponseWriter, r *http.Request, id string) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 
 	// Check if user has access to workspace
 	if !userService.CanAccessWorkspace(r.Context(), userID, id) {
@@ -139,19 +134,18 @@ func (s *Server) handleGetWorkspace(w http.ResponseWriter, r *http.Request, id s
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	writeJSON(w, workspace)
 }
 
 // handleUpdateWorkspace handles PUT /v1/workspaces/{id}
 func (s *Server) handleUpdateWorkspace(w http.ResponseWriter, r *http.Request, id string) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 
 	// Check if user can manage workspace
 	if !userService.CanManageWorkspace(r.Context(), userID, id) {
@@ -163,8 +157,8 @@ func (s *Server) handleUpdateWorkspace(w http.ResponseWriter, r *http.Request, i
 		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -189,19 +183,18 @@ func (s *Server) handleUpdateWorkspace(w http.ResponseWriter, r *http.Request, i
 		"name": workspace.Name,
 	})
 
-	w.WriteHeader(http.StatusOK)
 	writeJSON(w, workspace)
 }
 
 // handleDeleteWorkspace handles DELETE /v1/workspaces/{id}
 func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request, id string) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 
 	// Check if user can manage workspace
 	if !userService.CanManageWorkspace(r.Context(), userID, id) {
@@ -217,7 +210,7 @@ func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // handleWorkspaceMembers handles GET/POST /v1/workspaces/{id}/members
@@ -241,13 +234,13 @@ func (s *Server) handleWorkspaceMembers(w http.ResponseWriter, r *http.Request) 
 
 // handleListWorkspaceMembers handles GET /v1/workspaces/{id}/members
 func (s *Server) handleListWorkspaceMembers(w http.ResponseWriter, r *http.Request, workspaceID string) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 
 	// Check if user has access to workspace
 	if !userService.CanAccessWorkspace(r.Context(), userID, workspaceID) {
@@ -261,19 +254,18 @@ func (s *Server) handleListWorkspaceMembers(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	writeJSON(w, map[string]any{"members": members})
 }
 
 // handleAddWorkspaceMember handles POST /v1/workspaces/{id}/members
 func (s *Server) handleAddWorkspaceMember(w http.ResponseWriter, r *http.Request, workspaceID string) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	userService := users.NewService(s.store)
+	userService := s.userService()
 
 	// Check if user can invite members
 	if !userService.CanInviteMembers(r.Context(), userID, workspaceID) {
@@ -285,8 +277,8 @@ func (s *Server) handleAddWorkspaceMember(w http.ResponseWriter, r *http.Request
 		Email string `json:"email"`
 		Role  string `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -319,8 +311,7 @@ func (s *Server) handleAddWorkspaceMember(w http.ResponseWriter, r *http.Request
 		"role":  req.Role,
 	})
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]string{"status": "member added"})
+	writeCreatedJSON(w, map[string]string{"status": "member added"})
 }
 
 // handleWorkspaceMember handles DELETE /v1/workspaces/{id}/members/{userId}

@@ -10,7 +10,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -78,8 +77,8 @@ func (s *Server) handleForms(w http.ResponseWriter, r *http.Request) {
 // handleFormDetect handles POST /v1/forms/detect.
 func (s *Server) handleFormDetect(w http.ResponseWriter, r *http.Request) {
 	var req FormDetectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation(fmt.Sprintf("invalid JSON: %v", err)))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -115,15 +114,14 @@ func (s *Server) handleFormDetect(w http.ResponseWriter, r *http.Request) {
 		DetectedTypes: result.DetectedTypes,
 	}
 
-	w.WriteHeader(http.StatusOK)
-	writeJSON(w, response)
+	writeJSONStatus(w, http.StatusOK, response)
 }
 
 // handleFormFill handles POST /v1/forms/fill.
 func (s *Server) handleFormFill(w http.ResponseWriter, r *http.Request) {
 	var req FormFillRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation(fmt.Sprintf("invalid JSON: %v", err)))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -174,9 +172,8 @@ func (s *Server) handleFormFill(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if result.Success {
-		w.WriteHeader(http.StatusOK)
+		writeJSONStatus(w, http.StatusOK, response)
 	} else {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		writeJSONStatus(w, http.StatusUnprocessableEntity, response)
 	}
-	writeJSON(w, response)
 }

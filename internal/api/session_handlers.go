@@ -2,7 +2,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -51,8 +50,8 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 // handleCreateSession handles POST /v1/auth/sessions
 func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	var input auth.Session
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &input); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -90,5 +89,5 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }

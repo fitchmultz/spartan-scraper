@@ -12,7 +12,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -56,13 +55,8 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		if err.Error() == "http: request body too large" {
-			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
-			return
-		}
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -113,7 +107,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Get user's workspaces
-	userService := users.NewService(s.store)
+	userService := s.userService()
 	workspaces, err := userService.ListUserWorkspaces(r.Context(), user.ID)
 	if err != nil {
 		workspaces = []*model.Workspace{}
@@ -122,8 +116,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	// Create audit log
 	s.createAuditLog(r.Context(), "", user.ID, model.AuditActionUserLogin, model.AuditResourceUser, user.ID, nil)
 
-	w.WriteHeader(http.StatusOK)
-	writeJSON(w, LoginResponse{
+	writeJSONStatus(w, http.StatusOK, LoginResponse{
 		User:       user,
 		Workspaces: workspaces,
 	})
@@ -161,8 +154,7 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
-	w.WriteHeader(http.StatusOK)
-	writeJSON(w, map[string]string{"status": "logged out"})
+	writeJSONStatus(w, http.StatusOK, map[string]string{"status": "logged out"})
 }
 
 // handleAuthRegister handles POST /v1/auth/register
@@ -173,13 +165,8 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req RegisterRequest
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		if err.Error() == "http: request body too large" {
-			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
-			return
-		}
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -195,7 +182,7 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create user
-	userService := users.NewService(s.store)
+	userService := s.userService()
 	user, err := userService.CreateUser(r.Context(), req.Email, req.Name, req.Password)
 	if err != nil {
 		if apperrors.IsKind(err, apperrors.KindValidation) {
@@ -212,8 +199,7 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 		"name":  user.Name,
 	})
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, user)
+	writeCreatedJSON(w, user)
 }
 
 // handleAuthMe handles GET /v1/auth/me - returns current user info
@@ -224,14 +210,13 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user ID from context (set by auth middleware)
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		writeError(w, r, apperrors.Permission("not authenticated"))
+	userID, err := currentUserID(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	// Get user
-	userService := users.NewService(s.store)
+	userService := s.userService()
 	user, err := userService.GetUser(r.Context(), userID)
 	if err != nil {
 		writeError(w, r, err)
@@ -244,8 +229,7 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 		workspaces = []*model.Workspace{}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	writeJSON(w, LoginResponse{
+	writeJSONStatus(w, http.StatusOK, LoginResponse{
 		User:       user,
 		Workspaces: workspaces,
 	})

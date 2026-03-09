@@ -35,8 +35,8 @@ func (s *Server) handleTrafficReplay(w http.ResponseWriter, r *http.Request) {
 
 	// Parse request body
 	var req TrafficReplayRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body"))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 

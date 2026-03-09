@@ -4,7 +4,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -127,8 +126,8 @@ func (s *Server) handleGetPlugin(w http.ResponseWriter, r *http.Request, name st
 // handleInstallPlugin handles POST /v1/plugins
 func (s *Server) handleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 	var req PluginInstallRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -148,15 +147,14 @@ func (s *Server) handleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, info)
+	writeCreatedJSON(w, info)
 }
 
 // handleUpdatePlugin handles PUT /v1/plugins/{name}
 func (s *Server) handleUpdatePlugin(w http.ResponseWriter, r *http.Request, name string) {
 	var req PluginConfigureRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -203,7 +201,7 @@ func (s *Server) handleDeletePlugin(w http.ResponseWriter, r *http.Request, name
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // handleEnablePlugin handles POST /v1/plugins/{name}/enable

@@ -113,8 +113,8 @@ func (s *Server) handleGetTemplate(w http.ResponseWriter, r *http.Request, name 
 // handleCreateTemplate handles POST /v1/templates
 func (s *Server) handleCreateTemplate(w http.ResponseWriter, r *http.Request) {
 	var req CreateTemplateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -162,8 +162,7 @@ func (s *Server) handleCreateTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, TemplateResponse{
+	writeCreatedJSON(w, TemplateResponse{
 		Name:      req.Name,
 		IsBuiltIn: false,
 		Template:  template,
@@ -179,8 +178,8 @@ func (s *Server) handleUpdateTemplate(w http.ResponseWriter, r *http.Request, na
 	}
 
 	var req CreateTemplateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -277,7 +276,7 @@ func (s *Server) handleDeleteTemplate(w http.ResponseWriter, r *http.Request, na
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	writeNoContent(w)
 }
 
 // saveTemplateToFile saves a template to the extract_templates.json file

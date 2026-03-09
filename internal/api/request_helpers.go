@@ -22,7 +22,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -41,22 +40,8 @@ type namedResourceStore[T any] struct {
 	setName       func(value *T, name string)
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		return apperrors.UnsupportedMediaType("content-type must be application/json")
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(dst); err != nil {
-		return apperrors.Validation("invalid JSON: " + err.Error())
-	}
-	return nil
-}
-
 func writeCreatedJSON(w http.ResponseWriter, payload any) {
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, payload)
+	writeJSONStatus(w, http.StatusCreated, payload)
 }
 
 func valueOr[T any](ptr *T, fallback T) T {
