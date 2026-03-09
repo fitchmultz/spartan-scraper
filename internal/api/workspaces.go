@@ -43,7 +43,7 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]any{"workspaces": workspaces})
+	writeCollectionJSON(w, "workspaces", workspaces)
 }
 
 // handleCreateWorkspace handles POST /v1/workspaces
@@ -254,7 +254,7 @@ func (s *Server) handleListWorkspaceMembers(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	writeJSON(w, map[string]any{"members": members})
+	writeCollectionJSON(w, "members", members)
 }
 
 // handleAddWorkspaceMember handles POST /v1/workspaces/{id}/members

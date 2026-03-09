@@ -49,17 +49,17 @@ func TestHandleSchedulesAdd(t *testing.T) {
 		{
 			name:           "valid scrape schedule",
 			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}`,
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "valid crawl schedule",
 			body:           `{"kind": "crawl", "intervalSeconds": 7200, "url": "https://example.com", "maxDepth": 2, "maxPages": 200}`,
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "valid research schedule",
 			body:           `{"kind": "research", "intervalSeconds": 86400, "query": "test query", "urls": ["https://example.com"]}`,
-			expectedStatus: http.StatusOK,
+			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "missing kind",
@@ -80,6 +80,11 @@ func TestHandleSchedulesAdd(t *testing.T) {
 			name:           "missing content-type",
 			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}`,
 			expectedStatus: http.StatusUnsupportedMediaType,
+		},
+		{
+			name:           "trailing json payload is rejected",
+			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}{"extra":true}`,
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing url for scrape",
@@ -121,7 +126,7 @@ func TestHandleSchedulesAdd(t *testing.T) {
 				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
 			}
 
-			if tt.expectedStatus == http.StatusOK {
+			if tt.expectedStatus == http.StatusCreated {
 				var resp map[string]interface{}
 				if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 					t.Errorf("failed to parse JSON response: %v", err)
@@ -161,7 +166,7 @@ func TestHandleScheduleDelete(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Fatalf("failed to add schedule: got status %v, body: %s", status, rr.Body.String())
 	}
 

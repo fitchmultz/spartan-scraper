@@ -5,11 +5,9 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -58,7 +56,7 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, map[string]any{"profiles": vault.Profiles})
+	writeCollectionJSON(w, "profiles", vault.Profiles)
 }
 
 func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
@@ -69,16 +67,9 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPut:
-		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var profile auth.Profile
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&profile); err != nil {
-			writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+		if err := decodeJSONBody(w, r, &profile); err != nil {
+			writeError(w, r, err)
 			return
 		}
 		if profile.Name == "" {
@@ -102,7 +93,7 @@ func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, map[string]string{"status": "ok"})
+		writeOKStatus(w)
 	default:
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 	}
@@ -113,18 +104,9 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	var payload struct {
-		Path string `json:"path"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&payload); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	var payload pathRequest
+	if err := decodeJSONBody(w, r, &payload); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
@@ -135,7 +117,7 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, map[string]string{"status": "ok"})
+	writeOKStatus(w)
 }
 
 func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
@@ -143,18 +125,9 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	var payload struct {
-		Path string `json:"path"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&payload); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	var payload pathRequest
+	if err := decodeJSONBody(w, r, &payload); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {
@@ -165,7 +138,7 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, map[string]string{"status": "ok"})
+	writeOKStatus(w)
 }
 
 // handleOAuthInitiate starts an OAuth 2.0 authorization flow.
@@ -176,17 +149,9 @@ func (s *Server) handleOAuthInitiate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req OAuthInitiateRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -196,22 +161,11 @@ func (s *Server) handleOAuthInitiate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load the profile to get OAuth config
-	profile, found, err := auth.GetProfile(s.cfg.DataDir, req.ProfileName)
+	_, oauthConfig, err := s.requireOAuthProfile(req.ProfileName)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if !found {
-		writeError(w, r, apperrors.NotFound("profile not found"))
-		return
-	}
-
-	if profile.OAuth2 == nil {
-		writeError(w, r, apperrors.Validation("profile does not have OAuth2 configuration"))
-		return
-	}
-
-	oauthConfig := profile.OAuth2
 
 	// Validate OAuth configuration
 	if oauthConfig.FlowType != auth.OAuth2FlowAuthorizationCode {
@@ -362,17 +316,9 @@ func (s *Server) handleOAuthRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req OAuthRefreshRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -399,23 +345,14 @@ func (s *Server) handleOAuthRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load profile to get OAuth config
-	profile, found, err := auth.GetProfile(s.cfg.DataDir, req.ProfileName)
+	_, oauthConfig, err := s.requireOAuthProfile(req.ProfileName)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if !found {
-		writeError(w, r, apperrors.NotFound("profile not found"))
-		return
-	}
-
-	if profile.OAuth2 == nil {
-		writeError(w, r, apperrors.Validation("profile does not have OAuth2 configuration"))
-		return
-	}
 
 	// Refresh token
-	newToken, err := auth.RefreshOAuth2Token(r.Context(), *profile.OAuth2, existingToken.RefreshToken)
+	newToken, err := auth.RefreshOAuth2Token(r.Context(), *oauthConfig, existingToken.RefreshToken)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -449,17 +386,9 @@ func (s *Server) handleOIDCDiscover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	var req OIDCDiscoverRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -491,19 +420,9 @@ func (s *Server) handleOAuthRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	var req struct {
-		ProfileName string `json:"profile_name"`
-	}
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+	var req profileNameRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -525,24 +444,15 @@ func (s *Server) handleOAuthRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load profile to get OAuth config
-	profile, found, err := auth.GetProfile(s.cfg.DataDir, req.ProfileName)
+	_, oauthConfig, err := s.requireOAuthProfile(req.ProfileName)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if !found {
-		writeError(w, r, apperrors.NotFound("profile not found"))
-		return
-	}
-
-	if profile.OAuth2 == nil {
-		writeError(w, r, apperrors.Validation("profile does not have OAuth2 configuration"))
-		return
-	}
 
 	// Revoke token if revoke URL is configured
-	if profile.OAuth2.RevokeURL != "" {
-		if err := auth.RevokeOAuth2Token(r.Context(), profile.OAuth2.RevokeURL, profile.OAuth2.ClientID, profile.OAuth2.ClientSecret, existingToken.AccessToken, "access_token"); err != nil {
+	if oauthConfig.RevokeURL != "" {
+		if err := auth.RevokeOAuth2Token(r.Context(), oauthConfig.RevokeURL, oauthConfig.ClientID, oauthConfig.ClientSecret, existingToken.AccessToken, "access_token"); err != nil {
 			// Log but don't fail - still delete the token locally
 			slog.Error("failed to revoke token at provider", "error", apperrors.SafeMessage(err))
 		}
@@ -554,5 +464,27 @@ func (s *Server) handleOAuthRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]string{"status": "ok"})
+	writeOKStatus(w)
+}
+
+type pathRequest struct {
+	Path string `json:"path"`
+}
+
+type profileNameRequest struct {
+	ProfileName string `json:"profile_name"`
+}
+
+func (s *Server) requireOAuthProfile(profileName string) (*auth.Profile, *auth.OAuth2Config, error) {
+	profile, found, err := auth.GetProfile(s.cfg.DataDir, profileName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !found {
+		return nil, nil, apperrors.NotFound("profile not found")
+	}
+	if profile.OAuth2 == nil {
+		return nil, nil, apperrors.Validation("profile does not have OAuth2 configuration")
+	}
+	return &profile, profile.OAuth2, nil
 }

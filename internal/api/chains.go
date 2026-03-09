@@ -58,7 +58,7 @@ func (s *Server) handleListChains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{"chains": chains})
+	writeCollectionJSON(w, "chains", chains)
 }
 
 func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {

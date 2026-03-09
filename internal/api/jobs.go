@@ -65,7 +65,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeJSON(w, map[string]interface{}{"jobs": model.SanitizeJobs(jobsList)})
+	writeCollectionJSON(w, "jobs", model.SanitizeJobs(jobsList))
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
@@ -97,13 +97,13 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 				writeError(w, r, err)
 				return
 			}
-			writeJSON(w, map[string]string{"status": "deleted"})
+			writeStatusJSON(w, "deleted")
 		} else {
 			if err := s.manager.CancelJob(r.Context(), id); err != nil {
 				writeError(w, r, err)
 				return
 			}
-			writeJSON(w, map[string]string{"status": "canceled"})
+			writeStatusJSON(w, "canceled")
 		}
 	default:
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))

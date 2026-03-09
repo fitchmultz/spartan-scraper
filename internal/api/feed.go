@@ -128,7 +128,7 @@ func (s *Server) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 	for i, f := range feeds {
 		response[i] = toFeedResponse(f)
 	}
-	writeJSON(w, map[string]interface{}{"feeds": response})
+	writeCollectionJSON(w, "feeds", response)
 }
 
 // handleCreateFeed creates a new feed.
@@ -371,5 +371,5 @@ func (s *Server) handleFeedItems(w http.ResponseWriter, r *http.Request) {
 		response[i] = toFeedItemResponse(item)
 	}
 
-	writeJSON(w, map[string]interface{}{"items": response})
+	writeCollectionJSON(w, "items", response)
 }

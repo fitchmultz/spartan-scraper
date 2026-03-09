@@ -428,8 +428,8 @@ func TestWatchRequestBodySize(t *testing.T) {
 	srv.Routes().ServeHTTP(rr, req)
 
 	// Should fail due to size limit
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("Expected status 400 for oversized request, got %d", rr.Code)
+	if rr.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected status 413 for oversized request, got %d", rr.Code)
 	}
 }
 

@@ -324,6 +324,51 @@ func TestHandleOAuthInitiate_MissingAuthorizeURL(t *testing.T) {
 	}
 }
 
+func TestHandleOAuthInitiate_RejectsMissingJSONContentType(t *testing.T) {
+	server, dataDir, cleanup := setupTestOAuthServer(t)
+	defer cleanup()
+
+	createTestProfileWithOAuth(t, dataDir, "testprofile", &auth.OAuth2Config{
+		FlowType:     auth.OAuth2FlowAuthorizationCode,
+		ClientID:     "test-client-id",
+		TokenURL:     "https://example.com/token",
+		AuthorizeURL: "https://example.com/authorize",
+		RedirectURI:  "https://example.com/callback",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/oauth/initiate", strings.NewReader(`{"profile_name":"testprofile"}`))
+	w := httptest.NewRecorder()
+
+	server.handleOAuthInitiate(w, req)
+
+	if w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("expected status 415, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleOAuthInitiate_RejectsTrailingJSON(t *testing.T) {
+	server, dataDir, cleanup := setupTestOAuthServer(t)
+	defer cleanup()
+
+	createTestProfileWithOAuth(t, dataDir, "testprofile", &auth.OAuth2Config{
+		FlowType:     auth.OAuth2FlowAuthorizationCode,
+		ClientID:     "test-client-id",
+		TokenURL:     "https://example.com/token",
+		AuthorizeURL: "https://example.com/authorize",
+		RedirectURI:  "https://example.com/callback",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/oauth/initiate", strings.NewReader(`{"profile_name":"testprofile"}{"extra":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	server.handleOAuthInitiate(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // TestDerivePKCEChallengeS256_API tests the DerivePKCEChallengeS256 helper via the auth package.
 func TestDerivePKCEChallengeS256_API(t *testing.T) {
 	// Generate a verifier

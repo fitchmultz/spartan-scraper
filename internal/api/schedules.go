@@ -1,12 +1,26 @@
 // Package api provides HTTP handlers for scheduled job management endpoints.
-// Schedule handlers support creating, listing, retrieving, updating, and deleting
-// recurring scrape, crawl, and research jobs with configurable intervals.
+//
+// Purpose:
+// - Manage recurring scrape, crawl, and research schedules over HTTP.
+//
+// Responsibilities:
+// - Validate schedule creation inputs.
+// - Translate API requests into scheduler storage records.
+// - Return consistent JSON responses for list/create/delete operations.
+//
+// Scope:
+// - Direct schedule CRUD handlers in the API package.
+//
+// Usage:
+// - Mounted under `/v1/schedules` and `/v1/schedules/{id}` by the API router.
+//
+// Invariants/Assumptions:
+// - Schedule creation requests use strict JSON decoding via shared helpers.
+// - Supported kinds are scrape, crawl, and research.
 package api
 
 import (
-	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -23,28 +37,15 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 		}
 		response := make([]ScheduleResponse, len(schedules))
 		for i, sched := range schedules {
-			response[i] = ScheduleResponse{
-				ID:              sched.ID,
-				Kind:            string(sched.Kind),
-				IntervalSeconds: sched.IntervalSeconds,
-				NextRun:         sched.NextRun.Format(time.RFC3339),
-				Params:          sched.Params,
-			}
+			response[i] = toScheduleResponse(sched)
 		}
-		writeJSON(w, map[string]interface{}{"schedules": response})
+		writeCollectionJSON(w, "schedules", response)
 		return
 	}
 	if r.Method == http.MethodPost {
-		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 		var req ScheduleRequest
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&req); err != nil {
-			writeError(w, r, apperrors.Validation("invalid json: "+err.Error()))
+		if err := decodeJSONBody(w, r, &req); err != nil {
+			writeError(w, r, err)
 			return
 		}
 		if req.Kind == "" {
@@ -60,65 +61,10 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		params := make(map[string]interface{})
-		if req.URL != nil {
-			params["url"] = *req.URL
-		}
-		if req.Query != nil {
-			params["query"] = *req.Query
-		}
-		if len(req.URLs) > 0 {
-			params["urls"] = req.URLs
-		}
-		if req.MaxDepth != nil {
-			params["maxDepth"] = *req.MaxDepth
-		}
-		if req.MaxPages != nil {
-			params["maxPages"] = *req.MaxPages
-		}
-		params["headless"] = req.Headless
-		if req.Playwright != nil {
-			params["playwright"] = *req.Playwright
-		}
-		params["timeout"] = req.TimeoutSeconds
-		if req.AuthProfile != nil {
-			params["authProfile"] = *req.AuthProfile
-		}
-		if req.Auth != nil {
-			params["headers"] = toHeaderKVs(req.Auth.Headers)
-			params["cookies"] = toCookies(req.Auth.Cookies)
-			params["tokens"] = tokensFromOverride(*req.Auth)
-			if login := loginFromOverride(*req.Auth); login != nil {
-				params["login"] = login
-			}
-		}
-		if req.Extract != nil {
-			params["extractTemplate"] = req.Extract.Template
-			params["extractValidate"] = req.Extract.Validate
-		}
-		if req.Pipeline != nil {
-			params["pipeline"] = *req.Pipeline
-		}
-		if req.Incremental != nil && req.Kind != "research" {
-			params["incremental"] = *req.Incremental
-		}
-		if req.SitemapURL != nil && req.Kind == "crawl" {
-			params["sitemapURL"] = *req.SitemapURL
-		}
-		if req.SitemapOnly != nil && req.Kind == "crawl" {
-			params["sitemapOnly"] = *req.SitemapOnly
-		}
-		if req.Screenshot != nil {
-			params["screenshot"] = *req.Screenshot
-		}
-		if req.Device != nil {
-			params["device"] = *req.Device
-		}
-
 		schedule := scheduler.Schedule{
 			Kind:            model.Kind(req.Kind),
 			IntervalSeconds: req.IntervalSeconds,
-			Params:          params,
+			Params:          scheduleParamsFromRequest(req),
 		}
 
 		addedSchedule, err := scheduler.Add(s.cfg.DataDir, schedule)
@@ -127,13 +73,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		writeJSON(w, ScheduleResponse{
-			ID:              addedSchedule.ID,
-			Kind:            string(addedSchedule.Kind),
-			IntervalSeconds: addedSchedule.IntervalSeconds,
-			NextRun:         addedSchedule.NextRun.Format(time.RFC3339),
-			Params:          addedSchedule.Params,
-		})
+		writeCreatedJSON(w, toScheduleResponse(*addedSchedule))
 		return
 	}
 	writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
@@ -153,5 +93,74 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, map[string]string{"status": "ok"})
+	writeOKStatus(w)
+}
+
+func toScheduleResponse(schedule scheduler.Schedule) ScheduleResponse {
+	return ScheduleResponse{
+		ID:              schedule.ID,
+		Kind:            string(schedule.Kind),
+		IntervalSeconds: schedule.IntervalSeconds,
+		NextRun:         schedule.NextRun.Format(time.RFC3339),
+		Params:          schedule.Params,
+	}
+}
+
+func scheduleParamsFromRequest(req ScheduleRequest) map[string]interface{} {
+	params := map[string]interface{}{
+		"headless": req.Headless,
+		"timeout":  req.TimeoutSeconds,
+	}
+	if req.URL != nil {
+		params["url"] = *req.URL
+	}
+	if req.Query != nil {
+		params["query"] = *req.Query
+	}
+	if len(req.URLs) > 0 {
+		params["urls"] = req.URLs
+	}
+	if req.MaxDepth != nil {
+		params["maxDepth"] = *req.MaxDepth
+	}
+	if req.MaxPages != nil {
+		params["maxPages"] = *req.MaxPages
+	}
+	if req.Playwright != nil {
+		params["playwright"] = *req.Playwright
+	}
+	if req.AuthProfile != nil {
+		params["authProfile"] = *req.AuthProfile
+	}
+	if req.Auth != nil {
+		params["headers"] = toHeaderKVs(req.Auth.Headers)
+		params["cookies"] = toCookies(req.Auth.Cookies)
+		params["tokens"] = tokensFromOverride(*req.Auth)
+		if login := loginFromOverride(*req.Auth); login != nil {
+			params["login"] = login
+		}
+	}
+	if req.Extract != nil {
+		params["extractTemplate"] = req.Extract.Template
+		params["extractValidate"] = req.Extract.Validate
+	}
+	if req.Pipeline != nil {
+		params["pipeline"] = *req.Pipeline
+	}
+	if req.Incremental != nil && req.Kind != "research" {
+		params["incremental"] = *req.Incremental
+	}
+	if req.SitemapURL != nil && req.Kind == "crawl" {
+		params["sitemapURL"] = *req.SitemapURL
+	}
+	if req.SitemapOnly != nil && req.Kind == "crawl" {
+		params["sitemapOnly"] = *req.SitemapOnly
+	}
+	if req.Screenshot != nil {
+		params["screenshot"] = *req.Screenshot
+	}
+	if req.Device != nil {
+		params["device"] = *req.Device
+	}
+	return params
 }

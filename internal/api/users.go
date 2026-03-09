@@ -33,7 +33,7 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]any{"users": []*model.User{user}})
+	writeCollectionJSON(w, "users", []*model.User{user})
 }
 
 // handleUser handles GET/PUT/DELETE /v1/users/{id}

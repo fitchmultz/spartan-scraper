@@ -146,7 +146,7 @@ func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
 	for i, w := range watches {
 		response[i] = toWatchResponse(w)
 	}
-	writeJSON(w, map[string]interface{}{"watches": response})
+	writeCollectionJSON(w, "watches", response)
 }
 
 // handleCreateWatch creates a new watch.

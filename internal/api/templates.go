@@ -78,7 +78,7 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{"templates": names})
+	writeCollectionJSON(w, "templates", names)
 }
 
 // handleGetTemplate handles GET /v1/templates/{name}

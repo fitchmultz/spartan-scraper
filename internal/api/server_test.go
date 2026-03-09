@@ -65,6 +65,7 @@ func TestRejectUnknownFields(t *testing.T) {
 		name         string
 		method       string
 		endpoint     string
+		validStatus  int
 		validBody    string
 		invalidBody  string
 		unknownField string
@@ -76,6 +77,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "scrape rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/scrape",
+			validStatus:  http.StatusOK,
 			validBody:    `{"url": "https://example.com"}`,
 			invalidBody:  `{"url": "https://example.com", "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -84,6 +86,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "crawl rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/crawl",
+			validStatus:  http.StatusOK,
 			validBody:    `{"url": "https://example.com", "maxDepth": 1, "maxPages": 1}`,
 			invalidBody:  `{"url": "https://example.com", "maxDepth": 1, "maxPages": 1, "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -92,6 +95,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "research rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/research",
+			validStatus:  http.StatusOK,
 			validBody:    `{"query": "test query", "urls": ["https://example.com"]}`,
 			invalidBody:  `{"query": "test query", "urls": ["https://example.com"], "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -100,6 +104,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "auth profile PUT rejects unknown field",
 			method:       http.MethodPut,
 			endpoint:     "/v1/auth/profiles/test-profile",
+			validStatus:  http.StatusOK,
 			validBody:    `{}`,
 			invalidBody:  `{"unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -108,6 +113,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "auth import rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/auth/import",
+			validStatus:  http.StatusOK,
 			validBody:    `{"path": "backup.json"}`,
 			invalidBody:  `{"path": "backup.json", "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -125,6 +131,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "auth export rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/auth/export",
+			validStatus:  http.StatusOK,
 			validBody:    `{"path": "backup-unknown-fields-test.json"}`,
 			invalidBody:  `{"path": "backup-unknown-fields-test.json", "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -133,6 +140,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "schedules POST rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/schedules",
+			validStatus:  http.StatusCreated,
 			validBody:    `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}`,
 			invalidBody:  `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com", "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -150,8 +158,8 @@ func TestRejectUnknownFields(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
-			if rr.Code != http.StatusOK {
-				t.Fatalf("valid request failed: got %v want %v, body: %s", rr.Code, http.StatusOK, rr.Body.String())
+			if rr.Code != tt.validStatus {
+				t.Fatalf("valid request failed: got %v want %v, body: %s", rr.Code, tt.validStatus, rr.Body.String())
 			}
 
 			req = httptest.NewRequest(tt.method, tt.endpoint, strings.NewReader(tt.invalidBody))

@@ -1,20 +1,22 @@
 // Package api provides HTTP handlers for automated export schedule management.
 //
-// This file implements CRUD operations for export schedules that trigger
-// automatic exports when jobs complete matching specified filter criteria.
+// Purpose:
+// - Manage export schedules and schedule history over HTTP.
 //
-// Endpoints:
-// - GET    /v1/export-schedules      - List all export schedules
-// - POST   /v1/export-schedules      - Create a new export schedule
-// - GET    /v1/export-schedules/{id} - Get a specific export schedule
-// - PUT    /v1/export-schedules/{id} - Update an export schedule
-// - DELETE /v1/export-schedules/{id} - Delete an export schedule
-// - GET    /v1/export-schedules/{id}/history - Get export history for a schedule
+// Responsibilities:
+// - Validate create/update requests for export schedules.
+// - Return consistent JSON envelopes for list and history responses.
+// - Normalize export defaults before persistence.
 //
-// This file does NOT handle:
-// - Export execution (scheduler/export_trigger.go handles that)
-// - Export validation (scheduler/export_validation.go handles that)
-// - History persistence (scheduler/export_history.go handles that)
+// Scope:
+// - CRUD handlers for export schedules and their history endpoints.
+//
+// Usage:
+// - Mounted under `/v1/export-schedules` and `/v1/export-schedules/{id}/history`.
+//
+// Invariants/Assumptions:
+// - JSON request bodies are decoded through shared strict helpers.
+// - Cloud export defaults are applied consistently on create and update.
 package api
 
 import (
@@ -160,12 +162,7 @@ func (s *Server) handleExportScheduleHistory(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	writeJSON(w, map[string]interface{}{
-		"records": response,
-		"total":   total,
-		"limit":   limit,
-		"offset":  offset,
-	})
+	writeRecordsPageJSON(w, response, total, limit, offset)
 }
 
 func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +178,7 @@ func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {
 		response[i] = toExportScheduleResponse(sched)
 	}
 
-	writeJSON(w, map[string]interface{}{"schedules": response})
+	writeCollectionJSON(w, "schedules", response)
 }
 
 func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
@@ -198,12 +195,12 @@ func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build export schedule
-	schedule := scheduler.ExportSchedule{
+	schedule := normalizeExportScheduleRequest(scheduler.ExportSchedule{
 		Name:    req.Name,
 		Enabled: true, // default
 		Filters: req.Filters,
 		Export:  req.Export,
-	}
+	})
 
 	if req.Enabled != nil {
 		schedule.Enabled = *req.Enabled
@@ -211,16 +208,6 @@ func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
 
 	if req.Retry != nil {
 		schedule.Retry = *req.Retry
-	}
-
-	// Set defaults for cloud config if provided
-	if schedule.Export.CloudConfig != nil {
-		if schedule.Export.CloudConfig.Path == "" {
-			schedule.Export.CloudConfig.Path = "exports/{kind}/{job_id}.{format}"
-		}
-		if schedule.Export.CloudConfig.ContentFormat == "" {
-			schedule.Export.CloudConfig.ContentFormat = schedule.Export.Format
-		}
 	}
 
 	// Create storage and add schedule
@@ -286,6 +273,7 @@ func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id
 	if req.Retry != nil {
 		existing.Retry = *req.Retry
 	}
+	*existing = normalizeExportScheduleRequest(*existing)
 
 	// Update schedule
 	updated, err := store.Update(*existing)
@@ -345,4 +333,17 @@ func ToCloudExportConfigResponse(cfg *exporter.CloudExportConfig) *CloudExportCo
 		ContentFormat: cfg.ContentFormat,
 		ContentType:   cfg.ContentType,
 	}
+}
+
+func normalizeExportScheduleRequest(schedule scheduler.ExportSchedule) scheduler.ExportSchedule {
+	if schedule.Export.CloudConfig == nil {
+		return schedule
+	}
+	if schedule.Export.CloudConfig.Path == "" {
+		schedule.Export.CloudConfig.Path = "exports/{kind}/{job_id}.{format}"
+	}
+	if schedule.Export.CloudConfig.ContentFormat == "" {
+		schedule.Export.CloudConfig.ContentFormat = schedule.Export.Format
+	}
+	return schedule
 }

@@ -1,9 +1,26 @@
 // Package api provides HTTP handlers for AI-powered extraction endpoints.
+//
+// Purpose:
+// - Expose AI-assisted extraction preview and template-generation routes.
+//
+// Responsibilities:
+// - Validate extraction requests and shared AI configuration.
+// - Enforce strict JSON request parsing and bounded request sizes.
+// - Adapt extractor results into stable API responses.
+//
+// Scope:
+// - AI extraction request handlers only.
+//
+// Usage:
+// - Mounted under `/v1/extract/ai-preview` and `/v1/extract/ai-template-generate`.
+//
+// Invariants/Assumptions:
+// - Requests must use `application/json`.
+// - AI handlers require `Server.aiExtractor` to be configured.
 package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -52,27 +69,13 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Enforce body size limit BEFORE any other processing (security: prevent DoS)
-	if r.ContentLength > maxRequestBodySize {
-		writeError(w, r, apperrors.RequestEntityTooLarge("request body too large"))
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-
-	// Validate AI config is available
-	if s.aiExtractor == nil {
-		writeError(w, r, apperrors.Validation("AI extraction is not configured. Set AI_PROVIDER and AI_API_KEY environment variables."))
-		return
-	}
 	var req AIExtractPreviewRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		if err.Error() == "http: request body too large" {
-			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
-			return
-		}
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if err := s.requireAIExtractor(); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -131,27 +134,13 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Enforce body size limit BEFORE any other processing (security: prevent DoS)
-	if r.ContentLength > maxRequestBodySize {
-		writeError(w, r, apperrors.RequestEntityTooLarge("request body too large"))
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-
-	// Validate AI config is available
-	if s.aiExtractor == nil {
-		writeError(w, r, apperrors.Validation("AI extraction is not configured. Set AI_PROVIDER and AI_API_KEY environment variables."))
-		return
-	}
 	var req AIExtractTemplateGenerateRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		if err.Error() == "http: request body too large" {
-			writeError(w, r, apperrors.Wrap(apperrors.KindRequestEntityTooLarge, "request body too large", err))
-			return
-		}
-		writeError(w, r, apperrors.Validation("invalid request body: "+err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if err := s.requireAIExtractor(); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -168,4 +157,11 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 	// Note: For security reasons, we don't automatically fetch arbitrary URLs
 	// Return an error directing clients to use the job system
 	writeError(w, r, apperrors.Validation("AI template generation requires HTML content. Use the job system to fetch and analyze URLs, or fetch client-side and use the template-preview endpoint."))
+}
+
+func (s *Server) requireAIExtractor() error {
+	if s.aiExtractor == nil {
+		return apperrors.Validation("AI extraction is not configured. Set AI_PROVIDER and AI_API_KEY environment variables.")
+	}
+	return nil
 }

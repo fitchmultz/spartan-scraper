@@ -40,8 +40,33 @@ type namedResourceStore[T any] struct {
 	setName       func(value *T, name string)
 }
 
+type statusResponse struct {
+	Status string `json:"status"`
+}
+
 func writeCreatedJSON(w http.ResponseWriter, payload any) {
 	writeJSONStatus(w, http.StatusCreated, payload)
+}
+
+func writeCollectionJSON(w http.ResponseWriter, collectionKey string, items any) {
+	writeJSON(w, map[string]any{collectionKey: items})
+}
+
+func writeRecordsPageJSON(w http.ResponseWriter, records any, total int, limit int, offset int) {
+	writeJSON(w, map[string]any{
+		"records": records,
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
+	})
+}
+
+func writeOKStatus(w http.ResponseWriter) {
+	writeStatusJSON(w, "ok")
+}
+
+func writeStatusJSON(w http.ResponseWriter, status string) {
+	writeJSON(w, statusResponse{Status: status})
 }
 
 func valueOr[T any](ptr *T, fallback T) T {
@@ -59,7 +84,7 @@ func handleNamedResourceCollection[T any](s *Server, w http.ResponseWriter, r *h
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, map[string]any{store.collectionKey: items})
+		writeCollectionJSON(w, store.collectionKey, items)
 	case http.MethodPost:
 		var input T
 		if err := decodeJSONBody(w, r, &input); err != nil {

@@ -53,7 +53,7 @@ func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeJSON(w, map[string]interface{}{"crawlStates": states})
+	writeCollectionJSON(w, "crawlStates", states)
 }
 
 func (s *Server) handleCrawlStatesDelete(w http.ResponseWriter, r *http.Request) {

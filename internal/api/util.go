@@ -137,6 +137,9 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 	if !isJSONContentType(r.Header.Get("Content-Type")) {
 		return apperrors.UnsupportedMediaType("content-type must be application/json")
 	}
+	if r.ContentLength > maxRequestBodySize {
+		return apperrors.RequestEntityTooLarge("request body too large")
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
