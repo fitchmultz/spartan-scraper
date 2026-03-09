@@ -1,18 +1,30 @@
 // Package api provides HTTP handlers for scrape job endpoints.
-// The scrape handler enqueues single-page scraping jobs with optional
-// auth, extraction templates, and pipeline configurations.
+//
+// Purpose:
+// - Accept single-page scrape submissions over the API.
+//
+// Responsibilities:
+// - Validate scrape requests.
+// - Build a scrape JobSpec with shared request defaults.
+// - Create and enqueue the job, then return the sanitized record.
+//
+// Scope:
+// - Scrape request handling only; job execution lives in internal/jobs.
+//
+// Usage:
+// - Registered for POST /v1/scrape.
+//
+// Invariants/Assumptions:
+// - Requests must be JSON and include a URL.
+// - Method defaults to GET when omitted.
 package api
 
 import (
-	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
@@ -21,91 +33,54 @@ func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		writeError(w, r, apperrors.UnsupportedMediaType("content-type must be application/json"))
-		return
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	var req ScrapeRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		writeError(w, r, apperrors.Validation(err.Error()))
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	if req.URL == "" {
 		writeError(w, r, apperrors.Validation("url is required"))
 		return
 	}
-	opts := validate.JobValidationOpts{
+	if err := validate.ValidateJob(validate.JobValidationOpts{
 		URL:         req.URL,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
-	}
-	if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
+	}, model.KindScrape); err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	incremental := false
-	if req.Incremental != nil {
-		incremental = *req.Incremental
-	}
-
-	extractOpts := extract.ExtractOptions{}
-	if req.Extract != nil {
-		extractOpts = *req.Extract
-	}
-
-	pipelineOpts := pipeline.Options{}
-	if req.Pipeline != nil {
-		pipelineOpts = *req.Pipeline
-	}
-
-	timeout := req.TimeoutSeconds
-	if timeout <= 0 {
-		timeout = s.manager.DefaultTimeoutSeconds()
-	}
-	usePlaywright := s.manager.DefaultUsePlaywright()
-	if req.Playwright != nil {
-		usePlaywright = *req.Playwright
-	}
-
-	authOptions, err := resolveAuthForRequest(s.cfg, req.URL, req.AuthProfile, req.Auth)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	// Determine HTTP method (default to GET if not specified)
-	method := req.Method
-	if method == "" {
-		method = "GET"
-	}
-
-	requestID := contextRequestID(r.Context())
 	spec := jobs.JobSpec{
-		Kind:           model.KindScrape,
-		URL:            req.URL,
-		Method:         method,
-		Body:           []byte(req.Body),
-		ContentType:    req.ContentType,
-		Headless:       req.Headless,
-		UsePlaywright:  usePlaywright,
-		Auth:           authOptions,
-		TimeoutSeconds: timeout,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
-		Incremental:    incremental,
-		RequestID:      requestID,
-		Screenshot:     req.Screenshot,
-		Device:         req.Device,
+		Kind:        model.KindScrape,
+		URL:         req.URL,
+		Method:      req.Method,
+		Body:        []byte(req.Body),
+		ContentType: req.ContentType,
+		Headless:    req.Headless,
 	}
-	if req.Webhook != nil {
-		spec.WebhookURL = req.Webhook.URL
-		spec.WebhookEvents = req.Webhook.Events
-		spec.WebhookSecret = req.Webhook.Secret
+	if spec.Method == "" {
+		spec.Method = http.MethodGet
 	}
+	if err := s.applySingleJobDefaults(&spec, jobRequestOptions{
+		authURL:        req.URL,
+		authProfile:    req.AuthProfile,
+		auth:           req.Auth,
+		extract:        req.Extract,
+		pipeline:       req.Pipeline,
+		webhook:        req.Webhook,
+		screenshot:     req.Screenshot,
+		device:         req.Device,
+		incremental:    req.Incremental,
+		playwright:     req.Playwright,
+		timeoutSeconds: req.TimeoutSeconds,
+		requestID:      contextRequestID(r.Context()),
+	}); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
 	job, err := s.manager.CreateJob(r.Context(), spec)
 	if err != nil {
 		writeError(w, r, err)
