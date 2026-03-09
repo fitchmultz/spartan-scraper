@@ -12,7 +12,8 @@
  */
 
 import type { ExportScheduleHistoryProps } from "../../types/export-schedule";
-import { formatDate, formatFileSize } from "../../lib/export-schedule-utils";
+import { formatDateTime } from "../../lib/formatting";
+import { formatFileSize } from "../../lib/export-schedule-utils";
 
 /**
  * Modal component for displaying export history
@@ -193,7 +194,7 @@ export function ExportScheduleHistory({
                       {record.destination || "-"}
                     </td>
                     <td style={{ padding: "12px", fontSize: 13 }}>
-                      {formatDate(record.exported_at)}
+                      {formatDateTime(record.exported_at)}
                     </td>
                     <td style={{ padding: "12px", fontSize: 13 }}>
                       {record.record_count ?? "-"}

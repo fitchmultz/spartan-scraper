@@ -13,7 +13,7 @@
  */
 
 import type { WatchListItemProps } from "../../types/watch";
-import { formatDuration, formatDate } from "../../lib/watch-utils";
+import { formatDateTime, formatSecondsAsDuration } from "../../lib/formatting";
 
 /**
  * Single watch row component with status badge and action buttons
@@ -73,7 +73,7 @@ export function WatchListItem({
         </span>
       </td>
       <td style={{ padding: "12px" }}>
-        {formatDuration(watch.intervalSeconds)}
+        {formatSecondsAsDuration(watch.intervalSeconds)}
       </td>
       <td style={{ padding: "12px" }}>
         <span
@@ -86,7 +86,7 @@ export function WatchListItem({
         </span>
       </td>
       <td style={{ padding: "12px", fontSize: 13 }}>
-        {formatDate(watch.lastCheckedAt)}
+        {formatDateTime(watch.lastCheckedAt, "Never")}
       </td>
       <td style={{ padding: "12px", textAlign: "right" }}>
         <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>

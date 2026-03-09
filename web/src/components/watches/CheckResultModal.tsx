@@ -14,7 +14,7 @@
  */
 
 import type { CheckResultModalProps } from "../../types/watch";
-import { formatDate } from "../../lib/watch-utils";
+import { formatDateTime } from "../../lib/formatting";
 
 /**
  * Modal component for displaying watch check results
@@ -70,7 +70,8 @@ export function CheckResultModal({ result, onClose }: CheckResultModalProps) {
               </span>
             </span>
             <span>
-              <strong>Checked At:</strong> {formatDate(result.checkedAt)}
+              <strong>Checked At:</strong>{" "}
+              {formatDateTime(result.checkedAt, "Never")}
             </span>
           </div>
           {result.error && (

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatDateTime,
+  formatDisplayValue,
   formatMillisecondsAsDuration,
   formatSecondsAsDuration,
   truncateEnd,
@@ -39,6 +40,45 @@ describe("formatMillisecondsAsDuration", () => {
     expect(formatMillisecondsAsDuration(0.2)).toBe("<1ms");
     expect(formatMillisecondsAsDuration(25)).toBe("25ms");
     expect(formatMillisecondsAsDuration(2500)).toBe("2.50s");
+  });
+});
+
+describe("formatDisplayValue", () => {
+  it("uses configurable labels for empty and boolean values", () => {
+    expect(
+      formatDisplayValue(undefined, {
+        emptyLabel: "Not set",
+        trueLabel: "Yes",
+        falseLabel: "No",
+      }),
+    ).toBe("Not set");
+    expect(
+      formatDisplayValue(true, {
+        trueLabel: "Yes",
+        falseLabel: "No",
+      }),
+    ).toBe("Yes");
+    expect(
+      formatDisplayValue(false, {
+        trueLabel: "Yes",
+        falseLabel: "No",
+      }),
+    ).toBe("No");
+  });
+
+  it("formats arrays, objects, and long strings safely", () => {
+    expect(formatDisplayValue(["a", "b"])).toBe("[2 items]");
+    expect(formatDisplayValue({ ok: true })).toBe("{...}");
+    expect(
+      formatDisplayValue("abcdefghijklmnopqrstuvwxyz", { maxLength: 10 }),
+    ).toBe("abcdefghij...");
+  });
+
+  it("can preserve null and undefined distinctions when needed", () => {
+    expect(formatDisplayValue(undefined, { undefinedLabel: "undefined" })).toBe(
+      "undefined",
+    );
+    expect(formatDisplayValue(null, { nullLabel: "null" })).toBe("null");
   });
 });
 

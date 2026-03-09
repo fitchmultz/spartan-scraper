@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from "react";
 import type { CrawlState } from "../api";
+import { formatDateTime } from "../lib/formatting";
 import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 interface InfoSectionsProps {
@@ -80,7 +81,7 @@ export function InfoSections({
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <div>ID: {sched.id}</div>
                   <div>Interval: {sched.intervalSeconds}s</div>
-                  <div>Next: {new Date(sched.nextRun).toLocaleString()}</div>
+                  <div>Next: {formatDateTime(sched.nextRun)}</div>
                 </div>
               </div>
             ))}
@@ -214,9 +215,7 @@ export function InfoSections({
                 >
                   {state.etag && <div>ETag: {state.etag}</div>}
                   {state.lastScraped && (
-                    <div>
-                      Scraped: {new Date(state.lastScraped).toLocaleString()}
-                    </div>
+                    <div>Scraped: {formatDateTime(state.lastScraped)}</div>
                   )}
                 </div>
               </div>

@@ -18,6 +18,7 @@ import {
   type DedupStats,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { formatDateTime } from "../lib/formatting";
 
 export function DedupExplorer() {
   const [activeTab, setActiveTab] = useState<"search" | "history" | "stats">(
@@ -122,10 +123,6 @@ export function DedupExplorer() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
-  };
 
   const getDistanceColor = (distance: number) => {
     if (distance === 0) return "#22c55e"; // exact match - green
@@ -251,7 +248,7 @@ export function DedupExplorer() {
                     <div className="dedup-explorer__url">{dup.url}</div>
                     <div className="dedup-explorer__meta">
                       <span>Job: {dup.jobId}</span>
-                      <span>Indexed: {formatDate(dup.indexedAt)}</span>
+                      <span>Indexed: {formatDateTime(dup.indexedAt)}</span>
                     </div>
                   </div>
                 ))}
@@ -308,7 +305,7 @@ export function DedupExplorer() {
                     </div>
                     <div className="dedup-explorer__meta">
                       <span>Job: {entry.jobId}</span>
-                      <span>Indexed: {formatDate(entry.indexedAt)}</span>
+                      <span>Indexed: {formatDateTime(entry.indexedAt)}</span>
                     </div>
                   </div>
                 ))}

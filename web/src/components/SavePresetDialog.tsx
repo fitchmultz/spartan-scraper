@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { formatDisplayValue } from "../lib/formatting";
 import type { JobType, PresetConfig } from "../types/presets";
 
 interface SavePresetDialogProps {
@@ -24,21 +25,6 @@ interface SavePresetDialogProps {
 }
 
 /**
- * Format a configuration value for display.
- */
-function formatConfigValue(value: unknown): string {
-  if (value === undefined || value === null) return "Not set";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "string") {
-    if (value === "") return "Not set";
-    if (value.length > 30) return `${value.slice(0, 30)}...`;
-    return value;
-  }
-  if (typeof value === "number") return String(value);
-  return String(value);
-}
-
-/**
  * Get a summary of the most important config values.
  */
 function getConfigSummary(
@@ -49,13 +35,23 @@ function getConfigSummary(
   if (config.headless !== undefined) {
     summary.push({
       label: "Headless",
-      value: formatConfigValue(config.headless),
+      value: formatDisplayValue(config.headless, {
+        emptyLabel: "Not set",
+        trueLabel: "Yes",
+        falseLabel: "No",
+        maxLength: 30,
+      }),
     });
   }
   if (config.usePlaywright !== undefined) {
     summary.push({
       label: "Playwright",
-      value: formatConfigValue(config.usePlaywright),
+      value: formatDisplayValue(config.usePlaywright, {
+        emptyLabel: "Not set",
+        trueLabel: "Yes",
+        falseLabel: "No",
+        maxLength: 30,
+      }),
     });
   }
   if (config.timeoutSeconds !== undefined) {
@@ -73,7 +69,12 @@ function getConfigSummary(
   if (config.incremental !== undefined) {
     summary.push({
       label: "Incremental",
-      value: formatConfigValue(config.incremental),
+      value: formatDisplayValue(config.incremental, {
+        emptyLabel: "Not set",
+        trueLabel: "Yes",
+        falseLabel: "No",
+        maxLength: 30,
+      }),
     });
   }
 

@@ -14,7 +14,7 @@
  */
 
 import type { WatchFormProps } from "../../types/watch";
-import { formatDuration } from "../../lib/watch-utils";
+import { formatSecondsAsDuration } from "../../lib/formatting";
 
 /**
  * Form component for creating or editing a watch
@@ -148,7 +148,8 @@ export function WatchForm({
                 style={{ width: "100%" }}
               />
               <small style={{ color: "var(--muted)" }}>
-                Minimum 60 seconds ({formatDuration(formData.intervalSeconds)})
+                Minimum 60 seconds (
+                {formatSecondsAsDuration(formData.intervalSeconds)})
               </small>
             </div>
 

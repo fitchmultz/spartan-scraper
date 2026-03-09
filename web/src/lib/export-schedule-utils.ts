@@ -20,7 +20,6 @@ import type {
   ExportScheduleRequest,
   ExportFilters,
 } from "../api";
-import { formatDateTime } from "./formatting";
 import { parseOptionalList } from "./input-parsing";
 import type { ExportScheduleFormData } from "../types/export-schedule";
 
@@ -118,15 +117,6 @@ export function formatFileSize(bytes: number | undefined): string {
   if (bytes < 1024 * 1024 * 1024)
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
-/**
- * Format an ISO date string to a locale-specific string
- * @param dateStr - ISO date string or undefined
- * @returns Formatted date string or "-" if undefined
- */
-export function formatDate(dateStr: string | undefined): string {
-  return formatDateTime(dateStr);
 }
 
 /**

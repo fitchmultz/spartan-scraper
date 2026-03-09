@@ -11,7 +11,6 @@ import {
   formatDestination,
   formatFilters,
   formatFileSize,
-  formatDate,
   scheduleToFormData,
   formDataToScheduleRequest,
 } from "./export-schedule-utils";
@@ -198,19 +197,6 @@ describe("formatFileSize", () => {
 
   it("should format gigabytes", () => {
     expect(formatFileSize(3.7 * 1024 * 1024 * 1024)).toBe("3.7 GB");
-  });
-});
-
-describe("formatDate", () => {
-  it("should return '-' for undefined", () => {
-    expect(formatDate(undefined)).toBe("-");
-  });
-
-  it("should format ISO date string", () => {
-    const date = "2024-01-15T10:30:00Z";
-    const result = formatDate(date);
-    expect(result).not.toBe("-");
-    expect(result).toContain("2024");
   });
 });
 

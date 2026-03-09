@@ -13,7 +13,6 @@
  */
 
 import type { Watch, WatchInput } from "../api";
-import { formatDateTime, formatSecondsAsDuration } from "./formatting";
 import { parseOptionalList } from "./input-parsing";
 import type { WatchFormData } from "../types/watch";
 
@@ -39,24 +38,6 @@ export const defaultFormData: WatchFormData = {
   screenshotFormat: "png",
   visualDiffThreshold: "0.1",
 };
-
-/**
- * Format a duration in seconds to a human-readable string
- * @param seconds - Duration in seconds
- * @returns Formatted string (e.g., "60s", "5m", "2h", "1d")
- */
-export function formatDuration(seconds: number): string {
-  return formatSecondsAsDuration(seconds);
-}
-
-/**
- * Format an ISO date string to a locale-specific string
- * @param dateStr - ISO date string or undefined
- * @returns Formatted date string or "Never" if undefined
- */
-export function formatDate(dateStr: string | undefined): string {
-  return formatDateTime(dateStr, "Never");
-}
 
 /**
  * Convert a Watch API object to WatchFormData for editing

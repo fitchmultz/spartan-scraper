@@ -21,6 +21,7 @@ import {
   putV1PluginsByName,
 } from "../api/sdk.gen";
 import type { PluginInfo } from "../api/types.gen";
+import { formatDisplayValue } from "../lib/formatting";
 
 interface PluginManagerProps {
   onError?: (error: string) => void;
@@ -362,9 +363,10 @@ export function PluginManager({
                           >
                             <span className="text-gray-500">{key}:</span>
                             <span className="font-mono text-xs">
-                              {typeof value === "string"
-                                ? value
-                                : JSON.stringify(value)}
+                              {formatDisplayValue(value, {
+                                emptyLabel: "-",
+                                objectLabel: "{...}",
+                              })}
                             </span>
                           </div>
                         ),

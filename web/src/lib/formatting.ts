@@ -7,6 +7,7 @@
  * Responsibilities:
  * - Format ISO timestamps for display with safe fallbacks.
  * - Convert second and millisecond durations into compact labels.
+ * - Render unknown values into readable, UI-safe display strings.
  * - Truncate long identifiers and URLs consistently.
  *
  * Scope:
@@ -54,6 +55,55 @@ export function formatMillisecondsAsDuration(
   if (milliseconds < 1) return "<1ms";
   if (milliseconds < 1000) return `${Math.round(milliseconds)}ms`;
   return `${(milliseconds / 1000).toFixed(2)}s`;
+}
+
+export function formatDisplayValue(
+  value: unknown,
+  options?: {
+    emptyLabel?: string;
+    nullLabel?: string;
+    undefinedLabel?: string;
+    trueLabel?: string;
+    falseLabel?: string;
+    maxLength?: number;
+    objectLabel?: string;
+    arrayLabel?: (length: number) => string;
+  },
+): string {
+  const emptyLabel = options?.emptyLabel ?? "-";
+  const nullLabel = options?.nullLabel ?? emptyLabel;
+  const undefinedLabel = options?.undefinedLabel ?? emptyLabel;
+
+  if (value === undefined) {
+    return undefinedLabel;
+  }
+  if (value === null) {
+    return nullLabel;
+  }
+  if (typeof value === "boolean") {
+    return value
+      ? (options?.trueLabel ?? "true")
+      : (options?.falseLabel ?? "false");
+  }
+  if (typeof value === "number" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    if (value === "") {
+      return emptyLabel;
+    }
+    return options?.maxLength && value.length > options.maxLength
+      ? truncateEnd(value, options.maxLength, emptyLabel)
+      : value;
+  }
+  if (Array.isArray(value)) {
+    return options?.arrayLabel?.(value.length) ?? `[${value.length} items]`;
+  }
+  if (typeof value === "object") {
+    return options?.objectLabel ?? "{...}";
+  }
+
+  return String(value);
 }
 
 export function truncateMiddle(

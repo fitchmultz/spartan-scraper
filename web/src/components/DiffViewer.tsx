@@ -14,7 +14,7 @@ import type {
   FieldChange,
 } from "../lib/diff-utils";
 import { getCrawlDiffStats, getResearchDiffStats } from "../lib/diff-utils";
-import { truncateEnd } from "../lib/formatting";
+import { formatDisplayValue, truncateEnd } from "../lib/formatting";
 import { getSimpleHttpStatusClass } from "../lib/http-status";
 import type { CrawlResultItem, Job } from "../types";
 
@@ -34,20 +34,6 @@ interface DiffViewerProps {
 }
 
 type ChangeType = "added" | "removed" | "modified" | "unchanged";
-
-/**
- * Format a field value for display.
- */
-function formatValue(value: unknown): string {
-  if (value === undefined) return "undefined";
-  if (value === null) return "null";
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) return `[${value.length} items]`;
-  if (typeof value === "object") return "{...}";
-  return String(value);
-}
 
 /**
  * Stat card component for diff summary.
@@ -90,11 +76,29 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
         <div className="diff-field-values">
           <div className="diff-field-old">
             <span className="diff-field-label">Before:</span>
-            <pre>{truncateEnd(formatValue(change.oldValue), 200, "")}</pre>
+            <pre>
+              {truncateEnd(
+                formatDisplayValue(change.oldValue, {
+                  undefinedLabel: "undefined",
+                  nullLabel: "null",
+                }),
+                200,
+                "",
+              )}
+            </pre>
           </div>
           <div className="diff-field-new">
             <span className="diff-field-label">After:</span>
-            <pre>{truncateEnd(formatValue(change.newValue), 200, "")}</pre>
+            <pre>
+              {truncateEnd(
+                formatDisplayValue(change.newValue, {
+                  undefinedLabel: "undefined",
+                  nullLabel: "null",
+                }),
+                200,
+                "",
+              )}
+            </pre>
           </div>
         </div>
       )}
