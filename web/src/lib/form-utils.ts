@@ -10,93 +10,41 @@
  */
 import type {
   AuthOptions,
-  ExtractOptions,
-  PipelineOptions,
-  ScrapeRequest,
   CrawlRequest,
-  ResearchRequest,
-  WebhookConfig,
+  ExtractOptions,
   NetworkInterceptConfig,
+  PipelineOptions,
+  ResearchRequest,
+  ScrapeRequest,
+  WebhookConfig,
 } from "../api";
-import type { ResultItem, CrawlResultItem, ResearchResultItem } from "../types";
+import type { CrawlResultItem, ResearchResultItem, ResultItem } from "../types";
+import {
+  parseLineSeparatedMap,
+  parseOptionalList,
+  splitAndTrim,
+} from "./input-parsing";
 
 export function parseHeaders(raw: string): Record<string, string> | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const headers: Record<string, string> = {};
-  raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .forEach((line) => {
-      const idx = line.indexOf(":");
-      if (idx > 0) {
-        const key = line.slice(0, idx).trim();
-        const value = line.slice(idx + 1).trim();
-        if (key && value) {
-          headers[key] = value;
-        }
-      }
-    });
-  return Object.keys(headers).length ? headers : undefined;
+  return parseLineSeparatedMap(raw, ":");
 }
 
 export function parseCookies(raw: string): string[] | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const cookies: string[] = raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return cookies.length ? cookies : undefined;
+  return parseOptionalList(raw, "\n");
 }
 
 export function parseQueryParams(
   raw: string,
 ): Record<string, string> | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const params: Record<string, string> = {};
-  raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .forEach((line) => {
-      const idx = line.indexOf("=");
-      if (idx > 0) {
-        const key = line.slice(0, idx).trim();
-        const value = line.slice(idx + 1).trim();
-        if (key && value) {
-          params[key] = value;
-        }
-      }
-    });
-  return Object.keys(params).length ? params : undefined;
+  return parseLineSeparatedMap(raw, "=");
 }
 
 export function parseProcessors(raw: string): string[] | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const processors = raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return processors.length ? processors : undefined;
+  return parseOptionalList(raw, ",");
 }
 
 export function parsePatternList(raw: string): string[] | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const patterns = raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return patterns.length ? patterns : undefined;
+  return parseOptionalList(raw, ",");
 }
 
 export function buildAuth(
@@ -160,10 +108,7 @@ export function buildPipelineOptions(
 }
 
 export function parseUrlList(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return splitAndTrim(raw, ",");
 }
 
 export function buildWebhookConfig(

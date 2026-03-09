@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import type { Feed, FeedInput, FeedCheckResult, SeenFeedItem } from "../api";
+import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
 
 interface FeedManagerProps {
   feeds: Feed[];
@@ -37,19 +38,6 @@ const defaultFormData: FeedFormData = {
   enabled: true,
   autoScrape: true,
 };
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  return `${Math.floor(seconds / 86400)}d`;
-}
-
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "Never";
-  const date = new Date(dateStr);
-  return date.toLocaleString();
-}
 
 function feedToFormData(feed: Feed): FeedFormData {
   return {
@@ -309,10 +297,12 @@ export function FeedManager({
                     <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
                       <span>Type: {feed.feedType}</span>
                       <span>
-                        Interval: {formatDuration(feed.intervalSeconds)}
+                        Interval:{" "}
+                        {formatSecondsAsDuration(feed.intervalSeconds)}
                       </span>
                       <span>
-                        Last checked: {formatDate(feed.lastCheckedAt)}
+                        Last checked:{" "}
+                        {formatDateTime(feed.lastCheckedAt, "Never")}
                       </span>
                     </div>
                     {feed.lastError && (
@@ -561,7 +551,7 @@ export function FeedManager({
                         {item.link}
                       </a>
                       <p className="text-xs text-gray-500 mt-1">
-                        Seen: {formatDate(item.seenAt)}
+                        Seen: {formatDateTime(item.seenAt, "Never")}
                       </p>
                     </div>
                   ))}

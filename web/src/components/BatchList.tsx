@@ -8,6 +8,12 @@
  */
 import { useState, useCallback } from "react";
 import type { BatchJobStats, Job } from "../api";
+import {
+  calculateBatchProgress,
+  getStatusClass,
+  isTerminalStatus,
+} from "../lib/batch-utils";
+import { formatDateTime } from "../lib/formatting";
 
 interface BatchListProps {
   batches: BatchEntry[];
@@ -34,33 +40,6 @@ export type BatchEntry = {
   updatedAt: string;
 };
 
-function calculateProgress(stats: BatchJobStats, total: number): number {
-  if (total === 0) return 0;
-  const completed = stats.succeeded + stats.failed + stats.canceled;
-  return Math.round((completed / total) * 100);
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleString();
-}
-
-function getStatusBadgeClass(status: BatchEntry["status"]): string {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "processing":
-      return "running";
-    case "failed":
-    case "canceled":
-      return "failed";
-    case "partial":
-      return "warning";
-    default:
-      return "";
-  }
-}
-
 export function BatchList({
   batches,
   jobs,
@@ -74,10 +53,6 @@ export function BatchList({
   const toggleExpand = useCallback((batchId: string) => {
     setExpandedBatch((current) => (current === batchId ? null : batchId));
   }, []);
-
-  const isTerminal = (status: BatchEntry["status"]): boolean => {
-    return ["completed", "failed", "partial", "canceled"].includes(status);
-  };
 
   if (batches.length === 0) {
     return (
@@ -139,7 +114,7 @@ export function BatchList({
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
         {batches.map((batch) => {
-          const progress = calculateProgress(batch.stats, batch.jobCount);
+          const progress = calculateBatchProgress(batch.stats, batch.jobCount);
           const isExpanded = expandedBatch === batch.id;
           const batchJobs = jobs?.get(batch.id) || [];
 
@@ -174,7 +149,7 @@ export function BatchList({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span
-                    className={`badge ${getStatusBadgeClass(batch.status)}`}
+                    className={`badge ${getStatusClass(batch.status)}`}
                     style={{
                       padding: "4px 8px",
                       borderRadius: 4,
@@ -272,11 +247,11 @@ export function BatchList({
                     }}
                   >
                     <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                      <div>Created: {formatDate(batch.createdAt)}</div>
-                      <div>Updated: {formatDate(batch.updatedAt)}</div>
+                      <div>Created: {formatDateTime(batch.createdAt)}</div>
+                      <div>Updated: {formatDateTime(batch.updatedAt)}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {!isTerminal(batch.status) && (
+                      {!isTerminalStatus(batch.status) && (
                         <button
                           type="button"
                           className="secondary"
@@ -331,7 +306,7 @@ export function BatchList({
                                 </td>
                                 <td style={{ padding: 8 }}>
                                   <span
-                                    className={`badge ${getStatusBadgeClass(job.status as BatchEntry["status"])}`}
+                                    className={`badge ${getStatusClass(job.status)}`}
                                   >
                                     {job.status}
                                   </span>

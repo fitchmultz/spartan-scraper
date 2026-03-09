@@ -13,68 +13,28 @@
  */
 
 import type { WebhookDeliveryListProps } from "../../types/webhook";
-
-/**
- * Get status badge color based on delivery status
- */
-function getStatusColor(status?: string): string {
-  switch (status?.toLowerCase()) {
-    case "delivered":
-      return "var(--success, #22c55e)";
-    case "failed":
-      return "var(--error, #ef4444)";
-    case "pending":
-      return "var(--warning, #f59e0b)";
-    default:
-      return "var(--muted, #6b7280)";
-  }
-}
-
-/**
- * Get status background color for badges
- */
-function getStatusBgColor(status?: string): string {
-  switch (status?.toLowerCase()) {
-    case "delivered":
-      return "rgba(34, 197, 94, 0.1)";
-    case "failed":
-      return "rgba(239, 68, 68, 0.1)";
-    case "pending":
-      return "rgba(245, 158, 11, 0.1)";
-    default:
-      return "rgba(107, 114, 128, 0.1)";
-  }
-}
-
-/**
- * Format date for display
- */
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return "-";
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  } catch {
-    return dateStr;
-  }
-}
+import {
+  formatDateTime,
+  truncateEnd,
+  truncateMiddle,
+} from "../../lib/formatting";
+import {
+  getDeliveryStatusBackgroundColor,
+  getDeliveryStatusColor,
+} from "../../lib/webhook-utils";
 
 /**
  * Truncate ID for display
  */
 function truncateId(id?: string, length = 8): string {
-  if (!id) return "-";
-  if (id.length <= length * 2 + 3) return id;
-  return `${id.slice(0, length)}...${id.slice(-length)}`;
+  return truncateMiddle(id, length * 2 + 3);
 }
 
 /**
  * Truncate URL for display
  */
 function truncateUrl(url?: string, maxLength = 50): string {
-  if (!url) return "-";
-  if (url.length <= maxLength) return url;
-  return `${url.slice(0, maxLength)}...`;
+  return truncateEnd(url, maxLength);
 }
 
 /**
@@ -267,8 +227,10 @@ export function WebhookDeliveryList({
                     fontSize: 12,
                     fontWeight: 600,
                     textTransform: "uppercase",
-                    color: getStatusColor(delivery.status),
-                    backgroundColor: getStatusBgColor(delivery.status),
+                    color: getDeliveryStatusColor(delivery.status),
+                    backgroundColor: getDeliveryStatusBackgroundColor(
+                      delivery.status,
+                    ),
                   }}
                 >
                   {delivery.status || "unknown"}
@@ -283,7 +245,7 @@ export function WebhookDeliveryList({
                 {delivery.attempts ?? 0}
               </td>
               <td style={{ padding: "12px 16px" }}>
-                {formatDate(delivery.createdAt)}
+                {formatDateTime(delivery.createdAt)}
               </td>
               <td style={{ padding: "12px 16px", textAlign: "right" }}>
                 <button

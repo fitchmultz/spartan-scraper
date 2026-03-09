@@ -14,12 +14,14 @@
  */
 
 import type {
+  CloudExportConfig,
+  ExportConfig,
   ExportSchedule,
   ExportScheduleRequest,
   ExportFilters,
-  ExportConfig,
-  CloudExportConfig,
 } from "../api";
+import { formatDateTime } from "./formatting";
+import { parseOptionalList } from "./input-parsing";
 import type { ExportScheduleFormData } from "../types/export-schedule";
 
 /**
@@ -124,9 +126,7 @@ export function formatFileSize(bytes: number | undefined): string {
  * @returns Formatted date string or "-" if undefined
  */
 export function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  return date.toLocaleString();
+  return formatDateTime(dateStr);
 }
 
 /**
@@ -233,10 +233,7 @@ function buildFilters(data: ExportScheduleFormData): ExportFilters {
   }
 
   if (data.filterTags.trim()) {
-    filters.tags = data.filterTags
-      .split("\n")
-      .map((t) => t.trim())
-      .filter((t) => t);
+    filters.tags = parseOptionalList(data.filterTags, "\n");
   }
 
   filters.has_results = data.filterHasResults;

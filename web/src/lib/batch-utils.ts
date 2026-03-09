@@ -8,26 +8,24 @@
  */
 
 import type {
-  BatchJobRequest,
-  BatchScrapeRequest,
   BatchCrawlRequest,
-  BatchResearchRequest,
   BatchJobStats,
+  BatchJobRequest,
+  BatchResearchRequest,
+  BatchScrapeRequest,
   AuthOptions,
+  DeviceEmulation,
   ExtractOptions,
   PipelineOptions,
   WebhookConfig,
-  DeviceEmulation,
 } from "../api";
+import { splitAndTrim } from "./input-parsing";
 
 /**
  * Parse URL list from textarea input (newline or comma-separated)
  */
 export function parseUrlList(input: string): string[] {
-  return input
-    .split(/[\n,]/)
-    .map((url) => url.trim())
-    .filter((url) => url.length > 0);
+  return splitAndTrim(input, /[\n,]/);
 }
 
 /**

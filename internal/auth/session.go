@@ -1,5 +1,23 @@
 // Package auth provides session persistence for authenticated scraping.
-// Sessions store cookies from successful logins and can be reused across requests.
+//
+// Purpose:
+// - Persist reusable authenticated sessions for later scraping runs.
+//
+// Responsibilities:
+// - Load and save session records from disk.
+// - Support CRUD-style access to named sessions.
+// - Translate cookie state between persisted and net/http representations.
+//
+// Scope:
+// - Session persistence and cookie helpers only.
+//
+// Usage:
+// - Construct a SessionStore with NewSessionStore and call Load/List/Get/Upsert/Delete.
+//
+// Invariants/Assumptions:
+// - Session files are stored under the configured data directory.
+// - Writes are atomic and owner-readable only.
+// - Delete returns ErrSessionNotFound when the target session is absent.
 package auth
 
 import (
@@ -18,6 +36,8 @@ import (
 )
 
 const sessionsFilename = "sessions.json"
+
+var ErrSessionNotFound = apperrors.WithKind(apperrors.KindNotFound, errors.New("session not found"))
 
 // SessionStore manages persisted sessions.
 type SessionStore struct {
@@ -65,7 +85,7 @@ func (s *SessionStore) Save(sessions []Session) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, payload, 0o600)
+	return fsutil.WriteFileAtomic(path, payload, fsutil.FileMode)
 }
 
 // Get retrieves a session by ID.
@@ -122,10 +142,17 @@ func (s *SessionStore) Delete(id string) error {
 	}
 
 	filtered := make([]Session, 0, len(sessions))
+	removed := false
 	for _, sess := range sessions {
 		if sess.ID != id {
 			filtered = append(filtered, sess)
+			continue
 		}
+		removed = true
+	}
+
+	if !removed {
+		return ErrSessionNotFound
 	}
 
 	return s.Save(filtered)

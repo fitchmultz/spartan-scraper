@@ -82,6 +82,17 @@ export function chunkNameForModuleId(id: string): string | undefined {
       return "feature-api";
     }
 
+    // Cross-feature helpers shared by multiple lazy-loaded areas
+    if (
+      normalizedId.includes("/src/lib/batch-utils.ts") ||
+      normalizedId.includes("/src/lib/watch-utils.ts") ||
+      normalizedId.includes("/src/lib/formatting.ts") ||
+      normalizedId.includes("/src/lib/input-parsing.ts") ||
+      normalizedId.includes("/src/lib/webhook-utils.ts")
+    ) {
+      return "feature-shared";
+    }
+
     // Results feature (includes explorer, viewer, etc)
     if (normalizedId.includes("/src/components/results/")) {
       return "feature-results";

@@ -12,6 +12,10 @@
 import { useState, useMemo } from "react";
 import { postV1JobsByIdReplay } from "../api";
 import type { InterceptedEntry, TrafficReplayResponse } from "../api";
+import {
+  formatMillisecondsAsDuration,
+  truncateMiddle,
+} from "../lib/formatting";
 
 interface TrafficInspectorProps {
   entries: InterceptedEntry[];
@@ -38,26 +42,6 @@ function formatBytes(bytes?: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / k ** i).toFixed(1)} ${sizes[i]}`;
-}
-
-/**
- * Format duration in milliseconds to human-readable string.
- */
-function formatDuration(ms?: number): string {
-  if (ms === undefined || ms === null) return "-";
-  if (ms < 1) return "<1ms";
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-}
-
-/**
- * Truncate URL for display.
- */
-function truncateUrl(url: string, maxLength: number = 60): string {
-  if (url.length <= maxLength) return url;
-  const start = url.substring(0, maxLength / 2);
-  const end = url.substring(url.length - maxLength / 2);
-  return `${start}...${end}`;
 }
 
 /**
@@ -245,7 +229,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
             {formatBytes(stats.totalSize)} total
           </span>
           <span className="traffic-stat">
-            avg {formatDuration(stats.avgDuration)}
+            avg {formatMillisecondsAsDuration(stats.avgDuration)}
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -325,7 +309,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
                     </span>
                   </td>
                   <td className="url-cell" title={entry.request?.url}>
-                    {truncateUrl(entry.request?.url || "", 50)}
+                    {truncateMiddle(entry.request?.url, 50, "")}
                   </td>
                   <td className="type-cell">
                     {getResourceTypeLabel(entry.request?.resourceType)}
@@ -345,7 +329,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
                     {formatBytes(entry.response?.bodySize)}
                   </td>
                   <td className="duration-cell">
-                    {formatDuration(entry.duration)}
+                    {formatMillisecondsAsDuration(entry.duration)}
                   </td>
                 </tr>
               ))}
@@ -393,7 +377,7 @@ export function TrafficInspector({ entries, jobId }: TrafficInspectorProps) {
                 <div className="detail-row">
                   <span className="detail-label">Duration:</span>
                   <span className="detail-value">
-                    {formatDuration(selectedEntry.duration)}
+                    {formatMillisecondsAsDuration(selectedEntry.duration)}
                   </span>
                 </div>
               </div>

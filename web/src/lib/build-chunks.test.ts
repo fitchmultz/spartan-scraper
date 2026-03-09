@@ -72,6 +72,24 @@ describe("chunkNameForModuleId", () => {
       expect(chunkNameForModuleId("/src/api/index.ts")).toBe("feature-api");
     });
 
+    it("should return feature-shared for cross-feature lib modules", () => {
+      expect(chunkNameForModuleId("/src/lib/formatting.ts")).toBe(
+        "feature-shared",
+      );
+      expect(chunkNameForModuleId("/src/lib/input-parsing.ts")).toBe(
+        "feature-shared",
+      );
+      expect(chunkNameForModuleId("/src/lib/batch-utils.ts")).toBe(
+        "feature-shared",
+      );
+      expect(chunkNameForModuleId("/src/lib/watch-utils.ts")).toBe(
+        "feature-shared",
+      );
+      expect(chunkNameForModuleId("/src/lib/webhook-utils.ts")).toBe(
+        "feature-shared",
+      );
+    });
+
     it("should return feature-results for results components", () => {
       expect(
         chunkNameForModuleId("/src/components/results/ResultsExplorer.tsx"),

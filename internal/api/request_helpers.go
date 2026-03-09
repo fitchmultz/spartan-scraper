@@ -52,6 +52,10 @@ func writeCollectionJSON(w http.ResponseWriter, collectionKey string, items any)
 	writeJSON(w, map[string]any{collectionKey: items})
 }
 
+func writeNamedResourceJSON(w http.ResponseWriter, resourceKey string, item any) {
+	writeJSON(w, map[string]any{resourceKey: item})
+}
+
 func writeRecordsPageJSON(w http.ResponseWriter, records any, total int, limit int, offset int) {
 	writeJSON(w, map[string]any{
 		"records": records,

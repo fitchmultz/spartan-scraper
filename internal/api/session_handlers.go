@@ -1,12 +1,30 @@
 // Package api provides REST API handlers for session management.
+//
+// Purpose:
+// - Expose CRUD-style HTTP handlers for persisted auth sessions.
+//
+// Responsibilities:
+// - Validate session identifiers and required fields.
+// - Return consistent JSON envelopes for session list/detail responses.
+// - Map store errors onto API-friendly error responses.
+//
+// Scope:
+// - `/v1/auth/sessions` route handling only.
+//
+// Usage:
+// - Mounted by Server.Routes for session management endpoints.
+//
+// Invariants/Assumptions:
+// - Request bodies are decoded with the shared strict JSON helper.
+// - Missing session deletes return 404 instead of silently succeeding.
 package api
 
 import (
-	"net/http"
-	"strings"
-
+	"errors"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"net/http"
+	"strings"
 )
 
 // handleListSessions handles GET /v1/auth/sessions
@@ -18,14 +36,12 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{
-		"sessions": sessions,
-	})
+	writeCollectionJSON(w, "sessions", sessions)
 }
 
 // handleGetSession handles GET /v1/auth/sessions/{id}
 func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/v1/auth/sessions/")
+	id := extractID(r.URL.Path, "sessions")
 	if id == "" {
 		writeError(w, r, apperrors.Validation("session ID is required"))
 		return
@@ -42,9 +58,7 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{
-		"session": session,
-	})
+	writeNamedResourceJSON(w, "session", session)
 }
 
 // handleCreateSession handles POST /v1/auth/sessions
@@ -63,6 +77,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, apperrors.Validation("domain is required"))
 		return
 	}
+	if strings.TrimSpace(input.Name) == "" {
+		input.Name = input.ID
+	}
 
 	store := auth.NewSessionStore(s.cfg.DataDir)
 	if err := store.Upsert(input); err != nil {
@@ -70,14 +87,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, map[string]interface{}{
-		"session": input,
-	})
+	writeNamedResourceJSON(w, "session", input)
 }
 
 // handleDeleteSession handles DELETE /v1/auth/sessions/{id}
 func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/v1/auth/sessions/")
+	id := extractID(r.URL.Path, "sessions")
 	if id == "" {
 		writeError(w, r, apperrors.Validation("session ID is required"))
 		return
@@ -85,6 +100,10 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 
 	store := auth.NewSessionStore(s.cfg.DataDir)
 	if err := store.Delete(id); err != nil {
+		if errors.Is(err, auth.ErrSessionNotFound) {
+			writeError(w, r, apperrors.NotFound("session not found"))
+			return
+		}
 		writeError(w, r, apperrors.Internal("failed to delete session"))
 		return
 	}

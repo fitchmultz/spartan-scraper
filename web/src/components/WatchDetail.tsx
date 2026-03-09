@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import type { Watch, WatchCheckResult } from "../api";
+import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
 
 interface WatchDetailProps {
   watch: Watch;
@@ -16,19 +17,6 @@ interface WatchDetailProps {
   onCheck: () => Promise<void>;
   onClose: () => void;
   loading?: boolean;
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  return `${Math.floor(seconds / 86400)}d`;
-}
-
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "Never";
-  const date = new Date(dateStr);
-  return date.toLocaleString();
 }
 
 function getNextRun(watch: Watch): string {
@@ -301,7 +289,7 @@ export function WatchDetail({
             Interval
           </div>
           <div style={{ fontWeight: 500 }}>
-            {formatDuration(watch.intervalSeconds)}
+            {formatSecondsAsDuration(watch.intervalSeconds)}
           </div>
         </div>
 
@@ -331,7 +319,7 @@ export function WatchDetail({
             Last Changed
           </div>
           <div style={{ fontWeight: 500 }}>
-            {formatDate(watch.lastChangedAt)}
+            {formatDateTime(watch.lastChangedAt, "Never")}
           </div>
         </div>
       </div>
@@ -394,7 +382,7 @@ export function WatchDetail({
               >
                 Created
               </div>
-              <div>{formatDate(watch.createdAt)}</div>
+              <div>{formatDateTime(watch.createdAt, "Never")}</div>
             </div>
 
             <div
@@ -415,7 +403,7 @@ export function WatchDetail({
               >
                 Last Checked
               </div>
-              <div>{formatDate(watch.lastCheckedAt)}</div>
+              <div>{formatDateTime(watch.lastCheckedAt, "Never")}</div>
             </div>
 
             <div
@@ -486,7 +474,7 @@ export function WatchDetail({
                 </span>
                 <span>
                   <strong>Checked At:</strong>{" "}
-                  {formatDate(checkResult.checkedAt)}
+                  {formatDateTime(checkResult.checkedAt, "Never")}
                 </span>
                 {checkResult.error && (
                   <span style={{ color: "#ef4444" }}>

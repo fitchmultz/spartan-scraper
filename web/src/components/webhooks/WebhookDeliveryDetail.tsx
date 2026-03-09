@@ -12,46 +12,8 @@
  */
 
 import type { WebhookDeliveryDetailProps } from "../../types/webhook";
-
-/**
- * Format date for display
- */
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return "-";
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  } catch {
-    return dateStr;
-  }
-}
-
-/**
- * Format JSON for display
- */
-function formatJson(data: unknown): string {
-  try {
-    return JSON.stringify(data, null, 2);
-  } catch {
-    return String(data);
-  }
-}
-
-/**
- * Get status color based on delivery status
- */
-function getStatusColor(status?: string): string {
-  switch (status?.toLowerCase()) {
-    case "delivered":
-      return "var(--success, #22c55e)";
-    case "failed":
-      return "var(--error, #ef4444)";
-    case "pending":
-      return "var(--warning, #f59e0b)";
-    default:
-      return "var(--muted, #6b7280)";
-  }
-}
+import { formatDateTime } from "../../lib/formatting";
+import { formatJson, getDeliveryStatusColor } from "../../lib/webhook-utils";
 
 export function WebhookDeliveryDetail({
   delivery,
@@ -176,7 +138,7 @@ export function WebhookDeliveryDetail({
                     style={{
                       fontSize: 18,
                       fontWeight: 600,
-                      color: getStatusColor(delivery.status),
+                      color: getDeliveryStatusColor(delivery.status),
                       textTransform: "uppercase",
                     }}
                   >
@@ -289,20 +251,20 @@ export function WebhookDeliveryDetail({
                     <span style={{ color: "var(--muted)", minWidth: 100 }}>
                       Created:
                     </span>
-                    <span>{formatDate(delivery.createdAt)}</span>
+                    <span>{formatDateTime(delivery.createdAt)}</span>
                   </div>
                   <div className="row" style={{ gap: 8 }}>
                     <span style={{ color: "var(--muted)", minWidth: 100 }}>
                       Updated:
                     </span>
-                    <span>{formatDate(delivery.updatedAt)}</span>
+                    <span>{formatDateTime(delivery.updatedAt)}</span>
                   </div>
                   {delivery.deliveredAt && (
                     <div className="row" style={{ gap: 8 }}>
                       <span style={{ color: "var(--muted)", minWidth: 100 }}>
                         Delivered:
                       </span>
-                      <span>{formatDate(delivery.deliveredAt)}</span>
+                      <span>{formatDateTime(delivery.deliveredAt)}</span>
                     </div>
                   )}
                 </div>

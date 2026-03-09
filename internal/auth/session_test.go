@@ -1,7 +1,26 @@
 // Package auth provides tests for session persistence functionality.
+//
+// Purpose:
+// - Verify session store persistence, validation, and cookie helpers.
+//
+// Responsibilities:
+// - Cover session CRUD semantics.
+// - Assert secure on-disk behavior.
+// - Confirm helper functions preserve expected values.
+//
+// Scope:
+// - Session store and related helper behavior only.
+//
+// Usage:
+// - Run with `go test ./internal/auth`.
+//
+// Invariants/Assumptions:
+// - Tests operate on temporary directories.
+// - Missing deletes should surface ErrSessionNotFound.
 package auth
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -100,6 +119,16 @@ func TestSessionStore_Delete(t *testing.T) {
 	}
 	if found {
 		t.Error("session should not be found after delete")
+	}
+}
+
+func TestSessionStore_DeleteMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewSessionStore(tmpDir)
+
+	err := store.Delete("missing")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound, got %v", err)
 	}
 }
 

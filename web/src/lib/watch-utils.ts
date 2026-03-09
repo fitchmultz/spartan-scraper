@@ -13,6 +13,8 @@
  */
 
 import type { Watch, WatchInput } from "../api";
+import { formatDateTime, formatSecondsAsDuration } from "./formatting";
+import { parseOptionalList } from "./input-parsing";
 import type { WatchFormData } from "../types/watch";
 
 /**
@@ -44,10 +46,7 @@ export const defaultFormData: WatchFormData = {
  * @returns Formatted string (e.g., "60s", "5m", "2h", "1d")
  */
 export function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  return `${Math.floor(seconds / 86400)}d`;
+  return formatSecondsAsDuration(seconds);
 }
 
 /**
@@ -56,9 +55,7 @@ export function formatDuration(seconds: number): string {
  * @returns Formatted date string or "Never" if undefined
  */
 export function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "Never";
-  const date = new Date(dateStr);
-  return date.toLocaleString();
+  return formatDateTime(dateStr, "Never");
 }
 
 /**
@@ -111,11 +108,7 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
   if (data.extractMode) input.extractMode = data.extractMode;
   if (data.minChangeSize)
     input.minChangeSize = parseInt(data.minChangeSize, 10);
-  if (data.ignorePatterns.trim()) {
-    input.ignorePatterns = data.ignorePatterns
-      .split("\n")
-      .filter((p) => p.trim());
-  }
+  input.ignorePatterns = parseOptionalList(data.ignorePatterns, "\n");
   if (data.webhookUrl && data.notifyOnChange) {
     input.webhookConfig = {
       url: data.webhookUrl,
