@@ -4,7 +4,6 @@
 package api
 
 import (
-	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -38,62 +37,21 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-
-	switch job.Status {
-	case model.StatusQueued:
-		writeError(w, r, apperrors.Validation("job is queued and has no results yet"))
+	resultMessages := jobResultFileMessages{
+		MissingPath: "no results",
+		MissingFile: "no results",
+		EmptyFile:   "no results",
+	}
+	if job.Status == model.StatusSucceeded {
+		resultMessages = jobResultFileMessages{
+			MissingPath: "job succeeded but no result path was recorded",
+			MissingFile: "job succeeded but result file is missing",
+			EmptyFile:   "job succeeded but result file is empty",
+		}
+	}
+	if err := s.requireJobResultFile(job, resultMessages); err != nil {
+		writeError(w, r, err)
 		return
-	case model.StatusRunning:
-		writeError(w, r, apperrors.Validation("job is still running and has no results yet"))
-		return
-	case model.StatusFailed:
-		writeError(w, r, apperrors.Validation("job failed and produced no results"))
-		return
-	case model.StatusCanceled:
-		writeError(w, r, apperrors.Validation("job was canceled and produced no results"))
-		return
-	case model.StatusSucceeded:
-		if job.ResultPath == "" {
-			writeError(w, r, apperrors.NotFound("job succeeded but no result path was recorded"))
-			return
-		}
-
-		// Validate result path to prevent path traversal attacks
-		if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
-			writeError(w, r, err)
-			return
-		}
-
-		info, err := os.Stat(job.ResultPath)
-		if err != nil {
-			writeError(w, r, apperrors.NotFound("job succeeded but result file is missing"))
-			return
-		}
-		if info.Size() == 0 {
-			writeError(w, r, apperrors.NotFound("job succeeded but result file is empty"))
-			return
-		}
-	default:
-		if job.ResultPath == "" {
-			writeError(w, r, apperrors.NotFound("no results"))
-			return
-		}
-
-		// Validate result path to prevent path traversal attacks
-		if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
-			writeError(w, r, err)
-			return
-		}
-
-		info, err := os.Stat(job.ResultPath)
-		if err != nil {
-			writeError(w, r, apperrors.NotFound("no results"))
-			return
-		}
-		if info.Size() == 0 {
-			writeError(w, r, apperrors.NotFound("no results"))
-			return
-		}
 	}
 
 	format := r.URL.Query().Get("format")
@@ -129,7 +87,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			f, err := os.Open(job.ResultPath)
+			f, err := s.openJobResultFile(job, resultMessages.MissingPath)
 			if err != nil {
 				writeError(w, r, err)
 				return
@@ -260,56 +218,15 @@ func (s *Server) exportWithTransform(
 
 // loadAllJobResults loads all results from a job file.
 func (s *Server) loadAllJobResults(job model.Job) ([]any, error) {
-	if job.ResultPath == "" {
-		return []any{}, nil
-	}
-
-	// Validate result path to prevent path traversal attacks
-	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+	file, err := s.openJobResultFile(job, "job has no results")
+	if err != nil {
+		if apperrors.IsKind(err, apperrors.KindNotFound) && job.ResultPath == "" {
+			return []any{}, nil
+		}
 		return nil, err
 	}
-
-	file, err := os.Open(job.ResultPath)
-	if err != nil {
-		return nil, apperrors.Wrap(
-			apperrors.KindInternal,
-			"failed to open job results file",
-			err,
-		)
-	}
 	defer file.Close()
-
-	results := make([]any, 0)
-	scanner := bufio.NewScanner(file)
-	// Set max line size to 10MB to handle large JSON objects
-	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var item any
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
-			return nil, apperrors.Wrap(
-				apperrors.KindInternal,
-				"failed to parse job result",
-				err,
-			)
-		}
-		results = append(results, item)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, apperrors.Wrap(
-			apperrors.KindInternal,
-			"error reading job results file",
-			err,
-		)
-	}
-
-	return results, nil
+	return decodeJobResultItems(file, 0)
 }
 
 // exportTransformedJSON exports transformed results as JSON.

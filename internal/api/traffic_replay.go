@@ -4,12 +4,12 @@
 package api
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -46,8 +46,8 @@ func (s *Server) handleTrafficReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate target URL
-	if _, err := url.Parse(req.TargetBaseURL); err != nil {
+	targetURL, err := url.Parse(req.TargetBaseURL)
+	if err != nil || targetURL.Scheme == "" || targetURL.Host == "" {
 		writeError(w, r, apperrors.Validation("invalid targetBaseUrl"))
 		return
 	}
@@ -59,19 +59,8 @@ func (s *Server) handleTrafficReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check job status
-	switch job.Status {
-	case model.StatusQueued:
-		writeError(w, r, apperrors.Validation("job is queued and has no results yet"))
-		return
-	case model.StatusRunning:
-		writeError(w, r, apperrors.Validation("job is still running and has no results yet"))
-		return
-	case model.StatusFailed:
-		writeError(w, r, apperrors.Validation("job failed and produced no results"))
-		return
-	case model.StatusCanceled:
-		writeError(w, r, apperrors.Validation("job was canceled and produced no results"))
+	if err := s.validateJobResultPath(job, "job has no result path"); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -158,39 +147,32 @@ func (s *Server) handleTrafficReplay(w http.ResponseWriter, r *http.Request) {
 
 // loadInterceptedEntries loads intercepted entries from job results.
 func (s *Server) loadInterceptedEntries(job model.Job) ([]fetch.InterceptedEntry, error) {
-	if job.ResultPath == "" {
-		return nil, apperrors.NotFound("job has no result path")
-	}
-
-	// Validate result path to prevent path traversal attacks
-	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
-		return nil, err
-	}
-
-	file, err := os.Open(job.ResultPath)
+	file, err := s.openJobResultFile(job, "job has no result path")
 	if err != nil {
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to open job results", err)
+		return nil, err
 	}
 	defer file.Close()
 
-	var entries []fetch.InterceptedEntry
-	decoder := json.NewDecoder(file)
+	entries := make([]fetch.InterceptedEntry, 0)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 
-	// Read JSONL file line by line
-	for {
-		var result struct {
-			InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
-		}
-
-		if err := decoder.Decode(&result); err != nil {
-			if err == io.EOF {
-				break
-			}
-			// Try to skip malformed lines
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
 
+		var result struct {
+			InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
+		}
+		if err := json.Unmarshal([]byte(line), &result); err != nil {
+			continue
+		}
 		entries = append(entries, result.InterceptedData...)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read job results", err)
 	}
 
 	return entries, nil

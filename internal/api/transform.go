@@ -3,10 +3,7 @@
 package api
 
 import (
-	"bufio"
-	"encoding/json"
 	"net/http"
-	"os"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -86,25 +83,8 @@ func (s *Server) handlePreviewTransform(w http.ResponseWriter, r *http.Request) 
 		writeError(w, r, err)
 		return
 	}
-
-	// Check job status
-	switch job.Status {
-	case model.StatusQueued:
-		writeError(w, r, apperrors.Validation("job is queued and has no results yet"))
-		return
-	case model.StatusRunning:
-		writeError(w, r, apperrors.Validation("job is still running and has no results yet"))
-		return
-	case model.StatusFailed:
-		writeError(w, r, apperrors.Validation("job failed and produced no results"))
-		return
-	case model.StatusCanceled:
-		writeError(w, r, apperrors.Validation("job was canceled and produced no results"))
-		return
-	}
-
-	if job.ResultPath == "" {
-		writeError(w, r, apperrors.NotFound("job has no results"))
+	if err := s.validateJobResultPath(job, "job has no results"); err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -184,52 +164,12 @@ func (s *Server) loadJobResults(job model.Job, limit int) ([]any, error) {
 		return []any{}, nil
 	}
 
-	// Validate result path to prevent path traversal attacks
-	if err := model.ValidateResultPath(job.ID, job.ResultPath, s.store.DataDir()); err != nil {
+	file, err := s.openJobResultFile(job, "job has no results")
+	if err != nil {
 		return nil, err
 	}
-
-	file, err := os.Open(job.ResultPath)
-	if err != nil {
-		return nil, apperrors.Wrap(
-			apperrors.KindInternal,
-			"failed to open job results file",
-			err,
-		)
-	}
 	defer file.Close()
-
-	results := make([]any, 0, limit)
-	scanner := bufio.NewScanner(file)
-	// Set max line size to 10MB to handle large JSON objects
-	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
-
-	for scanner.Scan() && len(results) < limit {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		var item any
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
-			return nil, apperrors.Wrap(
-				apperrors.KindInternal,
-				"failed to parse job result",
-				err,
-			)
-		}
-		results = append(results, item)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, apperrors.Wrap(
-			apperrors.KindInternal,
-			"error reading job results file",
-			err,
-		)
-	}
-
-	return results, nil
+	return decodeJobResultItems(file, limit)
 }
 
 // ApplyTransformation applies a transformation expression to data.

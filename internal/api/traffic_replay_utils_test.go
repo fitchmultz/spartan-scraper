@@ -137,6 +137,58 @@ func TestLoadInterceptedEntries(t *testing.T) {
 	}
 }
 
+func TestLoadInterceptedEntriesSkipsMalformedJSONL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	jobID := "test-job-malformed-lines"
+	jobDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	os.MkdirAll(jobDir, 0755)
+	resultPath := filepath.Join(jobDir, "results.jsonl")
+
+	validLine, err := json.Marshal(struct {
+		InterceptedData []fetch.InterceptedEntry `json:"interceptedData"`
+	}{
+		InterceptedData: []fetch.InterceptedEntry{
+			{
+				Request: fetch.InterceptedRequest{
+					RequestID: "req-valid",
+					URL:       "https://example.com/api/valid",
+					Method:    "GET",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal valid line: %v", err)
+	}
+
+	content := bytes.NewBuffer(nil)
+	content.WriteString("{invalid json}\n")
+	content.Write(validLine)
+	content.WriteByte('\n')
+	content.WriteString(`{"interceptedData":"wrong-shape"}`)
+	content.WriteByte('\n')
+	if err := os.WriteFile(resultPath, content.Bytes(), 0o644); err != nil {
+		t.Fatalf("write malformed jsonl: %v", err)
+	}
+
+	job := model.Job{
+		ID:         jobID,
+		Kind:       model.KindScrape,
+		Status:     model.StatusSucceeded,
+		ResultPath: resultPath,
+	}
+
+	loaded, err := srv.loadInterceptedEntries(job)
+	if err != nil {
+		t.Fatalf("failed to load entries: %v", err)
+	}
+	if len(loaded) != 1 {
+		t.Fatalf("expected 1 valid entry after skipping malformed lines, got %d", len(loaded))
+	}
+}
+
 func TestLoadInterceptedEntriesMissingFile(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
