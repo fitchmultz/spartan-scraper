@@ -144,14 +144,11 @@ func applyFeedRequest(existing *feed.Feed, req FeedRequest) {
 
 // handleFeeds handles requests to /v1/feeds
 func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
+	handleCollectionMethods(w, r, func() {
 		s.handleListFeeds(w, r)
-	case http.MethodPost:
+	}, func() {
 		s.handleCreateFeed(w, r)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
+	})
 }
 
 // handleFeedDetailWrapper routes to handleFeedDetail or handleFeedCheck based on path
@@ -213,17 +210,13 @@ func (s *Server) handleFeedDetail(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-
-	switch r.Method {
-	case http.MethodGet:
+	handleDetailMethods(w, r, func() {
 		s.handleGetFeed(w, r, id)
-	case http.MethodPut:
+	}, func() {
 		s.handleUpdateFeed(w, r, id)
-	case http.MethodDelete:
+	}, func() {
 		s.handleDeleteFeed(w, r, id)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
+	})
 }
 
 // handleGetFeed retrieves a single feed.

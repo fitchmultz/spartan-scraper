@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/hostmatch"
 )
 
 func TestHostMatchesAnyPattern(t *testing.T) {
@@ -25,7 +27,7 @@ func TestHostMatchesAnyPattern(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := HostMatchesAnyPattern(tt.host, tt.patterns); got != tt.match {
+		if got := hostmatch.HostMatchesAnyPattern(tt.host, tt.patterns); got != tt.match {
 			t.Errorf("HostMatchesAnyPattern(%q, %v) = %v, want %v", tt.host, tt.patterns, got, tt.match)
 		}
 	}

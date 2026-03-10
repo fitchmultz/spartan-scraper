@@ -30,11 +30,8 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/crawl"
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/scrape"
 )
@@ -143,50 +140,39 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 
 	switch job.Kind {
 	case model.KindScrape:
-		url, _ := job.Params["url"].(string)
-		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "request_id", getJobRequestID(job))
-		method, _ := job.Params["method"].(string)
-		if method == "" {
-			method = "GET"
+		input, err := decodeScrapeExecutionInput(job, m)
+		if err != nil {
+			slog.Error("invalid scrape job configuration", "jobID", job.ID, "error", err)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
+			return err
 		}
-		body := decodeBytes(job.Params["body"])
-		contentType, _ := job.Params["contentType"].(string)
-		headless, _ := job.Params["headless"].(bool)
-		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
-		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
-		var auth fetch.AuthOptions
-		auth = decodeAuth(job.Params["auth"])
-		var extractOpts extract.ExtractOptions
-		extractOpts = decodeExtract(job.Params["extract"])
-		var pipelineOpts pipeline.Options
-		pipelineOpts = decodePipeline(job.Params["pipeline"])
-		incremental := toBool(job.Params["incremental"], false)
-		screenshot := decodeScreenshot(job.Params["screenshot"])
+		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "request_id", input.Config.RequestID)
 		result, err := scrape.Run(jobCtx, scrape.Request{
-			URL:              url,
-			Method:           method,
-			Body:             body,
-			ContentType:      contentType,
-			RequestID:        getJobRequestID(job),
-			Headless:         headless,
-			UsePlaywright:    usePlaywright,
-			Auth:             auth,
-			Extract:          extractOpts,
-			Pipeline:         pipelineOpts,
-			Timeout:          time.Duration(timeoutSecs) * time.Second,
+			URL:              input.URL,
+			Method:           input.Method,
+			Body:             input.Body,
+			ContentType:      input.ContentType,
+			RequestID:        input.Config.RequestID,
+			Headless:         input.Config.Headless,
+			UsePlaywright:    input.Config.UsePlaywright,
+			Auth:             input.Config.Auth,
+			Extract:          input.Config.Extract,
+			Pipeline:         input.Config.Pipeline,
+			Timeout:          time.Duration(input.Config.TimeoutSeconds) * time.Second,
 			UserAgent:        m.userAgent,
 			Limiter:          m.limiter,
 			MaxRetries:       m.maxRetries,
 			RetryBase:        m.retryBase,
 			MaxResponseBytes: m.maxResponseBytes,
 			DataDir:          m.DataDir,
-			Incremental:      incremental,
+			Incremental:      input.Incremental,
 			Store:            m.store,
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
 			MetricsCallback:  m.metricsCallback,
-			Screenshot:       screenshot,
+			Screenshot:       input.Config.Screenshot,
 			ProxyPool:        m.proxyPool,
 			AIExtractor:      m.aiExtractor,
 		})
@@ -197,7 +183,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 				m.propagateFailure(context.Background(), job)
 				return nil
 			}
-			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
+			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			m.propagateFailure(context.Background(), job)
 			return err
@@ -212,77 +198,61 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			return err
 		}
 	case model.KindCrawl:
-		url, _ := job.Params["url"].(string)
-		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "request_id", getJobRequestID(job))
-		maxDepth := toInt(job.Params["maxDepth"], 2)
-		maxPages := toInt(job.Params["maxPages"], 200)
-		headless, _ := job.Params["headless"].(bool)
-		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
-		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
-		var auth fetch.AuthOptions
-		auth = decodeAuth(job.Params["auth"])
-		var extractOpts extract.ExtractOptions
-		extractOpts = decodeExtract(job.Params["extract"])
-		var pipelineOpts pipeline.Options
-		pipelineOpts = decodePipeline(job.Params["pipeline"])
-		incremental := toBool(job.Params["incremental"], false)
-		sitemapURL, _ := job.Params["sitemapURL"].(string)
-		sitemapOnly := toBool(job.Params["sitemapOnly"], false)
-		includePatterns := toStringSlice(job.Params["includePatterns"])
-		excludePatterns := toStringSlice(job.Params["excludePatterns"])
-		screenshot := decodeScreenshot(job.Params["screenshot"])
-		respectRobotsTxt := toBool(job.Params["respectRobotsTxt"], false)
-		skipDuplicates := toBool(job.Params["skipDuplicates"], false)
-		simHashThreshold := toInt(job.Params["simHashThreshold"], 3)
-		crossJobDedup := toBool(job.Params["crossJobDedup"], false)
-		crossJobDedupThreshold := toInt(job.Params["crossJobDedupThreshold"], 3)
+		input, err := decodeCrawlExecutionInput(job, m)
+		if err != nil {
+			slog.Error("invalid crawl job configuration", "jobID", job.ID, "error", err)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
+			return err
+		}
+		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "request_id", input.Config.RequestID)
 
 		// Create robots cache if enabled
 		var robotsCache *crawl.Cache
-		if respectRobotsTxt {
+		if input.RespectRobotsTxt {
 			robotsCache = crawl.NewCache(nil, time.Hour)
 		}
 
 		// Get content index for cross-job deduplication
 		var contentIndex crawl.ContentIndex
-		if crossJobDedup {
+		if input.CrossJobDedup {
 			contentIndex = m.contentIndex
 		}
 
 		results, err := crawl.Run(jobCtx, crawl.Request{
-			URL:                    url,
-			RequestID:              getJobRequestID(job),
-			MaxDepth:               maxDepth,
-			MaxPages:               maxPages,
+			URL:                    input.URL,
+			RequestID:              input.Config.RequestID,
+			MaxDepth:               input.MaxDepth,
+			MaxPages:               input.MaxPages,
 			Concurrency:            m.maxConcurrency,
-			Headless:               headless,
-			UsePlaywright:          usePlaywright,
-			Auth:                   auth,
-			Extract:                extractOpts,
-			Pipeline:               pipelineOpts,
-			Timeout:                time.Duration(timeoutSecs) * time.Second,
+			Headless:               input.Config.Headless,
+			UsePlaywright:          input.Config.UsePlaywright,
+			Auth:                   input.Config.Auth,
+			Extract:                input.Config.Extract,
+			Pipeline:               input.Config.Pipeline,
+			Timeout:                time.Duration(input.Config.TimeoutSeconds) * time.Second,
 			UserAgent:              m.userAgent,
 			Limiter:                m.limiter,
 			MaxRetries:             reqRetries(m.maxRetries),
 			RetryBase:              m.retryBase,
 			MaxResponseBytes:       m.maxResponseBytes,
 			DataDir:                m.DataDir,
-			Incremental:            incremental,
+			Incremental:            input.Incremental,
 			Store:                  m.store,
 			Registry:               m.pipelineRegistry,
 			JSRegistry:             m.jsRegistry,
 			TemplateRegistry:       m.templateRegistry,
 			MetricsCallback:        m.metricsCallback,
-			SitemapURL:             sitemapURL,
-			SitemapOnly:            sitemapOnly,
-			IncludePatterns:        includePatterns,
-			ExcludePatterns:        excludePatterns,
-			Screenshot:             screenshot,
+			SitemapURL:             input.SitemapURL,
+			SitemapOnly:            input.SitemapOnly,
+			IncludePatterns:        input.IncludePatterns,
+			ExcludePatterns:        input.ExcludePatterns,
+			Screenshot:             input.Config.Screenshot,
 			RobotsCache:            robotsCache,
-			SkipDuplicates:         skipDuplicates,
-			SimHashThreshold:       simHashThreshold,
-			CrossJobDedup:          crossJobDedup,
-			CrossJobDedupThreshold: crossJobDedupThreshold,
+			SkipDuplicates:         input.SkipDuplicates,
+			SimHashThreshold:       input.SimHashThreshold,
+			CrossJobDedup:          input.CrossJobDedup,
+			CrossJobDedupThreshold: input.CrossJobDedupThreshold,
 			ProxyPool:              m.proxyPool,
 			WebhookDispatcher:      m.webhookDispatcher,
 			WebhookConfig:          job.ExtractWebhookConfig(),
@@ -296,7 +266,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 				m.propagateFailure(context.Background(), job)
 				return nil
 			}
-			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(url), "error", err)
+			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			m.propagateFailure(context.Background(), job)
 			return err
@@ -313,34 +283,27 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			}
 		}
 	case model.KindResearch:
-		query, _ := job.Params["query"].(string)
-		slog.Info("processing research job", "jobID", job.ID, "query", query, "request_id", getJobRequestID(job))
-		urls := toStringSlice(job.Params["urls"])
-		maxDepth := toInt(job.Params["maxDepth"], 2)
-		maxPages := toInt(job.Params["maxPages"], 200)
-		headless, _ := job.Params["headless"].(bool)
-		usePlaywright := toBool(job.Params["playwright"], m.usePlaywright)
-		timeoutSecs := toInt(job.Params["timeout"], int(m.requestTimeout.Seconds()))
-		var auth fetch.AuthOptions
-		auth = decodeAuth(job.Params["auth"])
-		var extractOpts extract.ExtractOptions
-		extractOpts = decodeExtract(job.Params["extract"])
-		var pipelineOpts pipeline.Options
-		pipelineOpts = decodePipeline(job.Params["pipeline"])
-		researchScreenshot := decodeScreenshot(job.Params["screenshot"])
+		input, err := decodeResearchExecutionInput(job, m)
+		if err != nil {
+			slog.Error("invalid research job configuration", "jobID", job.ID, "error", err)
+			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
+			m.propagateFailure(context.Background(), job)
+			return err
+		}
+		slog.Info("processing research job", "jobID", job.ID, "query", input.Query, "request_id", input.Config.RequestID)
 		result, err := research.Run(jobCtx, research.Request{
-			Query:            query,
-			RequestID:        getJobRequestID(job),
-			URLs:             urls,
-			MaxDepth:         maxDepth,
-			MaxPages:         maxPages,
+			Query:            input.Query,
+			RequestID:        input.Config.RequestID,
+			URLs:             input.URLs,
+			MaxDepth:         input.MaxDepth,
+			MaxPages:         input.MaxPages,
 			Concurrency:      m.maxConcurrency,
-			Headless:         headless,
-			UsePlaywright:    usePlaywright,
-			Auth:             auth,
-			Extract:          extractOpts,
-			Pipeline:         pipelineOpts,
-			Timeout:          time.Duration(timeoutSecs) * time.Second,
+			Headless:         input.Config.Headless,
+			UsePlaywright:    input.Config.UsePlaywright,
+			Auth:             input.Config.Auth,
+			Extract:          input.Config.Extract,
+			Pipeline:         input.Config.Pipeline,
+			Timeout:          time.Duration(input.Config.TimeoutSeconds) * time.Second,
 			UserAgent:        m.userAgent,
 			Limiter:          m.limiter,
 			MaxRetries:       m.maxRetries,
@@ -351,7 +314,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			Registry:         m.pipelineRegistry,
 			JSRegistry:       m.jsRegistry,
 			TemplateRegistry: m.templateRegistry,
-			Screenshot:       researchScreenshot,
+			Screenshot:       input.Config.Screenshot,
 			ProxyPool:        m.proxyPool,
 		})
 		if err != nil {
@@ -361,7 +324,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 				m.propagateFailure(context.Background(), job)
 				return nil
 			}
-			slog.Error("research job failed", "jobID", job.ID, "query", query, "error", err)
+			slog.Error("research job failed", "jobID", job.ID, "query", input.Query, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
 			m.propagateFailure(context.Background(), job)
 			return err

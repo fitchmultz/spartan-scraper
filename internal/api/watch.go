@@ -193,14 +193,11 @@ func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request)
 
 // handleWatches handles requests to /v1/watch
 func (s *Server) handleWatches(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
+	handleCollectionMethods(w, r, func() {
 		s.handleListWatches(w, r)
-	case http.MethodPost:
+	}, func() {
 		s.handleCreateWatch(w, r)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
+	})
 }
 
 // handleListWatches lists all watches.
@@ -247,17 +244,13 @@ func (s *Server) handleWatch(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-
-	switch r.Method {
-	case http.MethodGet:
+	handleDetailMethods(w, r, func() {
 		s.handleGetWatch(w, r, id)
-	case http.MethodPut:
+	}, func() {
 		s.handleUpdateWatch(w, r, id)
-	case http.MethodDelete:
+	}, func() {
 		s.handleDeleteWatch(w, r, id)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
+	})
 }
 
 // handleGetWatch retrieves a single watch.

@@ -29,50 +29,11 @@ import (
 )
 
 func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		schedules, err := scheduler.List(s.cfg.DataDir)
-		if err != nil {
-			writeError(w, r, err)
-			return
-		}
-		writeCollectionJSON(w, "schedules", mapSlice(schedules, toScheduleResponse))
-		return
-	}
-	if r.Method == http.MethodPost {
-		var req ScheduleRequest
-		if err := decodeJSONBody(w, r, &req); err != nil {
-			writeError(w, r, err)
-			return
-		}
-		if req.Kind == "" {
-			writeError(w, r, apperrors.Validation("kind is required"))
-			return
-		}
-		if req.IntervalSeconds <= 0 {
-			writeError(w, r, apperrors.Validation("intervalSeconds must be positive"))
-			return
-		}
-		if req.Kind != "scrape" && req.Kind != "crawl" && req.Kind != "research" {
-			writeError(w, r, apperrors.Validation("kind must be scrape, crawl, or research"))
-			return
-		}
-
-		schedule := scheduler.Schedule{
-			Kind:            model.Kind(req.Kind),
-			IntervalSeconds: req.IntervalSeconds,
-			Params:          scheduleParamsFromRequest(req),
-		}
-
-		addedSchedule, err := scheduler.Add(s.cfg.DataDir, schedule)
-		if err != nil {
-			writeError(w, r, err)
-			return
-		}
-
-		writeCreatedJSON(w, toScheduleResponse(*addedSchedule))
-		return
-	}
-	writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	handleCollectionMethods(w, r, func() {
+		s.handleListSchedules(w, r)
+	}, func() {
+		s.handleCreateSchedule(w, r)
+	})
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +53,37 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	writeOKStatus(w)
 }
 
+func (s *Server) handleListSchedules(w http.ResponseWriter, r *http.Request) {
+	schedules, err := scheduler.List(s.cfg.DataDir)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeCollectionJSON(w, "schedules", mapSlice(schedules, toScheduleResponse))
+}
+
+func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
+	var req ScheduleRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	schedule, err := scheduleFromRequest(req)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	addedSchedule, err := scheduler.Add(s.cfg.DataDir, schedule)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeCreatedJSON(w, toScheduleResponse(*addedSchedule))
+}
+
 func toScheduleResponse(schedule scheduler.Schedule) ScheduleResponse {
 	return ScheduleResponse{
 		ID:              schedule.ID,
@@ -100,6 +92,27 @@ func toScheduleResponse(schedule scheduler.Schedule) ScheduleResponse {
 		NextRun:         schedule.NextRun.Format(time.RFC3339),
 		Params:          schedule.Params,
 	}
+}
+
+func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
+	if req.Kind == "" {
+		return scheduler.Schedule{}, apperrors.Validation("kind is required")
+	}
+	if req.IntervalSeconds <= 0 {
+		return scheduler.Schedule{}, apperrors.Validation("intervalSeconds must be positive")
+	}
+	kind := model.Kind(req.Kind)
+	switch kind {
+	case model.KindScrape, model.KindCrawl, model.KindResearch:
+	default:
+		return scheduler.Schedule{}, apperrors.Validation("kind must be scrape, crawl, or research")
+	}
+
+	return scheduler.Schedule{
+		Kind:            kind,
+		IntervalSeconds: req.IntervalSeconds,
+		Params:          scheduleParamsFromRequest(req),
+	}, nil
 }
 
 func scheduleParamsFromRequest(req ScheduleRequest) map[string]interface{} {

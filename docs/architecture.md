@@ -64,7 +64,7 @@ Persistence (DATA_DIR)
 - `fetch`: HTTP fetcher + headless Chromium/Playwright fetchers.
 - `extract`: HTML → text/metadata/links.
 - `crawl`: BFS crawler with host scoping and depth/limit controls.
-- `jobs`: persistent store + queue + runner.
+- `jobs`: persistent store + queue + runner. Scheduled and direct jobs now share the same persisted-parameter decoding path before execution, so defaults and coercion stay aligned across entrypoints.
 - `api`: REST API aligned to `api/openapi.yaml`.
 - `ui/tui`: job list + status dashboard.
 - `web`: Web UI consuming generated API client.

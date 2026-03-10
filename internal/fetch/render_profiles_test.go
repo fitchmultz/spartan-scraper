@@ -5,6 +5,8 @@ package fetch
 
 import (
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/hostmatch"
 )
 
 func TestRenderProfilesPath(t *testing.T) {
@@ -98,7 +100,7 @@ func TestHostMatchesAnyPattern_Extended(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HostMatchesAnyPattern(tt.host, tt.patterns); got != tt.match {
+			if got := hostmatch.HostMatchesAnyPattern(tt.host, tt.patterns); got != tt.match {
 				t.Errorf("HostMatchesAnyPattern(%q, %v) = %v, want %v", tt.host, tt.patterns, got, tt.match)
 			}
 		})

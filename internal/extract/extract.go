@@ -1,6 +1,23 @@
-// Package extract provides functionality for extracting structured data from HTML.
-// It uses templates to define how data should be extracted and supports
-// normalization and schema validation of the extracted results.
+// Package extract runs template-driven extraction and optional AI enhancement.
+//
+// Purpose:
+// - Execute extraction from HTML into normalized structured documents.
+//
+// Responsibilities:
+// - Load template registries when callers do not provide one.
+// - Apply extraction, normalization, optional AI enrichment, and validation.
+// - Preserve the minimal legacy adapter used by existing external result surfaces.
+//
+// Scope:
+// - Extraction execution entrypoints only.
+//
+// Usage:
+// - Called by scrape, crawl, and other packages through Execute.
+//
+// Invariants/Assumptions:
+// - Template registry load failures are surfaced instead of silently ignored.
+// - AI extraction failures do not abort template extraction.
+// - Validation failures follow the configured rejection policy.
 package extract
 
 import (
@@ -9,7 +26,7 @@ import (
 	"log/slog"
 )
 
-// Result is the legacy extraction result.
+// Result is the compact compatibility summary exposed by scrape and crawl results.
 type Result struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
@@ -21,13 +38,11 @@ type Result struct {
 func Execute(input ExecuteInput) (ExecuteOutput, error) {
 	registry := input.Registry
 	if registry == nil {
-		var err error
-		registry, err = LoadTemplateRegistry(input.DataDir)
-		if registry == nil {
-			// Fallback to built-ins if loading fails or returns nil
-			registry = &TemplateRegistry{Templates: make(map[string]Template)}
+		loadedRegistry, err := LoadTemplateRegistry(input.DataDir)
+		if err != nil {
+			return ExecuteOutput{}, err
 		}
-		_ = err // Note: err from LoadTemplateRegistry is mostly for file read errors, we proceed with defaults/nil registry.
+		registry = loadedRegistry
 	}
 
 	tmpl, err := ResolveTemplate(input.Options, registry)
@@ -44,7 +59,7 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 
 	// NEW: If AI extraction is enabled, enhance results
 	if input.Options.AI != nil && input.Options.AI.Enabled && input.AIExtractor != nil {
-		// Use provided context or fall back to background for backward compatibility
+		// Use the caller context when available so AI work shares cancellation.
 		ctx := input.Context
 		if ctx == nil {
 			ctx = context.Background()
@@ -112,7 +127,7 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 	}, nil
 }
 
-// FromHTML is a legacy helper that uses the default extraction template.
+// FromHTML is the minimal compatibility helper for callers that only need the summary result.
 func FromHTML(html string) (Result, error) {
 	output, err := Execute(ExecuteInput{
 		HTML:    html,

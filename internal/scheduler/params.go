@@ -26,6 +26,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
@@ -56,25 +57,7 @@ func loadExtract(params map[string]interface{}) extract.ExtractOptions {
 }
 
 func loadPipeline(params map[string]interface{}) pipeline.Options {
-	if params == nil {
-		return pipeline.Options{}
-	}
-	raw, ok := params["pipeline"]
-	if !ok || raw == nil {
-		return pipeline.Options{}
-	}
-	if opts, ok := raw.(pipeline.Options); ok {
-		return opts
-	}
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return pipeline.Options{}
-	}
-	var opts pipeline.Options
-	if err := json.Unmarshal(data, &opts); err != nil {
-		return pipeline.Options{}
-	}
-	return opts
+	return paramdecode.Decode[pipeline.Options](params, "pipeline")
 }
 
 func loadAuth(params map[string]interface{}, dataDir string, targetURL string, env auth.EnvOverrides) (fetch.AuthOptions, error) {
@@ -96,76 +79,23 @@ func loadAuth(params map[string]interface{}, dataDir string, targetURL string, e
 }
 
 func stringParam(params map[string]interface{}, key string) string {
-	if params == nil {
-		return ""
-	}
-	if value, ok := params[key].(string); ok {
-		return value
-	}
-	return ""
+	return paramdecode.String(params, key)
 }
 
 func boolParam(params map[string]interface{}, key string) bool {
-	if params == nil {
-		return false
-	}
-	if value, ok := params[key].(bool); ok {
-		return value
-	}
-	return false
+	return paramdecode.Bool(params, key)
 }
 
 func boolParamDefault(params map[string]interface{}, key string, fallback bool) bool {
-	if params == nil {
-		return fallback
-	}
-	if _, ok := params[key]; !ok {
-		return fallback
-	}
-	if value, ok := params[key].(bool); ok {
-		return value
-	}
-	return fallback
+	return paramdecode.BoolDefault(params, key, fallback)
 }
 
 func intParam(params map[string]interface{}, key string, fallback int) int {
-	if params == nil {
-		return fallback
-	}
-	switch value := params[key].(type) {
-	case int:
-		if value <= 0 {
-			return fallback
-		}
-		return value
-	case float64:
-		if int(value) <= 0 {
-			return fallback
-		}
-		return int(value)
-	default:
-		return fallback
-	}
+	return paramdecode.PositiveInt(params, key, fallback)
 }
 
 func stringSliceParam(params map[string]interface{}, key string) []string {
-	if params == nil {
-		return nil
-	}
-	switch value := params[key].(type) {
-	case []interface{}:
-		items := make([]string, 0, len(value))
-		for _, item := range value {
-			if s, ok := item.(string); ok {
-				items = append(items, s)
-			}
-		}
-		return items
-	case []string:
-		return value
-	default:
-		return nil
-	}
+	return paramdecode.StringSlice(params, key)
 }
 
 func loadAuthOverrides(params map[string]interface{}) auth.ResolveInput {

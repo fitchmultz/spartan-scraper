@@ -142,3 +142,26 @@ func TestDecodeScreenshot(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeAuth(t *testing.T) {
+	input := map[string]interface{}{
+		"basic":   "user:pass",
+		"headers": map[string]interface{}{"X-Test": "1"},
+		"cookies": []interface{}{"session=abc"},
+		"query":   map[string]interface{}{"token": "secret"},
+	}
+
+	got := decodeAuth(input)
+	if got.Basic != "user:pass" {
+		t.Fatalf("decodeAuth basic = %q, want %q", got.Basic, "user:pass")
+	}
+	if got.Headers["X-Test"] != "1" {
+		t.Fatalf("decodeAuth headers = %#v, want X-Test=1", got.Headers)
+	}
+	if len(got.Cookies) != 1 || got.Cookies[0] != "session=abc" {
+		t.Fatalf("decodeAuth cookies = %#v, want session=abc", got.Cookies)
+	}
+	if got.Query["token"] != "secret" {
+		t.Fatalf("decodeAuth query = %#v, want token=secret", got.Query)
+	}
+}

@@ -6,13 +6,14 @@ package common
 
 import (
 	"flag"
+	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 type StringSliceFlag []string
 
-func (s *StringSliceFlag) String() string { return stringsJoinComma(*s) }
+func (s *StringSliceFlag) String() string { return strings.Join(*s, ",") }
 func (s *StringSliceFlag) Set(value string) error {
 	*s = append(*s, value)
 	return nil
@@ -30,8 +31,8 @@ func (s *StringSliceFlag) ToMap() map[string]string {
 		if !ok {
 			continue
 		}
-		key = stringsTrimSpace(key)
-		val = stringsTrimSpace(val)
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
 		if key == "" || val == "" {
 			continue
 		}
@@ -41,7 +42,7 @@ func (s *StringSliceFlag) ToMap() map[string]string {
 }
 
 func splitOnce(s, sep string) (string, string, bool) {
-	idx := indexOf(s, sep)
+	idx := strings.Index(s, sep)
 	if idx < 0 {
 		return "", "", false
 	}
@@ -311,6 +312,3 @@ func RegisterAuthFlags(fs *flag.FlagSet) *AuthFlags {
 Small string helpers kept private to avoid importing strings repeatedly.
 (We keep this file self-contained and test public behavior via cli_test.go.)
 */
-func stringsJoinComma(items []string) string { return joinWithComma(items) }
-func stringsTrimSpace(s string) string       { return trimSpace(s) }
-func indexOf(s, sep string) int              { return stringsIndex(s, sep) }

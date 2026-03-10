@@ -111,7 +111,7 @@ func (s *RenderProfileStore) MatchURL(rawURL string) (*RenderProfile, bool, erro
 	}
 
 	for _, profile := range s.profiles {
-		if HostMatchesAnyPattern(host, profile.HostPatterns) {
+		if hostmatch.HostMatchesAnyPattern(host, profile.HostPatterns) {
 			return &profile, true, nil
 		}
 	}

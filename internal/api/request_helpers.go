@@ -167,6 +167,30 @@ func parsePageParams(r *http.Request, defaultLimit int, maxLimit int) (pageParam
 	return pageParams{Limit: limit, Offset: offset}, nil
 }
 
+func handleCollectionMethods(w http.ResponseWriter, r *http.Request, get func(), post func()) {
+	switch r.Method {
+	case http.MethodGet:
+		get()
+	case http.MethodPost:
+		post()
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
+}
+
+func handleDetailMethods(w http.ResponseWriter, r *http.Request, get func(), put func(), delete func()) {
+	switch r.Method {
+	case http.MethodGet:
+		get()
+	case http.MethodPut:
+		put()
+	case http.MethodDelete:
+		delete()
+	default:
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	}
+}
+
 func handleNamedResourceCollection[T any](s *Server, w http.ResponseWriter, r *http.Request, store namedResourceStore[T]) {
 	switch r.Method {
 	case http.MethodGet:

@@ -5,6 +5,8 @@ package extract
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -163,6 +165,24 @@ func TestExecuteWithRegistry(t *testing.T) {
 	f, ok := output.Extracted.Fields["custom_field"]
 	if !ok || len(f.Values) == 0 || f.Values[0] != "Hello World" {
 		t.Errorf("expected field 'custom_field' to be 'Hello World', got %v", f.Values)
+	}
+}
+
+func TestExecuteReturnsRegistryLoadError(t *testing.T) {
+	dataDir := t.TempDir()
+	path := filepath.Join(dataDir, "extract_templates.json")
+	if err := os.WriteFile(path, []byte("{invalid json"), 0644); err != nil {
+		t.Fatalf("failed to seed invalid template registry: %v", err)
+	}
+
+	_, err := Execute(ExecuteInput{
+		URL:     "https://example.com",
+		HTML:    "<html><title>Example</title></html>",
+		DataDir: dataDir,
+		Options: ExtractOptions{Template: "default"},
+	})
+	if err == nil {
+		t.Fatal("expected Execute to return template registry load error")
 	}
 }
 

@@ -111,7 +111,7 @@ type PageResult struct {
 	Title              string                     `json:"title"`
 	Text               string                     `json:"text"`
 	Links              []string                   `json:"links"`
-	Metadata           extract.Result             `json:"metadata"` // Legacy
+	Metadata           extract.Result             `json:"metadata"` // Compatibility summary for existing result consumers.
 	Extracted          extract.Extracted          `json:"extracted"`
 	Normalized         extract.NormalizedDocument `json:"normalized"`
 	SimHash            uint64                     `json:"simhash"`                      // Content fingerprint for duplicate detection
