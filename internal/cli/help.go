@@ -27,6 +27,7 @@ Commands:
   crawl        Crawl a website
   research     Deep research across multiple sources
   auth         Manage auth vault and profiles
+  form         Detect, fill, and submit forms
   batch        Submit and manage batch jobs
   chains       Manage job chains (create/list/get/submit/delete)
   watch        Watch content for changes
@@ -41,6 +42,7 @@ Commands:
   replay       Replay captured network traffic
   backup       Create and manage backups
   restore      Restore from a backup archive
+  plugin       Manage plugins
   schedule     Manage scheduled jobs
   jobs         Manage jobs (list, get, cancel)
   server       Run API server + workers
@@ -60,6 +62,7 @@ Examples:
   spartan auth resolve --url https://example.com --profile acme
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
+  spartan form detect --url https://example.com/contact
   spartan render-profiles list
   spartan pipeline-js list
   spartan templates list
@@ -75,6 +78,7 @@ Examples:
   spartan backup list
   spartan restore --from spartan-backup-20240115-120000.tar.gz
   spartan restore --from backup.tar.gz --dry-run
+  spartan plugin list
   spartan watch add --url https://example.com --interval 3600
   spartan watch add --url https://example.com --selector "#price" --webhook https://hooks.slack.com/...
   spartan watch list

@@ -600,9 +600,24 @@ func (r FormFillResult) MarshalJSON() ([]byte, error) {
 // MarshalJSON implements custom JSON marshaling for FormDetectResponse.
 func (r FormDetectResponse) MarshalJSON() ([]byte, error) {
 	type Alias FormDetectResponse
+	forms := r.Forms
+	if forms == nil {
+		forms = []DetectedForm{}
+	}
+	detectedTypes := r.DetectedTypes
+	if detectedTypes == nil {
+		detectedTypes = []string{}
+	}
+
 	return json.Marshal(&struct {
-		Alias
+		URL           string         `json:"url"`
+		Forms         []DetectedForm `json:"forms"`
+		FormCount     int            `json:"formCount"`
+		DetectedTypes []string       `json:"detectedTypes"`
 	}{
-		Alias: (Alias)(r),
+		URL:           r.URL,
+		Forms:         forms,
+		FormCount:     r.FormCount,
+		DetectedTypes: detectedTypes,
 	})
 }

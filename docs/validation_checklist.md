@@ -44,7 +44,7 @@ curl -sS http://127.0.0.1:8741/healthz
 
 Expected:
 
-- health endpoint returns `ok: true`
+- health endpoint returns JSON with `"status":"ok"`
 - server logs are clean and actionable
 - if you launch with `BIND_ADDR=0.0.0.0`, non-health API routes require `X-API-Key`
 
