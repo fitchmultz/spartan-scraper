@@ -14,6 +14,8 @@
 import type { ExportScheduleHistoryProps } from "../../types/export-schedule";
 import { formatDateTime } from "../../lib/formatting";
 import { formatFileSize } from "../../lib/export-schedule-utils";
+import { getExportHistoryStatusTone } from "../../lib/status-display";
+import { StatusPill } from "../StatusPill";
 
 /**
  * Modal component for displaying export history
@@ -142,44 +144,10 @@ export function ExportScheduleHistory({
                       {record.job_id?.substring(0, 12)}...
                     </td>
                     <td style={{ padding: "12px" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "4px 10px",
-                          borderRadius: 12,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          backgroundColor:
-                            record.status === "success"
-                              ? "rgba(34, 197, 94, 0.15)"
-                              : record.status === "pending"
-                                ? "rgba(234, 179, 8, 0.15)"
-                                : "rgba(239, 68, 68, 0.15)",
-                          color:
-                            record.status === "success"
-                              ? "#22c55e"
-                              : record.status === "pending"
-                                ? "#eab308"
-                                : "#ef4444",
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            backgroundColor:
-                              record.status === "success"
-                                ? "#22c55e"
-                                : record.status === "pending"
-                                  ? "#eab308"
-                                  : "#ef4444",
-                          }}
-                        />
-                        {record.status}
-                      </span>
+                      <StatusPill
+                        label={record.status ?? "unknown"}
+                        tone={getExportHistoryStatusTone(record.status)}
+                      />
                     </td>
                     <td
                       style={{

@@ -14,6 +14,8 @@
 
 import type { WatchListItemProps } from "../../types/watch";
 import { formatDateTime, formatSecondsAsDuration } from "../../lib/formatting";
+import { getWatchStatusTone } from "../../lib/status-display";
+import { StatusPill } from "../StatusPill";
 
 /**
  * Single watch row component with status badge and action buttons
@@ -44,33 +46,10 @@ export function WatchListItem({
         )}
       </td>
       <td style={{ padding: "12px" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 12,
-            fontSize: 12,
-            fontWeight: 500,
-            backgroundColor:
-              watch.status === "active"
-                ? "rgba(34, 197, 94, 0.15)"
-                : "rgba(156, 163, 175, 0.15)",
-            color: watch.status === "active" ? "#22c55e" : "var(--muted)",
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              backgroundColor:
-                watch.status === "active" ? "#22c55e" : "var(--muted)",
-            }}
-          />
-          {watch.status}
-        </span>
+        <StatusPill
+          label={watch.status}
+          tone={getWatchStatusTone(watch.status)}
+        />
       </td>
       <td style={{ padding: "12px" }}>
         {formatSecondsAsDuration(watch.intervalSeconds)}

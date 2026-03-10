@@ -10,6 +10,8 @@
 import { useState } from "react";
 import type { Watch, WatchCheckResult } from "../api";
 import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
+import { getWatchStatusTone } from "../lib/status-display";
+import { StatusPill } from "./StatusPill";
 
 interface WatchDetailProps {
   watch: Watch;
@@ -257,31 +259,10 @@ export function WatchDetail({
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>
             Status
           </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontWeight: 600,
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                backgroundColor:
-                  watch.status === "active" ? "#22c55e" : "var(--muted)",
-              }}
-            />
-            <span
-              style={{
-                color: watch.status === "active" ? "#22c55e" : "inherit",
-              }}
-            >
-              {watch.status}
-            </span>
-          </div>
+          <StatusPill
+            label={watch.status}
+            tone={getWatchStatusTone(watch.status)}
+          />
         </div>
 
         <div>

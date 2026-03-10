@@ -13,10 +13,12 @@
  */
 
 import type { ExportScheduleListItemProps } from "../../types/export-schedule";
+import { getEnabledStatusTone } from "../../lib/status-display";
 import {
   formatDestination,
   formatFilters,
 } from "../../lib/export-schedule-utils";
+import { StatusPill } from "../StatusPill";
 
 /**
  * Single export schedule row component with status badge and action buttons
@@ -45,31 +47,10 @@ export function ExportScheduleListItem({
         </div>
       </td>
       <td style={{ padding: "12px" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 12,
-            fontSize: 12,
-            fontWeight: 500,
-            backgroundColor: schedule.enabled
-              ? "rgba(34, 197, 94, 0.15)"
-              : "rgba(156, 163, 175, 0.15)",
-            color: schedule.enabled ? "#22c55e" : "var(--muted)",
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              backgroundColor: schedule.enabled ? "#22c55e" : "var(--muted)",
-            }}
-          />
-          {schedule.enabled ? "Enabled" : "Disabled"}
-        </span>
+        <StatusPill
+          label={schedule.enabled ? "Enabled" : "Disabled"}
+          tone={getEnabledStatusTone(schedule.enabled)}
+        />
       </td>
       <td style={{ padding: "12px", fontSize: 13 }}>
         {formatFilters(schedule.filters)}

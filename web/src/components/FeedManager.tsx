@@ -11,6 +11,8 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Feed, FeedInput, FeedCheckResult, SeenFeedItem } from "../api";
 import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
+import { getFeedStatusTone } from "../lib/status-display";
+import { StatusPill } from "./StatusPill";
 
 interface FeedManagerProps {
   feeds: Feed[];
@@ -277,17 +279,10 @@ export function FeedManager({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{feed.url}</h3>
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded-full ${
-                          feed.status === "active"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : feed.status === "error"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {feed.status}
-                      </span>
+                      <StatusPill
+                        label={feed.status ?? "unknown"}
+                        tone={getFeedStatusTone(feed.status)}
+                      />
                       {feed.autoScrape && (
                         <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                           auto-scrape

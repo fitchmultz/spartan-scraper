@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { formatSecondsAsApproximateDuration } from "../lib/formatting";
 import type { JobPreset, JobType } from "../types/presets";
 import { detectPresetsForUrl } from "../lib/preset-matcher";
 
@@ -23,17 +24,6 @@ interface QuickStartPanelProps {
   onSavePreset?: () => void;
   /** Optional URL for showing matching presets */
   currentUrl?: string;
-}
-
-/**
- * Format time in seconds to human-readable string.
- */
-function formatTime(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-  const minutes = Math.ceil(seconds / 60);
-  return `~${minutes}min`;
 }
 
 /**
@@ -173,7 +163,7 @@ function PresetCard({
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-          ⏱️ {formatTime(preset.resources.timeSeconds)}
+          ⏱️ {formatSecondsAsApproximateDuration(preset.resources.timeSeconds)}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <ResourceIndicator level={preset.resources.cpu} label="CPU" />

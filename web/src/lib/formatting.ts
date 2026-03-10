@@ -7,6 +7,7 @@
  * Responsibilities:
  * - Format ISO timestamps for display with safe fallbacks.
  * - Convert second and millisecond durations into compact labels.
+ * - Convert second durations into approximate UI-friendly labels.
  * - Render unknown values into readable, UI-safe display strings.
  * - Truncate long identifiers and URLs consistently.
  *
@@ -43,6 +44,19 @@ export function formatSecondsAsDuration(seconds: number): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
   return `${Math.floor(seconds / 86400)}d`;
+}
+
+export function formatSecondsAsApproximateDuration(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  if (seconds < 3600) {
+    return `~${Math.ceil(seconds / 60)}min`;
+  }
+  if (seconds < 86400) {
+    return `~${Math.ceil(seconds / 3600)}h`;
+  }
+  return `~${Math.ceil(seconds / 86400)}d`;
 }
 
 export function formatMillisecondsAsDuration(

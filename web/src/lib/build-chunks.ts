@@ -90,8 +90,13 @@ export function chunkNameForModuleId(id: string): string | undefined {
       normalizedId.includes("/src/lib/http-status.ts") ||
       normalizedId.includes("/src/lib/input-parsing.ts") ||
       normalizedId.includes("/src/lib/job-status.ts") ||
+      normalizedId.includes("/src/lib/status-display.ts") ||
       normalizedId.includes("/src/lib/webhook-utils.ts")
     ) {
+      return "feature-shared";
+    }
+
+    if (normalizedId.includes("/src/components/StatusPill.tsx")) {
       return "feature-shared";
     }
 

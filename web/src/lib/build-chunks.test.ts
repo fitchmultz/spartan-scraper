@@ -85,6 +85,9 @@ describe("chunkNameForModuleId", () => {
       expect(chunkNameForModuleId("/src/lib/job-status.ts")).toBe(
         "feature-shared",
       );
+      expect(chunkNameForModuleId("/src/lib/status-display.ts")).toBe(
+        "feature-shared",
+      );
       expect(chunkNameForModuleId("/src/lib/batch-utils.ts")).toBe(
         "feature-shared",
       );
@@ -103,6 +106,12 @@ describe("chunkNameForModuleId", () => {
       expect(
         chunkNameForModuleId("/src/components/results/ResultsViewer.tsx"),
       ).toBe("feature-results");
+    });
+
+    it("should return feature-shared for shared status pill component", () => {
+      expect(chunkNameForModuleId("/src/components/StatusPill.tsx")).toBe(
+        "feature-shared",
+      );
     });
 
     it("should return feature-templates for template components", () => {

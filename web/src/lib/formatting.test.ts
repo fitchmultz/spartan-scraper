@@ -10,6 +10,7 @@ import {
   formatDateTime,
   formatDisplayValue,
   formatMillisecondsAsDuration,
+  formatSecondsAsApproximateDuration,
   formatSecondsAsDuration,
   truncateEnd,
   truncateMiddle,
@@ -31,6 +32,15 @@ describe("formatSecondsAsDuration", () => {
     expect(formatSecondsAsDuration(120)).toBe("2m");
     expect(formatSecondsAsDuration(7200)).toBe("2h");
     expect(formatSecondsAsDuration(172800)).toBe("2d");
+  });
+});
+
+describe("formatSecondsAsApproximateDuration", () => {
+  it("formats seconds with rounded-up units for quick previews", () => {
+    expect(formatSecondsAsApproximateDuration(45)).toBe("45s");
+    expect(formatSecondsAsApproximateDuration(61)).toBe("~2min");
+    expect(formatSecondsAsApproximateDuration(3601)).toBe("~2h");
+    expect(formatSecondsAsApproximateDuration(90000)).toBe("~2d");
   });
 });
 
