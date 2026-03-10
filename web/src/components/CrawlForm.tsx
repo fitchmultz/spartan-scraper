@@ -7,25 +7,15 @@
  *
  * @module CrawlForm
  */
-import {
-  useMemo,
-  useState,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
-  parseHeaders,
-  parseCookies,
-  parseQueryParams,
-  buildAuth,
   buildCrawlRequest,
-  buildWebhookConfig,
+  buildSharedRequestConfig,
   parsePatternList,
-  buildNetworkInterceptConfig,
 } from "../lib/form-utils";
+import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
@@ -44,73 +34,18 @@ export interface CrawlFormRef {
 }
 
 interface CrawlFormProps {
-  headless: boolean;
-  setHeadless: (value: boolean) => void;
-  usePlaywright: boolean;
-  setUsePlaywright: (value: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (value: number) => void;
-  authProfile: string;
-  setAuthProfile: (value: string) => void;
-  authBasic: string;
-  setAuthBasic: (value: string) => void;
-  headersRaw: string;
-  setHeadersRaw: (value: string) => void;
-  cookiesRaw: string;
-  setCookiesRaw: (value: string) => void;
-  queryRaw: string;
-  setQueryRaw: (value: string) => void;
-  loginUrl: string;
-  setLoginUrl: (value: string) => void;
-  loginUserSelector: string;
-  setLoginUserSelector: (value: string) => void;
-  loginPassSelector: string;
-  setLoginPassSelector: (value: string) => void;
-  loginSubmitSelector: string;
-  setLoginSubmitSelector: (value: string) => void;
-  loginUser: string;
-  setLoginUser: (value: string) => void;
-  loginPass: string;
-  setLoginPass: (value: string) => void;
-  extractTemplate: string;
-  setExtractTemplate: (value: string) => void;
-  extractValidate: boolean;
-  setExtractValidate: (value: boolean) => void;
-  preProcessors: string;
-  setPreProcessors: (value: string) => void;
-  postProcessors: string;
-  setPostProcessors: (value: string) => void;
-  transformers: string;
-  setTransformers: (value: string) => void;
-  incremental: boolean;
-  setIncremental: (value: boolean) => void;
-  webhookUrl: string;
-  setWebhookUrl: (value: string) => void;
-  webhookEvents: string[];
-  setWebhookEvents: (value: string[]) => void;
-  webhookSecret: string;
-  setWebhookSecret: (value: string) => void;
-  profiles: Array<{ name: string; parents: string[] }>;
+  form: FormController;
+  profiles: ProfileOption[];
   onSubmit: (request: import("../api").CrawlRequest) => Promise<void>;
   loading: boolean;
-  // Network interception props
-  interceptEnabled: boolean;
-  setInterceptEnabled: (value: boolean) => void;
-  interceptURLPatterns: string;
-  setInterceptURLPatterns: (value: string) => void;
-  interceptResourceTypes: string[];
-  setInterceptResourceTypes: (value: string[]) => void;
-  interceptCaptureRequestBody: boolean;
-  setInterceptCaptureRequestBody: (value: boolean) => void;
-  interceptCaptureResponseBody: boolean;
-  setInterceptCaptureResponseBody: (value: boolean) => void;
-  interceptMaxBodySize: number;
-  setInterceptMaxBodySize: (value: number) => void;
 }
 
 export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
   function CrawlForm(
-    {
+    { form, profiles, onSubmit, loading }: CrawlFormProps,
+    ref,
+  ) {
+    const {
       headless,
       setHeadless,
       usePlaywright,
@@ -157,9 +92,6 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
-      profiles,
-      onSubmit,
-      loading,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -172,9 +104,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
-    }: CrawlFormProps,
-    ref,
-  ) {
+    } = form;
+
     const [crawlUrl, setCrawlUrl] = useState("");
     const [maxDepth, setMaxDepth] = useState(2);
     const [maxPages, setMaxPages] = useState(200);
@@ -184,36 +115,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const [excludePatterns, setExcludePatterns] = useState("");
     const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
-    const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
-    const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
-    const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
-
-    const networkIntercept = useMemo(
-      () =>
-        buildNetworkInterceptConfig(
-          interceptEnabled,
-          interceptURLPatterns,
-          interceptResourceTypes,
-          interceptCaptureRequestBody,
-          interceptCaptureResponseBody,
-          interceptMaxBodySize,
-          1000,
-        ),
-      [
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-      ],
-    );
-
     const handleSubmit = useCallback(async () => {
       if (!crawlUrl) {
         alert("Crawl URL is required.");
         return;
       }
+      const shared = buildSharedRequestConfig(form);
       const request = buildCrawlRequest(
         crawlUrl,
         maxDepth,
@@ -221,34 +128,20 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         headless,
         usePlaywright,
         timeoutSeconds,
-        authProfile || undefined,
-        buildAuth(
-          authBasic,
-          headerMap,
-          cookieList,
-          queryMap,
-          loginUrl,
-          loginUserSelector,
-          loginPassSelector,
-          loginSubmitSelector,
-          loginUser,
-          loginPass,
-        ),
-        {
-          template: extractTemplate || undefined,
-          validate: extractValidate,
-        },
-        preProcessors,
-        postProcessors,
-        transformers,
+        shared.authProfile,
+        shared.auth,
+        shared.extract,
+        shared.preProcessors,
+        shared.postProcessors,
+        shared.transformers,
         incremental,
         sitemapURL,
         sitemapOnly,
-        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        shared.webhook,
         parsePatternList(includePatterns),
         parsePatternList(excludePatterns),
         device || undefined,
-        networkIntercept,
+        shared.networkIntercept,
       );
       await onSubmit(request);
     }, [
@@ -258,32 +151,13 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       headless,
       usePlaywright,
       timeoutSeconds,
-      authProfile,
-      authBasic,
-      headerMap,
-      cookieList,
-      queryMap,
-      loginUrl,
-      loginUserSelector,
-      loginPassSelector,
-      loginSubmitSelector,
-      loginUser,
-      loginPass,
-      extractTemplate,
-      extractValidate,
-      preProcessors,
-      postProcessors,
-      transformers,
+      form,
       incremental,
       sitemapURL,
       sitemapOnly,
-      webhookUrl,
-      webhookEvents,
-      webhookSecret,
       includePatterns,
       excludePatterns,
       device,
-      networkIntercept,
       onSubmit,
     ]);
 

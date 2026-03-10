@@ -18,7 +18,7 @@
 import { useRef, Suspense, lazy, forwardRef, useImperativeHandle } from "react";
 import type { ScrapeRequest, CrawlRequest, ResearchRequest } from "../../api";
 import type { Profile } from "../../hooks/useAppData";
-import type { FormState, FormActions } from "../../hooks/useFormState";
+import type { FormController, ProfileOption } from "../../hooks/useFormState";
 
 const ScrapeForm = lazy(() =>
   import("../../components/ScrapeForm").then((mod) => ({
@@ -54,17 +54,12 @@ export interface JobSubmissionContainerRef {
 }
 
 interface JobSubmissionContainerProps {
-  // Form state (from useFormState)
-  formState: FormState & FormActions;
-  // Submission handlers
+  formState: FormController;
   onSubmitScrape: (request: ScrapeRequest) => void;
   onSubmitCrawl: (request: CrawlRequest) => void;
   onSubmitResearch: (request: ResearchRequest) => void;
-
-  // Loading state
   loading: boolean;
-  // Profiles for auth
-  profiles: Profile[];
+  profiles: Profile[] | ProfileOption[];
 }
 
 export const JobSubmissionContainer = forwardRef<
@@ -113,71 +108,6 @@ export const JobSubmissionContainer = forwardRef<
     },
   }));
 
-  const {
-    headless,
-    setHeadless,
-    usePlaywright,
-    setUsePlaywright,
-    timeoutSeconds,
-    setTimeoutSeconds,
-    authProfile,
-    setAuthProfile,
-    authBasic,
-    setAuthBasic,
-    headersRaw,
-    setHeadersRaw,
-    cookiesRaw,
-    setCookiesRaw,
-    queryRaw,
-    setQueryRaw,
-    loginUrl,
-    setLoginUrl,
-    loginUserSelector,
-    setLoginUserSelector,
-    loginPassSelector,
-    setLoginPassSelector,
-    loginSubmitSelector,
-    setLoginSubmitSelector,
-    loginUser,
-    setLoginUser,
-    loginPass,
-    setLoginPass,
-    extractTemplate,
-    setExtractTemplate,
-    extractValidate,
-    setExtractValidate,
-    preProcessors,
-    setPreProcessors,
-    postProcessors,
-    setPostProcessors,
-    transformers,
-    setTransformers,
-    incremental,
-    setIncremental,
-    maxDepth,
-    setMaxDepth,
-    maxPages,
-    setMaxPages,
-    webhookUrl,
-    setWebhookUrl,
-    webhookEvents,
-    setWebhookEvents,
-    webhookSecret,
-    setWebhookSecret,
-    interceptEnabled,
-    setInterceptEnabled,
-    interceptURLPatterns,
-    setInterceptURLPatterns,
-    interceptResourceTypes,
-    setInterceptResourceTypes,
-    interceptCaptureRequestBody,
-    setInterceptCaptureRequestBody,
-    interceptCaptureResponseBody,
-    setInterceptCaptureResponseBody,
-    interceptMaxBodySize,
-    setInterceptMaxBodySize,
-  } = formState;
-
   return (
     <section id="forms" className="grid" data-tour="form-types">
       <Suspense
@@ -185,205 +115,32 @@ export const JobSubmissionContainer = forwardRef<
       >
         <ScrapeForm
           ref={scrapeFormRef}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
+          form={formState}
           profiles={profiles}
           onSubmit={async (req) => {
             await onSubmitScrape(req);
           }}
           loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
 
         <CrawlForm
           ref={crawlFormRef}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
+          form={formState}
           profiles={profiles}
           onSubmit={async (req) => {
             await onSubmitCrawl(req);
           }}
           loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
 
         <ResearchForm
           ref={researchFormRef}
-          maxDepth={maxDepth}
-          setMaxDepth={setMaxDepth}
-          maxPages={maxPages}
-          setMaxPages={setMaxPages}
-          headless={headless}
-          setHeadless={setHeadless}
-          usePlaywright={usePlaywright}
-          setUsePlaywright={setUsePlaywright}
-          timeoutSeconds={timeoutSeconds}
-          setTimeoutSeconds={setTimeoutSeconds}
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
+          form={formState}
           profiles={profiles}
           onSubmit={async (req) => {
             await onSubmitResearch(req);
           }}
           loading={loading}
-          interceptEnabled={interceptEnabled}
-          setInterceptEnabled={setInterceptEnabled}
-          interceptURLPatterns={interceptURLPatterns}
-          setInterceptURLPatterns={setInterceptURLPatterns}
-          interceptResourceTypes={interceptResourceTypes}
-          setInterceptResourceTypes={setInterceptResourceTypes}
-          interceptCaptureRequestBody={interceptCaptureRequestBody}
-          setInterceptCaptureRequestBody={setInterceptCaptureRequestBody}
-          interceptCaptureResponseBody={interceptCaptureResponseBody}
-          setInterceptCaptureResponseBody={setInterceptCaptureResponseBody}
-          interceptMaxBodySize={interceptMaxBodySize}
-          setInterceptMaxBodySize={setInterceptMaxBodySize}
         />
       </Suspense>
     </section>

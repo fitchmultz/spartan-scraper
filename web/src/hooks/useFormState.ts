@@ -85,6 +85,9 @@ export interface FormActions {
   applyPreset: (config: PresetConfig) => void;
 }
 
+export type FormController = FormState & FormActions;
+export type ProfileOption = { name: string; parents: string[] };
+
 const INITIAL_STATE: FormState = {
   headless: false,
   usePlaywright: false,
@@ -120,7 +123,7 @@ const INITIAL_STATE: FormState = {
   interceptMaxBodySize: 1048576,
 };
 
-export function useFormState(): FormState & FormActions {
+export function useFormState(): FormController {
   const [state, setState] = useState<FormState>(INITIAL_STATE);
 
   const setHeadless = useCallback((value: boolean) => {

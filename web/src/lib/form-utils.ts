@@ -18,6 +18,7 @@ import type {
   ScrapeRequest,
   WebhookConfig,
 } from "../api";
+import type { FormController } from "../hooks/useFormState";
 import type { CrawlResultItem, ResearchResultItem, ResultItem } from "../types";
 import {
   parseLineSeparatedMap,
@@ -150,6 +151,94 @@ export function buildNetworkInterceptConfig(
     captureResponseBody,
     maxBodySize,
     maxEntries,
+  };
+}
+
+type SharedFormFields = Pick<
+  FormController,
+  | "authProfile"
+  | "authBasic"
+  | "headersRaw"
+  | "cookiesRaw"
+  | "queryRaw"
+  | "loginUrl"
+  | "loginUserSelector"
+  | "loginPassSelector"
+  | "loginSubmitSelector"
+  | "loginUser"
+  | "loginPass"
+  | "extractTemplate"
+  | "extractValidate"
+  | "preProcessors"
+  | "postProcessors"
+  | "transformers"
+  | "webhookUrl"
+  | "webhookEvents"
+  | "webhookSecret"
+  | "interceptEnabled"
+  | "interceptURLPatterns"
+  | "interceptResourceTypes"
+  | "interceptCaptureRequestBody"
+  | "interceptCaptureResponseBody"
+  | "interceptMaxBodySize"
+>;
+
+export type SharedRequestConfig = {
+  authProfile?: string;
+  auth?: AuthOptions;
+  extract: ExtractOptions;
+  pipeline?: PipelineOptions;
+  preProcessors: string;
+  postProcessors: string;
+  transformers: string;
+  webhook?: WebhookConfig;
+  networkIntercept?: NetworkInterceptConfig;
+};
+
+export function buildSharedRequestConfig(
+  form: SharedFormFields,
+  interceptMaxEntries = 1000,
+): SharedRequestConfig {
+  return {
+    authProfile: form.authProfile || undefined,
+    auth: buildAuth(
+      form.authBasic,
+      parseHeaders(form.headersRaw),
+      parseCookies(form.cookiesRaw),
+      parseQueryParams(form.queryRaw),
+      form.loginUrl,
+      form.loginUserSelector,
+      form.loginPassSelector,
+      form.loginSubmitSelector,
+      form.loginUser,
+      form.loginPass,
+    ),
+    extract: {
+      template: form.extractTemplate || undefined,
+      validate: form.extractValidate,
+    },
+    pipeline: buildPipelineOptions(
+      form.preProcessors,
+      form.postProcessors,
+      form.transformers,
+    ),
+    preProcessors: form.preProcessors,
+    postProcessors: form.postProcessors,
+    transformers: form.transformers,
+    webhook: buildWebhookConfig(
+      form.webhookUrl,
+      form.webhookEvents,
+      form.webhookSecret,
+    ),
+    networkIntercept: buildNetworkInterceptConfig(
+      form.interceptEnabled,
+      form.interceptURLPatterns,
+      form.interceptResourceTypes,
+      form.interceptCaptureRequestBody,
+      form.interceptCaptureResponseBody,
+      form.interceptMaxBodySize,
+      interceptMaxEntries,
+    ),
   };
 }
 

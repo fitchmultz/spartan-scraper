@@ -12,7 +12,9 @@ import {
   postV1JobsBatchScrape,
   postV1JobsBatchCrawl,
   postV1JobsBatchResearch,
+  type BatchResponse,
   type BatchScrapeRequest,
+  type BatchStatusResponse,
   type BatchCrawlRequest,
   type BatchResearchRequest,
   type Job,
@@ -93,46 +95,6 @@ function formatApiError(error: unknown): string {
   }
 }
 
-function parseJsonIfString(value: unknown): unknown {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    throw new Error("Server returned malformed JSON payload");
-  }
-}
-
-function toBatchPayload(value: unknown): Record<string, unknown> {
-  const parsed = parseJsonIfString(value);
-  if (!isRecord(parsed)) {
-    throw new Error("Server returned unexpected payload shape");
-  }
-
-  if (isRecord(parsed.batch)) {
-    return parsed.batch;
-  }
-
-  return parsed;
-}
-
-function readBatchID(payload: Record<string, unknown>): string {
-  const fromId = typeof payload.id === "string" ? payload.id : "";
-  if (fromId) {
-    return fromId;
-  }
-
-  const fromBatchId =
-    typeof payload.batchId === "string" ? payload.batchId : "";
-  if (fromBatchId) {
-    return fromBatchId;
-  }
-
-  throw new Error("Batch response missing id");
-}
-
 function readIsoDate(value: unknown, fallback: string): string {
   if (typeof value === "string" && value.length > 0) {
     return value;
@@ -140,39 +102,26 @@ function readIsoDate(value: unknown, fallback: string): string {
   return fallback;
 }
 
-function readBatchJobs(payload: Record<string, unknown>): Job[] | undefined {
-  if (!("jobs" in payload)) {
-    return undefined;
+function toJobSummary(job: Partial<Job>): Job | null {
+  if (!job.id) {
+    return null;
   }
+  const createdAt = readIsoDate(job.createdAt, new Date(0).toISOString());
+  return {
+    id: job.id,
+    kind: isBatchKind(job.kind) ? job.kind : "scrape",
+    status: isJobStatus(job.status) ? job.status : "queued",
+    createdAt,
+    updatedAt: readIsoDate(job.updatedAt, createdAt),
+  };
+}
 
-  if (!Array.isArray(payload.jobs)) {
-    return [];
-  }
-
-  const jobs: Job[] = [];
-  for (const rawJob of payload.jobs) {
-    if (!isRecord(rawJob)) {
-      continue;
-    }
-
-    const id = typeof rawJob.id === "string" ? rawJob.id : "";
-    if (!id) {
-      continue;
-    }
-
-    const createdAt = readIsoDate(rawJob.createdAt, new Date(0).toISOString());
-    const updatedAt = readIsoDate(rawJob.updatedAt, createdAt);
-
-    jobs.push({
-      id,
-      kind: isBatchKind(rawJob.kind) ? rawJob.kind : "scrape",
-      status: isJobStatus(rawJob.status) ? rawJob.status : "queued",
-      createdAt,
-      updatedAt,
-    });
-  }
-
-  return jobs;
+function readBatchJobs(
+  jobs: BatchResponse["jobs"] | BatchStatusResponse["jobs"] | undefined,
+): Job[] | undefined {
+  return jobs
+    ?.map((job) => toJobSummary(job))
+    .filter((job): job is Job => job !== null);
 }
 
 export function createEmptyBatchStats(): BatchEntry["stats"] {
@@ -235,36 +184,25 @@ export function deriveBatchStatsFromJobs(
   return stats;
 }
 
-export function mapBatchStatusResponse(response: unknown): BatchEntry {
-  const payload = toBatchPayload(response);
-  const createdAt = readIsoDate(payload.createdAt, new Date(0).toISOString());
-  const updatedAt = readIsoDate(payload.updatedAt, createdAt);
-  const rawStats = isRecord(payload.stats)
-    ? {
-        queued: payload.stats.queued,
-        running: payload.stats.running,
-        succeeded: payload.stats.succeeded,
-        failed: payload.stats.failed,
-        canceled: payload.stats.canceled,
-      }
-    : undefined;
-
+export function mapBatchStatusResponse(
+  response: BatchStatusResponse,
+): BatchEntry {
+  const createdAt = readIsoDate(response.createdAt, new Date(0).toISOString());
   return {
-    id: readBatchID(payload),
-    kind: isBatchKind(payload.kind) ? payload.kind : "scrape",
-    status: isBatchStatus(payload.status) ? payload.status : "pending",
-    jobCount: toNonNegativeNumber(payload.jobCount),
-    stats: normalizeBatchStats(rawStats),
+    id: response.id,
+    kind: isBatchKind(response.kind) ? response.kind : "scrape",
+    status: isBatchStatus(response.status) ? response.status : "pending",
+    jobCount: toNonNegativeNumber(response.jobCount),
+    stats: normalizeBatchStats(response.stats),
     createdAt,
-    updatedAt,
+    updatedAt: readIsoDate(response.updatedAt, createdAt),
   };
 }
 
-export function mapBatchCreateResponse(response: unknown): BatchEntry {
-  const payload = toBatchPayload(response);
-  const createdAt = readIsoDate(payload.createdAt, new Date(0).toISOString());
-  const jobs = readBatchJobs(payload);
-  const reportedJobCount = toNonNegativeNumber(payload.jobCount);
+export function mapBatchCreateResponse(response: BatchResponse): BatchEntry {
+  const createdAt = readIsoDate(response.createdAt, new Date(0).toISOString());
+  const jobs = readBatchJobs(response.jobs);
+  const reportedJobCount = toNonNegativeNumber(response.jobCount);
   const jobCount =
     reportedJobCount > 0
       ? reportedJobCount
@@ -273,15 +211,20 @@ export function mapBatchCreateResponse(response: unknown): BatchEntry {
         : 0;
 
   return {
-    id: readBatchID(payload),
-    kind: isBatchKind(payload.kind) ? payload.kind : "scrape",
-    status: isBatchStatus(payload.status) ? payload.status : "pending",
+    id: response.id,
+    kind: isBatchKind(response.kind) ? response.kind : "scrape",
+    status: isBatchStatus(response.status) ? response.status : "pending",
     jobCount,
     stats: deriveBatchStatsFromJobs(jobs, jobCount),
     createdAt,
     updatedAt: createdAt,
   };
 }
+
+type BatchSubmitter<TRequest> = (params: {
+  baseUrl: string;
+  body: TRequest;
+}) => Promise<{ data?: BatchResponse; error?: unknown }>;
 
 export function normalizeStoredBatchEntries(input: unknown): BatchEntry[] {
   if (!Array.isArray(input)) {
@@ -372,12 +315,11 @@ export function useBatches() {
       if (apiError) {
         throw new Error(formatApiError(apiError));
       }
-
       if (!data) {
         throw new Error("No data returned");
       }
 
-      return parseJsonIfString(data);
+      return data;
     },
     [],
   );
@@ -404,8 +346,7 @@ export function useBatches() {
         });
 
         // Store jobs if included
-        const payload = toBatchPayload(response);
-        const jobs = readBatchJobs(payload);
+        const jobs = readBatchJobs(response.jobs);
         if (jobs) {
           setBatchJobs((current) => {
             const next = new Map(current);
@@ -459,103 +400,52 @@ export function useBatches() {
     [refreshBatch],
   );
 
-  // Submit batch scrape
+  const submitBatch = useCallback(
+    async <TRequest>(
+      submitter: BatchSubmitter<TRequest>,
+      request: TRequest,
+    ) => {
+      const { data, error: apiError } = await submitter({
+        baseUrl: getApiBaseUrl(),
+        body: request,
+      });
+
+      if (apiError) {
+        throw new Error(formatApiError(apiError));
+      }
+      if (!data) {
+        throw new Error("No response from server");
+      }
+
+      const entry = mapBatchCreateResponse(data);
+      setBatches((current) => {
+        const newBatches = [entry, ...current];
+        saveBatches(newBatches);
+        return newBatches;
+      });
+      void refreshBatch(entry.id).catch(() => {
+        // Best-effort refresh to hydrate authoritative stats.
+      });
+      return entry;
+    },
+    [refreshBatch, saveBatches],
+  );
+
   const submitBatchScrape = useCallback(
-    async (request: BatchScrapeRequest) => {
-      const { data, error: apiError } = await postV1JobsBatchScrape({
-        baseUrl: getApiBaseUrl(),
-        body: request,
-      });
-
-      if (apiError) {
-        throw new Error(formatApiError(apiError));
-      }
-
-      if (!data) {
-        throw new Error("No response from server");
-      }
-
-      const entry = mapBatchCreateResponse(data);
-
-      setBatches((current) => {
-        const newBatches = [entry, ...current];
-        saveBatches(newBatches);
-        return newBatches;
-      });
-
-      void refreshBatch(entry.id).catch(() => {
-        // Best-effort refresh to hydrate authoritative stats.
-      });
-
-      return entry;
-    },
-    [refreshBatch, saveBatches],
+    (request: BatchScrapeRequest) =>
+      submitBatch(postV1JobsBatchScrape, request),
+    [submitBatch],
   );
 
-  // Submit batch crawl
   const submitBatchCrawl = useCallback(
-    async (request: BatchCrawlRequest) => {
-      const { data, error: apiError } = await postV1JobsBatchCrawl({
-        baseUrl: getApiBaseUrl(),
-        body: request,
-      });
-
-      if (apiError) {
-        throw new Error(formatApiError(apiError));
-      }
-
-      if (!data) {
-        throw new Error("No response from server");
-      }
-
-      const entry = mapBatchCreateResponse(data);
-
-      setBatches((current) => {
-        const newBatches = [entry, ...current];
-        saveBatches(newBatches);
-        return newBatches;
-      });
-
-      void refreshBatch(entry.id).catch(() => {
-        // Best-effort refresh to hydrate authoritative stats.
-      });
-
-      return entry;
-    },
-    [refreshBatch, saveBatches],
+    (request: BatchCrawlRequest) => submitBatch(postV1JobsBatchCrawl, request),
+    [submitBatch],
   );
 
-  // Submit batch research
   const submitBatchResearch = useCallback(
-    async (request: BatchResearchRequest) => {
-      const { data, error: apiError } = await postV1JobsBatchResearch({
-        baseUrl: getApiBaseUrl(),
-        body: request,
-      });
-
-      if (apiError) {
-        throw new Error(formatApiError(apiError));
-      }
-
-      if (!data) {
-        throw new Error("No response from server");
-      }
-
-      const entry = mapBatchCreateResponse(data);
-
-      setBatches((current) => {
-        const newBatches = [entry, ...current];
-        saveBatches(newBatches);
-        return newBatches;
-      });
-
-      void refreshBatch(entry.id).catch(() => {
-        // Best-effort refresh to hydrate authoritative stats.
-      });
-
-      return entry;
-    },
-    [refreshBatch, saveBatches],
+    (request: BatchResearchRequest) =>
+      submitBatch(postV1JobsBatchResearch, request),
+    [submitBatch],
   );
 
   // Remove a batch from tracking

@@ -94,6 +94,31 @@ func mapSlice[T any, U any](items []T, fn func(T) U) []U {
 	return result
 }
 
+func getStoredResource[T any](w http.ResponseWriter, r *http.Request, load func() (*T, error), isNotFound func(error) bool, label string) (*T, bool) {
+	item, err := load()
+	if err == nil {
+		return item, true
+	}
+	if isNotFound(err) {
+		writeError(w, r, apperrors.NotFound(label+" not found"))
+		return nil, false
+	}
+	writeError(w, r, err)
+	return nil, false
+}
+
+func deleteStoredResource(w http.ResponseWriter, r *http.Request, remove func() error, isNotFound func(error) bool, label string) {
+	if err := remove(); err != nil {
+		if isNotFound(err) {
+			writeError(w, r, apperrors.NotFound(label+" not found"))
+			return
+		}
+		writeError(w, r, err)
+		return
+	}
+	writeNoContent(w)
+}
+
 func requireResourceID(r *http.Request, pathSegment string, label string) (string, error) {
 	id := extractID(r.URL.Path, pathSegment)
 	if strings.TrimSpace(id) == "" {

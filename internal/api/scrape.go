@@ -29,67 +29,47 @@ import (
 )
 
 func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-		return
-	}
-
-	var req ScrapeRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if req.URL == "" {
-		writeError(w, r, apperrors.Validation("url is required"))
-		return
-	}
-	if err := validate.ValidateJob(validate.JobValidationOpts{
-		URL:         req.URL,
-		Timeout:     req.TimeoutSeconds,
-		AuthProfile: req.AuthProfile,
-	}, model.KindScrape); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	spec := jobs.JobSpec{
-		Kind:        model.KindScrape,
-		URL:         req.URL,
-		Method:      req.Method,
-		Body:        []byte(req.Body),
-		ContentType: req.ContentType,
-		Headless:    req.Headless,
-	}
-	if spec.Method == "" {
-		spec.Method = http.MethodGet
-	}
-	if err := s.applySingleJobDefaults(&spec, jobRequestOptions{
-		authURL:        req.URL,
-		authProfile:    req.AuthProfile,
-		auth:           req.Auth,
-		extract:        req.Extract,
-		pipeline:       req.Pipeline,
-		webhook:        req.Webhook,
-		screenshot:     req.Screenshot,
-		device:         req.Device,
-		incremental:    req.Incremental,
-		playwright:     req.Playwright,
-		timeoutSeconds: req.TimeoutSeconds,
-		requestID:      contextRequestID(r.Context()),
-	}); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	job, err := s.manager.CreateJob(r.Context(), spec)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := s.manager.Enqueue(job); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, model.SanitizeJob(job))
+	handleSingleJobSubmission(s, w, r, singleJobSubmission[ScrapeRequest]{
+		kind: model.KindScrape,
+		validate: func(req ScrapeRequest) error {
+			if req.URL == "" {
+				return apperrors.Validation("url is required")
+			}
+			return validate.ValidateJob(validate.JobValidationOpts{
+				URL:         req.URL,
+				Timeout:     req.TimeoutSeconds,
+				AuthProfile: req.AuthProfile,
+			}, model.KindScrape)
+		},
+		buildSpec: func(req ScrapeRequest) jobs.JobSpec {
+			spec := jobs.JobSpec{
+				Kind:        model.KindScrape,
+				URL:         req.URL,
+				Method:      req.Method,
+				Body:        []byte(req.Body),
+				ContentType: req.ContentType,
+				Headless:    req.Headless,
+			}
+			if spec.Method == "" {
+				spec.Method = http.MethodGet
+			}
+			return spec
+		},
+		requestOptions: func(r *http.Request, req ScrapeRequest) jobRequestOptions {
+			return jobRequestOptions{
+				authURL:        req.URL,
+				authProfile:    req.AuthProfile,
+				auth:           req.Auth,
+				extract:        req.Extract,
+				pipeline:       req.Pipeline,
+				webhook:        req.Webhook,
+				screenshot:     req.Screenshot,
+				device:         req.Device,
+				incremental:    req.Incremental,
+				playwright:     req.Playwright,
+				timeoutSeconds: req.TimeoutSeconds,
+				requestID:      contextRequestID(r.Context()),
+			}
+		},
+	})
 }

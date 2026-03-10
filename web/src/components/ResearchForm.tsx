@@ -8,25 +8,15 @@
  *
  * @module ResearchForm
  */
-import {
-  useMemo,
-  useState,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
-  parseHeaders,
-  parseCookies,
-  parseQueryParams,
-  buildAuth,
   buildResearchRequest,
+  buildSharedRequestConfig,
   parseUrlList,
-  buildWebhookConfig,
-  buildNetworkInterceptConfig,
 } from "../lib/form-utils";
+import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
@@ -45,75 +35,18 @@ export interface ResearchFormRef {
 }
 
 interface ResearchFormProps {
-  maxDepth: number;
-  setMaxDepth: (value: number) => void;
-  maxPages: number;
-  setMaxPages: (value: number) => void;
-  headless: boolean;
-  setHeadless: (value: boolean) => void;
-  usePlaywright: boolean;
-  setUsePlaywright: (value: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (value: number) => void;
-  authProfile: string;
-  setAuthProfile: (value: string) => void;
-  authBasic: string;
-  setAuthBasic: (value: string) => void;
-  headersRaw: string;
-  setHeadersRaw: (value: string) => void;
-  cookiesRaw: string;
-  setCookiesRaw: (value: string) => void;
-  queryRaw: string;
-  setQueryRaw: (value: string) => void;
-  loginUrl: string;
-  setLoginUrl: (value: string) => void;
-  loginUserSelector: string;
-  setLoginUserSelector: (value: string) => void;
-  loginPassSelector: string;
-  setLoginPassSelector: (value: string) => void;
-  loginSubmitSelector: string;
-  setLoginSubmitSelector: (value: string) => void;
-  loginUser: string;
-  setLoginUser: (value: string) => void;
-  loginPass: string;
-  setLoginPass: (value: string) => void;
-  extractTemplate: string;
-  setExtractTemplate: (value: string) => void;
-  extractValidate: boolean;
-  setExtractValidate: (value: boolean) => void;
-  preProcessors: string;
-  setPreProcessors: (value: string) => void;
-  postProcessors: string;
-  setPostProcessors: (value: string) => void;
-  transformers: string;
-  setTransformers: (value: string) => void;
-  webhookUrl: string;
-  setWebhookUrl: (value: string) => void;
-  webhookEvents: string[];
-  setWebhookEvents: (value: string[]) => void;
-  webhookSecret: string;
-  setWebhookSecret: (value: string) => void;
-  profiles: Array<{ name: string; parents: string[] }>;
+  form: FormController;
+  profiles: ProfileOption[];
   onSubmit: (request: import("../api").ResearchRequest) => Promise<void>;
   loading: boolean;
-  // Network interception props
-  interceptEnabled: boolean;
-  setInterceptEnabled: (value: boolean) => void;
-  interceptURLPatterns: string;
-  setInterceptURLPatterns: (value: string) => void;
-  interceptResourceTypes: string[];
-  setInterceptResourceTypes: (value: string[]) => void;
-  interceptCaptureRequestBody: boolean;
-  setInterceptCaptureRequestBody: (value: boolean) => void;
-  interceptCaptureResponseBody: boolean;
-  setInterceptCaptureResponseBody: (value: boolean) => void;
-  interceptMaxBodySize: number;
-  setInterceptMaxBodySize: (value: number) => void;
 }
 
 export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
   function ResearchForm(
-    {
+    { form, profiles, onSubmit, loading }: ResearchFormProps,
+    ref,
+  ) {
+    const {
       maxDepth,
       setMaxDepth,
       maxPages,
@@ -162,9 +95,6 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
-      profiles,
-      onSubmit,
-      loading,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -177,43 +107,18 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
-    }: ResearchFormProps,
-    ref,
-  ) {
+    } = form;
+
     const [researchQuery, setResearchQuery] = useState("");
     const [researchUrls, setResearchUrls] = useState("");
     const [device, setDevice] = useState<DeviceEmulation | null>(null);
-
-    const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
-    const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
-    const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
-
-    const networkIntercept = useMemo(
-      () =>
-        buildNetworkInterceptConfig(
-          interceptEnabled,
-          interceptURLPatterns,
-          interceptResourceTypes,
-          interceptCaptureRequestBody,
-          interceptCaptureResponseBody,
-          interceptMaxBodySize,
-          1000,
-        ),
-      [
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-      ],
-    );
 
     const handleSubmit = useCallback(async () => {
       if (!researchQuery || !researchUrls) {
         alert("Research query and URLs are required.");
         return;
       }
+      const shared = buildSharedRequestConfig(form);
       const request = buildResearchRequest(
         researchQuery,
         parseUrlList(researchUrls),
@@ -222,29 +127,15 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         headless,
         usePlaywright,
         timeoutSeconds,
-        authProfile || undefined,
-        buildAuth(
-          authBasic,
-          headerMap,
-          cookieList,
-          queryMap,
-          loginUrl,
-          loginUserSelector,
-          loginPassSelector,
-          loginSubmitSelector,
-          loginUser,
-          loginPass,
-        ),
-        {
-          template: extractTemplate || undefined,
-          validate: extractValidate,
-        },
-        preProcessors,
-        postProcessors,
-        transformers,
-        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        shared.authProfile,
+        shared.auth,
+        shared.extract,
+        shared.preProcessors,
+        shared.postProcessors,
+        shared.transformers,
+        shared.webhook,
         device || undefined,
-        networkIntercept,
+        shared.networkIntercept,
       );
       await onSubmit(request);
     }, [
@@ -255,27 +146,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       headless,
       usePlaywright,
       timeoutSeconds,
-      authProfile,
-      authBasic,
-      headerMap,
-      cookieList,
-      queryMap,
-      loginUrl,
-      loginUserSelector,
-      loginPassSelector,
-      loginSubmitSelector,
-      loginUser,
-      loginPass,
-      extractTemplate,
-      extractValidate,
-      preProcessors,
-      postProcessors,
-      transformers,
-      webhookUrl,
-      webhookEvents,
-      webhookSecret,
+      form,
       device,
-      networkIntercept,
       onSubmit,
     ]);
 

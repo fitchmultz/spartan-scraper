@@ -23,6 +23,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -48,7 +49,20 @@ type jobRequestOptions struct {
 	requestID      string
 }
 
-func (s *Server) applySingleJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions) error {
+type singleJobSubmission[T any] struct {
+	kind           model.Kind
+	validate       func(T) error
+	buildSpec      func(T) jobs.JobSpec
+	requestOptions func(*http.Request, T) jobRequestOptions
+}
+
+type batchJobSubmission[T any] struct {
+	kind       model.Kind
+	validate   func(T) error
+	buildSpecs func(*http.Request, T) ([]jobs.JobSpec, error)
+}
+
+func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
 	spec.TimeoutSeconds = opts.timeoutSeconds
 	if spec.TimeoutSeconds <= 0 {
 		spec.TimeoutSeconds = s.manager.DefaultTimeoutSeconds()
@@ -61,37 +75,16 @@ func (s *Server) applySingleJobDefaults(spec *jobs.JobSpec, opts jobRequestOptio
 	spec.Screenshot = opts.screenshot
 	spec.Device = opts.device
 	applyWebhookConfig(spec, opts.webhook)
+
+	if !resolveAuth {
+		return nil
+	}
 
 	authOptions, err := resolveAuthForRequest(s.cfg, opts.authURL, opts.authProfile, opts.auth)
 	if err != nil {
 		return err
 	}
 	spec.Auth = authOptions
-	return nil
-}
-
-func (s *Server) applyBatchJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions) error {
-	spec.TimeoutSeconds = opts.timeoutSeconds
-	if spec.TimeoutSeconds <= 0 {
-		spec.TimeoutSeconds = s.manager.DefaultTimeoutSeconds()
-	}
-	spec.UsePlaywright = valueOr(opts.playwright, s.manager.DefaultUsePlaywright())
-	spec.Extract = valueOr(opts.extract, extract.ExtractOptions{})
-	spec.Pipeline = valueOr(opts.pipeline, pipeline.Options{})
-	spec.Incremental = valueOr(opts.incremental, false)
-	spec.RequestID = opts.requestID
-	spec.Screenshot = opts.screenshot
-	spec.Device = opts.device
-	applyWebhookConfig(spec, opts.webhook)
-
-	if opts.auth != nil || opts.authProfile != "" {
-		authOptions, err := resolveAuthForRequest(s.cfg, opts.authURL, opts.authProfile, opts.auth)
-		if err != nil {
-			return err
-		}
-		spec.Auth = authOptions
-	}
-
 	return nil
 }
 
@@ -111,6 +104,82 @@ func validateBatchURLs(items []BatchJobRequest) error {
 		}
 	}
 	return nil
+}
+
+func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
+	if r.Method == method {
+		return true
+	}
+	writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	return false
+}
+
+func decodeJSONRequest[T any](w http.ResponseWriter, r *http.Request) (T, bool) {
+	var req T
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return req, false
+	}
+	return req, true
+}
+
+func handleSingleJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.Request, submission singleJobSubmission[T]) {
+	if !requireMethod(w, r, http.MethodPost) {
+		return
+	}
+	req, ok := decodeJSONRequest[T](w, r)
+	if !ok {
+		return
+	}
+	if err := submission.validate(req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	spec := submission.buildSpec(req)
+	if err := s.applyJobDefaults(&spec, submission.requestOptions(r, req), true); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	job, err := s.manager.CreateJob(r.Context(), spec)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if err := s.manager.Enqueue(job); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, model.SanitizeJob(job))
+}
+
+func handleBatchJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.Request, submission batchJobSubmission[T]) {
+	if !requireMethod(w, r, http.MethodPost) {
+		return
+	}
+	req, ok := decodeJSONRequest[T](w, r)
+	if !ok {
+		return
+	}
+	if err := submission.validate(req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	specs, err := submission.buildSpecs(r, req)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp, err := s.createAndEnqueueBatch(r.Context(), submission.kind, specs)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeCreatedJSON(w, resp)
 }
 
 func (s *Server) createAndEnqueueBatch(ctx context.Context, kind model.Kind, specs []jobs.JobSpec) (BatchResponse, error) {

@@ -162,26 +162,23 @@ describe("useBatches helpers", () => {
     });
   });
 
-  it("mapBatchCreateResponse parses serialized JSON payloads", () => {
-    const serialized = JSON.stringify({
-      id: "serialized-batch",
-      kind: "scrape",
+  it("mapBatchCreateResponse falls back to jobCount when jobs are omitted", () => {
+    expect(
+      mapBatchCreateResponse({
+        id: "batch-create-2",
+        kind: "research",
+        status: "pending",
+        jobCount: 3,
+        jobs: [],
+        createdAt: "2026-03-05T12:00:00.000Z",
+      }),
+    ).toEqual({
+      id: "batch-create-2",
+      kind: "research",
       status: "pending",
-      jobCount: 2,
-      jobs: [
-        { id: "job-1", status: "queued", kind: "scrape" },
-        { id: "job-2", status: "queued", kind: "scrape" },
-      ],
-      createdAt: "2026-03-05T12:00:00.000Z",
-    });
-
-    expect(mapBatchCreateResponse(serialized)).toEqual({
-      id: "serialized-batch",
-      kind: "scrape",
-      status: "pending",
-      jobCount: 2,
+      jobCount: 3,
       stats: {
-        queued: 2,
+        queued: 3,
         running: 0,
         succeeded: 0,
         failed: 0,
@@ -190,17 +187,6 @@ describe("useBatches helpers", () => {
       createdAt: "2026-03-05T12:00:00.000Z",
       updatedAt: "2026-03-05T12:00:00.000Z",
     });
-  });
-
-  it("mapBatchCreateResponse throws when id is missing", () => {
-    expect(() =>
-      mapBatchCreateResponse({
-        kind: "scrape",
-        status: "pending",
-        jobCount: 1,
-        jobs: [makeJob("1", "queued")],
-      }),
-    ).toThrow("Batch response missing id");
   });
 
   it("normalizeStoredBatchEntries discards malformed entries and fixes invalid fields", () => {

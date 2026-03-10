@@ -10,14 +10,8 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
-import {
-  parseHeaders,
-  parseCookies,
-  parseQueryParams,
-  buildAuth,
-  buildPipelineOptions,
-  buildWebhookConfig,
-} from "../lib/form-utils";
+import { buildSharedRequestConfig } from "../lib/form-utils";
+import type { FormController, ProfileOption } from "../hooks/useFormState";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
 import type { DeviceEmulation } from "../api";
@@ -33,54 +27,8 @@ interface BatchFormProps {
   activeTab: "scrape" | "crawl" | "research";
   setActiveTab: (tab: "scrape" | "crawl" | "research") => void;
 
-  // Common options
-  headless: boolean;
-  setHeadless: (value: boolean) => void;
-  usePlaywright: boolean;
-  setUsePlaywright: (value: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (value: number) => void;
-  authProfile: string;
-  setAuthProfile: (value: string) => void;
-  authBasic: string;
-  setAuthBasic: (value: string) => void;
-  headersRaw: string;
-  setHeadersRaw: (value: string) => void;
-  cookiesRaw: string;
-  setCookiesRaw: (value: string) => void;
-  queryRaw: string;
-  setQueryRaw: (value: string) => void;
-  loginUrl: string;
-  setLoginUrl: (value: string) => void;
-  loginUserSelector: string;
-  setLoginUserSelector: (value: string) => void;
-  loginPassSelector: string;
-  setLoginPassSelector: (value: string) => void;
-  loginSubmitSelector: string;
-  setLoginSubmitSelector: (value: string) => void;
-  loginUser: string;
-  setLoginUser: (value: string) => void;
-  loginPass: string;
-  setLoginPass: (value: string) => void;
-  extractTemplate: string;
-  setExtractTemplate: (value: string) => void;
-  extractValidate: boolean;
-  setExtractValidate: (value: boolean) => void;
-  preProcessors: string;
-  setPreProcessors: (value: string) => void;
-  postProcessors: string;
-  setPostProcessors: (value: string) => void;
-  transformers: string;
-  setTransformers: (value: string) => void;
-  incremental: boolean;
-  setIncremental: (value: boolean) => void;
-  webhookUrl: string;
-  setWebhookUrl: (value: string) => void;
-  webhookEvents: string[];
-  setWebhookEvents: (value: string[]) => void;
-  webhookSecret: string;
-  setWebhookSecret: (value: string) => void;
-  profiles: Array<{ name: string; parents: string[] }>;
+  form: FormController;
+  profiles: ProfileOption[];
 
   // Batch-specific
   urlsInput: string;
@@ -108,52 +56,7 @@ const MAX_BATCH_SIZE = 100;
 export function BatchForm({
   activeTab,
   setActiveTab,
-  headless,
-  setHeadless,
-  usePlaywright,
-  setUsePlaywright,
-  timeoutSeconds,
-  setTimeoutSeconds,
-  authProfile,
-  setAuthProfile,
-  authBasic,
-  setAuthBasic,
-  headersRaw,
-  setHeadersRaw,
-  cookiesRaw,
-  setCookiesRaw,
-  queryRaw,
-  setQueryRaw,
-  loginUrl,
-  setLoginUrl,
-  loginUserSelector,
-  setLoginUserSelector,
-  loginPassSelector,
-  setLoginPassSelector,
-  loginSubmitSelector,
-  setLoginSubmitSelector,
-  loginUser,
-  setLoginUser,
-  loginPass,
-  setLoginPass,
-  extractTemplate,
-  setExtractTemplate,
-  extractValidate,
-  setExtractValidate,
-  preProcessors,
-  setPreProcessors,
-  postProcessors,
-  setPostProcessors,
-  transformers,
-  setTransformers,
-  incremental,
-  setIncremental,
-  webhookUrl,
-  setWebhookUrl,
-  webhookEvents,
-  setWebhookEvents,
-  webhookSecret,
-  setWebhookSecret,
+  form,
   profiles,
   urlsInput,
   setUrlsInput,
@@ -168,14 +71,59 @@ export function BatchForm({
   onSubmitResearch,
   loading,
 }: BatchFormProps) {
+  const {
+    headless,
+    setHeadless,
+    usePlaywright,
+    setUsePlaywright,
+    timeoutSeconds,
+    setTimeoutSeconds,
+    authProfile,
+    setAuthProfile,
+    authBasic,
+    setAuthBasic,
+    headersRaw,
+    setHeadersRaw,
+    cookiesRaw,
+    setCookiesRaw,
+    queryRaw,
+    setQueryRaw,
+    loginUrl,
+    setLoginUrl,
+    loginUserSelector,
+    setLoginUserSelector,
+    loginPassSelector,
+    setLoginPassSelector,
+    loginSubmitSelector,
+    setLoginSubmitSelector,
+    loginUser,
+    setLoginUser,
+    loginPass,
+    setLoginPass,
+    extractTemplate,
+    setExtractTemplate,
+    extractValidate,
+    setExtractValidate,
+    preProcessors,
+    setPreProcessors,
+    postProcessors,
+    setPostProcessors,
+    transformers,
+    setTransformers,
+    incremental,
+    setIncremental,
+    webhookUrl,
+    setWebhookUrl,
+    webhookEvents,
+    setWebhookEvents,
+    webhookSecret,
+    setWebhookSecret,
+  } = form;
+
   const [device, setDevice] = useState<DeviceEmulation | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
-  const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
-  const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
 
   // Parse URLs from input (one per line or comma-separated)
   const parsedUrls = useMemo(() => {
@@ -193,45 +141,6 @@ export function BatchForm({
   const buildJobRequests = useCallback((): BatchJobRequest[] => {
     return parsedUrls.map((url) => ({ url }));
   }, [parsedUrls]);
-
-  // Build shared auth options
-  const buildBatchAuth = useCallback(() => {
-    return buildAuth(
-      authBasic,
-      headerMap,
-      cookieList,
-      queryMap,
-      loginUrl,
-      loginUserSelector,
-      loginPassSelector,
-      loginSubmitSelector,
-      loginUser,
-      loginPass,
-    );
-  }, [
-    authBasic,
-    headerMap,
-    cookieList,
-    queryMap,
-    loginUrl,
-    loginUserSelector,
-    loginPassSelector,
-    loginSubmitSelector,
-    loginUser,
-    loginPass,
-  ]);
-
-  // Build shared pipeline options
-  const batchPipeline = useMemo(
-    () => buildPipelineOptions(preProcessors, postProcessors, transformers),
-    [preProcessors, postProcessors, transformers],
-  );
-
-  // Build shared webhook config
-  const batchWebhook = useMemo(
-    () => buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
-    [webhookUrl, webhookEvents, webhookSecret],
-  );
 
   // Handle file upload for CSV/JSON
   const handleFileUpload = useCallback(
@@ -327,19 +236,18 @@ export function BatchForm({
     if (!validateUrls()) return;
 
     const jobs = buildJobRequests();
+    const shared = buildSharedRequestConfig(form);
     const request: BatchScrapeRequest = {
       jobs,
       headless,
       playwright: headless ? usePlaywright : false,
       timeoutSeconds,
-      authProfile: authProfile || undefined,
-      auth: buildBatchAuth(),
-      extract: extractTemplate
-        ? { template: extractTemplate, validate: extractValidate }
-        : undefined,
-      pipeline: batchPipeline,
+      authProfile: shared.authProfile,
+      auth: shared.auth,
+      extract: shared.extract,
+      pipeline: shared.pipeline,
       incremental: incremental || undefined,
-      webhook: batchWebhook,
+      webhook: shared.webhook,
       device: device || undefined,
     };
 
@@ -350,13 +258,8 @@ export function BatchForm({
     headless,
     usePlaywright,
     timeoutSeconds,
-    authProfile,
-    buildBatchAuth,
-    extractTemplate,
-    extractValidate,
-    batchPipeline,
+    form,
     incremental,
-    batchWebhook,
     device,
     onSubmitScrape,
   ]);
@@ -366,6 +269,7 @@ export function BatchForm({
     if (!validateUrls()) return;
 
     const jobs = buildJobRequests();
+    const shared = buildSharedRequestConfig(form);
     const request: BatchCrawlRequest = {
       jobs,
       maxDepth,
@@ -373,14 +277,12 @@ export function BatchForm({
       headless,
       playwright: headless ? usePlaywright : false,
       timeoutSeconds,
-      authProfile: authProfile || undefined,
-      auth: buildBatchAuth(),
-      extract: extractTemplate
-        ? { template: extractTemplate, validate: extractValidate }
-        : undefined,
-      pipeline: batchPipeline,
+      authProfile: shared.authProfile,
+      auth: shared.auth,
+      extract: shared.extract,
+      pipeline: shared.pipeline,
       incremental: incremental || undefined,
-      webhook: batchWebhook,
+      webhook: shared.webhook,
       device: device || undefined,
     };
 
@@ -393,13 +295,8 @@ export function BatchForm({
     headless,
     usePlaywright,
     timeoutSeconds,
-    authProfile,
-    buildBatchAuth,
-    extractTemplate,
-    extractValidate,
-    batchPipeline,
+    form,
     incremental,
-    batchWebhook,
     device,
     onSubmitCrawl,
   ]);
@@ -413,6 +310,7 @@ export function BatchForm({
     }
 
     const jobs = buildJobRequests();
+    const shared = buildSharedRequestConfig(form);
     const request: BatchResearchRequest = {
       jobs,
       query,
@@ -421,13 +319,11 @@ export function BatchForm({
       headless,
       playwright: headless ? usePlaywright : false,
       timeoutSeconds,
-      authProfile: authProfile || undefined,
-      auth: buildBatchAuth(),
-      extract: extractTemplate
-        ? { template: extractTemplate, validate: extractValidate }
-        : undefined,
-      pipeline: batchPipeline,
-      webhook: batchWebhook,
+      authProfile: shared.authProfile,
+      auth: shared.auth,
+      extract: shared.extract,
+      pipeline: shared.pipeline,
+      webhook: shared.webhook,
       device: device || undefined,
     };
 
@@ -441,12 +337,7 @@ export function BatchForm({
     headless,
     usePlaywright,
     timeoutSeconds,
-    authProfile,
-    buildBatchAuth,
-    extractTemplate,
-    extractValidate,
-    batchPipeline,
-    batchWebhook,
+    form,
     device,
     onSubmitResearch,
   ]);

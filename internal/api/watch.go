@@ -181,19 +181,6 @@ func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
 	}
 }
 
-func getWatchOrWriteError(w http.ResponseWriter, r *http.Request, storage *watch.FileStorage, id string) (*watch.Watch, bool) {
-	watchItem, err := storage.Get(id)
-	if err != nil {
-		if watch.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return nil, false
-		}
-		writeError(w, r, err)
-		return nil, false
-	}
-	return watchItem, true
-}
-
 // handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
 func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
 	if handlePathSuffix(r.URL.Path, "/check", func() {
@@ -276,7 +263,9 @@ func (s *Server) handleWatch(w http.ResponseWriter, r *http.Request) {
 // handleGetWatch retrieves a single watch.
 func (s *Server) handleGetWatch(w http.ResponseWriter, r *http.Request, id string) {
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	watchItem, ok := getWatchOrWriteError(w, r, storage, id)
+	watchItem, ok := getStoredResource(w, r, func() (*watch.Watch, error) {
+		return storage.Get(id)
+	}, watch.IsNotFoundError, "watch")
 	if !ok {
 		return
 	}
@@ -292,7 +281,9 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 	}
 
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	existing, ok := getWatchOrWriteError(w, r, storage, id)
+	existing, ok := getStoredResource(w, r, func() (*watch.Watch, error) {
+		return storage.Get(id)
+	}, watch.IsNotFoundError, "watch")
 	if !ok {
 		return
 	}
@@ -315,15 +306,7 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 // handleDeleteWatch deletes a watch.
 func (s *Server) handleDeleteWatch(w http.ResponseWriter, r *http.Request, id string) {
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	if err := storage.Delete(id); err != nil {
-		if watch.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("watch not found"))
-			return
-		}
-		writeError(w, r, err)
-		return
-	}
-	writeNoContent(w)
+	deleteStoredResource(w, r, func() error { return storage.Delete(id) }, watch.IsNotFoundError, "watch")
 }
 
 // handleWatchCheck handles requests to /v1/watch/{id}/check
@@ -340,7 +323,9 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	watchItem, ok := getWatchOrWriteError(w, r, storage, id)
+	watchItem, ok := getStoredResource(w, r, func() (*watch.Watch, error) {
+		return storage.Get(id)
+	}, watch.IsNotFoundError, "watch")
 	if !ok {
 		return
 	}

@@ -142,19 +142,6 @@ func applyFeedRequest(existing *feed.Feed, req FeedRequest) {
 	}
 }
 
-func getFeedOrWriteError(w http.ResponseWriter, r *http.Request, storage *feed.FileStorage, id string) (*feed.Feed, bool) {
-	feedItem, err := storage.Get(id)
-	if err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return nil, false
-		}
-		writeError(w, r, err)
-		return nil, false
-	}
-	return feedItem, true
-}
-
 // handleFeeds handles requests to /v1/feeds
 func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -242,7 +229,9 @@ func (s *Server) handleFeedDetail(w http.ResponseWriter, r *http.Request) {
 // handleGetFeed retrieves a single feed.
 func (s *Server) handleGetFeed(w http.ResponseWriter, r *http.Request, id string) {
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	feedItem, ok := getFeedOrWriteError(w, r, storage, id)
+	feedItem, ok := getStoredResource(w, r, func() (*feed.Feed, error) {
+		return storage.Get(id)
+	}, feed.IsNotFoundError, "feed")
 	if !ok {
 		return
 	}
@@ -258,7 +247,9 @@ func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id str
 	}
 
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	existing, ok := getFeedOrWriteError(w, r, storage, id)
+	existing, ok := getStoredResource(w, r, func() (*feed.Feed, error) {
+		return storage.Get(id)
+	}, feed.IsNotFoundError, "feed")
 	if !ok {
 		return
 	}
@@ -281,15 +272,7 @@ func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id str
 // handleDeleteFeed deletes a feed.
 func (s *Server) handleDeleteFeed(w http.ResponseWriter, r *http.Request, id string) {
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	if err := storage.Delete(id); err != nil {
-		if feed.IsNotFoundError(err) {
-			writeError(w, r, apperrors.NotFound("feed not found"))
-			return
-		}
-		writeError(w, r, err)
-		return
-	}
-	writeNoContent(w)
+	deleteStoredResource(w, r, func() error { return storage.Delete(id) }, feed.IsNotFoundError, "feed")
 }
 
 // handleFeedCheck handles requests to /v1/feeds/{id}/check
@@ -306,7 +289,9 @@ func (s *Server) handleFeedCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	feedItem, ok := getFeedOrWriteError(w, r, storage, id)
+	feedItem, ok := getStoredResource(w, r, func() (*feed.Feed, error) {
+		return storage.Get(id)
+	}, feed.IsNotFoundError, "feed")
 	if !ok {
 		return
 	}
@@ -365,7 +350,9 @@ func (s *Server) handleFeedItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	if _, ok := getFeedOrWriteError(w, r, storage, id); !ok {
+	if _, ok := getStoredResource(w, r, func() (*feed.Feed, error) {
+		return storage.Get(id)
+	}, feed.IsNotFoundError, "feed"); !ok {
 		return
 	}
 

@@ -415,56 +415,7 @@ export function App() {
       />
 
       <BatchContainer
-        headless={formState.headless}
-        setHeadless={formState.setHeadless}
-        usePlaywright={formState.usePlaywright}
-        setUsePlaywright={formState.setUsePlaywright}
-        timeoutSeconds={formState.timeoutSeconds}
-        setTimeoutSeconds={formState.setTimeoutSeconds}
-        authProfile={formState.authProfile}
-        setAuthProfile={formState.setAuthProfile}
-        authBasic={formState.authBasic}
-        setAuthBasic={formState.setAuthBasic}
-        headersRaw={formState.headersRaw}
-        setHeadersRaw={formState.setHeadersRaw}
-        cookiesRaw={formState.cookiesRaw}
-        setCookiesRaw={formState.setCookiesRaw}
-        queryRaw={formState.queryRaw}
-        setQueryRaw={formState.setQueryRaw}
-        loginUrl={formState.loginUrl}
-        setLoginUrl={formState.setLoginUrl}
-        loginUserSelector={formState.loginUserSelector}
-        setLoginUserSelector={formState.setLoginUserSelector}
-        loginPassSelector={formState.loginPassSelector}
-        setLoginPassSelector={formState.setLoginPassSelector}
-        loginSubmitSelector={formState.loginSubmitSelector}
-        setLoginSubmitSelector={formState.setLoginSubmitSelector}
-        loginUser={formState.loginUser}
-        setLoginUser={formState.setLoginUser}
-        loginPass={formState.loginPass}
-        setLoginPass={formState.setLoginPass}
-        extractTemplate={formState.extractTemplate}
-        setExtractTemplate={formState.setExtractTemplate}
-        extractValidate={formState.extractValidate}
-        setExtractValidate={formState.setExtractValidate}
-        preProcessors={formState.preProcessors}
-        setPreProcessors={formState.setPreProcessors}
-        postProcessors={formState.postProcessors}
-        setPostProcessors={formState.setPostProcessors}
-        transformers={formState.transformers}
-        setTransformers={formState.setTransformers}
-        incremental={formState.incremental}
-        setIncremental={formState.setIncremental}
-        maxDepth={formState.maxDepth}
-        setMaxDepth={formState.setMaxDepth}
-        maxPages={formState.maxPages}
-        setMaxPages={formState.setMaxPages}
-        webhookUrl={formState.webhookUrl}
-        setWebhookUrl={formState.setWebhookUrl}
-        webhookEvents={formState.webhookEvents}
-        setWebhookEvents={formState.setWebhookEvents}
-        webhookSecret={formState.webhookSecret}
-        setWebhookSecret={formState.setWebhookSecret}
+        formState={formState}
         profiles={profiles}
         loading={loading}
       />

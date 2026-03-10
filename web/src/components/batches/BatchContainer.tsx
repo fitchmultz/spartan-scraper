@@ -22,62 +22,13 @@ import type {
   BatchResearchRequest,
 } from "../../api";
 import type { Profile } from "../../hooks/useAppData";
+import type { FormController } from "../../hooks/useFormState";
 import { useBatches } from "../../hooks/useBatches";
 import { BatchList } from "../../components/BatchList";
 import { BatchForm } from "../../components/BatchForm";
 
 interface BatchContainerProps {
-  // Form state props (shared with job forms)
-  headless: boolean;
-  setHeadless: (v: boolean) => void;
-  usePlaywright: boolean;
-  setUsePlaywright: (v: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (v: number) => void;
-  authProfile: string;
-  setAuthProfile: (v: string) => void;
-  authBasic: string;
-  setAuthBasic: (v: string) => void;
-  headersRaw: string;
-  setHeadersRaw: (v: string) => void;
-  cookiesRaw: string;
-  setCookiesRaw: (v: string) => void;
-  queryRaw: string;
-  setQueryRaw: (v: string) => void;
-  loginUrl: string;
-  setLoginUrl: (v: string) => void;
-  loginUserSelector: string;
-  setLoginUserSelector: (v: string) => void;
-  loginPassSelector: string;
-  setLoginPassSelector: (v: string) => void;
-  loginSubmitSelector: string;
-  setLoginSubmitSelector: (v: string) => void;
-  loginUser: string;
-  setLoginUser: (v: string) => void;
-  loginPass: string;
-  setLoginPass: (v: string) => void;
-  extractTemplate: string;
-  setExtractTemplate: (v: string) => void;
-  extractValidate: boolean;
-  setExtractValidate: (v: boolean) => void;
-  preProcessors: string;
-  setPreProcessors: (v: string) => void;
-  postProcessors: string;
-  setPostProcessors: (v: string) => void;
-  transformers: string;
-  setTransformers: (v: string) => void;
-  incremental: boolean;
-  setIncremental: (v: boolean) => void;
-  maxDepth: number;
-  setMaxDepth: (v: number) => void;
-  maxPages: number;
-  setMaxPages: (v: number) => void;
-  webhookUrl: string;
-  setWebhookUrl: (v: string) => void;
-  webhookEvents: string[];
-  setWebhookEvents: (v: string[]) => void;
-  webhookSecret: string;
-  setWebhookSecret: (v: string) => void;
+  formState: FormController;
   profiles: Profile[];
   loading: boolean;
 }
@@ -158,59 +109,14 @@ export function BatchContainer(props: BatchContainerProps) {
         <BatchForm
           activeTab={batchTab}
           setActiveTab={setBatchTab}
-          headless={props.headless}
-          setHeadless={props.setHeadless}
-          usePlaywright={props.usePlaywright}
-          setUsePlaywright={props.setUsePlaywright}
-          timeoutSeconds={props.timeoutSeconds}
-          setTimeoutSeconds={props.setTimeoutSeconds}
-          authProfile={props.authProfile}
-          setAuthProfile={props.setAuthProfile}
-          authBasic={props.authBasic}
-          setAuthBasic={props.setAuthBasic}
-          headersRaw={props.headersRaw}
-          setHeadersRaw={props.setHeadersRaw}
-          cookiesRaw={props.cookiesRaw}
-          setCookiesRaw={props.setCookiesRaw}
-          queryRaw={props.queryRaw}
-          setQueryRaw={props.setQueryRaw}
-          loginUrl={props.loginUrl}
-          setLoginUrl={props.setLoginUrl}
-          loginUserSelector={props.loginUserSelector}
-          setLoginUserSelector={props.setLoginUserSelector}
-          loginPassSelector={props.loginPassSelector}
-          setLoginPassSelector={props.setLoginPassSelector}
-          loginSubmitSelector={props.loginSubmitSelector}
-          setLoginSubmitSelector={props.setLoginSubmitSelector}
-          loginUser={props.loginUser}
-          setLoginUser={props.setLoginUser}
-          loginPass={props.loginPass}
-          setLoginPass={props.setLoginPass}
-          extractTemplate={props.extractTemplate}
-          setExtractTemplate={props.setExtractTemplate}
-          extractValidate={props.extractValidate}
-          setExtractValidate={props.setExtractValidate}
-          preProcessors={props.preProcessors}
-          setPreProcessors={props.setPreProcessors}
-          postProcessors={props.postProcessors}
-          setPostProcessors={props.setPostProcessors}
-          transformers={props.transformers}
-          setTransformers={props.setTransformers}
-          incremental={props.incremental}
-          setIncremental={props.setIncremental}
-          webhookUrl={props.webhookUrl}
-          setWebhookUrl={props.setWebhookUrl}
-          webhookEvents={props.webhookEvents}
-          setWebhookEvents={props.setWebhookEvents}
-          webhookSecret={props.webhookSecret}
-          setWebhookSecret={props.setWebhookSecret}
+          form={props.formState}
           profiles={props.profiles}
           urlsInput={batchUrls}
           setUrlsInput={setBatchUrls}
-          maxDepth={props.maxDepth}
-          setMaxDepth={props.setMaxDepth}
-          maxPages={props.maxPages}
-          setMaxPages={props.setMaxPages}
+          maxDepth={props.formState.maxDepth}
+          setMaxDepth={props.formState.setMaxDepth}
+          maxPages={props.formState.maxPages}
+          setMaxPages={props.formState.setMaxPages}
           query={batchQuery}
           setQuery={setBatchQuery}
           onSubmitScrape={handleSubmitBatchScrape}

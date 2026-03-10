@@ -7,25 +7,15 @@
  *
  * @module ScrapeForm
  */
-import {
-  useMemo,
-  useState,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import { AIExtractSection } from "./AIExtractSection";
 import {
-  parseHeaders,
-  parseCookies,
-  parseQueryParams,
-  buildAuth,
   buildScrapeRequest,
-  buildWebhookConfig,
-  buildNetworkInterceptConfig,
+  buildSharedRequestConfig,
 } from "../lib/form-utils";
+import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
@@ -44,73 +34,18 @@ export interface ScrapeFormRef {
 }
 
 interface ScrapeFormProps {
-  headless: boolean;
-  setHeadless: (value: boolean) => void;
-  usePlaywright: boolean;
-  setUsePlaywright: (value: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (value: number) => void;
-  authProfile: string;
-  setAuthProfile: (value: string) => void;
-  authBasic: string;
-  setAuthBasic: (value: string) => void;
-  headersRaw: string;
-  setHeadersRaw: (value: string) => void;
-  cookiesRaw: string;
-  setCookiesRaw: (value: string) => void;
-  queryRaw: string;
-  setQueryRaw: (value: string) => void;
-  loginUrl: string;
-  setLoginUrl: (value: string) => void;
-  loginUserSelector: string;
-  setLoginUserSelector: (value: string) => void;
-  loginPassSelector: string;
-  setLoginPassSelector: (value: string) => void;
-  loginSubmitSelector: string;
-  setLoginSubmitSelector: (value: string) => void;
-  loginUser: string;
-  setLoginUser: (value: string) => void;
-  loginPass: string;
-  setLoginPass: (value: string) => void;
-  extractTemplate: string;
-  setExtractTemplate: (value: string) => void;
-  extractValidate: boolean;
-  setExtractValidate: (value: boolean) => void;
-  preProcessors: string;
-  setPreProcessors: (value: string) => void;
-  postProcessors: string;
-  setPostProcessors: (value: string) => void;
-  transformers: string;
-  setTransformers: (value: string) => void;
-  incremental: boolean;
-  setIncremental: (value: boolean) => void;
-  webhookUrl: string;
-  setWebhookUrl: (value: string) => void;
-  webhookEvents: string[];
-  setWebhookEvents: (value: string[]) => void;
-  webhookSecret: string;
-  setWebhookSecret: (value: string) => void;
-  profiles: Array<{ name: string; parents: string[] }>;
+  form: FormController;
+  profiles: ProfileOption[];
   onSubmit: (request: import("../api").ScrapeRequest) => Promise<void>;
   loading: boolean;
-  // Network interception props
-  interceptEnabled: boolean;
-  setInterceptEnabled: (value: boolean) => void;
-  interceptURLPatterns: string;
-  setInterceptURLPatterns: (value: string) => void;
-  interceptResourceTypes: string[];
-  setInterceptResourceTypes: (value: string[]) => void;
-  interceptCaptureRequestBody: boolean;
-  setInterceptCaptureRequestBody: (value: boolean) => void;
-  interceptCaptureResponseBody: boolean;
-  setInterceptCaptureResponseBody: (value: boolean) => void;
-  interceptMaxBodySize: number;
-  setInterceptMaxBodySize: (value: number) => void;
 }
 
 export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
   function ScrapeForm(
-    {
+    { form, profiles, onSubmit, loading }: ScrapeFormProps,
+    ref,
+  ) {
+    const {
       headless,
       setHeadless,
       usePlaywright,
@@ -157,9 +92,6 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
-      profiles,
-      onSubmit,
-      loading,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -172,9 +104,8 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
-    }: ScrapeFormProps,
-    ref,
-  ) {
+    } = form;
+
     const [scrapeUrl, setScrapeUrl] = useState("");
     const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
@@ -186,36 +117,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiFields, setAiFields] = useState("");
 
-    const headerMap = useMemo(() => parseHeaders(headersRaw), [headersRaw]);
-    const cookieList = useMemo(() => parseCookies(cookiesRaw), [cookiesRaw]);
-    const queryMap = useMemo(() => parseQueryParams(queryRaw), [queryRaw]);
-
-    const networkIntercept = useMemo(
-      () =>
-        buildNetworkInterceptConfig(
-          interceptEnabled,
-          interceptURLPatterns,
-          interceptResourceTypes,
-          interceptCaptureRequestBody,
-          interceptCaptureResponseBody,
-          interceptMaxBodySize,
-          1000,
-        ),
-      [
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-      ],
-    );
-
     const handleSubmit = useCallback(async () => {
       if (!scrapeUrl) {
         alert("Scrape URL is required.");
         return;
       }
+      const shared = buildSharedRequestConfig(form);
       // Build AI extraction options if enabled
       const aiExtractOptions = aiEnabled
         ? {
@@ -234,30 +141,16 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         headless,
         usePlaywright,
         timeoutSeconds,
-        authProfile || undefined,
-        buildAuth(
-          authBasic,
-          headerMap,
-          cookieList,
-          queryMap,
-          loginUrl,
-          loginUserSelector,
-          loginPassSelector,
-          loginSubmitSelector,
-          loginUser,
-          loginPass,
-        ),
-        {
-          template: extractTemplate || undefined,
-          validate: extractValidate,
-        },
-        preProcessors,
-        postProcessors,
-        transformers,
+        shared.authProfile,
+        shared.auth,
+        shared.extract,
+        shared.preProcessors,
+        shared.postProcessors,
+        shared.transformers,
         incremental,
-        buildWebhookConfig(webhookUrl, webhookEvents, webhookSecret),
+        shared.webhook,
         device || undefined,
-        networkIntercept,
+        shared.networkIntercept,
         aiExtractOptions,
       );
       await onSubmit(request);
@@ -266,32 +159,13 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       headless,
       usePlaywright,
       timeoutSeconds,
-      authProfile,
-      authBasic,
-      headerMap,
-      cookieList,
-      queryMap,
-      loginUrl,
-      loginUserSelector,
-      loginPassSelector,
-      loginSubmitSelector,
-      loginUser,
-      loginPass,
-      extractTemplate,
-      extractValidate,
+      form,
       aiEnabled,
       aiMode,
       aiPrompt,
       aiFields,
-      preProcessors,
-      postProcessors,
-      transformers,
       incremental,
-      webhookUrl,
-      webhookEvents,
-      webhookSecret,
       device,
-      networkIntercept,
       onSubmit,
     ]);
 

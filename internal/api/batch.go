@@ -32,203 +32,150 @@ import (
 
 // handleBatchScrape handles POST /v1/jobs/batch/scrape.
 func (s *Server) handleBatchScrape(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-		return
-	}
-
-	var req BatchScrapeRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchURLs(req.Jobs); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	specs := make([]jobs.JobSpec, len(req.Jobs))
-	requestID := contextRequestID(r.Context())
-	for i, job := range req.Jobs {
-		specs[i] = jobs.JobSpec{
-			Kind:        model.KindScrape,
-			URL:         job.URL,
-			Method:      job.Method,
-			Body:        []byte(job.Body),
-			ContentType: job.ContentType,
-			Headless:    req.Headless,
-		}
-		if specs[i].Method == "" {
-			specs[i].Method = http.MethodGet
-		}
-		if err := s.applyBatchJobDefaults(&specs[i], jobRequestOptions{
-			authURL:        job.URL,
-			authProfile:    req.AuthProfile,
-			auth:           req.Auth,
-			extract:        req.Extract,
-			pipeline:       req.Pipeline,
-			webhook:        req.Webhook,
-			screenshot:     req.Screenshot,
-			device:         req.Device,
-			incremental:    req.Incremental,
-			playwright:     req.Playwright,
-			timeoutSeconds: req.TimeoutSeconds,
-			requestID:      requestID,
-		}); err != nil {
-			writeError(w, r, err)
-			return
-		}
-	}
-
-	resp, err := s.createAndEnqueueBatch(r.Context(), model.KindScrape, specs)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeCreatedJSON(w, resp)
+	handleBatchJobSubmission(s, w, r, batchJobSubmission[BatchScrapeRequest]{
+		kind: model.KindScrape,
+		validate: func(req BatchScrapeRequest) error {
+			if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
+				return err
+			}
+			return validateBatchURLs(req.Jobs)
+		},
+		buildSpecs: func(r *http.Request, req BatchScrapeRequest) ([]jobs.JobSpec, error) {
+			specs := make([]jobs.JobSpec, len(req.Jobs))
+			for i, job := range req.Jobs {
+				specs[i] = jobs.JobSpec{
+					Kind:        model.KindScrape,
+					URL:         job.URL,
+					Method:      job.Method,
+					Body:        []byte(job.Body),
+					ContentType: job.ContentType,
+					Headless:    req.Headless,
+				}
+				if specs[i].Method == "" {
+					specs[i].Method = http.MethodGet
+				}
+				if err := s.applyJobDefaults(&specs[i], jobRequestOptions{
+					authURL:        job.URL,
+					authProfile:    req.AuthProfile,
+					auth:           req.Auth,
+					extract:        req.Extract,
+					pipeline:       req.Pipeline,
+					webhook:        req.Webhook,
+					screenshot:     req.Screenshot,
+					device:         req.Device,
+					incremental:    req.Incremental,
+					playwright:     req.Playwright,
+					timeoutSeconds: req.TimeoutSeconds,
+					requestID:      contextRequestID(r.Context()),
+				}, req.Auth != nil || req.AuthProfile != ""); err != nil {
+					return nil, err
+				}
+			}
+			return specs, nil
+		},
+	})
 }
 
 // handleBatchCrawl handles POST /v1/jobs/batch/crawl.
 func (s *Server) handleBatchCrawl(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-		return
-	}
-
-	var req BatchCrawlRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchURLs(req.Jobs); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validate.ValidateMaxPages(req.MaxPages); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	specs := make([]jobs.JobSpec, len(req.Jobs))
-	requestID := contextRequestID(r.Context())
-	for i, job := range req.Jobs {
-		specs[i] = jobs.JobSpec{
-			Kind:        model.KindCrawl,
-			URL:         job.URL,
-			MaxDepth:    req.MaxDepth,
-			MaxPages:    req.MaxPages,
-			Headless:    req.Headless,
-			SitemapURL:  req.SitemapURL,
-			SitemapOnly: valueOr(req.SitemapOnly, false),
-		}
-		if err := s.applyBatchJobDefaults(&specs[i], jobRequestOptions{
-			authURL:        job.URL,
-			authProfile:    req.AuthProfile,
-			auth:           req.Auth,
-			extract:        req.Extract,
-			pipeline:       req.Pipeline,
-			webhook:        req.Webhook,
-			screenshot:     req.Screenshot,
-			device:         req.Device,
-			incremental:    req.Incremental,
-			playwright:     req.Playwright,
-			timeoutSeconds: req.TimeoutSeconds,
-			requestID:      requestID,
-		}); err != nil {
-			writeError(w, r, err)
-			return
-		}
-	}
-
-	resp, err := s.createAndEnqueueBatch(r.Context(), model.KindCrawl, specs)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeCreatedJSON(w, resp)
+	handleBatchJobSubmission(s, w, r, batchJobSubmission[BatchCrawlRequest]{
+		kind: model.KindCrawl,
+		validate: func(req BatchCrawlRequest) error {
+			if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
+				return err
+			}
+			if err := validateBatchURLs(req.Jobs); err != nil {
+				return err
+			}
+			if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
+				return err
+			}
+			return validate.ValidateMaxPages(req.MaxPages)
+		},
+		buildSpecs: func(r *http.Request, req BatchCrawlRequest) ([]jobs.JobSpec, error) {
+			specs := make([]jobs.JobSpec, len(req.Jobs))
+			for i, job := range req.Jobs {
+				specs[i] = jobs.JobSpec{
+					Kind:        model.KindCrawl,
+					URL:         job.URL,
+					MaxDepth:    req.MaxDepth,
+					MaxPages:    req.MaxPages,
+					Headless:    req.Headless,
+					SitemapURL:  req.SitemapURL,
+					SitemapOnly: valueOr(req.SitemapOnly, false),
+				}
+				if err := s.applyJobDefaults(&specs[i], jobRequestOptions{
+					authURL:        job.URL,
+					authProfile:    req.AuthProfile,
+					auth:           req.Auth,
+					extract:        req.Extract,
+					pipeline:       req.Pipeline,
+					webhook:        req.Webhook,
+					screenshot:     req.Screenshot,
+					device:         req.Device,
+					incremental:    req.Incremental,
+					playwright:     req.Playwright,
+					timeoutSeconds: req.TimeoutSeconds,
+					requestID:      contextRequestID(r.Context()),
+				}, req.Auth != nil || req.AuthProfile != ""); err != nil {
+					return nil, err
+				}
+			}
+			return specs, nil
+		},
+	})
 }
 
 // handleBatchResearch handles POST /v1/jobs/batch/research.
 func (s *Server) handleBatchResearch(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-		return
-	}
-
-	var req BatchResearchRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validateBatchURLs(req.Jobs); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if req.Query == "" {
-		writeError(w, r, apperrors.Validation("query is required for research jobs"))
-		return
-	}
-	if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if err := validate.ValidateMaxPages(req.MaxPages); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	researchURLs := make([]string, len(req.Jobs))
-	for i, job := range req.Jobs {
-		researchURLs[i] = job.URL
-	}
-
-	spec := jobs.JobSpec{
-		Kind:     model.KindResearch,
-		Query:    req.Query,
-		URLs:     researchURLs,
-		MaxDepth: req.MaxDepth,
-		MaxPages: req.MaxPages,
-		Headless: req.Headless,
-	}
-	if err := s.applyBatchJobDefaults(&spec, jobRequestOptions{
-		authURL:        researchURLs[0],
-		authProfile:    req.AuthProfile,
-		auth:           req.Auth,
-		extract:        req.Extract,
-		pipeline:       req.Pipeline,
-		webhook:        req.Webhook,
-		screenshot:     req.Screenshot,
-		device:         req.Device,
-		playwright:     req.Playwright,
-		timeoutSeconds: req.TimeoutSeconds,
-		requestID:      contextRequestID(r.Context()),
-	}); err != nil {
-		writeError(w, r, err)
-		return
-	}
-
-	resp, err := s.createAndEnqueueBatch(r.Context(), model.KindResearch, []jobs.JobSpec{spec})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeCreatedJSON(w, resp)
+	handleBatchJobSubmission(s, w, r, batchJobSubmission[BatchResearchRequest]{
+		kind: model.KindResearch,
+		validate: func(req BatchResearchRequest) error {
+			if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
+				return err
+			}
+			if err := validateBatchURLs(req.Jobs); err != nil {
+				return err
+			}
+			if req.Query == "" {
+				return apperrors.Validation("query is required for research jobs")
+			}
+			if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
+				return err
+			}
+			return validate.ValidateMaxPages(req.MaxPages)
+		},
+		buildSpecs: func(r *http.Request, req BatchResearchRequest) ([]jobs.JobSpec, error) {
+			researchURLs := make([]string, len(req.Jobs))
+			for i, job := range req.Jobs {
+				researchURLs[i] = job.URL
+			}
+			spec := jobs.JobSpec{
+				Kind:     model.KindResearch,
+				Query:    req.Query,
+				URLs:     researchURLs,
+				MaxDepth: req.MaxDepth,
+				MaxPages: req.MaxPages,
+				Headless: req.Headless,
+			}
+			if err := s.applyJobDefaults(&spec, jobRequestOptions{
+				authURL:        researchURLs[0],
+				authProfile:    req.AuthProfile,
+				auth:           req.Auth,
+				extract:        req.Extract,
+				pipeline:       req.Pipeline,
+				webhook:        req.Webhook,
+				screenshot:     req.Screenshot,
+				device:         req.Device,
+				playwright:     req.Playwright,
+				timeoutSeconds: req.TimeoutSeconds,
+				requestID:      contextRequestID(r.Context()),
+			}, req.Auth != nil || req.AuthProfile != ""); err != nil {
+				return nil, err
+			}
+			return []jobs.JobSpec{spec}, nil
+		},
+	})
 }
 
 // handleBatchGet handles GET /v1/jobs/batch/{id} and DELETE /v1/jobs/batch/{id}.

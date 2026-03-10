@@ -65,29 +65,26 @@ func Open(dataDir string) (*Store, error) {
 }
 
 func (s *Store) prepareStatements() error {
-	var err error
-	s.insertJobStmt, err = s.db.Prepare(`insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare insert job statement", err)
+	prepare := func(dest **sql.Stmt, query, message string) error {
+		stmt, err := s.db.Prepare(query)
+		if err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, message, err)
+		}
+		*dest = stmt
+		return nil
 	}
 
-	s.updateJobStatusStmt, err = s.db.Prepare(`update jobs set status = ?, updated_at = ?, error = ? where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update job status statement", err)
-	}
-
-	s.getJobStmt, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get job statement", err)
-	}
-
-	s.getCrawlStateStmt, err = s.db.Prepare(`select url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot from crawl_states where url = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get crawl state statement", err)
-	}
-
-	s.upsertCrawlStateStmt, err = s.db.Prepare(`insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot)
+	statements := []struct {
+		dest    **sql.Stmt
+		query   string
+		message string
+	}{
+		{&s.insertJobStmt, `insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "failed to prepare insert job statement"},
+		{&s.updateJobStatusStmt, `update jobs set status = ?, updated_at = ?, error = ? where id = ?`, "failed to prepare update job status statement"},
+		{&s.getJobStmt, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where id = ?`, "failed to prepare get job statement"},
+		{&s.getCrawlStateStmt, `select url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot from crawl_states where url = ?`, "failed to prepare get crawl state statement"},
+		{&s.upsertCrawlStateStmt, `insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot)
 		values (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		on conflict(url) do update set
 			etag = excluded.etag,
@@ -97,66 +94,24 @@ func (s *Store) prepareStatements() error {
 			depth = excluded.depth,
 			job_id = excluded.job_id,
 			previous_content = excluded.previous_content,
-			content_snapshot = excluded.content_snapshot`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare upsert crawl state statement", err)
+			content_snapshot = excluded.content_snapshot`, "failed to prepare upsert crawl state statement"},
+		{&s.deleteCrawlStateStmt, `delete from crawl_states where url = ?`, "failed to prepare delete crawl state statement"},
+		{&s.deleteAllCrawlStatesStmt, `delete from crawl_states`, "failed to prepare delete all crawl states statement"},
+		{&s.stmtCreateChain, `insert into job_chains (id, name, description, definition, created_at, updated_at) values (?, ?, ?, ?, ?, ?)`, "failed to prepare create chain statement"},
+		{&s.stmtGetChain, `select id, name, description, definition, created_at, updated_at from job_chains where id = ?`, "failed to prepare get chain statement"},
+		{&s.stmtGetChainByName, `select id, name, description, definition, created_at, updated_at from job_chains where name = ?`, "failed to prepare get chain by name statement"},
+		{&s.stmtUpdateChain, `update job_chains set name = ?, description = ?, definition = ?, updated_at = ? where id = ?`, "failed to prepare update chain statement"},
+		{&s.stmtDeleteChain, `delete from job_chains where id = ?`, "failed to prepare delete chain statement"},
+		{&s.stmtListChains, `select id, name, description, definition, created_at, updated_at from job_chains order by created_at desc`, "failed to prepare list chains statement"},
+		{&s.stmtGetJobsByDependencyStatus, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where dependency_status = ? order by created_at desc`, "failed to prepare get jobs by dependency status statement"},
+		{&s.stmtUpdateDependencyStatus, `update jobs set dependency_status = ? where id = ?`, "failed to prepare update dependency status statement"},
+		{&s.stmtGetDependentJobs, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on is not null and depends_on != '' and exists (select 1 from json_each(depends_on) where value = ?)`, "failed to prepare get dependent jobs statement"},
 	}
 
-	s.deleteCrawlStateStmt, err = s.db.Prepare(`delete from crawl_states where url = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete crawl state statement", err)
-	}
-
-	s.deleteAllCrawlStatesStmt, err = s.db.Prepare(`delete from crawl_states`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete all crawl states statement", err)
-	}
-
-	// Chain statements
-	s.stmtCreateChain, err = s.db.Prepare(`insert into job_chains (id, name, description, definition, created_at, updated_at) values (?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare create chain statement", err)
-	}
-
-	s.stmtGetChain, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get chain statement", err)
-	}
-
-	s.stmtGetChainByName, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains where name = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get chain by name statement", err)
-	}
-
-	s.stmtUpdateChain, err = s.db.Prepare(`update job_chains set name = ?, description = ?, definition = ?, updated_at = ? where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update chain statement", err)
-	}
-
-	s.stmtDeleteChain, err = s.db.Prepare(`delete from job_chains where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare delete chain statement", err)
-	}
-
-	s.stmtListChains, err = s.db.Prepare(`select id, name, description, definition, created_at, updated_at from job_chains order by created_at desc`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare list chains statement", err)
-	}
-
-	// Dependency statements
-	s.stmtGetJobsByDependencyStatus, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where dependency_status = ? order by created_at desc`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get jobs by dependency status statement", err)
-	}
-
-	s.stmtUpdateDependencyStatus, err = s.db.Prepare(`update jobs set dependency_status = ? where id = ?`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare update dependency status statement", err)
-	}
-
-	s.stmtGetDependentJobs, err = s.db.Prepare(`select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on is not null and depends_on != '' and exists (select 1 from json_each(depends_on) where value = ?)`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to prepare get dependent jobs statement", err)
+	for _, statement := range statements {
+		if err := prepare(statement.dest, statement.query, statement.message); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -228,85 +183,30 @@ func (s *Store) init() error {
 		return err
 	}
 
-	depthExists, err := columnExists(s.db, "crawl_states", "depth")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for depth column migration", err)
+	migrations := []struct {
+		table      string
+		column     string
+		query      string
+		checkError string
+		applyError string
+	}{
+		{"crawl_states", "depth", "alter table crawl_states add column depth integer", "failed to check for depth column migration", "failed to add depth column to crawl_states"},
+		{"crawl_states", "job_id", "alter table crawl_states add column job_id text", "failed to check for job_id column migration", "failed to add job_id column to crawl_states"},
+		{"crawl_states", "previous_content", "alter table crawl_states add column previous_content text", "failed to check for previous_content column migration", "failed to add previous_content column to crawl_states"},
+		{"crawl_states", "content_snapshot", "alter table crawl_states add column content_snapshot text", "failed to check for content_snapshot column migration", "failed to add content_snapshot column to crawl_states"},
+		{"crawl_states", "screenshot_path", "alter table crawl_states add column screenshot_path text", "failed to check for screenshot_path column migration", "failed to add screenshot_path column to crawl_states"},
+		{"crawl_states", "visual_hash", "alter table crawl_states add column visual_hash text", "failed to check for visual_hash column migration", "failed to add visual_hash column to crawl_states"},
 	}
-	if !depthExists {
-		_, err = s.db.Exec("alter table crawl_states add column depth integer")
+	for _, migration := range migrations {
+		exists, err := columnExists(s.db, migration.table, migration.column)
 		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add depth column to crawl_states", err)
+			return apperrors.Wrap(apperrors.KindInternal, migration.checkError, err)
 		}
-	}
-
-	jobIDExists, err := columnExists(s.db, "crawl_states", "job_id")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for job_id column migration", err)
-	}
-	if !jobIDExists {
-		_, err = s.db.Exec("alter table crawl_states add column job_id text")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add job_id column to crawl_states", err)
+		if exists {
+			continue
 		}
-	}
-
-	// Migrate: add previous_content column for change detection
-	previousContentExists, err := columnExists(s.db, "crawl_states", "previous_content")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for previous_content column migration", err)
-	}
-	if !previousContentExists {
-		_, err = s.db.Exec("alter table crawl_states add column previous_content text")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add previous_content column to crawl_states", err)
-		}
-	}
-
-	// Migrate: add content_snapshot column for change detection
-	contentSnapshotExists, err := columnExists(s.db, "crawl_states", "content_snapshot")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for content_snapshot column migration", err)
-	}
-	if !contentSnapshotExists {
-		_, err = s.db.Exec("alter table crawl_states add column content_snapshot text")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add content_snapshot column to crawl_states", err)
-		}
-	}
-
-	// Migrate: add screenshot_path column for visual change detection
-	screenshotPathExists, err := columnExists(s.db, "crawl_states", "screenshot_path")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for screenshot_path column migration", err)
-	}
-	if !screenshotPathExists {
-		_, err = s.db.Exec("alter table crawl_states add column screenshot_path text")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add screenshot_path column to crawl_states", err)
-		}
-	}
-
-	// Migrate: add visual_hash column for visual change detection
-	visualHashExists, err := columnExists(s.db, "crawl_states", "visual_hash")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal,
-			"failed to check for visual_hash column migration", err)
-	}
-	if !visualHashExists {
-		_, err = s.db.Exec("alter table crawl_states add column visual_hash text")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal,
-				"failed to add visual_hash column to crawl_states", err)
+		if _, err := s.db.Exec(migration.query); err != nil {
+			return apperrors.Wrap(apperrors.KindInternal, migration.applyError, err)
 		}
 	}
 
@@ -433,57 +333,27 @@ func (s *Store) initDependencyTables() error {
 func (s *Store) Close() error {
 	_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 
-	if s.insertJobStmt != nil {
-		s.insertJobStmt.Close()
-	}
-	if s.updateJobStatusStmt != nil {
-		s.updateJobStatusStmt.Close()
-	}
-	if s.getJobStmt != nil {
-		s.getJobStmt.Close()
-	}
-	if s.getCrawlStateStmt != nil {
-		s.getCrawlStateStmt.Close()
-	}
-	if s.upsertCrawlStateStmt != nil {
-		s.upsertCrawlStateStmt.Close()
-	}
-	if s.deleteCrawlStateStmt != nil {
-		s.deleteCrawlStateStmt.Close()
-	}
-	if s.deleteAllCrawlStatesStmt != nil {
-		s.deleteAllCrawlStatesStmt.Close()
-	}
-
-	// Close chain statements
-	if s.stmtCreateChain != nil {
-		s.stmtCreateChain.Close()
-	}
-	if s.stmtGetChain != nil {
-		s.stmtGetChain.Close()
-	}
-	if s.stmtGetChainByName != nil {
-		s.stmtGetChainByName.Close()
-	}
-	if s.stmtUpdateChain != nil {
-		s.stmtUpdateChain.Close()
-	}
-	if s.stmtDeleteChain != nil {
-		s.stmtDeleteChain.Close()
-	}
-	if s.stmtListChains != nil {
-		s.stmtListChains.Close()
-	}
-
-	// Close dependency statements
-	if s.stmtGetJobsByDependencyStatus != nil {
-		s.stmtGetJobsByDependencyStatus.Close()
-	}
-	if s.stmtUpdateDependencyStatus != nil {
-		s.stmtUpdateDependencyStatus.Close()
-	}
-	if s.stmtGetDependentJobs != nil {
-		s.stmtGetDependentJobs.Close()
+	for _, stmt := range []*sql.Stmt{
+		s.insertJobStmt,
+		s.updateJobStatusStmt,
+		s.getJobStmt,
+		s.getCrawlStateStmt,
+		s.upsertCrawlStateStmt,
+		s.deleteCrawlStateStmt,
+		s.deleteAllCrawlStatesStmt,
+		s.stmtCreateChain,
+		s.stmtGetChain,
+		s.stmtGetChainByName,
+		s.stmtUpdateChain,
+		s.stmtDeleteChain,
+		s.stmtListChains,
+		s.stmtGetJobsByDependencyStatus,
+		s.stmtUpdateDependencyStatus,
+		s.stmtGetDependentJobs,
+	} {
+		if stmt != nil {
+			stmt.Close()
+		}
 	}
 
 	// Close analytics statements
