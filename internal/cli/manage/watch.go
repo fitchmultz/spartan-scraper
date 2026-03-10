@@ -34,6 +34,28 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
+const watchCommandHelpText = `Watch content for changes.
+
+Usage: spartan watch <command> [options]
+
+Commands:
+  add     Create a new content watch
+  list    List all watches
+  delete  Delete a watch by ID
+  check   Manually check a watch
+  start   Start the watch scheduler
+
+Examples:
+  spartan watch add --url https://example.com --interval 3600
+  spartan watch add --url https://example.com --selector "#price" --interval 300
+  spartan watch add --url https://example.com --webhook https://hooks.slack.com/... --webhook-secret mysecret
+  spartan watch list
+  spartan watch check <watch-id>
+  spartan watch start
+
+Use "spartan watch <command> --help" for more information about a command.
+`
+
 // RunWatch routes watch subcommands.
 func RunWatch(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
@@ -294,33 +316,7 @@ func runWatchStart(ctx context.Context, cfg config.Config, args []string) int {
 }
 
 func printWatchHelp() {
-	fmt.Println(`Usage: spartan watch <command> [options]
-
-Commands:
-  add     Create a new content watch
-  list    List all watches
-  delete  Delete a watch by ID
-  check   Manually check a watch
-  start   Start the watch scheduler
-
-Examples:
-  # Watch a URL for changes every hour
-  spartan watch add --url https://example.com --interval 3600
-
-  # Watch a specific element
-  spartan watch add --url https://example.com --selector "#price" --interval 300
-
-  # Watch with webhook notification
-  spartan watch add --url https://example.com --webhook https://hooks.slack.com/... --webhook-secret mysecret
-
-  # List all watches
-  spartan watch list
-
-  # Check a watch manually
-  spartan watch check <watch-id>
-
-  # Start the scheduler
-  spartan watch start`)
+	fmt.Fprint(os.Stderr, watchCommandHelpText)
 }
 
 // RunWatchAdd is the entry point for the watch add command (used by CLI router).
@@ -382,18 +378,7 @@ func RunWatchCommand(ctx context.Context, cfg config.Config, args []string) int 
 
 // WatchHelp returns the help text for the watch command.
 func WatchHelp() string {
-	return `Watch content for changes.
-
-Usage: spartan watch <command> [options]
-
-Commands:
-  add     Create a new content watch
-  list    List all watches
-  delete  Delete a watch by ID
-  check   Manually check a watch
-  start   Start the watch scheduler
-
-Use "spartan watch <command> --help" for more information about a command.`
+	return watchCommandHelpText
 }
 
 // ParseBool parses a boolean string value.

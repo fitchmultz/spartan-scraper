@@ -20,6 +20,26 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
+const jobsCommandHelpText = `Manage persisted jobs.
+
+Usage:
+  spartan jobs <subcommand> [options]
+
+Subcommands:
+  list    List jobs (with pagination)
+  get     Get job details
+  cancel  Cancel a running or queued job
+
+Examples:
+  spartan jobs list
+  spartan jobs list --limit 50
+  spartan jobs list --offset 100
+  spartan jobs list --status running
+  spartan jobs list --status failed --limit 20
+  spartan jobs get <job-id>
+  spartan jobs cancel <job-id>
+`
+
 func RunJobs(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
 		printJobsHelp()
@@ -146,23 +166,7 @@ func RunJobs(ctx context.Context, cfg config.Config, args []string) int {
 }
 
 func printJobsHelp() {
-	fmt.Print(`Usage:
-  spartan jobs <subcommand> [options]
-
-Subcommands:
-  list    List jobs (with pagination)
-  get     Get job details
-  cancel  Cancel a running or queued job
-
-Examples:
-  spartan jobs list
-  spartan jobs list --limit 50
-  spartan jobs list --offset 100
-  spartan jobs list --status running
-  spartan jobs list --status failed --limit 20
-  spartan jobs get <job-id>
-  spartan jobs cancel <job-id>
-`)
+	fmt.Fprint(os.Stderr, jobsCommandHelpText)
 }
 
 // isServerRunning checks if Spartan API server is running by pinging healthz endpoint.

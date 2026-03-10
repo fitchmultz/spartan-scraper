@@ -463,7 +463,7 @@ curl -sS -X POST "http://localhost:8741/v1/extract/ai-preview" \
 **Features:**
 - Automatic HTML cleaning (removes scripts, styles, comments)
 - Content-based caching (24h TTL) to reduce API costs
-- Graceful fallback if AI extraction fails
+- Template extraction continues even if the AI enhancement step fails
 - Token usage tracking
 - Confidence scores per extraction
 
@@ -773,7 +773,7 @@ Monitor URLs for content changes with optional CSS selectors, webhooks, and visu
 - `--webhook-secret` - Secret for webhook signature verification
 - `--headless` - Use headless browser
 - `--playwright` - Use Playwright instead of Chromedp
-- `--extract` - Extraction template name
+- `--extract` - Extraction mode: `html` or `text`
 
 **Examples:**
 ```bash
@@ -935,11 +935,11 @@ Monitor RSS/Atom feeds and automatically create scrape jobs for new items.
 **Commands:**
 - `spartan feed add --url <url> [options]` - Add a feed
 - `spartan feed list` - List all feeds
-- `spartan feed get --id <id>` - Get feed details
-- `spartan feed update --id <id> [options]` - Update a feed
-- `spartan feed delete --id <id>` - Delete a feed
-- `spartan feed check --id <id>` - Manually check a feed
-- `spartan feed items --id <id>` - List seen items
+- `spartan feed get <id>` - Get feed details
+- `spartan feed update <id> [options]` - Update a feed
+- `spartan feed delete <id>` - Delete a feed
+- `spartan feed check <id>` - Manually check a feed
+- `spartan feed items <id>` - List seen items
 - `spartan feed start` - Start the feed scheduler
 
 **Examples:**
@@ -1215,14 +1215,15 @@ Monitor RSS/Atom feeds and automatically create scrape jobs for new items.
 
 ### CLI
 
-- `spartan feed add --url <url> [--type rss|atom|auto] [--interval <seconds>] [--auto-scrape]` - Add a feed
-- `spartan feed list [--all]` - List all feeds
-- `spartan feed get --id <id>` - Get feed details
-- `spartan feed update --id <id> [options]` - Update a feed
-- `spartan feed delete --id <id>` - Delete a feed
-- `spartan feed check --id <id>` - Manually check a feed
-- `spartan feed items --id <id>` - List seen items for a feed
-- `spartan feed start` - Start the feed scheduler daemon
+Core feed commands mirror the `feed` section above:
+- `spartan feed add --url <url> [--type rss|atom|auto] [--interval <seconds>] [--auto-scrape]`
+- `spartan feed list [--all]`
+- `spartan feed get <id>`
+- `spartan feed update <id> [options]`
+- `spartan feed delete <id>`
+- `spartan feed check <id>`
+- `spartan feed items <id>`
+- `spartan feed start`
 
 ### Web UI
 

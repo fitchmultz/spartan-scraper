@@ -1,7 +1,6 @@
-// Package queue provides a pluggable queue backend abstraction for job distribution.
+// Package queue provides pluggable queue backends for job distribution.
 //
 // This file implements the in-memory queue backend using Go channels.
-// It provides backward compatibility for single-node deployments.
 package queue
 
 import (
@@ -9,11 +8,7 @@ import (
 	"sync"
 )
 
-// Memory is an in-memory queue backend using buffered channels.
-// This is the default backend for single-node deployments.
-//
-// Memory maintains backward compatibility with the original
-// channel-based job queue implementation.
+// Memory is the default single-process queue backend using buffered channels.
 type Memory struct {
 	ch       chan Message
 	closed   bool

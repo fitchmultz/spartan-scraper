@@ -10,10 +10,11 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/hostmatch"
 )
 
 func TestHostFromURL_Empty(t *testing.T) {
-	host := HostFromURL("")
+	host := hostmatch.HostFromURL("")
 	if host != "" {
 		t.Errorf("expected empty string, got '%s'", host)
 	}
@@ -30,7 +31,7 @@ func TestHostFromURL_ValidWithScheme(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -48,7 +49,7 @@ func TestHostFromURL_ValidWithoutScheme(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -66,7 +67,7 @@ func TestHostFromURL_WithPort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -85,7 +86,7 @@ func TestHostFromURL_WithPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -103,7 +104,7 @@ func TestHostFromURL_WithSubdomain(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -123,7 +124,7 @@ func TestHostFromURL_InvalidURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}
@@ -143,7 +144,7 @@ func TestHostFromURL_WithSchemeParsingFailure(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
-			host := HostFromURL(tt.url)
+			host := hostmatch.HostFromURL(tt.url)
 			if host != tt.want {
 				t.Errorf("expected '%s', got '%s'", tt.want, host)
 			}

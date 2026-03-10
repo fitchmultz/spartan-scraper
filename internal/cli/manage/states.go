@@ -14,6 +14,22 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
+const crawlStatesCommandHelpText = `Manage stored crawl-state checkpoints for incremental crawling.
+
+Usage:
+  spartan crawl-states <subcommand> [options]
+
+Subcommands:
+  list    List crawl states (incremental tracking)
+  delete  Delete a specific crawl state by URL
+  clear   Clear all crawl states
+
+Examples:
+  spartan crawl-states list
+  spartan crawl-states delete --url "https://example.com"
+  spartan crawl-states clear --force
+`
+
 func RunCrawlStates(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
 		printCrawlStatesHelp()
@@ -118,22 +134,11 @@ func RunCrawlStates(ctx context.Context, cfg config.Config, args []string) int {
 
 	default:
 		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", args[0])
+		printCrawlStatesHelp()
 		return 1
 	}
 }
 
 func printCrawlStatesHelp() {
-	fmt.Fprint(os.Stderr, `Usage:
-  spartan crawl-states <subcommand> [options]
-
-Subcommands:
-  list    List crawl states (incremental tracking)
-  delete  Delete a specific crawl state by URL
-  clear   Clear all crawl states
-
-Examples:
-  spartan crawl-states list
-  spartan crawl-states delete --url "https://example.com"
-  spartan crawl-states clear --force
-`)
+	fmt.Fprint(os.Stderr, crawlStatesCommandHelpText)
 }

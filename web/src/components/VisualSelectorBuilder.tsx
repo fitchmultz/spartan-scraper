@@ -8,64 +8,24 @@
  * @module VisualSelectorBuilder
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-// Types matching the API responses
-interface DOMNode {
-  tag: string;
-  id?: string;
-  classes?: string[];
-  attributes?: Record<string, string>;
-  text?: string;
-  children?: DOMNode[];
-  path: string;
-  depth: number;
-}
+import {
+  getTemplatePreview,
+  testSelector,
+  type DomNode,
+  type Template,
+  type TestSelectorRequest,
+  type TestSelectorResponse,
+} from "../api";
+import { useTemplateBuilder } from "../hooks/useTemplateBuilder";
 
-interface TemplatePreviewResponse {
-  url: string;
-  title: string;
-  dom_tree: DOMNode;
-  fetch_time_ms: number;
-  fetcher: string;
-}
-
-interface TestSelectorResponse {
-  selector: string;
-  matches: number;
-  elements: DOMElement[];
-  error?: string;
-}
-
-interface DOMElement {
-  tag: string;
-  text: string;
-  html: string;
-  path: string;
-}
-
-interface SelectorRule {
-  name: string;
-  selector: string;
-  attr: string;
-  all: boolean;
-  join: string;
-  trim: boolean;
-  required: boolean;
-}
-
-interface Template {
-  name: string;
-  selectors: SelectorRule[];
-  jsonld?: unknown[];
-  regex?: unknown[];
-  normalize?: {
-    titleField?: string;
-    descriptionField?: string;
-    textField?: string;
-    metaFields?: Record<string, string>;
-  };
-}
+import {
+  buildExpandedPaths,
+  createSelectorRule,
+  generateSelectorOptions,
+  nodeMatchesSearch,
+} from "./visual-selector-builder/selectorBuilderUtils";
 
 interface VisualSelectorBuilderProps {
   initialTemplate?: Template;
@@ -75,10 +35,10 @@ interface VisualSelectorBuilderProps {
 
 // DOM Tree Node Component
 interface DOMTreeNodeProps {
-  node: DOMNode;
+  node: DomNode;
   selectedPath: string | null;
   expandedPaths: Set<string>;
-  onSelect: (node: DOMNode) => void;
+  onSelect: (node: DomNode) => void;
   onToggleExpand: (path: string) => void;
   searchQuery: string;
 }
@@ -91,25 +51,18 @@ function DOMTreeNode({
   onToggleExpand,
   searchQuery,
 }: DOMTreeNodeProps) {
-  const isExpanded = expandedPaths.has(node.path);
+  const nodePath = node.path ?? "";
+  const isExpanded = expandedPaths.has(nodePath);
   const isSelected = selectedPath === node.path;
   const hasChildren = node.children && node.children.length > 0;
 
   // Filter visibility based on search
   const matchesSearch = searchQuery
-    ? (node.tag?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-      (node.id?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-      (node.classes?.some((c) =>
-        c.toLowerCase().includes(searchQuery.toLowerCase()),
-      ) ??
-        false) ||
-      (node.text?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    ? nodeMatchesSearch(node, searchQuery)
     : true;
-
   const childMatchesSearch = searchQuery
-    ? (node.children?.some((child) =>
-        DOMTreeNodeMatchesSearch(child, searchQuery),
-      ) ?? false)
+    ? (node.children?.some((child) => nodeMatchesSearch(child, searchQuery)) ??
+      false)
     : true;
 
   const shouldShow = matchesSearch || childMatchesSearch;
@@ -121,9 +74,9 @@ function DOMTreeNode({
       <button
         type="button"
         className={`dom-tree-node__row ${isSelected ? "selected" : ""}`}
-        style={{ paddingLeft: `${node.depth * 16}px` }}
+        style={{ paddingLeft: `${(node.depth ?? 0) * 16}px` }}
         onClick={() => onSelect(node)}
-        aria-label={`Select ${node.tag} element`}
+        aria-label={`Select ${node.tag ?? "element"} element`}
       >
         {hasChildren && (
           <button
@@ -131,7 +84,7 @@ function DOMTreeNode({
             className="dom-tree-node__toggle"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleExpand(node.path);
+              onToggleExpand(nodePath);
             }}
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
@@ -158,7 +111,7 @@ function DOMTreeNode({
       {isExpanded &&
         node.children?.map((child) => (
           <DOMTreeNode
-            key={child.path}
+            key={child.path ?? `${child.tag ?? "node"}-${child.depth ?? 0}`}
             node={child}
             selectedPath={selectedPath}
             expandedPaths={expandedPaths}
@@ -169,61 +122,6 @@ function DOMTreeNode({
         ))}
     </div>
   );
-}
-
-// Helper to check if a node matches search (for parent visibility)
-function DOMTreeNodeMatchesSearch(node: DOMNode, query: string): boolean {
-  const matches =
-    (node.tag?.toLowerCase().includes(query.toLowerCase()) ?? false) ||
-    (node.id?.toLowerCase().includes(query.toLowerCase()) ?? false) ||
-    (node.classes?.some((c) => c.toLowerCase().includes(query.toLowerCase())) ??
-      false) ||
-    (node.text?.toLowerCase().includes(query.toLowerCase()) ?? false);
-
-  if (matches) return true;
-
-  return (
-    node.children?.some((child) => DOMTreeNodeMatchesSearch(child, query)) ??
-    false
-  );
-}
-
-// Generate CSS selector options for a node
-function generateSelectorOptions(node: DOMNode): string[] {
-  const options: string[] = [];
-
-  // ID-based (most specific)
-  if (node.id) {
-    options.push(`#${node.id}`);
-  }
-
-  // Class-based
-  if (node.classes && node.classes.length > 0) {
-    const classSelector = `${node.tag}.${node.classes.join(".")}`;
-    options.push(classSelector);
-
-    // Just the classes
-    if (node.classes.length <= 3) {
-      options.push(`.${node.classes.join(".")}`);
-    }
-  }
-
-  // Tag with attribute
-  if (node.attributes) {
-    for (const [key, value] of Object.entries(node.attributes)) {
-      if (key.startsWith("data-") && value) {
-        options.push(`${node.tag}[${key}="${value}"]`);
-      }
-    }
-  }
-
-  // Tag only
-  options.push(node.tag);
-
-  // Full path (least preferred)
-  options.push(node.path);
-
-  return options;
 }
 
 export function VisualSelectorBuilder({
@@ -239,9 +137,9 @@ export function VisualSelectorBuilder({
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // DOM tree state
-  const [domTree, setDomTree] = useState<DOMNode | null>(null);
+  const [domTree, setDomTree] = useState<DomNode | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-  const [selectedNode, setSelectedNode] = useState<DOMNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<DomNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Selector testing state
@@ -251,34 +149,25 @@ export function VisualSelectorBuilder({
     null,
   );
 
-  // Template state
-  const [templateName, setTemplateName] = useState(initialTemplate?.name ?? "");
-  const [selectors, setSelectors] = useState<SelectorRule[]>(
-    initialTemplate?.selectors ?? [],
-  );
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const {
+    template,
+    updateTemplate,
+    addSelector,
+    updateSelector,
+    removeSelector,
+    saveTemplate,
+    isSaving,
+    error: saveError,
+    clearError,
+  } = useTemplateBuilder({ initialTemplate, onSave });
 
   // Initialize expanded paths when DOM tree loads
   useEffect(() => {
-    if (domTree) {
-      const paths = new Set<string>();
-      // Expand first 2 levels
-      const addPaths = (node: DOMNode, depth: number) => {
-        if (depth <= 2) {
-          paths.add(node.path);
-        }
-        node.children?.forEach((child) => {
-          addPaths(child, depth + 1);
-        });
-      };
-      addPaths(domTree, 0);
-      setExpandedPaths(paths);
-    }
+    setExpandedPaths(buildExpandedPaths(domTree));
   }, [domTree]);
 
   // Fetch page
-  const handleFetch = useCallback(async () => {
+  const handleFetch = async () => {
     if (!url) {
       setFetchError("Please enter a URL");
       return;
@@ -289,38 +178,35 @@ export function VisualSelectorBuilder({
     setDomTree(null);
 
     try {
-      const params = new URLSearchParams();
-      params.set("url", url);
-      if (headless) params.set("headless", "true");
-      if (playwright) params.set("playwright", "true");
-
-      const response = await fetch(`/v1/template-preview?${params}`);
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to fetch page");
+      const response = await getTemplatePreview({
+        query: {
+          url,
+          ...(headless ? { headless: true } : {}),
+          ...(playwright ? { playwright: true } : {}),
+        },
+      });
+      if (response.error) {
+        throw new Error(String(response.error) || "Failed to fetch page");
       }
-
-      const data: TemplatePreviewResponse = await response.json();
-      setDomTree(data.dom_tree);
+      setDomTree(response.data?.dom_tree ?? null);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setFetching(false);
     }
-  }, [url, headless, playwright]);
+  };
 
   // Handle node selection
-  const handleNodeSelect = useCallback((node: DOMNode) => {
+  const handleNodeSelect = (node: DomNode) => {
     setSelectedNode(node);
     const options = generateSelectorOptions(node);
     if (options.length > 0) {
       setGeneratedSelector(options[0]);
     }
-  }, []);
+  };
 
   // Toggle expand
-  const handleToggleExpand = useCallback((path: string) => {
+  const handleToggleExpand = (path: string) => {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
       if (next.has(path)) {
@@ -330,34 +216,35 @@ export function VisualSelectorBuilder({
       }
       return next;
     });
-  }, []);
+  };
 
   // Test selector
-  const handleTestSelector = useCallback(async () => {
+  const handleTestSelector = async () => {
     if (!url || !generatedSelector) return;
 
     setTesting(true);
     setTestResults(null);
 
     try {
-      const response = await fetch("/v1/template-preview/test-selector", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          selector: generatedSelector,
-          headless,
-          playwright,
-        }),
+      const request: TestSelectorRequest = {
+        url,
+        selector: generatedSelector,
+        ...(headless ? { headless: true } : {}),
+        ...(playwright ? { playwright: true } : {}),
+      };
+      const response = await testSelector({
+        body: request,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to test selector");
+      if (response.error) {
+        throw new Error(String(response.error) || "Failed to test selector");
       }
-
-      const data: TestSelectorResponse = await response.json();
-      setTestResults(data);
+      const data = response.data;
+      setTestResults({
+        selector: data?.selector ?? generatedSelector,
+        matches: data?.matches ?? 0,
+        elements: data?.elements ?? [],
+        error: data?.error,
+      });
     } catch (err) {
       setTestResults({
         selector: generatedSelector,
@@ -368,85 +255,21 @@ export function VisualSelectorBuilder({
     } finally {
       setTesting(false);
     }
-  }, [url, generatedSelector, headless, playwright]);
+  };
 
   // Add selector to template
-  const handleAddSelector = useCallback(() => {
+  const handleAddSelector = () => {
     if (!generatedSelector) return;
-
-    const newRule: SelectorRule = {
-      name: `field_${selectors.length + 1}`,
-      selector: generatedSelector,
-      attr: "text",
-      all: false,
-      join: "",
-      trim: true,
-      required: false,
-    };
-
-    setSelectors((prev) => [...prev, newRule]);
-  }, [generatedSelector, selectors.length]);
-
-  // Update selector rule
-  const handleUpdateRule = useCallback(
-    (index: number, updates: Partial<SelectorRule>) => {
-      setSelectors((prev) =>
-        prev.map((rule, i) => (i === index ? { ...rule, ...updates } : rule)),
-      );
-    },
-    [],
-  );
-
-  // Remove selector rule
-  const handleRemoveRule = useCallback((index: number) => {
-    setSelectors((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    clearError();
+    addSelector(
+      createSelectorRule(generatedSelector, template.selectors?.length ?? 0),
+    );
+  };
 
   // Save template
-  const handleSave = useCallback(async () => {
-    if (!templateName) {
-      setSaveError("Template name is required");
-      return;
-    }
-
-    if (selectors.length === 0) {
-      setSaveError("At least one selector is required");
-      return;
-    }
-
-    setSaving(true);
-    setSaveError(null);
-
-    try {
-      const template: Template = {
-        name: templateName,
-        selectors,
-      };
-
-      const isUpdate = initialTemplate?.name === templateName;
-      const method = isUpdate ? "PUT" : "POST";
-      const endpoint = isUpdate
-        ? `/v1/templates/${encodeURIComponent(templateName)}`
-        : "/v1/templates";
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(template),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to save template");
-      }
-
-      onSave(template);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setSaving(false);
-    }
-  }, [templateName, selectors, initialTemplate, onSave]);
+  const handleSave = async () => {
+    await saveTemplate();
+  };
 
   return (
     <div className="visual-selector-builder">
@@ -457,7 +280,7 @@ export function VisualSelectorBuilder({
             type="button"
             className="btn btn--secondary"
             onClick={onCancel}
-            disabled={saving}
+            disabled={isSaving}
           >
             Cancel
           </button>
@@ -465,9 +288,9 @@ export function VisualSelectorBuilder({
             type="button"
             className="btn btn--primary"
             onClick={handleSave}
-            disabled={saving || selectors.length === 0}
+            disabled={isSaving || (template.selectors?.length ?? 0) === 0}
           >
-            {saving ? "Saving..." : "Save Template"}
+            {isSaving ? "Saving..." : "Save Template"}
           </button>
         </div>
       </div>
@@ -612,29 +435,29 @@ export function VisualSelectorBuilder({
               <label htmlFor="test-results">Test Results</label>
               <div
                 id="test-results"
-                className={`test-results ${testResults.matches > 0 ? "success" : testResults.error ? "error" : ""}`}
+                className={`test-results ${(testResults.matches ?? 0) > 0 ? "success" : testResults.error ? "error" : ""}`}
               >
                 <div className="test-results__count">
-                  {testResults.matches} match
-                  {testResults.matches !== 1 ? "es" : ""}
+                  {testResults.matches ?? 0} match
+                  {(testResults.matches ?? 0) !== 1 ? "es" : ""}
                 </div>
                 {testResults.error && (
                   <div className="test-results__error">{testResults.error}</div>
                 )}
-                {testResults.elements.length > 0 && (
+                {(testResults.elements?.length ?? 0) > 0 && (
                   <div className="test-results__elements">
-                    {testResults.elements.slice(0, 5).map((elem) => (
+                    {testResults.elements?.slice(0, 5).map((elem) => (
                       <div
-                        key={`${elem.tag}-${elem.path}`}
+                        key={`${elem.tag ?? "element"}-${elem.path ?? "no-path"}`}
                         className="test-result-element"
                       >
                         <code>&lt;{elem.tag}&gt;</code>
                         <span>{elem.text}</span>
                       </div>
                     ))}
-                    {testResults.elements.length > 5 && (
+                    {(testResults.elements?.length ?? 0) > 5 && (
                       <div className="test-results__more">
-                        +{testResults.elements.length - 5} more
+                        +{(testResults.elements?.length ?? 0) - 5} more
                       </div>
                     )}
                   </div>
@@ -649,8 +472,8 @@ export function VisualSelectorBuilder({
             <input
               id="template-name"
               type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
+              value={template.name ?? ""}
+              onChange={(e) => updateTemplate({ name: e.target.value })}
               placeholder="Template name"
               className="template-name-input"
             />
@@ -663,33 +486,33 @@ export function VisualSelectorBuilder({
                 <span>Attr</span>
                 <span>Actions</span>
               </div>
-              {selectors.length === 0 ? (
+              {(template.selectors?.length ?? 0) === 0 ? (
                 <div className="selector-rules__empty">
                   No selectors added yet. Select an element from the DOM tree.
                 </div>
               ) : (
-                selectors.map((rule, index) => (
+                template.selectors?.map((rule, index) => (
                   <div key={rule.name} className="selector-rule">
                     <input
                       type="text"
-                      value={rule.name}
+                      value={rule.name ?? ""}
                       onChange={(e) =>
-                        handleUpdateRule(index, { name: e.target.value })
+                        updateSelector(index, { name: e.target.value })
                       }
                       placeholder="Field name"
                     />
                     <input
                       type="text"
-                      value={rule.selector}
+                      value={rule.selector ?? ""}
                       onChange={(e) =>
-                        handleUpdateRule(index, { selector: e.target.value })
+                        updateSelector(index, { selector: e.target.value })
                       }
                       placeholder="CSS selector"
                     />
                     <select
-                      value={rule.attr}
+                      value={rule.attr ?? "text"}
                       onChange={(e) =>
-                        handleUpdateRule(index, { attr: e.target.value })
+                        updateSelector(index, { attr: e.target.value })
                       }
                     >
                       <option value="text">text</option>
@@ -704,9 +527,9 @@ export function VisualSelectorBuilder({
                       <label className="checkbox-label checkbox-label--small">
                         <input
                           type="checkbox"
-                          checked={rule.trim}
+                          checked={rule.trim ?? true}
                           onChange={(e) =>
-                            handleUpdateRule(index, { trim: e.target.checked })
+                            updateSelector(index, { trim: e.target.checked })
                           }
                         />
                         Trim
@@ -714,7 +537,7 @@ export function VisualSelectorBuilder({
                       <button
                         type="button"
                         className="btn btn--danger btn--small"
-                        onClick={() => handleRemoveRule(index)}
+                        onClick={() => removeSelector(index)}
                       >
                         Remove
                       </button>

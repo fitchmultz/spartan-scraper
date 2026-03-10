@@ -1,5 +1,5 @@
 // Package mcp provides tests for schema validation and helper functions.
-// Tests cover getPipelineOptions helper and tool schema definitions (name, description, inputSchema).
+// Tests cover shared MCP argument decoding and tool schema definitions.
 // Does NOT test tool execution behavior, server lifecycle, or job management operations.
 package mcp
 
@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
@@ -59,6 +60,24 @@ func TestGetPipelineOptions(t *testing.T) {
 				t.Errorf("got %+v, want %+v", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestMCPArgumentDecodingMatchesSharedSemantics(t *testing.T) {
+	args := map[string]interface{}{
+		"playwright":     false,
+		"timeoutSeconds": 45.0,
+		"urls":           []interface{}{"https://example.com", "https://example.com/docs"},
+	}
+
+	if got := paramdecode.BoolDefault(args, "playwright", true); got {
+		t.Fatalf("expected explicit false to win over fallback")
+	}
+	if got := paramdecode.PositiveInt(args, "timeoutSeconds", 5); got != 45 {
+		t.Fatalf("expected timeout 45, got %d", got)
+	}
+	if got := paramdecode.StringSlice(args, "urls"); !reflect.DeepEqual(got, []string{"https://example.com", "https://example.com/docs"}) {
+		t.Fatalf("unexpected urls: %#v", got)
 	}
 }
 

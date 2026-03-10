@@ -49,12 +49,6 @@ func NewTarget(rawURL string, kind string) Target {
 	}
 }
 
-// HostFromURL extracts the hostname from a URL string.
-// Deprecated: Use hostmatch.HostFromURL instead.
-func HostFromURL(rawURL string) string {
-	return hostmatch.HostFromURL(rawURL)
-}
-
 func AllStages() []Stage {
 	return []Stage{
 		StagePreFetch,

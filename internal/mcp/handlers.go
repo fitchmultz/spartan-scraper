@@ -29,6 +29,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
@@ -43,12 +44,12 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 
 	switch params.Name {
 	case "scrape_page":
-		url := getString(params.Arguments, "url")
+		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {
 			return nil, apperrors.Validation("url is required")
 		}
-		authProfile := getString(params.Arguments, "authProfile")
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		authProfile := paramdecode.String(params.Arguments, "authProfile")
+		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		opts := validate.JobValidationOpts{
 			URL:         url,
 			Timeout:     timeout,
@@ -62,20 +63,20 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		extractOpts := extract.ExtractOptions{
-			Template: getString(params.Arguments, "extractTemplate"),
-			Validate: getBool(params.Arguments, "extractValidate"),
+			Template: paramdecode.String(params.Arguments, "extractTemplate"),
+			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{
 			Kind:           model.KindScrape,
 			URL:            url,
-			Headless:       getBool(params.Arguments, "headless"),
-			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Headless:       paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
 			Auth:           resolvedAuth,
 			TimeoutSeconds: timeout,
 			Extract:        extractOpts,
 			Pipeline:       pipelineOpts,
-			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
+			Incremental:    paramdecode.BoolDefault(params.Arguments, "incremental", false),
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
@@ -89,14 +90,14 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "crawl_site":
-		url := getString(params.Arguments, "url")
+		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {
 			return nil, apperrors.Validation("url is required")
 		}
-		authProfile := getString(params.Arguments, "authProfile")
-		maxDepth := getInt(params.Arguments, "maxDepth", 2)
-		maxPages := getInt(params.Arguments, "maxPages", 200)
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		authProfile := paramdecode.String(params.Arguments, "authProfile")
+		maxDepth := paramdecode.PositiveInt(params.Arguments, "maxDepth", 2)
+		maxPages := paramdecode.PositiveInt(params.Arguments, "maxPages", 200)
+		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		opts := validate.JobValidationOpts{
 			URL:         url,
 			MaxDepth:    maxDepth,
@@ -112,8 +113,8 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		extractOpts := extract.ExtractOptions{
-			Template: getString(params.Arguments, "extractTemplate"),
-			Validate: getBool(params.Arguments, "extractValidate"),
+			Template: paramdecode.String(params.Arguments, "extractTemplate"),
+			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{
@@ -121,13 +122,13 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			URL:            url,
 			MaxDepth:       maxDepth,
 			MaxPages:       maxPages,
-			Headless:       getBool(params.Arguments, "headless"),
-			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Headless:       paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
 			Auth:           resolvedAuth,
 			TimeoutSeconds: timeout,
 			Extract:        extractOpts,
 			Pipeline:       pipelineOpts,
-			Incremental:    getBoolDefault(params.Arguments, "incremental", false),
+			Incremental:    paramdecode.BoolDefault(params.Arguments, "incremental", false),
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
@@ -141,15 +142,15 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "research":
-		query := getString(params.Arguments, "query")
-		urls := getStringSlice(params.Arguments, "urls")
+		query := paramdecode.String(params.Arguments, "query")
+		urls := paramdecode.StringSlice(params.Arguments, "urls")
 		if query == "" || len(urls) == 0 {
 			return nil, apperrors.Validation("query and urls are required")
 		}
-		authProfile := getString(params.Arguments, "authProfile")
-		maxDepth := getInt(params.Arguments, "maxDepth", 2)
-		maxPages := getInt(params.Arguments, "maxPages", 200)
-		timeout := getInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
+		authProfile := paramdecode.String(params.Arguments, "authProfile")
+		maxDepth := paramdecode.PositiveInt(params.Arguments, "maxDepth", 2)
+		maxPages := paramdecode.PositiveInt(params.Arguments, "maxPages", 200)
+		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
 		opts := validate.JobValidationOpts{
 			Query:       query,
 			URLs:        urls,
@@ -170,8 +171,8 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		extractOpts := extract.ExtractOptions{
-			Template: getString(params.Arguments, "extractTemplate"),
-			Validate: getBool(params.Arguments, "extractValidate"),
+			Template: paramdecode.String(params.Arguments, "extractTemplate"),
+			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{
@@ -180,8 +181,8 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			URLs:           urls,
 			MaxDepth:       maxDepth,
 			MaxPages:       maxPages,
-			Headless:       getBool(params.Arguments, "headless"),
-			UsePlaywright:  getBoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
+			Headless:       paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
 			Auth:           resolvedAuth,
 			TimeoutSeconds: timeout,
 			Extract:        extractOpts,
@@ -199,7 +200,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "job_status":
-		id := getString(params.Arguments, "id")
+		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
@@ -209,21 +210,21 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return model.SanitizeJob(job), nil
 	case "job_results":
-		id := getString(params.Arguments, "id")
+		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
 		return loadResult(ctx, s.store, id)
 	case "job_list":
-		limit := getInt(params.Arguments, "limit", 100)
-		offset := getInt(params.Arguments, "offset", 0)
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 100)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
 		jobs, err := s.store.ListOpts(ctx, store.ListOptions{Limit: limit, Offset: offset})
 		if err != nil {
 			return nil, err
 		}
 		return map[string]interface{}{"jobs": model.SanitizeJobs(jobs)}, nil
 	case "job_cancel":
-		id := getString(params.Arguments, "id")
+		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
@@ -232,11 +233,11 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return map[string]interface{}{"status": "canceled", "id": id}, nil
 	case "job_export":
-		id := getString(params.Arguments, "id")
+		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
-		format := getString(params.Arguments, "format")
+		format := paramdecode.String(params.Arguments, "format")
 		if format == "" {
 			format = "jsonl"
 		}

@@ -1,35 +1,35 @@
 /**
  * useTemplateBuilder Hook
  *
- * Custom hook for managing template builder state and API interactions.
+ * Purpose:
+ * - Manage template editing state and persistence for selector-driven builders.
  *
- * @module useTemplateBuilder
+ * Responsibilities:
+ * - Hold editable template state.
+ * - Apply selector mutations.
+ * - Save templates through the generated API client.
+ *
+ * Scope:
+ * - Local UI state and save behavior for template-building flows.
+ *
+ * Usage:
+ * - Used by visual selector and AI-assisted template editing surfaces.
+ *
+ * Invariants/Assumptions:
+ * - Template names are required before saving.
+ * - At least one selector is required for persistence.
+ * - Save errors stay local to the hook until cleared or retried.
  */
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 
-interface SelectorRule {
-  name: string;
-  selector: string;
-  attr: string;
-  all: boolean;
-  join: string;
-  trim: boolean;
-  required: boolean;
-}
-
-interface Template {
-  name: string;
-  selectors: SelectorRule[];
-  jsonld?: unknown[];
-  regex?: unknown[];
-  normalize?: {
-    titleField?: string;
-    descriptionField?: string;
-    textField?: string;
-    metaFields?: Record<string, string>;
-  };
-}
+import {
+  createTemplate,
+  updateTemplate as persistTemplateUpdate,
+  type CreateTemplateRequest,
+  type SelectorRule,
+  type Template,
+} from "../api";
 
 interface UseTemplateBuilderOptions {
   initialTemplate?: Template;
@@ -64,43 +64,42 @@ export function useTemplateBuilder(
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateTemplate = useCallback((updates: Partial<Template>) => {
+  const updateTemplate = (updates: Partial<Template>) => {
     setTemplate((prev) => ({ ...prev, ...updates }));
-  }, []);
+  };
 
-  const addSelector = useCallback((selector: SelectorRule) => {
+  const addSelector = (selector: SelectorRule) => {
     setTemplate((prev) => ({
       ...prev,
-      selectors: [...prev.selectors, selector],
+      selectors: [...(prev.selectors ?? []), selector],
     }));
-  }, []);
+  };
 
-  const updateSelector = useCallback(
-    (index: number, updates: Partial<SelectorRule>) => {
-      setTemplate((prev) => ({
-        ...prev,
-        selectors: prev.selectors.map((rule, i) =>
-          i === index ? { ...rule, ...updates } : rule,
-        ),
-      }));
-    },
-    [],
-  );
-
-  const removeSelector = useCallback((index: number) => {
+  const updateSelector = (index: number, updates: Partial<SelectorRule>) => {
     setTemplate((prev) => ({
       ...prev,
-      selectors: prev.selectors.filter((_, i) => i !== index),
+      selectors: (prev.selectors ?? []).map((rule, i) =>
+        i === index ? { ...rule, ...updates } : rule,
+      ),
     }));
-  }, []);
+  };
 
-  const saveTemplate = useCallback(async () => {
-    if (!template.name) {
+  const removeSelector = (index: number) => {
+    setTemplate((prev) => ({
+      ...prev,
+      selectors: (prev.selectors ?? []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const saveTemplate = async () => {
+    const name = template.name?.trim();
+    if (!name) {
       setError("Template name is required");
       return;
     }
 
-    if (template.selectors.length === 0) {
+    const selectors = template.selectors ?? [];
+    if (selectors.length === 0) {
       setError("At least one selector is required");
       return;
     }
@@ -109,34 +108,41 @@ export function useTemplateBuilder(
     setError(null);
 
     try {
+      const request: CreateTemplateRequest = {
+        name,
+        selectors,
+        ...(template.jsonld ? { jsonld: template.jsonld } : {}),
+        ...(template.regex ? { regex: template.regex } : {}),
+        ...(template.normalize ? { normalize: template.normalize } : {}),
+      };
       const isUpdate = initialTemplate?.name === template.name;
-      const method = isUpdate ? "PUT" : "POST";
-      const endpoint = isUpdate
-        ? `/v1/templates/${encodeURIComponent(template.name)}`
-        : "/v1/templates";
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(template),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to save template");
+      if (isUpdate) {
+        const response = await persistTemplateUpdate({
+          path: { name },
+          body: request,
+        });
+        if (response.error) {
+          throw new Error(String(response.error) || "Failed to save template");
+        }
+      } else {
+        const response = await createTemplate({
+          body: request,
+        });
+        if (response.error) {
+          throw new Error(String(response.error) || "Failed to save template");
+        }
       }
-
-      onSave?.(template);
+      onSave?.({ ...template, name, selectors });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsSaving(false);
     }
-  }, [template, initialTemplate, onSave]);
+  };
 
-  const clearError = useCallback(() => {
+  const clearError = () => {
     setError(null);
-  }, []);
+  };
 
   return {
     template,

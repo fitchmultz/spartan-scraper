@@ -206,5 +206,9 @@ Examples:
   spartan schedule add --kind research --interval 86400 --query "pricing" --urls https://example.com,https://example.com/docs
   spartan schedule list
   spartan schedule delete --id <schedule-id>
+
+Notes:
+  Use --auth-profile to attach stored auth.
+  Use --extract-template / --extract-validate / pipeline flags on add to keep scheduled jobs aligned with direct runs.
 `)
 }

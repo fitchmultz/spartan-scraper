@@ -24,6 +24,36 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
+const retentionCommandHelpText = `Manage retention policy status and manual cleanup.
+
+Usage: spartan retention <command> [options]
+
+Commands:
+  status              Show retention configuration and statistics
+  cleanup             Run retention cleanup immediately
+
+Cleanup Options:
+  --dry-run           Preview what would be deleted without removing
+  --force             Run cleanup even if retention is disabled
+  --older-than=N      Override age threshold (days)
+  --kind=KIND         Only cleanup specific job kind (scrape|crawl|research)
+
+Environment Variables:
+  RETENTION_ENABLED                 Enable automatic retention (default: false)
+  RETENTION_JOB_DAYS                Max age for jobs in days (default: 30, 0 = unlimited)
+  RETENTION_CRAWL_STATE_DAYS        Max age for crawl states in days (default: 90, 0 = unlimited)
+  RETENTION_MAX_JOBS                Max total jobs to keep (default: 10000, 0 = unlimited)
+  RETENTION_MAX_STORAGE_GB          Max storage in GB (default: 10, 0 = unlimited)
+  RETENTION_CLEANUP_INTERVAL_HOURS  Hours between cleanup runs (default: 24)
+  RETENTION_DRY_RUN_DEFAULT         Default dry-run mode (default: false)
+
+Examples:
+  spartan retention status
+  spartan retention cleanup --dry-run
+  spartan retention cleanup --older-than=7 --kind=scrape
+  spartan retention cleanup --force
+`
+
 // RunRetention handles the retention subcommand.
 func RunRetention(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
@@ -138,31 +168,5 @@ func runRetentionCleanup(ctx context.Context, cfg config.Config, args []string) 
 }
 
 func printRetentionHelp() {
-	fmt.Print(`Usage: spartan retention <command> [options]
-
-Commands:
-  status              Show retention configuration and statistics
-  cleanup             Run retention cleanup immediately
-
-Cleanup Options:
-  --dry-run           Preview what would be deleted without removing
-  --force             Run cleanup even if retention is disabled
-  --older-than=N      Override age threshold (days)
-  --kind=KIND         Only cleanup specific job kind (scrape|crawl|research)
-
-Environment Variables:
-  RETENTION_ENABLED                 Enable automatic retention (default: false)
-  RETENTION_JOB_DAYS                Max age for jobs in days (default: 30, 0 = unlimited)
-  RETENTION_CRAWL_STATE_DAYS        Max age for crawl states in days (default: 90, 0 = unlimited)
-  RETENTION_MAX_JOBS                Max total jobs to keep (default: 10000, 0 = unlimited)
-  RETENTION_MAX_STORAGE_GB          Max storage in GB (default: 10, 0 = unlimited)
-  RETENTION_CLEANUP_INTERVAL_HOURS  Hours between cleanup runs (default: 24)
-  RETENTION_DRY_RUN_DEFAULT         Default dry-run mode (default: false)
-
-Examples:
-  spartan retention status
-  spartan retention cleanup --dry-run
-  spartan retention cleanup --older-than=7 --kind=scrape
-  spartan retention cleanup --force
-`)
+	fmt.Fprint(os.Stderr, retentionCommandHelpText)
 }

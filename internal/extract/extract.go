@@ -6,7 +6,7 @@
 // Responsibilities:
 // - Load template registries when callers do not provide one.
 // - Apply extraction, normalization, optional AI enrichment, and validation.
-// - Preserve the minimal legacy adapter used by existing external result surfaces.
+// - Provide the summary metadata shape consumed by scrape and crawl results.
 //
 // Scope:
 // - Extraction execution entrypoints only.
@@ -26,7 +26,7 @@ import (
 	"log/slog"
 )
 
-// Result is the compact compatibility summary exposed by scrape and crawl results.
+// Result is the summary metadata shape embedded in scrape and crawl results.
 type Result struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
@@ -124,23 +124,5 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 	return ExecuteOutput{
 		Extracted:  extracted,
 		Normalized: normalized,
-	}, nil
-}
-
-// FromHTML is the minimal compatibility helper for callers that only need the summary result.
-func FromHTML(html string) (Result, error) {
-	output, err := Execute(ExecuteInput{
-		HTML:    html,
-		Options: ExtractOptions{Template: "default"},
-	})
-	if err != nil {
-		return Result{}, err
-	}
-
-	return Result{
-		Title:       output.Normalized.Title,
-		Description: output.Normalized.Description,
-		Text:        output.Normalized.Text,
-		Links:       output.Normalized.Links,
 	}, nil
 }

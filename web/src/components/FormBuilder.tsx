@@ -7,8 +7,13 @@
  *
  * @module FormBuilder
  */
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { client } from "../api/client.gen";
+import {
+  buildInitialFieldValues,
+  buildSelectedFormFieldValues,
+  formTypeOptions,
+} from "./form-builder/formBuilderUtils";
 
 // Types for form detection and filling
 interface FieldMatch {
@@ -78,6 +83,189 @@ interface FormBuilderProps {
   onClose?: () => void;
 }
 
+function DetectedFormsList({
+  forms,
+  selectedFormIndex,
+  onSelectForm,
+}: {
+  forms: DetectedForm[];
+  selectedFormIndex: number | null;
+  onSelectForm: (index: number) => void;
+}) {
+  if (forms.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="section">
+      <h3>Detected Forms ({forms.length})</h3>
+      <div className="forms-list">
+        {forms.map((form, index) => (
+          <button
+            type="button"
+            key={`form-${form.formIndex}-${form.formSelector}`}
+            className={`form-card ${selectedFormIndex === index ? "selected" : ""}`}
+            onClick={() => onSelectForm(index)}
+            aria-pressed={selectedFormIndex === index}
+          >
+            <div className="form-card-header">
+              <span className="form-type">{form.formType}</span>
+              <span className="form-score">
+                {(form.score * 100).toFixed(0)}% match
+              </span>
+            </div>
+            <div className="form-selector">{form.formSelector}</div>
+            {form.allFields && (
+              <div className="form-fields-count">
+                {form.allFields.length} field(s)
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FormFieldsSection({
+  selectedForm,
+  fieldValues,
+  submit,
+  waitFor,
+  loading,
+  onChangeField,
+  onChangeSubmit,
+  onChangeWaitFor,
+  onFillForm,
+}: {
+  selectedForm: DetectedForm;
+  fieldValues: Record<string, string>;
+  submit: boolean;
+  waitFor: string;
+  loading: boolean;
+  onChangeField: (fieldName: string, value: string) => void;
+  onChangeSubmit: (value: boolean) => void;
+  onChangeWaitFor: (value: string) => void;
+  onFillForm: () => void;
+}) {
+  return (
+    <div className="section">
+      <h3>Form Fields</h3>
+      <div className="fields-table">
+        {selectedForm.allFields?.map((field) => (
+          <div
+            key={`${field.fieldName}-${field.selector}-${field.attribute}`}
+            className="field-row"
+          >
+            <label
+              className="field-info"
+              htmlFor={`field-input-${field.fieldName}`}
+            >
+              <span className="field-name">
+                {field.fieldName}
+                {field.required && <span className="required">*</span>}
+              </span>
+              <span className="field-type">{field.fieldType}</span>
+              {field.placeholder && (
+                <span className="field-placeholder">({field.placeholder})</span>
+              )}
+            </label>
+            <input
+              id={`field-input-${field.fieldName}`}
+              type="text"
+              value={fieldValues[field.fieldName] || ""}
+              onChange={(event) =>
+                onChangeField(field.fieldName, event.target.value)
+              }
+              placeholder={`Enter ${field.fieldName}...`}
+              className="field-input"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="submit-options">
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={submit}
+            onChange={(event) => onChangeSubmit(event.target.checked)}
+          />
+          Submit form after filling
+        </label>
+
+        {submit && (
+          <div className="wait-for-input">
+            <label htmlFor="wait-for-selector">
+              Wait for selector (optional):
+            </label>
+            <input
+              id="wait-for-selector"
+              type="text"
+              value={waitFor}
+              onChange={(event) => onChangeWaitFor(event.target.value)}
+              placeholder=".success-message"
+            />
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onFillForm}
+        disabled={loading}
+        className="execute-button"
+      >
+        {loading ? "Processing..." : submit ? "Fill & Submit" : "Fill Form"}
+      </button>
+    </div>
+  );
+}
+
+function FormResultSection({ result }: { result: FormFillResponse | null }) {
+  if (!result) {
+    return null;
+  }
+
+  return (
+    <div
+      className={`section result-section ${result.success ? "success" : "error"}`}
+    >
+      <h3>Result</h3>
+      <div className="result-content">
+        <div className="result-status">
+          Status: {result.success ? "Success" : "Failed"}
+        </div>
+        {result.filledFields.length > 0 && (
+          <div className="filled-fields">
+            <strong>Filled Fields:</strong>
+            <ul>
+              {result.filledFields.map((field) => (
+                <li key={`filled-${field}`}>{field}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {result.errors && result.errors.length > 0 && (
+          <div className="errors">
+            <strong>Errors:</strong>
+            <ul>
+              {result.errors.map((error) => (
+                <li key={`error-${error.substring(0, 30)}`}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {result.pageUrl && (
+          <div className="page-url">
+            <strong>Final URL:</strong> {result.pageUrl}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FormBuilder({ onClose }: FormBuilderProps) {
   // State
   const [url, setUrl] = useState("");
@@ -93,20 +281,8 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
   const [result, setResult] = useState<FormFillResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Form type options
-  const formTypes = [
-    { value: "", label: "All Types" },
-    { value: "login", label: "Login" },
-    { value: "register", label: "Register" },
-    { value: "search", label: "Search" },
-    { value: "contact", label: "Contact" },
-    { value: "newsletter", label: "Newsletter" },
-    { value: "checkout", label: "Checkout" },
-    { value: "survey", label: "Survey" },
-  ];
-
   // Detect forms on the page
-  const detectForms = useCallback(async () => {
+  const detectForms = async () => {
     if (!url) {
       setError("Please enter a URL");
       return;
@@ -131,25 +307,17 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
       if (response.data) {
         setDetectedForms(response.data.forms);
         setSelectedFormIndex(response.data.forms.length > 0 ? 0 : null);
-
-        // Initialize field values
-        const initialValues: Record<string, string> = {};
-        response.data.forms.forEach((form) => {
-          form.allFields?.forEach((field) => {
-            initialValues[field.fieldName] = "";
-          });
-        });
-        setFieldValues(initialValues);
+        setFieldValues(buildInitialFieldValues(response.data.forms));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to detect forms");
     } finally {
       setLoading(false);
     }
-  }, [url, formTypeFilter]);
+  };
 
   // Fill and optionally submit the form
-  const fillForm = useCallback(async () => {
+  const fillForm = async () => {
     if (selectedFormIndex === null || detectedForms.length === 0) {
       setError("Please select a form");
       return;
@@ -161,18 +329,10 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
     try {
       const selectedForm = detectedForms[selectedFormIndex];
 
-      // Filter field values for the selected form
-      const formFieldValues: Record<string, string> = {};
-      selectedForm.allFields?.forEach((field) => {
-        if (fieldValues[field.fieldName]) {
-          formFieldValues[field.fieldName] = fieldValues[field.fieldName];
-        }
-      });
-
       const request: FormFillRequest = {
         url,
         formSelector: selectedForm.formSelector,
-        fields: formFieldValues,
+        fields: buildSelectedFormFieldValues(selectedForm, fieldValues),
         submit,
         waitFor: waitFor || undefined,
         headless: true,
@@ -192,7 +352,7 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
     } finally {
       setLoading(false);
     }
-  }, [url, detectedForms, selectedFormIndex, fieldValues, submit, waitFor]);
+  };
 
   // Handle field value change
   const handleFieldChange = (fieldName: string, value: string) => {
@@ -239,7 +399,7 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
               onChange={(e) => setFormTypeFilter(e.target.value)}
               className="form-type-select"
             >
-              {formTypes.map((type) => (
+              {formTypeOptions.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
@@ -264,156 +424,29 @@ export function FormBuilder({ onClose }: FormBuilderProps) {
         )}
 
         {/* Detected Forms List */}
-        {detectedForms.length > 0 && (
-          <div className="section">
-            <h3>Detected Forms ({detectedForms.length})</h3>
-            <div className="forms-list">
-              {detectedForms.map((form, index) => (
-                <button
-                  type="button"
-                  key={`form-${form.formIndex}-${form.formSelector}`}
-                  className={`form-card ${selectedFormIndex === index ? "selected" : ""}`}
-                  onClick={() => setSelectedFormIndex(index)}
-                  aria-pressed={selectedFormIndex === index}
-                >
-                  <div className="form-card-header">
-                    <span className="form-type">{form.formType}</span>
-                    <span className="form-score">
-                      {(form.score * 100).toFixed(0)}% match
-                    </span>
-                  </div>
-                  <div className="form-selector">{form.formSelector}</div>
-                  {form.allFields && (
-                    <div className="form-fields-count">
-                      {form.allFields.length} field(s)
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <DetectedFormsList
+          forms={detectedForms}
+          selectedFormIndex={selectedFormIndex}
+          onSelectForm={setSelectedFormIndex}
+        />
 
         {/* Selected Form Fields */}
         {selectedForm && (
-          <div className="section">
-            <h3>Form Fields</h3>
-            <div className="fields-table">
-              {selectedForm.allFields?.map((field) => (
-                <div
-                  key={`${field.fieldName}-${field.selector}-${field.attribute}`}
-                  className="field-row"
-                >
-                  <label
-                    className="field-info"
-                    htmlFor={`field-input-${field.fieldName}`}
-                  >
-                    <span className="field-name">
-                      {field.fieldName}
-                      {field.required && <span className="required">*</span>}
-                    </span>
-                    <span className="field-type">{field.fieldType}</span>
-                    {field.placeholder && (
-                      <span className="field-placeholder">
-                        ({field.placeholder})
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    id={`field-input-${field.fieldName}`}
-                    type="text"
-                    value={fieldValues[field.fieldName] || ""}
-                    onChange={(e) =>
-                      handleFieldChange(field.fieldName, e.target.value)
-                    }
-                    placeholder={`Enter ${field.fieldName}...`}
-                    className="field-input"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Submit Options */}
-            <div className="submit-options">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={submit}
-                  onChange={(e) => setSubmit(e.target.checked)}
-                />
-                Submit form after filling
-              </label>
-
-              {submit && (
-                <div className="wait-for-input">
-                  <label htmlFor="wait-for-selector">
-                    Wait for selector (optional):
-                  </label>
-                  <input
-                    id="wait-for-selector"
-                    type="text"
-                    value={waitFor}
-                    onChange={(e) => setWaitFor(e.target.value)}
-                    placeholder=".success-message"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Execute Button */}
-            <button
-              type="button"
-              onClick={fillForm}
-              disabled={loading}
-              className="execute-button"
-            >
-              {loading
-                ? "Processing..."
-                : submit
-                  ? "Fill & Submit"
-                  : "Fill Form"}
-            </button>
-          </div>
+          <FormFieldsSection
+            selectedForm={selectedForm}
+            fieldValues={fieldValues}
+            submit={submit}
+            waitFor={waitFor}
+            loading={loading}
+            onChangeField={handleFieldChange}
+            onChangeSubmit={setSubmit}
+            onChangeWaitFor={setWaitFor}
+            onFillForm={fillForm}
+          />
         )}
 
         {/* Result Display */}
-        {result && (
-          <div
-            className={`section result-section ${result.success ? "success" : "error"}`}
-          >
-            <h3>Result</h3>
-            <div className="result-content">
-              <div className="result-status">
-                Status: {result.success ? "Success" : "Failed"}
-              </div>
-              {result.filledFields.length > 0 && (
-                <div className="filled-fields">
-                  <strong>Filled Fields:</strong>
-                  <ul>
-                    {result.filledFields.map((field) => (
-                      <li key={`filled-${field}`}>{field}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {result.errors && result.errors.length > 0 && (
-                <div className="errors">
-                  <strong>Errors:</strong>
-                  <ul>
-                    {result.errors.map((error) => (
-                      <li key={`error-${error.substring(0, 30)}`}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {result.pageUrl && (
-                <div className="page-url">
-                  <strong>Final URL:</strong> {result.pageUrl}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <FormResultSection result={result} />
       </div>
 
       <style>{`

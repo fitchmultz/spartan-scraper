@@ -73,38 +73,29 @@ Spartan Scraper is currently **pre-1.0** and actively evolving. Public APIs and 
 go install github.com/fitchmultz/spartan-scraper/cmd/spartan@latest
 
 # Full local setup (recommended for contributors and operators)
+git clone <repo-url>
+cd spartan-scraper
 make install
 make generate
 make build
 ./bin/spartan --help
-# Optional: install binary into ~/.local/bin (or $XDG_BIN_HOME)
-make install-bin
-```
-
-After the server is running, the fastest way to see value is:
-
-1. Open the Web UI at `http://localhost:5173`
-2. Submit a scrape for `https://example.com`
-3. Confirm the saved result contains `Example Domain`
-
-## Validation Quickstart
-
-```bash
-git clone <repo-url>
-cd spartan-scraper
-
-make ci-pr         # Clean-state PR-equivalent gate
-./bin/spartan --help
 ./bin/spartan server
-```
-
-In another terminal:
-
-```bash
 make web-dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`, submit a scrape for `https://example.com`, and confirm the saved result contains `Example Domain`.
+
+For a full local validation pass, run:
+
+```bash
+make ci-pr
+```
+
+Optional: install the binary into `~/.local/bin` (or `$XDG_BIN_HOME`) with:
+
+```bash
+make install-bin
+```
 
 ## Developer And Agent Workflows
 

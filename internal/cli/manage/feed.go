@@ -36,6 +36,30 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
+const feedCommandHelpText = `Manage RSS/Atom feed monitoring.
+
+Usage: spartan feed <command> [options]
+
+Commands:
+  add     Create a new RSS/Atom feed monitor
+  list    List all feeds
+  get     Get a feed by ID
+  update  Update a feed
+  delete  Delete a feed by ID
+  check   Manually check a feed
+  items   List seen items for a feed
+  start   Start the feed scheduler
+
+Examples:
+  spartan feed add --url https://news.ycombinator.com/rss --interval 1800
+  spartan feed add --url https://example.com/feed.atom --type atom --auto-scrape=false
+  spartan feed list
+  spartan feed check <feed-id>
+  spartan feed start
+
+Use "spartan feed <command> --help" for more information about a command.
+`
+
 // RunFeed routes feed subcommands.
 func RunFeed(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
@@ -456,50 +480,10 @@ func runFeedStart(ctx context.Context, cfg config.Config, args []string) int {
 }
 
 func printFeedHelp() {
-	fmt.Println(`Usage: spartan feed <command> [options]
-
-Commands:
-  add     Create a new RSS/Atom feed monitor
-  list    List all feeds
-  get     Get a feed by ID
-  update  Update a feed
-  delete  Delete a feed by ID
-  check   Manually check a feed
-  items   List seen items for a feed
-  start   Start the feed scheduler
-
-Examples:
-  # Add an RSS feed
-  spartan feed add --url https://news.ycombinator.com/rss --interval 1800
-
-  # Add an Atom feed with auto-scrape disabled
-  spartan feed add --url https://example.com/feed.atom --type atom --auto-scrape=false
-
-  # List all feeds
-  spartan feed list
-
-  # Check a feed manually
-  spartan feed check <feed-id>
-
-  # Start the scheduler
-  spartan feed start`)
+	fmt.Fprint(os.Stderr, feedCommandHelpText)
 }
 
 // FeedHelp returns the help text for the feed command.
 func FeedHelp() string {
-	return `Manage RSS/Atom feed monitoring.
-
-Usage: spartan feed <command> [options]
-
-Commands:
-  add     Create a new RSS/Atom feed monitor
-  list    List all feeds
-  get     Get a feed by ID
-  update  Update a feed
-  delete  Delete a feed by ID
-  check   Manually check a feed
-  items   List seen items for a feed
-  start   Start the feed scheduler
-
-Use "spartan feed <command> --help" for more information about a command.`
+	return feedCommandHelpText
 }

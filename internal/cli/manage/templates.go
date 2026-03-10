@@ -12,6 +12,18 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 )
 
+const templatesCommandHelpText = `Manage extraction templates.
+
+Usage:
+  spartan templates <subcommand> [options]
+
+Subcommands:
+  list    List available extraction templates
+
+Examples:
+  spartan templates list
+`
+
 func RunTemplates(_ context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
 		printTemplatesHelp()
@@ -41,13 +53,5 @@ func RunTemplates(_ context.Context, cfg config.Config, args []string) int {
 }
 
 func printTemplatesHelp() {
-	fmt.Fprint(os.Stderr, `Usage:
-  spartan templates <subcommand> [options]
-
-Subcommands:
-  list    List available extraction templates
-
-Examples:
-  spartan templates list
-`)
+	fmt.Fprint(os.Stderr, templatesCommandHelpText)
 }
