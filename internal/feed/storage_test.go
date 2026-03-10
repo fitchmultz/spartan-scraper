@@ -237,6 +237,19 @@ func TestFileStorage_Delete(t *testing.T) {
 	}
 }
 
+func TestFileStorage_Delete_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	storage := NewFileStorage(tmpDir)
+
+	err := storage.Delete("missing-feed")
+	if err == nil {
+		t.Fatal("Delete() expected error for non-existent feed, got nil")
+	}
+	if !IsNotFoundError(err) {
+		t.Fatalf("Delete() error = %T, want NotFoundError", err)
+	}
+}
+
 func TestFileStorage_List(t *testing.T) {
 	tmpDir := t.TempDir()
 	storage := NewFileStorage(tmpDir)

@@ -35,11 +35,7 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		response := make([]ScheduleResponse, len(schedules))
-		for i, sched := range schedules {
-			response[i] = toScheduleResponse(sched)
-		}
-		writeCollectionJSON(w, "schedules", response)
+		writeCollectionJSON(w, "schedules", mapSlice(schedules, toScheduleResponse))
 		return
 	}
 	if r.Method == http.MethodPost {
@@ -80,9 +76,9 @@ func (s *Server) handleSchedules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "schedules")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "schedules", "schedule id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 	if r.Method != http.MethodDelete {

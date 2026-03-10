@@ -20,16 +20,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := r.URL.Query()
-	limit, err := parseIntParamStrict(query.Get("limit"), "limit")
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	if limit == 0 {
-		limit = 100
-	}
-
-	offset, err := parseIntParamStrict(query.Get("offset"), "offset")
+	page, err := parsePageParams(r, 100, 0)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -46,10 +37,10 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
 			return
 		}
-		opts := store.ListByStatusOptions{Limit: limit, Offset: offset}
+		opts := store.ListByStatusOptions{Limit: page.Limit, Offset: page.Offset}
 		jobsList, err = s.store.ListByStatus(r.Context(), status, opts)
 	} else {
-		opts := store.ListOptions{Limit: limit, Offset: offset}
+		opts := store.ListOptions{Limit: page.Limit, Offset: page.Offset}
 		jobsList, err = s.store.ListOpts(r.Context(), opts)
 	}
 

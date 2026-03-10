@@ -21,10 +21,11 @@ package api
 
 import (
 	"errors"
-	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"net/http"
 	"strings"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/auth"
 )
 
 // handleListSessions handles GET /v1/auth/sessions
@@ -41,9 +42,9 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 
 // handleGetSession handles GET /v1/auth/sessions/{id}
 func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "sessions")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("session ID is required"))
+	id, err := requireResourceID(r, "sessions", "session id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -92,9 +93,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteSession handles DELETE /v1/auth/sessions/{id}
 func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "sessions")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("session ID is required"))
+	id, err := requireResourceID(r, "sessions", "session id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

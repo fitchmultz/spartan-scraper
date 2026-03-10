@@ -21,7 +21,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -78,9 +77,9 @@ func (s *Server) handleExportSchedules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleExportSchedule(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "export-schedules")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "export-schedules", "export schedule id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -98,13 +97,12 @@ func (s *Server) handleExportSchedule(w http.ResponseWriter, r *http.Request) {
 
 // handleExportScheduleDetail handles requests to /v1/export-schedules/{id}/history
 func (s *Server) handleExportScheduleDetail(w http.ResponseWriter, r *http.Request) {
-	// Check if this is a history request
-	if strings.HasSuffix(r.URL.Path, "/history") {
+	if handlePathSuffix(r.URL.Path, "/history", func() {
 		s.handleExportScheduleHistory(w, r)
+	}) {
 		return
 	}
 
-	// Otherwise, treat as schedule ID request
 	s.handleExportSchedule(w, r)
 }
 
@@ -114,40 +112,27 @@ func (s *Server) handleExportScheduleHistory(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id := extractID(r.URL.Path, "export-schedules")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
-		return
-	}
-
-	// Parse query parameters
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
-
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Create history store
-	historyStore := scheduler.NewExportHistoryStore(s.cfg.DataDir)
-
-	// Get history
-	records, total, err := historyStore.GetBySchedule(id, limit, offset)
+	id, err := requireResourceID(r, "export-schedules", "export schedule id")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	// Convert to response format
-	response := make([]ExportHistoryResponse, len(records))
-	for i, record := range records {
-		response[i] = ExportHistoryResponse{
+	page, err := parsePageParams(r, 50, 1000)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	historyStore := scheduler.NewExportHistoryStore(s.cfg.DataDir)
+	records, total, err := historyStore.GetBySchedule(id, page.Limit, page.Offset)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeRecordsPageJSON(w, mapSlice(records, func(record scheduler.ExportRecord) ExportHistoryResponse {
+		return ExportHistoryResponse{
 			ID:           record.ID,
 			ScheduleID:   record.ScheduleID,
 			JobID:        record.JobID,
@@ -160,9 +145,7 @@ func (s *Server) handleExportScheduleHistory(w http.ResponseWriter, r *http.Requ
 			ExportSize:   record.ExportSize,
 			RecordCount:  record.RecordCount,
 		}
-	}
-
-	writeRecordsPageJSON(w, response, total, limit, offset)
+	}), total, page.Limit, page.Offset)
 }
 
 func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {
@@ -173,12 +156,7 @@ func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]ExportScheduleResponse, len(schedules))
-	for i, sched := range schedules {
-		response[i] = toExportScheduleResponse(sched)
-	}
-
-	writeCollectionJSON(w, "schedules", response)
+	writeCollectionJSON(w, "schedules", mapSlice(schedules, toExportScheduleResponse))
 }
 
 func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +208,7 @@ func (s *Server) getExportSchedule(w http.ResponseWriter, r *http.Request, id st
 	store := scheduler.NewExportStorage(s.cfg.DataDir)
 	schedule, err := store.Get(id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if scheduler.IsNotFoundError(err) {
 			writeError(w, r, apperrors.NotFound("export schedule not found"))
 			return
 		}
@@ -247,7 +225,7 @@ func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id
 	// Get existing schedule
 	existing, err := store.Get(id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if scheduler.IsNotFoundError(err) {
 			writeError(w, r, apperrors.NotFound("export schedule not found"))
 			return
 		}
@@ -288,6 +266,10 @@ func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id
 func (s *Server) deleteExportSchedule(w http.ResponseWriter, r *http.Request, id string) {
 	store := scheduler.NewExportStorage(s.cfg.DataDir)
 	if err := store.Delete(id); err != nil {
+		if scheduler.IsNotFoundError(err) {
+			writeError(w, r, apperrors.NotFound("export schedule not found"))
+			return
+		}
 		writeError(w, r, err)
 		return
 	}

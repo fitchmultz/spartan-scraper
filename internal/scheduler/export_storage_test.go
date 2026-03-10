@@ -162,6 +162,16 @@ func TestExportStorage(t *testing.T) {
 		}
 	})
 
+	t.Run("delete not found", func(t *testing.T) {
+		err := storage.Delete("non-existent-id")
+		if err == nil {
+			t.Fatal("Delete() should return error for non-existent ID")
+		}
+		if !IsNotFoundError(err) {
+			t.Fatalf("Delete() error = %T, want NotFoundError", err)
+		}
+	})
+
 	t.Run("list multiple", func(t *testing.T) {
 		// Clear existing
 		os.RemoveAll(filepath.Join(tempDir, "export_schedules.json"))

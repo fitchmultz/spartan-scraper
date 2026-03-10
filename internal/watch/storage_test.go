@@ -218,6 +218,16 @@ func TestFileStorage(t *testing.T) {
 		}
 	})
 
+	t.Run("delete not found", func(t *testing.T) {
+		err := storage.Delete("non-existent-id")
+		if err == nil {
+			t.Fatal("Expected error for non-existent watch delete")
+		}
+		if !IsNotFoundError(err) {
+			t.Fatalf("Delete() error = %T, want NotFoundError", err)
+		}
+	})
+
 	t.Run("get not found", func(t *testing.T) {
 		_, err := storage.Get("non-existent-id")
 		if err == nil {

@@ -17,7 +17,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -88,21 +87,19 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleChain(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	// Check if this is a submit request: /v1/chains/{id}/submit
-	if strings.HasSuffix(path, "/submit") {
+	if handlePathSuffix(r.URL.Path, "/submit", func() {
 		if r.Method == http.MethodPost {
 			s.handleChainSubmit(w, r)
 		} else {
 			writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		}
+	}) {
 		return
 	}
 
-	id := extractID(path, "chains")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("chain ID is required"))
+	id, err := requireResourceID(r, "chains", "chain id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -136,14 +133,11 @@ func (s *Server) handleDeleteChain(w http.ResponseWriter, r *http.Request, id st
 }
 
 func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	// Extract chain ID from /v1/chains/{chainId}/submit
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) < 4 || parts[0] != "v1" || parts[1] != "chains" {
-		writeError(w, r, apperrors.Validation("invalid path"))
+	chainID, err := requireResourceID(r, "chains", "chain id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
-	chainID := parts[2]
 
 	var req ChainSubmitRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {

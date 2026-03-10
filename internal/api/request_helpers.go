@@ -7,6 +7,7 @@
 // - Decode strict JSON request bodies consistently.
 // - Write common JSON responses such as 201 Created payloads.
 // - Provide reusable named-resource CRUD scaffolding for file-backed API endpoints.
+// - Centralize path, pagination, and collection-mapping helpers for resource handlers.
 //
 // Scope:
 // - Helper utilities for handler implementations in this package only.
@@ -44,6 +45,11 @@ type statusResponse struct {
 	Status string `json:"status"`
 }
 
+type pageParams struct {
+	Limit  int
+	Offset int
+}
+
 func writeCreatedJSON(w http.ResponseWriter, payload any) {
 	writeJSONStatus(w, http.StatusCreated, payload)
 }
@@ -78,6 +84,51 @@ func valueOr[T any](ptr *T, fallback T) T {
 		return fallback
 	}
 	return *ptr
+}
+
+func mapSlice[T any, U any](items []T, fn func(T) U) []U {
+	result := make([]U, len(items))
+	for i, item := range items {
+		result[i] = fn(item)
+	}
+	return result
+}
+
+func requireResourceID(r *http.Request, pathSegment string, label string) (string, error) {
+	id := extractID(r.URL.Path, pathSegment)
+	if strings.TrimSpace(id) == "" {
+		return "", apperrors.Validation(label + " is required")
+	}
+	return id, nil
+}
+
+func handlePathSuffix(path string, suffix string, handler func()) bool {
+	if strings.HasSuffix(strings.TrimSuffix(path, "/"), suffix) {
+		handler()
+		return true
+	}
+	return false
+}
+
+func parsePageParams(r *http.Request, defaultLimit int, maxLimit int) (pageParams, error) {
+	query := r.URL.Query()
+	limit, err := parseIntParamStrict(query.Get("limit"), "limit")
+	if err != nil {
+		return pageParams{}, err
+	}
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	if maxLimit > 0 && limit > maxLimit {
+		limit = maxLimit
+	}
+
+	offset, err := parseIntParamStrict(query.Get("offset"), "offset")
+	if err != nil {
+		return pageParams{}, err
+	}
+
+	return pageParams{Limit: limit, Offset: offset}, nil
 }
 
 func handleNamedResourceCollection[T any](s *Server, w http.ResponseWriter, r *http.Request, store namedResourceStore[T]) {

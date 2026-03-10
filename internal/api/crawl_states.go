@@ -23,22 +23,12 @@ func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	limit, err := parseIntParamStrict(query.Get("limit"), "limit")
+	page, err := parsePageParams(r, 100, 0)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if limit == 0 {
-		limit = 100
-	}
-
-	offset, err := parseIntParamStrict(query.Get("offset"), "offset")
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	opts := store.ListCrawlStatesOptions{Limit: limit, Offset: offset}
+	opts := store.ListCrawlStatesOptions{Limit: page.Limit, Offset: page.Offset}
 
 	states, err := s.store.ListCrawlStates(r.Context(), opts)
 	if err != nil {

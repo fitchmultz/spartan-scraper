@@ -158,10 +158,16 @@ func (s *FileStorage) Delete(id string) error {
 		return err
 	}
 	filtered := make([]Watch, 0, len(items))
+	found := false
 	for _, item := range items {
 		if item.ID != id {
 			filtered = append(filtered, item)
+			continue
 		}
+		found = true
+	}
+	if !found {
+		return &NotFoundError{ID: id}
 	}
 	return s.SaveAll(filtered)
 }
@@ -217,4 +223,10 @@ type NotFoundError struct {
 
 func (e *NotFoundError) Error() string {
 	return "watch not found: " + e.ID
+}
+
+// IsNotFoundError reports whether err wraps a watch NotFoundError.
+func IsNotFoundError(err error) bool {
+	var notFoundErr *NotFoundError
+	return errors.As(err, &notFoundErr)
 }

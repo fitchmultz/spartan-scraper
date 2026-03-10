@@ -184,7 +184,7 @@ func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
 func getWatchOrWriteError(w http.ResponseWriter, r *http.Request, storage *watch.FileStorage, id string) (*watch.Watch, bool) {
 	watchItem, err := storage.Get(id)
 	if err != nil {
-		if _, ok := err.(*watch.NotFoundError); ok {
+		if watch.IsNotFoundError(err) {
 			writeError(w, r, apperrors.NotFound("watch not found"))
 			return nil, false
 		}
@@ -196,9 +196,9 @@ func getWatchOrWriteError(w http.ResponseWriter, r *http.Request, storage *watch
 
 // handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
 func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if strings.HasSuffix(path, "/check") {
+	if handlePathSuffix(r.URL.Path, "/check", func() {
 		s.handleWatchCheck(w, r)
+	}) {
 		return
 	}
 	s.handleWatch(w, r)
@@ -225,11 +225,7 @@ func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]WatchResponse, len(watches))
-	for i, w := range watches {
-		response[i] = toWatchResponse(w)
-	}
-	writeCollectionJSON(w, "watches", response)
+	writeCollectionJSON(w, "watches", mapSlice(watches, toWatchResponse))
 }
 
 // handleCreateWatch creates a new watch.
@@ -259,9 +255,9 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 
 // handleWatch handles requests to /v1/watch/{id}
 func (s *Server) handleWatch(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "watch")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "watch", "watch id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -319,10 +315,11 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 // handleDeleteWatch deletes a watch.
 func (s *Server) handleDeleteWatch(w http.ResponseWriter, r *http.Request, id string) {
 	storage := watch.NewFileStorage(s.cfg.DataDir)
-	if _, ok := getWatchOrWriteError(w, r, storage, id); !ok {
-		return
-	}
 	if err := storage.Delete(id); err != nil {
+		if watch.IsNotFoundError(err) {
+			writeError(w, r, apperrors.NotFound("watch not found"))
+			return
+		}
 		writeError(w, r, err)
 		return
 	}
@@ -336,9 +333,9 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := extractID(r.URL.Path, "watch")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "watch", "watch id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

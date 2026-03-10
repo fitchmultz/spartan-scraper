@@ -103,3 +103,51 @@ func TestExportScheduleCreateAndUpdateNormalizeCloudDefaults(t *testing.T) {
 		t.Fatalf("expected default cloud content format on update, got %q", got)
 	}
 }
+
+func TestExportScheduleDeleteMissingReturnsNotFound(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodDelete, "/v1/export-schedules/missing", nil)
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+
+	if res.Code != http.StatusNotFound {
+		t.Fatalf("expected delete status 404, got %d: %s", res.Code, res.Body.String())
+	}
+}
+
+func TestExportScheduleHistoryRejectsInvalidPagination(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{
+		"name": "history target",
+		"filters": {"job_kinds": ["scrape"]},
+		"export": {
+			"format": "json",
+			"destination_type": "local",
+			"local_path": "/tmp/exports.json"
+		}
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected create status 201, got %d: %s", res.Code, res.Body.String())
+	}
+
+	var created ExportScheduleResponse
+	if err := json.Unmarshal(res.Body.Bytes(), &created); err != nil {
+		t.Fatalf("failed to decode create response: %v", err)
+	}
+
+	historyReq := httptest.NewRequest(http.MethodGet, "/v1/export-schedules/"+created.ID+"/history?limit=abc", nil)
+	historyRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(historyRes, historyReq)
+
+	if historyRes.Code != http.StatusBadRequest {
+		t.Fatalf("expected history status 400, got %d: %s", historyRes.Code, historyRes.Body.String())
+	}
+}

@@ -36,6 +36,21 @@ type ExportStorage struct {
 	dataDir string
 }
 
+// IsNotFoundError reports whether err wraps an export-schedule NotFoundError.
+func IsNotFoundError(err error) bool {
+	var notFoundErr *NotFoundError
+	return errors.As(err, &notFoundErr)
+}
+
+// NotFoundError is returned when an export schedule is not found.
+type NotFoundError struct {
+	ID string
+}
+
+func (e *NotFoundError) Error() string {
+	return "export schedule not found: " + e.ID
+}
+
 // NewExportStorage creates a new export schedule storage.
 func NewExportStorage(dataDir string) *ExportStorage {
 	return &ExportStorage{dataDir: dataDir}
@@ -82,7 +97,7 @@ func (s *ExportStorage) Get(id string) (*ExportSchedule, error) {
 			return &schedules[i], nil
 		}
 	}
-	return nil, errors.New("export schedule not found")
+	return nil, &NotFoundError{ID: id}
 }
 
 // Add adds a new export schedule with generated ID and defaults.
@@ -139,7 +154,7 @@ func (s *ExportStorage) Update(schedule ExportSchedule) (*ExportSchedule, error)
 	}
 
 	if !found {
-		return nil, errors.New("export schedule not found")
+		return nil, &NotFoundError{ID: schedule.ID}
 	}
 
 	if err := s.SaveAll(items); err != nil {
@@ -155,10 +170,16 @@ func (s *ExportStorage) Delete(id string) error {
 		return err
 	}
 	filtered := make([]ExportSchedule, 0, len(items))
+	found := false
 	for _, item := range items {
 		if item.ID != id {
 			filtered = append(filtered, item)
+			continue
 		}
+		found = true
+	}
+	if !found {
+		return &NotFoundError{ID: id}
 	}
 	return s.SaveAll(filtered)
 }

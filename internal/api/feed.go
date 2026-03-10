@@ -169,13 +169,14 @@ func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
 
 // handleFeedDetailWrapper routes to handleFeedDetail or handleFeedCheck based on path
 func (s *Server) handleFeedDetailWrapper(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if strings.HasSuffix(path, "/check") {
+	if handlePathSuffix(r.URL.Path, "/check", func() {
 		s.handleFeedCheck(w, r)
+	}) {
 		return
 	}
-	if strings.HasSuffix(path, "/items") {
+	if handlePathSuffix(r.URL.Path, "/items", func() {
 		s.handleFeedItems(w, r)
+	}) {
 		return
 	}
 	s.handleFeedDetail(w, r)
@@ -190,11 +191,7 @@ func (s *Server) handleListFeeds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]FeedResponse, len(feeds))
-	for i, f := range feeds {
-		response[i] = toFeedResponse(f)
-	}
-	writeCollectionJSON(w, "feeds", response)
+	writeCollectionJSON(w, "feeds", mapSlice(feeds, toFeedResponse))
 }
 
 // handleCreateFeed creates a new feed.
@@ -224,9 +221,9 @@ func (s *Server) handleCreateFeed(w http.ResponseWriter, r *http.Request) {
 
 // handleFeedDetail handles requests to /v1/feeds/{id}
 func (s *Server) handleFeedDetail(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "feeds")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "feeds", "feed id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -284,10 +281,11 @@ func (s *Server) handleUpdateFeed(w http.ResponseWriter, r *http.Request, id str
 // handleDeleteFeed deletes a feed.
 func (s *Server) handleDeleteFeed(w http.ResponseWriter, r *http.Request, id string) {
 	storage := feed.NewFileStorage(s.cfg.DataDir)
-	if _, ok := getFeedOrWriteError(w, r, storage, id); !ok {
-		return
-	}
 	if err := storage.Delete(id); err != nil {
+		if feed.IsNotFoundError(err) {
+			writeError(w, r, apperrors.NotFound("feed not found"))
+			return
+		}
 		writeError(w, r, err)
 		return
 	}
@@ -301,9 +299,9 @@ func (s *Server) handleFeedCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := extractID(r.URL.Path, "feeds")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "feeds", "feed id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -333,24 +331,20 @@ func (s *Server) handleFeedCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert new items to response format
-	newItems := make([]FeedItemResponse, len(result.NewItems))
-	for i, item := range result.NewItems {
-		newItems[i] = FeedItemResponse{
-			GUID:        item.GUID,
-			Title:       item.Title,
-			Link:        item.Link,
-			Description: item.Description,
-			PubDate:     item.PubDate,
-			Author:      item.Author,
-			Categories:  item.Categories,
-		}
-	}
-
 	writeJSON(w, FeedCheckResponse{
-		FeedID:     result.FeedID,
-		CheckedAt:  result.CheckedAt,
-		NewItems:   newItems,
+		FeedID:    result.FeedID,
+		CheckedAt: result.CheckedAt,
+		NewItems: mapSlice(result.NewItems, func(item feed.FeedItem) FeedItemResponse {
+			return FeedItemResponse{
+				GUID:        item.GUID,
+				Title:       item.Title,
+				Link:        item.Link,
+				Description: item.Description,
+				PubDate:     item.PubDate,
+				Author:      item.Author,
+				Categories:  item.Categories,
+			}
+		}),
 		TotalItems: result.TotalItems,
 		FeedTitle:  result.FeedTitle,
 		FeedDesc:   result.FeedDesc,
@@ -364,9 +358,9 @@ func (s *Server) handleFeedItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := extractID(r.URL.Path, "feeds")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	id, err := requireResourceID(r, "feeds", "feed id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -383,10 +377,5 @@ func (s *Server) handleFeedItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]FeedItemResponse, len(items))
-	for i, item := range items {
-		response[i] = toFeedItemResponse(item)
-	}
-
-	writeCollectionJSON(w, "items", response)
+	writeCollectionJSON(w, "items", mapSlice(items, toFeedItemResponse))
 }
