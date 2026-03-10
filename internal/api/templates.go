@@ -12,6 +12,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 )
 
 // TemplateResponse with full template details
@@ -50,11 +51,9 @@ func (s *Server) handleTemplates(w http.ResponseWriter, r *http.Request) {
 
 // handleTemplate handles requests to /v1/templates/{name}
 func (s *Server) handleTemplate(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/v1/templates/")
-	name := strings.TrimSpace(path)
-
-	if name == "" {
-		writeError(w, r, apperrors.Validation("template name is required"))
+	name, err := requireResourceID(r, "templates", "template name")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -118,52 +117,35 @@ func (s *Server) handleCreateTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
-	if req.Name == "" {
-		writeError(w, r, apperrors.Validation("name is required"))
+	template, err := templateFromRequest("", req)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	if len(req.Selectors) == 0 {
-		writeError(w, r, apperrors.Validation("at least one selector is required"))
+	if isBuiltInTemplate(template.Name) {
+		writeError(w, r, apperrors.Validation("cannot create template with reserved name: "+template.Name))
 		return
 	}
 
-	// Check if trying to create a built-in template
-	if _, exists := builtInTemplateNames[req.Name]; exists {
-		writeError(w, r, apperrors.Validation("cannot create template with reserved name: "+req.Name))
-		return
-	}
-
-	// Check if template already exists
 	registry, err := extract.LoadTemplateRegistry(s.cfg.DataDir)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	if _, exists := registry.Templates[req.Name]; exists {
-		writeError(w, r, apperrors.Validation("template already exists: "+req.Name))
+	if _, exists := registry.Templates[template.Name]; exists {
+		writeError(w, r, apperrors.Validation("template already exists: "+template.Name))
 		return
 	}
 
-	// Create the template
-	template := extract.Template{
-		Name:      req.Name,
-		Selectors: req.Selectors,
-		JSONLD:    req.JSONLD,
-		Regex:     req.Regex,
-		Normalize: req.Normalize,
-	}
-
-	// Save to file
-	if err := s.saveTemplateToFile(template); err != nil {
+	if err := s.upsertCustomTemplate(template); err != nil {
 		writeError(w, r, apperrors.Wrap(apperrors.KindInternal, "failed to save template", err))
 		return
 	}
 
 	writeCreatedJSON(w, TemplateResponse{
-		Name:      req.Name,
+		Name:      template.Name,
 		IsBuiltIn: false,
 		Template:  template,
 	})
@@ -171,8 +153,7 @@ func (s *Server) handleCreateTemplate(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateTemplate handles PUT /v1/templates/{name}
 func (s *Server) handleUpdateTemplate(w http.ResponseWriter, r *http.Request, name string) {
-	// Protect built-in templates
-	if _, isBuiltIn := builtInTemplateNames[name]; isBuiltIn {
+	if isBuiltInTemplate(name) {
 		writeError(w, r, apperrors.Permission("cannot modify built-in template: "+name))
 		return
 	}
@@ -183,13 +164,12 @@ func (s *Server) handleUpdateTemplate(w http.ResponseWriter, r *http.Request, na
 		return
 	}
 
-	// Validate request
-	if len(req.Selectors) == 0 {
-		writeError(w, r, apperrors.Validation("at least one selector is required"))
+	template, err := templateFromRequest(name, req)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
-	// Check if template exists
 	registry, err := extract.LoadTemplateRegistry(s.cfg.DataDir)
 	if err != nil {
 		writeError(w, r, err)
@@ -201,50 +181,24 @@ func (s *Server) handleUpdateTemplate(w http.ResponseWriter, r *http.Request, na
 		return
 	}
 
-	// If name is changing, validate new name doesn't conflict
-	if req.Name != "" && req.Name != name {
-		if _, exists := builtInTemplateNames[req.Name]; exists {
-			writeError(w, r, apperrors.Validation("cannot rename to reserved name: "+req.Name))
+	if template.Name != name {
+		if isBuiltInTemplate(template.Name) {
+			writeError(w, r, apperrors.Validation("cannot rename to reserved name: "+template.Name))
 			return
 		}
-		if _, exists := registry.Templates[req.Name]; exists {
-			writeError(w, r, apperrors.Validation("template already exists with name: "+req.Name))
+		if _, exists := registry.Templates[template.Name]; exists {
+			writeError(w, r, apperrors.Validation("template already exists with name: "+template.Name))
 			return
 		}
 	}
 
-	// Use original name if not provided
-	templateName := req.Name
-	if templateName == "" {
-		templateName = name
-	}
-
-	// Create the updated template
-	template := extract.Template{
-		Name:      templateName,
-		Selectors: req.Selectors,
-		JSONLD:    req.JSONLD,
-		Regex:     req.Regex,
-		Normalize: req.Normalize,
-	}
-
-	// Save to file
-	if err := s.saveTemplateToFile(template); err != nil {
+	if err := s.replaceCustomTemplate(name, template); err != nil {
 		writeError(w, r, apperrors.Wrap(apperrors.KindInternal, "failed to save template", err))
 		return
 	}
 
-	// If name changed, delete the old template
-	if req.Name != "" && req.Name != name {
-		if err := s.deleteTemplateFromFile(name); err != nil {
-			// Log but don't fail - the new template is already saved
-			// In production, you'd want proper logging
-			_ = err
-		}
-	}
-
 	writeJSON(w, TemplateResponse{
-		Name:      templateName,
+		Name:      template.Name,
 		IsBuiltIn: false,
 		Template:  template,
 	})
@@ -252,8 +206,7 @@ func (s *Server) handleUpdateTemplate(w http.ResponseWriter, r *http.Request, na
 
 // handleDeleteTemplate handles DELETE /v1/templates/{name}
 func (s *Server) handleDeleteTemplate(w http.ResponseWriter, r *http.Request, name string) {
-	// Protect built-in templates
-	if _, isBuiltIn := builtInTemplateNames[name]; isBuiltIn {
+	if isBuiltInTemplate(name) {
 		writeError(w, r, apperrors.Permission("cannot delete built-in template: "+name))
 		return
 	}
@@ -270,8 +223,7 @@ func (s *Server) handleDeleteTemplate(w http.ResponseWriter, r *http.Request, na
 		return
 	}
 
-	// Delete from file
-	if err := s.deleteTemplateFromFile(name); err != nil {
+	if err := s.deleteCustomTemplate(name); err != nil {
 		writeError(w, r, apperrors.Wrap(apperrors.KindInternal, "failed to delete template", err))
 		return
 	}
@@ -279,64 +231,104 @@ func (s *Server) handleDeleteTemplate(w http.ResponseWriter, r *http.Request, na
 	writeNoContent(w)
 }
 
-// saveTemplateToFile saves a template to the extract_templates.json file
-func (s *Server) saveTemplateToFile(template extract.Template) error {
-	path := filepath.Join(s.cfg.DataDir, "extract_templates.json")
-
-	// Load existing templates
-	var templateFile extract.TemplateFile
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		// File doesn't exist, create new
-		templateFile = extract.TemplateFile{Templates: []extract.Template{}}
-	} else {
-		if err := json.Unmarshal(data, &templateFile); err != nil {
-			return err
-		}
+func templateFromRequest(fallbackName string, req CreateTemplateRequest) (extract.Template, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = strings.TrimSpace(fallbackName)
+	}
+	if name == "" {
+		return extract.Template{}, apperrors.Validation("name is required")
+	}
+	if len(req.Selectors) == 0 {
+		return extract.Template{}, apperrors.Validation("at least one selector is required")
 	}
 
-	// Find and update or append
-	found := false
-	for i, t := range templateFile.Templates {
-		if t.Name == template.Name {
-			templateFile.Templates[i] = template
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		templateFile.Templates = append(templateFile.Templates, template)
-	}
-
-	// Save back to file
-	data, err = json.MarshalIndent(templateFile, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, data, 0644)
+	return extract.Template{
+		Name:      name,
+		Selectors: req.Selectors,
+		JSONLD:    req.JSONLD,
+		Regex:     req.Regex,
+		Normalize: req.Normalize,
+	}, nil
 }
 
-// deleteTemplateFromFile removes a template from the extract_templates.json file
-func (s *Server) deleteTemplateFromFile(name string) error {
-	path := filepath.Join(s.cfg.DataDir, "extract_templates.json")
+func isBuiltInTemplate(name string) bool {
+	_, ok := builtInTemplateNames[name]
+	return ok
+}
 
-	// Load existing templates
+func (s *Server) customTemplateFilePath() string {
+	return filepath.Join(s.cfg.DataDir, "extract_templates.json")
+}
+
+func (s *Server) loadCustomTemplateFile() (extract.TemplateFile, error) {
+	path := s.customTemplateFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return extract.TemplateFile{Templates: []extract.Template{}}, nil
+		}
+		return extract.TemplateFile{}, err
 	}
 
 	var templateFile extract.TemplateFile
 	if err := json.Unmarshal(data, &templateFile); err != nil {
+		return extract.TemplateFile{}, err
+	}
+	if templateFile.Templates == nil {
+		templateFile.Templates = []extract.Template{}
+	}
+	return templateFile, nil
+}
+
+func (s *Server) saveCustomTemplateFile(templateFile extract.TemplateFile) error {
+	data, err := json.MarshalIndent(templateFile, "", "  ")
+	if err != nil {
+		return err
+	}
+	return fsutil.WriteFileAtomic(s.customTemplateFilePath(), data, 0o644)
+}
+
+func (s *Server) upsertCustomTemplate(template extract.Template) error {
+	templateFile, err := s.loadCustomTemplateFile()
+	if err != nil {
 		return err
 	}
 
-	// Remove the template
+	for i := range templateFile.Templates {
+		if templateFile.Templates[i].Name == template.Name {
+			templateFile.Templates[i] = template
+			return s.saveCustomTemplateFile(templateFile)
+		}
+	}
+
+	templateFile.Templates = append(templateFile.Templates, template)
+	return s.saveCustomTemplateFile(templateFile)
+}
+
+func (s *Server) replaceCustomTemplate(existingName string, replacement extract.Template) error {
+	templateFile, err := s.loadCustomTemplateFile()
+	if err != nil {
+		return err
+	}
+
+	for i := range templateFile.Templates {
+		if templateFile.Templates[i].Name != existingName {
+			continue
+		}
+		templateFile.Templates[i] = replacement
+		return s.saveCustomTemplateFile(templateFile)
+	}
+
+	return apperrors.NotFound("template not found: " + existingName)
+}
+
+func (s *Server) deleteCustomTemplate(name string) error {
+	templateFile, err := s.loadCustomTemplateFile()
+	if err != nil {
+		return err
+	}
+
 	found := false
 	newTemplates := make([]extract.Template, 0, len(templateFile.Templates))
 	for _, t := range templateFile.Templates {
@@ -352,12 +344,5 @@ func (s *Server) deleteTemplateFromFile(name string) error {
 	}
 
 	templateFile.Templates = newTemplates
-
-	// Save back to file
-	data, err = json.MarshalIndent(templateFile, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, data, 0644)
+	return s.saveCustomTemplateFile(templateFile)
 }
