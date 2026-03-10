@@ -60,9 +60,9 @@ func (s *Server) handleAuthProfiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthProfile(w http.ResponseWriter, r *http.Request) {
-	name := extractID(r.URL.Path, "profiles")
-	if name == "" {
-		writeError(w, r, apperrors.Validation("name required"))
+	name, err := requireResourceID(r, "profiles", "profile name")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 	switch r.Method {
@@ -110,7 +110,7 @@ func (s *Server) handleAuthImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := auth.ImportVault(s.cfg.DataDir, payload.Path); err != nil {
-		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
+		if errors.Is(err, auth.ErrInvalidPath) || apperrors.IsKind(err, apperrors.KindValidation) {
 			writeError(w, r, err)
 			return
 		}
@@ -131,7 +131,7 @@ func (s *Server) handleAuthExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := auth.ExportVault(s.cfg.DataDir, payload.Path); err != nil {
-		if errors.Is(err, auth.ErrInvalidPath) || err.Error() == "path is required" {
+		if errors.Is(err, auth.ErrInvalidPath) || apperrors.IsKind(err, apperrors.KindValidation) {
 			writeError(w, r, err)
 			return
 		}

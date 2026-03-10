@@ -85,18 +85,14 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 
 // handleWorkspace handles GET/PUT/DELETE /v1/workspaces/{id} and members sub-routes
 func (s *Server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	// Check if this is a members sub-route
-	if strings.Contains(path, "/members") {
+	if strings.Contains(r.URL.Path, "/members") {
 		s.handleWorkspaceMembers(w, r)
 		return
 	}
 
-	// Extract workspace ID from path
-	id := extractID(path, "workspaces")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("workspace ID required"))
+	id, err := requireResourceID(r, "workspaces", "workspace id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -215,10 +211,9 @@ func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request, i
 
 // handleWorkspaceMembers handles GET/POST /v1/workspaces/{id}/members
 func (s *Server) handleWorkspaceMembers(w http.ResponseWriter, r *http.Request) {
-	// Extract workspace ID from path
-	workspaceID := extractID(r.URL.Path, "workspaces")
-	if workspaceID == "" {
-		writeError(w, r, apperrors.Validation("workspace ID required"))
+	workspaceID, err := requireResourceID(r, "workspaces", "workspace id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

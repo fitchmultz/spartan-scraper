@@ -216,17 +216,6 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	writeJSONError(w, status, message, requestID)
 }
 
-func parseIntParam(s string, defaultVal int) int {
-	if s == "" {
-		return defaultVal
-	}
-	var val int
-	if _, err := fmt.Sscanf(s, "%d", &val); err != nil || val < 0 {
-		return defaultVal
-	}
-	return val
-}
-
 // parseIntParamStrict parses an integer parameter and returns an error for invalid input.
 // Unlike parseIntParam, this does NOT silently default - it validates and reports errors.
 // Returns validation error if:

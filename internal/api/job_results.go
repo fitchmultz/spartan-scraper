@@ -24,13 +24,13 @@ import (
 )
 
 func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "jobs")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
-		return
-	}
 	if r.Method != http.MethodGet {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+	id, err := requireResourceID(r, "jobs", "job id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 	job, err := s.store.Get(r.Context(), id)
@@ -123,19 +123,7 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 		hasPagination := r.URL.Query().Get("limit") != "" || r.URL.Query().Get("offset") != ""
 
 		if hasPagination {
-			limit, err := parseIntParamStrict(r.URL.Query().Get("limit"), "limit")
-			if err != nil {
-				writeError(w, r, err)
-				return
-			}
-			if limit == 0 {
-				limit = 100
-			}
-			if limit > 1000 {
-				limit = 1000
-			}
-
-			offset, err := parseIntParamStrict(r.URL.Query().Get("offset"), "offset")
+			page, err := parsePageParams(r, 100, 1000)
 			if err != nil {
 				writeError(w, r, err)
 				return
@@ -153,13 +141,13 @@ func (s *Server) handleJobResults(w http.ResponseWriter, r *http.Request) {
 
 			switch job.Kind {
 			case model.KindCrawl:
-				items, total, err = exporter.ExportPaginated[exporter.CrawlResult](f, limit, offset)
+				items, total, err = exporter.ExportPaginated[exporter.CrawlResult](f, page.Limit, page.Offset)
 			case model.KindScrape:
-				items, total, err = exporter.ExportPaginated[exporter.ScrapeResult](f, limit, offset)
+				items, total, err = exporter.ExportPaginated[exporter.ScrapeResult](f, page.Limit, page.Offset)
 			case model.KindResearch:
-				items, total, err = exporter.ExportPaginated[exporter.ResearchResult](f, limit, offset)
+				items, total, err = exporter.ExportPaginated[exporter.ResearchResult](f, page.Limit, page.Offset)
 			default:
-				items, total, err = exporter.ExportPaginated[map[string]interface{}](f, limit, offset)
+				items, total, err = exporter.ExportPaginated[map[string]interface{}](f, page.Limit, page.Offset)
 			}
 
 			if err != nil {

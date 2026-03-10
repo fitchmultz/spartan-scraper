@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -60,17 +59,18 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if strings.HasSuffix(strings.TrimSuffix(path, "/"), "/results") {
+	if handlePathSuffix(r.URL.Path, "/results", func() {
 		s.handleJobResults(w, r)
+	}) {
 		return
 	}
-	if strings.HasSuffix(strings.TrimSuffix(path, "/"), "/preview-transform") {
+	if handlePathSuffix(r.URL.Path, "/preview-transform", func() {
 		s.handlePreviewTransform(w, r)
+	}) {
 		return
 	}
-	id := extractID(path, "jobs")
-	if err := validateJobID(id); err != nil {
+	id, err := requireJobID(r)
+	if err != nil {
 		writeError(w, r, err)
 		return
 	}

@@ -43,14 +43,14 @@ type TransformValidateResponse struct {
 
 // handlePreviewTransform handles POST /v1/jobs/{id}/preview-transform
 func (s *Server) handlePreviewTransform(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "jobs")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("id required"))
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
 
-	if r.Method != http.MethodPost {
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+	id, err := requireResourceID(r, "jobs", "job id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

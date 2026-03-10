@@ -102,6 +102,17 @@ func requireResourceID(r *http.Request, pathSegment string, label string) (strin
 	return id, nil
 }
 
+func requireJobID(r *http.Request) (string, error) {
+	id, err := requireResourceID(r, "jobs", "job id")
+	if err != nil {
+		return "", err
+	}
+	if err := validateJobID(id); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
 func handlePathSuffix(path string, suffix string, handler func()) bool {
 	if strings.HasSuffix(strings.TrimSuffix(path, "/"), suffix) {
 		handler()

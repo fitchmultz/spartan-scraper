@@ -114,3 +114,38 @@ func TestHandleBatchResearchCreatesSingleResearchJob(t *testing.T) {
 		t.Fatalf("expected 1 stored job, got %d", len(jobsByBatch))
 	}
 }
+
+func TestHandleBatchGetRejectsInvalidPaginationWhenIncludingJobs(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body, err := json.Marshal(BatchScrapeRequest{
+		Jobs: []BatchJobRequest{
+			{URL: "https://example.com/articles/1"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	createReq := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/scrape", bytes.NewReader(body))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(createRes, createReq)
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("expected create status 201, got %d: %s", createRes.Code, createRes.Body.String())
+	}
+
+	var created BatchResponse
+	if err := json.Unmarshal(createRes.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal batch response: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/batch/"+created.ID+"?include_jobs=true&limit=abc", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+}

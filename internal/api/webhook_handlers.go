@@ -4,7 +4,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
@@ -18,29 +17,11 @@ func (s *Server) handleWebhookDeliveries(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get query parameters
 	jobID := r.URL.Query().Get("job_id")
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
-
-	limit := 100
-	if limitStr != "" {
-		parsed, err := strconv.Atoi(limitStr)
-		if err != nil || parsed < 1 || parsed > 1000 {
-			writeError(w, r, apperrors.Validation("limit must be between 1 and 1000"))
-			return
-		}
-		limit = parsed
-	}
-
-	offset := 0
-	if offsetStr != "" {
-		parsed, err := strconv.Atoi(offsetStr)
-		if err != nil || parsed < 0 {
-			writeError(w, r, apperrors.Validation("offset must be non-negative"))
-			return
-		}
-		offset = parsed
+	page, err := parsePageParams(r, 100, 1000)
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
 
 	// Check if webhook store is available
@@ -63,20 +44,14 @@ func (s *Server) handleWebhookDeliveries(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get delivery records
-	records, err := store.ListRecords(ctx, jobID, limit, offset)
+	records, err := store.ListRecords(ctx, jobID, page.Limit, page.Offset)
 	if err != nil {
 		writeError(w, r, apperrors.Internal("failed to list delivery records"))
 		return
 	}
 
-	// Convert to response format
-	deliveries := make([]any, len(records))
-	for i, r := range records {
-		deliveries[i] = deliveryRecordToResponse(r)
-	}
-
 	writeJSON(w, map[string]any{
-		"deliveries": deliveries,
+		"deliveries": mapSlice(records, deliveryRecordToResponse),
 		"total":      total,
 	})
 }
@@ -88,9 +63,9 @@ func (s *Server) handleWebhookDeliveryDetail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	id := extractID(r.URL.Path, "deliveries")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("delivery id required"))
+	id, err := requireResourceID(r, "deliveries", "delivery id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

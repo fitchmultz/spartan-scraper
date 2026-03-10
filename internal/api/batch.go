@@ -245,9 +245,9 @@ func (s *Server) handleBatchGet(w http.ResponseWriter, r *http.Request) {
 
 // handleBatchGetStatus handles GET /v1/jobs/batch/{id}.
 func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
-	batchID := extractID(r.URL.Path, "batch")
-	if batchID == "" {
-		writeError(w, r, apperrors.Validation("batch ID required"))
+	batchID, err := requireResourceID(r, "batch", "batch id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
@@ -268,9 +268,14 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Query().Get("include_jobs") == "true" {
+		page, err := parsePageParams(r, 50, 0)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
 		jobsByBatch, err := s.store.ListJobsByBatch(r.Context(), batchID, store.ListOptions{
-			Limit:  parseIntParam(r.URL.Query().Get("limit"), 50),
-			Offset: parseIntParam(r.URL.Query().Get("offset"), 0),
+			Limit:  page.Limit,
+			Offset: page.Offset,
 		})
 		if err != nil {
 			writeError(w, r, err)
@@ -284,9 +289,9 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleBatchCancel handles DELETE /v1/jobs/batch/{id}.
 func (s *Server) handleBatchCancel(w http.ResponseWriter, r *http.Request) {
-	batchID := extractID(r.URL.Path, "batch")
-	if batchID == "" {
-		writeError(w, r, apperrors.Validation("batch ID required"))
+	batchID, err := requireResourceID(r, "batch", "batch id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 

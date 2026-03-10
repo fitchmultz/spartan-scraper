@@ -38,10 +38,9 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 
 // handleUser handles GET/PUT/DELETE /v1/users/{id}
 func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {
-	// Extract user ID from path
-	id := extractID(r.URL.Path, "users")
-	if id == "" {
-		writeError(w, r, apperrors.Validation("user ID required"))
+	id, err := requireResourceID(r, "users", "user id")
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
 
