@@ -189,7 +189,7 @@ func (s *Store) getOldestJobTime(ctx context.Context) (time.Time, error) {
 	err := s.db.QueryRowContext(ctx,
 		`SELECT created_at FROM jobs ORDER BY created_at ASC LIMIT 1`).Scan(&createdAt)
 	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
+		if isNoRowsError(err) {
 			return time.Time{}, nil
 		}
 		return time.Time{}, apperrors.Wrap(apperrors.KindInternal, "failed to get oldest job time", err)

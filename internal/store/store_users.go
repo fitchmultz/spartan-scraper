@@ -14,7 +14,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -49,10 +48,7 @@ func (s *Store) GetUser(ctx context.Context, id string) (*model.User, error) {
 	var createdAtStr, updatedAtStr string
 	err := row.Scan(&user.ID, &user.Email, &user.Name, &user.AvatarURL, &user.AuthProvider, &user.IsActive, &createdAtStr, &updatedAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("user not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get user", err)
+		return nil, wrapScanError(err, "user not found", "failed to get user")
 	}
 
 	user.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
@@ -72,10 +68,7 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*model.User, 
 	var createdAtStr, updatedAtStr string
 	err := row.Scan(&user.ID, &user.Email, &user.Name, &user.AvatarURL, &user.AuthProvider, &user.IsActive, &createdAtStr, &updatedAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("user not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get user by email", err)
+		return nil, wrapScanError(err, "user not found", "failed to get user by email")
 	}
 
 	user.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
@@ -96,10 +89,7 @@ func (s *Store) GetUserWithPassword(ctx context.Context, email string) (*model.U
 	var createdAtStr, updatedAtStr string
 	err := row.Scan(&user.ID, &user.Email, &passwordHash, &user.Name, &user.AvatarURL, &user.AuthProvider, &user.IsActive, &createdAtStr, &updatedAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, "", apperrors.NotFound("user not found")
-		}
-		return nil, "", apperrors.Wrap(apperrors.KindInternal, "failed to get user", err)
+		return nil, "", wrapScanError(err, "user not found", "failed to get user")
 	}
 
 	user.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
@@ -204,10 +194,7 @@ func (s *Store) GetWorkspace(ctx context.Context, id string) (*model.Workspace, 
 	var createdAtStr, updatedAtStr string
 	err := row.Scan(&workspace.ID, &workspace.Name, &workspace.Slug, &workspace.Description, &workspace.IsPersonal, &workspace.OwnerID, &createdAtStr, &updatedAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("workspace not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get workspace", err)
+		return nil, wrapScanError(err, "workspace not found", "failed to get workspace")
 	}
 
 	workspace.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
@@ -227,10 +214,7 @@ func (s *Store) GetWorkspaceBySlug(ctx context.Context, slug string) (*model.Wor
 	var createdAtStr, updatedAtStr string
 	err := row.Scan(&workspace.ID, &workspace.Name, &workspace.Slug, &workspace.Description, &workspace.IsPersonal, &workspace.OwnerID, &createdAtStr, &updatedAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("workspace not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get workspace by slug", err)
+		return nil, wrapScanError(err, "workspace not found", "failed to get workspace by slug")
 	}
 
 	workspace.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
@@ -384,10 +368,7 @@ func (s *Store) GetUserWorkspaceRole(ctx context.Context, userID, workspaceID st
 	`, workspaceID, userID).Scan(&role)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", apperrors.NotFound("user is not a member of this workspace")
-		}
-		return "", apperrors.Wrap(apperrors.KindInternal, "failed to get user role", err)
+		return "", wrapScanError(err, "user is not a member of this workspace", "failed to get user role")
 	}
 
 	return model.Role(role), nil

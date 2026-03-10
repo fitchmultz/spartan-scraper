@@ -100,10 +100,7 @@ func (s *Store) Get(ctx context.Context, id string) (model.Job, error) {
 	var depStatusStr string
 
 	if err := row.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error, &dependsOnJSON, &depStatusStr, &job.ChainID); err != nil {
-		if err == sql.ErrNoRows || err.Error() == "sql: no rows in result set" {
-			return model.Job{}, apperrors.NotFound("job not found")
-		}
-		return model.Job{}, err
+		return model.Job{}, wrapScanError(err, "job not found", "failed to get job")
 	}
 
 	var err error

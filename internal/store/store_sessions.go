@@ -12,7 +12,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -44,10 +43,7 @@ func (s *Store) GetSessionByTokenHash(ctx context.Context, tokenHash string) (*m
 	var expiresAtStr, createdAtStr string
 	err := row.Scan(&session.ID, &session.UserID, &session.TokenHash, &expiresAtStr, &createdAtStr, &session.IPAddress, &session.UserAgent)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("session not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get session", err)
+		return nil, wrapScanError(err, "session not found", "failed to get session")
 	}
 
 	session.ExpiresAt, _ = time.Parse(time.RFC3339, expiresAtStr)
@@ -67,10 +63,7 @@ func (s *Store) GetSession(ctx context.Context, id string) (*model.UserSession, 
 	var expiresAtStr, createdAtStr string
 	err := row.Scan(&session.ID, &session.UserID, &session.TokenHash, &expiresAtStr, &createdAtStr, &session.IPAddress, &session.UserAgent)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("session not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get session", err)
+		return nil, wrapScanError(err, "session not found", "failed to get session")
 	}
 
 	session.ExpiresAt, _ = time.Parse(time.RFC3339, expiresAtStr)

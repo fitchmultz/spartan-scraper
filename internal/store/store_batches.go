@@ -78,10 +78,7 @@ func (s *Store) GetBatch(ctx context.Context, id string) (model.Batch, error) {
 
 	err := row.Scan(&batch.ID, &batch.Kind, &batch.Status, &batch.JobCount, &createdAt, &updatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return model.Batch{}, apperrors.NotFound("batch not found")
-		}
-		return model.Batch{}, apperrors.Wrap(apperrors.KindInternal, "failed to get batch", err)
+		return model.Batch{}, wrapScanError(err, "batch not found", "failed to get batch")
 	}
 
 	batch.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)

@@ -173,10 +173,10 @@ func (s *Store) GetABTest(ctx context.Context, id string) (*TemplateABTestRecord
 		&createdAtStr,
 		&updatedAtStr,
 	)
-	if err == sql.ErrNoRows {
-		return nil, apperrors.NotFound("AB test not found")
-	}
 	if err != nil {
+		if isNoRowsError(err) {
+			return nil, apperrors.NotFound("AB test not found")
+		}
 		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get AB test", err)
 	}
 

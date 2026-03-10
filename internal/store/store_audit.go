@@ -11,7 +11,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -55,10 +54,7 @@ func (s *Store) GetAuditLog(ctx context.Context, id string) (*model.AuditLog, er
 	err := row.Scan(
 		&log.ID, &log.WorkspaceID, &log.UserID, &log.Action, &log.ResourceType, &log.ResourceID, &metadataJSON, &createdAtStr)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, apperrors.NotFound("audit log not found")
-		}
-		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get audit log", err)
+		return nil, wrapScanError(err, "audit log not found", "failed to get audit log")
 	}
 
 	if metadataJSON != "" {

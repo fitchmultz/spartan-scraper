@@ -17,7 +17,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -59,10 +58,7 @@ func (s *Store) GetChain(ctx context.Context, id string) (model.JobChain, error)
 
 	err := row.Scan(&chain.ID, &chain.Name, &chain.Description, &definitionJSON, &createdAt, &updatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return model.JobChain{}, apperrors.NotFound("chain not found")
-		}
-		return model.JobChain{}, apperrors.Wrap(apperrors.KindInternal, "failed to get chain", err)
+		return model.JobChain{}, wrapScanError(err, "chain not found", "failed to get chain")
 	}
 
 	chain.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)
@@ -95,10 +91,7 @@ func (s *Store) GetChainByName(ctx context.Context, name string) (model.JobChain
 
 	err := row.Scan(&chain.ID, &chain.Name, &chain.Description, &definitionJSON, &createdAt, &updatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return model.JobChain{}, apperrors.NotFound("chain not found")
-		}
-		return model.JobChain{}, apperrors.Wrap(apperrors.KindInternal, "failed to get chain by name", err)
+		return model.JobChain{}, wrapScanError(err, "chain not found", "failed to get chain by name")
 	}
 
 	chain.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)

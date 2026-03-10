@@ -20,7 +20,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -34,7 +33,7 @@ func (s *Store) GetCrawlState(ctx context.Context, url string) (model.CrawlState
 	var state model.CrawlState
 	var lastScraped string
 	if err := row.Scan(&state.URL, &state.ETag, &state.LastModified, &state.ContentHash, &lastScraped, &state.Depth, &state.JobID, &state.PreviousContent, &state.ContentSnapshot); err != nil {
-		if err == sql.ErrNoRows || err.Error() == "sql: no rows in result set" {
+		if isNoRowsError(err) {
 			return model.CrawlState{}, nil
 		}
 		return model.CrawlState{}, err

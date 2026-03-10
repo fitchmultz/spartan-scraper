@@ -20,7 +20,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -448,7 +447,7 @@ func (s *Store) GetAnalyticsSummary(ctx context.Context, start, end time.Time) (
 	`, startStr, endStr)
 
 	err := row.Scan(&totalRequests, &summary.TotalRequests, &summary.TotalJobs, &totalResponseTimeMs)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !isNoRowsError(err) {
 		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to calculate analytics summary", err)
 	}
 
