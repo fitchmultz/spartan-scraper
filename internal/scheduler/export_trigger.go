@@ -261,8 +261,6 @@ func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, sche
 	// Perform export based on destination type
 	var exportErr error
 	switch schedule.Export.DestinationType {
-	case "s3", "gcs", "azure":
-		exportErr = et.exportToCloud(ctx, job, schedule, record)
 	case "local":
 		exportErr = et.exportToLocal(ctx, job, schedule, record)
 	case "webhook":
@@ -291,34 +289,6 @@ func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, sche
 		"recordID", record.ID)
 
 	return nil
-}
-
-// exportToCloud exports job results to cloud storage.
-func (et *ExportTrigger) exportToCloud(ctx context.Context, job *model.Job, schedule *ExportSchedule, record *ExportRecord) error {
-	if schedule.Export.CloudConfig == nil {
-		return apperrors.Validation("cloud config is required for cloud export")
-	}
-
-	// Read job results
-	resultData, err := et.readJobResults(job)
-	if err != nil {
-		return err
-	}
-
-	// Determine content format
-	contentFormat := schedule.Export.CloudConfig.ContentFormat
-	if contentFormat == "" {
-		contentFormat = schedule.Export.Format
-	}
-
-	// Export to cloud
-	_, err = exporter.ExportStreamWithCloudResult(*job, bytes.NewReader(resultData), contentFormat, nil, schedule.Export.CloudConfig)
-	if err != nil {
-		return err
-	}
-
-	// Mark as successful
-	return et.historyStore.MarkSuccess(record.ID, int64(len(resultData)), 0)
 }
 
 // exportToLocal exports job results to local file.

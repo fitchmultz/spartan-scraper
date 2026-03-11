@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 func TestExportStorage(t *testing.T) {
@@ -263,25 +261,21 @@ func TestExportStorage_InvalidSchedule(t *testing.T) {
 	}
 }
 
-func TestExportStorage_CloudConfig(t *testing.T) {
+func TestExportStorage_LocalPathRoundTrip(t *testing.T) {
 	tempDir := t.TempDir()
 	storage := NewExportStorage(tempDir)
 
 	schedule := ExportSchedule{
-		Name:    "Cloud Export",
+		Name:    "Local Export",
 		Enabled: true,
 		Filters: ExportFilters{
 			JobKinds: []string{"crawl"},
 		},
 		Export: ExportConfig{
 			Format:          "jsonl",
-			DestinationType: "s3",
-			CloudConfig: &exporter.CloudExportConfig{
-				Provider: "s3",
-				Bucket:   "my-bucket",
-				Region:   "us-east-1",
-				Path:     "exports/{kind}/{job_id}.jsonl",
-			},
+			DestinationType: "local",
+			LocalPath:       "exports/{kind}/{job_id}.jsonl",
+			PathTemplate:    "exports/{kind}/{job_id}.jsonl",
 		},
 	}
 
@@ -295,15 +289,11 @@ func TestExportStorage_CloudConfig(t *testing.T) {
 		t.Fatalf("Get() error = %v", err)
 	}
 
-	if retrieved.Export.CloudConfig == nil {
-		t.Fatal("CloudConfig is nil after retrieval")
+	if retrieved.Export.LocalPath != "exports/{kind}/{job_id}.jsonl" {
+		t.Fatalf("LocalPath = %q, want %q", retrieved.Export.LocalPath, "exports/{kind}/{job_id}.jsonl")
 	}
 
-	if retrieved.Export.CloudConfig.Provider != "s3" {
-		t.Errorf("CloudConfig.Provider = %q, want %q", retrieved.Export.CloudConfig.Provider, "s3")
-	}
-
-	if retrieved.Export.CloudConfig.Bucket != "my-bucket" {
-		t.Errorf("CloudConfig.Bucket = %q, want %q", retrieved.Export.CloudConfig.Bucket, "my-bucket")
+	if retrieved.Export.PathTemplate != "exports/{kind}/{job_id}.jsonl" {
+		t.Fatalf("PathTemplate = %q, want %q", retrieved.Export.PathTemplate, "exports/{kind}/{job_id}.jsonl")
 	}
 }

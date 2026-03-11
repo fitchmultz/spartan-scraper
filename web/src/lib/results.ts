@@ -184,7 +184,7 @@ export async function loadResults(
         }
       }
       return parsed;
-    } else if (format === "xlsx" || format === "parquet") {
+    } else if (format === "xlsx") {
       // For binary formats, convert to base64 for transport
       const buffer = await response.arrayBuffer();
       const bytes = new Uint8Array(buffer);

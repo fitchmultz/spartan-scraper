@@ -1,30 +1,27 @@
 // Package scheduler provides automated export scheduling functionality.
 //
-// This file defines the ExportSchedule type and related configuration types
-// for triggering exports when jobs complete based on filter criteria.
+// Purpose:
+// - Define the 1.0 export schedule model for event-driven job-result exports.
 //
-// Export schedules are event-driven (triggered on job completion) rather than
-// time-driven like regular schedules. They allow automatic export of job
-// results to various destinations (S3, GCS, Azure, local file, webhook).
+// Responsibilities:
+// - Describe export filters, destination configuration, and retry settings.
+// - Keep the supported format/destination contract centralized for validation and UI.
 //
-// This file does NOT handle:
-// - Persistence (export_storage.go handles that)
-// - Validation (export_validation.go handles that)
-// - Trigger execution (export_trigger.go handles that)
-// - History tracking (export_history.go handles that)
+// Scope:
+//   - Types and helpers only. Persistence, validation, trigger execution, and history
+//     tracking live in separate files.
 //
-// Invariants:
-// - ExportSchedule IDs are UUIDs generated on creation
-// - Filters must specify at least one criteria (job kind, status, or tags)
-// - ExportConfig.Format must be a supported format
-// - ExportConfig.DestinationType must be a supported destination
+// Usage:
+// - Used by the scheduler, API handlers, CLI commands, and generated OpenAPI-backed UI.
+//
+// Invariants/Assumptions:
+// - ExportSchedule IDs are UUIDs generated on creation.
+// - Filters must specify at least one criteria (job kind, status, or tags).
+// - ExportConfig.Format is one of json, jsonl, md, csv, or xlsx.
+// - ExportConfig.DestinationType is either local or webhook.
 package scheduler
 
-import (
-	"time"
-
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
-)
+import "time"
 
 // ExportSchedule represents an automated export configuration that triggers
 // when jobs complete matching specified filter criteria.
@@ -66,14 +63,11 @@ type ExportFilters struct {
 
 // ExportConfig defines where and how to export job results.
 type ExportConfig struct {
-	// Format is the export format: json, jsonl, md, csv, xlsx, parquet, har, pdf
+	// Format is the export format: json, jsonl, md, csv, xlsx
 	Format string `json:"format"`
 
-	// DestinationType is the export destination: s3, gcs, azure, local, webhook
+	// DestinationType is the export destination: local or webhook
 	DestinationType string `json:"destination_type"`
-
-	// CloudConfig is the cloud storage configuration (for s3/gcs/azure destinations).
-	CloudConfig *exporter.CloudExportConfig `json:"cloud_config,omitempty"`
 
 	// LocalPath is the local file path template (for local destination).
 	// Supports variables: {job_id}, {timestamp}, {kind}, {format}
@@ -82,7 +76,7 @@ type ExportConfig struct {
 	// WebhookURL is the webhook endpoint (for webhook destination).
 	WebhookURL string `json:"webhook_url,omitempty"`
 
-	// PathTemplate is the path template with variables for cloud/local destinations.
+	// PathTemplate is the path template with variables for local destinations.
 	// Default: "exports/{kind}/{job_id}.{format}"
 	// Supported variables: {job_id}, {timestamp}, {kind}, {format}
 	PathTemplate string `json:"path_template,omitempty"`
@@ -128,18 +122,18 @@ type exportScheduleStore struct {
 
 // SupportedExportFormats returns the list of supported export formats.
 func SupportedExportFormats() []string {
-	return []string{"json", "jsonl", "md", "csv", "xlsx", "parquet", "har", "pdf"}
+	return []string{"json", "jsonl", "md", "csv", "xlsx"}
 }
 
 // SupportedDestinationTypes returns the list of supported destination types.
 func SupportedDestinationTypes() []string {
-	return []string{"s3", "gcs", "azure", "local", "webhook"}
+	return []string{"local", "webhook"}
 }
 
 // IsValidExportFormat returns true if the format is supported.
 func IsValidExportFormat(format string) bool {
 	switch format {
-	case "json", "jsonl", "md", "csv", "xlsx", "parquet", "har", "pdf":
+	case "json", "jsonl", "md", "csv", "xlsx":
 		return true
 	}
 	return false
@@ -148,17 +142,14 @@ func IsValidExportFormat(format string) bool {
 // IsValidDestinationType returns true if the destination type is supported.
 func IsValidDestinationType(dest string) bool {
 	switch dest {
-	case "s3", "gcs", "azure", "local", "webhook":
+	case "local", "webhook":
 		return true
 	}
 	return false
 }
 
-// IsCloudDestination returns true if the destination is a cloud storage type.
+// IsCloudDestination reports whether the destination is a removed legacy cloud target.
+// Balanced 1.0 does not support cloud exporters, so this always returns false.
 func IsCloudDestination(dest string) bool {
-	switch dest {
-	case "s3", "gcs", "azure":
-		return true
-	}
 	return false
 }

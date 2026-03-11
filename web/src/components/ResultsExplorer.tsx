@@ -18,7 +18,6 @@ import { EvidenceChart } from "./EvidenceChart";
 import { ClusterGraph } from "./ClusterGraph";
 import { ResultsViewer } from "./ResultsViewer";
 import { TransformPreview } from "./TransformPreview";
-import { TrafficInspector } from "./TrafficInspector";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import {
   diffResults,
@@ -39,7 +38,6 @@ import {
   buildExportFilename,
   collectTreeNodeIds,
   exportFormats,
-  extractTrafficEntries,
   filterResultItems,
   findComparableJobs,
   getExportMimeType,
@@ -84,7 +82,6 @@ interface ResultsExplorerToolbarProps {
   onChangeSearchQuery: (value: string) => void;
   onChangeStatusFilter: (value: StatusFilter) => void;
   onExport: (format: ExportFormat) => void;
-  onExportHAR: () => void;
 }
 
 interface TreeControlsProps {
@@ -163,7 +160,6 @@ function ResultsExplorerToolbar({
   onChangeSearchQuery,
   onChangeStatusFilter,
   onExport,
-  onExportHAR,
 }: ResultsExplorerToolbarProps) {
   return (
     <div className="results-explorer-toolbar">
@@ -207,9 +203,6 @@ function ResultsExplorerToolbar({
             Export {format.toUpperCase()}
           </button>
         ))}
-        <button type="button" className="secondary" onClick={onExportHAR}>
-          Export HAR
-        </button>
       </div>
     </div>
   );
@@ -490,13 +483,6 @@ export function ResultsExplorer({
     [availableJobs, jobId],
   );
 
-  const handleExportHAR = () => {
-    if (!jobId) {
-      return;
-    }
-    window.open(`/v1/jobs/${jobId}/results?format=har`, "_blank");
-  };
-
   if (!jobId) {
     return null;
   }
@@ -521,7 +507,6 @@ export function ResultsExplorer({
           onChangeSearchQuery={setSearchQuery}
           onChangeStatusFilter={setStatusFilter}
           onExport={(format) => void handleExport(format)}
-          onExportHAR={handleExportHAR}
         />
       )}
 
@@ -611,13 +596,6 @@ export function ResultsExplorer({
             onApply={(expression, language) => {
               void handleExportWithTransform(expression, language);
             }}
-          />
-        )}
-
-        {viewMode === "traffic" && (
-          <TrafficInspector
-            jobId={jobId}
-            entries={extractTrafficEntries(resultItems)}
           />
         )}
       </div>

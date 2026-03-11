@@ -40,14 +40,14 @@ func TestExportRetryConfig_GetMaxRetries(t *testing.T) {
 }
 
 func TestIsValidExportFormat(t *testing.T) {
-	validFormats := []string{"json", "jsonl", "md", "csv", "xlsx", "parquet", "har", "pdf"}
+	validFormats := []string{"json", "jsonl", "md", "csv", "xlsx"}
 	for _, format := range validFormats {
 		if !IsValidExportFormat(format) {
 			t.Errorf("IsValidExportFormat(%q) = false, want true", format)
 		}
 	}
 
-	invalidFormats := []string{"xml", "yaml", "txt", ""}
+	invalidFormats := []string{"xml", "yaml", "txt", "parquet", "har", "pdf", ""}
 	for _, format := range invalidFormats {
 		if IsValidExportFormat(format) {
 			t.Errorf("IsValidExportFormat(%q) = true, want false", format)
@@ -56,14 +56,14 @@ func TestIsValidExportFormat(t *testing.T) {
 }
 
 func TestIsValidDestinationType(t *testing.T) {
-	validDests := []string{"s3", "gcs", "azure", "local", "webhook"}
+	validDests := []string{"local", "webhook"}
 	for _, dest := range validDests {
 		if !IsValidDestinationType(dest) {
 			t.Errorf("IsValidDestinationType(%q) = false, want true", dest)
 		}
 	}
 
-	invalidDests := []string{"ftp", "sftp", "email", ""}
+	invalidDests := []string{"ftp", "sftp", "email", "s3", "gcs", "azure", ""}
 	for _, dest := range invalidDests {
 		if IsValidDestinationType(dest) {
 			t.Errorf("IsValidDestinationType(%q) = true, want false", dest)
@@ -72,14 +72,7 @@ func TestIsValidDestinationType(t *testing.T) {
 }
 
 func TestIsCloudDestination(t *testing.T) {
-	cloudDests := []string{"s3", "gcs", "azure"}
-	for _, dest := range cloudDests {
-		if !IsCloudDestination(dest) {
-			t.Errorf("IsCloudDestination(%q) = false, want true", dest)
-		}
-	}
-
-	nonCloudDests := []string{"local", "webhook", "ftp"}
+	nonCloudDests := []string{"local", "webhook", "ftp", "s3", "gcs", "azure"}
 	for _, dest := range nonCloudDests {
 		if IsCloudDestination(dest) {
 			t.Errorf("IsCloudDestination(%q) = true, want false", dest)

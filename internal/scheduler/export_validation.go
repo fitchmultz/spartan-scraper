@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 // ValidateExportSchedule validates an export schedule.
@@ -84,7 +83,7 @@ func ValidateExportConfig(config ExportConfig) error {
 	}
 
 	if !IsValidExportFormat(config.Format) {
-		return apperrors.Validation(fmt.Sprintf("unsupported export format: %s (must be one of: json, jsonl, md, csv, xlsx, parquet, har, pdf)", config.Format))
+		return apperrors.Validation(fmt.Sprintf("unsupported export format: %s (must be one of: json, jsonl, md, csv, xlsx)", config.Format))
 	}
 
 	if config.DestinationType == "" {
@@ -92,15 +91,11 @@ func ValidateExportConfig(config ExportConfig) error {
 	}
 
 	if !IsValidDestinationType(config.DestinationType) {
-		return apperrors.Validation(fmt.Sprintf("unsupported destination type: %s (must be one of: s3, gcs, azure, local, webhook)", config.DestinationType))
+		return apperrors.Validation(fmt.Sprintf("unsupported destination type: %s (must be one of: local, webhook)", config.DestinationType))
 	}
 
 	// Validate destination-specific config
 	switch config.DestinationType {
-	case "s3", "gcs", "azure":
-		if err := validateCloudConfig(config.DestinationType, config.CloudConfig); err != nil {
-			return err
-		}
 	case "local":
 		if strings.TrimSpace(config.LocalPath) == "" && strings.TrimSpace(config.PathTemplate) == "" {
 			return apperrors.Validation("local_path or path_template is required for local destination")
@@ -112,32 +107,6 @@ func ValidateExportConfig(config ExportConfig) error {
 		if err := validateWebhookURL(config.WebhookURL); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// validateCloudConfig validates cloud storage configuration.
-func validateCloudConfig(destinationType string, config *exporter.CloudExportConfig) error {
-	if config == nil {
-		return apperrors.Validation(fmt.Sprintf("cloud_config is required for %s destination", destinationType))
-	}
-
-	if config.Provider == "" {
-		return apperrors.Validation("cloud provider is required")
-	}
-
-	if !exporter.IsValidCloudProvider(config.Provider) {
-		return apperrors.Validation(fmt.Sprintf("unsupported cloud provider: %s (must be s3, gcs, or azure)", config.Provider))
-	}
-
-	if config.Bucket == "" {
-		return apperrors.Validation("cloud bucket is required")
-	}
-
-	// Validate content format if specified
-	if config.ContentFormat != "" && !IsValidExportFormat(config.ContentFormat) {
-		return apperrors.Validation(fmt.Sprintf("invalid cloud content format: %s", config.ContentFormat))
 	}
 
 	return nil

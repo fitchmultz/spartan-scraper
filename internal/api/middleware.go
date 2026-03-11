@@ -11,7 +11,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/sessions"
 )
 
 // apiKeyContextKey is the context key for storing API key info
@@ -77,62 +76,4 @@ func GetAPIKeyFromContext(ctx context.Context) (auth.APIKey, bool) {
 		return key, true
 	}
 	return auth.APIKey{}, false
-}
-
-// userIDContextKey is the context key for storing user ID
-type userIDContextKey struct{}
-
-// sessionContextKey is the context key for storing session info
-type sessionContextKey struct{}
-
-// sessionAuthMiddleware creates middleware that validates session cookies/tokens
-// for web UI authentication. It works alongside API key auth.
-func sessionAuthMiddleware(sessionStore *sessions.Store, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := getSessionToken(r)
-		if token == "" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		session, err := sessionStore.ValidateSession(r.Context(), token)
-		if err != nil {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Store user ID and session in context
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, userIDContextKey{}, session.UserID)
-		ctx = context.WithValue(ctx, sessionContextKey{}, session)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-// GetUserIDFromContext retrieves the user ID from the request context
-// Returns the user ID and true if found, empty string and false otherwise
-func GetUserIDFromContext(ctx context.Context) (string, bool) {
-	if userID, ok := ctx.Value(userIDContextKey{}).(string); ok && userID != "" {
-		return userID, true
-	}
-	return "", false
-}
-
-// requireAuthMiddleware ensures either API key or session authentication is present
-func requireAuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check for API key auth
-		if _, ok := GetAPIKeyFromContext(r.Context()); ok {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Check for session auth
-		if _, ok := GetUserIDFromContext(r.Context()); ok {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		writeError(w, r, apperrors.Permission("authentication required"))
-	})
 }

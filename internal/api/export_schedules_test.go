@@ -13,8 +13,7 @@
 // - Executed via `go test ./internal/api`.
 //
 // Invariants/Assumptions:
-//   - Cloud export schedules should receive default path and content format values
-//     on both create and update when callers omit them.
+// - Local export schedules should receive a default path template when callers omit it.
 package api
 
 import (
@@ -25,20 +24,16 @@ import (
 	"testing"
 )
 
-func TestExportScheduleCreateAndUpdateNormalizeCloudDefaults(t *testing.T) {
+func TestExportScheduleCreateAndUpdateNormalizeLocalDefaults(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	createBody := `{
-		"name": "cloud export",
+		"name": "local export",
 		"filters": {"job_kinds": ["scrape"]},
 		"export": {
 			"format": "json",
-			"destination_type": "s3",
-			"cloud_config": {
-				"provider": "s3",
-				"bucket": "portfolio-bucket"
-			}
+			"destination_type": "local"
 		}
 	}`
 
@@ -56,26 +51,19 @@ func TestExportScheduleCreateAndUpdateNormalizeCloudDefaults(t *testing.T) {
 		t.Fatalf("failed to decode create response: %v", err)
 	}
 
-	if created.Export.CloudConfig == nil {
-		t.Fatal("expected cloud config in create response")
+	if got := created.Export.PathTemplate; got != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("expected default local path template on create, got %q", got)
 	}
-	if got := created.Export.CloudConfig.Path; got != "exports/{kind}/{job_id}.{format}" {
-		t.Fatalf("expected default cloud path on create, got %q", got)
-	}
-	if got := created.Export.CloudConfig.ContentFormat; got != "json" {
-		t.Fatalf("expected default cloud content format on create, got %q", got)
+	if got := created.Export.LocalPath; got != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("expected default local path on create, got %q", got)
 	}
 
 	updateBody := `{
-		"name": "cloud export updated",
+		"name": "local export updated",
 		"filters": {"job_kinds": ["research"]},
 		"export": {
 			"format": "jsonl",
-			"destination_type": "s3",
-			"cloud_config": {
-				"provider": "s3",
-				"bucket": "portfolio-bucket"
-			}
+			"destination_type": "local"
 		}
 	}`
 
@@ -93,14 +81,11 @@ func TestExportScheduleCreateAndUpdateNormalizeCloudDefaults(t *testing.T) {
 		t.Fatalf("failed to decode update response: %v", err)
 	}
 
-	if updated.Export.CloudConfig == nil {
-		t.Fatal("expected cloud config in update response")
+	if got := updated.Export.PathTemplate; got != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("expected default local path template on update, got %q", got)
 	}
-	if got := updated.Export.CloudConfig.Path; got != "exports/{kind}/{job_id}.{format}" {
-		t.Fatalf("expected default cloud path on update, got %q", got)
-	}
-	if got := updated.Export.CloudConfig.ContentFormat; got != "jsonl" {
-		t.Fatalf("expected default cloud content format on update, got %q", got)
+	if got := updated.Export.LocalPath; got != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("expected default local path on update, got %q", got)
 	}
 }
 

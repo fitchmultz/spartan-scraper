@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,14 @@ func TestMigrationFreshDatabase(t *testing.T) {
 	}
 	if got.JobID != "test-job" {
 		t.Errorf("expected JobID test-job, got %s", got.JobID)
+	}
+
+	var version string
+	if err := s.db.QueryRow(`select value from store_metadata where key = 'storage_schema'`).Scan(&version); err != nil {
+		t.Fatalf("failed to read storage schema version: %v", err)
+	}
+	if version != balanced10StorageSchemaVersion {
+		t.Fatalf("expected storage schema %q, got %q", balanced10StorageSchemaVersion, version)
 	}
 }
 
@@ -166,6 +175,88 @@ func TestMigrationAlterFailure(t *testing.T) {
 	if err == nil {
 		t.Error("Open should return error when ALTER TABLE fails")
 	}
+}
+
+func TestOpenRejectsLegacyDatabaseWithoutStorageSchema(t *testing.T) {
+	dataDir := t.TempDir()
+	dbPath := filepath.Join(dataDir, "jobs.db")
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open failed: %v", err)
+	}
+	_, err = db.Exec(`
+		create table jobs (
+			id text primary key,
+			kind text not null,
+			status text not null,
+			created_at text not null,
+			updated_at text not null,
+			params text,
+			result_path text,
+			error text
+		);
+	`)
+	if err != nil {
+		t.Fatalf("Failed to create legacy jobs table: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("db.Close failed: %v", err)
+	}
+
+	_, err = Open(dataDir)
+	if err == nil {
+		t.Fatal("Open should reject a legacy database without storage schema metadata")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Fatalf("expected validation error, got %v", apperrors.KindOf(err))
+	}
+	if got := err.Error(); got == "" || !containsAll(got, "legacy data dir detected", "Balanced 1.0") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestOpenRejectsUnsupportedStorageSchemaVersion(t *testing.T) {
+	dataDir := t.TempDir()
+	dbPath := filepath.Join(dataDir, "jobs.db")
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open failed: %v", err)
+	}
+	_, err = db.Exec(`
+		create table store_metadata (
+			key text primary key,
+			value text not null
+		);
+		insert into store_metadata (key, value) values ('storage_schema', 'legacy-0.x');
+	`)
+	if err != nil {
+		t.Fatalf("Failed to create metadata table: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("db.Close failed: %v", err)
+	}
+
+	_, err = Open(dataDir)
+	if err == nil {
+		t.Fatal("Open should reject an unsupported storage schema version")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Fatalf("expected validation error, got %v", apperrors.KindOf(err))
+	}
+	if got := err.Error(); got == "" || !containsAll(got, "unsupported data dir schema", "legacy-0.x") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func containsAll(value string, parts ...string) bool {
+	for _, part := range parts {
+		if !strings.Contains(value, part) {
+			return false
+		}
+	}
+	return true
 }
 
 func TestParseErrorsReturnInternalKind(t *testing.T) {

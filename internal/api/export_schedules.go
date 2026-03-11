@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
@@ -290,42 +289,17 @@ func toExportScheduleResponse(schedule scheduler.ExportSchedule) ExportScheduleR
 	}
 }
 
-// CloudExportConfigResponse wraps exporter.CloudExportConfig for API responses.
-type CloudExportConfigResponse struct {
-	Provider      string `json:"provider,omitempty"`
-	Bucket        string `json:"bucket,omitempty"`
-	Path          string `json:"path,omitempty"`
-	Region        string `json:"region,omitempty"`
-	StorageClass  string `json:"storageClass,omitempty"`
-	ContentFormat string `json:"contentFormat,omitempty"`
-	ContentType   string `json:"contentType,omitempty"`
-}
-
-// ToCloudExportConfigResponse converts exporter.CloudExportConfig to response format.
-func ToCloudExportConfigResponse(cfg *exporter.CloudExportConfig) *CloudExportConfigResponse {
-	if cfg == nil {
-		return nil
-	}
-	return &CloudExportConfigResponse{
-		Provider:      cfg.Provider,
-		Bucket:        cfg.Bucket,
-		Path:          cfg.Path,
-		Region:        cfg.Region,
-		StorageClass:  cfg.StorageClass,
-		ContentFormat: cfg.ContentFormat,
-		ContentType:   cfg.ContentType,
-	}
-}
-
 func normalizeExportScheduleRequest(schedule scheduler.ExportSchedule) scheduler.ExportSchedule {
-	if schedule.Export.CloudConfig == nil {
-		return schedule
-	}
-	if schedule.Export.CloudConfig.Path == "" {
-		schedule.Export.CloudConfig.Path = "exports/{kind}/{job_id}.{format}"
-	}
-	if schedule.Export.CloudConfig.ContentFormat == "" {
-		schedule.Export.CloudConfig.ContentFormat = schedule.Export.Format
+	if schedule.Export.DestinationType == "local" {
+		if schedule.Export.PathTemplate == "" && schedule.Export.LocalPath == "" {
+			schedule.Export.PathTemplate = "exports/{kind}/{job_id}.{format}"
+		}
+		if schedule.Export.LocalPath == "" {
+			schedule.Export.LocalPath = schedule.Export.PathTemplate
+		}
+		if schedule.Export.PathTemplate == "" {
+			schedule.Export.PathTemplate = schedule.Export.LocalPath
+		}
 	}
 	return schedule
 }

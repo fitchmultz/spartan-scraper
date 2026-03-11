@@ -21,23 +21,15 @@
  * - Traffic extraction ignores result items without intercepted data arrays.
  */
 
-import type { InterceptedEntry } from "../../api";
 import type {
   CrawlResultItem,
-  CrawlResultWithTraffic,
   EvidenceItem,
   Job,
   ResultItem,
 } from "../../types";
 import type { TreeNode } from "../../lib/tree-utils";
 
-export type ViewMode =
-  | "explorer"
-  | "tree"
-  | "diff"
-  | "visualize"
-  | "transform"
-  | "traffic";
+export type ViewMode = "explorer" | "tree" | "diff" | "visualize" | "transform";
 
 export type StatusFilter = "all" | "success" | "error";
 
@@ -50,17 +42,9 @@ export const resultsExplorerViewModes: Array<{
   { id: "diff", label: "Diff" },
   { id: "visualize", label: "Visualize" },
   { id: "transform", label: "Transform" },
-  { id: "traffic", label: "Traffic" },
 ];
 
-export const exportFormats = [
-  "json",
-  "csv",
-  "md",
-  "xlsx",
-  "parquet",
-  "pdf",
-] as const;
+export const exportFormats = ["json", "jsonl", "csv", "md", "xlsx"] as const;
 
 export type ExportFormat = (typeof exportFormats)[number];
 
@@ -150,10 +134,8 @@ export function getExportMimeType(format: ExportFormat): string {
       return "text/csv";
     case "xlsx":
       return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    case "parquet":
-      return "application/octet-stream";
-    case "pdf":
-      return "application/pdf";
+    case "jsonl":
+      return "application/x-ndjson";
     default:
       return "text/markdown";
   }
@@ -167,17 +149,4 @@ export function buildExportFilename(
 ): string {
   const suffixSegment = suffix ? `-${suffix}` : "";
   return `results-${jobId}${suffixSegment}-${timestamp}.${format}`;
-}
-
-export function extractTrafficEntries(resultItems: ResultItem[]) {
-  const traffic: InterceptedEntry[] = [];
-
-  for (const item of resultItems) {
-    const crawlItem = item as CrawlResultWithTraffic;
-    if (Array.isArray(crawlItem.interceptedData)) {
-      traffic.push(...crawlItem.interceptedData);
-    }
-  }
-
-  return traffic;
 }

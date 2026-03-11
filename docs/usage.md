@@ -1,12 +1,28 @@
 # Usage
 
-Concise, feature-complete reference for public entry points.
+Balanced 1.0 narrows Spartan Scraper to a single-node, local-first workflow:
 
-## CLI (spartan)
+- scrape, crawl, and research jobs
+- auth vault and OAuth helpers
+- templates and pipeline JS
+- watches, schedules, export schedules, batches, and chains
+- REST + WebSocket + MCP
+- Web UI, CLI, and TUI
+- local artifacts, retention, backup, and restore
+- exports in `json`, `jsonl`, `csv`, `md`, and `xlsx`
 
-Binary: `./bin/spartan`
+Removed from this guide because they are no longer supported: GraphQL, plugins, feeds, replay tooling, multi-user/workspaces, browser extension, template A/B metrics, and cloud/database exporters.
 
-Global entry points:
+## CLI
+
+Binary:
+
+```bash
+./bin/spartan
+```
+
+Stable top-level commands:
+
 - `spartan scrape`
 - `spartan crawl`
 - `spartan research`
@@ -14,12 +30,9 @@ Global entry points:
 - `spartan batch`
 - `spartan chains`
 - `spartan watch`
-- `spartan feed`
-- `spartan plugin`
 - `spartan render-profiles`
 - `spartan pipeline-js`
 - `spartan templates`
-- `spartan form`
 - `spartan crawl-states`
 - `spartan export`
 - `spartan export-schedule`
@@ -28,717 +41,377 @@ Global entry points:
 - `spartan retention`
 - `spartan backup`
 - `spartan restore`
-- `spartan replay`
 - `spartan server`
 - `spartan health`
 - `spartan tui`
 - `spartan mcp`
 - `spartan version`
 
-### Capability Matrix
+### Scrape
 
-| Feature | CLI | API | Web UI | Notes |
-|---------|-----|-----|--------|-------|
-| **watch** | ✅ | ✅ | ✅ | Local scheduler daemon (`spartan watch start`) |
-| **feed monitoring** | ✅ | ✅ | ✅ | RSS/Atom feed monitoring with auto-scrape |
-| **batch** | ✅ | ✅ | ✅ | Submit up to 100 jobs at once; dual-mode (REST or direct) |
-| **chains** | ✅ | ✅ | ✅ | CLI requires `spartan server` running |
-| **retention** | ✅ | ✅ | ✅ | Automatic cleanup with configurable policies |
-| **export schedules** | ✅ | ✅ | ✅ | Auto-export on job completion |
-
-*Note: `spartan batch` CLI commands support two modes: if `spartan server` is running, they use the REST API; otherwise they operate directly against the local store. `spartan chains` CLI commands require `spartan server`.*
-
-### scrape
-
-Scrape a single URL.
-
-```
-spartan scrape --url <url> [--headless] [--playwright] [--timeout <sec>] [--wait] [--wait-timeout <sec>] [--out <path>]
+```bash
+spartan scrape --url <url> [flags]
 ```
 
-Auth options (inline, profile, or preset via `spartan auth resolve`):
+Common flags:
+
+- `--url <url>`
+- `--out <path>`
+- `--headless`
+- `--playwright`
+- `--timeout <seconds>`
 - `--auth-profile <name>`
 - `--auth-basic user:pass`
-- `--header "Key: Value"` (repeatable)
-- `--cookie "name=value"` (repeatable)
-- Login flow (headless):
-  - `--login-url <url>`
-  - `--login-user-selector <css>`
-  - `--login-pass-selector <css>`
-  - `--login-submit-selector <css>`
-  - `--login-user <user>`
-  - `--login-pass <pass>`
+- `--header "Key: Value"` repeatable
+- `--cookie "name=value"` repeatable
 
-### crawl
+Headless login flags:
 
-Depth-limited, same-host crawl.
+- `--login-url <url>`
+- `--login-user-selector <css>`
+- `--login-pass-selector <css>`
+- `--login-submit-selector <css>`
+- `--login-user <value>`
+- `--login-pass <value>`
 
-```
-spartan crawl --url <url> [--max-depth <n>] [--max-pages <n>] [--headless] [--playwright]
-             [--timeout <sec>] [--wait] [--wait-timeout <sec>] [--out <path>]
-```
+Examples:
 
-Auth flags match `scrape`.
-
-### research
-
-Multi-source evidence + summary (crawl or single-page per URL).
-
-```
-spartan research --query "<text>" --urls <url1,url2,...> [--max-depth <n>] [--max-pages <n>]
-                [--headless] [--playwright] [--timeout <sec>] [--wait] [--wait-timeout <sec>]
-                [--out <path>]
-```
-
-Auth flags match `scrape`.
-
-### render-profiles
-
-Manage render profiles that control how URLs are fetched (HTTP vs headless browser).
-
-**CLI Commands:**
-- `spartan render-profiles list` - List all profiles
-- `spartan render-profiles get <name>` - Show profile details as JSON
-- `spartan render-profiles create --name <name> --host-patterns <patterns> [flags]` - Create a new profile
-- `spartan render-profiles update <name> [flags]` - Update an existing profile
-- `spartan render-profiles delete <name>` - Delete a profile
-
-**Create/Update Flags:**
-- `--host-patterns` - Comma-separated host patterns (e.g., "example.com,*.example.com")
-- `--engine` - Force engine: http, chromedp, playwright
-- `--prefer-headless` - Skip HTTP probe and use headless
-- `--never-headless` - Force HTTP, never use headless
-- `--assume-js-heavy` - Treat all pages as JS-heavy
-- `--js-threshold` - JS-heavy threshold (0-1)
-- `--rate-limit-qps` - Rate limit QPS
-- `--rate-limit-burst` - Rate limit burst
-
-**Examples:**
 ```bash
-# Create a profile for example.com using ChromeDP
-spartan render-profiles create --name "example-chrome" --host-patterns "example.com,*.example.com" --engine chromedp
+spartan scrape --url https://example.com --out ./out/example.json
 
-# Update profile to prefer headless
-spartan render-profiles update example-chrome --prefer-headless
-
-# Delete a profile
-spartan render-profiles delete example-chrome
+spartan scrape \
+  --url https://example.com/dashboard \
+  --headless \
+  --playwright \
+  --auth-profile acme \
+  --out ./out/dashboard.json
 ```
 
-**API Endpoints:**
-- `GET /v1/render-profiles` - List all profiles
-- `POST /v1/render-profiles` - Create a profile
-- `GET /v1/render-profiles/{name}` - Get a profile
-- `PUT /v1/render-profiles/{name}` - Update a profile
-- `DELETE /v1/render-profiles/{name}` - Delete a profile
+### Crawl
 
-**Web UI:**
-Access the render profile editor in the web UI to manage profiles with a form-based interface and JSON preview.
-
-### pipeline-js
-
-Manage pipeline JavaScript scripts that run custom code on matching pages.
-
-**CLI Commands:**
-- `spartan pipeline-js list` - List all scripts
-- `spartan pipeline-js get <name>` - Show script details as JSON
-- `spartan pipeline-js create --name <name> --host-patterns <patterns> [flags]` - Create a new script
-- `spartan pipeline-js update <name> [flags]` - Update an existing script
-- `spartan pipeline-js delete <name>` - Delete a script
-
-**Create/Update Flags:**
-- `--host-patterns` - Comma-separated host patterns (required)
-- `--engine` - Target engine: chromedp, playwright
-- `--pre-nav` - JavaScript to execute before navigation
-- `--post-nav` - JavaScript to execute after navigation
-- `--selectors` - Comma-separated CSS selectors to wait for
-
-**Examples:**
 ```bash
-# Create a script that scrolls to bottom before scraping
-spartan pipeline-js create --name "scroll-bottom" --host-patterns "example.com" --pre-nav "window.scrollTo(0, document.body.scrollHeight);"
-
-# Update script with post-navigation actions
-spartan pipeline-js update scroll-bottom --post-nav "document.querySelector('.load-more').click();"
-
-# Delete a script
-spartan pipeline-js delete scroll-bottom
+spartan crawl --url <url> [flags]
 ```
 
-**API Endpoints:**
-- `GET /v1/pipeline-js` - List all scripts
-- `POST /v1/pipeline-js` - Create a script
-- `GET /v1/pipeline-js/{name}` - Get a script
-- `PUT /v1/pipeline-js/{name}` - Update a script
-- `DELETE /v1/pipeline-js/{name}` - Delete a script
+Key flags:
 
-**Web UI:**
-Access the pipeline JavaScript editor in the web UI to manage scripts with a form-based interface and JSON preview.
+- `--url <url>`
+- `--max-depth <n>`
+- `--max-pages <n>`
+- `--out <path>`
+- `--respect-robots`
+- `--headless`
+- `--playwright`
+- `--auth-profile <name>`
 
-### plugin
+Example:
 
-Manage third-party WASM plugins (stored at `DATA_DIR/plugins/`).
-
-  - `spartan plugin list` - List all installed plugins
-  - `spartan plugin install --path <dir>` - Install a plugin from a directory
-  - `spartan plugin uninstall --name <name>` - Remove an installed plugin
-  - `spartan plugin enable --name <name>` - Enable a plugin
-  - `spartan plugin disable --name <name>` - Disable a plugin
-  - `spartan plugin configure --name <name> --key <key> --value <value>` - Set a plugin configuration value
-  - `spartan plugin info --name <name>` - Show detailed plugin information
-
-Plugin directory structure:
-```
-my-plugin/
-  manifest.json     # Plugin metadata (name, version, hooks, permissions)
-  plugin.wasm       # Compiled WASM binary
-  config.json       # Optional: default configuration
+```bash
+spartan crawl \
+  --url https://example.com \
+  --max-depth 2 \
+  --max-pages 200 \
+  --out ./out/site.jsonl
 ```
 
-Manifest example:
-```json
-{
-  "name": "my-plugin",
-  "version": "1.0.0",
-  "description": "My custom plugin",
-  "author": "Developer Name",
-  "hooks": ["pre_fetch", "post_extract"],
-  "permissions": ["network"],
-  "wasm_path": "plugin.wasm",
-  "enabled": true,
-  "priority": 10
-}
+### Research
+
+```bash
+spartan research --query "<text>" --urls <url1,url2,...> [flags]
 ```
 
-Supported hooks: `pre_fetch`, `post_fetch`, `pre_extract`, `post_extract`, `pre_output`, `post_output`
+Key flags:
 
-Supported permissions: `network`, `filesystem`, `env`
+- `--query "<text>"`
+- `--urls <comma-separated urls>`
+- `--max-depth <n>`
+- `--max-pages <n>`
+- `--out <path>`
+- `--headless`
+- `--playwright`
+- `--auth-profile <name>`
 
-### auth
+Example:
 
-Persist auth profiles (stored at `DATA_DIR/auth_vault.json`).
+```bash
+spartan research \
+  --query "pricing model" \
+  --urls https://example.com,https://example.com/docs \
+  --out ./out/research.jsonl
+```
 
-  - `spartan auth list`
-  - `spartan auth set --name <profile> [auth flags...]`
-  - `spartan auth delete --name <profile>`
-  - `spartan auth resolve --url <url> [--profile <name>]`
-  - `spartan auth vault export --out <path>`
-  - `spartan auth vault import --path <path>`
-  - `spartan auth apikey generate --name <name> [--permissions read_only|read_write]`
-  - `spartan auth apikey list`
-  - `spartan auth apikey revoke --key <key>`
-  - `spartan auth session list`
-  - `spartan auth session get --id <id>`
-  - `spartan auth session delete --id <id>`
-  - `spartan auth session save --id <id> --domain <domain> --cookie <value>`
+### Auth
 
-Auth flags:
-- `--parent <name>` (repeatable)
-- `--auth-basic user:pass`
-- `--token <value>` (repeatable)
+Auth profiles live in `DATA_DIR/auth_vault.json`.
+
+Core commands:
+
+- `spartan auth list`
+- `spartan auth set --name <profile> [auth flags]`
+- `spartan auth delete --name <profile>`
+- `spartan auth resolve --url <url> [--profile <name>]`
+- `spartan auth vault export --out <path>`
+- `spartan auth vault import --path <path>`
+- `spartan auth apikey generate --name <name> [--permissions read_only|read_write]`
+- `spartan auth apikey list`
+- `spartan auth apikey revoke --key <key>`
+- `spartan auth oauth initiate --profile <name>`
+- `spartan auth oauth refresh --profile <name>`
+- `spartan auth oauth revoke --profile <name>`
+
+Profile composition flags:
+
+- `--parent <name>` repeatable
+- `--token <value>` repeatable
 - `--token-kind bearer|basic|api_key`
 - `--token-header <Header-Name>`
 - `--token-query <param>`
 - `--token-cookie <name>`
-- `--header "Key: Value"` (repeatable)
-- `--cookie "name=value"` (repeatable)
-- Login flow (headless):
-  - `--login-url <url>`
-  - `--login-user-selector <css>`
-  - `--login-pass-selector <css>`
-  - `--login-submit-selector <css>`
-  - `--login-user <user>`
-  - `--login-pass <pass>`
+- `--preset-name <name>`
+- `--preset-host <pattern>` repeatable
 
-Presets:
-- `--preset-name <name>` + `--preset-host <pattern>` (repeatable) to map host patterns to a profile.
-
-#### OAuth 2.0 Support
-
-Manage OAuth2 authentication for protected APIs. OAuth tokens and state are stored in `DATA_DIR/oauth_tokens.json` and `DATA_DIR/oauth_state.json`.
-
-**Configuration:**
-```bash
-# Show OAuth2 config for a profile
-spartan auth oauth config show --profile <name> [--show-secret] [--json]
-
-# Set OAuth2 config for a profile
-spartan auth oauth config set --profile <name> \
-  --client-id <id> \
-  --token-url <url> \
-  --authorize-url <url> \
-  [--client-secret <secret>] \
-  [--flow-type authorization_code|client_credentials|device_code] \
-  [--scope <scope>] \
-  [--use-pkce] \
-  [--redirect-uri <uri>] \
-  [--revoke-url <url>]
-
-# Clear OAuth2 config from a profile
-spartan auth oauth config clear --profile <name>
-```
-
-**OIDC Discovery:**
-```bash
-# Discover OIDC endpoints
-spartan auth oauth discover --discovery-url <url>
-spartan auth oauth discover --issuer <issuer-url>
-
-# Apply discovered endpoints to a profile
-spartan auth oauth discover --issuer <issuer-url> --apply --profile <name>
-```
-
-**OAuth2 Flow:**
-```bash
-# 1. Initiate the authorization flow (prints URL and state)
-spartan auth oauth initiate --profile <name> [--redirect-uri <uri>] [--json]
-
-# 2. After authorization, exchange the code for a token
-spartan auth oauth callback --state <state> --code <code>
-# Or parse from callback URL:
-spartan auth oauth callback --callback-url "https://example.com/callback?code=...&state=..."
-
-# 3. Check token status
-spartan auth oauth token status --profile <name>
-
-# 4. Refresh the access token when expired
-spartan auth oauth refresh --profile <name>
-
-# 5. Revoke the token when done
-spartan auth oauth revoke --profile <name> [--local-only]
-```
-
-**Token Management:**
-```bash
-# List profiles with stored OAuth tokens
-spartan auth oauth token list
-
-# Show token status (expiry, refresh capability) without revealing tokens
-spartan auth oauth token status --profile <name> [--json]
-
-# Delete stored token (no remote revoke)
-spartan auth oauth token delete --profile <name>
-```
-
-**Security Notes:**
-- Tokens are never printed by default. Use `--print-access-token` to reveal them.
-- Client secrets are redacted by default. Use `--show-secret` to reveal them.
-- State expires after 10 minutes for security.
-- PKCE is recommended for public clients and is supported for authorization_code flow.
-
-### templates
-
-List and manage extraction templates.
-
-  - `spartan templates list`
-
-Spartan supports structured extraction using templates. Templates define CSS selectors, JSON-LD extraction, Regex rules, and schema validation.
-
-**Built-in templates:**
-- `default`: Title, description, H1, meta tags.
-- `article`: Title, author, date, content, JSON-LD Article.
-- `product`: Name, price, currency, JSON-LD Product.
-
-**Usage:**
-```bash
-spartan scrape --url ... --extract-template product
-spartan scrape --url ... --extract-validate
-```
-
-**Custom Templates:**
-Create `DATA_DIR/extract_templates.json`:
-```json
-{
-  "templates": [
-    {
-      "name": "custom-blog",
-      "selectors": [
-        {"name": "title", "selector": "h1.entry-title", "attr": "text", "trim": true},
-        {"name": "author", "selector": ".author-name", "attr": "text"}
-      ],
-      "normalize": {
-        "titleField": "title"
-      }
-    }
-  ]
-}
-```
-
-### Template Performance & A/B Testing
-
-Monitor template accuracy and run A/B tests to optimize extraction quality.
-
-**Web UI:**
-Navigate to the "Templates Insights" section to view performance metrics and manage A/B tests.
-
-**Template Performance:**
-- View success rates, field coverage, and extraction times per template
-- Metrics are aggregated hourly and retained for 7 days
-- Compare templates to identify the best performing extraction strategy
-
-**A/B Testing:**
-Create experiments comparing two templates:
-- **Baseline**: The current template
-- **Variant**: The new template to test
-- **Allocation**: Traffic split between templates (e.g., 50/50)
-- **Success Criteria**: Minimum improvement threshold and required field coverage
-- **Sample Size**: Minimum samples before declaring a winner
-- **Confidence Level**: Statistical significance threshold (90%, 95%, 99%)
-
-**Test Lifecycle:**
-1. **Pending**: Test created but not started
-2. **Running**: Actively routing traffic to both templates
-3. **Paused**: Temporarily stopped
-4. **Completed**: Winner selected or test ended
-
-**API Endpoints:**
-- `GET /v1/template-metrics` - Retrieve hourly performance metrics
-- `GET /v1/template-comparison` - Compare two templates with statistical analysis
-- `GET /v1/template-ab-tests` - List all A/B tests
-- `POST /v1/template-ab-tests` - Create a new A/B test
-- `POST /v1/template-ab-tests/{id}/start` - Start a test
-- `POST /v1/template-ab-tests/{id}/stop` - Stop a test
-- `GET /v1/template-ab-tests/{id}/results` - Get test results
-- `POST /v1/template-ab-tests/{id}/auto-select` - Auto-select the winning template
-
-**Best Practices:**
-- Run tests for at least 100 samples per variant before making decisions
-- Use 95% confidence level for production decisions
-- Monitor field coverage, not just success rates
-- Consider extraction time when comparing templates
-
-### AI-Powered Extraction
-
-Extract structured data from HTML using LLM (Large Language Model) providers. This feature enables natural language extraction without writing CSS selectors.
-
-**Supported Providers:**
-- **OpenAI** (GPT-4o-mini, GPT-4, etc.)
-- **Anthropic** (Claude 3 Haiku, Sonnet, etc.)
-- **Ollama** (local LLMs like Llama 3.1)
-
-**Configuration** (`.env`):
-```
-# AI provider: openai | anthropic | ollama
-AI_PROVIDER=openai
-# API key for cloud providers
-AI_API_KEY=sk-...
-# Optional: defaults per provider
-AI_MODEL=gpt-4o-mini
-# Timeout in seconds (5-300)
-AI_TIMEOUT_SECONDS=60
-AI_MAX_TOKENS=4096
-# 0.0-1.0 (lower = more consistent)
-AI_TEMPERATURE=0.1
-# For local Ollama
-OLLAMA_URL=http://localhost:11434
-```
-
-**CLI Usage:**
-```bash
-# Natural language extraction
-spartan scrape --url https://example.com --ai-extract --ai-prompt "extract all product names and prices"
-
-# Schema-guided extraction with specific fields
-spartan crawl --url https://example.com --ai-extract --ai-mode schema_guided --ai-fields "title,price,rating"
-```
-
-**API Usage:**
-```bash
-# Preview extraction without creating a job
-curl -sS -X POST "http://localhost:8741/v1/extract/ai-preview" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com",
-    "html": "<html>...</html>",
-    "mode": "natural_language",
-    "prompt": "Extract all product names and prices",
-    "fields": ["name", "price"]
-  }'
-```
-
-**Extraction Modes:**
-- `natural_language`: Describe what to extract in plain English
-- `schema_guided`: Provide example field names to guide extraction
-
-**Features:**
-- Automatic HTML cleaning (removes scripts, styles, comments)
-- Content-based caching (24h TTL) to reduce API costs
-- Template extraction continues even if the AI enhancement step fails
-- Token usage tracking
-- Confidence scores per extraction
-
-### AI-Powered Template Generation
-
-Generate extraction templates automatically using AI. This feature analyzes a web page and creates CSS selectors based on your description.
-
-**Web UI:**
-1. Navigate to the "Templates Insights" section
-2. Click the "Generate with AI" button
-3. Enter the target URL and describe what data to extract
-4. Optionally provide sample field names to guide the AI
-5. Toggle "Use headless browser" for JavaScript-rendered content
-6. Click "Generate Template" and review the results
-7. Enter a name for the template and click "Save Template"
-
-**API Usage:**
-```bash
-# Generate a template from a URL
-curl -sS -X POST "http://localhost:8741/v1/extract/ai-template-generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com/products",
-    "description": "Extract product name, price, and rating",
-    "sample_fields": ["name", "price", "rating"],
-    "headless": true
-  }'
-```
-
-**Cost and Limit Notes:**
-- Template generation uses AI provider tokens (costs apply based on your provider)
-- Each generation request fetches and analyzes the target page
-- Consider using `headless: true` for JavaScript-heavy sites (increases processing time)
-- Generated templates may require refinement for complex pages
-- Use the Visual Selector Builder to edit templates after generation
-
-### crawl-states
-
-Inspect and manage incremental crawl states (ETags/Last-Modified tracking).
-
-```
-spartan crawl-states list [--limit <n>]
-spartan crawl-states delete --url <url>
-spartan crawl-states clear
-```
-
-### Render Profiles
-
-List configured render profiles:
-- `spartan render-profiles list`
-
-To customize rendering behavior per site (e.g., forcing headless, increasing timeouts, blocking resources), create a `render_profiles.json` in your `DATA_DIR` (default `.data`).
-
-**Schema example (`.data/render_profiles.json`):**
-
-```json
-{
-  "profiles": [
-    {
-      "name": "complex-spa",
-      "hostPatterns": ["*.example-spa.com", "app.example.com"],
-      "forceEngine": "chromedp",
-      "wait": {
-        "mode": "network_idle",
-        "networkIdleQuietMs": 500
-      },
-      "block": {
-        "resourceTypes": ["image", "font", "media"]
-      }
-    },
-    {
-      "name": "slow-loader",
-      "hostPatterns": ["slow.com"],
-      "timeouts": {
-        "maxRenderMs": 60000
-      },
-      "preferHeadless": true
-    }
-  ]
-}
-```
-
-### Pipeline hooks
-
-Optional pipeline flags (repeatable):
-- `--pre-processor <name>`
-- `--post-processor <name>`
-- `--transformer <name>`
-
-These map to the standardized plugin interface in `internal/pipeline`.
-
-### Data Transformation
-
-Spartan supports transforming extracted data using **JMESPath** and **JSONata** query languages. These are useful for reshaping, filtering, and aggregating scraped data without writing custom code.
-
-**When to use each:**
-
-- **JMESPath**: Simpler syntax, great for projections, filtering, and basic transformations. Use when you need to extract nested fields or filter arrays.
-- **JSONata**: More powerful, supports complex aggregations, calculations, and custom functions. Use when you need to compute values, group data, or perform conditional logic.
-
-**JMESPath Examples:**
+Examples:
 
 ```bash
-# Extract just the titles from a crawl
-spartan scrape --url https://example.com --transformer 'jmespath:{title: title, url: url}'
-
-# Filter to only items with a specific field
-spartan crawl --url https://example.com --transformer 'jmespath:items[?status == `active`]'
+spartan auth set --name acme --auth-basic user:pass --header "X-API-Key: token"
+spartan auth resolve --url https://example.com --profile acme
+spartan auth vault export --out ./out/auth_vault.json
 ```
 
-Common JMESPath patterns:
-- Projection: `{name: name, price: price}` - Select specific fields
-- Filtering: `items[?price > 100]` - Filter arrays by condition
-- Slicing: `items[0:10]` - Get first 10 items
-- Sorting: `sort_by(items, &price)` - Sort by field
-- Counting: `length(items)` - Count array items
+### Templates and pipeline JS
 
-**JSONata Examples:**
+Template commands:
 
-```bash
-# Calculate total price with tax
-spartan scrape --url https://example.com --transformer 'jsonata:{"item": name, "total": price * 1.08}'
+- `spartan templates list`
+- `spartan templates get <name>`
+- `spartan templates create --name <name> --file <path>`
+- `spartan templates update <name> --file <path>`
+- `spartan templates delete <name>`
 
-# Filter and transform in one expression
-spartan crawl --url https://example.com --transformer 'jsonata:items[price > 100].{"name": name, "cost": price}'
-```
+Pipeline JS commands:
 
-Common JSONata patterns:
-- Projection with computed fields: `{"name": name, "total": price * quantity}`
-- Conditional logic: `{"status": price > 100 ? "premium" : "standard"}`
-- Aggregation: `$sum(items.price)` - Sum all prices
-- Grouping: `items{category: $count($)}` - Count by category
-- Array mapping: `items.{"title": title, "url": link}`
-
-**API Usage:**
-
-Validate an expression before using:
-```bash
-curl -sS -X POST "http://localhost:8741/v1/transform/validate" \
-  -H "Content-Type: application/json" \
-  -d '{"expression":"{title: title, url: url}","language":"jmespath"}'
-```
-
-Preview transformation on job results:
-```bash
-curl -sS -X POST "http://localhost:8741/v1/jobs/abc123/preview-transform" \
-  -H "Content-Type: application/json" \
-  -d '{"expression":"items[?price > 100]","language":"jmespath","limit":5}'
-```
-
-**Web UI:**
-
-In the Results Explorer, switch to the "Transform" tab to:
-1. Enter a JMESPath or JSONata expression
-2. See real-time validation feedback
-3. Preview transformed results before exporting
-
-### JS per-target scripts (headless)
-
-List configured pipeline JavaScript scripts:
 - `spartan pipeline-js list`
+- `spartan pipeline-js get <name>`
+- `spartan pipeline-js create --name <name> [flags]`
+- `spartan pipeline-js update <name> [flags]`
+- `spartan pipeline-js delete <name>`
 
-Place `pipeline_js.json` in your `DATA_DIR` (default `.data`):
+Render profile commands:
 
-```json
-{
-  "scripts": [
-    {
-      "name": "spa-boost",
-      "hostPatterns": ["*.example.com"],
-      "engine": "chromedp",
-      "preNav": "window.localStorage.setItem('exp','1')",
-      "postNav": "document.body.click()",
-      "selectors": ["#root"]
-    }
-  ]
-}
+- `spartan render-profiles list`
+- `spartan render-profiles get <name>`
+- `spartan render-profiles create --name <name> --host-patterns <patterns> [flags]`
+- `spartan render-profiles update <name> [flags]`
+- `spartan render-profiles delete <name>`
+
+### Jobs
+
+- `spartan jobs list`
+- `spartan jobs get <id>`
+- `spartan jobs cancel <id>`
+- `spartan jobs delete <id>`
+
+### Batch jobs
+
+- `spartan batch submit scrape --file <csv-or-json>`
+- `spartan batch submit crawl --file <csv-or-json>`
+- `spartan batch submit research --file <json>`
+- `spartan batch status <batch-id> [--watch]`
+- `spartan batch cancel <batch-id>`
+
+### Chains
+
+- `spartan chains list`
+- `spartan chains get <chain-id>`
+- `spartan chains create --file <path>`
+- `spartan chains submit <chain-id>`
+- `spartan chains delete <chain-id>`
+
+### Watches
+
+- `spartan watch add --url <url> [flags]`
+- `spartan watch list`
+- `spartan watch get <id>`
+- `spartan watch update <id> [flags]`
+- `spartan watch delete <id>`
+- `spartan watch check <id>`
+- `spartan watch start`
+
+### Schedules
+
+- `spartan schedule add --kind <scrape|crawl|research> --interval <seconds> [job flags]`
+- `spartan schedule list`
+- `spartan schedule get --id <id>`
+- `spartan schedule delete --id <id>`
+- `spartan schedule enable --id <id>`
+- `spartan schedule disable --id <id>`
+
+Example:
+
+```bash
+spartan schedule add --kind scrape --interval 3600 --url https://example.com
 ```
 
-### export
+### Export
 
-Export stored job results.
+Supported formats:
 
-```
-spartan export --job-id <id> --format <json|jsonl|md|csv> [--out <path>]
-```
+- `json`
+- `jsonl`
+- `csv`
+- `md`
+- `xlsx`
 
-### schedule
+Direct export:
 
-Recurring jobs (stored at `DATA_DIR/schedules.json`).
-
-```
-spartan schedule add --kind <scrape|crawl|research> --interval <seconds> [job flags...]
-spartan schedule list
-spartan schedule delete --id <schedule-id>
+```bash
+spartan export --job-id <id> --format <json|jsonl|csv|md|xlsx> --out <path>
 ```
 
-### jobs
+Examples:
 
-Manage background jobs.
-
-```
-spartan jobs list [--limit <n>] [--offset <n>] [--status <queued|running|succeeded|failed|canceled>]
-spartan jobs get --id <id>
-spartan jobs cancel --id <id>
+```bash
+spartan export --job-id 123 --format jsonl --out ./out/results.jsonl
+spartan export --job-id 123 --format md --out ./out/report.md
 ```
 
-### backup
+### Export schedules
 
-Create and inspect local backup archives for repository runtime data.
+Supported destinations:
 
+- `local`
+- `webhook`
+
+Commands:
+
+- `spartan export-schedule list`
+- `spartan export-schedule add [flags]`
+- `spartan export-schedule get --id <id>`
+- `spartan export-schedule delete --id <id>`
+- `spartan export-schedule enable --id <id>`
+- `spartan export-schedule disable --id <id>`
+- `spartan export-schedule history --id <id>`
+
+Example:
+
+```bash
+spartan export-schedule add \
+  --name "Daily Crawl Exports" \
+  --filter-kinds crawl \
+  --format jsonl \
+  --destination local \
+  --local-path "exports/{kind}/{job_id}.jsonl"
 ```
-spartan backup create [--output <dir>|-o <dir>] [--exclude-jobs]
-spartan backup list [--dir <dir>]
-```
 
-### restore
+### Retention, backup, and restore
 
-Restore runtime data from a backup archive.
+Retention:
 
-```
-spartan restore --from <archive.tar.gz> [--dry-run] [--force]
-```
+- `spartan retention status`
+- `spartan retention cleanup [--dry-run]`
 
-### replay
+Backup and restore:
 
-Replay captured network traffic from a prior job against another target.
+- `spartan backup create [-o <dir>] [--exclude-jobs]`
+- `spartan backup list [--dir <dir>]`
+- `spartan restore --from <archive.tar.gz> [--dry-run] [--force]`
 
-```
-spartan replay --job-id <id> --target-url <url> [--compare] [--output <table|json>]
-```
+### Service entrypoints
 
-### version
-
-Print build and version metadata.
-
-```
+```bash
+spartan server
+spartan health
+spartan tui
+spartan mcp
 spartan version
 ```
 
-### server
+## Web UI
 
-Start API + workers + scheduler:
+Run:
 
-```
-spartan server
-```
-
-### health
-
-Check system health (database connection, etc).
-
-```
-spartan health
+```bash
+./bin/spartan server
+make web-dev
 ```
 
-### tui
+Default local URL:
 
-Terminal UI (job list + status):
-
-```
-spartan tui [--smoke]
+```text
+http://localhost:5173
 ```
 
-`--smoke` renders a single frame and exits (CI smoke test).
+Balanced 1.0 routes:
 
-### mcp
+- `/jobs`
+- `/jobs/new`
+- `/jobs/:id`
+- `/templates`
+- `/automation`
+- `/settings`
 
-Run MCP server over stdio (JSON-RPC line protocol):
+The UI only exposes retained product areas. Deleted surfaces are not available behind feature flags.
 
+## REST API
+
+Base URL defaults to:
+
+```text
+http://127.0.0.1:8741
 ```
+
+The canonical contract is [`api/openapi.yaml`](../api/openapi.yaml). Generate the web client with:
+
+```bash
+make generate
+```
+
+Important endpoint groups:
+
+- `/healthz`
+- `/v1/scrape`
+- `/v1/crawl`
+- `/v1/research`
+- `/v1/jobs`
+- `/v1/jobs/{id}`
+- `/v1/jobs/{id}/results`
+- `/v1/jobs/batch/*`
+- `/v1/chains*`
+- `/v1/watch*`
+- `/v1/schedules*`
+- `/v1/export-schedules*`
+- `/v1/webhooks/deliveries*`
+- `/v1/templates*`
+- `/v1/render-profiles*`
+- `/v1/pipeline-js*`
+- `/v1/auth/profiles*`
+- `/v1/auth/import`
+- `/v1/auth/export`
+- `/v1/auth/oauth/*`
+- `/v1/ws`
+
+When the server binds to a non-loopback address, API key auth is enforced automatically.
+
+### WebSocket
+
+`/v1/ws` provides live job and manager events.
+
+Notes:
+
+- browser-originated WebSocket upgrades are accepted only from loopback origins
+- non-browser clients without an `Origin` header are supported
+- browsers cannot set custom headers during the upgrade, so remote browser access should be fronted by a trusted deployment strategy
+
+## MCP
+
+Run the MCP server over stdio:
+
+```bash
 spartan mcp
 ```
 
-Tools:
+Core tools:
+
 - `scrape_page`
 - `crawl_site`
 - `research`
@@ -748,805 +421,52 @@ Tools:
 - `job_cancel`
 - `job_export`
 
-Example:
-```
+Smoke example:
+
+```bash
 printf '{"id":1,"method":"tools/list"}\n' | spartan mcp
 ```
 
-### watch
+## Data directory
 
-Monitor URLs for content changes with optional CSS selectors, webhooks, and visual diff.
+Default runtime data lives under `.data`.
 
-**Commands:**
-- `spartan watch add --url <url> [--selector <css>] [--interval <seconds>]` - Create a watch
-- `spartan watch list` - List all watches
-- `spartan watch check <id>` - Manually check a watch
-- `spartan watch delete <id>` - Delete a watch
-- `spartan watch start` - Start the watch scheduler daemon
+Important files and directories:
 
-**Flags:**
-- `--url` - URL to monitor (required for add)
-- `--selector` - CSS selector for targeted monitoring
-- `--interval` - Check interval in seconds (default: 3600, min: 60)
-- `--diff-format` - Diff format: unified, html-side-by-side, html-inline
-- `--webhook` - Webhook URL for change notifications
-- `--webhook-secret` - Secret for webhook signature verification
-- `--headless` - Use headless browser
-- `--playwright` - Use Playwright instead of Chromedp
-- `--extract` - Extraction mode: `html` or `text`
+- `.data/jobs.db`
+- `.data/jobs/<job-id>/`
+- `.data/auth_vault.json`
+- `.data/render_profiles.json`
+- `.data/extract_templates.json`
+- `.data/pipeline_js.json`
 
-**Examples:**
-```bash
-# Watch a URL for changes every hour
-spartan watch add --url https://example.com --interval 3600
+## Storage reset policy
 
-# Watch a specific element with webhook notification
-spartan watch add --url https://example.com --selector "#price" \
-  --webhook https://hooks.slack.com/... --webhook-secret mysecret
+Balanced 1.0 is a hard storage cutover.
 
-# Start the scheduler daemon (runs watches on schedule)
-spartan watch start
-```
+- New data directories are initialized automatically.
+- Existing pre-cutover databases are rejected if they do not carry the Balanced 1.0 storage schema marker.
+- The supported path forward is to back up the old data directory and reset to a new one.
 
-**State:** Watches are stored in `DATA_DIR/watches.json`. The scheduler runs as a daemon when `spartan watch start` is invoked.
+This is deliberate: the project no longer attempts to open legacy layouts under the reduced 1.0 product boundary.
 
-### batch
+## Local CI
 
-Submit and manage batch jobs (scrape, crawl, or research) in bulk.
-
-**Commands:**
-- `spartan batch submit <scrape|crawl|research> [options]` - Submit a batch
-- `spartan batch status <batch-id> [--watch]` - Get batch status
-- `spartan batch cancel <batch-id>` - Cancel a batch and all its jobs
-
-**Common Options:**
-- `--file <path>` - Path to CSV or JSON file containing URLs
-- `--urls <list>` - Comma-separated list of URLs
-- `--headless` - Use headless browser
-- `--playwright` - Use Playwright instead of Chromedp
-- `--wait-completion` - Wait for batch completion
-- `--wait-timeout-secs <n>` - Max wait time in seconds (0 = no timeout)
-
-**Scrape-specific:**
-- `--extract-template <name>` - Extraction template name
-- `--method <GET|POST|...>` - HTTP method
-- `--body <data>` - Request body (use @file to read from file)
-
-**Crawl-specific:**
-- `--max-depth <n>` - Maximum crawl depth (default: 3)
-- `--max-pages <n>` - Maximum pages to crawl (default: 100)
-
-**Research-specific:**
-- `--query <text>` - Research query (required)
-
-**File Formats:**
-- CSV: `url,method,body,contentType` (headers optional)
-- JSON: `[{"url": "...", "method": "GET", ...}]`
-
-**Examples:**
-```bash
-# Submit scrape batch from CSV
-spartan batch submit scrape --file urls.csv --headless
-
-# Submit crawl batch with depth limit
-spartan batch submit crawl --file sites.json --max-depth 2
-
-# Submit research batch
-spartan batch submit research --urls https://a.com,https://b.com --query "pricing"
-
-# Check status with live updates
-spartan batch status <batch-id> --watch
-```
-
-**Limits:** Maximum 100 jobs per batch. The batch command works in dual-mode: if `spartan server` is running, it uses the REST API; otherwise it runs directly against the local store.
-
-### chains
-
-Manage job chains (DAGs of dependent jobs).
-
-**Commands:**
-- `spartan chains list` - List all chains
-- `spartan chains get <chain-id>` - Get chain details
-- `spartan chains create --file <path>` - Create a chain from JSON
-- `spartan chains submit <chain-id> [--overrides <path>]` - Submit/instantiate a chain
-- `spartan chains delete <chain-id>` - Delete a chain
-
-**Chain Definition JSON Format:**
-```json
-{
-  "name": "My Chain",
-  "description": "Example chain",
-  "definition": {
-    "nodes": [
-      {
-        "id": "step1",
-        "kind": "scrape",
-        "params": { "url": "https://example.com" },
-        "metadata": { "name": "Homepage" }
-      },
-      {
-        "id": "step2",
-        "kind": "crawl",
-        "params": { "url": "https://example.com/docs", "maxDepth": 2 },
-        "metadata": { "name": "Documentation" }
-      }
-    ],
-    "edges": [
-      { "from": "step1", "to": "step2" }
-    ]
-  }
-}
-```
-
-**Examples:**
-```bash
-# Create a chain from file
-spartan chains create --file ./my-chain.json
-
-# Create from stdin
-cat chain.json | spartan chains create
-
-# Submit a chain (creates jobs)
-spartan chains submit <chain-id>
-
-# Submit with parameter overrides
-spartan chains submit <chain-id> --overrides ./overrides.json
-```
-
-**Note:** The chains CLI requires `spartan server` to be running, as it calls the local REST API.
-
-### export-schedule
-
-Manage automated export schedules for job results.
-
-**Commands:**
-- `spartan export-schedule list` - List all schedules
-- `spartan export-schedule add [flags]` - Add a new schedule
-- `spartan export-schedule get --id <id>` - Get schedule details
-- `spartan export-schedule delete --id <id>` - Delete a schedule
-- `spartan export-schedule enable --id <id>` - Enable a schedule
-- `spartan export-schedule disable --id <id>` - Disable a schedule
-- `spartan export-schedule history --id <id>` - View export history
-
-**Examples:**
-```bash
-# Export crawl jobs to S3
-spartan export-schedule add \
-  --name "Crawl to S3" \
-  --filter-kinds crawl \
-  --format jsonl \
-  --destination s3 \
-  --cloud-bucket my-bucket \
-  --cloud-region us-east-1
-
-# Export failed jobs via webhook
-spartan export-schedule add \
-  --name "Failed Job Alerts" \
-  --filter-status failed \
-  --format json \
-  --destination webhook \
-  --webhook-url https://example.com/webhook
-```
-
-### feed
-
-Monitor RSS/Atom feeds and automatically create scrape jobs for new items.
-
-**Commands:**
-- `spartan feed add --url <url> [options]` - Add a feed
-- `spartan feed list` - List all feeds
-- `spartan feed get <id>` - Get feed details
-- `spartan feed update <id> [options]` - Update a feed
-- `spartan feed delete <id>` - Delete a feed
-- `spartan feed check <id>` - Manually check a feed
-- `spartan feed items <id>` - List seen items
-- `spartan feed start` - Start the feed scheduler
-
-**Examples:**
-```bash
-# Add an RSS feed
-spartan feed add --url https://news.ycombinator.com/rss --interval 1800
-
-# Add with auto-scrape disabled
-spartan feed add --url https://example.com/feed.atom --type atom --auto-scrape=false
-```
-
-### retention
-
-Manage data retention and cleanup policies.
-
-**Commands:**
-- `spartan retention status` - Show retention configuration
-- `spartan retention cleanup [--dry-run]` - Run cleanup
-
-**Options:**
-- `--dry-run` - Preview what would be deleted
-- `--force` - Run even if retention is disabled
-- `--older-than=<days>` - Override age threshold
-- `--kind=<kind>` - Only cleanup specific job kind
-
-See [Data Retention](#data-retention) section for environment variables and API details.
-
-## API
-
-Base URL: `http://${BIND_ADDR}:${PORT}` (defaults to `http://127.0.0.1:8741`).
-
-Note: if you set `BIND_ADDR=0.0.0.0` (bind all interfaces), clients should connect via
-`http://127.0.0.1:${PORT}` locally or via the machine's LAN IP/hostname from other devices.
-When `BIND_ADDR` is non-localhost, API key auth is auto-enforced even if `API_AUTH_ENABLED=false`.
-
-Endpoints:
-- `GET /healthz`
-- `GET /v1/auth/profiles`
-- `PUT /v1/auth/profiles/{name}`
-- `DELETE /v1/auth/profiles/{name}`
-- `POST /v1/auth/import`
-- `POST /v1/auth/export`
-- `POST /v1/scrape`
-- `POST /v1/crawl`
-- `POST /v1/research`
-- `GET /v1/jobs`
-- `GET /v1/jobs/{id}`
-- `DELETE /v1/jobs/{id}`
-- `GET /v1/jobs/{id}/results`
-- `GET /v1/schedules`
-- `POST /v1/schedules`
-- `DELETE /v1/schedules/{id}`
-- `GET /v1/templates`
-- `GET /v1/crawl-states`
-- `POST /v1/extract/ai-preview`
-- `POST /v1/extract/ai-template-generate`
-
-OpenAPI: `api/openapi.yaml`
-
-### Example (scrape)
-
-```
-curl -sS -X POST "http://localhost:8741/v1/scrape" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com","headless":false,"playwright":false,"timeoutSeconds":30}'
-```
-
-### WebSocket: /v1/ws
-
-Real-time job events and metrics via WebSocket. The server broadcasts job lifecycle events and periodic metrics updates.
-
-**Connection:**
-```bash
-# Using wscat (npm install -g wscat)
-npx wscat -c ws://localhost:8741/v1/ws
-
-# Or with headers (when API auth is enabled)
-npx wscat -c ws://localhost:8741/v1/ws -H "X-API-Key: your-api-key"
-```
-
-**Message Envelope:**
-```json
-{
-  "type": "job_created|job_started|job_status_changed|job_completed|metrics|manager_status",
-  "timestamp": 1704067200,
-  "payload": { ... }
-}
-```
-
-**Client → Server Messages:**
-```json
-// Subscribe to job events
-{"type": "subscribe_jobs"}
-
-// Unsubscribe from job events
-{"type": "unsubscribe_jobs"}
-
-// Pong response to server ping
-{"type": "pong"}
-```
-
-**Server → Client Messages:**
-
-Job events:
-```json
-{
-  "type": "job_created",
-  "timestamp": 1704067200,
-  "payload": {
-    "jobId": "abc123",
-    "kind": "scrape",
-    "status": "queued",
-    "updatedAt": 1704067200
-  }
-}
-```
-
-Metrics (broadcast every 5 seconds):
-```json
-{
-  "type": "metrics",
-  "timestamp": 1704067200,
-  "payload": {
-    "requestsPerSec": 10.5,
-    "successRate": 0.98,
-    "avgResponseTime": 250.5,
-    "activeRequests": 3,
-    "totalRequests": 1500
-  }
-}
-```
-
-Manager status:
-```json
-{
-  "type": "manager_status",
-  "timestamp": 1704067200,
-  "payload": {
-    "queuedJobs": 5,
-    "activeJobs": 2
-  }
-}
-```
-
-**Authentication and Origin Policy:**
-- When API auth is enforced (`API_AUTH_ENABLED=true`), clients must include the `X-API-Key` header during the WebSocket upgrade.
-- Browser-originated WebSocket upgrades are accepted only from loopback origins (`localhost`, `127.0.0.1`, `::1`).
-- Non-browser clients that do not send an `Origin` header are still supported.
-- **Note:** Browsers cannot set custom headers on WebSocket connections. For browser-based clients, `/v1/ws` is intended for local usage unless you deploy an alternate browser-compatible auth strategy (for example, session cookies behind a trusted proxy).
-
-See `api/openapi.yaml` for the canonical message schema definitions.
-
-### GraphQL: /graphql (+ /graphql/playground)
-
-**Important:** GraphQL is implemented in the server but is **NOT** represented in the OpenAPI contract. Generated REST clients (from OpenAPI) will not include GraphQL operations.
-
-**Endpoints:**
-- `POST /graphql` - GraphQL query/mutation endpoint
-- `GET /graphql/playground` - Interactive GraphQL IDE
-
-**Example Queries:**
-
-List jobs with pagination:
-```bash
-curl -sS -X POST "http://localhost:8741/graphql" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { jobs(first: 10) { edges { node { id kind status createdAt } } pageInfo { hasNextPage totalCount } } }"
-  }'
-```
-
-Get a specific job:
-```bash
-curl -sS -X POST "http://localhost:8741/graphql" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { job(id: \"abc123\") { id kind status params error } }"
-  }'
-```
-
-Create a job:
-```bash
-curl -sS -X POST "http://localhost:8741/graphql" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createJob(input: { kind: SCRAPE, params: { url: \"https://example.com\" } }) { id kind status } }"
-  }'
-```
-
-**Supported Operations:**
-
-Queries:
-- `job(id: ID!)` - Get a job by ID
-- `jobs(filter: JobFilter, first: Int, after: String, last: Int, before: String)` - List jobs with pagination
-- `chain(id: ID!)` - Get a chain by ID
-- `chains` - List all chains
-- `batch(id: ID!)` - Get a batch by ID
-- `batches` - List all batches
-- `crawlState(url: String!)` - Get crawl state for URL
-- `crawlStates(first: Int, after: String, last: Int, before: String)` - List crawl states
-- `metrics` - Get current metrics snapshot
-
-Mutations:
-- `createJob(input: CreateJobInput!)` - Create a new job
-- `cancelJob(id: ID!)` - Cancel a job
-- `deleteJob(id: ID!, force: Boolean)` - Delete a job
-- `createChain(input: CreateChainInput!)` - Create a chain
-- `deleteChain(id: ID!)` - Delete a chain
-- `deleteBatch(id: ID!)` - Delete a batch
-- `deleteCrawlState(url: String!)` - Delete crawl state
-
-Subscriptions (experimental):
-- `jobStatusChanged(jobId: ID)` - Subscribe to job status changes
-- `jobCompleted(jobId: ID)` - Subscribe to job completion
-- `metricsUpdated` - Subscribe to metrics updates
-
-**Note on Subscriptions:** Subscription support is experimental and transport-dependent. For reliable real-time job updates, use the WebSocket endpoint (`/v1/ws`) instead.
-
-## Web UI
-
-Dev server:
-```
-make web-dev
-```
-
-The UI connects to the API server (same `PORT`).
-
-Preview the production build (after `make build`):
-```
-cd web && pnpm exec vite preview --host 127.0.0.1 --port 4173
-```
-
-### Export Schedules
-
-The Web UI provides a complete interface for managing automated export schedules. Export schedules automatically export job results when jobs complete matching specified filter criteria.
-
-**Features:**
-- **List View**: See all configured export schedules with status, filters, destination, and format
-- **Create/Edit**: Configure new export schedules with name, filters, destination, and retry settings
-- **Enable/Disable**: Toggle schedules on/off directly from the list
-- **Delete**: Remove schedules with confirmation
-- **History**: View export execution history per schedule with status, timestamps, and stats
-
-**Filter Criteria:**
-- Job kinds (scrape, crawl, research)
-- Job status (completed, succeeded, failed, canceled)
-- Tags (all must match)
-- Has results (only jobs with non-empty results)
-
-**Destination Types:**
-- **Local File**: Save exports to local filesystem path
-- **Webhook**: POST export data to a webhook URL
-- **Cloud Storage**: S3, GCS, or Azure Blob Storage (credentials via environment/IAM)
-
-**Path Templates:**
-Use variables in path templates: `{job_id}`, `{timestamp}`, `{kind}`, `{format}`
-
-Example: `exports/{kind}/{job_id}-{timestamp}.{format}`
-
-**CLI Parity:**
-The Web UI mirrors the functionality of:
-```
-spartan export-schedule list
-spartan export-schedule add --name "..." ...
-spartan export-schedule get --id "..."
-spartan export-schedule delete --id "..."
-spartan export-schedule history --id "..."
-```
-
-## Feed Monitoring
-
-Monitor RSS/Atom feeds and automatically create scrape jobs for new items.
-
-### CLI
-
-Core feed commands mirror the `feed` section above:
-- `spartan feed add --url <url> [--type rss|atom|auto] [--interval <seconds>] [--auto-scrape]`
-- `spartan feed list [--all]`
-- `spartan feed get <id>`
-- `spartan feed update <id> [options]`
-- `spartan feed delete <id>`
-- `spartan feed check <id>`
-- `spartan feed items <id>`
-- `spartan feed start`
-
-### Web UI
-
-The Feed Manager section provides a visual interface for:
-
-1. **Viewing feeds** - See all configured feeds with status, last check time, and error state
-2. **Adding feeds** - Enter URL, select type (auto/rss/atom), set check interval
-3. **Editing feeds** - Modify feed settings (URL, interval, auto-scrape)
-4. **Checking feeds** - Manually trigger a check and see new items found
-5. **Viewing items** - Browse all seen items for a feed with links
-
-Feed settings:
-- **URL**: RSS/Atom feed URL
-- **Type**: Auto-detect, RSS 2.0, or Atom 1.0
-- **Check interval**: How often to poll (minimum 60 seconds)
-- **Enabled**: Whether the feed is actively checked
-- **Auto-scrape**: Automatically create scrape jobs for new items
-
-## Webhook Delivery Debugging
-
-Debug and monitor webhook delivery history to troubleshoot integration issues.
-
-### API
-
-- `GET /v1/webhooks/deliveries` - List webhook deliveries with optional job_id filter and pagination (limit/offset)
-- `GET /v1/webhooks/deliveries/{id}` - Get detailed information about a specific delivery
-
-### Web UI
-
-The Webhook Deliveries section provides a visual dashboard for:
-
-1. **Viewing deliveries** - See all webhook deliveries with status, timestamps, and metadata
-2. **Filtering** - Filter by job ID or status (pending, delivered, failed)
-3. **Pagination** - Navigate through delivery history with server-side pagination
-4. **Detail view** - Drill down into individual deliveries to see full request/response details
-
-Delivery statuses:
-- **Pending** - Webhook is queued for delivery
-- **Delivered** - Webhook was successfully delivered (2xx response)
-- **Failed** - Webhook delivery failed after all retry attempts
-
-The detail view shows:
-- Delivery metadata (ID, event type, job ID, URL)
-- Status and number of attempts
-- Response code (if available)
-- Timestamps (created, updated, delivered)
-- Error message (if failed)
-- Full technical details (JSON)
-
-### Common Error Patterns
-
-**Connection timeouts**: Check that the webhook URL is accessible from the server and firewalls allow outbound connections.
-
-**4xx errors**: Verify the webhook endpoint is configured correctly. Common issues include wrong URL path, missing authentication headers, or incorrect payload format.
-
-**5xx errors**: The receiving server is experiencing issues. Check the receiving service's logs and health status.
-
-**SSL/TLS errors**: Ensure the webhook URL uses valid SSL certificates. For self-signed certificates, you may need to configure the receiving server appropriately.
-
-### CLI Parity
-
-The Web UI mirrors the functionality of:
-```
-GET /v1/webhooks/deliveries?job_id=<id>&limit=<n>&offset=<n>
-GET /v1/webhooks/deliveries/<id>
-```
-
-## Data Retention
-
-Manage data retention policies to control disk usage and prevent storage exhaustion.
-
-### CLI
+Required local gate:
 
 ```bash
-# View retention status
-spartan retention status
-
-# Preview what would be cleaned (dry-run)
-spartan retention cleanup --dry-run
-
-# Run cleanup immediately
-spartan retention cleanup
-
-# Cleanup with overrides
-spartan retention cleanup --older-than=7 --kind=scrape
-spartan retention cleanup --force  # Run even if retention disabled
+make ci
 ```
 
-### Environment Variables
-
-- `RETENTION_ENABLED` - Enable automatic retention (default: false)
-- `RETENTION_JOB_DAYS` - Max age for jobs in days (default: 30, 0 = unlimited)
-- `RETENTION_CRAWL_STATE_DAYS` - Max age for crawl states in days (default: 90, 0 = unlimited)
-- `RETENTION_MAX_JOBS` - Max total jobs to keep (default: 10000, 0 = unlimited)
-- `RETENTION_MAX_STORAGE_GB` - Max storage in GB (default: 10, 0 = unlimited)
-- `RETENTION_CLEANUP_INTERVAL_HOURS` - Hours between cleanup runs (default: 24)
-- `RETENTION_DRY_RUN_DEFAULT` - Default dry-run mode (default: false)
-
-### Web UI
-
-The Data Retention panel (below Webhook Deliveries) provides:
-
-- **Status Overview**: Current storage usage, total jobs, and eligible cleanup count
-- **Configuration Display**: Current retention policy settings
-- **Cleanup Controls**:
-  - Dry-run toggle for safe preview
-  - Optional job kind filter (scrape/crawl/research)
-  - Optional age override
-  - Confirmation dialog for destructive operations
-- **Results Display**: Summary of cleanup operations with space reclaimed
-
-### Safety Features
-
-- Dry-run is the default mode - no data is deleted without explicit confirmation
-- Cleanup shows a confirmation dialog when not in dry-run mode
-- Failed artifact deletions preserve database records (no orphaned metadata)
-- Jobs are prioritized for cleanup: failed first, then succeeded, then others
-
-### API
-
-```
-GET /v1/retention/status
-POST /v1/retention/cleanup
-```
-
-Example:
-```bash
-# Get status
-curl http://localhost:8741/v1/retention/status
-
-# Dry-run cleanup
-curl -X POST http://localhost:8741/v1/retention/cleanup \
-  -H "Content-Type: application/json" \
-  -d '{"dryRun": true}'
-
-# Actual cleanup with filter
-curl -X POST http://localhost:8741/v1/retention/cleanup \
-  -H "Content-Type: application/json" \
-  -d '{"dryRun": false, "kind": "scrape", "olderThan": 7}'
-```
-
-## Content Deduplication
-
-The Deduplication Explorer provides a visual interface for analyzing content fingerprints and finding duplicate pages across jobs. This helps improve crawl efficiency and prevent wasted storage.
-
-### How Deduplication Works
-
-Spartan uses [simhash](https://en.wikipedia.org/wiki/SimHash) fingerprints to detect similar content:
-- Each page's content is hashed into a 64-bit simhash value
-- Similar pages will have simhash values with small Hamming distances
-- The system tracks content across all jobs to detect duplicates
-
-**Distance Thresholds:**
-- **0 bits**: Exact match (identical content)
-- **1-3 bits**: Near duplicate (very similar content)
-- **4-8 bits**: Similar (related content)
-- **9-16 bits**: Distinct (different content)
-
-### Web UI
-
-The Deduplication panel provides three tabs:
-
-1. **Find Duplicates** - Search for similar content by simhash:
-   - Enter a simhash value to find matching content
-   - Adjust the threshold slider to control similarity (0-16)
-   - Results show matching URLs with their Hamming distance
-
-2. **URL History** - View all indexed versions of a URL:
-   - Enter a URL to see its content history across jobs
-   - Shows simhash values and when each version was indexed
-   - Useful for tracking content changes over time
-
-3. **Statistics** - Overview of deduplication data:
-   - Total content fingerprints indexed
-   - Number of unique URLs
-   - Number of jobs with indexed content
-   - Count of duplicate URLs across jobs
-
-### API
-
-```
-GET /v1/dedup/duplicates?simhash={simhash}&threshold={threshold}
-GET /v1/dedup/history?url={url}
-GET /v1/dedup/stats
-DELETE /v1/dedup/job/{jobId}
-```
-
-Example:
-```bash
-# Find duplicates for a simhash
-curl "http://localhost:8741/v1/dedup/duplicates?simhash=1234567890&threshold=3"
-
-# Get content history for a URL
-curl "http://localhost:8741/v1/dedup/history?url=https://example.com/page"
-
-# Get deduplication statistics
-curl "http://localhost:8741/v1/dedup/stats"
-
-# Clean up dedup entries for a deleted job
-curl -X DELETE "http://localhost:8741/v1/dedup/job/abc123"
-```
-
-### CLI
-
-Deduplication data is automatically managed during job execution. To clean up entries for deleted jobs:
+Useful commands:
 
 ```bash
-# Remove dedup entries for a specific job
-spartan jobs delete --id <job-id>
-# This automatically cleans up associated dedup entries
+make install
+make generate
+make build
+make test-ci
+make ci
+make ci-slow
 ```
 
-### Use Cases
-
-- **Pre-crawl checking**: Query if a URL has been indexed recently to avoid redundant crawling
-- **Content analysis**: Identify near-duplicate pages on your site for consolidation
-- **Change detection**: Track when content at a URL has significantly changed
-- **Storage optimization**: Identify duplicate content across jobs for cleanup
-
-## Scripts
-
-### Stress test
-
-```
-scripts/stress_test.sh --help
-```
-
-Key options:
-- `--openai-docs`
-- `--headless` / `--use-playwright`
-- `--targets <csv>`
-- `--wait-timeout <sec>`
-
-Outputs: `out/stress/`
-
-## Prerequisites
-
-This project uses a polyglot toolchain. The following are required:
-
-- **Go** 1.26.1 (CLI + API + TUI)
-- **Node.js** 24.14.0 (web frontend + OpenAPI generation)
-- **pnpm** 10.30.3 (Node package manager)
-
-Tool versions are pinned in `.tool-versions`. Use `asdf` or `mise` to install.
-
-No additional tools (ripgrep, perl, etc.) are required for `make generate`.
-
-## Configuration
-
-`.env` / `.env.example`:
-- `PORT`
-- `BIND_ADDR` (default `127.0.0.1`; set `0.0.0.0` to expose beyond localhost)
-- `SERVER_READ_HEADER_TIMEOUT_SECONDS` (default `10`)
-- `SERVER_READ_TIMEOUT_SECONDS` (default `30`)
-- `SERVER_WRITE_TIMEOUT_SECONDS` (default `60`)
-- `SERVER_IDLE_TIMEOUT_SECONDS` (default `120`)
-- `DATA_DIR`
-- `USER_AGENT`
-- `LOG_LEVEL` (default `info`)
-- `LOG_FORMAT` (default `text`)
-- `MAX_CONCURRENCY`
-- `REQUEST_TIMEOUT_SECONDS`
-- `RATE_LIMIT_QPS`
-- `RATE_LIMIT_BURST`
-- `MAX_RETRIES`
-- `RETRY_BASE_MS`
-- `MAX_RESPONSE_BYTES` (default `10485760`)
-- `USE_PLAYWRIGHT`
-- AI extraction (optional):
-  - `AI_PROVIDER` (`openai`, `anthropic`, or `ollama`)
-  - `AI_API_KEY`
-  - `AI_MODEL`
-  - `AI_TIMEOUT_SECONDS` (default `60`)
-  - `AI_MAX_TOKENS` (default `4096`)
-  - `AI_TEMPERATURE` (default `0.1`)
-  - `OLLAMA_URL` (default `http://localhost:11434`)
-- Auth overrides:
-  - `AUTH_BASIC`
-  - `AUTH_BEARER`
-  - `AUTH_API_KEY`
-  - `AUTH_API_KEY_HEADER`
-  - `AUTH_API_KEY_QUERY`
-  - `AUTH_API_KEY_COOKIE`
-  - `AUTH_HEADER_*`
-  - `AUTH_COOKIE_*`
-
-## Outputs
-
-Jobs stored under `DATA_DIR/jobs/<id>/results.jsonl`.
-- Scrape: single JSON object.
-- Crawl: JSONL, one page per line.
-- Research: single JSON object (summary + evidence + simhash dedup + clusters + citations + confidence).
-
-## CI Coverage
-
-`make ci-pr` (PR-equivalent / deterministic) runs the full local pipeline with clean-tree checks before and after:
-- `verify-clean-tree`
-- `audit-public`
-- `install`
-- `generate`
-- `format`
-- `type-check`
-- `lint`
-- `build`
-- `test-ci`
-- `verify-clean-tree`
-
-`make ci` (Full local gate) runs the same pipeline without clean-tree preconditions.
-
-Both `make ci-pr` and `make ci` validate:
-- CLI (all subcommands, help, auth profiles, export)
-- API (scrape/crawl/research/jobs/results)
-- MCP (tools list + scrape_page)
-- Scheduler (job creation via interval)
-- Web (TypeScript build + unit tests)
-- Extension (TypeScript compile + packaged asset build)
-
-`make ci-slow` provisions Playwright on clean machines, then executes `scripts/stress_test.sh` and E2E tests (`internal/e2e`) against the shared local fixture, which validate:
-- Deterministic scrape/crawl/research targets
-- Full end-to-end workflows (CLI → API → Worker → Exporter)
-- Local auth fixture flows and headless behaviors
-- Web preview smoke test
-
-`make ci-network` runs the stress profile against live Internet targets.
-
-`make ci-manual` runs both `make ci-slow` and `make ci-network` for manual/scheduled heavy sweeps.
+`make ci-slow` provisions Playwright and runs the heavier local-fixture/browser validation lane.

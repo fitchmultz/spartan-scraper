@@ -34,23 +34,11 @@ const FORMAT_OPTIONS = [
   { value: "md", label: "Markdown" },
   { value: "csv", label: "CSV" },
   { value: "xlsx", label: "Excel (XLSX)" },
-  { value: "parquet", label: "Parquet" },
-  { value: "har", label: "HAR" },
-  { value: "pdf", label: "PDF" },
 ];
 
 const DESTINATION_OPTIONS = [
   { value: "local", label: "Local File" },
   { value: "webhook", label: "Webhook" },
-  { value: "s3", label: "Amazon S3" },
-  { value: "gcs", label: "Google Cloud Storage" },
-  { value: "azure", label: "Azure Blob Storage" },
-];
-
-const CLOUD_PROVIDER_OPTIONS = [
-  { value: "s3", label: "Amazon S3" },
-  { value: "gcs", label: "Google Cloud Storage" },
-  { value: "azure", label: "Azure Blob Storage" },
 ];
 
 /**
@@ -65,10 +53,6 @@ export function ExportScheduleForm({
   onSubmit,
   onCancel,
 }: ExportScheduleFormProps) {
-  const isCloudDestination = ["s3", "gcs", "azure"].includes(
-    formData.destinationType,
-  );
-
   const toggleJobKind = (kind: string) => {
     const current = formData.filterJobKinds;
     if (current.includes(kind as (typeof current)[number])) {
@@ -360,110 +344,6 @@ export function ExportScheduleForm({
                 , {"{"}format{"}"}
               </small>
             </div>
-
-            {/* Cloud Config */}
-            {isCloudDestination && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: 16,
-                  backgroundColor: "var(--bg)",
-                  borderRadius: 6,
-                }}
-              >
-                <h5 style={{ margin: "0 0 12px 0", fontSize: 13 }}>
-                  Cloud Configuration
-                </h5>
-
-                <div style={{ marginBottom: 12 }}>
-                  <label
-                    htmlFor="cloud-provider"
-                    style={{ display: "block", marginBottom: 4, fontSize: 13 }}
-                  >
-                    Provider
-                  </label>
-                  <select
-                    id="cloud-provider"
-                    value={formData.cloudProvider}
-                    onChange={(e) =>
-                      onChange({
-                        cloudProvider: e.target
-                          .value as typeof formData.cloudProvider,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  >
-                    {CLOUD_PROVIDER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <label
-                    htmlFor="cloud-bucket"
-                    style={{ display: "block", marginBottom: 4, fontSize: 13 }}
-                  >
-                    Bucket/Container <span style={{ color: "#ef4444" }}>*</span>
-                  </label>
-                  <input
-                    id="cloud-bucket"
-                    type="text"
-                    value={formData.cloudBucket}
-                    onChange={(e) => onChange({ cloudBucket: e.target.value })}
-                    placeholder="my-bucket"
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div className="row" style={{ gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      htmlFor="cloud-region"
-                      style={{
-                        display: "block",
-                        marginBottom: 4,
-                        fontSize: 13,
-                      }}
-                    >
-                      Region
-                    </label>
-                    <input
-                      id="cloud-region"
-                      type="text"
-                      value={formData.cloudRegion}
-                      onChange={(e) =>
-                        onChange({ cloudRegion: e.target.value })
-                      }
-                      placeholder="us-east-1"
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      htmlFor="cloud-path"
-                      style={{
-                        display: "block",
-                        marginBottom: 4,
-                        fontSize: 13,
-                      }}
-                    >
-                      Path
-                    </label>
-                    <input
-                      id="cloud-path"
-                      type="text"
-                      value={formData.cloudPath}
-                      onChange={(e) => onChange({ cloudPath: e.target.value })}
-                      placeholder="exports/"
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Local Config */}
             {formData.destinationType === "local" && (

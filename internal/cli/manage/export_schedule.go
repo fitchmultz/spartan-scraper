@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
@@ -85,12 +84,8 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	filterStatus := fs.String("filter-status", "completed", "Comma-separated statuses (completed,failed,succeeded,canceled)")
 	filterTags := fs.String("filter-tags", "", "Comma-separated tags to filter by")
 	filterHasResults := fs.Bool("filter-has-results", false, "Only export jobs with non-empty results")
-	format := fs.String("format", "", "Export format: json,jsonl,md,csv,xlsx,parquet,har,pdf (required)")
-	destination := fs.String("destination", "", "Destination type: s3,gcs,azure,local,webhook (required)")
-	cloudProvider := fs.String("cloud-provider", "", "Cloud provider (for s3/gcs/azure): s3,gcs,azure")
-	cloudBucket := fs.String("cloud-bucket", "", "Cloud bucket name")
-	cloudRegion := fs.String("cloud-region", "", "Cloud region (for S3)")
-	cloudPath := fs.String("cloud-path", "exports/{kind}/{job_id}.{format}", "Cloud path template")
+	format := fs.String("format", "", "Export format: json,jsonl,md,csv,xlsx (required)")
+	destination := fs.String("destination", "", "Destination type: local,webhook (required)")
 	localPath := fs.String("local-path", "", "Local file path template (for local destination)")
 	webhookURL := fs.String("webhook-url", "", "Webhook URL (for webhook destination)")
 	maxRetries := fs.Int("max-retries", 3, "Maximum retry attempts")
@@ -133,21 +128,6 @@ func addExportSchedule(cfg config.Config, args []string) int {
 
 	// Set destination-specific config
 	switch *destination {
-	case "s3", "gcs", "azure":
-		if *cloudProvider == "" {
-			*cloudProvider = *destination
-		}
-		if *cloudBucket == "" {
-			fmt.Fprintln(os.Stderr, "--cloud-bucket is required for cloud destinations")
-			return 1
-		}
-		exportConfig.CloudConfig = &exporter.CloudExportConfig{
-			Provider:      *cloudProvider,
-			Bucket:        *cloudBucket,
-			Region:        *cloudRegion,
-			Path:          *cloudPath,
-			ContentFormat: *format,
-		}
 	case "local":
 		if *localPath == "" {
 			fmt.Fprintln(os.Stderr, "--local-path is required for local destination")
@@ -230,14 +210,6 @@ func getExportSchedule(cfg config.Config, args []string) int {
 	fmt.Println("\nExport:")
 	fmt.Printf("  Format: %s\n", schedule.Export.Format)
 	fmt.Printf("  Destination: %s\n", schedule.Export.DestinationType)
-	if schedule.Export.CloudConfig != nil {
-		fmt.Printf("  Cloud Provider: %s\n", schedule.Export.CloudConfig.Provider)
-		fmt.Printf("  Cloud Bucket: %s\n", schedule.Export.CloudConfig.Bucket)
-		if schedule.Export.CloudConfig.Region != "" {
-			fmt.Printf("  Cloud Region: %s\n", schedule.Export.CloudConfig.Region)
-		}
-		fmt.Printf("  Cloud Path: %s\n", schedule.Export.CloudConfig.Path)
-	}
 	if schedule.Export.LocalPath != "" {
 		fmt.Printf("  Local Path: %s\n", schedule.Export.LocalPath)
 	}
@@ -358,16 +330,6 @@ Subcommands:
   history   View export history for a schedule
 
 Examples:
-  # Create a schedule to export crawl jobs to S3
-  spartan export-schedule add \
-    --name "Crawl to S3" \
-    --filter-kinds crawl \
-    --filter-status completed \
-    --format jsonl \
-    --destination s3 \
-    --cloud-bucket my-bucket \
-    --cloud-region us-east-1
-
   # Create a schedule to export all jobs to local files
   spartan export-schedule add \
     --name "Local Exports" \

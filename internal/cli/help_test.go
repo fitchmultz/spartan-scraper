@@ -30,10 +30,10 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 	})
 
 	for _, expected := range []string{
-		"  form         Detect, fill, and submit forms",
-		"  plugin       Manage plugins",
-		"  spartan form detect --url https://example.com/contact",
-		"  spartan plugin list",
+		"  export       Export job results (jsonl, json, md, csv, xlsx)",
+		"  export-schedule Manage automated export schedules",
+		"  spartan export --job-id <id> --format md --out ./out/report.md",
+		"  spartan export-schedule list",
 	} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("printHelp() missing %q\noutput:\n%s", expected, output)

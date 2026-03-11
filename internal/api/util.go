@@ -22,7 +22,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
-	"github.com/fitchmultz/spartan-scraper/internal/users"
 	"github.com/google/uuid"
 )
 
@@ -233,29 +232,6 @@ func parseIntParamStrict(s string, paramName string) (int, error) {
 		return 0, apperrors.Validation(fmt.Sprintf("invalid %s: cannot be negative", paramName))
 	}
 	return val, nil
-}
-
-func (s *Server) userService() *users.Service {
-	return users.NewService(s.store)
-}
-
-func currentUserID(r *http.Request) (string, error) {
-	userID, ok := GetUserIDFromContext(r.Context())
-	if !ok {
-		return "", apperrors.Permission("not authenticated")
-	}
-	return userID, nil
-}
-
-func currentUserIDForResource(r *http.Request, id string, action string) (string, error) {
-	userID, err := currentUserID(r)
-	if err != nil {
-		return "", err
-	}
-	if id != "me" && id != userID {
-		return "", apperrors.Permission("can only " + action + " your own profile")
-	}
-	return userID, nil
 }
 
 func resolveAuthForRequest(cfg config.Config, url string, profile string, override *fetch.AuthOptions) (fetch.AuthOptions, error) {

@@ -2,34 +2,31 @@
  * resultsExplorerUtils.test
  *
  * Purpose:
- * - Verify pure results-explorer helper behavior stays stable across refactors.
+ * - Verify the reduced 1.0 results explorer helpers stay aligned with the
+ *   supported view modes and export formats.
  *
  * Responsibilities:
- * - Cover filtering, tree expansion defaults, and export metadata.
- * - Confirm job comparison and research-visualization helpers.
- * - Lock in traffic extraction behavior for crawl results with intercepted data.
+ * - Cover filtering, job lookup, tree expansion, and export metadata.
  *
  * Scope:
- * - Unit tests for results-explorer helper logic only.
+ * - Pure helper tests only.
  *
  * Usage:
- * - Run via Vitest as part of frontend validation.
+ * - Run via Vitest.
  *
  * Invariants/Assumptions:
- * - Fixtures mirror the generated job and intercepted-entry API shapes.
- * - Helpers should remain deterministic for the same inputs.
+ * - The 1.0 explorer supports only json, jsonl, csv, md, and xlsx exports.
  */
 
 import { describe, expect, it } from "vitest";
 
 import type { TreeNode } from "../../lib/tree-utils";
-import type { CrawlResultWithTraffic, Job, ResultItem } from "../../types";
+import type { Job, ResultItem } from "../../types";
 
 import {
   buildDefaultExpandedTreeIds,
   buildExportFilename,
   collectTreeNodeIds,
-  extractTrafficEntries,
   filterResultItems,
   findComparableJobs,
   getExportMimeType,
@@ -37,26 +34,14 @@ import {
   hasResearchVisualization,
 } from "./resultsExplorerUtils";
 
-const crawlResultWithTraffic: CrawlResultWithTraffic = {
-  url: "https://example.com/articles/one",
-  status: 200,
-  title: "Article One",
-  text: "Alpha beta",
-  links: [],
-  interceptedData: [
-    {
-      request: {
-        requestId: "req-1",
-        method: "GET",
-        resourceType: "xhr",
-        url: "https://example.com/api/article",
-      },
-    },
-  ],
-};
-
 const resultItems: ResultItem[] = [
-  crawlResultWithTraffic,
+  {
+    url: "https://example.com/articles/one",
+    status: 200,
+    title: "Article One",
+    text: "Alpha beta",
+    links: [],
+  },
   {
     url: "https://example.com/missing",
     status: 404,
@@ -157,23 +142,13 @@ describe("resultsExplorerUtils", () => {
     expect(hasResearchVisualization("crawl", [])).toBe(false);
   });
 
-  it("normalizes export metadata", () => {
-    expect(getExportMimeType("pdf")).toBe("application/pdf");
+  it("normalizes export metadata for supported formats", () => {
+    expect(getExportMimeType("jsonl")).toBe("application/x-ndjson");
+    expect(getExportMimeType("xlsx")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
     expect(
       buildExportFilename("job-1", "json", "2026-03-10T10-00-00Z", "filtered"),
     ).toBe("results-job-1-filtered-2026-03-10T10-00-00Z.json");
-  });
-
-  it("extracts intercepted traffic entries from crawl results only", () => {
-    expect(extractTrafficEntries(resultItems)).toEqual([
-      {
-        request: {
-          requestId: "req-1",
-          method: "GET",
-          resourceType: "xhr",
-          url: "https://example.com/api/article",
-        },
-      },
-    ]);
   });
 });

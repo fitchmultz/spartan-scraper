@@ -205,9 +205,9 @@ Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser 
 
 ## Interfaces
 
-- Web UI for job submission, monitoring, and admin workflows
+- Web UI for job submission, monitoring, automation, and settings
 - CLI for scripting and local automation
-- REST + GraphQL APIs for integrations
+- REST + WebSocket APIs for integrations
 - MCP server for agent orchestration
 - TUI for terminal-first inspection
 
@@ -222,7 +222,7 @@ Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser 
 - `web`: Vite + React UI; generated API client under `web/src/api`.
 - `internal/research`: multi-source workflow (scrape/crawl → evidence → simhash dedup → clustering → citations + confidence → summary).
 - `internal/mcp`: MCP stdio server for agent orchestration.
-- `internal/exporter`: exports results to markdown/csv/json.
+- `internal/exporter`: exports results to json/jsonl/csv/markdown/xlsx.
 - `internal/scheduler`: recurring job runner with interval schedules.
 
 ## Notes
@@ -253,7 +253,7 @@ GitHub workflow split:
 make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
 make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
-make ci            # Full local gate (Go + web + extension install/build/tests)
+make ci            # Full local gate (Go + web install/build/tests)
 make ci-slow       # Deterministic heavy stress/e2e checks (local fixture; provisions Playwright)
 make ci-network     # Optional live-Internet smoke validation
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override

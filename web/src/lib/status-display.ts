@@ -5,7 +5,7 @@
  * - Centralize tone and color mapping for compact status-pill UI elements.
  *
  * Responsibilities:
- * - Provide typed status-to-tone helpers for watch, feed, and export states.
+ * - Provide typed status-to-tone helpers for watch and export states.
  * - Expose one shared tone palette for pill-like inline status labels.
  *
  * Scope:
@@ -20,7 +20,7 @@
  * - Success, warning, danger, neutral, and info tones share one palette.
  */
 
-import type { ExportHistoryRecord, Feed, Watch } from "../api";
+import type { ExportHistoryRecord, Watch } from "../api";
 
 export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
 
@@ -58,17 +58,6 @@ export function getStatusToneColors(tone: StatusTone): {
 }
 
 export function getWatchStatusTone(status?: Watch["status"]): StatusTone {
-  switch (status) {
-    case "active":
-      return "success";
-    case "error":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-export function getFeedStatusTone(status?: Feed["status"]): StatusTone {
   switch (status) {
     case "active":
       return "success";

@@ -1,37 +1,45 @@
 /**
- * Spartan Scraper Web UI - Main Application Component
+ * Spartan Scraper Web UI - Balanced 1.0 application shell.
  *
- * This is the primary React component for the Spartan Scraper web interface.
- * It provides a single-page application for:
+ * Purpose:
+ * - Provide the route-based 1.0 shell for the reduced local-first product.
  *
- * - Submitting scrape, crawl, and research jobs
- * - Configuring authentication, headers, cookies, and query parameters
- * - Managing extraction templates and validation
- * - Viewing real-time job status and manager state
- * - Browsing and analyzing job results
+ * Responsibilities:
+ * - Route between jobs, templates, automation, and settings views.
+ * - Wire shared data hooks, job submission, and result loading.
+ * - Remove deleted product surfaces from the top-level navigation.
  *
- * The component has been refactored to use container components for each
- * major functional area, reducing its size and improving maintainability.
+ * Scope:
+ * - Application shell and cross-page coordination only.
  *
- * @module App
+ * Usage:
+ * - Rendered once from `main.tsx` as the root React application.
+ *
+ * Invariants/Assumptions:
+ * - Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`,
+ *   `/automation`, and `/settings`.
+ * - Results detail routes load job results directly from the canonical REST API.
+ * - Deleted feature areas stay out of navigation and render tree entirely.
  */
 
 import {
-  useCallback,
-  useEffect,
-  useRef,
   Suspense,
   lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
   useState,
+  type ReactNode,
 } from "react";
 import {
   deleteV1JobsById,
   postV1Crawl,
   postV1Research,
   postV1Scrape,
-  type ScrapeRequest,
   type CrawlRequest,
   type ResearchRequest,
+  type ScrapeRequest,
 } from "./api";
 import { Hero } from "./components/Hero";
 import { JobList } from "./components/JobList";
@@ -42,21 +50,19 @@ import { WelcomeModal } from "./components/WelcomeModal";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WatchContainer } from "./components/watches/WatchContainer";
 import { ExportScheduleContainer } from "./components/export-schedules/ExportScheduleContainer";
-import { FeedContainer } from "./components/feeds/FeedContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
 import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
-import { DedupExplorer } from "./components/DedupExplorer";
-import { TemplatePerformance } from "./components/TemplatePerformance";
-import { TemplateABTestManager } from "./components/TemplateABTestManager";
-import { AITemplateGenerator } from "./components/AITemplateGenerator";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
+import { AITemplateGenerator } from "./components/AITemplateGenerator";
 import { PresetContainer } from "./components/presets/PresetContainer";
 import {
   JobSubmissionContainer,
   type JobSubmissionContainerRef,
 } from "./components/jobs/JobSubmissionContainer";
 import { ResultsContainer } from "./components/results/ResultsContainer";
+import { RenderProfileEditor } from "./components/render-profiles";
+import { PipelineJSEditor } from "./components/pipeline-js/PipelineJSEditor";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
@@ -65,19 +71,207 @@ import { useTheme } from "./hooks/useTheme";
 import { usePresets } from "./hooks/usePresets";
 import { useOnboarding } from "./hooks/useOnboarding";
 import {
-  submitScrapeJob,
   submitCrawlJob,
   submitResearchJob,
+  submitScrapeJob,
 } from "./lib/job-actions";
 import { getApiBaseUrl } from "./lib/api-config";
 import type { JobPreset, JobType } from "./types/presets";
 
-// Lazy load heavy components to reduce initial bundle size
 const MetricsDashboard = lazy(() =>
   import("./components/MetricsDashboard").then((mod) => ({
     default: mod.MetricsDashboard,
   })),
 );
+
+type RouteKind =
+  | "jobs"
+  | "new-job"
+  | "job-detail"
+  | "templates"
+  | "automation"
+  | "settings";
+
+interface AppRoute {
+  kind: RouteKind;
+  path: string;
+  jobId?: string;
+}
+
+interface NavItem {
+  kind: Exclude<RouteKind, "job-detail">;
+  label: string;
+  path: string;
+  description: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    kind: "jobs",
+    label: "Jobs",
+    path: "/jobs",
+    description: "Recent jobs, live queue state, and result drill-down.",
+  },
+  {
+    kind: "new-job",
+    label: "New Job",
+    path: "/jobs/new",
+    description: "Submit scrape, crawl, or research work with saved presets.",
+  },
+  {
+    kind: "templates",
+    label: "Templates",
+    path: "/templates",
+    description:
+      "Manage extraction templates and AI-assisted template generation.",
+  },
+  {
+    kind: "automation",
+    label: "Automation",
+    path: "/automation",
+    description:
+      "Batches, chains, watches, export schedules, and webhook delivery history.",
+  },
+  {
+    kind: "settings",
+    label: "Settings",
+    path: "/settings",
+    description:
+      "Profiles, schedules, crawl state inventory, retention, and pipeline scripts.",
+  },
+];
+
+function normalizePath(pathname: string): string {
+  if (!pathname || pathname === "/") {
+    return "/jobs";
+  }
+
+  const trimmed = pathname.replace(/\/+$/, "");
+  return trimmed === "" ? "/jobs" : trimmed;
+}
+
+function parseRoute(pathname: string): AppRoute {
+  const path = normalizePath(pathname);
+  if (path === "/jobs") {
+    return { kind: "jobs", path };
+  }
+  if (path === "/jobs/new") {
+    return { kind: "new-job", path };
+  }
+  if (path.startsWith("/jobs/")) {
+    const jobId = decodeURIComponent(path.slice("/jobs/".length));
+    return { kind: "job-detail", path, jobId };
+  }
+  if (path === "/templates") {
+    return { kind: "templates", path };
+  }
+  if (path === "/automation") {
+    return { kind: "automation", path };
+  }
+  if (path === "/settings") {
+    return { kind: "settings", path };
+  }
+  return { kind: "jobs", path: "/jobs" };
+}
+
+function AppNavigation({
+  activeRoute,
+  onNavigate,
+}: {
+  activeRoute: RouteKind;
+  onNavigate: (path: string) => void;
+}) {
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+        {NAV_ITEMS.map((item) => {
+          const isActive = activeRoute === item.kind;
+          return (
+            <button
+              key={item.path}
+              type="button"
+              className={isActive ? "" : "secondary"}
+              onClick={() => onNavigate(item.path)}
+              aria-current={isActive ? "page" : undefined}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          marginTop: 16,
+        }}
+      >
+        {NAV_ITEMS.map((item) => (
+          <div
+            key={item.kind}
+            style={{
+              padding: 12,
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background:
+                activeRoute === item.kind ? "var(--bg-alt)" : "var(--bg)",
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{item.label}</div>
+            <div style={{ color: "var(--muted)", fontSize: 14 }}>
+              {item.description}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PageIntro({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
+            {description}
+          </p>
+        </div>
+        {actions}
+      </div>
+    </section>
+  );
+}
+
+function ErrorBanner({ message }: { message: string | null }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <div className="error">{message}</div>
+    </section>
+  );
+}
 
 export function App() {
   const appData = useAppData();
@@ -85,8 +279,13 @@ export function App() {
   const resultsState = useResultsState();
   const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const { presets, savePreset } = usePresets();
+  const [pathname, setPathname] = useState(() =>
+    normalizePath(window.location.pathname),
+  );
+  const [activeTab, setActiveTab] = useState<JobType>("scrape");
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+  const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
 
-  // Onboarding state management
   const {
     shouldShowWelcome,
     isTourActive,
@@ -98,7 +297,6 @@ export function App() {
     finishOnboarding,
   } = useOnboarding();
 
-  // Keyboard shortcuts and command palette
   const {
     isCommandPaletteOpen,
     isHelpOpen,
@@ -107,15 +305,6 @@ export function App() {
     shortcuts,
     isMac,
   } = useKeyboard();
-
-  // Active tab state for preset filtering
-  const [activeTab, setActiveTab] = useState<JobType>("scrape");
-
-  // AI Template Generator modal state
-  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
-
-  // Ref for JobSubmissionContainer to access form methods
-  const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
 
   const {
     jobs,
@@ -140,31 +329,50 @@ export function App() {
 
   const { selectedJobId, loadResults } = resultsState;
 
-  // Handle navigation from keyboard shortcuts
-  const handleNavigate = useCallback((view: "jobs" | "results" | "forms") => {
-    const elementId =
-      view === "jobs" ? "jobs" : view === "results" ? "results" : "forms";
-    const element = document.getElementById(elementId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, []);
+  const route = useMemo(() => parseRoute(pathname), [pathname]);
 
-  // Handle form submission from command palette
-  const handleSubmitForm = useCallback(
-    async (formType: "scrape" | "crawl" | "research") => {
-      if (formType === "scrape") {
-        await jobSubmissionRef.current?.submitScrape();
-      } else if (formType === "crawl") {
-        await jobSubmissionRef.current?.submitCrawl();
-      } else if (formType === "research") {
-        await jobSubmissionRef.current?.submitResearch();
+  const navigate = useCallback(
+    (path: string) => {
+      const nextPath = normalizePath(path);
+      if (nextPath === pathname) {
+        return;
       }
+      window.history.pushState({}, "", nextPath);
+      setPathname(nextPath);
     },
-    [],
+    [pathname],
   );
 
-  // Listen for keyboard navigation events
+  useEffect(() => {
+    const handlePopState = () => {
+      setPathname(normalizePath(window.location.pathname));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (route.kind === "job-detail" && route.jobId) {
+      void loadResults(route.jobId);
+    }
+  }, [route, loadResults]);
+
+  const handleNavigate = useCallback(
+    (view: "jobs" | "results" | "forms") => {
+      if (view === "forms") {
+        navigate("/jobs/new");
+        return;
+      }
+      if (view === "results" && selectedJobId) {
+        navigate(`/jobs/${selectedJobId}`);
+        return;
+      }
+      navigate("/jobs");
+    },
+    [navigate, selectedJobId],
+  );
+
   useEffect(() => {
     const handleKeyboardNavigate = (event: CustomEvent) => {
       const { destination } = event.detail;
@@ -194,8 +402,9 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      navigate("/jobs");
     },
-    [refreshJobs],
+    [refreshJobs, navigate],
   );
 
   const handleSubmitCrawl = useCallback(
@@ -207,8 +416,9 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      navigate("/jobs");
     },
-    [refreshJobs],
+    [refreshJobs, navigate],
   );
 
   const handleSubmitResearch = useCallback(
@@ -220,8 +430,9 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      navigate("/jobs");
     },
-    [refreshJobs],
+    [refreshJobs, navigate],
   );
 
   const cancelJob = useCallback(
@@ -260,36 +471,43 @@ export function App() {
         }
         await refreshJobs();
         if (selectedJobId === jobId) {
-          loadResults("");
+          navigate("/jobs");
         }
       } catch (err) {
         console.error(String(err));
       }
     },
-    [refreshJobs, selectedJobId, loadResults],
+    [navigate, refreshJobs, selectedJobId],
   );
 
-  // Find active (running) job for command palette
+  const handleViewResults = useCallback(
+    async (jobId: string, format: string, page: number) => {
+      navigate(`/jobs/${jobId}`);
+      await loadResults(jobId, format, page);
+    },
+    [loadResults, navigate],
+  );
+
   const activeJob = jobs.find((job) => job.status === "running");
 
-  // Handle preset selection - coordinate with form refs for URL/query setting
-  const handleSelectPreset = useCallback((preset: JobPreset) => {
-    // Set URL/query if provided in preset (form refs are in JobSubmissionContainer)
-    if (preset.config.url) {
-      if (preset.jobType === "scrape") {
-        jobSubmissionRef.current?.setScrapeUrl(preset.config.url);
-      } else if (preset.jobType === "crawl") {
-        jobSubmissionRef.current?.setCrawlUrl(preset.config.url);
+  const handleSelectPreset = useCallback(
+    (preset: JobPreset) => {
+      navigate("/jobs/new");
+      if (preset.config.url) {
+        if (preset.jobType === "scrape") {
+          jobSubmissionRef.current?.setScrapeUrl(preset.config.url);
+        } else if (preset.jobType === "crawl") {
+          jobSubmissionRef.current?.setCrawlUrl(preset.config.url);
+        }
       }
-    }
-    if (preset.config.query) {
-      jobSubmissionRef.current?.setResearchQuery(preset.config.query);
-    }
-  }, []);
+      if (preset.config.query) {
+        jobSubmissionRef.current?.setResearchQuery(preset.config.query);
+      }
+    },
+    [navigate],
+  );
 
-  // Get current config from active form - simplified for container approach
   const getCurrentConfig = useCallback(() => {
-    // Return current form state as preset config
     return {
       headless: formState.headless,
       usePlaywright: formState.usePlaywright,
@@ -325,7 +543,6 @@ export function App() {
     };
   }, [formState]);
 
-  // Get current URL for preset matching
   const getCurrentUrl = useCallback(() => {
     switch (activeTab) {
       case "scrape":
@@ -336,6 +553,22 @@ export function App() {
         return "";
     }
   }, [activeTab]);
+
+  const handleSubmitForm = useCallback(
+    async (formType: "scrape" | "crawl" | "research") => {
+      navigate("/jobs/new");
+      if (formType === "scrape") {
+        await jobSubmissionRef.current?.submitScrape();
+      } else if (formType === "crawl") {
+        await jobSubmissionRef.current?.submitCrawl();
+      } else if (formType === "research") {
+        await jobSubmissionRef.current?.submitResearch();
+      }
+    },
+    [navigate],
+  );
+
+  const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
 
   return (
     <div className="app">
@@ -365,17 +598,6 @@ export function App() {
         onRestartTour={resetOnboarding}
       />
 
-      <PresetContainer
-        presets={presets}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        applyPreset={formState.applyPreset}
-        savePreset={savePreset}
-        getCurrentConfig={getCurrentConfig}
-        getCurrentUrl={getCurrentUrl}
-        onSelectPreset={handleSelectPreset}
-      />
-
       <KeyboardShortcutsHelp
         isOpen={isHelpOpen}
         onClose={closeHelp}
@@ -383,7 +605,6 @@ export function App() {
         isMac={isMac}
       />
 
-      {/* Onboarding Components */}
       <WelcomeModal
         isOpen={shouldShowWelcome}
         onStartTour={startOnboarding}
@@ -398,95 +619,170 @@ export function App() {
         onStepChange={goToStep}
       />
 
+      <AppNavigation activeRoute={activeRouteForNav} onNavigate={navigate} />
+      <ErrorBanner message={error} />
+
       <Suspense
         fallback={<div className="loading-placeholder">Loading metrics...</div>}
       >
         <MetricsDashboard metrics={metrics} connectionState={connectionState} />
       </Suspense>
 
-      <JobSubmissionContainer
-        ref={jobSubmissionRef}
-        formState={formState}
-        onSubmitScrape={handleSubmitScrape}
-        onSubmitCrawl={handleSubmitCrawl}
-        onSubmitResearch={handleSubmitResearch}
-        loading={loading}
-        profiles={profiles}
-      />
+      {(route.kind === "jobs" || route.kind === "job-detail") && (
+        <>
+          <PageIntro
+            title={
+              route.kind === "job-detail" && route.jobId
+                ? `Job Results: ${route.jobId}`
+                : "Jobs"
+            }
+            description={
+              route.kind === "job-detail"
+                ? "Inspect artifacts, compare runs, and export supported formats."
+                : "Monitor queue activity, browse recent jobs, and open job results."
+            }
+            actions={
+              <button type="button" onClick={() => navigate("/jobs/new")}>
+                Create Job
+              </button>
+            }
+          />
 
-      <BatchContainer
-        formState={formState}
-        profiles={profiles}
-        loading={loading}
-      />
+          <section id="jobs">
+            <JobList
+              jobs={jobs}
+              error={null}
+              onViewResults={handleViewResults}
+              onCancel={cancelJob}
+              onDelete={deleteJob}
+              onRefresh={refreshJobs}
+              currentPage={jobsPage}
+              totalJobs={jobsTotal}
+              jobsPerPage={100}
+              onPageChange={setJobsPage}
+              connectionState={connectionState}
+            />
+          </section>
 
-      <ChainContainer onChainSubmit={refreshJobs} />
-
-      <section id="jobs">
-        <JobList
-          jobs={jobs}
-          error={error}
-          onViewResults={loadResults}
-          onCancel={cancelJob}
-          onDelete={deleteJob}
-          onRefresh={refreshJobs}
-          currentPage={jobsPage}
-          totalJobs={jobsTotal}
-          jobsPerPage={100}
-          onPageChange={setJobsPage}
-          connectionState={connectionState}
-        />
-      </section>
-
-      <ResultsContainer resultsState={resultsState} jobs={jobs} />
-
-      <WatchContainer />
-
-      <ExportScheduleContainer />
-
-      <FeedContainer />
-
-      <WebhookDeliveryContainer />
-
-      <RetentionStatusPanel />
-
-      <section id="dedup">
-        <DedupExplorer />
-      </section>
-
-      <section id="templates-insights" className="templates-insights-section">
-        <div className="templates-insights__header">
-          <h2>Templates Insights</h2>
-          <button
-            type="button"
-            className="btn btn--small btn--secondary"
-            onClick={() => setIsAIGeneratorOpen(true)}
-          >
-            <span className="mr-1">✨</span> Generate with AI
-          </button>
-        </div>
-        <div className="templates-insights__content">
-          {templates.length > 0 ? (
-            <>
-              <div className="template-performance-panel">
-                <h3>Template Performance</h3>
-                <TemplatePerformance templateName={templates[0]} />
-              </div>
-              <div className="template-ab-tests-panel">
-                <h3>A/B Testing</h3>
-                <TemplateABTestManager />
-              </div>
-            </>
-          ) : (
-            <div className="templates-insights__empty">
-              <p>
-                No templates available. Create templates to see performance
-                metrics and run A/B tests.
-              </p>
-            </div>
+          {route.kind === "job-detail" && (
+            <ResultsContainer resultsState={resultsState} jobs={jobs} />
           )}
-        </div>
-      </section>
+        </>
+      )}
+
+      {route.kind === "new-job" && (
+        <>
+          <PageIntro
+            title="Create Job"
+            description="Submit a scrape, crawl, or research job using the shared local-first engine."
+            actions={
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setIsAIGeneratorOpen(true)}
+              >
+                Generate Template with AI
+              </button>
+            }
+          />
+
+          <PresetContainer
+            presets={presets}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            applyPreset={formState.applyPreset}
+            savePreset={savePreset}
+            getCurrentConfig={getCurrentConfig}
+            getCurrentUrl={getCurrentUrl}
+            onSelectPreset={handleSelectPreset}
+          />
+
+          <JobSubmissionContainer
+            ref={jobSubmissionRef}
+            formState={formState}
+            onSubmitScrape={handleSubmitScrape}
+            onSubmitCrawl={handleSubmitCrawl}
+            onSubmitResearch={handleSubmitResearch}
+            loading={loading}
+            profiles={profiles}
+          />
+        </>
+      )}
+
+      {route.kind === "templates" && (
+        <>
+          <PageIntro
+            title="Templates"
+            description="Build extraction templates visually or generate them from a live page with AI."
+            actions={
+              <button type="button" onClick={() => setIsAIGeneratorOpen(true)}>
+                Generate Template with AI
+              </button>
+            }
+          />
+
+          <InfoSections
+            profiles={[]}
+            schedules={[]}
+            templates={templates}
+            crawlStates={[]}
+            crawlStatesPage={1}
+            crawlStatesTotal={0}
+            crawlStatesPerPage={100}
+            onCrawlStatesPageChange={() => {}}
+            onTemplatesChanged={() => {
+              void refreshTemplates();
+            }}
+          />
+        </>
+      )}
+
+      {route.kind === "automation" && (
+        <>
+          <PageIntro
+            title="Automation"
+            description="Coordinate higher-level workflows on top of the core scrape, crawl, and research engines."
+          />
+          <BatchContainer
+            formState={formState}
+            profiles={profiles}
+            loading={loading}
+          />
+          <ChainContainer onChainSubmit={refreshJobs} />
+          <WatchContainer />
+          <ExportScheduleContainer />
+          <WebhookDeliveryContainer />
+        </>
+      )}
+
+      {route.kind === "settings" && (
+        <>
+          <PageIntro
+            title="Settings"
+            description="Manage runtime profiles, recurring schedules, crawl state inventory, retention, and pipeline scripts."
+          />
+          <InfoSections
+            profiles={profiles}
+            schedules={schedules}
+            templates={[]}
+            crawlStates={crawlStates}
+            crawlStatesPage={crawlStatesPage}
+            crawlStatesTotal={crawlStatesTotal}
+            crawlStatesPerPage={100}
+            onCrawlStatesPageChange={setCrawlStatesPage}
+            onTemplatesChanged={() => {}}
+          />
+          <section className="panel" style={{ marginTop: 16 }}>
+            <RenderProfileEditor
+              onError={(message) => console.error(message)}
+            />
+          </section>
+          <section className="panel" style={{ marginTop: 16 }}>
+            <PipelineJSEditor onError={(message) => console.error(message)} />
+          </section>
+          <RetentionStatusPanel />
+        </>
+      )}
 
       <AITemplateGenerator
         isOpen={isAIGeneratorOpen}
@@ -497,23 +793,7 @@ export function App() {
         }}
       />
 
-      <InfoSections
-        profiles={profiles}
-        schedules={schedules}
-        templates={templates}
-        crawlStates={crawlStates}
-        crawlStatesPage={crawlStatesPage}
-        crawlStatesTotal={crawlStatesTotal}
-        crawlStatesPerPage={100}
-        onCrawlStatesPageChange={setCrawlStatesPage}
-        onTemplatesChanged={() => {
-          void refreshTemplates();
-        }}
-      />
-
-      <div className="footer">
-        Spartan Scraper — build once, deploy everywhere.
-      </div>
+      <div className="footer">Spartan Scraper 1.0 local-first workbench.</div>
     </div>
   );
 }

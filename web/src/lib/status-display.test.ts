@@ -23,7 +23,6 @@ import { describe, expect, it } from "vitest";
 import {
   getEnabledStatusTone,
   getExportHistoryStatusTone,
-  getFeedStatusTone,
   getStatusToneColors,
   getWatchStatusTone,
 } from "./status-display";
@@ -41,17 +40,11 @@ describe("getStatusToneColors", () => {
   });
 });
 
-describe("watch/feed/export tone helpers", () => {
+describe("watch/export tone helpers", () => {
   it("maps watch statuses correctly", () => {
     expect(getWatchStatusTone("active")).toBe("success");
     expect(getWatchStatusTone("error")).toBe("danger");
     expect(getWatchStatusTone("paused")).toBe("neutral");
-  });
-
-  it("maps feed statuses correctly", () => {
-    expect(getFeedStatusTone("active")).toBe("success");
-    expect(getFeedStatusTone("error")).toBe("danger");
-    expect(getFeedStatusTone("disabled")).toBe("neutral");
   });
 
   it("maps export-history statuses correctly", () => {

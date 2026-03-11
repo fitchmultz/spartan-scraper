@@ -106,14 +106,6 @@ export function useExportScheduleForm(): UseExportScheduleFormReturn {
       }
     }
 
-    if (
-      ["s3", "gcs", "azure"].includes(formData.destinationType) &&
-      !formData.cloudBucket.trim()
-    ) {
-      setFormError("Bucket/container name is required for cloud destinations");
-      return false;
-    }
-
     if (formData.maxRetries < 0) {
       setFormError("Max retries must be 0 or greater");
       return false;

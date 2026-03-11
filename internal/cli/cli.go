@@ -55,8 +55,6 @@ func Run(ctx context.Context) int {
 
 	case "auth":
 		return manage.RunAuth(ctx, cfg, os.Args[2:])
-	case "form":
-		return manage.RunForm(ctx, cfg, os.Args[2:])
 	case "render-profiles":
 		return manage.RunRenderProfiles(ctx, cfg, os.Args[2:])
 	case "pipeline-js":
@@ -81,16 +79,10 @@ func Run(ctx context.Context) int {
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
 	case "chains":
 		return manage.RunChains(ctx, cfg, os.Args[2:])
-	case "plugin":
-		return manage.RunPlugins(ctx, cfg, os.Args[2:])
 	case "batch":
 		return batch.RunBatch(ctx, cfg, os.Args[2:])
-	case "replay":
-		return manage.RunReplay(ctx, cfg, os.Args[2:])
 	case "watch":
 		return manage.RunWatch(ctx, cfg, os.Args[2:])
-	case "feed":
-		return manage.RunFeed(ctx, cfg, os.Args[2:])
 
 	case "server":
 		return server.RunServer(ctx, cfg, os.Args[2:])

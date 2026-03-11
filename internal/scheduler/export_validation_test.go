@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 func TestValidateExportSchedule(t *testing.T) {
@@ -244,7 +243,7 @@ func TestValidateExportConfig(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "cloud without config",
+			name: "unsupported destination",
 			config: ExportConfig{
 				Format:          "jsonl",
 				DestinationType: "s3",
@@ -293,71 +292,6 @@ func TestValidateWebhookURL(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Errorf("validateWebhookURL() error = %v, want nil", err)
-				}
-			}
-		})
-	}
-}
-
-func TestValidateCloudConfig(t *testing.T) {
-	tests := []struct {
-		name      string
-		destType  string
-		config    *exporter.CloudExportConfig
-		wantError bool
-	}{
-		{
-			name:     "valid s3 config",
-			destType: "s3",
-			config: &exporter.CloudExportConfig{
-				Provider: "s3",
-				Bucket:   "my-bucket",
-			},
-			wantError: false,
-		},
-		{
-			name:      "nil config",
-			destType:  "s3",
-			config:    nil,
-			wantError: true,
-		},
-		{
-			name:     "missing provider",
-			destType: "s3",
-			config: &exporter.CloudExportConfig{
-				Bucket: "my-bucket",
-			},
-			wantError: true,
-		},
-		{
-			name:     "missing bucket",
-			destType: "s3",
-			config: &exporter.CloudExportConfig{
-				Provider: "s3",
-			},
-			wantError: true,
-		},
-		{
-			name:     "invalid provider",
-			destType: "s3",
-			config: &exporter.CloudExportConfig{
-				Provider: "invalid",
-				Bucket:   "my-bucket",
-			},
-			wantError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateCloudConfig(tt.destType, tt.config)
-			if tt.wantError {
-				if err == nil {
-					t.Errorf("validateCloudConfig() error = nil, want error")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("validateCloudConfig() error = %v, want nil", err)
 				}
 			}
 		})

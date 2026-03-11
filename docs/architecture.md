@@ -1,187 +1,149 @@
 # Architecture
 
-## Quick overview (2-minute read)
+Spartan Scraper is a single-node, local-first scraping workbench. The stable 1.0 boundary is intentionally narrow:
 
-Spartan Scraper is a **local-first scraping platform** built around a single job model shared by CLI, API, TUI, Web UI, and MCP.
+- scrape, crawl, and research jobs
+- auth vault and OAuth helpers
+- templates and pipeline JavaScript
+- schedules, batches, chains, watches, and webhooks
+- REST, WebSocket, Web UI, CLI, TUI, and MCP
+- local artifacts, retention, backup, and restore
+- exports in `json`, `jsonl`, `csv`, `md`, and `xlsx`
 
-- Interfaces submit jobs into a persistent local store.
-- A job runner executes fetch + extract + pipeline stages with concurrency/rate controls.
-- Results are written as immutable artifacts under `DATA_DIR/jobs/<id>`.
-- Status/events are exposed to API, UI, and TUI consumers.
+Removed from the supported product surface: GraphQL, plugins, distributed Redis mode, multi-user/workspaces, browser extension, feed monitoring, replay tooling, template A/B metrics, and cloud/database exporters.
 
-### Control/data flow
+## System model
 
-1. **Submit**: CLI/API/UI creates a typed job (`scrape`, `crawl`, `research`, etc.).
-2. **Persist + queue**: job metadata is stored; workers pick pending jobs.
-3. **Fetch**: HTTP first, escalate to headless engines when content is JS-heavy.
-4. **Extract + transform**: extraction templates, pipeline hooks, and optional plugins/scripts enrich output.
-5. **Store + serve**: artifacts and status are persisted and made available through REST/WS/GraphQL and UI surfaces.
+1. An interface submits a job: CLI, Web UI, REST, scheduler, or MCP.
+2. The job manager persists the job to the local SQLite store.
+3. Workers execute fetch, extract, pipeline, and optional headless/browser steps.
+4. Results are written under `DATA_DIR/jobs/<job-id>/`.
+5. REST, WebSocket, TUI, and MCP read the same persisted state and artifacts.
 
-### Key decisions and trade-offs
+Everything runs against one local data directory. There is no supported distributed mode.
 
-- **Local persistence over managed services**: simpler operations and privacy-friendly defaults, at the cost of single-node scaling limits.
-- **HTTP-first adaptive render pipeline**: minimizes resource usage while preserving JS-heavy site reliability.
-- **Opt-in heavy features** (Playwright, e2e stress checks): keeps default developer workflow fast/deterministic.
-- **Contract-driven API client generation**: tighter backend/frontend compatibility with explicit generate step in CI.
+## Supported interfaces
 
-## First principles
+- REST: canonical machine API defined by [`api/openapi.yaml`](../api/openapi.yaml)
+- WebSocket: live job and manager events on `/v1/ws`
+- MCP: stdio server for agent orchestration
+- Web UI: route-based shell for jobs, templates, automation, and settings
+- CLI/TUI: local operator and scripting interfaces
 
-- Fetch is separate from extraction.
-- Crawl is a controlled graph walk, not a firehose.
-- The same job model powers CLI, TUI, and API.
-- State is local and persistent; results are immutable artifacts.
-- Ignore robots.txt by default (opt-in compliance is available); throttling is still available for stability.
+GraphQL is not part of the architecture anymore.
 
-## System diagram (high-level)
+## Core packages
 
-```text
-User Interfaces
-  ├─ CLI (spartan)
-  ├─ TUI
-  ├─ Web UI (React)
-  └─ API clients (REST / WS / GraphQL)
-            │
-            v
-Application Core (internal/*)
-  ├─ fetch (http/chromedp/playwright)
-  ├─ extract
-  ├─ crawl
-  ├─ jobs / queue / scheduler
-  ├─ research / exporter / pipeline / plugins
-  └─ api / mcp / auth
-            │
-            v
-Persistence (DATA_DIR)
-  ├─ jobs artifacts
-  ├─ auth vault
-  ├─ templates
-  ├─ schedules
-  └─ plugin state
-```
+- `cmd/spartan`
+  - Process entrypoint for CLI, server, TUI, and MCP.
+- `internal/api`
+  - REST handlers, WebSocket endpoint, and request/response shaping.
+- `internal/jobs`
+  - Job creation, queueing, execution, cancellation, recovery, and event publication.
+- `internal/fetch`
+  - HTTP-first fetching with Chromedp/Playwright escalation, auth, rate limiting, and browser helpers.
+- `internal/extract`
+  - HTML normalization, extraction templates, and AI-assisted extraction helpers.
+- `internal/crawl`
+  - Same-host bounded crawling with dedup and optional robots handling.
+- `internal/research`
+  - Derived multi-source workflow built on scrape/crawl primitives.
+- `internal/scheduler`
+  - Interval schedules and export schedules.
+- `internal/exporter`
+  - Artifact export for `json`, `jsonl`, `csv`, `md`, and `xlsx`.
+- `internal/auth`
+  - Auth profiles, presets, login flow definitions, OAuth helpers, and API key support.
+- `internal/store`
+  - SQLite-backed persistence for jobs, crawl state, automation records, and analytics still retained in the core product.
+- `internal/mcp`
+  - MCP tool definitions and handlers.
+- `web`
+  - Vite + React UI using the generated OpenAPI client.
 
-## Core modules
+## Persistence and artifacts
 
-- `fetch`: HTTP fetcher + headless Chromium/Playwright fetchers.
-- `extract`: HTML → text/metadata/links.
-- `crawl`: BFS crawler with host scoping and depth/limit controls.
-- `jobs`: persistent store + queue + runner. Scheduled and direct jobs now share the same persisted-parameter decoding path before execution, so defaults and coercion stay aligned across entrypoints.
-- `api`: REST API aligned to `api/openapi.yaml`.
-- `ui/tui`: job list + status dashboard.
-- `web`: Web UI consuming generated API client.
-- `research`: multi-source workflow (scrape/crawl → evidence → summary → simhash dedup → clustering → citations + confidence).
-- `mcp`: stdio server exposing tools for agent orchestration.
-- Auth vault lives in `DATA_DIR/auth_vault.json` (profiles, inheritance, presets).
-- Exporter can emit markdown or csv from stored job artifacts.
-- Scheduler runs interval-based jobs and persists schedules in `DATA_DIR/schedules.json`.
+The canonical runtime model is:
 
-## Adaptive Render Pipeline
+- SQLite database: `DATA_DIR/jobs.db`
+- Job artifacts: `DATA_DIR/jobs/<job-id>/`
+- Auth vault: `DATA_DIR/auth_vault.json`
+- Render profiles: `DATA_DIR/render_profiles.json`
+- Templates: `DATA_DIR/extract_templates.json`
+- Pipeline JS: `DATA_DIR/pipeline_js.json`
+- Schedules/export schedules: files and SQLite-backed state under `DATA_DIR`
 
-The fetcher uses an adaptive strategy to optimize for performance and reliability:
+Artifacts are designed to be inspectable on disk. Result files remain the source for exports and downstream tooling.
 
-1. **Profile Check**: Checks `DATA_DIR/render_profiles.json` for per-host rules (forced engine, timeouts, blocking).
-2. **HTTP Probe**: By default, attempts a fast HTTP GET.
-3. **Detection**: Analyzes the HTML for "JS-heavy" signals (SPA roots, noscript warnings, high script/text ratio).
-4. **Escalation**: If the page is detected as dynamic (or returns 403/401 bots blocks), it escalates to a headless browser (Chromedp or Playwright).
-5. **Optimization**:
-   - Blocks wasteful resources (images, fonts, media, stylesheets) by default or policy.
-   - Uses adaptive wait strategies (DOM ready, network idle, selector visible, content stability).
+## Storage compatibility policy
 
-## Pipeline hooks + plugins
+Balanced 1.0 is a hard cutover.
 
-- `internal/pipeline` defines the standardized plugin interface and hook registry.
-- Hooks are executed at pre/post fetch, pre/post extract, and pre/post output.
-- Output transformers run after pre-output hooks and before post-output hooks.
-- JS per-target scripts are loaded from `DATA_DIR/pipeline_js.json` and applied during headless fetch.
+- A fresh data directory is initialized with the current storage schema marker.
+- An existing `jobs.db` without the Balanced 1.0 schema marker is treated as legacy and rejected at startup.
+- The supported migration path is: back up the old data directory, then reset to a fresh Balanced 1.0 data directory.
 
-## Plugin System (WASM)
+This avoids silently opening pre-cutover state under a materially different product boundary.
 
-The plugin system enables third-party extensions via sandboxed WASM plugins:
+## Execution path
 
-- **Package**: `internal/plugins`
-- **Storage**: `DATA_DIR/plugins/<name>/` (manifest.json + plugin.wasm)
-- **Runtime**: wazero (pure Go, no CGO)
-- **Security**: WASI preview1 with explicit permission model
+### Scrape
 
-### Plugin lifecycle
+- Validate URL and execution settings.
+- Fetch with HTTP first.
+- Escalate to headless Chromium or Playwright when the target requires it.
+- Apply extraction and pipeline processing.
+- Persist one or more result records to the job artifact file.
 
-1. **Discovery**: Loader scans `DATA_DIR/plugins/` for manifest.json files
-2. **Validation**: Manifest validated (name, version, hooks, permissions, wasm_path)
-3. **Loading**: WASM module compiled and cached
-4. **Instantiation**: New instance per hook execution with isolated memory
-5. **Execution**: JSON-serialized input/output via exported functions
+### Crawl
 
-### Hook interface
+- Validate URL, bounds, and crawl options.
+- Walk same-host pages with depth/page caps.
+- Reuse the same fetch/extract pipeline as scrape.
+- Persist one result record per crawled page.
 
-Plugins export functions matching hook names:
-- `pre_fetch(input_ptr, input_len) -> output_ptr_with_len`
-- `post_fetch(input_ptr, input_len) -> output_ptr_with_len`
-- `pre_extract`, `post_extract`, `pre_output`, `post_output`
+### Research
 
-Input/output is JSON-encoded. Memory management via exported `malloc`/`free`.
+- Validate query and source URLs.
+- Gather evidence from scrape/crawl-style fetches.
+- Cluster, summarize, and cite results.
+- Persist derived research output as job artifacts.
 
-### Host functions
+## Web UI information architecture
 
-Available to plugins based on granted permissions:
-- `log(msg_ptr, msg_len)` - Always available
-- `get_config(key_ptr, key_len) -> value_ptr_with_len` - Always available
-- `http_request(...)` - Requires `network` permission
-- `file_access(...)` - Requires `filesystem` permission (restricted to plugin directory)
-- `get_env(key_ptr, key_len)` - Requires `env` permission (only `SPARTAN_PLUGIN_*` vars)
+The web shell is route-based and scoped to the retained product:
 
-### Manifest schema
+- `/jobs`
+- `/jobs/new`
+- `/jobs/:id`
+- `/templates`
+- `/automation`
+- `/settings`
 
-```json
-{
-  "name": "header-injector",
-  "version": "1.0.0",
-  "description": "Injects custom headers",
-  "author": "Author Name",
-  "hooks": ["pre_fetch"],
-  "permissions": ["network"],
-  "wasm_path": "plugin.wasm",
-  "config": { "headers": {} },
-  "enabled": true,
-  "priority": 10
-}
-```
+Deleted product areas are not hidden behind feature flags; they are absent from the navigation and render tree.
 
-### JS registry example
+## Operational model
 
-```json
-{
-  "scripts": [
-    {
-      "name": "app-login",
-      "hostPatterns": ["app.example.com"],
-      "engine": "playwright",
-      "preNav": "localStorage.setItem('consent','true')",
-      "postNav": "window.scrollTo(0, document.body.scrollHeight)",
-      "selectors": ["#app", "main"]
-    }
-  ]
-}
-```
+The official deployment shape is:
 
-## Execution flow
+- single process or single host
+- local disk
+- SQLite
+- trusted operator
+- optional API key protection for non-loopback binds
 
-1. CLI/API create a job and persist it.
-2. Job runner fetches HTML via HTTP or headless.
-3. Extractor emits text/metadata/links.
-4. Results are written to JSONL under `DATA_DIR/jobs/<id>`.
-5. Status updates are persisted and served to UI/TUI.
+There is no supported multi-user authorization boundary or cluster story in this cutover.
 
-## Auth model
+## CI and validation
 
-- Unified auth vault with profile inheritance and per-target presets.
-- Headers, cookies, basic auth, bearer/api_key tokens, and headless login flows.
-- Env overrides supported via `AUTH_*` variables and applied during resolution.
-- Query tokens are appended to request URLs where supported.
+The required local gate is `make ci`.
 
-## Interfaces
+That gate covers:
 
-- CLI: `spartan scrape|crawl|research|server|tui|watch|batch|chains|feed|retention|export-schedule`.
-- API:
-  - REST: `/v1/*` (OpenAPI-backed, see `api/openapi.yaml`)
-  - WebSocket: `/v1/ws` (real-time job events + metrics)
-  - GraphQL: `/graphql` + `/graphql/playground` (not in OpenAPI; see schema in `internal/api/graphql/schema.go`)
-- UI: Web app for job submission + status.
+- OpenAPI generation
+- Go and web formatting/lint/type-check
+- Go build
+- Go tests excluding heavy E2E
+- web Vitest suite
+
+Heavier browser and stress validation remains in `make ci-slow`.

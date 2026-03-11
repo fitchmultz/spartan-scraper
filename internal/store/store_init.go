@@ -25,6 +25,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -34,6 +35,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const balanced10StorageSchemaVersion = "balanced-1.0-2026-03-11"
+
 // Open creates and initializes a new Store at the given data directory.
 // Creates the database file if it doesn't exist, runs migrations, and prepares statements.
 func Open(dataDir string) (*Store, error) {
@@ -41,6 +44,11 @@ func Open(dataDir string) (*Store, error) {
 		return nil, err
 	}
 	path := filepath.Join(dataDir, "jobs.db")
+	_, statErr := os.Stat(path)
+	dbExisted := statErr == nil
+	if statErr != nil && !os.IsNotExist(statErr) {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to inspect jobs database", statErr)
+	}
 	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", url.PathEscape(path))
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -53,7 +61,7 @@ func Open(dataDir string) (*Store, error) {
 	db.SetConnMaxIdleTime(30 * time.Minute)
 
 	store := &Store{db: db, dataDir: dataDir}
-	if err := store.init(); err != nil {
+	if err := store.init(dbExisted); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +161,7 @@ func columnExists(db *sql.DB, tableName, columnName string) (bool, error) {
 	return false, nil
 }
 
-func (s *Store) init() error {
+func (s *Store) init(dbExisted bool) error {
 	_, err := s.db.Exec(`
 		create table if not exists jobs (
 			id text primary key,
@@ -178,8 +186,16 @@ func (s *Store) init() error {
 			job_id text
 		);
 		create index if not exists idx_crawl_states_last_scraped on crawl_states(last_scraped desc);
+		create table if not exists store_metadata (
+			key text primary key,
+			value text not null
+		);
 	`)
 	if err != nil {
+		return err
+	}
+
+	if err := s.ensureStorageSchemaVersion(dbExisted); err != nil {
 		return err
 	}
 
@@ -225,11 +241,37 @@ func (s *Store) init() error {
 		return err
 	}
 
-	// Initialize user and workspace tables
-	if err := s.initUserTables(); err != nil {
-		return err
+	return nil
+}
+
+func (s *Store) ensureStorageSchemaVersion(dbExisted bool) error {
+	var version string
+	err := s.db.QueryRow(`select value from store_metadata where key = 'storage_schema'`).Scan(&version)
+	switch {
+	case err == nil:
+		if version != balanced10StorageSchemaVersion {
+			return apperrors.Validation(
+				fmt.Sprintf("unsupported data dir schema %q; back up %s and reset the data directory for Balanced 1.0", version, s.dataDir),
+			)
+		}
+		return nil
+	case err != sql.ErrNoRows:
+		return apperrors.Wrap(apperrors.KindInternal, "failed to read store schema version", err)
 	}
 
+	if dbExisted {
+		return apperrors.Validation(
+			fmt.Sprintf("legacy data dir detected at %s; back it up and reset the data directory before starting Balanced 1.0", s.dataDir),
+		)
+	}
+
+	_, err = s.db.Exec(
+		`insert into store_metadata (key, value) values ('storage_schema', ?)`,
+		balanced10StorageSchemaVersion,
+	)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to initialize store schema version", err)
+	}
 	return nil
 }
 
@@ -373,197 +415,4 @@ func (s *Store) Checkpoint(ctx context.Context) error {
 // DataDir returns the data directory path.
 func (s *Store) DataDir() string {
 	return s.dataDir
-}
-
-// initUserTables creates the user, workspace, session, and audit log tables.
-// This is called during store initialization.
-func (s *Store) initUserTables() error {
-	// Users table
-	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			email TEXT NOT NULL UNIQUE,
-			password_hash TEXT,
-			name TEXT NOT NULL,
-			avatar_url TEXT,
-			auth_provider TEXT DEFAULT 'local',
-			auth_provider_id TEXT,
-			is_active BOOLEAN DEFAULT TRUE,
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create users table", err)
-	}
-
-	// Workspaces table
-	_, err = s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS workspaces (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			slug TEXT NOT NULL UNIQUE,
-			description TEXT,
-			is_personal BOOLEAN DEFAULT FALSE,
-			owner_id TEXT NOT NULL REFERENCES users(id),
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_workspaces_owner_id ON workspaces(owner_id);
-		CREATE INDEX IF NOT EXISTS idx_workspaces_slug ON workspaces(slug);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create workspaces table", err)
-	}
-
-	// Workspace memberships table
-	_, err = s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS workspace_members (
-			workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			role TEXT NOT NULL DEFAULT 'viewer',
-			invited_by TEXT REFERENCES users(id),
-			joined_at TEXT NOT NULL,
-			PRIMARY KEY (workspace_id, user_id)
-		);
-		CREATE INDEX IF NOT EXISTS idx_workspace_members_user_id ON workspace_members(user_id);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create workspace_members table", err)
-	}
-
-	// User sessions table
-	_, err = s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS user_sessions (
-			id TEXT PRIMARY KEY,
-			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			token_hash TEXT NOT NULL,
-			expires_at TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			ip_address TEXT,
-			user_agent TEXT
-		);
-		CREATE INDEX IF NOT EXISTS idx_user_sessions_token_hash ON user_sessions(token_hash);
-		CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
-		CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create user_sessions table", err)
-	}
-
-	// Audit logs table
-	_, err = s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS audit_logs (
-			id TEXT PRIMARY KEY,
-			workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL,
-			user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-			action TEXT NOT NULL,
-			resource_type TEXT NOT NULL,
-			resource_id TEXT,
-			metadata TEXT,
-			created_at TEXT NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_workspace_id ON audit_logs(workspace_id);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create audit_logs table", err)
-	}
-
-	// Migrate: add user_id and workspace_id columns to jobs table
-	if err := s.migrateJobWorkspaceColumns(); err != nil {
-		return err
-	}
-
-	// Migrate: add workspace_id to batches table
-	if err := s.migrateBatchWorkspaceColumn(); err != nil {
-		return err
-	}
-
-	// Migrate: add workspace_id to job_chains table
-	if err := s.migrateChainWorkspaceColumn(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// migrateJobWorkspaceColumns adds user_id and workspace_id columns to jobs table.
-func (s *Store) migrateJobWorkspaceColumns() error {
-	userIDExists, err := columnExists(s.db, "jobs", "user_id")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to check for user_id column", err)
-	}
-	if !userIDExists {
-		_, err = s.db.Exec("ALTER TABLE jobs ADD COLUMN user_id TEXT REFERENCES users(id)")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal, "failed to add user_id column to jobs", err)
-		}
-	}
-
-	workspaceIDExists, err := columnExists(s.db, "jobs", "workspace_id")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to check for workspace_id column", err)
-	}
-	if !workspaceIDExists {
-		_, err = s.db.Exec("ALTER TABLE jobs ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal, "failed to add workspace_id column to jobs", err)
-		}
-	}
-
-	// Create indexes for workspace filtering
-	_, err = s.db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id);
-		CREATE INDEX IF NOT EXISTS idx_jobs_workspace_id ON jobs(workspace_id);
-	`)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create job workspace indexes", err)
-	}
-
-	return nil
-}
-
-// migrateBatchWorkspaceColumn adds workspace_id column to batches table.
-func (s *Store) migrateBatchWorkspaceColumn() error {
-	workspaceIDExists, err := columnExists(s.db, "batches", "workspace_id")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to check for batches workspace_id column", err)
-	}
-	if !workspaceIDExists {
-		_, err = s.db.Exec("ALTER TABLE batches ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal, "failed to add workspace_id column to batches", err)
-		}
-	}
-
-	_, err = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_batches_workspace_id ON batches(workspace_id)")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create batches workspace index", err)
-	}
-
-	return nil
-}
-
-// migrateChainWorkspaceColumn adds workspace_id column to job_chains table.
-func (s *Store) migrateChainWorkspaceColumn() error {
-	workspaceIDExists, err := columnExists(s.db, "job_chains", "workspace_id")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to check for job_chains workspace_id column", err)
-	}
-	if !workspaceIDExists {
-		_, err = s.db.Exec("ALTER TABLE job_chains ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)")
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindInternal, "failed to add workspace_id column to job_chains", err)
-		}
-	}
-
-	_, err = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_job_chains_workspace_id ON job_chains(workspace_id)")
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create job_chains workspace index", err)
-	}
-
-	return nil
 }

@@ -27,22 +27,18 @@ Commands:
   crawl        Crawl a website
   research     Deep research across multiple sources
   auth         Manage auth vault and profiles
-  form         Detect, fill, and submit forms
   batch        Submit and manage batch jobs
   chains       Manage job chains (create/list/get/submit/delete)
   watch        Watch content for changes
-  feed         Monitor RSS/Atom feeds
   retention    Manage data retention and cleanup
-  export       Export job results (jsonl, json, md, csv)
+  export       Export job results (jsonl, json, md, csv, xlsx)
   export-schedule Manage automated export schedules
   render-profiles List render profiles
   pipeline-js  List pipeline JavaScript scripts
   templates    List extraction templates
   crawl-states List crawl states (incremental tracking)
-  replay       Replay captured network traffic
   backup       Create and manage backups
   restore      Restore from a backup archive
-  plugin       Manage plugins
   schedule     Manage scheduled jobs
   jobs         Manage jobs (list, get, cancel)
   server       Run API server + workers
@@ -62,14 +58,11 @@ Examples:
   spartan auth resolve --url https://example.com --profile acme
   spartan auth vault export --out ./out/auth_vault.json
   spartan auth vault import --path ./out/auth_vault.json
-  spartan form detect --url https://example.com/contact
   spartan render-profiles list
   spartan pipeline-js list
   spartan templates list
   spartan crawl-states list
   spartan crawl-states list --limit 10
-  spartan replay --job-id <id> --target-url https://staging.example.com
-  spartan replay --job-id <id> --target-url https://localhost:8080 --compare
   spartan retention status
   spartan retention cleanup --dry-run
   spartan backup create
@@ -78,7 +71,6 @@ Examples:
   spartan backup list
   spartan restore --from spartan-backup-20240115-120000.tar.gz
   spartan restore --from backup.tar.gz --dry-run
-  spartan plugin list
   spartan watch add --url https://example.com --interval 3600
   spartan watch add --url https://example.com --selector "#price" --webhook https://hooks.slack.com/...
   spartan watch list
@@ -101,10 +93,6 @@ Examples:
   spartan chains submit <chain-id>
   spartan chains submit <chain-id> --overrides ./overrides.json
   spartan chains delete <chain-id>
-  spartan feed add --url https://example.com/rss --interval 1800
-  spartan feed list
-  spartan feed check <feed-id>
-  spartan feed start
   spartan export-schedule list
   spartan export-schedule add --name "Daily Exports" --filter-kinds crawl --format jsonl --destination local --local-path "exports/{kind}/{job_id}.jsonl"
   spartan health

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/analytics"
-	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -29,7 +28,6 @@ type Server struct {
 	webhookDispatcher  *webhook.Dispatcher
 	analyticsCollector *analytics.Collector
 	analyticsService   *analytics.Service
-	graphqlHandler     *GraphQLHandler
 	aiExtractor        *extract.AIExtractor
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -98,14 +96,6 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	metricsAdapter := &metricsCollectorAdapter{collector: s.metricsCollector}
 	s.analyticsCollector = analytics.NewCollector(store, metricsAdapter)
 	s.analyticsCollector.Start()
-
-	// Initialize GraphQL handler
-	graphqlHandler, err := NewGraphQLHandler(s)
-	if err != nil {
-		slog.Warn("failed to initialize GraphQL handler", "error", err)
-	} else {
-		s.graphqlHandler = graphqlHandler
-	}
 
 	return s
 }
@@ -230,22 +220,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/auth/oauth/refresh", s.handleOAuthRefresh)
 	mux.HandleFunc("/v1/auth/oauth/discover", s.handleOIDCDiscover)
 	mux.HandleFunc("/v1/auth/oauth/revoke", s.handleOAuthRevoke)
-	mux.HandleFunc("/v1/auth/sessions", s.handleSessions)
-	mux.HandleFunc("/v1/auth/sessions/", s.handleSession)
-	mux.HandleFunc("/v1/auth/login", s.handleAuthLogin)
-	mux.HandleFunc("/v1/auth/logout", s.handleAuthLogout)
-	mux.HandleFunc("/v1/auth/register", s.handleAuthRegister)
-	mux.HandleFunc("/v1/auth/me", s.handleAuthMe)
-	mux.HandleFunc("/v1/users", s.handleUsers)
-	mux.HandleFunc("/v1/users/", s.handleUser)
-	mux.HandleFunc("/v1/workspaces", s.handleWorkspaces)
-	mux.HandleFunc("/v1/workspaces/", s.handleWorkspace)
 	mux.HandleFunc("/v1/scrape", s.handleScrape)
 	mux.HandleFunc("/v1/crawl", s.handleCrawl)
 	mux.HandleFunc("/v1/research", s.handleResearch)
 	mux.HandleFunc("/v1/jobs", s.handleJobs)
 	mux.HandleFunc("/v1/jobs/", s.handleJob)
-	mux.HandleFunc("/v1/jobs/replay/", s.handleTrafficReplay)
 	mux.HandleFunc("/v1/jobs/batch/scrape", s.handleBatchScrape)
 	mux.HandleFunc("/v1/jobs/batch/crawl", s.handleBatchCrawl)
 	mux.HandleFunc("/v1/jobs/batch/research", s.handleBatchResearch)
@@ -256,8 +235,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/export-schedules/", s.handleExportScheduleDetail)
 	mux.HandleFunc("/v1/watch", s.handleWatches)
 	mux.HandleFunc("/v1/watch/", s.handleWatchCheckWrapper)
-	mux.HandleFunc("/v1/feeds", s.handleFeeds)
-	mux.HandleFunc("/v1/feeds/", s.handleFeedDetailWrapper)
 	mux.HandleFunc("/v1/templates", s.handleTemplates)
 	mux.HandleFunc("/v1/templates/", s.handleTemplate)
 	mux.HandleFunc("/v1/template-preview", s.handleTemplatePreview)
@@ -275,14 +252,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/analytics/hosts", s.handleAnalyticsHosts)
 	mux.HandleFunc("/v1/analytics/trends", s.handleAnalyticsTrends)
 	mux.HandleFunc("/v1/analytics/dashboard", s.handleAnalyticsDashboard)
-	mux.HandleFunc("/v1/plugins", s.handlePlugins)
-	mux.HandleFunc("/v1/plugins/", s.handlePlugin)
-	mux.HandleFunc("/v1/template-metrics", s.handleTemplateMetrics)
-	mux.HandleFunc("/v1/template-comparison", s.handleTemplateComparison)
-	mux.HandleFunc("/v1/template-ab-tests", s.handleABTests)
-	mux.HandleFunc("/v1/template-ab-tests/", s.handleABTest)
-	mux.HandleFunc("/graphql", s.handleGraphQL)
-	mux.HandleFunc("/graphql/playground", s.handleGraphQLPlayground)
 
 	// AI extraction endpoints
 	mux.HandleFunc("/v1/extract/ai-preview", s.handleAIExtractPreview)
@@ -296,10 +265,6 @@ func (s *Server) Routes() http.Handler {
 
 	// Retention endpoints
 	mux.HandleFunc("/v1/retention/", s.handleRetention)
-
-	// Form endpoints
-	mux.HandleFunc("/v1/forms/detect", s.handleForms)
-	mux.HandleFunc("/v1/forms/fill", s.handleForms)
 
 	// Render profiles endpoints
 	mux.HandleFunc("/v1/render-profiles", s.handleRenderProfiles)
@@ -340,30 +305,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Start goroutines for the client
 	go client.writePump()
 	go client.readPump()
-}
-
-// handleSessions handles requests to /v1/auth/sessions
-func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		s.handleListSessions(w, r)
-	case http.MethodPost:
-		s.handleCreateSession(w, r)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
-}
-
-// handleSession handles requests to /v1/auth/sessions/{id}
-func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		s.handleGetSession(w, r)
-	case http.MethodDelete:
-		s.handleDeleteSession(w, r)
-	default:
-		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
-	}
 }
 
 // isAllowedWebSocketOrigin validates browser-originated WebSocket upgrades.

@@ -14,7 +14,6 @@
  */
 
 import type {
-  CloudExportConfig,
   ExportConfig,
   ExportSchedule,
   ExportScheduleRequest,
@@ -36,10 +35,6 @@ export const defaultFormData: ExportScheduleFormData = {
   format: "json",
   destinationType: "local",
   pathTemplate: "{job_id}.{format}",
-  cloudProvider: "s3",
-  cloudBucket: "",
-  cloudRegion: "",
-  cloudPath: "",
   localPath: "",
   webhookUrl: "",
   maxRetries: 3,
@@ -62,15 +57,6 @@ export function formatDestination(schedule: ExportSchedule): string {
       return config.webhook_url
         ? `Webhook: ${config.webhook_url.substring(0, 30)}...`
         : "Webhook";
-    case "s3":
-    case "gcs":
-    case "azure": {
-      const cloud = config.cloud_config;
-      if (cloud?.bucket) {
-        return `${config.destination_type.toUpperCase()}: ${cloud.bucket}${cloud.path ? `/${cloud.path}` : ""}`;
-      }
-      return config.destination_type.toUpperCase();
-    }
     default:
       return String(config.destination_type);
   }
@@ -129,7 +115,6 @@ export function scheduleToFormData(
 ): ExportScheduleFormData {
   const filters = schedule.filters || {};
   const export_ = schedule.export || {};
-  const cloud = export_.cloud_config;
   const retry = schedule.retry || {};
 
   return {
@@ -139,41 +124,16 @@ export function scheduleToFormData(
     filterJobStatus: filters.job_status || ["completed"],
     filterTags: filters.tags?.join("\n") || "",
     filterHasResults: filters.has_results ?? true,
-    format: export_.format || "json",
-    destinationType: export_.destination_type || "local",
+    format: (export_.format as ExportScheduleFormData["format"]) || "json",
+    destinationType:
+      (export_.destination_type as ExportScheduleFormData["destinationType"]) ||
+      "local",
     pathTemplate: export_.path_template || "{job_id}.{format}",
-    cloudProvider: cloud?.provider || "s3",
-    cloudBucket: cloud?.bucket || "",
-    cloudRegion: cloud?.region || "",
-    cloudPath: cloud?.path || "",
     localPath: export_.local_path || "",
     webhookUrl: export_.webhook_url || "",
     maxRetries: retry.max_retries ?? 3,
     baseDelayMs: retry.base_delay_ms ?? 1000,
   };
-}
-
-/**
- * Build CloudExportConfig from form data
- * @param data - Form data
- * @returns CloudExportConfig or undefined if not cloud destination
- */
-function buildCloudConfig(
-  data: ExportScheduleFormData,
-): CloudExportConfig | undefined {
-  if (data.destinationType === "local" || data.destinationType === "webhook") {
-    return undefined;
-  }
-
-  const config: CloudExportConfig = {
-    provider: data.cloudProvider,
-    bucket: data.cloudBucket,
-  };
-
-  if (data.cloudPath) config.path = data.cloudPath;
-  if (data.cloudRegion) config.region = data.cloudRegion;
-
-  return config;
 }
 
 /**
@@ -196,11 +156,6 @@ function buildExportConfig(data: ExportScheduleFormData): ExportConfig {
     config.local_path = data.localPath;
   } else if (data.destinationType === "webhook" && data.webhookUrl) {
     config.webhook_url = data.webhookUrl;
-  } else if (
-    ["s3", "gcs", "azure"].includes(data.destinationType) &&
-    data.cloudBucket
-  ) {
-    config.cloud_config = buildCloudConfig(data);
   }
 
   return config;

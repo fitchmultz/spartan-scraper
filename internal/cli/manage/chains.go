@@ -123,6 +123,13 @@ func runChainsList(ctx context.Context, cfg config.Config, args []string) int {
 	return 0
 }
 
+func truncateString(value string, max int) string {
+	if max <= 0 || len(value) <= max {
+		return value
+	}
+	return value[:max]
+}
+
 func runChainsGet(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "chain id is required")

@@ -25,7 +25,6 @@ func setupTestServerWithConcurrency(t *testing.T, maxConcurrency int) (*Server, 
 	cfg := config.Config{
 		DataDir:            dataDir,
 		RequestTimeoutSecs: 30,
-		ReplayTimeoutSecs:  30,
 		MaxConcurrency:     maxConcurrency,
 		RateLimitQPS:       10,
 		RateLimitBurst:     20,

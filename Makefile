@@ -3,7 +3,6 @@ SHELL := /bin/bash
 APP_NAME := spartan
 BIN_DIR := bin
 WEB_DIR := web
-EXTENSION_DIR := extensions
 DATA_DIR := .data
 
 # Installation directory (respects XDG_BIN_HOME if set, otherwise ~/.local/bin)
@@ -25,7 +24,7 @@ GITLEAKS_VERSION ?= v8.30.0
 PLAYWRIGHT_GO_VERSION ?= v0.5700.1
 PLAYWRIGHT_INSTALL_CMD := go run github.com/playwright-community/playwright-go/cmd/playwright@$(PLAYWRIGHT_GO_VERSION) install --with-deps
 
-.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev extension-install extension-build extension-clean extension-dev extension-package
+.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree web-dev
 
 audit-public:
 	node $(CURDIR)/scripts/public_audit.mjs
@@ -36,7 +35,6 @@ secret-scan:
 install:
 	go mod download
 	cd $(WEB_DIR) && pnpm install --frozen-lockfile
-	cd $(EXTENSION_DIR) && pnpm install --frozen-lockfile
 
 update:
 	@echo "Updating Go dependencies..."
@@ -44,7 +42,6 @@ update:
 	go mod tidy
 	@echo "Updating pnpm dependencies..."
 	cd $(WEB_DIR) && pnpm update
-	cd $(EXTENSION_DIR) && pnpm update
 	@echo "Dependency update complete. Review changes before committing."
 
 lint:
@@ -53,7 +50,6 @@ lint:
 
 type-check:
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit
-	cd $(EXTENSION_DIR) && pnpm exec tsc --noEmit
 
 format:
 	gofmt -w ./cmd ./internal
@@ -65,9 +61,8 @@ format:
 # Preserves: Source-controlled lock files (go.sum, web/pnpm-lock.yaml)
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)
-	rm -rf node_modules $(WEB_DIR)/node_modules $(EXTENSION_DIR)/node_modules
+	rm -rf node_modules $(WEB_DIR)/node_modules
 	cd $(WEB_DIR) && rm -rf dist
-	cd $(EXTENSION_DIR) && rm -rf dist
 	rm -f $(INSTALL_DIR)/$(APP_NAME)
 	find . -type f -name "*.test" -delete
 	find . -type f -name "*.out" -delete
@@ -91,7 +86,6 @@ build:
 	mkdir -p $(BIN_DIR)
 	go build $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
-	cd $(EXTENSION_DIR) && pnpm run build
 
 install-bin: build
 	@echo "Installing $(APP_NAME) to $(INSTALL_DIR)..."
@@ -136,19 +130,3 @@ ci-manual: ci-slow ci-network
 
 web-dev:
 	cd $(WEB_DIR) && pnpm run dev
-
-# Extension targets
-extension-install:
-	cd $(EXTENSION_DIR) && pnpm install --frozen-lockfile
-
-extension-build:
-	cd $(EXTENSION_DIR) && pnpm run build
-
-extension-dev:
-	cd $(EXTENSION_DIR) && pnpm run dev
-
-extension-clean:
-	cd $(EXTENSION_DIR) && pnpm run clean
-
-extension-package: extension-build
-	cd $(EXTENSION_DIR) && pnpm run package

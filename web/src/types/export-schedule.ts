@@ -52,14 +52,9 @@ export interface ExportScheduleFormData {
   filterTags: string; // newline-separated for textarea
   filterHasResults: boolean;
   // Export
-  format: "json" | "jsonl" | "md" | "csv" | "xlsx" | "parquet" | "har" | "pdf";
-  destinationType: "s3" | "gcs" | "azure" | "local" | "webhook";
+  format: "json" | "jsonl" | "md" | "csv" | "xlsx";
+  destinationType: "local" | "webhook";
   pathTemplate: string;
-  // Cloud config (conditional)
-  cloudProvider: "s3" | "gcs" | "azure";
-  cloudBucket: string;
-  cloudRegion: string;
-  cloudPath: string;
   // Local config (conditional)
   localPath: string;
   // Webhook config (conditional)
