@@ -20,3 +20,4 @@ f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generi
 f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generic-api-key:532
 f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/captcha/captcha_test.go:generic-api-key:533
 f966f8f3a250f70b8646fbeea2e6b17a1f2710dd:internal/sessions/session_store_test.go:generic-api-key:478
+0545dee722edb1c07fc22342d691d59b3b19d5f3:docs/security.md:curl-auth-header:27
