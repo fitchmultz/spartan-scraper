@@ -5,7 +5,6 @@ package scrape
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -166,6 +165,7 @@ Options:
 		ContentType:      *cf.ContentType,
 		Headless:         *cf.Headless,
 		UsePlaywright:    *cf.Playwright,
+		AuthProfile:      *cf.ProfileName,
 		Auth:             authOptions,
 		TimeoutSeconds:   *cf.Timeout,
 		Extract:          extractOpts,
@@ -190,22 +190,5 @@ Options:
 }
 
 func loadExtractOptions(template, configPath string, validateSchema bool) (extract.ExtractOptions, error) {
-	opts := extract.ExtractOptions{
-		Template: template,
-		Validate: validateSchema,
-	}
-	if configPath == "" {
-		return opts, nil
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return extract.ExtractOptions{}, err
-	}
-	var tmpl extract.Template
-	if err := json.Unmarshal(data, &tmpl); err != nil {
-		return extract.ExtractOptions{}, fmt.Errorf("invalid template JSON: %w", err)
-	}
-	opts.Inline = &tmpl
-	return opts, nil
+	return common.LoadExtractOptions(template, configPath, validateSchema)
 }

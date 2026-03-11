@@ -48,67 +48,77 @@ func TestHandleSchedulesAdd(t *testing.T) {
 	}{
 		{
 			name:           "valid scrape schedule",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "valid crawl schedule",
-			body:           `{"kind": "crawl", "intervalSeconds": 7200, "url": "https://example.com", "maxDepth": 2, "maxPages": 200}`,
+			body:           `{"kind":"crawl","intervalSeconds":7200,"specVersion":1,"spec":{"version":1,"url":"https://example.com","maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "valid research schedule",
-			body:           `{"kind": "research", "intervalSeconds": 86400, "query": "test query", "urls": ["https://example.com"]}`,
+			body:           `{"kind":"research","intervalSeconds":86400,"specVersion":1,"spec":{"version":1,"query":"test query","urls":["https://example.com"],"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name:           "missing kind",
-			body:           `{"intervalSeconds": 3600, "url": "https://example.com"}`,
+			body:           `{"intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid interval (negative)",
-			body:           `{"kind": "scrape", "intervalSeconds": -1, "url": "https://example.com"}`,
+			body:           `{"kind":"scrape","intervalSeconds":-1,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid kind value",
-			body:           `{"kind": "invalid", "intervalSeconds": 3600, "url": "https://example.com"}`,
+			body:           `{"kind":"invalid","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing content-type",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusUnsupportedMediaType,
 		},
 		{
 			name:           "trailing json payload is rejected",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com"}{"extra":true}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}{"extra":true}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing url for scrape",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing url for crawl",
-			body:           `{"kind": "crawl", "intervalSeconds": 7200, "maxDepth": 2, "maxPages": 200}`,
+			body:           `{"kind":"crawl","intervalSeconds":7200,"specVersion":1,"spec":{"version":1,"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing query and urls for research",
-			body:           `{"kind": "research", "intervalSeconds": 86400}`,
+			body:           `{"kind":"research","intervalSeconds":86400,"specVersion":1,"spec":{"version":1,"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid timeout too low",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com", "timeoutSeconds": 1}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":1}}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid timeout too high",
-			body:           `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com", "timeoutSeconds": 600}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":600}}}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "missing specVersion",
+			body:           `{"kind":"scrape","intervalSeconds":3600,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "missing spec",
+			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -143,6 +153,12 @@ func TestHandleSchedulesAdd(t *testing.T) {
 				if _, ok := resp["nextRun"]; !ok {
 					t.Errorf("expected 'nextRun' field in schedule response, got: %v", resp)
 				}
+				if _, ok := resp["specVersion"]; !ok {
+					t.Errorf("expected 'specVersion' field in schedule response, got: %v", resp)
+				}
+				if _, ok := resp["spec"]; !ok {
+					t.Errorf("expected 'spec' field in schedule response, got: %v", resp)
+				}
 			} else {
 				var resp map[string]interface{}
 				if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
@@ -160,7 +176,7 @@ func TestHandleScheduleDelete(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	addBody := `{"kind": "scrape", "intervalSeconds": 3600, "url": "https://example.com", "headless": false}`
+	addBody := `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"headless":false,"timeoutSeconds":30}}}`
 	req := httptest.NewRequest("POST", "/v1/schedules", strings.NewReader(addBody))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()

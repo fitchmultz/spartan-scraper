@@ -21,9 +21,7 @@ We will acknowledge your report within 48 hours (if reasonable) and work with yo
 
 ## Supported Versions
 
-Currently, Spartan Scraper is in pre-1.0 development. Only the main branch receives security fixes.
-
-As the project matures and versioned releases are established, this policy will be updated to reflect supported version ranges.
+The current release-prep target is `1.0.0-rc1`. Until stable release support windows are documented, only the current `main` branch and the latest release candidate receive security fixes.
 
 ## Response Process
 
@@ -70,7 +68,7 @@ The following are NOT considered security vulnerabilities for this project:
 
 ## Project Status
 
-Spartan Scraper is a volunteer-run, pre-1.0 project. We do not provide:
+Spartan Scraper is a volunteer-run project. We do not provide:
 
 - SLA guarantees for response or fix timelines
 - Monetary bounties for vulnerability reports

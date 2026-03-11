@@ -22,40 +22,36 @@ func TestEnqueueAuthResolutionFailure(t *testing.T) {
 	}{
 		{
 			name: "scrape with invalid auth profile",
-			schedule: Schedule{
-				ID:              "scrape-test-id",
-				Kind:            model.KindScrape,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":         "https://example.com",
-					"authProfile": "non-existent-profile",
-				},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				s.ID = "scrape-test-id"
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.AuthProfile = "non-existent-profile"
+				s.Spec = spec
+				return s
+			}(),
 		},
 		{
 			name: "crawl with invalid auth profile",
-			schedule: Schedule{
-				ID:              "crawl-test-id",
-				Kind:            model.KindCrawl,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":         "https://example.com",
-					"authProfile": "missing-profile",
-				},
-			},
+			schedule: func() Schedule {
+				s := testCrawlSchedule("https://example.com", 2, 100)
+				s.ID = "crawl-test-id"
+				spec := s.Spec.(model.CrawlSpecV1)
+				spec.Execution.AuthProfile = "missing-profile"
+				s.Spec = spec
+				return s
+			}(),
 		},
 		{
 			name: "research with invalid auth profile",
-			schedule: Schedule{
-				ID:              "research-test-id",
-				Kind:            model.KindResearch,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"query":       "test query",
-					"urls":        []string{"https://example.com"},
-					"authProfile": "bad-profile",
-				},
-			},
+			schedule: func() Schedule {
+				s := testResearchSchedule("test query", []string{"https://example.com"}, 2, 100)
+				s.ID = "research-test-id"
+				spec := s.Spec.(model.ResearchSpecV1)
+				spec.Execution.AuthProfile = "bad-profile"
+				s.Spec = spec
+				return s
+			}(),
 		},
 	}
 
@@ -114,11 +110,7 @@ func TestCachedSchedulerManualReload(t *testing.T) {
 	}
 	defer cs.watcher.Close()
 
-	schedule := Schedule{
-		Kind:            model.KindScrape,
-		IntervalSeconds: 60,
-		Params:          map[string]interface{}{"url": "http://example.com"},
-	}
+	schedule := testScrapeSchedule("http://example.com")
 	if _, err := Add(dataDir, schedule); err != nil {
 		t.Fatalf("Add failed: %v", err)
 	}
@@ -140,12 +132,8 @@ func TestCachedSchedulerRun(t *testing.T) {
 	manager, st, cleanup := setupTestManager(t)
 	defer cleanup()
 
-	schedule := Schedule{
-		Kind:            model.KindScrape,
-		IntervalSeconds: 60,
-		NextRun:         time.Now().Add(-1 * time.Second),
-		Params:          map[string]interface{}{"url": "http://example.com"},
-	}
+	schedule := testScrapeSchedule("http://example.com")
+	schedule.NextRun = time.Now().Add(-1 * time.Second)
 	if _, err := Add(dataDir, schedule); err != nil {
 		t.Fatalf("Add failed: %v", err)
 	}
@@ -200,7 +188,12 @@ func TestCachedSchedulerConcurrentAccess(t *testing.T) {
 		schedule := Schedule{
 			Kind:            model.KindScrape,
 			IntervalSeconds: 60,
-			Params:          map[string]interface{}{"url": fmt.Sprintf("http://example%d.com", i)},
+			SpecVersion:     model.JobSpecVersion1,
+			Spec: model.ScrapeSpecV1{
+				Version:   model.JobSpecVersion1,
+				URL:       fmt.Sprintf("http://example%d.com", i),
+				Execution: testExecutionSpec(),
+			},
 		}
 		if _, err := Add(dataDir, schedule); err != nil {
 			t.Fatalf("Add failed: %v", err)
@@ -253,11 +246,7 @@ func TestCachedSchedulerFileWatcher(t *testing.T) {
 	cs.startWatcher(ctx)
 	go cs.reloadLoop(ctx)
 
-	schedule := Schedule{
-		Kind:            model.KindScrape,
-		IntervalSeconds: 60,
-		Params:          map[string]interface{}{"url": "http://example.com"},
-	}
+	schedule := testScrapeSchedule("http://example.com")
 	if _, err := Add(dataDir, schedule); err != nil {
 		t.Fatalf("Add failed: %v", err)
 	}

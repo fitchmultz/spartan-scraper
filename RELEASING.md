@@ -12,7 +12,8 @@ This document describes the local release process for Spartan Scraper.
 
 - Toolchain installed per `.tool-versions`.
 - Clean working tree (`git status` shows no unstaged/uncommitted changes).
-- Local CI is green (`make ci-pr` and `make ci`).
+- Local CI is green (`make ci-pr`, `make ci`, and `make ci-slow`).
+- `docs/validation_checklist.md` has been walked on a fresh data directory.
 
 ## Release Steps
 
@@ -26,8 +27,9 @@ This document describes the local release process for Spartan Scraper.
    make ci-pr
    make ci
    make ci-slow          # provisions Playwright for clean-machine heavy validation
-   make ci-network
    ```
+
+   Run `make ci-network` separately only if you want an optional live-Internet smoke pass before a public tag.
 
 3. **Run deep history secret scan (manual release-tier check)**
 
@@ -35,20 +37,27 @@ This document describes the local release process for Spartan Scraper.
    make secret-scan
    ```
 
-4. **Create release commit**
+4. **Finalize release metadata**
+
+   - Set `VERSION`-bearing files to the release target (for example `1.0.0-rc1` or `1.0.0`).
+   - Update `CHANGELOG.md`.
+   - Update `README.md` project status if the release changes support posture.
+   - Review `SECURITY.md` supported-version language.
+
+5. **Create release commit**
 
    ```bash
-   git add CHANGELOG.md
+   git add CHANGELOG.md README.md SECURITY.md RELEASING.md Makefile api/openapi.yaml internal/buildinfo/version.go web/package.json
    git commit -m "release: vX.Y.Z"
    ```
 
-5. **Tag release**
+6. **Tag release**
 
    ```bash
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    ```
 
-6. **Push commit and tag**
+7. **Push commit and tag**
 
    ```bash
    git push origin main
@@ -74,7 +83,9 @@ make build VERSION=vX.Y.Z
 - [ ] `make audit-public` passes
 - [ ] `make ci-pr` passes
 - [ ] `make ci` passes
+- [ ] `make ci-slow` passes
 - [ ] `make secret-scan` run and reviewed
+- [ ] `docs/validation_checklist.md` smoke pass completed
 - [ ] `CHANGELOG.md` updated
 - [ ] tag created and pushed
 - [ ] release notes drafted from changelog entries

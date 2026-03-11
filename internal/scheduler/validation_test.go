@@ -19,119 +19,59 @@ func TestScheduleValidation(t *testing.T) {
 		errContains string
 	}{
 		{
-			name: "valid scrape schedule",
-			schedule: Schedule{
-				Kind:            model.KindScrape,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":     "https://example.com",
-					"timeout": 30,
-				},
-			},
-			wantErr: false,
+			name:     "valid scrape schedule",
+			schedule: testScrapeSchedule("https://example.com"),
+			wantErr:  false,
 		},
 		{
-			name: "invalid scrape schedule - invalid URL",
-			schedule: Schedule{
-				Kind:            model.KindScrape,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url": "ftp://example.com",
-				},
-			},
+			name:        "invalid scrape schedule - invalid URL",
+			schedule:    testScrapeSchedule("ftp://example.com"),
 			wantErr:     true,
 			errContains: "invalid scrape schedule",
 		},
 		{
 			name: "invalid scrape schedule - timeout too low",
-			schedule: Schedule{
-				Kind:            model.KindScrape,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":     "https://example.com",
-					"timeout": 4,
-				},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.TimeoutSeconds = 4
+				s.Spec = spec
+				return s
+			}(),
 			wantErr:     true,
 			errContains: "invalid scrape schedule",
 		},
 		{
-			name: "valid crawl schedule",
-			schedule: Schedule{
-				Kind:            model.KindCrawl,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":      "https://example.com",
-					"maxDepth": 3,
-					"maxPages": 100,
-					"timeout":  30,
-				},
-			},
-			wantErr: false,
+			name:     "valid crawl schedule",
+			schedule: testCrawlSchedule("https://example.com", 3, 100),
+			wantErr:  false,
 		},
 		{
-			name: "invalid crawl schedule - maxDepth too high",
-			schedule: Schedule{
-				Kind:            model.KindCrawl,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":      "https://example.com",
-					"maxDepth": 11,
-					"maxPages": 100,
-				},
-			},
+			name:        "invalid crawl schedule - maxDepth too high",
+			schedule:    testCrawlSchedule("https://example.com", 11, 100),
 			wantErr:     true,
 			errContains: "invalid crawl schedule",
 		},
 		{
-			name: "invalid crawl schedule - maxPages too high",
-			schedule: Schedule{
-				Kind:            model.KindCrawl,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"url":      "https://example.com",
-					"maxDepth": 3,
-					"maxPages": 10001,
-				},
-			},
+			name:        "invalid crawl schedule - maxPages too high",
+			schedule:    testCrawlSchedule("https://example.com", 3, 10001),
 			wantErr:     true,
 			errContains: "invalid crawl schedule",
 		},
 		{
-			name: "valid research schedule",
-			schedule: Schedule{
-				Kind:            model.KindResearch,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"query": "test query",
-					"urls":  []string{"https://example.com", "https://example.org"},
-				},
-			},
-			wantErr: false,
+			name:     "valid research schedule",
+			schedule: testResearchSchedule("test query", []string{"https://example.com", "https://example.org"}, 2, 200),
+			wantErr:  false,
 		},
 		{
-			name: "invalid research schedule - empty query",
-			schedule: Schedule{
-				Kind:            model.KindResearch,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"query": "",
-					"urls":  []string{"https://example.com"},
-				},
-			},
+			name:        "invalid research schedule - empty query",
+			schedule:    testResearchSchedule("", []string{"https://example.com"}, 2, 200),
 			wantErr:     true,
 			errContains: "invalid research schedule",
 		},
 		{
-			name: "invalid research schedule - invalid URL in list",
-			schedule: Schedule{
-				Kind:            model.KindResearch,
-				IntervalSeconds: 60,
-				Params: map[string]interface{}{
-					"query": "test query",
-					"urls":  []string{"https://example.com", "ftp://example.org"},
-				},
-			},
+			name:        "invalid research schedule - invalid URL in list",
+			schedule:    testResearchSchedule("test query", []string{"https://example.com", "ftp://example.org"}, 2, 200),
 			wantErr:     true,
 			errContains: "invalid research schedule",
 		},
@@ -140,7 +80,8 @@ func TestScheduleValidation(t *testing.T) {
 			schedule: Schedule{
 				Kind:            "unknown",
 				IntervalSeconds: 60,
-				Params:          map[string]interface{}{},
+				SpecVersion:     model.JobSpecVersion1,
+				Spec:            map[string]any{},
 			},
 			wantErr:     true,
 			errContains: "unknown schedule kind",
@@ -185,11 +126,7 @@ func TestSchedulerErrorKinds(t *testing.T) {
 			name: "invalid scrape validation returns KindValidation",
 			testFunc: func(t *testing.T) error {
 				dataDir := t.TempDir()
-				schedule := Schedule{
-					Kind:            model.KindScrape,
-					IntervalSeconds: 60,
-					Params:          map[string]interface{}{"url": "ftp://invalid.com"},
-				}
+				schedule := testScrapeSchedule("ftp://invalid.com")
 				_, err := Add(dataDir, schedule)
 				return err
 			},
@@ -199,14 +136,7 @@ func TestSchedulerErrorKinds(t *testing.T) {
 			name: "invalid crawl validation returns KindValidation",
 			testFunc: func(t *testing.T) error {
 				dataDir := t.TempDir()
-				schedule := Schedule{
-					Kind:            model.KindCrawl,
-					IntervalSeconds: 60,
-					Params: map[string]interface{}{
-						"url":      "https://example.com",
-						"maxDepth": 11,
-					},
-				}
+				schedule := testCrawlSchedule("https://example.com", 11, 200)
 				_, err := Add(dataDir, schedule)
 				return err
 			},
@@ -216,11 +146,7 @@ func TestSchedulerErrorKinds(t *testing.T) {
 			name: "invalid research validation returns KindValidation",
 			testFunc: func(t *testing.T) error {
 				dataDir := t.TempDir()
-				schedule := Schedule{
-					Kind:            model.KindResearch,
-					IntervalSeconds: 60,
-					Params:          map[string]interface{}{"query": ""},
-				}
+				schedule := testResearchSchedule("", []string{"https://example.com"}, 2, 200)
 				_, err := Add(dataDir, schedule)
 				return err
 			},
@@ -232,15 +158,11 @@ func TestSchedulerErrorKinds(t *testing.T) {
 				dataDir := t.TempDir()
 				manager, _, cleanup := setupTestManager(t)
 				defer cleanup()
-				schedule := Schedule{
-					ID:              "test-id",
-					Kind:            model.KindScrape,
-					IntervalSeconds: 60,
-					Params: map[string]interface{}{
-						"url":         "https://example.com",
-						"authProfile": "non-existent-profile",
-					},
-				}
+				schedule := testScrapeSchedule("https://example.com")
+				schedule.ID = "test-id"
+				spec := schedule.Spec.(model.ScrapeSpecV1)
+				spec.Execution.AuthProfile = "non-existent-profile"
+				schedule.Spec = spec
 				return enqueue(t.Context(), manager, dataDir, schedule)
 			},
 			wantKind: apperrors.KindInternal,

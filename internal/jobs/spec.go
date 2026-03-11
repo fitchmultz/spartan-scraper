@@ -1,6 +1,22 @@
-// Package jobs provides a unified job specification for creating scrape, crawl, and research jobs.
-// It defines JobSpec which consolidates all job parameters into a single structure,
-// eliminating duplication across scheduler, MCP, API, and CLI entry points.
+// Package jobs provides the creation-time job contract shared by the retained 1.0 entrypoints.
+//
+// Purpose:
+// - Define the canonical in-memory job creation spec used before persistence.
+//
+// Responsibilities:
+// - Hold the shared create-time fields for scrape, crawl, and research jobs.
+// - Validate create-time job specs before they are persisted.
+// - Provide lightweight constructors for the supported job kinds.
+//
+// Scope:
+// - Creation-time job specification only. Persisted typed specs live in internal/model.
+//
+// Usage:
+// - Built by API, CLI, scheduler, and MCP entrypoints, then passed to Manager.CreateJob.
+//
+// Invariants/Assumptions:
+// - All job kinds share one creation-time contract.
+// - AuthProfile is carried so persisted specs can preserve profile-based auth intent.
 package jobs
 
 import (
@@ -29,6 +45,7 @@ type JobSpec struct {
 	MaxPages         int
 	Headless         bool
 	UsePlaywright    bool
+	AuthProfile      string
 	Auth             fetch.AuthOptions
 	TimeoutSeconds   int
 	Extract          extract.ExtractOptions

@@ -126,6 +126,7 @@ Options:
 		MaxPages:         *maxPages,
 		Headless:         *cf.Headless,
 		UsePlaywright:    *cf.Playwright,
+		AuthProfile:      *cf.ProfileName,
 		Auth:             authOptions,
 		TimeoutSeconds:   *cf.Timeout,
 		Extract:          extractOpts,

@@ -4,42 +4,29 @@
 package scheduler
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestExtractConfigPersistence(t *testing.T) {
 	dataDir := t.TempDir()
 
-	extractConfigPath := filepath.Join(dataDir, "extract.json")
-	extractConfig := `{
-		"name": "test-template",
-		"selectors": [
-			{
-				"name": "title",
-				"selector": "h1",
-				"attr": "text"
-			}
-		]
-	}`
-	if err := os.WriteFile(extractConfigPath, []byte(extractConfig), 0o644); err != nil {
-		t.Fatalf("failed to write extract config: %v", err)
-	}
-
-	schedule := Schedule{
-		Kind:            model.KindScrape,
-		IntervalSeconds: 60,
-		Params: map[string]interface{}{
-			"url":             "https://example.com",
-			"extractTemplate": "product",
-			"extractConfig":   extractConfigPath,
-			"extractValidate": true,
+	schedule := testScrapeSchedule("https://example.com")
+	spec := schedule.Spec.(model.ScrapeSpecV1)
+	spec.Execution.Extract = extract.ExtractOptions{
+		Template: "product",
+		Validate: true,
+		Inline: &extract.Template{
+			Name: "test-template",
+			Selectors: []extract.SelectorRule{
+				{Name: "title", Selector: "h1", Attr: "text"},
+			},
 		},
 	}
+	schedule.Spec = spec
 
 	if _, err := Add(dataDir, schedule); err != nil {
 		t.Fatalf("Add failed: %v", err)
@@ -53,21 +40,24 @@ func TestExtractConfigPersistence(t *testing.T) {
 		t.Fatalf("expected 1 schedule, got %d", len(loaded))
 	}
 
-	extractOpts := loadExtract(loaded[0].Params)
-	if extractOpts.Template != "product" {
-		t.Errorf("expected extractTemplate 'product', got %s", extractOpts.Template)
+	extractOpts, err := executionSpecForSchedule(loaded[0])
+	if err != nil {
+		t.Fatalf("executionSpecForSchedule failed: %v", err)
 	}
-	if !extractOpts.Validate {
+	if extractOpts.Extract.Template != "product" {
+		t.Errorf("expected extractTemplate 'product', got %s", extractOpts.Extract.Template)
+	}
+	if !extractOpts.Extract.Validate {
 		t.Error("expected extractValidate true")
 	}
-	if extractOpts.Inline == nil {
+	if extractOpts.Extract.Inline == nil {
 		t.Error("expected inline template to be loaded from extractConfig")
 	}
-	if extractOpts.Inline.Name != "test-template" {
-		t.Errorf("expected inline template name 'test-template', got %s", extractOpts.Inline.Name)
+	if extractOpts.Extract.Inline.Name != "test-template" {
+		t.Errorf("expected inline template name 'test-template', got %s", extractOpts.Extract.Inline.Name)
 	}
-	if len(extractOpts.Inline.Selectors) != 1 {
-		t.Errorf("expected 1 selector, got %d", len(extractOpts.Inline.Selectors))
+	if len(extractOpts.Extract.Inline.Selectors) != 1 {
+		t.Errorf("expected 1 selector, got %d", len(extractOpts.Extract.Inline.Selectors))
 	}
 }
 
@@ -75,42 +65,43 @@ func TestIncrementalModePersistence(t *testing.T) {
 	testCases := []struct {
 		name       string
 		kind       model.Kind
-		params     map[string]interface{}
+		schedule   Schedule
 		wantResult bool
 	}{
 		{
 			name: "scrape with incremental enabled",
 			kind: model.KindScrape,
-			params: map[string]interface{}{
-				"url":         "https://example.com",
-				"incremental": true,
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Incremental = true
+				s.Spec = spec
+				return s
+			}(),
 			wantResult: true,
 		},
 		{
 			name: "crawl with incremental enabled",
 			kind: model.KindCrawl,
-			params: map[string]interface{}{
-				"url":         "https://example.com",
-				"incremental": true,
-			},
+			schedule: func() Schedule {
+				s := testCrawlSchedule("https://example.com", 2, 200)
+				spec := s.Spec.(model.CrawlSpecV1)
+				spec.Incremental = true
+				s.Spec = spec
+				return s
+			}(),
 			wantResult: true,
 		},
 		{
-			name: "scrape with incremental disabled",
-			kind: model.KindScrape,
-			params: map[string]interface{}{
-				"url":         "https://example.com",
-				"incremental": false,
-			},
+			name:       "scrape with incremental disabled",
+			kind:       model.KindScrape,
+			schedule:   testScrapeSchedule("https://example.com"),
 			wantResult: false,
 		},
 		{
-			name: "scrape without incremental flag",
-			kind: model.KindScrape,
-			params: map[string]interface{}{
-				"url": "https://example.com",
-			},
+			name:       "scrape without incremental flag",
+			kind:       model.KindScrape,
+			schedule:   testScrapeSchedule("https://example.com"),
 			wantResult: false,
 		},
 	}
@@ -119,13 +110,7 @@ func TestIncrementalModePersistence(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testDataDir := t.TempDir()
 
-			schedule := Schedule{
-				Kind:            tc.kind,
-				IntervalSeconds: 60,
-				Params:          tc.params,
-			}
-
-			if _, err := Add(testDataDir, schedule); err != nil {
+			if _, err := Add(testDataDir, tc.schedule); err != nil {
 				t.Fatalf("Add failed: %v", err)
 			}
 
@@ -137,7 +122,15 @@ func TestIncrementalModePersistence(t *testing.T) {
 				t.Fatalf("expected 1 schedule, got %d", len(loaded))
 			}
 
-			got := boolParam(loaded[0].Params, "incremental")
+			got := false
+			switch spec := loaded[0].Spec.(type) {
+			case model.ScrapeSpecV1:
+				got = spec.Incremental
+			case model.CrawlSpecV1:
+				got = spec.Incremental
+			default:
+				t.Fatalf("unexpected schedule spec type %T", loaded[0].Spec)
+			}
 			if got != tc.wantResult {
 				t.Errorf("incremental = %v, want %v", got, tc.wantResult)
 			}
@@ -147,70 +140,83 @@ func TestIncrementalModePersistence(t *testing.T) {
 
 func TestAuthOverridePersistence(t *testing.T) {
 	testCases := []struct {
-		name    string
-		params  map[string]interface{}
-		wantErr bool
+		name     string
+		schedule Schedule
+		wantErr  bool
 	}{
 		{
 			name: "auth with headers",
-			params: map[string]interface{}{
-				"url": "https://example.com",
-				"headers": []auth.HeaderKV{
-					{Key: "X-API-Key", Value: "secret"},
-					{Key: "Authorization", Value: "Bearer token"},
-				},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.Auth.Headers = map[string]string{
+					"X-API-Key":     "secret",
+					"Authorization": "Bearer token",
+				}
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 		{
 			name: "auth with cookies",
-			params: map[string]interface{}{
-				"url": "https://example.com",
-				"cookies": []auth.Cookie{
-					{Name: "session", Value: "abc123"},
-				},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.Auth.Cookies = []string{"session=abc123"}
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 		{
 			name: "auth with basic token",
-			params: map[string]interface{}{
-				"url":       "https://example.com",
-				"authBasic": "user:pass",
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.Auth.Basic = "user:pass"
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 		{
 			name: "auth with bearer tokens",
-			params: map[string]interface{}{
-				"url":       "https://example.com",
-				"tokenKind": "bearer",
-				"tokens":    []string{"token1", "token2"},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.Auth.Headers = map[string]string{"Authorization": "Bearer token1"}
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 		{
 			name: "auth with login flow",
-			params: map[string]interface{}{
-				"url":                 "https://example.com",
-				"loginURL":            "https://example.com/login",
-				"loginUserSelector":   "#username",
-				"loginPassSelector":   "#password",
-				"loginSubmitSelector": "button[type=submit]",
-				"loginUser":           "test@example.com",
-				"loginPass":           "password",
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.Auth.LoginURL = "https://example.com/login"
+				spec.Execution.Auth.LoginUserSelector = "#username"
+				spec.Execution.Auth.LoginPassSelector = "#password"
+				spec.Execution.Auth.LoginSubmitSelector = "button[type=submit]"
+				spec.Execution.Auth.LoginUser = "test@example.com"
+				spec.Execution.Auth.LoginPass = "password"
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 		{
 			name: "auth with profile and overrides",
-			params: map[string]interface{}{
-				"url":         "https://example.com",
-				"authProfile": "base",
-				"headers": []auth.HeaderKV{
-					{Key: "X-Custom", Value: "value"},
-				},
-			},
+			schedule: func() Schedule {
+				s := testScrapeSchedule("https://example.com")
+				spec := s.Spec.(model.ScrapeSpecV1)
+				spec.Execution.AuthProfile = "base"
+				spec.Execution.Auth.Headers = map[string]string{"X-Custom": "value"}
+				s.Spec = spec
+				return s
+			}(),
 			wantErr: false,
 		},
 	}
@@ -219,7 +225,7 @@ func TestAuthOverridePersistence(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testDataDir := t.TempDir()
 
-			if _, hasProfile := tc.params["authProfile"]; hasProfile {
+			if spec := tc.schedule.Spec.(model.ScrapeSpecV1); spec.Execution.AuthProfile != "" {
 				profile := auth.Profile{
 					Name: "base",
 				}
@@ -228,13 +234,7 @@ func TestAuthOverridePersistence(t *testing.T) {
 				}
 			}
 
-			schedule := Schedule{
-				Kind:            model.KindScrape,
-				IntervalSeconds: 60,
-				Params:          tc.params,
-			}
-
-			_, err := Add(testDataDir, schedule)
+			_, err := Add(testDataDir, tc.schedule)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("Add() error = %v, wantErr %v", err, tc.wantErr)
 				return
@@ -251,38 +251,27 @@ func TestAuthOverridePersistence(t *testing.T) {
 				t.Fatalf("expected 1 schedule, got %d", len(loaded))
 			}
 
-			input := loadAuthOverrides(loaded[0].Params)
-
-			if headers, hasHeaders := tc.params["headers"]; hasHeaders {
-				if len(input.Headers) != len(headers.([]auth.HeaderKV)) {
-					t.Errorf("expected %d headers, got %d", len(headers.([]auth.HeaderKV)), len(input.Headers))
-				}
+			exec, err := executionSpecForSchedule(loaded[0])
+			if err != nil {
+				t.Fatalf("executionSpecForSchedule failed: %v", err)
 			}
+			input := model.AuthOverridesFromExecution(exec)
 
-			if cookies, hasCookies := tc.params["cookies"]; hasCookies {
-				if len(input.Cookies) != len(cookies.([]auth.Cookie)) {
-					t.Errorf("expected %d cookies, got %d", len(cookies.([]auth.Cookie)), len(input.Cookies))
-				}
+			if len(exec.Auth.Headers) > 0 && len(input.Headers) != len(exec.Auth.Headers) {
+				t.Errorf("expected %d headers, got %d", len(exec.Auth.Headers), len(input.Headers))
 			}
-
-			if tokens, hasTokens := tc.params["tokens"]; hasTokens {
-				if len(input.Tokens) != len(tokens.([]string)) {
-					t.Errorf("expected %d tokens, got %d", len(tokens.([]string)), len(input.Tokens))
-				}
+			if len(exec.Auth.Cookies) > 0 && len(input.Cookies) != len(exec.Auth.Cookies) {
+				t.Errorf("expected %d cookies, got %d", len(exec.Auth.Cookies), len(input.Cookies))
 			}
-
-			if _, hasBasic := tc.params["authBasic"]; hasBasic {
-				if len(input.Tokens) == 0 {
-					t.Error("expected basic auth token")
-				}
+			if exec.Auth.Basic != "" && len(input.Tokens) == 0 {
+				t.Error("expected basic auth token")
 			}
-
-			if loginURL, hasLogin := tc.params["loginURL"]; hasLogin {
+			if exec.Auth.LoginURL != "" {
 				if input.Login == nil {
 					t.Error("expected login flow")
 				}
-				if input.Login.URL != loginURL {
-					t.Errorf("expected login URL %s, got %s", loginURL, input.Login.URL)
+				if input.Login != nil && input.Login.URL != exec.Auth.LoginURL {
+					t.Errorf("expected login URL %s, got %s", exec.Auth.LoginURL, input.Login.URL)
 				}
 			}
 		})

@@ -20,6 +20,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -90,7 +91,8 @@ func toScheduleResponse(schedule scheduler.Schedule) ScheduleResponse {
 		Kind:            string(schedule.Kind),
 		IntervalSeconds: schedule.IntervalSeconds,
 		NextRun:         schedule.NextRun.Format(time.RFC3339),
-		Params:          schedule.Params,
+		SpecVersion:     schedule.SpecVersion,
+		Spec:            schedule.Spec,
 	}
 }
 
@@ -101,6 +103,12 @@ func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
 	if req.IntervalSeconds <= 0 {
 		return scheduler.Schedule{}, apperrors.Validation("intervalSeconds must be positive")
 	}
+	if req.SpecVersion == 0 {
+		return scheduler.Schedule{}, apperrors.Validation("specVersion is required")
+	}
+	if len(req.Spec) == 0 {
+		return scheduler.Schedule{}, apperrors.Validation("spec is required")
+	}
 	kind := model.Kind(req.Kind)
 	switch kind {
 	case model.KindScrape, model.KindCrawl, model.KindResearch:
@@ -108,68 +116,23 @@ func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
 		return scheduler.Schedule{}, apperrors.Validation("kind must be scrape, crawl, or research")
 	}
 
+	spec, err := model.DecodeJobSpec(kind, req.SpecVersion, req.Spec)
+	if err != nil {
+		return scheduler.Schedule{}, err
+	}
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		return scheduler.Schedule{}, apperrors.Wrap(apperrors.KindInternal, "failed to normalize schedule spec", err)
+	}
+	normalizedSpec, err := model.DecodeJobSpec(kind, req.SpecVersion, raw)
+	if err != nil {
+		return scheduler.Schedule{}, err
+	}
+
 	return scheduler.Schedule{
 		Kind:            kind,
 		IntervalSeconds: req.IntervalSeconds,
-		Params:          scheduleParamsFromRequest(req),
+		SpecVersion:     req.SpecVersion,
+		Spec:            normalizedSpec,
 	}, nil
-}
-
-func scheduleParamsFromRequest(req ScheduleRequest) map[string]interface{} {
-	params := map[string]interface{}{
-		"headless": req.Headless,
-		"timeout":  req.TimeoutSeconds,
-	}
-	if req.URL != nil {
-		params["url"] = *req.URL
-	}
-	if req.Query != nil {
-		params["query"] = *req.Query
-	}
-	if len(req.URLs) > 0 {
-		params["urls"] = req.URLs
-	}
-	if req.MaxDepth != nil {
-		params["maxDepth"] = *req.MaxDepth
-	}
-	if req.MaxPages != nil {
-		params["maxPages"] = *req.MaxPages
-	}
-	if req.Playwright != nil {
-		params["playwright"] = *req.Playwright
-	}
-	if req.AuthProfile != nil {
-		params["authProfile"] = *req.AuthProfile
-	}
-	if req.Auth != nil {
-		params["headers"] = toHeaderKVs(req.Auth.Headers)
-		params["cookies"] = toCookies(req.Auth.Cookies)
-		params["tokens"] = tokensFromOverride(*req.Auth)
-		if login := loginFromOverride(*req.Auth); login != nil {
-			params["login"] = login
-		}
-	}
-	if req.Extract != nil {
-		params["extractTemplate"] = req.Extract.Template
-		params["extractValidate"] = req.Extract.Validate
-	}
-	if req.Pipeline != nil {
-		params["pipeline"] = *req.Pipeline
-	}
-	if req.Incremental != nil && req.Kind != "research" {
-		params["incremental"] = *req.Incremental
-	}
-	if req.SitemapURL != nil && req.Kind == "crawl" {
-		params["sitemapURL"] = *req.SitemapURL
-	}
-	if req.SitemapOnly != nil && req.Kind == "crawl" {
-		params["sitemapOnly"] = *req.SitemapOnly
-	}
-	if req.Screenshot != nil {
-		params["screenshot"] = *req.Screenshot
-	}
-	if req.Device != nil {
-		params["device"] = *req.Device
-	}
-	return params
 }

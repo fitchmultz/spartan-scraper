@@ -16,7 +16,7 @@ package buildinfo
 
 var (
 	// Version is the current version of the application.
-	Version = "0.1.0"
+	Version = "1.0.0-rc1"
 	// Commit is the git commit hash of the build.
 	Commit = "none"
 	// Date is the build date in UTC.

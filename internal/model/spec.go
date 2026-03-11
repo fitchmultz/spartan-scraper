@@ -48,6 +48,7 @@ type ExecutionSpec struct {
 	Headless         bool                          `json:"headless"`
 	UsePlaywright    bool                          `json:"playwright"`
 	TimeoutSeconds   int                           `json:"timeoutSeconds"`
+	AuthProfile      string                        `json:"authProfile,omitempty"`
 	Auth             fetch.AuthOptions             `json:"auth,omitempty"`
 	Extract          extract.ExtractOptions        `json:"extract,omitempty"`
 	Pipeline         pipeline.Options              `json:"pipeline,omitempty"`
@@ -161,8 +162,9 @@ func ExtractWebhookSpec(spec any) *WebhookSpec {
 // AuthOverridesFromExecution returns auth resolve input from a shared execution spec.
 func AuthOverridesFromExecution(exec ExecutionSpec) auth.ResolveInput {
 	input := auth.ResolveInput{
-		Headers: make([]auth.HeaderKV, 0, len(exec.Auth.Headers)),
-		Cookies: make([]auth.Cookie, 0, len(exec.Auth.Cookies)),
+		ProfileName: exec.AuthProfile,
+		Headers:     make([]auth.HeaderKV, 0, len(exec.Auth.Headers)),
+		Cookies:     make([]auth.Cookie, 0, len(exec.Auth.Cookies)),
 	}
 	for key, value := range exec.Auth.Headers {
 		input.Headers = append(input.Headers, auth.HeaderKV{Key: key, Value: value})

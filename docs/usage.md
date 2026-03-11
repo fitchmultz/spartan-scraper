@@ -241,16 +241,17 @@ Render profile commands:
 
 - `spartan schedule add --kind <scrape|crawl|research> --interval <seconds> [job flags]`
 - `spartan schedule list`
-- `spartan schedule get --id <id>`
 - `spartan schedule delete --id <id>`
-- `spartan schedule enable --id <id>`
-- `spartan schedule disable --id <id>`
 
 Example:
 
 ```bash
 spartan schedule add --kind scrape --interval 3600 --url https://example.com
 ```
+
+API note:
+
+- `/v1/schedules` accepts `kind`, `intervalSeconds`, `specVersion`, and typed `spec`.
 
 ### Export
 

@@ -34,11 +34,12 @@ import (
 )
 
 type Schedule struct {
-	ID              string                 `json:"id"`
-	Kind            model.Kind             `json:"kind"`
-	IntervalSeconds int                    `json:"intervalSeconds"`
-	NextRun         time.Time              `json:"nextRun"`
-	Params          map[string]interface{} `json:"params"`
+	ID              string     `json:"id"`
+	Kind            model.Kind `json:"kind"`
+	IntervalSeconds int        `json:"intervalSeconds"`
+	NextRun         time.Time  `json:"nextRun"`
+	SpecVersion     int        `json:"specVersion"`
+	Spec            any        `json:"spec"`
 }
 
 type scheduleStore struct {

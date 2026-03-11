@@ -144,36 +144,88 @@ func runRetentionCleanup(ctx context.Context, dataDir string, cfg config.Config)
 }
 
 func enqueue(ctx context.Context, manager *jobs.Manager, dataDir string, schedule Schedule) error {
-	extractOpts := loadExtract(schedule.Params)
-	pipelineOpts := loadPipeline(schedule.Params)
-
-	targetURL := stringParam(schedule.Params, "url")
-	if schedule.Kind == model.KindResearch {
-		urls := stringSliceParam(schedule.Params, "urls")
-		if len(urls) > 0 {
-			targetURL = urls[0]
-		}
+	exec, err := executionSpecForSchedule(schedule)
+	if err != nil {
+		return err
 	}
 
-	authOptions, err := loadAuth(schedule.Params, dataDir, targetURL, auth.EnvOverrides{})
+	authOptions, err := resolveScheduleAuth(schedule, dataDir, auth.EnvOverrides{})
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to resolve auth for schedule", err)
 	}
 
 	spec := jobs.JobSpec{
-		Kind:           schedule.Kind,
-		URL:            stringParam(schedule.Params, "url"),
-		Query:          stringParam(schedule.Params, "query"),
-		URLs:           stringSliceParam(schedule.Params, "urls"),
-		MaxDepth:       intParam(schedule.Params, "maxDepth", 2),
-		MaxPages:       intParam(schedule.Params, "maxPages", 200),
-		Headless:       boolParam(schedule.Params, "headless"),
-		UsePlaywright:  boolParamDefault(schedule.Params, "playwright", manager.DefaultUsePlaywright()),
-		Auth:           authOptions,
-		TimeoutSeconds: intParam(schedule.Params, "timeout", manager.DefaultTimeoutSeconds()),
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
-		Incremental:    schedule.Kind != model.KindResearch && boolParam(schedule.Params, "incremental"),
+		Kind:             schedule.Kind,
+		Headless:         exec.Headless,
+		UsePlaywright:    exec.UsePlaywright,
+		AuthProfile:      exec.AuthProfile,
+		Auth:             authOptions,
+		TimeoutSeconds:   exec.TimeoutSeconds,
+		Extract:          exec.Extract,
+		Pipeline:         exec.Pipeline,
+		Screenshot:       exec.Screenshot,
+		Device:           exec.Device,
+		NetworkIntercept: exec.NetworkIntercept,
+	}
+	if spec.TimeoutSeconds <= 0 {
+		spec.TimeoutSeconds = manager.DefaultTimeoutSeconds()
+	}
+
+	if webhook := model.ExtractWebhookSpec(schedule.Spec); webhook != nil {
+		spec.WebhookURL = webhook.URL
+		spec.WebhookEvents = webhook.Events
+		spec.WebhookSecret = webhook.Secret
+	}
+
+	switch typed := schedule.Spec.(type) {
+	case model.ScrapeSpecV1:
+		spec.URL = typed.URL
+		spec.Method = typed.Method
+		spec.Body = typed.Body
+		spec.ContentType = typed.ContentType
+		spec.Incremental = typed.Incremental
+	case *model.ScrapeSpecV1:
+		spec.URL = typed.URL
+		spec.Method = typed.Method
+		spec.Body = typed.Body
+		spec.ContentType = typed.ContentType
+		spec.Incremental = typed.Incremental
+	case model.CrawlSpecV1:
+		spec.URL = typed.URL
+		spec.MaxDepth = typed.MaxDepth
+		spec.MaxPages = typed.MaxPages
+		spec.Incremental = typed.Incremental
+		spec.SitemapURL = typed.SitemapURL
+		spec.SitemapOnly = typed.SitemapOnly
+		spec.IncludePatterns = typed.IncludePatterns
+		spec.ExcludePatterns = typed.ExcludePatterns
+		spec.RespectRobotsTxt = typed.RespectRobotsTxt
+		spec.SkipDuplicates = typed.SkipDuplicates
+		spec.SimHashThreshold = typed.SimHashThreshold
+	case *model.CrawlSpecV1:
+		spec.URL = typed.URL
+		spec.MaxDepth = typed.MaxDepth
+		spec.MaxPages = typed.MaxPages
+		spec.Incremental = typed.Incremental
+		spec.SitemapURL = typed.SitemapURL
+		spec.SitemapOnly = typed.SitemapOnly
+		spec.IncludePatterns = typed.IncludePatterns
+		spec.ExcludePatterns = typed.ExcludePatterns
+		spec.RespectRobotsTxt = typed.RespectRobotsTxt
+		spec.SkipDuplicates = typed.SkipDuplicates
+		spec.SimHashThreshold = typed.SimHashThreshold
+	case model.ResearchSpecV1:
+		spec.Query = typed.Query
+		spec.URLs = typed.URLs
+		spec.MaxDepth = typed.MaxDepth
+		spec.MaxPages = typed.MaxPages
+	case *model.ResearchSpecV1:
+		spec.Query = typed.Query
+		spec.URLs = typed.URLs
+		spec.MaxDepth = typed.MaxDepth
+		spec.MaxPages = typed.MaxPages
+	default:
+		return apperrors.Validation("schedule spec is invalid")
 	}
 
 	job, err := manager.CreateJob(ctx, spec)

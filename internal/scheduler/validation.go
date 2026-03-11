@@ -1,14 +1,14 @@
-// Package scheduler provides schedule parameter validation.
+// Package scheduler provides typed schedule validation.
 //
 // This file is responsible for:
-// - Validating schedule parameters based on schedule kind (scrape, crawl, research)
+// - Validating typed schedule specs based on schedule kind (scrape, crawl, research)
 // - Delegating to validate package for common validation logic
 // - Returning classified errors via apperrors package
 //
 // This file does NOT handle:
 // - Schedule persistence or storage
 // - Schedule execution
-// - Parameter extraction (params.go does this)
+// - Shared execution decoding (params.go does this)
 //
 // Invariants:
 // - Returns apperrors.KindValidation for validation failures
@@ -22,42 +22,67 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
-func validateScheduleParams(schedule Schedule) error {
-	switch schedule.Kind {
-	case model.KindScrape:
-		opts := validate.JobValidationOpts{
-			URL:         stringParam(schedule.Params, "url"),
-			Timeout:     intParam(schedule.Params, "timeout", 0),
-			AuthProfile: stringParam(schedule.Params, "authProfile"),
-		}
-		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
-			return apperrors.Wrap(apperrors.KindValidation, "invalid scrape schedule", err)
-		}
-	case model.KindCrawl:
-		opts := validate.JobValidationOpts{
-			URL:         stringParam(schedule.Params, "url"),
-			MaxDepth:    intParam(schedule.Params, "maxDepth", 0),
-			MaxPages:    intParam(schedule.Params, "maxPages", 0),
-			Timeout:     intParam(schedule.Params, "timeout", 0),
-			AuthProfile: stringParam(schedule.Params, "authProfile"),
-		}
-		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
-			return apperrors.Wrap(apperrors.KindValidation, "invalid crawl schedule", err)
-		}
-	case model.KindResearch:
-		opts := validate.JobValidationOpts{
-			Query:       stringParam(schedule.Params, "query"),
-			URLs:        stringSliceParam(schedule.Params, "urls"),
-			MaxDepth:    intParam(schedule.Params, "maxDepth", 0),
-			MaxPages:    intParam(schedule.Params, "maxPages", 0),
-			Timeout:     intParam(schedule.Params, "timeout", 0),
-			AuthProfile: stringParam(schedule.Params, "authProfile"),
-		}
-		if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
-			return apperrors.Wrap(apperrors.KindValidation, "invalid research schedule", err)
-		}
+func validateScheduleSpec(schedule Schedule) error {
+	exec, err := executionSpecForSchedule(schedule)
+	if err != nil {
+		return err
+	}
+
+	switch typed := schedule.Spec.(type) {
+	case model.ScrapeSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			URL:         typed.URL,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
+	case *model.ScrapeSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			URL:         typed.URL,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
+	case model.CrawlSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			URL:         typed.URL,
+			MaxDepth:    typed.MaxDepth,
+			MaxPages:    typed.MaxPages,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
+	case *model.CrawlSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			URL:         typed.URL,
+			MaxDepth:    typed.MaxDepth,
+			MaxPages:    typed.MaxPages,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
+	case model.ResearchSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			Query:       typed.Query,
+			URLs:        typed.URLs,
+			MaxDepth:    typed.MaxDepth,
+			MaxPages:    typed.MaxPages,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
+	case *model.ResearchSpecV1:
+		return validateTypedSchedule(schedule.Kind, validate.JobValidationOpts{
+			Query:       typed.Query,
+			URLs:        typed.URLs,
+			MaxDepth:    typed.MaxDepth,
+			MaxPages:    typed.MaxPages,
+			Timeout:     exec.TimeoutSeconds,
+			AuthProfile: exec.AuthProfile,
+		})
 	default:
 		return apperrors.Validation("unknown schedule kind")
+	}
+}
+
+func validateTypedSchedule(kind model.Kind, opts validate.JobValidationOpts) error {
+	if err := validate.ValidateJob(opts, kind); err != nil {
+		return apperrors.Wrap(apperrors.KindValidation, "invalid "+string(kind)+" schedule", err)
 	}
 	return nil
 }

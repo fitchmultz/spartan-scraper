@@ -68,6 +68,7 @@ func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, re
 		spec.TimeoutSeconds = s.manager.DefaultTimeoutSeconds()
 	}
 	spec.UsePlaywright = valueOr(opts.playwright, s.manager.DefaultUsePlaywright())
+	spec.AuthProfile = opts.authProfile
 	spec.Extract = valueOr(opts.extract, extract.ExtractOptions{})
 	spec.Pipeline = valueOr(opts.pipeline, pipeline.Options{})
 	spec.Incremental = valueOr(opts.incremental, false)

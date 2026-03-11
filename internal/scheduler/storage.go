@@ -23,14 +23,31 @@ package scheduler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/google/uuid"
 )
+
+type persistedScheduleStore struct {
+	Schedules []persistedSchedule `json:"schedules"`
+}
+
+type persistedSchedule struct {
+	ID              string          `json:"id"`
+	Kind            model.Kind      `json:"kind"`
+	IntervalSeconds int             `json:"intervalSeconds"`
+	NextRun         time.Time       `json:"nextRun"`
+	SpecVersion     *int            `json:"specVersion"`
+	Spec            json.RawMessage `json:"spec"`
+	Params          json.RawMessage `json:"params,omitempty"`
+}
 
 func LoadAll(dataDir string) ([]Schedule, error) {
 	path := schedulesPath(dataDir)
@@ -41,11 +58,19 @@ func LoadAll(dataDir string) ([]Schedule, error) {
 		}
 		return nil, err
 	}
-	var s scheduleStore
+	var s persistedScheduleStore
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
-	return s.Schedules, nil
+	schedules := make([]Schedule, 0, len(s.Schedules))
+	for _, persisted := range s.Schedules {
+		schedule, decodeErr := decodePersistedSchedule(persisted)
+		if decodeErr != nil {
+			return nil, decodeErr
+		}
+		schedules = append(schedules, schedule)
+	}
+	return schedules, nil
 }
 
 func SaveAll(dataDir string, schedules []Schedule) error {
@@ -70,8 +95,17 @@ func Add(dataDir string, schedule Schedule) (*Schedule, error) {
 	if schedule.NextRun.IsZero() {
 		schedule.NextRun = time.Now().Add(time.Duration(schedule.IntervalSeconds) * time.Second)
 	}
+	if schedule.SpecVersion == 0 {
+		schedule.SpecVersion = model.JobSpecVersion1
+	}
 
-	if err := validateScheduleParams(schedule); err != nil {
+	spec, err := canonicalizeScheduleSpec(schedule.Kind, schedule.SpecVersion, schedule.Spec)
+	if err != nil {
+		return nil, err
+	}
+	schedule.Spec = spec
+
+	if err := validateScheduleSpec(schedule); err != nil {
 		return nil, err
 	}
 
@@ -115,4 +149,91 @@ func schedulesPath(dataDir string) string {
 		base = ".data"
 	}
 	return filepath.Join(base, "schedules.json")
+}
+
+func decodePersistedSchedule(persisted persistedSchedule) (Schedule, error) {
+	if len(persisted.Params) > 0 {
+		return Schedule{}, apperrors.Validation("schedules.json uses the removed params contract; reset or recreate schedules")
+	}
+	if persisted.SpecVersion == nil {
+		return Schedule{}, apperrors.Validation("schedules.json is missing specVersion; reset or recreate schedules")
+	}
+	if len(persisted.Spec) == 0 {
+		return Schedule{}, apperrors.Validation("schedules.json is missing spec; reset or recreate schedules")
+	}
+	spec, err := model.DecodeJobSpec(persisted.Kind, *persisted.SpecVersion, persisted.Spec)
+	if err != nil {
+		return Schedule{}, apperrors.Wrap(apperrors.KindValidation, "failed to decode persisted schedule spec", err)
+	}
+	return Schedule{
+		ID:              persisted.ID,
+		Kind:            persisted.Kind,
+		IntervalSeconds: persisted.IntervalSeconds,
+		NextRun:         persisted.NextRun,
+		SpecVersion:     *persisted.SpecVersion,
+		Spec:            spec,
+	}, nil
+}
+
+func canonicalizeScheduleSpec(kind model.Kind, version int, spec any) (any, error) {
+	if spec == nil {
+		return nil, apperrors.Validation("schedule spec is required")
+	}
+	switch kind {
+	case model.KindScrape, model.KindCrawl, model.KindResearch:
+	default:
+		return nil, apperrors.Validation("unknown schedule kind")
+	}
+
+	switch typed := spec.(type) {
+	case model.ScrapeSpecV1:
+		if kind != model.KindScrape {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match scrape spec", kind))
+		}
+		return typed, nil
+	case *model.ScrapeSpecV1:
+		if typed == nil {
+			return nil, apperrors.Validation("schedule spec is required")
+		}
+		if kind != model.KindScrape {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match scrape spec", kind))
+		}
+		return *typed, nil
+	case model.CrawlSpecV1:
+		if kind != model.KindCrawl {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match crawl spec", kind))
+		}
+		return typed, nil
+	case *model.CrawlSpecV1:
+		if typed == nil {
+			return nil, apperrors.Validation("schedule spec is required")
+		}
+		if kind != model.KindCrawl {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match crawl spec", kind))
+		}
+		return *typed, nil
+	case model.ResearchSpecV1:
+		if kind != model.KindResearch {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match research spec", kind))
+		}
+		return typed, nil
+	case *model.ResearchSpecV1:
+		if typed == nil {
+			return nil, apperrors.Validation("schedule spec is required")
+		}
+		if kind != model.KindResearch {
+			return nil, apperrors.Validation(fmt.Sprintf("schedule kind %s does not match research spec", kind))
+		}
+		return *typed, nil
+	default:
+		raw, err := json.Marshal(spec)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindValidation, "failed to marshal schedule spec", err)
+		}
+		decoded, err := model.DecodeJobSpec(kind, version, raw)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindValidation, "failed to decode schedule spec", err)
+		}
+		return decoded, nil
+	}
 }

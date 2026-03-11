@@ -12,6 +12,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
@@ -62,57 +63,32 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 
-		params := map[string]interface{}{
-			"headless":   *bf.Headless,
-			"playwright": *bf.Playwright,
-			"timeout":    *bf.Timeout,
-			"pipeline": pipeline.Options{
+		extractOpts, err := common.LoadExtractOptions(*ef.ExtractTemplate, *ef.ExtractConfig, *ef.ExtractValidate)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+
+		exec := model.ExecutionSpec{
+			Headless:       *bf.Headless,
+			UsePlaywright:  *bf.Playwright,
+			TimeoutSeconds: *bf.Timeout,
+			AuthProfile:    *authProfile,
+			Auth: fetch.AuthOptions{
+				Basic:   *af.AuthBasic,
+				Headers: af.Headers.ToMap(),
+				Cookies: []string(af.Cookies),
+			},
+			Extract: extractOpts,
+			Pipeline: pipeline.Options{
 				PreProcessors:  []string(pf.PreProcessors),
 				PostProcessors: []string(pf.PostProcessors),
 				Transformers:   []string(pf.Transformers),
 			},
-			"incremental": *incremental,
-		}
-
-		if *ef.ExtractTemplate != "" {
-			params["extractTemplate"] = *ef.ExtractTemplate
-		}
-		if *ef.ExtractConfig != "" {
-			params["extractConfig"] = *ef.ExtractConfig
-		}
-		if *ef.ExtractValidate {
-			params["extractValidate"] = *ef.ExtractValidate
-		}
-
-		if *authProfile != "" {
-			params["authProfile"] = *authProfile
-		}
-
-		if *af.AuthBasic != "" {
-			params["authBasic"] = *af.AuthBasic
-		}
-		if *af.TokenKind != "" {
-			params["tokenKind"] = *af.TokenKind
-		}
-		if *af.TokenHeader != "" {
-			params["tokenHeader"] = *af.TokenHeader
-		}
-		if *af.TokenQuery != "" {
-			params["tokenQuery"] = *af.TokenQuery
-		}
-		if *af.TokenCookie != "" {
-			params["tokenCookie"] = *af.TokenCookie
 		}
 		if len(af.TokenValues) > 0 {
-			params["tokens"] = []string(af.TokenValues)
+			exec.Auth.Query = nil
 		}
-		if len(af.Headers.ToMap()) > 0 {
-			params["headers"] = common.ToHeaderKVs(af.Headers.ToMap())
-		}
-		if len(af.Cookies) > 0 {
-			params["cookies"] = common.ToCookies([]string(af.Cookies))
-		}
-
 		loginFlow := common.BuildLoginFlow(common.LoginFlowInput{
 			URL:            *af.LoginURL,
 			UserSelector:   *af.LoginUserSelector,
@@ -120,10 +96,42 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 			SubmitSelector: *af.LoginSubmitSelector,
 			Username:       *af.LoginUser,
 			Password:       *af.LoginPass,
+			AutoDetect:     *af.LoginAutoDetect,
 		})
 		if loginFlow != nil {
-			params["login"] = loginFlow
+			exec.Auth.LoginURL = loginFlow.URL
+			exec.Auth.LoginUserSelector = loginFlow.UserSelector
+			exec.Auth.LoginPassSelector = loginFlow.PassSelector
+			exec.Auth.LoginSubmitSelector = loginFlow.SubmitSelector
+			exec.Auth.LoginUser = loginFlow.Username
+			exec.Auth.LoginPass = loginFlow.Password
+			exec.Auth.LoginAutoDetect = loginFlow.AutoDetect
 		}
+		tokens := common.BuildTokens(*af.AuthBasic, []string(af.TokenValues), *af.TokenKind, *af.TokenHeader, *af.TokenQuery, *af.TokenCookie)
+		for _, token := range tokens {
+			switch token.Kind {
+			case "basic":
+				exec.Auth.Basic = token.Value
+			case "api_key", "bearer":
+				if exec.Auth.Headers == nil {
+					exec.Auth.Headers = map[string]string{}
+				}
+				if token.Header != "" {
+					exec.Auth.Headers[token.Header] = token.Value
+				}
+				if token.Cookie != "" {
+					exec.Auth.Cookies = append(exec.Auth.Cookies, token.Cookie+"="+token.Value)
+				}
+				if token.Query != "" {
+					if exec.Auth.Query == nil {
+						exec.Auth.Query = map[string]string{}
+					}
+					exec.Auth.Query[token.Query] = token.Value
+				}
+			}
+		}
+
+		var spec any
 
 		switch *kind {
 		case "scrape":
@@ -131,15 +139,25 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 				fmt.Fprintln(os.Stderr, "--url is required for scrape")
 				return 1
 			}
-			params["url"] = *url
+			spec = model.ScrapeSpecV1{
+				Version:     model.JobSpecVersion1,
+				URL:         *url,
+				Incremental: *incremental,
+				Execution:   exec,
+			}
 		case "crawl":
 			if *url == "" {
 				fmt.Fprintln(os.Stderr, "--url is required for crawl")
 				return 1
 			}
-			params["url"] = *url
-			params["maxDepth"] = *maxDepth
-			params["maxPages"] = *maxPages
+			spec = model.CrawlSpecV1{
+				Version:     model.JobSpecVersion1,
+				URL:         *url,
+				MaxDepth:    *maxDepth,
+				MaxPages:    *maxPages,
+				Incremental: *incremental,
+				Execution:   exec,
+			}
 		case "research":
 			if *query == "" || *urls == "" {
 				fmt.Fprintln(os.Stderr, "--query and --urls are required for research")
@@ -150,10 +168,14 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 				fmt.Fprintln(os.Stderr, "--urls must contain at least one valid URL")
 				return 1
 			}
-			params["query"] = *query
-			params["urls"] = urlList
-			params["maxDepth"] = *maxDepth
-			params["maxPages"] = *maxPages
+			spec = model.ResearchSpecV1{
+				Version:   model.JobSpecVersion1,
+				Query:     *query,
+				URLs:      urlList,
+				MaxDepth:  *maxDepth,
+				MaxPages:  *maxPages,
+				Execution: exec,
+			}
 		default:
 			fmt.Fprintln(os.Stderr, "unknown kind:", *kind)
 			return 1
@@ -162,7 +184,8 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 		schedule := scheduler.Schedule{
 			Kind:            model.Kind(*kind),
 			IntervalSeconds: *interval,
-			Params:          params,
+			SpecVersion:     model.JobSpecVersion1,
+			Spec:            spec,
 		}
 		if _, err := scheduler.Add(cfg.DataDir, schedule); err != nil {
 			fmt.Fprintln(os.Stderr, err)

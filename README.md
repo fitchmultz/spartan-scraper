@@ -64,7 +64,7 @@ For a more guided version with expected checkpoints, see [docs/demo.md](docs/dem
 
 ## Project Status
 
-Spartan Scraper is currently **pre-1.0** and actively evolving. Public APIs and internal package layouts may change between minor releases.
+Spartan Scraper is in **1.0.0-rc1 release prep**. The retained 1.0 core is now intentionally narrow and validated locally through `make ci-pr` and `make ci-slow`.
 
 ## Quickstart
 

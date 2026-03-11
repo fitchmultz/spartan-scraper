@@ -32,6 +32,7 @@ type executionConfig struct {
 	RequestID      string
 	Headless       bool
 	UsePlaywright  bool
+	AuthProfile    string
 	Auth           fetch.AuthOptions
 	Extract        extract.ExtractOptions
 	Pipeline       pipeline.Options
@@ -82,6 +83,7 @@ func decodeExecutionConfig(spec model.ExecutionSpec, requestID string, manager *
 		RequestID:      requestID,
 		Headless:       spec.Headless,
 		UsePlaywright:  spec.UsePlaywright,
+		AuthProfile:    spec.AuthProfile,
 		Auth:           spec.Auth,
 		Extract:        spec.Extract,
 		Pipeline:       spec.Pipeline,
@@ -114,6 +116,7 @@ func decodeScrapeExecutionInput(job model.Job, manager *Manager) (scrapeExecutio
 		ContentType:    input.ContentType,
 		Headless:       input.Config.Headless,
 		UsePlaywright:  input.Config.UsePlaywright,
+		AuthProfile:    input.Config.AuthProfile,
 		Auth:           input.Config.Auth,
 		TimeoutSeconds: input.Config.TimeoutSeconds,
 		Extract:        input.Config.Extract,
@@ -156,6 +159,7 @@ func decodeCrawlExecutionInput(job model.Job, manager *Manager) (crawlExecutionI
 		MaxPages:         input.MaxPages,
 		Headless:         input.Config.Headless,
 		UsePlaywright:    input.Config.UsePlaywright,
+		AuthProfile:      input.Config.AuthProfile,
 		Auth:             input.Config.Auth,
 		TimeoutSeconds:   input.Config.TimeoutSeconds,
 		Extract:          input.Config.Extract,
@@ -197,6 +201,7 @@ func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExec
 		MaxPages:       input.MaxPages,
 		Headless:       input.Config.Headless,
 		UsePlaywright:  input.Config.UsePlaywright,
+		AuthProfile:    input.Config.AuthProfile,
 		Auth:           input.Config.Auth,
 		TimeoutSeconds: input.Config.TimeoutSeconds,
 		Extract:        input.Config.Extract,

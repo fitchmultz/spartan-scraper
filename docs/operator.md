@@ -7,13 +7,35 @@
 - Job artifacts live under `.data/jobs/<job-id>/`.
 - Each completed or failed job writes `.data/jobs/<job-id>/manifest.json`.
 
+## Start Server
+
+```bash
+DATA_DIR=.data spartan server
+```
+
 ## Runtime Expectations
 
 - Non-loopback API binds require API-key protection.
 - Browser engines are local process dependencies; keep Chromium/Playwright availability aligned with your workload.
 - Backup and restore must include the SQLite database and the full `.data/jobs/` tree.
 
+## Backup And Restore
+
+```bash
+spartan backup create -o ./backups
+spartan restore --from ./backups/spartan-backup-20260311-120000.tar.gz --dry-run
+```
+
+## Manifest Inspection
+
+```bash
+cat .data/jobs/<job-id>/manifest.json
+```
+
+The manifest is the canonical local index for a finished job’s files, spec hash, checksums, and selected engine.
+
 ## Storage Reset
 
 - If startup reports a legacy storage schema, stop the server and archive the old data directory.
 - Start with a fresh data directory for the hard-cutover build.
+- The same rule now applies to `schedules.json`: the retained 1.0 build only accepts `specVersion` plus typed `spec`, not legacy `params`.

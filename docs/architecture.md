@@ -75,6 +75,8 @@ The canonical runtime model is:
 
 Artifacts are designed to be inspectable on disk. Result files remain the source for exports and downstream tooling.
 
+Recurring schedules are a hard cutover too: legacy `schedules.json` files that still carry `params` are rejected and must be replaced with fresh `specVersion` + `spec` schedule records.
+
 ## Storage compatibility policy
 
 Balanced 1.0 is a hard cutover.

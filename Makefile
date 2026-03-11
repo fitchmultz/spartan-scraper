@@ -10,7 +10,7 @@ XDG_BIN_HOME ?= $(HOME)/.local/bin
 INSTALL_DIR ?= $(XDG_BIN_HOME)
 
 # Build-time variables
-VERSION ?= 0.1.0
+VERSION ?= 1.0.0-rc1
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 

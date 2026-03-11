@@ -1419,9 +1419,13 @@ export type Schedule = {
      */
     nextRun: string;
     /**
-     * Schedule parameters
+     * Persisted typed schedule spec version.
      */
-    params: {
+    specVersion: number;
+    /**
+     * Persisted typed schedule spec.
+     */
+    spec: {
         [key: string]: unknown;
     };
 };
@@ -1432,30 +1436,16 @@ export type ScheduleRequest = {
      * Interval between runs in seconds
      */
     intervalSeconds: number;
-    url?: string;
-    query?: string;
-    urls?: Array<string>;
-    maxDepth?: number;
-    maxPages?: number;
-    headless?: boolean;
-    playwright?: boolean;
-    timeoutSeconds?: number;
-    authProfile?: string;
-    auth?: AuthOptions;
-    extract?: ExtractOptions;
-    pipeline?: PipelineOptions;
-    incremental?: boolean;
-    proxy?: ProxyConfig;
     /**
-     * Optional URL to a sitemap.xml file. If provided, URLs from the sitemap will be used as crawl seeds.
+     * Typed schedule spec version.
      */
-    sitemapURL?: string;
+    specVersion: number;
     /**
-     * If true, only crawl URLs from the sitemap, not the root URL. Requires sitemapURL to be set.
+     * Typed schedule spec matching the selected kind.
      */
-    sitemapOnly?: boolean;
-    screenshot?: ScreenshotConfig;
-    device?: DeviceEmulation;
+    spec: {
+        [key: string]: unknown;
+    };
 };
 
 export type ScheduleListResponse = {

@@ -3,6 +3,7 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -103,34 +104,20 @@ type ResearchRequest struct {
 
 // ScheduleRequest represents a request to add a scheduled job.
 type ScheduleRequest struct {
-	Kind            string                  `json:"kind"`
-	IntervalSeconds int                     `json:"intervalSeconds"`
-	URL             *string                 `json:"url,omitempty"`
-	Query           *string                 `json:"query,omitempty"`
-	URLs            []string                `json:"urls,omitempty"`
-	MaxDepth        *int                    `json:"maxDepth,omitempty"`
-	MaxPages        *int                    `json:"maxPages,omitempty"`
-	Headless        bool                    `json:"headless"`
-	Playwright      *bool                   `json:"playwright"`
-	TimeoutSeconds  int                     `json:"timeoutSeconds"`
-	AuthProfile     *string                 `json:"authProfile,omitempty"`
-	Auth            *fetch.AuthOptions      `json:"auth"`
-	Extract         *extract.ExtractOptions `json:"extract"`
-	Pipeline        *pipeline.Options       `json:"pipeline"`
-	Incremental     *bool                   `json:"incremental"`
-	SitemapURL      *string                 `json:"sitemapURL,omitempty"`
-	SitemapOnly     *bool                   `json:"sitemapOnly,omitempty"`
-	Screenshot      *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
-	Device          *fetch.DeviceEmulation  `json:"device,omitempty"`
+	Kind            string          `json:"kind"`
+	IntervalSeconds int             `json:"intervalSeconds"`
+	SpecVersion     int             `json:"specVersion"`
+	Spec            json.RawMessage `json:"spec"`
 }
 
 // ScheduleResponse represents a schedule in the response.
 type ScheduleResponse struct {
-	ID              string                 `json:"id"`
-	Kind            string                 `json:"kind"`
-	IntervalSeconds int                    `json:"intervalSeconds"`
-	NextRun         string                 `json:"nextRun"`
-	Params          map[string]interface{} `json:"params"`
+	ID              string `json:"id"`
+	Kind            string `json:"kind"`
+	IntervalSeconds int    `json:"intervalSeconds"`
+	NextRun         string `json:"nextRun"`
+	SpecVersion     int    `json:"specVersion"`
+	Spec            any    `json:"spec"`
 }
 
 // BatchJobRequest represents a single job within a batch.

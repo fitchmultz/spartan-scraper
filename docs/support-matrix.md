@@ -9,6 +9,11 @@
 - Templates, pipeline JS, auth vault, schedules, batches, chains, watches, retention, and backup/restore
 - Exports: `json`, `jsonl`, `csv`, `md`, `xlsx`
 
+## Release Guarantee
+
+- The supported 1.0 core is the only compatibility target for release candidates and patch fixes.
+- Removed surfaces are not part of the release contract and may be absent from storage, API payloads, docs, and generated clients.
+
 ## Removed
 
 - GraphQL

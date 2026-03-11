@@ -31,7 +31,7 @@ make lint             # Lint Go (go vet) and TS (biome)
 make build            # Build Go binary + web assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
-make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
+make test-ci          # Run Go tests (excluding e2e but including PR-safe internal/system coverage) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
 make ci-pr            # PR-equivalent deterministic gate (requires clean git state)
 make ci               # Full CI pipeline: audit-public, install, generate, format, type-check, lint, build, test-ci
 make ci-slow          # Deterministic heavy stress + e2e checks (local fixture; provisions Playwright)
@@ -59,7 +59,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 ### Testing Guidelines
 
 - **Go tests**: Use `go test ./...` with `CI=1` for consistent output
-- **E2E tests**: Located in `internal/e2e` — excluded from `make test-ci`
+- **E2E tests**: Located in `internal/e2e` — excluded from `make test-ci`; the deterministic PR-safe system subset now lives in `internal/system`
 - **Web tests**: Run with `cd web && pnpm run test`
 - **Flaky E2E tests**: May be retried up to 3 times before considering them a real failure
 
