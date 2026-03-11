@@ -24,7 +24,9 @@ The first form is loopback-only local usage. The second exposes the API off-host
 ## API Key Example
 
 ```bash
-curl -H 'X-API-Key: ss_example_readwrite' http://127.0.0.1:8741/v1/jobs
+export SPARTAN_API_KEY='set-a-local-key'
+curl --config <(printf 'header = "X-API-Key: %s"\n' "$SPARTAN_API_KEY") \
+  http://127.0.0.1:8741/v1/jobs
 ```
 
 ## Auth Vault Expectations
