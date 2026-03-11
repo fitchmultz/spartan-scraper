@@ -10,12 +10,13 @@
 //
 // Invariants:
 // - SanitizeJob returns a deep copy; original Job is never modified
-// - All sensitive keys in Params are recursively redacted
+// - All sensitive keys in persisted job specs are recursively redacted
 // - ResultPath is always cleared (never exposed to clients)
 // - Error strings are passed through apperrors.RedactString
 package model
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -79,23 +80,55 @@ var sensitiveHeaderValues = []string{
 func SanitizeJob(job Job) Job {
 	// Create a copy with ResultPath cleared
 	safe := Job{
-		ID:        job.ID,
-		Kind:      job.Kind,
-		Status:    job.Status,
-		CreatedAt: job.CreatedAt,
-		UpdatedAt: job.UpdatedAt,
+		ID:               job.ID,
+		Kind:             job.Kind,
+		Status:           job.Status,
+		CreatedAt:        job.CreatedAt,
+		UpdatedAt:        job.UpdatedAt,
+		StartedAt:        job.StartedAt,
+		FinishedAt:       job.FinishedAt,
+		SpecVersion:      job.SpecVersion,
+		DependsOn:        append([]string(nil), job.DependsOn...),
+		DependencyStatus: job.DependencyStatus,
+		ChainID:          job.ChainID,
+		SelectedEngine:   job.SelectedEngine,
 		// ResultPath is intentionally omitted - never expose filesystem paths
 		ResultPath: "",
 		// Error is sanitized to remove secrets and paths
 		Error: apperrors.RedactString(job.Error),
 	}
 
-	// Deep copy and sanitize Params
-	if job.Params != nil {
-		safe.Params = sanitizeParams(job.Params)
+	// Deep copy and sanitize Spec
+	if job.Spec != nil {
+		safe.Spec = sanitizeSpec(job.Kind, job.SpecVersion, job.Spec)
 	}
 
 	return safe
+}
+
+func sanitizeSpec(kind Kind, version int, spec any) any {
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		return nil
+	}
+
+	var generic map[string]interface{}
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		return nil
+	}
+
+	sanitized := sanitizeParams(generic)
+	sanitizedRaw, err := json.Marshal(sanitized)
+	if err != nil {
+		return sanitized
+	}
+
+	typed, err := DecodeJobSpec(kind, version, sanitizedRaw)
+	if err != nil {
+		return sanitized
+	}
+
+	return typed
 }
 
 // SanitizeJobs maps a slice of jobs through SanitizeJob.

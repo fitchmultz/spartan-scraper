@@ -32,7 +32,7 @@ func TestListJobsOlderThan(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now.AddDate(0, 0, -60),
 		UpdatedAt: now.AddDate(0, 0, -60),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	newJob := model.Job{
 		ID:        "new-job",
@@ -40,7 +40,7 @@ func TestListJobsOlderThan(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now.AddDate(0, 0, -5),
 		UpdatedAt: now.AddDate(0, 0, -5),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := st.Create(ctx, oldJob); err != nil {
@@ -83,7 +83,7 @@ func TestListJobsByStatusAndAge(t *testing.T) {
 		Status:    model.StatusFailed,
 		CreatedAt: now.AddDate(0, 0, -60),
 		UpdatedAt: now.AddDate(0, 0, -60),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	oldSucceededJob := model.Job{
 		ID:        "old-succeeded",
@@ -91,7 +91,7 @@ func TestListJobsByStatusAndAge(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now.AddDate(0, 0, -60),
 		UpdatedAt: now.AddDate(0, 0, -60),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := st.Create(ctx, oldFailedJob); err != nil {
@@ -135,7 +135,7 @@ func TestCountJobsOlderThan(t *testing.T) {
 			Status:    model.StatusSucceeded,
 			CreatedAt: now.AddDate(0, 0, -60),
 			UpdatedAt: now.AddDate(0, 0, -60),
-			Params:    map[string]interface{}{"url": "http://example.com"},
+			Spec:      map[string]interface{}{"url": "http://example.com"},
 		}
 		if err := st.Create(ctx, job); err != nil {
 			t.Fatalf("Create job failed: %v", err)
@@ -149,7 +149,7 @@ func TestCountJobsOlderThan(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now.AddDate(0, 0, -5),
 		UpdatedAt: now.AddDate(0, 0, -5),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, newJob); err != nil {
 		t.Fatalf("Create newJob failed: %v", err)
@@ -186,7 +186,7 @@ func TestDeleteJobsBatch(t *testing.T) {
 			Status:    model.StatusSucceeded,
 			CreatedAt: now,
 			UpdatedAt: now,
-			Params:    map[string]interface{}{"url": "http://example.com"},
+			Spec:      map[string]interface{}{"url": "http://example.com"},
 		}
 		if err := st.Create(ctx, job); err != nil {
 			t.Fatalf("Create job failed: %v", err)
@@ -232,7 +232,7 @@ func TestListJobsByKind(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	crawlJob := model.Job{
 		ID:        "crawl-job",
@@ -240,7 +240,7 @@ func TestListJobsByKind(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := st.Create(ctx, scrapeJob); err != nil {
@@ -283,7 +283,7 @@ func TestCountJobsByKind(t *testing.T) {
 			Status:    model.StatusSucceeded,
 			CreatedAt: now,
 			UpdatedAt: now,
-			Params:    map[string]interface{}{"url": "http://example.com"},
+			Spec:      map[string]interface{}{"url": "http://example.com"},
 		}
 		if err := st.Create(ctx, job); err != nil {
 			t.Fatalf("Create job failed: %v", err)
@@ -296,7 +296,7 @@ func TestCountJobsByKind(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, crawlJob); err != nil {
 		t.Fatalf("Create crawlJob failed: %v", err)
@@ -332,7 +332,7 @@ func TestGetStorageStats(t *testing.T) {
 			Status:    model.StatusSucceeded,
 			CreatedAt: now.AddDate(0, 0, -i*10),
 			UpdatedAt: now.AddDate(0, 0, -i*10),
-			Params:    map[string]interface{}{"url": "http://example.com"},
+			Spec:      map[string]interface{}{"url": "http://example.com"},
 		}
 		if err := st.Create(ctx, job); err != nil {
 			t.Fatalf("Create job failed: %v", err)
@@ -346,7 +346,7 @@ func TestGetStorageStats(t *testing.T) {
 		Status:    model.StatusFailed,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, failedJob); err != nil {
 		t.Fatalf("Create failedJob failed: %v", err)
@@ -388,7 +388,7 @@ func TestGetStorageStatsMissingJobsDir(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, job); err != nil {
 		t.Fatalf("Create job failed: %v", err)

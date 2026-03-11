@@ -196,16 +196,16 @@ func (m appModel) renderJobDetail() string {
 		content.WriteString(m.progress.View() + "\n")
 	}
 
-	// Params as formatted JSON
-	if len(job.Params) > 0 {
+	// Spec as formatted JSON
+	if job.Spec != nil {
 		content.WriteString("\n")
-		content.WriteString(detailLabelStyle.Render("Params:") + "\n")
-		paramsJSON, _ := json.MarshalIndent(job.Params, "", "  ")
-		paramsStr := string(paramsJSON)
-		if len(paramsStr) > 500 {
-			paramsStr = paramsStr[:500] + "\n..."
+		content.WriteString(detailLabelStyle.Render("Spec:") + "\n")
+		specJSON, _ := json.MarshalIndent(job.Spec, "", "  ")
+		specStr := string(specJSON)
+		if len(specStr) > 500 {
+			specStr = specStr[:500] + "\n..."
 		}
-		content.WriteString(jsonStyle.Render(paramsStr) + "\n")
+		content.WriteString(jsonStyle.Render(specStr) + "\n")
 	}
 
 	// Error display

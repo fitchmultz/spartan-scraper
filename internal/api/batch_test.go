@@ -66,7 +66,7 @@ func TestHandleBatchScrapeDefaultsMethodToGET(t *testing.T) {
 	if len(jobsByBatch) != 1 {
 		t.Fatalf("expected 1 stored job, got %d", len(jobsByBatch))
 	}
-	if got := jobsByBatch[0].Params["method"]; got != http.MethodGet {
+	if got := jobsByBatch[0].SpecMap()["method"]; got != http.MethodGet {
 		t.Fatalf("expected stored method %q, got %#v", http.MethodGet, got)
 	}
 }

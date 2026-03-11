@@ -14,6 +14,19 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
+func pipelineMapFromSpec(t *testing.T, jobSpec map[string]interface{}) map[string]interface{} {
+	t.Helper()
+	raw, ok := jobSpec["pipeline"]
+	if !ok {
+		t.Fatal("pipeline options not stored in job spec")
+	}
+	pipelineMap, ok := raw.(map[string]interface{})
+	if !ok {
+		t.Fatalf("pipeline spec is not a map, got %T", raw)
+	}
+	return pipelineMap
+}
+
 func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -47,26 +60,23 @@ func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 		t.Fatalf("CreateScrapeJob failed: %v", err)
 	}
 
-	if job.Params["pipeline"] == nil {
-		t.Error("pipeline options not stored in job params")
+	pipelineMap := pipelineMapFromSpec(t, job.SpecMap())
+	preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
+	postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
+	transformers, _ := pipelineMap["transformers"].([]interface{})
+	if len(preProcessors) != 2 {
+		t.Errorf("expected 2 preProcessors, got %d", len(preProcessors))
 	}
-	pipelineOpts, ok := job.Params["pipeline"].(pipeline.Options)
-	if !ok {
-		t.Fatalf("pipeline params is not pipeline.Options type")
+	if len(postProcessors) != 1 {
+		t.Errorf("expected 1 postProcessor, got %d", len(postProcessors))
 	}
-	if len(pipelineOpts.PreProcessors) != 2 {
-		t.Errorf("expected 2 preProcessors, got %d", len(pipelineOpts.PreProcessors))
-	}
-	if len(pipelineOpts.PostProcessors) != 1 {
-		t.Errorf("expected 1 postProcessor, got %d", len(pipelineOpts.PostProcessors))
-	}
-	if len(pipelineOpts.Transformers) != 3 {
-		t.Errorf("expected 3 transformers, got %d", len(pipelineOpts.Transformers))
+	if len(transformers) != 3 {
+		t.Errorf("expected 3 transformers, got %d", len(transformers))
 	}
 
-	inc, ok := job.Params["incremental"].(bool)
+	inc, ok := job.SpecMap()["incremental"].(bool)
 	if !ok || !inc {
-		t.Error("incremental flag not stored correctly in job params")
+		t.Error("incremental flag not stored correctly in job spec")
 	}
 }
 

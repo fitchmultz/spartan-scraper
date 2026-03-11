@@ -82,7 +82,7 @@ type Request struct {
 		Dispatch(ctx context.Context, url string, payload webhook.Payload, secret string)
 	}
 	// WebhookConfig holds webhook configuration for the crawl.
-	WebhookConfig *model.WebhookConfig
+	WebhookConfig *model.WebhookSpec
 	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
 	AIExtractor *extract.AIExtractor
 	// ContentIndex for cross-job deduplication. If nil, cross-job dedup is disabled.

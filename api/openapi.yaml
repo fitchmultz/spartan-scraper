@@ -4588,6 +4588,8 @@ components:
       - status
       - createdAt
       - updatedAt
+      - specVersion
+      - spec
       properties:
         id:
           type: string
@@ -4611,10 +4613,12 @@ components:
         updatedAt:
           type: string
           format: date-time
-        params:
+        specVersion:
+          type: integer
+          description: Persisted typed job spec version.
+        spec:
           type: object
-          description: Job parameters. Sensitive fields (auth, headers, cookies, tokens,
-            passwords, secrets) are redacted.
+          description: Persisted typed job spec. Sensitive fields are redacted in untrusted responses.
         error:
           type: string
           description: Error message if job failed. Secrets and filesystem paths are
@@ -6051,7 +6055,7 @@ components:
       required:
       - id
       - kind
-      - params
+      - spec
       properties:
         id:
           type: string
@@ -6063,9 +6067,9 @@ components:
           - crawl
           - research
           description: Type of job
-        params:
+        spec:
           type: object
-          description: Job parameters template
+          description: Typed job specification template
         metadata:
           "$ref": "#/components/schemas/ChainMetadata"
     ChainEdge:
@@ -6264,135 +6268,6 @@ components:
         total:
           type: integer
           description: Total number of delivery records
-    TemplateABTest:
-      type: object
-      description: A/B test configuration for comparing templates
-      properties:
-        id:
-          type: string
-          description: Unique test identifier
-        name:
-          type: string
-          description: Test name
-        description:
-          type: string
-          description: Test description
-        baseline_template:
-          type: string
-          description: Baseline template name
-        variant_template:
-          type: string
-          description: Variant template name
-        allocation:
-          type: object
-          additionalProperties:
-            type: integer
-          description: 'Traffic allocation percentages (e.g., baseline: 50, variant:
-            50)'
-        start_time:
-          type: string
-          format: date-time
-          description: Test start time
-        end_time:
-          type: string
-          format: date-time
-          description: Test end time (if completed)
-        status:
-          type: string
-          enum:
-          - pending
-          - running
-          - paused
-          - completed
-          description: Current test status
-        success_criteria:
-          "$ref": "#/components/schemas/SuccessCriteria"
-        min_sample_size:
-          type: integer
-          description: Minimum samples per variant for significance
-        confidence_level:
-          type: number
-          description: Statistical confidence level (e.g., 0.95)
-        winner:
-          type: string
-          nullable: true
-          enum:
-          - baseline
-          - variant
-          - 
-          description: Winning template if test is complete
-        created_at:
-          type: string
-          format: date-time
-          description: When the test was created
-        updated_at:
-          type: string
-          format: date-time
-          description: When the test was last updated
-    SuccessCriteria:
-      type: object
-      description: Criteria for determining A/B test success
-      properties:
-        metric:
-          type: string
-          enum:
-          - success_rate
-          - field_coverage
-          - combined
-          description: Metric to compare
-        min_improvement:
-          type: number
-          description: Minimum improvement required (e.g., 0.05 for 5%)
-        required_fields:
-          type: array
-          items:
-            type: string
-          description: Fields that must be present for success
-        min_field_coverage:
-          type: number
-          description: Minimum field coverage required (0-1)
-    ComparisonMetrics:
-      type: object
-      description: Aggregated metrics for template comparison
-      properties:
-        sample_size:
-          type: integer
-          description: Number of samples
-        success_rate:
-          type: number
-          description: Success rate as percentage (0-100)
-        field_coverage:
-          type: number
-          description: Average field coverage (0-1)
-        avg_extraction_time_ms:
-          type: integer
-          description: Average extraction time in milliseconds
-    StatisticalResult:
-      type: object
-      description: Statistical significance test result
-      properties:
-        test_type:
-          type: string
-          enum:
-          - chi_square
-          - t_test
-          description: Type of statistical test performed
-        p_value:
-          type: number
-          description: P-value from the test
-        is_significant:
-          type: boolean
-          description: Whether the result is statistically significant
-        confidence_interval:
-          type: array
-          items:
-            type: number
-          minItems: 2
-          maxItems: 2
-          description: Confidence interval [lower, upper]
-        effect_size:
-          type: number
-          description: Effect size (Cohen's d or odds ratio)
     DOMNode:
       type: object
       description: Simplified DOM node for visual selector builder
@@ -6670,60 +6545,3 @@ components:
         normalize:
           "$ref": "#/components/schemas/NormalizeSpec"
           description: Optional normalization configuration
-    TrafficModifications:
-      type: object
-      properties:
-        headers:
-          type: object
-          additionalProperties:
-            type: string
-          description: Headers to add or replace
-        removeHeaders:
-          type: array
-          items:
-            type: string
-          description: Headers to remove
-        bodyTransform:
-          type: string
-          description: JMESPath/JSONata transform for request body
-    ResponseDiff:
-      type: object
-      properties:
-        requestId:
-          type: string
-        url:
-          type: string
-        statusDiff:
-          "$ref": "#/components/schemas/StatusDiff"
-        headerDiffs:
-          type: array
-          items:
-            "$ref": "#/components/schemas/HeaderDiff"
-        bodyDiff:
-          "$ref": "#/components/schemas/BodyDiff"
-    StatusDiff:
-      type: object
-      properties:
-        original:
-          type: integer
-        replayed:
-          type: integer
-    HeaderDiff:
-      type: object
-      properties:
-        name:
-          type: string
-        original:
-          type: string
-        replayed:
-          type: string
-    BodyDiff:
-      type: object
-      properties:
-        originalSize:
-          type: integer
-        replayedSize:
-          type: integer
-        preview:
-          type: string
-          description: Unified diff preview

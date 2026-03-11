@@ -44,13 +44,13 @@ func TestStore_IndexUsage(t *testing.T) {
 	}{
 		{
 			name:          "ListByStatus uses idx_jobs_status_created",
-			query:         "select id, kind, status, created_at, updated_at, params, result_path, error from jobs where status = ? order by created_at desc limit ? offset ?",
+			query:         "select id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, started_at, finished_at, selected_engine from jobs where status = ? order by created_at desc limit ? offset ?",
 			args:          []interface{}{model.StatusQueued, 100, 0},
 			expectedIndex: "idx_jobs_status_created",
 		},
 		{
 			name:          "ListOpts uses idx_jobs_created",
-			query:         "select id, kind, status, created_at, updated_at, params, result_path, error from jobs order by created_at desc limit ? offset ?",
+			query:         "select id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, started_at, finished_at, selected_engine from jobs order by created_at desc limit ? offset ?",
 			args:          []interface{}{100, 0},
 			expectedIndex: "idx_jobs_created",
 		},

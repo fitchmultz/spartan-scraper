@@ -50,14 +50,14 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		}
 
 		job := jobs[0]
-		pipelineMap, ok := job.Params["pipeline"].(map[string]interface{})
+		pipelineMap, ok := job.SpecMap()["pipeline"].(map[string]interface{})
 		if !ok {
 			t.Fatal("pipeline params not found or wrong type")
 		}
 		preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
 		postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
 		transformers, _ := pipelineMap["transformers"].([]interface{})
-		inc, ok := job.Params["incremental"].(bool)
+		inc, ok := job.SpecMap()["incremental"].(bool)
 		if !ok || !inc {
 			t.Errorf("incremental: got %v, want true", inc)
 		}
@@ -110,11 +110,11 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			t.Fatalf("failed to list jobs: %v", err)
 		}
 		job := jobs[0]
-		pipelineMap, _ := job.Params["pipeline"].(map[string]interface{})
+		pipelineMap, _ := job.SpecMap()["pipeline"].(map[string]interface{})
 		preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
 		postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
 		transformers, _ := pipelineMap["transformers"].([]interface{})
-		inc, _ := job.Params["incremental"].(bool)
+		inc, _ := job.SpecMap()["incremental"].(bool)
 		if inc {
 			t.Error("incremental: got true, want false")
 		}
@@ -156,11 +156,11 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			t.Fatalf("failed to list jobs: %v", err)
 		}
 		job := jobs[0]
-		pipelineMap, _ := job.Params["pipeline"].(map[string]interface{})
+		pipelineMap, _ := job.SpecMap()["pipeline"].(map[string]interface{})
 		preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
 		postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
 		transformers, _ := pipelineMap["transformers"].([]interface{})
-		inc, _ := job.Params["incremental"].(bool)
+		inc, _ := job.SpecMap()["incremental"].(bool)
 		if inc {
 			t.Error("incremental: got true, want false")
 		}

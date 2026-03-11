@@ -1,12 +1,12 @@
 // Package jobs provides typed execution inputs decoded from persisted jobs.
 //
 // Purpose:
-// - Convert stored job parameter maps into typed runtime inputs before execution.
+// - Convert stored typed job specs into typed runtime inputs before execution.
 //
 // Responsibilities:
-// - Apply stable defaults for persisted job params.
+// - Apply stable defaults for persisted typed specs.
 // - Validate decoded inputs before dispatching to scrape, crawl, or research.
-// - Keep job execution logic free from repeated map lookups.
+// - Keep job execution logic free from repeated type assertions.
 //
 // Scope:
 // - Runtime decoding for persisted jobs in Manager.run only.
@@ -25,7 +25,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
@@ -74,32 +73,40 @@ type researchExecutionInput struct {
 	MaxPages int
 }
 
-func decodeExecutionConfig(job model.Job, manager *Manager) executionConfig {
+func decodeExecutionConfig(spec model.ExecutionSpec, requestID string, manager *Manager) executionConfig {
+	timeoutSeconds := spec.TimeoutSeconds
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = int(manager.requestTimeout.Seconds())
+	}
 	return executionConfig{
-		RequestID:      getJobRequestID(job),
-		Headless:       paramdecode.Bool(job.Params, "headless"),
-		UsePlaywright:  paramdecode.BoolDefault(job.Params, "playwright", manager.usePlaywright),
-		Auth:           paramdecode.Decode[fetch.AuthOptions](job.Params, "auth"),
-		Extract:        paramdecode.Decode[extract.ExtractOptions](job.Params, "extract"),
-		Pipeline:       paramdecode.Decode[pipeline.Options](job.Params, "pipeline"),
-		TimeoutSeconds: paramdecode.PositiveInt(job.Params, "timeout", int(manager.requestTimeout.Seconds())),
-		Screenshot:     paramdecode.DecodePtr[fetch.ScreenshotConfig](job.Params, "screenshot"),
+		RequestID:      requestID,
+		Headless:       spec.Headless,
+		UsePlaywright:  spec.UsePlaywright,
+		Auth:           spec.Auth,
+		Extract:        spec.Extract,
+		Pipeline:       spec.Pipeline,
+		TimeoutSeconds: timeoutSeconds,
+		Screenshot:     spec.Screenshot,
 	}
 }
 
 func decodeScrapeExecutionInput(job model.Job, manager *Manager) (scrapeExecutionInput, error) {
+	spec, ok := job.Spec.(model.ScrapeSpecV1)
+	if !ok {
+		return scrapeExecutionInput{}, apperrors.Validation("persisted scrape job spec is invalid")
+	}
 	input := scrapeExecutionInput{
-		Config:      decodeExecutionConfig(job, manager),
-		URL:         paramdecode.String(job.Params, "url"),
-		Method:      paramdecode.String(job.Params, "method"),
-		Body:        paramdecode.Bytes(job.Params, "body"),
-		ContentType: paramdecode.String(job.Params, "contentType"),
-		Incremental: paramdecode.Bool(job.Params, "incremental"),
+		Config:      decodeExecutionConfig(spec.Execution, spec.Execution.RequestID, manager),
+		URL:         spec.URL,
+		Method:      spec.Method,
+		Body:        spec.Body,
+		ContentType: spec.ContentType,
+		Incremental: spec.Incremental,
 	}
 	if input.Method == "" {
 		input.Method = "GET"
 	}
-	spec := JobSpec{
+	createSpec := JobSpec{
 		Kind:           model.KindScrape,
 		URL:            input.URL,
 		Method:         input.Method,
@@ -115,30 +122,34 @@ func decodeScrapeExecutionInput(job model.Job, manager *Manager) (scrapeExecutio
 		RequestID:      input.Config.RequestID,
 		Screenshot:     input.Config.Screenshot,
 	}
-	if err := spec.Validate(); err != nil {
+	if err := createSpec.Validate(); err != nil {
 		return scrapeExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid scrape job parameters", err)
 	}
 	return input, nil
 }
 
 func decodeCrawlExecutionInput(job model.Job, manager *Manager) (crawlExecutionInput, error) {
-	input := crawlExecutionInput{
-		Config:                 decodeExecutionConfig(job, manager),
-		URL:                    paramdecode.String(job.Params, "url"),
-		MaxDepth:               paramdecode.PositiveInt(job.Params, "maxDepth", 2),
-		MaxPages:               paramdecode.PositiveInt(job.Params, "maxPages", 200),
-		Incremental:            paramdecode.Bool(job.Params, "incremental"),
-		SitemapURL:             paramdecode.String(job.Params, "sitemapURL"),
-		SitemapOnly:            paramdecode.Bool(job.Params, "sitemapOnly"),
-		IncludePatterns:        paramdecode.StringSlice(job.Params, "includePatterns"),
-		ExcludePatterns:        paramdecode.StringSlice(job.Params, "excludePatterns"),
-		RespectRobotsTxt:       paramdecode.Bool(job.Params, "respectRobotsTxt"),
-		SkipDuplicates:         paramdecode.Bool(job.Params, "skipDuplicates"),
-		SimHashThreshold:       paramdecode.PositiveInt(job.Params, "simHashThreshold", 3),
-		CrossJobDedup:          paramdecode.Bool(job.Params, "crossJobDedup"),
-		CrossJobDedupThreshold: paramdecode.PositiveInt(job.Params, "crossJobDedupThreshold", 3),
+	spec, ok := job.Spec.(model.CrawlSpecV1)
+	if !ok {
+		return crawlExecutionInput{}, apperrors.Validation("persisted crawl job spec is invalid")
 	}
-	spec := JobSpec{
+	input := crawlExecutionInput{
+		Config:                 decodeExecutionConfig(spec.Execution, spec.Execution.RequestID, manager),
+		URL:                    spec.URL,
+		MaxDepth:               spec.MaxDepth,
+		MaxPages:               spec.MaxPages,
+		Incremental:            spec.Incremental,
+		SitemapURL:             spec.SitemapURL,
+		SitemapOnly:            spec.SitemapOnly,
+		IncludePatterns:        spec.IncludePatterns,
+		ExcludePatterns:        spec.ExcludePatterns,
+		RespectRobotsTxt:       spec.RespectRobotsTxt,
+		SkipDuplicates:         spec.SkipDuplicates,
+		SimHashThreshold:       spec.SimHashThreshold,
+		CrossJobDedup:          spec.CrossJobDedup,
+		CrossJobDedupThreshold: spec.CrossJobThreshold,
+	}
+	createSpec := JobSpec{
 		Kind:             model.KindCrawl,
 		URL:              input.URL,
 		MaxDepth:         input.MaxDepth,
@@ -160,21 +171,25 @@ func decodeCrawlExecutionInput(job model.Job, manager *Manager) (crawlExecutionI
 		SkipDuplicates:   input.SkipDuplicates,
 		SimHashThreshold: input.SimHashThreshold,
 	}
-	if err := spec.Validate(); err != nil {
+	if err := createSpec.Validate(); err != nil {
 		return crawlExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid crawl job parameters", err)
 	}
 	return input, nil
 }
 
 func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExecutionInput, error) {
-	input := researchExecutionInput{
-		Config:   decodeExecutionConfig(job, manager),
-		Query:    paramdecode.String(job.Params, "query"),
-		URLs:     paramdecode.StringSlice(job.Params, "urls"),
-		MaxDepth: paramdecode.PositiveInt(job.Params, "maxDepth", 2),
-		MaxPages: paramdecode.PositiveInt(job.Params, "maxPages", 200),
+	spec, ok := job.Spec.(model.ResearchSpecV1)
+	if !ok {
+		return researchExecutionInput{}, apperrors.Validation("persisted research job spec is invalid")
 	}
-	spec := JobSpec{
+	input := researchExecutionInput{
+		Config:   decodeExecutionConfig(spec.Execution, spec.Execution.RequestID, manager),
+		Query:    spec.Query,
+		URLs:     spec.URLs,
+		MaxDepth: spec.MaxDepth,
+		MaxPages: spec.MaxPages,
+	}
+	createSpec := JobSpec{
 		Kind:           model.KindResearch,
 		Query:          input.Query,
 		URLs:           input.URLs,
@@ -189,7 +204,7 @@ func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExec
 		RequestID:      input.Config.RequestID,
 		Screenshot:     input.Config.Screenshot,
 	}
-	if err := spec.Validate(); err != nil {
+	if err := createSpec.Validate(); err != nil {
 		return researchExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid research job parameters", err)
 	}
 	return input, nil

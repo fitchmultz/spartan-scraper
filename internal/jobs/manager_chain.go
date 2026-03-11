@@ -117,18 +117,15 @@ func (m *Manager) SubmitChain(ctx context.Context, chainID string, overrides map
 		jobID := uuid.NewString()
 		nodeJobIDs[node.ID] = jobID
 
-		// Parse params and apply overrides
-		var params map[string]interface{}
+		// Parse typed spec and apply overrides
+		rawSpec := node.Spec
 		if len(overrides[node.ID]) > 0 {
-			if err := json.Unmarshal(overrides[node.ID], &params); err != nil {
-				return nil, apperrors.Validation(fmt.Sprintf("invalid override for node %s: %v", node.ID, err))
-			}
-		} else {
-			if err := json.Unmarshal(node.Params, &params); err != nil {
-				return nil, apperrors.Validation(fmt.Sprintf("invalid params for node %s: %v", node.ID, err))
-			}
+			rawSpec = overrides[node.ID]
 		}
-
+		spec, err := model.DecodeJobSpec(node.Kind, model.JobSpecVersion1, rawSpec)
+		if err != nil {
+			return nil, apperrors.Validation(fmt.Sprintf("invalid spec for node %s: %v", node.ID, err))
+		}
 		// Build depends_on list from edges
 		var dependsOn []string
 		for _, edge := range chain.Definition.Edges {
@@ -150,13 +147,13 @@ func (m *Manager) SubmitChain(ctx context.Context, chainID string, overrides map
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           params,
+			SpecVersion:      model.JobSpecVersion1,
+			Spec:             spec,
 			ResultPath:       filepath.Join(m.DataDir, "jobs", jobID, "results.jsonl"),
 			DependsOn:        make([]string, 0), // Will be filled after all jobs created
 			DependencyStatus: depStatus,
 			ChainID:          chainID,
 		}
-
 		jobs = append(jobs, job)
 	}
 

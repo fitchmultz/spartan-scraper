@@ -35,13 +35,11 @@ const (
 )
 
 type ExtractOptions struct {
-	Template        string          `json:"template,omitempty"`
-	Inline          *Template       `json:"inline,omitempty"`
-	Validate        bool            `json:"validate,omitempty"`
-	RejectionPolicy RejectionPolicy `json:"rejectionPolicy,omitempty"`
-	ABTestID        *string         `json:"ab_test_id,omitempty"` // If part of an A/B test
-	// NEW: AI extraction options
-	AI *AIExtractOptions `json:"ai,omitempty"`
+	Template        string            `json:"template,omitempty"`
+	Inline          *Template         `json:"inline,omitempty"`
+	Validate        bool              `json:"validate,omitempty"`
+	RejectionPolicy RejectionPolicy   `json:"rejectionPolicy,omitempty"`
+	AI              *AIExtractOptions `json:"ai,omitempty"`
 }
 
 type Template struct {

@@ -275,7 +275,7 @@ func TestParseErrorsReturnInternalKind(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := s.Create(ctx, job); err != nil {
 		t.Fatalf("Create failed: %v", err)
@@ -341,20 +341,20 @@ func TestJSONErrorsReturnInternalKind(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := s.Create(ctx, job); err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	_, err = s.db.ExecContext(ctx, "UPDATE jobs SET params = ? WHERE id = ?", "{invalid-json}", "test-id")
+	_, err = s.db.ExecContext(ctx, "UPDATE jobs SET spec_json = ? WHERE id = ?", "{invalid-json}", "test-id")
 	if err != nil {
-		t.Fatalf("Failed to corrupt params: %v", err)
+		t.Fatalf("Failed to corrupt spec_json: %v", err)
 	}
 
 	_, err = s.ListByStatus(ctx, model.StatusQueued, ListByStatusOptions{})
 	if err == nil {
-		t.Fatal("Expected error when unmarshaling invalid params, got nil")
+		t.Fatal("Expected error when unmarshaling invalid spec_json, got nil")
 	}
 	if !apperrors.IsKind(err, apperrors.KindInternal) {
 		t.Errorf("Expected KindInternal error, got %v", apperrors.KindOf(err))
@@ -362,7 +362,7 @@ func TestJSONErrorsReturnInternalKind(t *testing.T) {
 
 	_, err = s.Get(ctx, "test-id")
 	if err == nil {
-		t.Fatal("Expected error when unmarshaling invalid params in Get, got nil")
+		t.Fatal("Expected error when unmarshaling invalid spec_json in Get, got nil")
 	}
 	if !apperrors.IsKind(err, apperrors.KindInternal) {
 		t.Errorf("Expected KindInternal error in Get, got %v", apperrors.KindOf(err))
@@ -370,7 +370,7 @@ func TestJSONErrorsReturnInternalKind(t *testing.T) {
 
 	_, err = s.ListOpts(ctx, ListOptions{})
 	if err == nil {
-		t.Fatal("Expected error when unmarshaling invalid params in ListOpts, got nil")
+		t.Fatal("Expected error when unmarshaling invalid spec_json in ListOpts, got nil")
 	}
 	if !apperrors.IsKind(err, apperrors.KindInternal) {
 		t.Errorf("Expected KindInternal error in ListOpts, got %v", apperrors.KindOf(err))

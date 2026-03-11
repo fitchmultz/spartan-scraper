@@ -214,19 +214,7 @@ func (et *ExportTrigger) matchSchedule(job *model.Job, schedule *ExportSchedule)
 
 	// Check tags (all specified tags must be present)
 	if len(filters.Tags) > 0 {
-		jobTags, _ := job.Params["tags"].([]interface{})
-		jobTagSet := make(map[string]bool)
-		for _, t := range jobTags {
-			if tag, ok := t.(string); ok {
-				jobTagSet[tag] = true
-			}
-		}
-
-		for _, tag := range filters.Tags {
-			if !jobTagSet[tag] {
-				return false
-			}
-		}
+		return false
 	}
 
 	// Check has_results

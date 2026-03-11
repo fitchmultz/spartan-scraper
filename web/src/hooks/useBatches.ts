@@ -113,6 +113,11 @@ function toJobSummary(job: Partial<Job>): Job | null {
     status: isJobStatus(job.status) ? job.status : "queued",
     createdAt,
     updatedAt: readIsoDate(job.updatedAt, createdAt),
+    specVersion:
+      typeof job.specVersion === "number" && Number.isFinite(job.specVersion)
+        ? job.specVersion
+        : 1,
+    spec: job.spec && typeof job.spec === "object" ? job.spec : { version: 1 },
   };
 }
 

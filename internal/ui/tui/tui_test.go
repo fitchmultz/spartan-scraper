@@ -50,7 +50,7 @@ func TestTUIPagination(t *testing.T) {
 			Status:     model.StatusSucceeded,
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
-			Params:     map[string]interface{}{"url": fmt.Sprintf("https://example.com/%d", i)},
+			Spec:       map[string]interface{}{"url": fmt.Sprintf("https://example.com/%d", i)},
 			ResultPath: "",
 		}
 		if err := st.Create(ctx, job); err != nil {
@@ -102,7 +102,7 @@ func TestTUIJobSelection(t *testing.T) {
 		Status:     model.StatusRunning,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: "",
 	}
 	if err := st.Create(ctx, job); err != nil {
@@ -160,7 +160,7 @@ func TestTUICancelJob(t *testing.T) {
 		Status:     model.StatusQueued,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: "",
 	}
 	if err := st.Create(ctx, job); err != nil {
@@ -199,7 +199,7 @@ func TestTUIVimNavigation(t *testing.T) {
 			Status:     model.StatusSucceeded,
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
-			Params:     map[string]interface{}{},
+			Spec:       map[string]interface{}{},
 			ResultPath: "",
 		}
 		if err := st.Create(ctx, job); err != nil {

@@ -4,7 +4,7 @@
 // - Status state machine methods (IsTerminal, IsValid)
 // - Valid status enumeration
 // - Job kind constants
-// - Webhook configuration extraction from job parameters
+// - Webhook configuration extraction from typed job specs
 //
 // Does NOT test:
 // - Job sanitization (see job_sanitize_test.go)
@@ -105,45 +105,55 @@ func TestKind_Constants(t *testing.T) {
 	}
 }
 
-func TestWebhookConfig_ExtractFromParams(t *testing.T) {
+func TestWebhookConfig_ExtractFromSpec(t *testing.T) {
 	tests := []struct {
 		name     string
-		params   map[string]interface{}
-		expected *WebhookConfig
+		spec     any
+		expected *WebhookSpec
 	}{
 		{
 			name:     "no webhook configured",
-			params:   map[string]interface{}{"url": "http://example.com"},
+			spec:     ScrapeSpecV1{Version: JobSpecVersion1, URL: "http://example.com"},
 			expected: nil,
 		},
 		{
 			name: "webhook with defaults",
-			params: map[string]interface{}{
-				"webhookURL": "https://example.com/webhook",
+			spec: ScrapeSpecV1{
+				Version: JobSpecVersion1,
+				URL:     "http://example.com",
+				Execution: ExecutionSpec{
+					Webhook: &WebhookSpec{URL: "https://example.com/webhook", Events: []string{"completed"}},
+				},
 			},
-			expected: &WebhookConfig{
+			expected: &WebhookSpec{
 				URL:    "https://example.com/webhook",
 				Events: []string{"completed"},
 			},
 		},
 		{
 			name: "webhook with custom events",
-			params: map[string]interface{}{
-				"webhookURL":    "https://example.com/webhook",
-				"webhookEvents": []string{"started", "completed", "failed"},
+			spec: ScrapeSpecV1{
+				Version: JobSpecVersion1,
+				URL:     "http://example.com",
+				Execution: ExecutionSpec{
+					Webhook: &WebhookSpec{URL: "https://example.com/webhook", Events: []string{"started", "completed", "failed"}},
+				},
 			},
-			expected: &WebhookConfig{
+			expected: &WebhookSpec{
 				URL:    "https://example.com/webhook",
 				Events: []string{"started", "completed", "failed"},
 			},
 		},
 		{
 			name: "webhook with secret",
-			params: map[string]interface{}{
-				"webhookURL":    "https://example.com/webhook",
-				"webhookSecret": "my-secret",
+			spec: ScrapeSpecV1{
+				Version: JobSpecVersion1,
+				URL:     "http://example.com",
+				Execution: ExecutionSpec{
+					Webhook: &WebhookSpec{URL: "https://example.com/webhook", Events: []string{"completed"}, Secret: "my-secret"},
+				},
 			},
-			expected: &WebhookConfig{
+			expected: &WebhookSpec{
 				URL:    "https://example.com/webhook",
 				Events: []string{"completed"},
 				Secret: "my-secret",
@@ -151,40 +161,29 @@ func TestWebhookConfig_ExtractFromParams(t *testing.T) {
 		},
 		{
 			name: "webhook with all options",
-			params: map[string]interface{}{
-				"webhookURL":    "https://example.com/webhook",
-				"webhookEvents": []string{"all"},
-				"webhookSecret": "super-secret",
+			spec: ScrapeSpecV1{
+				Version: JobSpecVersion1,
+				URL:     "http://example.com",
+				Execution: ExecutionSpec{
+					Webhook: &WebhookSpec{URL: "https://example.com/webhook", Events: []string{"all"}, Secret: "super-secret"},
+				},
 			},
-			expected: &WebhookConfig{
+			expected: &WebhookSpec{
 				URL:    "https://example.com/webhook",
 				Events: []string{"all"},
 				Secret: "super-secret",
 			},
 		},
 		{
-			name: "webhook events as []interface{}",
-			params: map[string]interface{}{
-				"webhookURL":    "https://example.com/webhook",
-				"webhookEvents": []interface{}{"started", "completed"},
-			},
-			expected: &WebhookConfig{
-				URL:    "https://example.com/webhook",
-				Events: []string{"started", "completed"},
-			},
-		},
-		{
-			name: "empty webhook URL",
-			params: map[string]interface{}{
-				"webhookURL": "",
-			},
+			name:     "empty webhook URL",
+			spec:     ScrapeSpecV1{Version: JobSpecVersion1, URL: "http://example.com", Execution: ExecutionSpec{Webhook: &WebhookSpec{URL: ""}}},
 			expected: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			job := Job{Params: tt.params}
+			job := Job{SpecVersion: JobSpecVersion1, Spec: tt.spec}
 			got := job.ExtractWebhookConfig()
 
 			if tt.expected == nil {

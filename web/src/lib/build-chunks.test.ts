@@ -121,9 +121,9 @@ describe("chunkNameForModuleId", () => {
       expect(
         chunkNameForModuleId("/src/components/TemplatePerformance.tsx"),
       ).toBe("feature-templates");
-      expect(
-        chunkNameForModuleId("/src/components/TemplateABTestManager.tsx"),
-      ).toBe("feature-templates");
+      expect(chunkNameForModuleId("/src/components/TemplateManager.tsx")).toBe(
+        "feature-templates",
+      );
       expect(
         chunkNameForModuleId("/src/components/VisualSelectorBuilder.tsx"),
       ).toBe("feature-templates");

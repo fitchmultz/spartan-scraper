@@ -19,7 +19,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -113,7 +112,7 @@ func (s *Store) ListJobsByBatch(ctx context.Context, batchID string, opts ListOp
 	opts = opts.Defaults()
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT j.id, j.kind, j.status, j.created_at, j.updated_at, j.params, j.result_path, j.error
+		`SELECT j.id, j.kind, j.status, j.created_at, j.updated_at, j.spec_version, j.spec_json, j.result_path, j.error, j.started_at, j.finished_at, j.selected_engine
 		 FROM jobs j
 		 INNER JOIN batch_jobs bj ON j.id = bj.job_id
 		 WHERE bj.batch_id = ?
@@ -205,30 +204,10 @@ func (s *Store) DeleteBatch(ctx context.Context, id string) error {
 func (s *Store) scanJobs(rows *sql.Rows) ([]model.Job, error) {
 	var results []model.Job
 	for rows.Next() {
-		var job model.Job
-		var createdAt, updatedAt string
-		var params string
-
-		if err := rows.Scan(&job.ID, &job.Kind, &job.Status, &createdAt, &updatedAt, &params, &job.ResultPath, &job.Error); err != nil {
+		job, err := s.scanJob(rows, false)
+		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to scan job row", err)
 		}
-
-		var parseErr error
-		job.CreatedAt, parseErr = time.Parse(time.RFC3339Nano, createdAt)
-		if parseErr != nil {
-			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job created_at", parseErr)
-		}
-		job.UpdatedAt, parseErr = time.Parse(time.RFC3339Nano, updatedAt)
-		if parseErr != nil {
-			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to parse job updated_at", parseErr)
-		}
-
-		if params != "" {
-			if err := json.Unmarshal([]byte(params), &job.Params); err != nil {
-				return nil, apperrors.Wrap(apperrors.KindInternal, "failed to unmarshal job params", err)
-			}
-		}
-
 		results = append(results, job)
 	}
 	return results, rows.Err()

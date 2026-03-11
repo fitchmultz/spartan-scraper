@@ -71,7 +71,7 @@ func TestHandleJobsWithStatusFilter(t *testing.T) {
 			Status:    job.status,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    scrapeReq,
+			Spec:      scrapeReq,
 		}
 
 		if err := srv.store.Create(context.Background(), newJob); err != nil {
@@ -142,7 +142,7 @@ func TestHandleJobsNoStatusFilter(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    scrapeReq,
+			Spec:      scrapeReq,
 		}
 
 		if err := srv.store.Create(context.Background(), newJob); err != nil {
@@ -185,7 +185,7 @@ func TestHandleJobsPagination(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{"url": "https://example.com"},
+			Spec:      map[string]interface{}{"url": "https://example.com"},
 		}
 		if err := srv.store.Create(context.Background(), newJob); err != nil {
 			t.Fatalf("failed to create job: %v", err)

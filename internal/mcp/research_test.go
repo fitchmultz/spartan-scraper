@@ -41,10 +41,13 @@ func TestResearchWithEmptyPipelineOptions(t *testing.T) {
 		t.Fatalf("CreateResearchJob failed: %v", err)
 	}
 
-	pipelineOpts, _ := job.Params["pipeline"].(pipeline.Options)
-	if len(pipelineOpts.PreProcessors) != 0 ||
-		len(pipelineOpts.PostProcessors) != 0 ||
-		len(pipelineOpts.Transformers) != 0 {
+	pipelineMap := pipelineMapFromSpec(t, job.SpecMap())
+	preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
+	postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
+	transformers, _ := pipelineMap["transformers"].([]interface{})
+	if len(preProcessors) != 0 ||
+		len(postProcessors) != 0 ||
+		len(transformers) != 0 {
 		t.Error("expected empty pipeline options")
 	}
 }

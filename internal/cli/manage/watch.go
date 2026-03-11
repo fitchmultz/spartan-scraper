@@ -123,7 +123,7 @@ func runWatchAdd(cfg config.Config, args []string) int {
 	}
 
 	if *webhookURL != "" {
-		w.WebhookConfig = &model.WebhookConfig{
+		w.WebhookConfig = &model.WebhookSpec{
 			URL:    *webhookURL,
 			Events: []string{"content_changed"},
 			Secret: *webhookSecret,

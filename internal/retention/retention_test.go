@@ -41,7 +41,7 @@ func createTestJob(id string, kind model.Kind, status model.Status, ageDays int)
 		Status:    status,
 		CreatedAt: now.AddDate(0, 0, -ageDays),
 		UpdatedAt: now.AddDate(0, 0, -ageDays),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 }
 

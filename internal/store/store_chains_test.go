@@ -25,8 +25,8 @@ func TestCreateAndGetChain(t *testing.T) {
 		Description: "A test chain",
 		Definition: model.ChainDefinition{
 			Nodes: []model.ChainNode{
-				{ID: "node1", Kind: model.KindScrape, Params: []byte(`{"url":"http://example.com"}`)},
-				{ID: "node2", Kind: model.KindCrawl, Params: []byte(`{"url":"http://example.com/2"}`)},
+				{ID: "node1", Kind: model.KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
+				{ID: "node2", Kind: model.KindCrawl, Spec: []byte(`{"url":"http://example.com/2"}`)},
 			},
 			Edges: []model.ChainEdge{
 				{From: "node1", To: "node2"},
@@ -80,7 +80,7 @@ func TestGetChainByName(t *testing.T) {
 		Name: "Unique Chain Name",
 		Definition: model.ChainDefinition{
 			Nodes: []model.ChainNode{
-				{ID: "node1", Kind: model.KindScrape, Params: []byte(`{}`)},
+				{ID: "node1", Kind: model.KindScrape, Spec: []byte(`{}`)},
 			},
 			Edges: []model.ChainEdge{},
 		},
@@ -142,7 +142,7 @@ func TestUpdateChain(t *testing.T) {
 		Description: "Original description",
 		Definition: model.ChainDefinition{
 			Nodes: []model.ChainNode{
-				{ID: "node1", Kind: model.KindScrape, Params: []byte(`{}`)},
+				{ID: "node1", Kind: model.KindScrape, Spec: []byte(`{}`)},
 			},
 			Edges: []model.ChainEdge{},
 		},
@@ -159,7 +159,7 @@ func TestUpdateChain(t *testing.T) {
 	chain.Name = "Updated Name"
 	chain.Description = "Updated description"
 	chain.Definition.Nodes = append(chain.Definition.Nodes, model.ChainNode{
-		ID: "node2", Kind: model.KindCrawl, Params: []byte(`{}`),
+		ID: "node2", Kind: model.KindCrawl, Spec: []byte(`{}`),
 	})
 
 	err = s.UpdateChain(ctx, chain)
@@ -199,7 +199,7 @@ func TestDeleteChain(t *testing.T) {
 		Name: "Chain To Delete",
 		Definition: model.ChainDefinition{
 			Nodes: []model.ChainNode{
-				{ID: "node1", Kind: model.KindScrape, Params: []byte(`{}`)},
+				{ID: "node1", Kind: model.KindScrape, Spec: []byte(`{}`)},
 			},
 			Edges: []model.ChainEdge{},
 		},
@@ -241,7 +241,7 @@ func TestListChains(t *testing.T) {
 			ID:   "chain-a",
 			Name: "Alpha Chain",
 			Definition: model.ChainDefinition{
-				Nodes: []model.ChainNode{{ID: "n1", Kind: model.KindScrape, Params: []byte(`{}`)}},
+				Nodes: []model.ChainNode{{ID: "n1", Kind: model.KindScrape, Spec: []byte(`{}`)}},
 				Edges: []model.ChainEdge{},
 			},
 			CreatedAt: time.Now().Add(-2 * time.Hour),
@@ -251,7 +251,7 @@ func TestListChains(t *testing.T) {
 			ID:   "chain-b",
 			Name: "Beta Chain",
 			Definition: model.ChainDefinition{
-				Nodes: []model.ChainNode{{ID: "n2", Kind: model.KindCrawl, Params: []byte(`{}`)}},
+				Nodes: []model.ChainNode{{ID: "n2", Kind: model.KindCrawl, Spec: []byte(`{}`)}},
 				Edges: []model.ChainEdge{},
 			},
 			CreatedAt: time.Now().Add(-1 * time.Hour),
@@ -261,7 +261,7 @@ func TestListChains(t *testing.T) {
 			ID:   "chain-c",
 			Name: "Gamma Chain",
 			Definition: model.ChainDefinition{
-				Nodes: []model.ChainNode{{ID: "n3", Kind: model.KindResearch, Params: []byte(`{}`)}},
+				Nodes: []model.ChainNode{{ID: "n3", Kind: model.KindResearch, Spec: []byte(`{}`)}},
 				Edges: []model.ChainEdge{},
 			},
 			CreatedAt: time.Now(),
@@ -311,7 +311,7 @@ func TestCreateDuplicateChainName(t *testing.T) {
 		ID:   "chain-1",
 		Name: "Duplicate Name",
 		Definition: model.ChainDefinition{
-			Nodes: []model.ChainNode{{ID: "n1", Kind: model.KindScrape, Params: []byte(`{}`)}},
+			Nodes: []model.ChainNode{{ID: "n1", Kind: model.KindScrape, Spec: []byte(`{}`)}},
 			Edges: []model.ChainEdge{},
 		},
 		CreatedAt: time.Now(),
@@ -322,7 +322,7 @@ func TestCreateDuplicateChainName(t *testing.T) {
 		ID:   "chain-2",
 		Name: "Duplicate Name", // Same name
 		Definition: model.ChainDefinition{
-			Nodes: []model.ChainNode{{ID: "n2", Kind: model.KindCrawl, Params: []byte(`{}`)}},
+			Nodes: []model.ChainNode{{ID: "n2", Kind: model.KindCrawl, Spec: []byte(`{}`)}},
 			Edges: []model.ChainEdge{},
 		},
 		CreatedAt: time.Now(),

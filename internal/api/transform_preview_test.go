@@ -29,7 +29,7 @@ func TestHandlePreviewTransform_JMESPathSuccess(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: filepath.Join(srv.cfg.DataDir, "jobs", jobID, "results.jsonl"),
 	}
 
@@ -121,7 +121,7 @@ func TestHandlePreviewTransform_JSONataSuccess(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: filepath.Join(srv.cfg.DataDir, "jobs", jobID, "results.jsonl"),
 	}
 
@@ -193,7 +193,7 @@ func TestHandlePreviewTransform_InvalidExpression(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: filepath.Join(srv.cfg.DataDir, "jobs", jobID, "results.jsonl"),
 	}
 
@@ -277,7 +277,7 @@ func TestHandlePreviewTransform_JobNoResults(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: "", // No result path
 	}
 
@@ -325,7 +325,7 @@ func TestHandlePreviewTransform_JobNotReady(t *testing.T) {
 				Status:    tc.status,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
-				Params:    map[string]interface{}{"url": "https://example.com"},
+				Spec:      map[string]interface{}{"url": "https://example.com"},
 			}
 
 			if err := srv.store.Create(context.Background(), job); err != nil {
@@ -363,7 +363,7 @@ func TestHandlePreviewTransform_LimitBounds(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: filepath.Join(srv.cfg.DataDir, "jobs", jobID, "results.jsonl"),
 	}
 

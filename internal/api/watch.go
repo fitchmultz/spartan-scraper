@@ -38,7 +38,7 @@ type WatchRequest struct {
 	IntervalSeconds     int                     `json:"intervalSeconds"`
 	Enabled             *bool                   `json:"enabled,omitempty"`
 	DiffFormat          string                  `json:"diffFormat,omitempty"`
-	WebhookConfig       *model.WebhookConfig    `json:"webhookConfig,omitempty"`
+	WebhookConfig       *model.WebhookSpec      `json:"webhookConfig,omitempty"`
 	NotifyOnChange      bool                    `json:"notifyOnChange"`
 	MinChangeSize       int                     `json:"minChangeSize,omitempty"`
 	IgnorePatterns      []string                `json:"ignorePatterns,omitempty"`
@@ -62,7 +62,7 @@ type WatchResponse struct {
 	LastChangedAt       time.Time               `json:"lastChangedAt,omitempty"`
 	ChangeCount         int                     `json:"changeCount"`
 	DiffFormat          string                  `json:"diffFormat"`
-	WebhookConfig       *model.WebhookConfig    `json:"webhookConfig,omitempty"`
+	WebhookConfig       *model.WebhookSpec      `json:"webhookConfig,omitempty"`
 	NotifyOnChange      bool                    `json:"notifyOnChange"`
 	MinChangeSize       int                     `json:"minChangeSize,omitempty"`
 	IgnorePatterns      []string                `json:"ignorePatterns,omitempty"`

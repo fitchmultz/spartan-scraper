@@ -29,7 +29,7 @@ func TestStoreListOptsPagination(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now().Add(time.Duration(i) * time.Second),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{"idx": i},
+			Spec:      map[string]interface{}{"idx": i},
 		}
 		if err := s.Create(ctx, job); err != nil {
 			t.Fatalf("Create failed: %v", err)
@@ -114,7 +114,7 @@ func TestStoreListByStatus(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com/1"},
+		Spec:      map[string]interface{}{"url": "http://example.com/1"},
 	}
 
 	runningJob := model.Job{
@@ -123,7 +123,7 @@ func TestStoreListByStatus(t *testing.T) {
 		Status:    model.StatusRunning,
 		CreatedAt: time.Now().Add(-1 * time.Second),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com/2"},
+		Spec:      map[string]interface{}{"url": "http://example.com/2"},
 	}
 
 	succeededJob := model.Job{
@@ -132,7 +132,7 @@ func TestStoreListByStatus(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: time.Now().Add(-2 * time.Second),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com/3"},
+		Spec:      map[string]interface{}{"url": "http://example.com/3"},
 	}
 
 	if err := s.Create(ctx, queuedJob); err != nil {

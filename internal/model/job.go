@@ -1,9 +1,26 @@
 // Package model defines shared domain types for jobs, crawling, and state tracking.
-// It handles type definitions for Job, Kind, Status, and CrawlState.
-// It does NOT handle job persistence, execution, or state transitions.
+//
+// Purpose:
+// - Define the canonical persisted Job model and related enums for the 1.0 core.
+//
+// Responsibilities:
+// - Hold stable job identity, lifecycle, dependency, and persisted spec metadata.
+// - Validate artifact result paths against the local data directory.
+//
+// Scope:
+// - Domain model types only. Persistence and execution live in other packages.
+//
+// Usage:
+// - Used across API, scheduler, MCP, store, and jobs runtime code.
+//
+// Invariants/Assumptions:
+// - Jobs persist typed versioned specs, not generic params bags.
+// - Result paths always live under DATA_DIR/jobs/<job-id>/.
+// - Unsupported multi-user/workspace fields are not part of the stable 1.0 model.
 package model
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,12 +46,9 @@ const (
 	StatusFailed    Status = "failed"
 	StatusCanceled  Status = "canceled"
 
-	// DependencyStatusPending indicates the job is waiting for dependencies to complete.
 	DependencyStatusPending DependencyStatus = "pending"
-	// DependencyStatusReady indicates all dependencies succeeded and the job can run.
-	DependencyStatusReady DependencyStatus = "ready"
-	// DependencyStatusFailed indicates one or more dependencies failed.
-	DependencyStatusFailed DependencyStatus = "failed"
+	DependencyStatusReady   DependencyStatus = "ready"
+	DependencyStatusFailed  DependencyStatus = "failed"
 )
 
 var validStatuses = map[Status]bool{
@@ -50,6 +64,15 @@ var validDependencyStatuses = map[DependencyStatus]bool{
 	DependencyStatusReady:   true,
 	DependencyStatusFailed:  true,
 }
+
+// ArtifactRole identifies the purpose of an artifact in a job manifest.
+type ArtifactRole string
+
+const (
+	ArtifactRoleResults  ArtifactRole = "results"
+	ArtifactRoleManifest ArtifactRole = "manifest"
+	ArtifactRoleExport   ArtifactRole = "export"
+)
 
 // IsValid returns true if the dependency status is a recognized value.
 func (s DependencyStatus) IsValid() bool {
@@ -68,94 +91,72 @@ func ValidStatuses() []Status {
 	return []Status{StatusQueued, StatusRunning, StatusSucceeded, StatusFailed, StatusCanceled}
 }
 
-// WebhookConfig holds webhook notification settings for a job.
-// These values are stored in Job.Params to avoid database schema changes.
-type WebhookConfig struct {
-	URL    string   `json:"url,omitempty"`
-	Events []string `json:"events,omitempty"`
-	Secret string   `json:"secret,omitempty"`
+// Job represents a single persisted scrape, crawl, or research task.
+type Job struct {
+	ID               string           `json:"id"`
+	Kind             Kind             `json:"kind"`
+	Status           Status           `json:"status"`
+	CreatedAt        time.Time        `json:"createdAt"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
+	StartedAt        *time.Time       `json:"startedAt,omitempty"`
+	FinishedAt       *time.Time       `json:"finishedAt,omitempty"`
+	SpecVersion      int              `json:"specVersion"`
+	Spec             any              `json:"spec,omitempty"`
+	ResultPath       string           `json:"resultPath,omitempty"`
+	Error            string           `json:"error"`
+	DependsOn        []string         `json:"dependsOn,omitempty"`
+	DependencyStatus DependencyStatus `json:"dependencyStatus,omitempty"`
+	ChainID          string           `json:"chainId,omitempty"`
+	SelectedEngine   string           `json:"selectedEngine,omitempty"`
 }
 
-// ExtractWebhookConfig extracts webhook configuration from job params.
-// Returns nil if no webhook is configured.
-func (j Job) ExtractWebhookConfig() *WebhookConfig {
-	url, _ := j.Params["webhookURL"].(string)
-	if url == "" {
+// ExtractWebhookConfig extracts webhook configuration from the job's typed spec.
+func (j Job) ExtractWebhookConfig() *WebhookSpec {
+	return ExtractWebhookSpec(j.Spec)
+}
+
+// SpecMap returns the job spec as a generic map for diagnostics and tests.
+func (j Job) SpecMap() map[string]interface{} {
+	if j.Spec == nil {
 		return nil
 	}
-
-	cfg := &WebhookConfig{
-		URL:    url,
-		Events: []string{"completed"}, // default
+	raw, err := json.Marshal(j.Spec)
+	if err != nil {
+		return nil
 	}
-
-	if events, ok := j.Params["webhookEvents"].([]string); ok && len(events) > 0 {
-		cfg.Events = events
+	var generic map[string]interface{}
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		return nil
 	}
-	if events, ok := j.Params["webhookEvents"].([]interface{}); ok && len(events) > 0 {
-		cfg.Events = make([]string, 0, len(events))
-		for _, e := range events {
-			if s, ok := e.(string); ok {
-				cfg.Events = append(cfg.Events, s)
+	if execRaw, ok := generic["execution"]; ok {
+		if execMap, ok := execRaw.(map[string]interface{}); ok {
+			for key, value := range execMap {
+				if _, exists := generic[key]; !exists {
+					generic[key] = value
+				}
 			}
 		}
 	}
-	if secret, ok := j.Params["webhookSecret"].(string); ok && secret != "" {
-		cfg.Secret = secret
-	}
-
-	return cfg
-}
-
-// Job represents a single scraping, crawling, or research task.
-//
-// Dependencies:
-//   - DependsOn contains job IDs that must complete successfully before this job runs.
-//   - DependencyStatus tracks whether dependencies are pending, ready, or failed.
-//   - ChainID optionally associates this job with a named workflow chain.
-//
-// Multi-user support:
-//   - UserID identifies the user who created the job (optional for backward compatibility).
-//   - WorkspaceID identifies the workspace the job belongs to (optional for backward compatibility).
-type Job struct {
-	ID               string                 `json:"id"`
-	Kind             Kind                   `json:"kind"`
-	Status           Status                 `json:"status"`
-	CreatedAt        time.Time              `json:"createdAt"`
-	UpdatedAt        time.Time              `json:"updatedAt"`
-	Params           map[string]interface{} `json:"params"`
-	ResultPath       string                 `json:"resultPath,omitempty"`
-	Error            string                 `json:"error"`
-	DependsOn        []string               `json:"dependsOn,omitempty"`        // List of job IDs this job depends on
-	DependencyStatus DependencyStatus       `json:"dependencyStatus,omitempty"` // pending/ready/failed
-	ChainID          string                 `json:"chainId,omitempty"`          // Optional chain membership
-	UserID           string                 `json:"userId,omitempty"`           // User who created the job
-	WorkspaceID      string                 `json:"workspaceId,omitempty"`      // Workspace the job belongs to
+	return generic
 }
 
 // ValidateResultPath validates that a job's result path is within the allowed directory.
-// It prevents path traversal attacks by ensuring the resolved path is under DATA_DIR/jobs/{jobID}/.
-// Empty paths are considered valid (indicating no results yet).
 func ValidateResultPath(jobID, resultPath, dataDir string) error {
 	if resultPath == "" {
-		return nil // Empty path is valid (no results yet)
+		return nil
 	}
 
-	// Resolve result path to absolute
 	absPath, err := filepath.Abs(resultPath)
 	if err != nil {
 		return apperrors.Validation("invalid result path")
 	}
 
-	// Construct allowed base directory: DATA_DIR/jobs/{jobID}
 	baseDir := filepath.Join(dataDir, "jobs", jobID)
 	absBase, err := filepath.Abs(baseDir)
 	if err != nil {
 		return apperrors.Internal("failed to resolve base directory")
 	}
 
-	// Ensure the path is within the allowed directory
-	// Add separator to prevent partial path matches (e.g., /data/jobs/1234 vs /data/jobs/12345)
 	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) {
 		return apperrors.Validation("result path outside allowed directory")
 	}

@@ -25,6 +25,8 @@ function makeJob(id: string, status: Job["status"]): Job {
     status,
     createdAt: now,
     updatedAt: now,
+    specVersion: 1,
+    spec: { version: 1 },
   };
 }
 

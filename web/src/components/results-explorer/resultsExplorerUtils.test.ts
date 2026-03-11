@@ -61,6 +61,8 @@ const jobs: Job[] = [
     kind: "crawl",
     createdAt: "2026-03-10T00:00:00Z",
     updatedAt: "2026-03-10T00:01:00Z",
+    specVersion: 1,
+    spec: { version: 1 },
   },
   {
     id: "job-2",
@@ -68,6 +70,8 @@ const jobs: Job[] = [
     kind: "crawl",
     createdAt: "2026-03-10T00:02:00Z",
     updatedAt: "2026-03-10T00:03:00Z",
+    specVersion: 1,
+    spec: { version: 1 },
   },
 ];
 

@@ -87,10 +87,10 @@ func (s *Store) prepareStatements() error {
 		query   string
 		message string
 	}{
-		{&s.insertJobStmt, `insert into jobs (id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "failed to prepare insert job statement"},
-		{&s.updateJobStatusStmt, `update jobs set status = ?, updated_at = ?, error = ? where id = ?`, "failed to prepare update job status statement"},
-		{&s.getJobStmt, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where id = ?`, "failed to prepare get job statement"},
+		{&s.insertJobStmt, `insert into jobs (id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, "failed to prepare insert job statement"},
+		{&s.updateJobStatusStmt, `update jobs set status = ?, updated_at = ?, error = ?, started_at = coalesce(?, started_at), finished_at = coalesce(?, finished_at) where id = ?`, "failed to prepare update job status statement"},
+		{&s.getJobStmt, `select id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine from jobs where id = ?`, "failed to prepare get job statement"},
 		{&s.getCrawlStateStmt, `select url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot from crawl_states where url = ?`, "failed to prepare get crawl state statement"},
 		{&s.upsertCrawlStateStmt, `insert into crawl_states (url, etag, last_modified, content_hash, last_scraped, depth, job_id, previous_content, content_snapshot)
 		values (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -111,9 +111,9 @@ func (s *Store) prepareStatements() error {
 		{&s.stmtUpdateChain, `update job_chains set name = ?, description = ?, definition = ?, updated_at = ? where id = ?`, "failed to prepare update chain statement"},
 		{&s.stmtDeleteChain, `delete from job_chains where id = ?`, "failed to prepare delete chain statement"},
 		{&s.stmtListChains, `select id, name, description, definition, created_at, updated_at from job_chains order by created_at desc`, "failed to prepare list chains statement"},
-		{&s.stmtGetJobsByDependencyStatus, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where dependency_status = ? order by created_at desc`, "failed to prepare get jobs by dependency status statement"},
+		{&s.stmtGetJobsByDependencyStatus, `select id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine from jobs where dependency_status = ? order by created_at desc`, "failed to prepare get jobs by dependency status statement"},
 		{&s.stmtUpdateDependencyStatus, `update jobs set dependency_status = ? where id = ?`, "failed to prepare update dependency status statement"},
-		{&s.stmtGetDependentJobs, `select id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id from jobs where depends_on is not null and depends_on != '' and exists (select 1 from json_each(depends_on) where value = ?)`, "failed to prepare get dependent jobs statement"},
+		{&s.stmtGetDependentJobs, `select id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine from jobs where depends_on is not null and depends_on != '' and exists (select 1 from json_each(depends_on) where value = ?)`, "failed to prepare get dependent jobs statement"},
 	}
 
 	for _, statement := range statements {
@@ -169,9 +169,16 @@ func (s *Store) init(dbExisted bool) error {
 			status text not null,
 			created_at text not null,
 			updated_at text not null,
-			params text,
+			spec_version integer not null,
+			spec_json text not null,
 			result_path text,
-			error text
+			error text,
+			depends_on text,
+			dependency_status text,
+			chain_id text,
+			started_at text,
+			finished_at text,
+			selected_engine text
 		);
 		create index if not exists idx_jobs_status_created on jobs(status, created_at desc);
 		create index if not exists idx_jobs_created on jobs(created_at desc);

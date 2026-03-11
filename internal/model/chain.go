@@ -39,9 +39,9 @@ type ChainDefinition struct {
 
 // ChainNode represents a job template within a chain.
 type ChainNode struct {
-	ID       string          `json:"id"`     // Node identifier within chain
-	Kind     Kind            `json:"kind"`   // Job kind (scrape, crawl, research)
-	Params   json.RawMessage `json:"params"` // Job parameters template
+	ID       string          `json:"id"`   // Node identifier within chain
+	Kind     Kind            `json:"kind"` // Job kind (scrape, crawl, research)
+	Spec     json.RawMessage `json:"spec"` // Typed job specification template
 	Metadata ChainMetadata   `json:"metadata,omitempty"`
 }
 

@@ -31,7 +31,7 @@ func TestStoreJobs(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := s.Create(ctx, job); err != nil {
@@ -80,7 +80,7 @@ func TestStoreDelete(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := s.Create(ctx, job); err != nil {
@@ -129,7 +129,7 @@ func TestStoreDeleteWithArtifacts(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := s.Create(ctx, job); err != nil {
@@ -205,7 +205,7 @@ func TestStoreListUsesDefaults(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now().Add(time.Duration(i) * time.Second),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{"idx": i},
+			Spec:      map[string]interface{}{"idx": i},
 		}
 		if err := s.Create(ctx, job); err != nil {
 			t.Fatalf("Create failed: %v", err)
@@ -269,7 +269,7 @@ func TestStoreDeleteWithArtifactsPathTraversalWithJob(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 
 	if err := s.Create(ctx, job); err != nil {

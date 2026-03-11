@@ -45,12 +45,14 @@ func TestCrawlSiteWithPartialPipelineOptions(t *testing.T) {
 		t.Fatalf("CreateCrawlJob failed: %v", err)
 	}
 
-	pipelineOpts, _ := job.Params["pipeline"].(pipeline.Options)
-	if len(pipelineOpts.PreProcessors) != 1 {
-		t.Errorf("expected 1 preProcessor, got %d", len(pipelineOpts.PreProcessors))
+	pipelineMap := pipelineMapFromSpec(t, job.SpecMap())
+	preProcessors, _ := pipelineMap["preProcessors"].([]interface{})
+	postProcessors, _ := pipelineMap["postProcessors"].([]interface{})
+	if len(preProcessors) != 1 {
+		t.Errorf("expected 1 preProcessor, got %d", len(preProcessors))
 	}
-	if len(pipelineOpts.PostProcessors) != 0 {
-		t.Errorf("expected 0 postProcessors, got %d", len(pipelineOpts.PostProcessors))
+	if len(postProcessors) != 0 {
+		t.Errorf("expected 0 postProcessors, got %d", len(postProcessors))
 	}
 }
 

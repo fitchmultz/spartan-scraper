@@ -65,9 +65,9 @@ func TestHandleCrawlPlaywright(t *testing.T) {
 				t.Fatalf("failed to get job: %v", err)
 			}
 
-			playwright, ok := job.Params["playwright"].(bool)
+			playwright, ok := job.SpecMap()["playwright"].(bool)
 			if !ok {
-				t.Fatalf("expected bool 'playwright' param, got %v", job.Params["playwright"])
+				t.Fatalf("expected bool 'playwright' param, got %v", job.SpecMap()["playwright"])
 			}
 
 			if playwright != tt.expectPlaywright {

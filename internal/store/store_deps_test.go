@@ -26,7 +26,7 @@ func TestJobWithDependencies(t *testing.T) {
 		Status:           model.StatusQueued,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
-		Params:           map[string]interface{}{"url": "http://example.com"},
+		Spec:             map[string]interface{}{"url": "http://example.com"},
 		DependsOn:        []string{"dep-job-1", "dep-job-2"},
 		DependencyStatus: model.DependencyStatusPending,
 		ChainID:          "test-chain",
@@ -70,7 +70,7 @@ func TestUpdateDependencyStatus(t *testing.T) {
 		Status:           model.StatusQueued,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
-		Params:           map[string]interface{}{},
+		Spec:             map[string]interface{}{},
 		DependsOn:        []string{"dep1"},
 		DependencyStatus: model.DependencyStatusPending,
 	}
@@ -115,7 +115,7 @@ func TestGetJobsByDependencyStatus(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{"dep1"},
 			DependencyStatus: model.DependencyStatusPending,
 		},
@@ -125,7 +125,7 @@ func TestGetJobsByDependencyStatus(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{"dep2"},
 			DependencyStatus: model.DependencyStatusPending,
 		},
@@ -135,7 +135,7 @@ func TestGetJobsByDependencyStatus(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{},
 			DependencyStatus: model.DependencyStatusReady,
 		},
@@ -186,7 +186,7 @@ func TestGetDependentJobs(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{},
+		Spec:      map[string]interface{}{},
 	}
 
 	err = s.Create(ctx, depJob)
@@ -202,7 +202,7 @@ func TestGetDependentJobs(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{"dep-job"},
 			DependencyStatus: model.DependencyStatusPending,
 		},
@@ -212,7 +212,7 @@ func TestGetDependentJobs(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{"dep-job", "other-dep"},
 			DependencyStatus: model.DependencyStatusPending,
 		},
@@ -222,7 +222,7 @@ func TestGetDependentJobs(t *testing.T) {
 			Status:           model.StatusQueued,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
-			Params:           map[string]interface{}{},
+			Spec:             map[string]interface{}{},
 			DependsOn:        []string{"other-dep"},
 			DependencyStatus: model.DependencyStatusPending,
 		},
@@ -278,7 +278,7 @@ func TestGetDependentJobsNoSubstringMatch(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{},
+		Spec:      map[string]interface{}{},
 	}
 
 	err = s.Create(ctx, job12)
@@ -293,7 +293,7 @@ func TestGetDependentJobsNoSubstringMatch(t *testing.T) {
 		Status:           model.StatusQueued,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
-		Params:           map[string]interface{}{},
+		Spec:             map[string]interface{}{},
 		DependsOn:        []string{"123"},
 		DependencyStatus: model.DependencyStatusPending,
 	}
@@ -310,7 +310,7 @@ func TestGetDependentJobsNoSubstringMatch(t *testing.T) {
 		Status:           model.StatusQueued,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
-		Params:           map[string]interface{}{},
+		Spec:             map[string]interface{}{},
 		DependsOn:        []string{"12"},
 		DependencyStatus: model.DependencyStatusPending,
 	}
@@ -362,7 +362,7 @@ func TestGetJobsByChain(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{},
+			Spec:      map[string]interface{}{},
 			ChainID:   "chain-1",
 		},
 		{
@@ -371,7 +371,7 @@ func TestGetJobsByChain(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now().Add(time.Second),
 			UpdatedAt: time.Now().Add(time.Second),
-			Params:    map[string]interface{}{},
+			Spec:      map[string]interface{}{},
 			ChainID:   "chain-1",
 		},
 		{
@@ -380,7 +380,7 @@ func TestGetJobsByChain(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{},
+			Spec:      map[string]interface{}{},
 			ChainID:   "chain-2",
 		},
 		{
@@ -389,7 +389,7 @@ func TestGetJobsByChain(t *testing.T) {
 			Status:    model.StatusQueued,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
-			Params:    map[string]interface{}{},
+			Spec:      map[string]interface{}{},
 			ChainID:   "",
 		},
 	}
@@ -459,7 +459,7 @@ func TestJobDefaultDependencyStatus(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]interface{}{},
+		Spec:      map[string]interface{}{},
 		DependsOn: []string{},
 		// DependencyStatus not set
 	}

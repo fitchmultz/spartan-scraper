@@ -43,7 +43,7 @@ type BatchScrapeRequest struct {
 	Extract        *extract.ExtractOptions `json:"extract,omitempty"`
 	Pipeline       *pipeline.Options       `json:"pipeline,omitempty"`
 	Incremental    *bool                   `json:"incremental,omitempty"`
-	Webhook        *model.WebhookConfig    `json:"webhook,omitempty"`
+	Webhook        *model.WebhookSpec      `json:"webhook,omitempty"`
 }
 
 // BatchCrawlRequest represents a batch crawl request.
@@ -61,7 +61,7 @@ type BatchCrawlRequest struct {
 	Incremental    *bool                   `json:"incremental,omitempty"`
 	SitemapURL     string                  `json:"sitemapURL,omitempty"`
 	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
-	Webhook        *model.WebhookConfig    `json:"webhook,omitempty"`
+	Webhook        *model.WebhookSpec      `json:"webhook,omitempty"`
 }
 
 // BatchResearchRequest represents a batch research request.
@@ -77,7 +77,7 @@ type BatchResearchRequest struct {
 	Auth           *fetch.AuthOptions      `json:"auth,omitempty"`
 	Extract        *extract.ExtractOptions `json:"extract,omitempty"`
 	Pipeline       *pipeline.Options       `json:"pipeline,omitempty"`
-	Webhook        *model.WebhookConfig    `json:"webhook,omitempty"`
+	Webhook        *model.WebhookSpec      `json:"webhook,omitempty"`
 }
 
 // BatchResponse represents a batch creation response.

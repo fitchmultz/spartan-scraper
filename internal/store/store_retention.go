@@ -43,7 +43,7 @@ type RetentionStats struct {
 func (s *Store) ListJobsOlderThan(ctx context.Context, before time.Time, opts ListOptions) ([]model.Job, error) {
 	opts = opts.Defaults()
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id
+		`SELECT id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine
 		 FROM jobs WHERE created_at < ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
 		before.Format(time.RFC3339Nano), opts.Limit, opts.Offset)
 	if err != nil {
@@ -58,7 +58,7 @@ func (s *Store) ListJobsOlderThan(ctx context.Context, before time.Time, opts Li
 func (s *Store) ListJobsByStatusAndAge(ctx context.Context, status model.Status, before time.Time, opts ListOptions) ([]model.Job, error) {
 	opts = opts.Defaults()
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id
+		`SELECT id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine
 		 FROM jobs WHERE status = ? AND created_at < ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
 		status, before.Format(time.RFC3339Nano), opts.Limit, opts.Offset)
 	if err != nil {
@@ -377,7 +377,7 @@ func (s *Store) DeleteCrawlStatesOlderThan(ctx context.Context, before time.Time
 func (s *Store) ListJobsByKind(ctx context.Context, kind model.Kind, opts ListOptions) ([]model.Job, error) {
 	opts = opts.Defaults()
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, kind, status, created_at, updated_at, params, result_path, error, depends_on, dependency_status, chain_id
+		`SELECT id, kind, status, created_at, updated_at, spec_version, spec_json, result_path, error, depends_on, dependency_status, chain_id, started_at, finished_at, selected_engine
 		 FROM jobs WHERE kind = ? ORDER BY created_at ASC LIMIT ? OFFSET ?`,
 		kind, opts.Limit, opts.Offset)
 	if err != nil {

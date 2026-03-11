@@ -1253,9 +1253,13 @@ export type Job = {
     createdAt: string;
     updatedAt: string;
     /**
-     * Job parameters. Sensitive fields (auth, headers, cookies, tokens, passwords, secrets) are redacted.
+     * Persisted typed job spec version.
      */
-    params?: {
+    specVersion: number;
+    /**
+     * Persisted typed job spec. Sensitive fields are redacted in untrusted responses.
+     */
+    spec: {
         [key: string]: unknown;
     };
     /**
@@ -2401,9 +2405,9 @@ export type ChainNode = {
      */
     kind: 'scrape' | 'crawl' | 'research';
     /**
-     * Job parameters template
+     * Typed job specification template
      */
-    params: {
+    spec: {
         [key: string]: unknown;
     };
     metadata?: ChainMetadata;
@@ -2617,144 +2621,6 @@ export type WebhookDeliveryListResponse = {
      * Total number of delivery records
      */
     total?: number;
-};
-
-/**
- * A/B test configuration for comparing templates
- */
-export type TemplateAbTest = {
-    /**
-     * Unique test identifier
-     */
-    id?: string;
-    /**
-     * Test name
-     */
-    name?: string;
-    /**
-     * Test description
-     */
-    description?: string;
-    /**
-     * Baseline template name
-     */
-    baseline_template?: string;
-    /**
-     * Variant template name
-     */
-    variant_template?: string;
-    /**
-     * Traffic allocation percentages (e.g., baseline: 50, variant: 50)
-     */
-    allocation?: {
-        [key: string]: number;
-    };
-    /**
-     * Test start time
-     */
-    start_time?: string;
-    /**
-     * Test end time (if completed)
-     */
-    end_time?: string;
-    /**
-     * Current test status
-     */
-    status?: 'pending' | 'running' | 'paused' | 'completed';
-    success_criteria?: SuccessCriteria;
-    /**
-     * Minimum samples per variant for significance
-     */
-    min_sample_size?: number;
-    /**
-     * Statistical confidence level (e.g., 0.95)
-     */
-    confidence_level?: number;
-    /**
-     * Winning template if test is complete
-     */
-    winner?: 'baseline' | 'variant' | null;
-    /**
-     * When the test was created
-     */
-    created_at?: string;
-    /**
-     * When the test was last updated
-     */
-    updated_at?: string;
-};
-
-/**
- * Criteria for determining A/B test success
- */
-export type SuccessCriteria = {
-    /**
-     * Metric to compare
-     */
-    metric?: 'success_rate' | 'field_coverage' | 'combined';
-    /**
-     * Minimum improvement required (e.g., 0.05 for 5%)
-     */
-    min_improvement?: number;
-    /**
-     * Fields that must be present for success
-     */
-    required_fields?: Array<string>;
-    /**
-     * Minimum field coverage required (0-1)
-     */
-    min_field_coverage?: number;
-};
-
-/**
- * Aggregated metrics for template comparison
- */
-export type ComparisonMetrics = {
-    /**
-     * Number of samples
-     */
-    sample_size?: number;
-    /**
-     * Success rate as percentage (0-100)
-     */
-    success_rate?: number;
-    /**
-     * Average field coverage (0-1)
-     */
-    field_coverage?: number;
-    /**
-     * Average extraction time in milliseconds
-     */
-    avg_extraction_time_ms?: number;
-};
-
-/**
- * Statistical significance test result
- */
-export type StatisticalResult = {
-    /**
-     * Type of statistical test performed
-     */
-    test_type?: 'chi_square' | 't_test';
-    /**
-     * P-value from the test
-     */
-    p_value?: number;
-    /**
-     * Whether the result is statistically significant
-     */
-    is_significant?: boolean;
-    /**
-     * Confidence interval [lower, upper]
-     */
-    confidence_interval?: [
-        number,
-        number
-    ];
-    /**
-     * Effect size (Cohen's d or odds ratio)
-     */
-    effect_size?: number;
 };
 
 /**
@@ -3059,51 +2925,6 @@ export type CreateTemplateRequest = {
      */
     regex?: Array<RegexRule>;
     normalize?: NormalizeSpec;
-};
-
-export type TrafficModifications = {
-    /**
-     * Headers to add or replace
-     */
-    headers?: {
-        [key: string]: string;
-    };
-    /**
-     * Headers to remove
-     */
-    removeHeaders?: Array<string>;
-    /**
-     * JMESPath/JSONata transform for request body
-     */
-    bodyTransform?: string;
-};
-
-export type ResponseDiff = {
-    requestId?: string;
-    url?: string;
-    statusDiff?: StatusDiff;
-    headerDiffs?: Array<HeaderDiff>;
-    bodyDiff?: BodyDiff;
-};
-
-export type StatusDiff = {
-    original?: number;
-    replayed?: number;
-};
-
-export type HeaderDiff = {
-    name?: string;
-    original?: string;
-    replayed?: string;
-};
-
-export type BodyDiff = {
-    originalSize?: number;
-    replayedSize?: number;
-    /**
-     * Unified diff preview
-     */
-    preview?: string;
 };
 
 export type GetHealthzData = {

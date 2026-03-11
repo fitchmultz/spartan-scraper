@@ -307,7 +307,7 @@ func (m *Manager) publishEvent(event JobEvent) {
 }
 
 // dispatchWebhook sends a webhook notification for a job event.
-func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookConfig) {
+func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookSpec) {
 	// Map JobEventType to webhook EventType
 	var eventType webhook.EventType
 	switch event.Type {

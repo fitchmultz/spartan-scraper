@@ -76,7 +76,7 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 				Status:    model.StatusQueued,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
-				Params:    map[string]any{"url": "https://example.com"},
+				Spec:      map[string]any{"url": "https://example.com"},
 			}
 			if err := srv.store.Create(ctx, job); err != nil {
 				t.Fatalf("failed to create job: %v", err)
@@ -137,7 +137,7 @@ func TestHandleJobResultsWithFormats(t *testing.T) {
 				Status:    model.StatusQueued,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
-				Params:    map[string]any{"url": "https://example.com"},
+				Spec:      map[string]any{"url": "https://example.com"},
 			}
 			if err := srv.store.Create(ctx, job); err != nil {
 				t.Fatalf("failed to create job: %v", err)
@@ -208,7 +208,7 @@ func TestHandleJobResultsInvalidFormat(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -262,7 +262,7 @@ func TestHandleJobResultsNoFormatParameter(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)

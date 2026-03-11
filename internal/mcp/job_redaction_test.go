@@ -23,13 +23,14 @@ func TestJobStatus_RedactsSensitiveData(t *testing.T) {
 
 	// Create job with sensitive data
 	job := model.Job{
-		ID:         "job-1",
-		Kind:       model.KindScrape,
-		Status:     model.StatusSucceeded,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
-		Params: map[string]interface{}{
+		ID:          "job-1",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		SpecVersion: -1,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		ResultPath:  "/Users/admin/.data/results/job-1.jsonl",
+		Spec: map[string]interface{}{
 			"url":      "https://example.com",
 			"password": "secret123",
 			"apiKey":   "abc-def",
@@ -67,15 +68,15 @@ func TestJobStatus_RedactsSensitiveData(t *testing.T) {
 	}
 
 	// Verify sensitive params are redacted
-	if resultJob.Params["password"] != "[REDACTED]" {
-		t.Errorf("password should be redacted, got: %v", resultJob.Params["password"])
+	if resultJob.SpecMap()["password"] != "[REDACTED]" {
+		t.Errorf("password should be redacted, got: %v", resultJob.SpecMap()["password"])
 	}
-	if resultJob.Params["apiKey"] != "[REDACTED]" {
-		t.Errorf("apiKey should be redacted, got: %v", resultJob.Params["apiKey"])
+	if resultJob.SpecMap()["apiKey"] != "[REDACTED]" {
+		t.Errorf("apiKey should be redacted, got: %v", resultJob.SpecMap()["apiKey"])
 	}
 
 	// Verify headers are redacted
-	headers := resultJob.Params["headers"].(map[string]interface{})
+	headers := resultJob.SpecMap()["headers"].(map[string]interface{})
 	if headers["Authorization"] != "[REDACTED]" {
 		t.Errorf("Authorization header should be redacted, got: %v", headers["Authorization"])
 	}
@@ -84,8 +85,8 @@ func TestJobStatus_RedactsSensitiveData(t *testing.T) {
 	}
 
 	// Verify non-sensitive params are preserved
-	if resultJob.Params["url"] != "https://example.com" {
-		t.Errorf("url should not be redacted, got: %v", resultJob.Params["url"])
+	if resultJob.SpecMap()["url"] != "https://example.com" {
+		t.Errorf("url should not be redacted, got: %v", resultJob.SpecMap()["url"])
 	}
 }
 
@@ -98,25 +99,27 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 
 	// Create jobs with sensitive data
 	job1 := model.Job{
-		ID:         "job-1",
-		Kind:       model.KindScrape,
-		Status:     model.StatusSucceeded,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
-		Params: map[string]interface{}{
+		ID:          "job-1",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		SpecVersion: -1,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		ResultPath:  "/Users/admin/.data/results/job-1.jsonl",
+		Spec: map[string]interface{}{
 			"url":    "https://example.com",
 			"secret": "top-secret-1",
 		},
 	}
 	job2 := model.Job{
-		ID:         "job-2",
-		Kind:       model.KindCrawl,
-		Status:     model.StatusRunning,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-		ResultPath: "/home/user/results/job-2.jsonl",
-		Params: map[string]interface{}{
+		ID:          "job-2",
+		Kind:        model.KindCrawl,
+		Status:      model.StatusRunning,
+		SpecVersion: -1,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		ResultPath:  "/home/user/results/job-2.jsonl",
+		Spec: map[string]interface{}{
 			"url":   "https://test.com",
 			"token": "bearer-token-2",
 		},
@@ -175,8 +178,8 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 		t.Fatal("job-1 not found in response")
 	}
 
-	if foundJob1.Params["secret"] != "[REDACTED]" {
-		t.Errorf("secret should be redacted, got: %v", foundJob1.Params["secret"])
+	if foundJob1.SpecMap()["secret"] != "[REDACTED]" {
+		t.Errorf("secret should be redacted, got: %v", foundJob1.SpecMap()["secret"])
 	}
 
 	// Find job-2 and verify token is redacted
@@ -192,8 +195,8 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 		t.Fatal("job-2 not found in response")
 	}
 
-	if foundJob2.Params["token"] != "[REDACTED]" {
-		t.Errorf("token should be redacted, got: %v", foundJob2.Params["token"])
+	if foundJob2.SpecMap()["token"] != "[REDACTED]" {
+		t.Errorf("token should be redacted, got: %v", foundJob2.SpecMap()["token"])
 	}
 }
 
@@ -206,13 +209,14 @@ func TestJobStatus_ErrorWithPath_Redacted(t *testing.T) {
 
 	// Create job with error containing path
 	job := model.Job{
-		ID:        "job-1",
-		Kind:      model.KindScrape,
-		Status:    model.StatusFailed,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Error:     "Failed to write to /Users/admin/.data/temp/file.txt: permission denied",
-		Params:    map[string]interface{}{"url": "https://example.com"},
+		ID:          "job-1",
+		Kind:        model.KindScrape,
+		Status:      model.StatusFailed,
+		SpecVersion: -1,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Error:       "Failed to write to /Users/admin/.data/temp/file.txt: permission denied",
+		Spec:        map[string]interface{}{"url": "https://example.com"},
 	}
 
 	if err := server.store.Create(ctx, job); err != nil {

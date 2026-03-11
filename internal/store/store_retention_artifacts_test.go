@@ -34,7 +34,7 @@ func TestDeleteJobsWithArtifactsBatch(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, job); err != nil {
 		t.Fatalf("Create job failed: %v", err)
@@ -147,7 +147,7 @@ func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	job2 := model.Job{
 		ID:        "job-2",
@@ -155,7 +155,7 @@ func TestDeleteJobsWithArtifactsBatch_PartialFailure(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, job1); err != nil {
 		t.Fatalf("Create job1 failed: %v", err)
@@ -221,7 +221,7 @@ func TestDeleteJobsWithArtifactsBatch_PathTraversalFailure(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	// Create a job with malicious ID (path traversal)
 	maliciousJob := model.Job{
@@ -230,7 +230,7 @@ func TestDeleteJobsWithArtifactsBatch_PathTraversalFailure(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, validJob); err != nil {
 		t.Fatalf("Create validJob failed: %v", err)
@@ -295,7 +295,7 @@ func TestDeleteJobsWithArtifactsBatch_NoArtifacts(t *testing.T) {
 		Status:    model.StatusSucceeded,
 		CreatedAt: now,
 		UpdatedAt: now,
-		Params:    map[string]interface{}{"url": "http://example.com"},
+		Spec:      map[string]interface{}{"url": "http://example.com"},
 	}
 	if err := st.Create(ctx, job); err != nil {
 		t.Fatalf("Create job failed: %v", err)
@@ -345,7 +345,7 @@ func TestDeleteJobsWithArtifactsBatch_DiskFullScenario(t *testing.T) {
 			Status:    model.StatusSucceeded,
 			CreatedAt: now,
 			UpdatedAt: now,
-			Params:    map[string]interface{}{"url": "http://example.com"},
+			Spec:      map[string]interface{}{"url": "http://example.com"},
 		}
 		if err := st.Create(ctx, jobs[i]); err != nil {
 			t.Fatalf("Create job %d failed: %v", i, err)

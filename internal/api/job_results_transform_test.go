@@ -32,7 +32,7 @@ func TestHandleJobResultsWithTransform_JMESPath(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -104,7 +104,7 @@ func TestHandleJobResultsWithTransform_JSONata(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -170,7 +170,7 @@ func TestHandleJobResultsWithTransform_InvalidLanguage(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -218,7 +218,7 @@ func TestHandleJobResultsWithTransform_InvalidExpression(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -266,7 +266,7 @@ func TestHandleJobResultsWithTransform_CSVFormat(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -328,7 +328,7 @@ func TestLoadAllJobResults(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
@@ -416,7 +416,7 @@ func TestLoadAllJobResults_MissingFile(t *testing.T) {
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    map[string]any{"url": "https://example.com"},
+		Spec:      map[string]any{"url": "https://example.com"},
 	}
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)

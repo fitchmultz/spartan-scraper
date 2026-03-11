@@ -25,7 +25,7 @@ func TestLoadJobResults(t *testing.T) {
 		Status:     model.StatusSucceeded,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 		ResultPath: filepath.Join(srv.cfg.DataDir, "jobs", jobID, "results.jsonl"),
 	}
 

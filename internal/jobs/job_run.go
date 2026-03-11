@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/artifacts"
 	"github.com/fitchmultz/spartan-scraper/internal/crawl"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -37,8 +38,19 @@ import (
 )
 
 func getJobRequestID(job model.Job) string {
-	if reqID, ok := job.Params["requestID"].(string); ok && reqID != "" {
-		return reqID
+	switch spec := job.Spec.(type) {
+	case model.ScrapeSpecV1:
+		if spec.Execution.RequestID != "" {
+			return spec.Execution.RequestID
+		}
+	case model.CrawlSpecV1:
+		if spec.Execution.RequestID != "" {
+			return spec.Execution.RequestID
+		}
+	case model.ResearchSpecV1:
+		if spec.Execution.RequestID != "" {
+			return spec.Execution.RequestID
+		}
 	}
 	return job.ID
 }
@@ -67,6 +79,17 @@ func (m *Manager) updateStatusWithEvent(job model.Job, prevStatus model.Status, 
 	if errMsg != "" {
 		job.Error = errMsg
 	}
+	if status == model.StatusRunning {
+		now := time.Now()
+		job.StartedAt = &now
+	}
+	if status.IsTerminal() {
+		now := time.Now()
+		job.FinishedAt = &now
+		if manifestErr := artifacts.WriteManifest(job); manifestErr != nil {
+			slog.Warn("failed to write job artifact manifest", "jobID", job.ID, "error", manifestErr)
+		}
+	}
 
 	// Determine event type
 	eventType := JobEventStatus
@@ -81,6 +104,16 @@ func (m *Manager) updateStatusWithEvent(job model.Job, prevStatus model.Status, 
 	})
 }
 
+func selectedEngineForConfig(config executionConfig) string {
+	if config.UsePlaywright {
+		return "playwright"
+	}
+	if config.Headless {
+		return "chromedp"
+	}
+	return "http"
+}
+
 func (m *Manager) run(ctx context.Context, job model.Job) error {
 	slog.Info("running job", "jobID", job.ID, "kind", job.Kind, "request_id", getJobRequestID(job))
 
@@ -91,6 +124,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	}
 
 	prevStatus := job.Status
+	startedAt := time.Now()
+	job.StartedAt = &startedAt
 
 	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusRunning, ""); err != nil {
 		// If primary context is canceled, retry with background context
@@ -147,6 +182,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			m.propagateFailure(context.Background(), job)
 			return err
 		}
+		job.SelectedEngine = selectedEngineForConfig(input.Config)
 		slog.Info("processing scrape job", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "request_id", input.Config.RequestID)
 		result, err := scrape.Run(jobCtx, scrape.Request{
 			URL:              input.URL,
@@ -205,6 +241,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			m.propagateFailure(context.Background(), job)
 			return err
 		}
+		job.SelectedEngine = selectedEngineForConfig(input.Config)
 		slog.Info("processing crawl job", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "request_id", input.Config.RequestID)
 
 		// Create robots cache if enabled
@@ -290,6 +327,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			m.propagateFailure(context.Background(), job)
 			return err
 		}
+		job.SelectedEngine = selectedEngineForConfig(input.Config)
 		slog.Info("processing research job", "jobID", job.ID, "query", input.Query, "request_id", input.Config.RequestID)
 		result, err := research.Run(jobCtx, research.Request{
 			Query:            input.Query,
@@ -350,6 +388,8 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	}
 
 	slog.Info("job succeeded", "jobID", job.ID)
+	finishedAt := time.Now()
+	job.FinishedAt = &finishedAt
 	m.updateStatusWithEvent(job, model.StatusRunning, model.StatusSucceeded, "")
 
 	// Resolve dependencies for jobs waiting on this one

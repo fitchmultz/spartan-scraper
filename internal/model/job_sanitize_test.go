@@ -22,10 +22,31 @@ package model
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 	"time"
 )
+
+func expectNumericValue(t *testing.T, got any, want float64, label string) {
+	t.Helper()
+	switch value := got.(type) {
+	case int:
+		if float64(value) != want {
+			t.Errorf("%s should be preserved, got: %v", label, got)
+		}
+	case int64:
+		if float64(value) != want {
+			t.Errorf("%s should be preserved, got: %v", label, got)
+		}
+	case float64:
+		if math.Abs(value-want) > 0.000001 {
+			t.Errorf("%s should be preserved, got: %v", label, got)
+		}
+	default:
+		t.Errorf("%s should be numeric, got %T (%v)", label, got, got)
+	}
+}
 
 func TestSanitizeJob_RemovesResultPath(t *testing.T) {
 	job := Job{
@@ -35,7 +56,7 @@ func TestSanitizeJob_RemovesResultPath(t *testing.T) {
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 		ResultPath: "/Users/admin/.data/results/test-123.jsonl",
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		Spec:       map[string]interface{}{"url": "https://example.com"},
 	}
 
 	safe := SanitizeJob(job)
@@ -57,7 +78,7 @@ func TestSanitizeJob_RedactsSensitiveParams(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"url":      "https://example.com",
 			"password": "secret123",
 			"apiKey":   "abc-def-ghi",
@@ -67,17 +88,17 @@ func TestSanitizeJob_RedactsSensitiveParams(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	if safe.Params["password"] != "[REDACTED]" {
-		t.Errorf("password should be redacted, got: %v", safe.Params["password"])
+	if safe.SpecMap()["password"] != "[REDACTED]" {
+		t.Errorf("password should be redacted, got: %v", safe.SpecMap()["password"])
 	}
-	if safe.Params["apiKey"] != "[REDACTED]" {
-		t.Errorf("apiKey should be redacted, got: %v", safe.Params["apiKey"])
+	if safe.SpecMap()["apiKey"] != "[REDACTED]" {
+		t.Errorf("apiKey should be redacted, got: %v", safe.SpecMap()["apiKey"])
 	}
-	if safe.Params["token"] != "[REDACTED]" {
-		t.Errorf("token should be redacted, got: %v", safe.Params["token"])
+	if safe.SpecMap()["token"] != "[REDACTED]" {
+		t.Errorf("token should be redacted, got: %v", safe.SpecMap()["token"])
 	}
-	if safe.Params["url"] != "https://example.com" {
-		t.Errorf("url should not be redacted, got: %v", safe.Params["url"])
+	if safe.SpecMap()["url"] != "https://example.com" {
+		t.Errorf("url should not be redacted, got: %v", safe.SpecMap()["url"])
 	}
 }
 
@@ -88,7 +109,7 @@ func TestSanitizeJob_PreservesNonSensitiveKeys(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"authProfile":    "should-be-preserved",
 			"keyboardLayout": "should-be-preserved",
 			"monkeyId":       "should-be-preserved",
@@ -102,28 +123,28 @@ func TestSanitizeJob_PreservesNonSensitiveKeys(t *testing.T) {
 	safe := SanitizeJob(job)
 
 	// These should NOT be redacted (contain but don't match sensitive patterns)
-	if safe.Params["authProfile"] != "should-be-preserved" {
-		t.Errorf("authProfile should be preserved, got: %v", safe.Params["authProfile"])
+	if safe.SpecMap()["authProfile"] != "should-be-preserved" {
+		t.Errorf("authProfile should be preserved, got: %v", safe.SpecMap()["authProfile"])
 	}
-	if safe.Params["keyboardLayout"] != "should-be-preserved" {
-		t.Errorf("keyboardLayout should be preserved, got: %v", safe.Params["keyboardLayout"])
+	if safe.SpecMap()["keyboardLayout"] != "should-be-preserved" {
+		t.Errorf("keyboardLayout should be preserved, got: %v", safe.SpecMap()["keyboardLayout"])
 	}
-	if safe.Params["monkeyId"] != "should-be-preserved" {
-		t.Errorf("monkeyId should be preserved, got: %v", safe.Params["monkeyId"])
+	if safe.SpecMap()["monkeyId"] != "should-be-preserved" {
+		t.Errorf("monkeyId should be preserved, got: %v", safe.SpecMap()["monkeyId"])
 	}
-	if safe.Params["keyframeRate"] != "should-be-preserved" {
-		t.Errorf("keyframeRate should be preserved, got: %v", safe.Params["keyframeRate"])
+	if safe.SpecMap()["keyframeRate"] != "should-be-preserved" {
+		t.Errorf("keyframeRate should be preserved, got: %v", safe.SpecMap()["keyframeRate"])
 	}
 
 	// These SHOULD be redacted (exact match or proper pattern)
-	if safe.Params["authorization"] != "[REDACTED]" {
-		t.Errorf("authorization should be redacted, got: %v", safe.Params["authorization"])
+	if safe.SpecMap()["authorization"] != "[REDACTED]" {
+		t.Errorf("authorization should be redacted, got: %v", safe.SpecMap()["authorization"])
 	}
-	if safe.Params["api_key"] != "[REDACTED]" {
-		t.Errorf("api_key should be redacted, got: %v", safe.Params["api_key"])
+	if safe.SpecMap()["api_key"] != "[REDACTED]" {
+		t.Errorf("api_key should be redacted, got: %v", safe.SpecMap()["api_key"])
 	}
-	if safe.Params["user_password"] != "[REDACTED]" {
-		t.Errorf("user_password should be redacted, got: %v", safe.Params["user_password"])
+	if safe.SpecMap()["user_password"] != "[REDACTED]" {
+		t.Errorf("user_password should be redacted, got: %v", safe.SpecMap()["user_password"])
 	}
 }
 
@@ -134,7 +155,7 @@ func TestSanitizeJob_RedactsNestedParams(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"url": "https://example.com",
 			"auth": map[string]interface{}{
 				"username": "admin",
@@ -152,12 +173,12 @@ func TestSanitizeJob_RedactsNestedParams(t *testing.T) {
 	safe := SanitizeJob(job)
 
 	// Top-level auth should be redacted
-	if safe.Params["auth"] != "[REDACTED]" {
-		t.Errorf("auth should be redacted at top level, got: %v", safe.Params["auth"])
+	if safe.SpecMap()["auth"] != "[REDACTED]" {
+		t.Errorf("auth should be redacted at top level, got: %v", safe.SpecMap()["auth"])
 	}
 
 	// Nested apiKey should be redacted
-	config := safe.Params["config"].(map[string]interface{})
+	config := safe.SpecMap()["config"].(map[string]interface{})
 	if config["apiKey"] != "[REDACTED]" {
 		t.Errorf("nested apiKey should be redacted, got: %v", config["apiKey"])
 	}
@@ -176,7 +197,7 @@ func TestSanitizeJob_RedactsHeaders(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"headers": map[string]interface{}{
 				"Authorization":       "Bearer secret-token",
 				"Cookie":              "session=abc123",
@@ -191,7 +212,7 @@ func TestSanitizeJob_RedactsHeaders(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	headers := safe.Params["headers"].(map[string]interface{})
+	headers := safe.SpecMap()["headers"].(map[string]interface{})
 
 	if headers["Authorization"] != "[REDACTED]" {
 		t.Errorf("Authorization header should be redacted, got: %v", headers["Authorization"])
@@ -223,7 +244,7 @@ func TestSanitizeJob_RedactsHeaderArray(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"headers": []interface{}{
 				"Authorization: Bearer secret-token",
 				"Cookie: session=abc123",
@@ -234,7 +255,7 @@ func TestSanitizeJob_RedactsHeaderArray(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	headers := safe.Params["headers"].([]interface{})
+	headers := safe.SpecMap()["headers"].([]interface{})
 
 	if headers[0] != "Authorization: [REDACTED]" {
 		t.Errorf("Authorization header should be redacted, got: %v", headers[0])
@@ -274,7 +295,7 @@ func TestSanitizeJob_RedactsPathsInParams(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"outputPath":       "/home/user/output.json",
 			"fileUrl":          "file:///Users/admin/secret.txt",
 			"windowsBackslash": "C:\\Users\\Alice\\Documents\\secret.txt",
@@ -284,17 +305,17 @@ func TestSanitizeJob_RedactsPathsInParams(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	if !strings.Contains(safe.Params["outputPath"].(string), "[REDACTED]") {
-		t.Errorf("outputPath should be redacted, got: %v", safe.Params["outputPath"])
+	if !strings.Contains(safe.SpecMap()["outputPath"].(string), "[REDACTED]") {
+		t.Errorf("outputPath should be redacted, got: %v", safe.SpecMap()["outputPath"])
 	}
-	if !strings.Contains(safe.Params["fileUrl"].(string), "[REDACTED]") {
-		t.Errorf("fileUrl should be redacted, got: %v", safe.Params["fileUrl"])
+	if !strings.Contains(safe.SpecMap()["fileUrl"].(string), "[REDACTED]") {
+		t.Errorf("fileUrl should be redacted, got: %v", safe.SpecMap()["fileUrl"])
 	}
-	if !strings.Contains(safe.Params["windowsBackslash"].(string), "[REDACTED]") {
-		t.Errorf("windowsBackslash should be redacted, got: %v", safe.Params["windowsBackslash"])
+	if !strings.Contains(safe.SpecMap()["windowsBackslash"].(string), "[REDACTED]") {
+		t.Errorf("windowsBackslash should be redacted, got: %v", safe.SpecMap()["windowsBackslash"])
 	}
-	if !strings.Contains(safe.Params["windowsForward"].(string), "[REDACTED]") {
-		t.Errorf("windowsForward should be redacted, got: %v", safe.Params["windowsForward"])
+	if !strings.Contains(safe.SpecMap()["windowsForward"].(string), "[REDACTED]") {
+		t.Errorf("windowsForward should be redacted, got: %v", safe.SpecMap()["windowsForward"])
 	}
 }
 
@@ -307,7 +328,7 @@ func TestSanitizeJobs(t *testing.T) {
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 			ResultPath: "/path/to/result1.jsonl",
-			Params:     map[string]interface{}{"password": "secret1"},
+			Spec:       map[string]interface{}{"password": "secret1"},
 		},
 		{
 			ID:         "job-2",
@@ -316,7 +337,7 @@ func TestSanitizeJobs(t *testing.T) {
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 			ResultPath: "/path/to/result2.jsonl",
-			Params:     map[string]interface{}{"apiKey": "secret2"},
+			Spec:       map[string]interface{}{"apiKey": "secret2"},
 		},
 	}
 
@@ -332,10 +353,10 @@ func TestSanitizeJobs(t *testing.T) {
 		}
 	}
 
-	if safe[0].Params["password"] != "[REDACTED]" {
+	if safe[0].SpecMap()["password"] != "[REDACTED]" {
 		t.Errorf("Job 0: password should be redacted")
 	}
-	if safe[1].Params["apiKey"] != "[REDACTED]" {
+	if safe[1].SpecMap()["apiKey"] != "[REDACTED]" {
 		t.Errorf("Job 1: apiKey should be redacted")
 	}
 
@@ -352,13 +373,13 @@ func TestSanitizeJob_NilParams(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params:    nil,
+		Spec:      nil,
 	}
 
 	safe := SanitizeJob(job)
 
-	if safe.Params != nil {
-		t.Errorf("Params should be nil, got: %v", safe.Params)
+	if safe.SpecMap() != nil {
+		t.Errorf("Params should be nil, got: %v", safe.SpecMap())
 	}
 }
 
@@ -370,7 +391,7 @@ func TestSanitizeJob_JSONSerialization(t *testing.T) {
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 		ResultPath: "/secret/path/result.jsonl",
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"url":      "https://example.com",
 			"password": "secret123",
 		},
@@ -415,7 +436,7 @@ func TestSanitizeJob_PreservesNonSensitiveData(t *testing.T) {
 		CreatedAt:  created,
 		UpdatedAt:  updated,
 		ResultPath: "/secret/path",
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"url":      "https://example.com",
 			"maxDepth": 3,
 			"maxPages": 100,
@@ -444,25 +465,21 @@ func TestSanitizeJob_PreservesNonSensitiveData(t *testing.T) {
 	}
 
 	// Non-sensitive params should be preserved
-	if safe.Params["url"] != "https://example.com" {
-		t.Errorf("url should be preserved, got: %v", safe.Params["url"])
+	if safe.SpecMap()["url"] != "https://example.com" {
+		t.Errorf("url should be preserved, got: %v", safe.SpecMap()["url"])
 	}
-	if safe.Params["maxDepth"] != 3 {
-		t.Errorf("maxDepth should be preserved, got: %v", safe.Params["maxDepth"])
+	expectNumericValue(t, safe.SpecMap()["maxDepth"], 3, "maxDepth")
+	expectNumericValue(t, safe.SpecMap()["maxPages"], 100, "maxPages")
+	if safe.SpecMap()["headless"] != true {
+		t.Errorf("headless should be preserved, got: %v", safe.SpecMap()["headless"])
 	}
-	if safe.Params["maxPages"] != 100 {
-		t.Errorf("maxPages should be preserved, got: %v", safe.Params["maxPages"])
-	}
-	if safe.Params["headless"] != true {
-		t.Errorf("headless should be preserved, got: %v", safe.Params["headless"])
-	}
-	if safe.Params["query"] != "test query" {
-		t.Errorf("query should be preserved, got: %v", safe.Params["query"])
+	if safe.SpecMap()["query"] != "test query" {
+		t.Errorf("query should be preserved, got: %v", safe.SpecMap()["query"])
 	}
 
 	// Sensitive params should be redacted
-	if safe.Params["password"] != "[REDACTED]" {
-		t.Errorf("password should be redacted, got: %v", safe.Params["password"])
+	if safe.SpecMap()["password"] != "[REDACTED]" {
+		t.Errorf("password should be redacted, got: %v", safe.SpecMap()["password"])
 	}
 }
 
@@ -473,7 +490,7 @@ func TestSanitizeJob_CaseInsensitiveKeyMatching(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"PASSWORD":     "uppercase",
 			"ApiKey":       "mixed-case",
 			"AUTH_TOKEN":   "underscore",
@@ -484,20 +501,20 @@ func TestSanitizeJob_CaseInsensitiveKeyMatching(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	if safe.Params["PASSWORD"] != "[REDACTED]" {
-		t.Errorf("PASSWORD (uppercase) should be redacted, got: %v", safe.Params["PASSWORD"])
+	if safe.SpecMap()["PASSWORD"] != "[REDACTED]" {
+		t.Errorf("PASSWORD (uppercase) should be redacted, got: %v", safe.SpecMap()["PASSWORD"])
 	}
-	if safe.Params["ApiKey"] != "[REDACTED]" {
-		t.Errorf("ApiKey (mixed-case) should be redacted, got: %v", safe.Params["ApiKey"])
+	if safe.SpecMap()["ApiKey"] != "[REDACTED]" {
+		t.Errorf("ApiKey (mixed-case) should be redacted, got: %v", safe.SpecMap()["ApiKey"])
 	}
-	if safe.Params["AUTH_TOKEN"] != "[REDACTED]" {
-		t.Errorf("AUTH_TOKEN should be redacted, got: %v", safe.Params["AUTH_TOKEN"])
+	if safe.SpecMap()["AUTH_TOKEN"] != "[REDACTED]" {
+		t.Errorf("AUTH_TOKEN should be redacted, got: %v", safe.SpecMap()["AUTH_TOKEN"])
 	}
-	if safe.Params["userPassword"] != "[REDACTED]" {
-		t.Errorf("userPassword (containing 'password') should be redacted, got: %v", safe.Params["userPassword"])
+	if safe.SpecMap()["userPassword"] != "[REDACTED]" {
+		t.Errorf("userPassword (containing 'password') should be redacted, got: %v", safe.SpecMap()["userPassword"])
 	}
-	if safe.Params["myApiKey"] != "[REDACTED]" {
-		t.Errorf("myApiKey (containing 'apikey') should be redacted, got: %v", safe.Params["myApiKey"])
+	if safe.SpecMap()["myApiKey"] != "[REDACTED]" {
+		t.Errorf("myApiKey (containing 'apikey') should be redacted, got: %v", safe.SpecMap()["myApiKey"])
 	}
 }
 
@@ -508,7 +525,7 @@ func TestSanitizeJob_SliceInParams(t *testing.T) {
 		Status:    StatusRunning,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Params: map[string]interface{}{
+		Spec: map[string]interface{}{
 			"urls": []interface{}{
 				"https://example.com",
 				"https://test.com",
@@ -524,7 +541,7 @@ func TestSanitizeJob_SliceInParams(t *testing.T) {
 
 	safe := SanitizeJob(job)
 
-	urls := safe.Params["urls"].([]interface{})
+	urls := safe.SpecMap()["urls"].([]interface{})
 	if len(urls) != 2 {
 		t.Fatalf("Expected 2 URLs, got %d", len(urls))
 	}
@@ -532,7 +549,7 @@ func TestSanitizeJob_SliceInParams(t *testing.T) {
 		t.Errorf("First URL should be preserved, got: %v", urls[0])
 	}
 
-	nested := safe.Params["nested"].([]interface{})
+	nested := safe.SpecMap()["nested"].([]interface{})
 	if len(nested) != 2 {
 		t.Fatalf("Expected 2 nested items, got %d", len(nested))
 	}

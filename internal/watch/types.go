@@ -37,9 +37,9 @@ type Watch struct {
 	ChangeCount     int       `json:"changeCount"` // Total number of changes detected
 
 	// Configuration
-	DiffFormat     string               `json:"diffFormat"` // unified, html-side-by-side, html-inline
-	WebhookConfig  *model.WebhookConfig `json:"webhookConfig"`
-	NotifyOnChange bool                 `json:"notifyOnChange"`
+	DiffFormat     string             `json:"diffFormat"` // unified, html-side-by-side, html-inline
+	WebhookConfig  *model.WebhookSpec `json:"webhookConfig"`
+	NotifyOnChange bool               `json:"notifyOnChange"`
 
 	// Filters
 	MinChangeSize  int      `json:"minChangeSize,omitempty"`  // Ignore changes smaller than N bytes

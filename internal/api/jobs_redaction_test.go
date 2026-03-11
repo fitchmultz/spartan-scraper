@@ -22,22 +22,24 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 
 	// Create jobs with sensitive data (using valid UUIDs)
 	job1 := model.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440001",
-		Kind:       model.KindScrape,
-		Status:     model.StatusSucceeded,
-		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
-		Params: map[string]interface{}{
+		ID:          "550e8400-e29b-41d4-a716-446655440001",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		SpecVersion: -1,
+		ResultPath:  "/Users/admin/.data/results/job-1.jsonl",
+		Spec: map[string]interface{}{
 			"url":      "https://example.com",
 			"password": "secret123",
 			"apiKey":   "abc-def",
 		},
 	}
 	job2 := model.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440002",
-		Kind:       model.KindCrawl,
-		Status:     model.StatusRunning,
-		ResultPath: "/home/user/results/job-2.jsonl",
-		Params: map[string]interface{}{
+		ID:          "550e8400-e29b-41d4-a716-446655440002",
+		Kind:        model.KindCrawl,
+		Status:      model.StatusRunning,
+		SpecVersion: -1,
+		ResultPath:  "/home/user/results/job-2.jsonl",
+		Spec: map[string]interface{}{
 			"url":   "https://test.com",
 			"token": "bearer-token",
 		},
@@ -91,7 +93,7 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 		t.Fatal("job1 not found in response")
 	}
 
-	params := job1Response["params"].(map[string]interface{})
+	params := job1Response["spec"].(map[string]interface{})
 	if params["password"] != "[REDACTED]" {
 		t.Errorf("password should be redacted, got: %v", params["password"])
 	}
@@ -111,11 +113,12 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 
 	// Create job with sensitive data (using valid UUID)
 	job := model.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440001",
-		Kind:       model.KindScrape,
-		Status:     model.StatusFailed,
-		ResultPath: "/Users/admin/.data/results/job-1.jsonl",
-		Params: map[string]interface{}{
+		ID:          "550e8400-e29b-41d4-a716-446655440001",
+		Kind:        model.KindScrape,
+		Status:      model.StatusFailed,
+		SpecVersion: -1,
+		ResultPath:  "/Users/admin/.data/results/job-1.jsonl",
+		Spec: map[string]interface{}{
 			"url": "https://example.com",
 			"auth": map[string]interface{}{
 				"username": "admin",
@@ -149,7 +152,7 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 	}
 
 	// Verify auth params are redacted
-	params := jobResponse["params"].(map[string]interface{})
+	params := jobResponse["spec"].(map[string]interface{})
 	if params["auth"] != "[REDACTED]" {
 		t.Errorf("auth should be redacted, got: %v", params["auth"])
 	}
@@ -172,11 +175,12 @@ func TestHandleJobs_ByStatus_RedactsData(t *testing.T) {
 
 	// Create job with sensitive data (using valid UUID)
 	job := model.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440001",
-		Kind:       model.KindScrape,
-		Status:     model.StatusSucceeded,
-		ResultPath: "/secret/path.jsonl",
-		Params: map[string]interface{}{
+		ID:          "550e8400-e29b-41d4-a716-446655440001",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		SpecVersion: -1,
+		ResultPath:  "/secret/path.jsonl",
+		Spec: map[string]interface{}{
 			"secret": "top-secret",
 		},
 	}
@@ -244,11 +248,12 @@ func TestHandleJob_JSONOmitsResultPath(t *testing.T) {
 
 	// Create job with ResultPath (using valid UUID)
 	job := model.Job{
-		ID:         "550e8400-e29b-41d4-a716-446655440001",
-		Kind:       model.KindScrape,
-		Status:     model.StatusSucceeded,
-		ResultPath: "/very/secret/path.jsonl",
-		Params:     map[string]interface{}{"url": "https://example.com"},
+		ID:          "550e8400-e29b-41d4-a716-446655440001",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		SpecVersion: -1,
+		ResultPath:  "/very/secret/path.jsonl",
+		Spec:        map[string]interface{}{"url": "https://example.com"},
 	}
 
 	if err := server.store.Create(ctx, job); err != nil {
@@ -285,10 +290,11 @@ func TestHandleJob_HeadersRedacted(t *testing.T) {
 
 	// Create job with headers (using valid UUID)
 	job := model.Job{
-		ID:     "550e8400-e29b-41d4-a716-446655440001",
-		Kind:   model.KindScrape,
-		Status: model.StatusRunning,
-		Params: map[string]interface{}{
+		ID:          "550e8400-e29b-41d4-a716-446655440001",
+		Kind:        model.KindScrape,
+		Status:      model.StatusRunning,
+		SpecVersion: -1,
+		Spec: map[string]interface{}{
 			"url": "https://example.com",
 			"headers": map[string]interface{}{
 				"Authorization": "Bearer secret-token",
@@ -316,7 +322,7 @@ func TestHandleJob_HeadersRedacted(t *testing.T) {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
-	params := response["params"].(map[string]interface{})
+	params := response["spec"].(map[string]interface{})
 	headers := params["headers"].(map[string]interface{})
 
 	if headers["Authorization"] != "[REDACTED]" {

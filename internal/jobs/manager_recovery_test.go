@@ -71,7 +71,7 @@ func TestManagerRecoverQueuedJobsWithBody(t *testing.T) {
 	}
 
 	// Verify body is preserved in stored params (may be base64-encoded string)
-	bodyValue, ok := storedJob.Params["body"]
+	bodyValue, ok := storedJob.SpecMap()["body"]
 	if !ok {
 		t.Fatal("body param not found in stored job")
 	}
@@ -117,7 +117,7 @@ func TestManagerRecoverQueuedJobsWithBody(t *testing.T) {
 	}
 
 	// Verify body is still preserved after recovery
-	recoveredBodyValue, ok := recoveredJob.Params["body"]
+	recoveredBodyValue, ok := recoveredJob.SpecMap()["body"]
 	if !ok {
 		t.Fatal("body param not found in recovered job")
 	}
@@ -150,7 +150,7 @@ func TestManagerRecoverQueuedJobsWithBinaryBody(t *testing.T) {
 	}
 
 	// Decode body
-	decodedBody := decodeBytes(storedJob.Params["body"])
+	decodedBody := decodeBytes(storedJob.SpecMap()["body"])
 
 	// Verify binary data is preserved exactly
 	if !bytes.Equal(decodedBody, body) {
@@ -182,8 +182,8 @@ func TestManagerRecoverQueuedJobsWithEmptyBody(t *testing.T) {
 	storedEmpty, _ := st.Get(ctx, jobEmpty.ID)
 
 	// Decode bodies
-	decodedNil := decodeBytes(storedNil.Params["body"])
-	decodedEmpty := decodeBytes(storedEmpty.Params["body"])
+	decodedNil := decodeBytes(storedNil.SpecMap()["body"])
+	decodedEmpty := decodeBytes(storedEmpty.SpecMap()["body"])
 
 	// nil body should decode to nil or empty
 	if decodedNil != nil && len(decodedNil) != 0 {
