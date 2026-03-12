@@ -22,6 +22,20 @@
   --muted: #b3b6c2;
   --stroke: rgba(255, 255, 255, 0.08);
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --surface-subtle: rgba(255, 255, 255, 0.04);
+  --surface-muted: rgba(255, 255, 255, 0.06);
+  --tone-info-surface: rgba(59, 130, 246, 0.16);
+  --tone-info-border: rgba(96, 165, 250, 0.55);
+  --tone-info-text: #dbeafe;
+  --tone-success-surface: rgba(16, 185, 129, 0.16);
+  --tone-success-border: rgba(52, 211, 153, 0.5);
+  --tone-success-text: #d1fae5;
+  --tone-warning-surface: rgba(245, 158, 11, 0.18);
+  --tone-warning-border: rgba(251, 191, 36, 0.52);
+  --tone-warning-text: #fef3c7;
+  --tone-danger-surface: rgba(239, 68, 68, 0.16);
+  --tone-danger-border: rgba(248, 113, 113, 0.52);
+  --tone-danger-text: #fee2e2;
 }
 
 /* Light theme override via data attribute */
@@ -35,6 +49,20 @@
   --muted: #6b6b7b;
   --stroke: rgba(0, 0, 0, 0.08);
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  --surface-subtle: rgba(26, 26, 31, 0.04);
+  --surface-muted: rgba(26, 26, 31, 0.06);
+  --tone-info-surface: rgba(59, 130, 246, 0.1);
+  --tone-info-border: rgba(37, 99, 235, 0.24);
+  --tone-info-text: #1d4ed8;
+  --tone-success-surface: rgba(16, 185, 129, 0.1);
+  --tone-success-border: rgba(5, 150, 105, 0.24);
+  --tone-success-text: #047857;
+  --tone-warning-surface: rgba(245, 158, 11, 0.12);
+  --tone-warning-border: rgba(217, 119, 6, 0.28);
+  --tone-warning-text: #b45309;
+  --tone-danger-surface: rgba(239, 68, 68, 0.1);
+  --tone-danger-border: rgba(220, 38, 38, 0.24);
+  --tone-danger-text: #b91c1c;
 }
 
 /* System preference fallback (when no data-theme is set) */
@@ -49,5 +77,19 @@
     --muted: #6b6b7b;
     --stroke: rgba(0, 0, 0, 0.08);
     --shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+    --surface-subtle: rgba(26, 26, 31, 0.04);
+    --surface-muted: rgba(26, 26, 31, 0.06);
+    --tone-info-surface: rgba(59, 130, 246, 0.1);
+    --tone-info-border: rgba(37, 99, 235, 0.24);
+    --tone-info-text: #1d4ed8;
+    --tone-success-surface: rgba(16, 185, 129, 0.1);
+    --tone-success-border: rgba(5, 150, 105, 0.24);
+    --tone-success-text: #047857;
+    --tone-warning-surface: rgba(245, 158, 11, 0.12);
+    --tone-warning-border: rgba(217, 119, 6, 0.28);
+    --tone-warning-text: #b45309;
+    --tone-danger-surface: rgba(239, 68, 68, 0.1);
+    --tone-danger-border: rgba(220, 38, 38, 0.24);
+    --tone-danger-text: #b91c1c;
   }
 }

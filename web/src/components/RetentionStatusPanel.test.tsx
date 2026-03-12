@@ -177,6 +177,24 @@ describe("RetentionStatusPanel", () => {
       expect(screen.getByText(/jobs would delete/i)).toBeInTheDocument();
       expect(screen.getByText("2.00 GB")).toBeInTheDocument();
     });
+
+    expect(
+      document.querySelector(".retention-notice--info"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders configuration in a theme-aware card", async () => {
+    render(<RetentionStatusPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/configuration/i)).toBeInTheDocument();
+    });
+
+    expect(
+      document.querySelector(".retention-config-card"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/job retention/i)).toBeInTheDocument();
+    expect(screen.getByText("30 days")).toBeInTheDocument();
   });
 
   it("refreshes status when refresh button clicked", async () => {

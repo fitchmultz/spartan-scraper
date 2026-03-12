@@ -15,6 +15,195 @@
    Template Management
    ============================================================================ */
 
+.retention-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.retention-status-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-subtle);
+}
+
+.retention-status-card--warning {
+  border-color: var(--tone-warning-border);
+  background: var(--tone-warning-surface);
+}
+
+.retention-status-card--danger {
+  border-color: var(--tone-danger-border);
+  background: var(--tone-danger-surface);
+}
+
+.retention-status-card__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.retention-status-card__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.retention-status-card__unit {
+  margin-left: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.retention-config-card,
+.retention-notice {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-muted);
+}
+
+.retention-config-card {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.retention-section-title {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.retention-config-grid,
+.retention-results-grid,
+.retention-controls__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.retention-results-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  row-gap: 10px;
+}
+
+.retention-metric {
+  display: grid;
+  gap: 4px;
+}
+
+.retention-metric__label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.retention-metric__value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.retention-controls {
+  border-top: 1px solid var(--stroke);
+  padding-top: 20px;
+}
+
+.retention-controls__toggle-row {
+  margin-bottom: 16px;
+}
+
+.retention-controls__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 0;
+  color: var(--text);
+}
+
+.retention-controls__toggle input {
+  margin: 0;
+}
+
+.retention-controls__label {
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.retention-controls__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.retention-controls__disabled-message,
+.retention-notice__danger-text {
+  font-size: 0.82rem;
+  color: var(--tone-danger-text);
+}
+
+.retention-notice--warning {
+  background: var(--tone-warning-surface);
+  border-color: var(--tone-warning-border);
+}
+
+.retention-notice--info {
+  background: var(--tone-info-surface);
+  border-color: var(--tone-info-border);
+}
+
+.retention-notice--success {
+  background: var(--tone-success-surface);
+  border-color: var(--tone-success-border);
+}
+
+.retention-notice__title {
+  margin-bottom: 14px;
+}
+
+.retention-notice__copy {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.retention-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.retention-action-button--danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff7f7;
+}
+
+.retention-notice__detail {
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.retention-notice__list {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 720px) {
+  .retention-config-grid,
+  .retention-results-grid,
+  .retention-controls__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .batch-form__confirmation {
   display: flex;
   justify-content: space-between;

@@ -29,40 +29,14 @@ function StatusCard({
   unit,
   highlight = "normal",
 }: StatusCardProps) {
-  const getHighlightStyle = () => {
-    switch (highlight) {
-      case "warning":
-        return { backgroundColor: "#fef3c7", borderColor: "#f59e0b" };
-      case "danger":
-        return { backgroundColor: "#fee2e2", borderColor: "#ef4444" };
-      default:
-        return {};
-    }
-  };
-
   return (
     <div
-      className="status-card"
-      style={{
-        padding: "12px 16px",
-        borderRadius: "8px",
-        border: "1px solid #e5e7eb",
-        backgroundColor: "#f9fafb",
-        ...getHighlightStyle(),
-      }}
+      className={`retention-status-card retention-status-card--${highlight}`}
     >
-      <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>
-        {label}
-      </div>
-      <div style={{ fontSize: "18px", fontWeight: 600, color: "#111827" }}>
+      <div className="retention-status-card__label">{label}</div>
+      <div className="retention-status-card__value">
         {value}
-        {unit && (
-          <span
-            style={{ fontSize: "14px", fontWeight: 400, marginLeft: "4px" }}
-          >
-            {unit}
-          </span>
-        )}
+        {unit && <span className="retention-status-card__unit">{unit}</span>}
       </div>
     </div>
   );
@@ -178,14 +152,7 @@ export function RetentionStatusPanel() {
         <div>Loading retention status...</div>
       ) : status ? (
         <>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "12px",
-              marginBottom: "20px",
-            }}
-          >
+          <div className="retention-status-grid">
             <StatusCard
               label="Retention Enabled"
               value={status.enabled ? "Yes" : "No"}
@@ -213,54 +180,38 @@ export function RetentionStatusPanel() {
             />
           </div>
 
-          <div
-            style={{
-              backgroundColor: "#f3f4f6",
-              padding: "12px 16px",
-              borderRadius: "8px",
-              marginBottom: "20px",
-            }}
-          >
-            <h4 style={{ margin: "0 0 12px 0", fontSize: "14px" }}>
-              Configuration
-            </h4>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "8px",
-                fontSize: "13px",
-              }}
-            >
-              <div>
-                <span style={{ color: "#6b7280" }}>Job Retention: </span>
-                <span>
+          <div className="retention-config-card">
+            <h4 className="retention-section-title">Configuration</h4>
+            <div className="retention-config-grid">
+              <div className="retention-metric">
+                <span className="retention-metric__label">Job Retention</span>
+                <span className="retention-metric__value">
                   {status.jobRetentionDays > 0
                     ? `${status.jobRetentionDays} days`
                     : "Unlimited"}
                 </span>
               </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>
-                  Crawl State Retention:{" "}
+              <div className="retention-metric">
+                <span className="retention-metric__label">
+                  Crawl State Retention
                 </span>
-                <span>
+                <span className="retention-metric__value">
                   {status.crawlStateDays > 0
                     ? `${status.crawlStateDays} days`
                     : "Unlimited"}
                 </span>
               </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>Max Jobs: </span>
-                <span>
+              <div className="retention-metric">
+                <span className="retention-metric__label">Max Jobs</span>
+                <span className="retention-metric__value">
                   {status.maxJobs > 0
                     ? status.maxJobs.toLocaleString()
                     : "Unlimited"}
                 </span>
               </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>Max Storage: </span>
-                <span>
+              <div className="retention-metric">
+                <span className="retention-metric__label">Max Storage</span>
+                <span className="retention-metric__value">
                   {status.maxStorageGB > 0
                     ? `${status.maxStorageGB} GB`
                     : "Unlimited"}
@@ -269,18 +220,11 @@ export function RetentionStatusPanel() {
             </div>
           </div>
 
-          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
-            <h4 style={{ margin: "0 0 16px 0" }}>Cleanup Controls</h4>
+          <div className="retention-controls">
+            <h4 className="retention-section-title">Cleanup Controls</h4>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
+            <div className="retention-controls__toggle-row">
+              <label className="retention-controls__toggle">
                 <input
                   type="checkbox"
                   checked={dryRun}
@@ -290,22 +234,11 @@ export function RetentionStatusPanel() {
               </label>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "12px",
-                marginBottom: "16px",
-              }}
-            >
+            <div className="retention-controls__grid">
               <div>
                 <label
                   htmlFor="kind-select"
-                  style={{
-                    display: "block",
-                    fontSize: "13px",
-                    marginBottom: "4px",
-                  }}
+                  className="retention-controls__label"
                 >
                   Job Kind (optional)
                 </label>
@@ -317,7 +250,6 @@ export function RetentionStatusPanel() {
                       e.target.value as "" | "scrape" | "crawl" | "research",
                     )
                   }
-                  style={{ width: "100%", padding: "6px 8px" }}
                 >
                   <option value="">All kinds</option>
                   <option value="scrape">Scrape</option>
@@ -328,11 +260,7 @@ export function RetentionStatusPanel() {
               <div>
                 <label
                   htmlFor="older-than-input"
-                  style={{
-                    display: "block",
-                    fontSize: "13px",
-                    marginBottom: "4px",
-                  }}
+                  className="retention-controls__label"
                 >
                   Older Than (days, optional)
                 </label>
@@ -343,12 +271,11 @@ export function RetentionStatusPanel() {
                   value={olderThan}
                   onChange={(e) => setOlderThan(e.target.value)}
                   placeholder="Use config default"
-                  style={{ width: "100%", padding: "6px 8px" }}
                 />
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <div className="retention-controls__actions">
               <button
                 type="button"
                 onClick={() =>
@@ -372,7 +299,7 @@ export function RetentionStatusPanel() {
                 {loading ? "Refreshing..." : "Refresh Status"}
               </button>
               {!status.enabled && !dryRun && (
-                <span style={{ fontSize: "13px", color: "#ef4444" }}>
+                <span className="retention-controls__disabled-message">
                   Retention is disabled. Enable dry-run to preview.
                 </span>
               )}
@@ -380,25 +307,17 @@ export function RetentionStatusPanel() {
           </div>
 
           {showConfirm && (
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "16px",
-                backgroundColor: "#fef3c7",
-                border: "1px solid #f59e0b",
-                borderRadius: "8px",
-              }}
-            >
-              <p style={{ margin: "0 0 12px 0" }}>
+            <div className="retention-notice retention-notice--warning">
+              <p className="retention-notice__copy">
                 <strong>Warning:</strong> This will permanently delete jobs and
                 their artifacts. This action cannot be undone.
               </p>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div className="retention-notice__actions">
                 <button
                   type="button"
                   onClick={handleCleanup}
                   disabled={cleanupLoading}
-                  style={{ backgroundColor: "#ef4444", color: "white" }}
+                  className="retention-action-button retention-action-button--danger"
                 >
                   {cleanupLoading ? "Running..." : "Confirm Delete"}
                 </button>
@@ -416,79 +335,76 @@ export function RetentionStatusPanel() {
 
           {cleanupResult && (
             <div
-              style={{
-                marginTop: "20px",
-                padding: "16px",
-                backgroundColor: cleanupResult.dryRun ? "#dbeafe" : "#d1fae5",
-                border: `1px solid ${cleanupResult.dryRun ? "#3b82f6" : "#10b981"}`,
-                borderRadius: "8px",
-              }}
+              className={`retention-notice ${
+                cleanupResult.dryRun
+                  ? "retention-notice--info"
+                  : "retention-notice--success"
+              }`}
             >
-              <h4 style={{ margin: "0 0 12px 0" }}>
+              <h4 className="retention-section-title retention-notice__title">
                 {cleanupResult.dryRun
                   ? "Dry-Run Preview Results"
                   : "Cleanup Complete"}
               </h4>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                  gap: "8px",
-                  fontSize: "13px",
-                }}
-              >
-                <div>
-                  <span style={{ color: "#6b7280" }}>
+              <div className="retention-results-grid">
+                <div className="retention-metric">
+                  <span className="retention-metric__label">
                     Jobs {cleanupResult.dryRun ? "Would Delete" : "Deleted"}:{" "}
                   </span>
-                  <strong>{cleanupResult.jobsDeleted.toLocaleString()}</strong>
+                  <strong className="retention-metric__value">
+                    {cleanupResult.jobsDeleted.toLocaleString()}
+                  </strong>
                 </div>
-                <div>
-                  <span style={{ color: "#6b7280" }}>Jobs Attempted: </span>
-                  <strong>
+                <div className="retention-metric">
+                  <span className="retention-metric__label">
+                    Jobs Attempted
+                  </span>
+                  <strong className="retention-metric__value">
                     {cleanupResult.jobsAttempted.toLocaleString()}
                   </strong>
                 </div>
-                <div>
-                  <span style={{ color: "#6b7280" }}>
+                <div className="retention-metric">
+                  <span className="retention-metric__label">
                     Crawl States{" "}
                     {cleanupResult.dryRun ? "Would Delete" : "Deleted"}:{" "}
                   </span>
-                  <strong>
+                  <strong className="retention-metric__value">
                     {cleanupResult.crawlStatesDeleted.toLocaleString()}
                   </strong>
                 </div>
-                <div>
-                  <span style={{ color: "#6b7280" }}>
+                <div className="retention-metric">
+                  <span className="retention-metric__label">
                     Space {cleanupResult.dryRun ? "Would Reclaim" : "Reclaimed"}
                     :{" "}
                   </span>
-                  <strong>
+                  <strong className="retention-metric__value">
                     {cleanupResult.spaceReclaimedMB >= 1024
                       ? `${(cleanupResult.spaceReclaimedMB / 1024).toFixed(2)} GB`
                       : `${cleanupResult.spaceReclaimedMB} MB`}
                   </strong>
                 </div>
-                <div>
-                  <span style={{ color: "#6b7280" }}>Duration: </span>
-                  <strong>{cleanupResult.durationMs}ms</strong>
+                <div className="retention-metric">
+                  <span className="retention-metric__label">Duration</span>
+                  <strong className="retention-metric__value">
+                    {cleanupResult.durationMs}ms
+                  </strong>
                 </div>
               </div>
               {cleanupResult.failedJobIDs &&
                 cleanupResult.failedJobIDs.length > 0 && (
-                  <div style={{ marginTop: "12px", fontSize: "13px" }}>
-                    <span style={{ color: "#ef4444" }}>
+                  <div className="retention-notice__detail">
+                    <span className="retention-notice__danger-text">
                       Warning: {cleanupResult.failedJobIDs.length} job(s) had
                       artifact deletion failures
                     </span>
                   </div>
                 )}
               {cleanupResult.errors && cleanupResult.errors.length > 0 && (
-                <div style={{ marginTop: "12px", fontSize: "13px" }}>
-                  <span style={{ color: "#ef4444" }}>
+                <div className="retention-notice__detail">
+                  <span className="retention-notice__danger-text">
                     Errors ({cleanupResult.errors.length}):
                   </span>
-                  <ul style={{ margin: "4px 0 0 0", paddingLeft: "20px" }}>
+                  <ul className="retention-notice__list">
                     {cleanupResult.errors.map((err) => (
                       <li key={err}>{err}</li>
                     ))}
