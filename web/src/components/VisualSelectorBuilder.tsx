@@ -71,12 +71,9 @@ function DOMTreeNode({
 
   return (
     <div className="dom-tree-node">
-      <button
-        type="button"
+      <div
         className={`dom-tree-node__row ${isSelected ? "selected" : ""}`}
         style={{ paddingLeft: `${(node.depth ?? 0) * 16}px` }}
-        onClick={() => onSelect(node)}
-        aria-label={`Select ${node.tag ?? "element"} element`}
       >
         {hasChildren && (
           <button
@@ -91,23 +88,31 @@ function DOMTreeNode({
             {isExpanded ? "▼" : "▶"}
           </button>
         )}
-        <span className="dom-tree-node__tag">{node.tag}</span>
-        {node.id && (
-          <span className="dom-tree-node__id">#{node.id.slice(0, 20)}</span>
-        )}
-        {node.classes && node.classes.length > 0 && (
-          <span className="dom-tree-node__classes">
-            .{node.classes.slice(0, 2).join(".")}
-            {node.classes.length > 2 && "..."}
-          </span>
-        )}
-        {node.text && (
-          <span className="dom-tree-node__text">
-            {node.text.slice(0, 50)}
-            {node.text.length > 50 && "..."}
-          </span>
-        )}
-      </button>
+        {!hasChildren && <span className="dom-tree-node__toggle-spacer" />}
+        <button
+          type="button"
+          className="dom-tree-node__select"
+          onClick={() => onSelect(node)}
+          aria-label={`Select ${node.tag ?? "element"} element`}
+        >
+          <span className="dom-tree-node__tag">{node.tag}</span>
+          {node.id && (
+            <span className="dom-tree-node__id">#{node.id.slice(0, 20)}</span>
+          )}
+          {node.classes && node.classes.length > 0 && (
+            <span className="dom-tree-node__classes">
+              .{node.classes.slice(0, 2).join(".")}
+              {node.classes.length > 2 && "..."}
+            </span>
+          )}
+          {node.text && (
+            <span className="dom-tree-node__text">
+              {node.text.slice(0, 50)}
+              {node.text.length > 50 && "..."}
+            </span>
+          )}
+        </button>
+      </div>
       {isExpanded &&
         node.children?.map((child) => (
           <DOMTreeNode

@@ -3,6 +3,8 @@
  * Provides the base URL for API requests based on environment configuration.
  */
 
+import { client } from "../api/client.gen";
+
 // Import from Vite's env (available at build time)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
@@ -17,6 +19,26 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined;
 export function getApiBaseUrl(): string {
   // If env var is set, use it; otherwise default to empty string (relative paths)
   return API_BASE_URL ?? "";
+}
+
+let configuredApiBaseUrl: string | null = null;
+
+/**
+ * Configure the generated API client to use the shared runtime base URL.
+ *
+ * This keeps every SDK call on the same-origin/proxy path unless the user
+ * explicitly opts into a browser-visible cross-origin base URL.
+ */
+export function configureApiClient(): string {
+  const baseUrl = getApiBaseUrl();
+
+  if (configuredApiBaseUrl === baseUrl) {
+    return baseUrl;
+  }
+
+  client.setConfig({ baseUrl });
+  configuredApiBaseUrl = baseUrl;
+  return baseUrl;
 }
 
 /**

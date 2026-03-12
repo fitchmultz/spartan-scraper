@@ -21,6 +21,7 @@ import {
   type RenderProfile,
   type RenderProfileInput,
 } from "../../api";
+import { getApiErrorMessage } from "../../lib/api-errors";
 
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
@@ -29,6 +30,7 @@ interface RenderProfileEditorProps {
 export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
   const [profiles, setProfiles] = useState<RenderProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState<RenderProfile | null>(
     null,
   );
@@ -38,10 +40,18 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
   const loadProfiles = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getV1RenderProfiles();
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to load profiles"),
+        );
+      }
       setProfiles(response.data?.profiles || []);
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to load profiles");
+      const message = getApiErrorMessage(err, "Failed to load profiles");
+      setError(message);
+      onError?.(message);
     } finally {
       setLoading(false);
     }
@@ -53,37 +63,58 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
 
   const handleCreate = async (input: RenderProfileInput) => {
     try {
-      await postV1RenderProfiles({ body: input });
+      setError(null);
+      const response = await postV1RenderProfiles({ body: input });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to create profile"),
+        );
+      }
+      await loadProfiles();
       setIsCreating(false);
-      loadProfiles();
     } catch (err) {
-      onError?.(
-        err instanceof Error ? err.message : "Failed to create profile",
-      );
+      const message = getApiErrorMessage(err, "Failed to create profile");
+      setError(message);
+      onError?.(message);
     }
   };
 
   const handleUpdate = async (name: string, input: RenderProfileInput) => {
     try {
-      await putV1RenderProfilesByName({ path: { name }, body: input });
+      setError(null);
+      const response = await putV1RenderProfilesByName({
+        path: { name },
+        body: input,
+      });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to update profile"),
+        );
+      }
+      await loadProfiles();
       setEditingProfile(null);
-      loadProfiles();
     } catch (err) {
-      onError?.(
-        err instanceof Error ? err.message : "Failed to update profile",
-      );
+      const message = getApiErrorMessage(err, "Failed to update profile");
+      setError(message);
+      onError?.(message);
     }
   };
 
   const handleDelete = async (name: string) => {
     if (!confirm(`Delete profile "${name}"?`)) return;
     try {
-      await deleteV1RenderProfilesByName({ path: { name } });
-      loadProfiles();
+      setError(null);
+      const response = await deleteV1RenderProfilesByName({ path: { name } });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to delete profile"),
+        );
+      }
+      await loadProfiles();
     } catch (err) {
-      onError?.(
-        err instanceof Error ? err.message : "Failed to delete profile",
-      );
+      const message = getApiErrorMessage(err, "Failed to delete profile");
+      setError(message);
+      onError?.(message);
     }
   };
 
@@ -112,6 +143,12 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
 
       {profiles.length === 0 && !isCreating && (
         <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed">

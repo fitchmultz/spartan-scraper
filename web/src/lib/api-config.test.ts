@@ -4,7 +4,7 @@
  * Tests base URL resolution, path construction, and URL building
  * for API requests with various base URL configurations.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildApiUrl, buildApiUrlWithBase, getApiBaseUrl } from "./api-config";
 
 describe("API configuration", () => {
@@ -79,6 +79,26 @@ describe("API configuration", () => {
     it("should handle base URL with only trailing slash", () => {
       const result = buildApiUrlWithBase("/", "/v1/jobs/123/results");
       expect(result).toBe("/v1/jobs/123/results");
+    });
+  });
+
+  describe("configureApiClient", () => {
+    it("configures the generated client with the shared runtime base URL", async () => {
+      const setConfig = vi.fn();
+
+      vi.resetModules();
+      vi.doMock("../api/client.gen", () => ({
+        client: {
+          setConfig,
+        },
+      }));
+
+      const { configureApiClient } = await import("./api-config");
+
+      expect(configureApiClient()).toBe("");
+      expect(configureApiClient()).toBe("");
+      expect(setConfig).toHaveBeenCalledTimes(1);
+      expect(setConfig).toHaveBeenCalledWith({ baseUrl: "" });
     });
   });
 });

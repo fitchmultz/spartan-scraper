@@ -21,6 +21,7 @@ import {
   type JsTargetScript,
   type PipelineJsInput,
 } from "../../api";
+import { getApiErrorMessage } from "../../lib/api-errors";
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
@@ -29,6 +30,7 @@ interface PipelineJSEditorProps {
 export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingScript, setEditingScript] = useState<JsTargetScript | null>(
     null,
   );
@@ -38,10 +40,18 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
   const loadScripts = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getV1PipelineJs();
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to load scripts"),
+        );
+      }
       setScripts(response.data?.scripts || []);
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to load scripts");
+      const message = getApiErrorMessage(err, "Failed to load scripts");
+      setError(message);
+      onError?.(message);
     } finally {
       setLoading(false);
     }
@@ -53,31 +63,58 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
 
   const handleCreate = async (input: PipelineJsInput) => {
     try {
-      await postV1PipelineJs({ body: input });
+      setError(null);
+      const response = await postV1PipelineJs({ body: input });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to create script"),
+        );
+      }
+      await loadScripts();
       setIsCreating(false);
-      loadScripts();
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to create script");
+      const message = getApiErrorMessage(err, "Failed to create script");
+      setError(message);
+      onError?.(message);
     }
   };
 
   const handleUpdate = async (name: string, input: PipelineJsInput) => {
     try {
-      await putV1PipelineJsByName({ path: { name }, body: input });
+      setError(null);
+      const response = await putV1PipelineJsByName({
+        path: { name },
+        body: input,
+      });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to update script"),
+        );
+      }
+      await loadScripts();
       setEditingScript(null);
-      loadScripts();
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to update script");
+      const message = getApiErrorMessage(err, "Failed to update script");
+      setError(message);
+      onError?.(message);
     }
   };
 
   const handleDelete = async (name: string) => {
     if (!confirm(`Delete script "${name}"?`)) return;
     try {
-      await deleteV1PipelineJsByName({ path: { name } });
-      loadScripts();
+      setError(null);
+      const response = await deleteV1PipelineJsByName({ path: { name } });
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to delete script"),
+        );
+      }
+      await loadScripts();
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Failed to delete script");
+      const message = getApiErrorMessage(err, "Failed to delete script");
+      setError(message);
+      onError?.(message);
     }
   };
 
@@ -106,6 +143,12 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
 
       {scripts.length === 0 && !isCreating && (
         <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed">

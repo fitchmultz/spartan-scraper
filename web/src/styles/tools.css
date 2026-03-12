@@ -132,16 +132,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  cursor: pointer;
   border-radius: 6px;
   transition: background 0.15s ease;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  font-family: inherit;
-  font-size: inherit;
-  width: 100%;
-  text-align: left;
 }
 
 .dom-tree-node__row:hover {
@@ -167,9 +159,32 @@
   flex-shrink: 0;
 }
 
+.dom-tree-node__toggle-spacer {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.dom-tree-node__select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+  min-width: 0;
+}
+
 .dom-tree-node__tag {
   color: var(--accent);
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .dom-tree-node__id {

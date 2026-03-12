@@ -764,13 +764,15 @@ export function App() {
           <InfoSections
             profiles={profiles}
             schedules={schedules}
-            templates={[]}
+            templates={templates}
             crawlStates={crawlStates}
             crawlStatesPage={crawlStatesPage}
             crawlStatesTotal={crawlStatesTotal}
             crawlStatesPerPage={100}
             onCrawlStatesPageChange={setCrawlStatesPage}
-            onTemplatesChanged={() => {}}
+            onTemplatesChanged={() => {
+              void refreshTemplates();
+            }}
           />
           <section className="panel" style={{ marginTop: 16 }}>
             <RenderProfileEditor
