@@ -18,6 +18,7 @@ interface QuickStartPanelProps {
   onJobTypeChange: (jobType: JobType) => void;
   onSelectPreset: (preset: JobPreset) => void;
   onSavePreset?: () => void;
+  onOpenTemplateGenerator?: () => void;
   currentUrl?: string;
 }
 
@@ -68,7 +69,7 @@ function JobTypeButton({
   );
 }
 
-function PresetRailCard({
+function PresetChip({
   preset,
   onSelect,
   tone = "default",
@@ -80,19 +81,17 @@ function PresetRailCard({
   return (
     <button
       type="button"
-      className={`job-quickstart__preset ${tone === "recommended" ? "is-recommended" : ""}`}
+      className={`job-quickstart__preset-chip ${tone === "recommended" ? "is-recommended" : ""}`}
       onClick={onSelect}
     >
-      <div className="job-quickstart__preset-header">
-        <div>
-          <strong>{preset.name}</strong>
-          <p>{preset.description}</p>
-        </div>
+      <div className="job-quickstart__preset-chip-copy">
+        <strong>{preset.name}</strong>
+        <span>{preset.description}</span>
+      </div>
+      <div className="job-quickstart__preset-chip-meta">
         {tone === "recommended" ? (
           <span className="job-quickstart__badge">Suggested</span>
         ) : null}
-      </div>
-      <div className="job-quickstart__preset-meta">
         <span>
           {formatSecondsAsApproximateDuration(preset.resources.timeSeconds)}
         </span>
@@ -108,6 +107,7 @@ export function QuickStartPanel({
   onJobTypeChange,
   onSelectPreset,
   onSavePreset,
+  onOpenTemplateGenerator,
   currentUrl,
 }: QuickStartPanelProps) {
   const activePresets = useMemo(
@@ -123,9 +123,6 @@ export function QuickStartPanel({
   }, [activePresets, currentUrl]);
 
   const recommendedIds = new Set(recommendedPresets.map((preset) => preset.id));
-  const fallbackPresets = activePresets
-    .filter((preset) => !recommendedIds.has(preset.id))
-    .slice(0, 4);
 
   const presetCounts = useMemo(
     () => ({
@@ -138,20 +135,38 @@ export function QuickStartPanel({
   );
 
   const activeCopy = JOB_TYPE_COPY[activeJobType];
+  const featuredPresets =
+    recommendedPresets.length > 0
+      ? recommendedPresets
+      : activePresets.slice(0, 2);
+  const remainingPresets = activePresets.filter(
+    (preset) => !featuredPresets.some((featured) => featured.id === preset.id),
+  );
 
   return (
     <section className="panel job-quickstart">
       <div className="job-quickstart__header">
         <div>
           <div className="job-quickstart__eyebrow">Quick Start</div>
-          <h2>Presets and workflow switching</h2>
+          <h2>Switch workflows fast</h2>
           <p>{activeCopy.summary}</p>
         </div>
-        {onSavePreset ? (
-          <button type="button" className="secondary" onClick={onSavePreset}>
-            Save Preset
-          </button>
-        ) : null}
+        <div className="job-quickstart__header-actions">
+          {onOpenTemplateGenerator ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={onOpenTemplateGenerator}
+            >
+              AI Template
+            </button>
+          ) : null}
+          {onSavePreset ? (
+            <button type="button" className="secondary" onClick={onSavePreset}>
+              Save Preset
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div
@@ -179,42 +194,48 @@ export function QuickStartPanel({
         />
       </div>
 
-      {recommendedPresets.length > 0 ? (
-        <div className="job-quickstart__group">
-          <div className="job-quickstart__group-label">Matches this target</div>
-          <div className="job-quickstart__preset-list">
-            {recommendedPresets.map((preset) => (
-              <PresetRailCard
-                key={preset.id}
-                preset={preset}
-                tone="recommended"
-                onSelect={() => onSelectPreset(preset)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="job-quickstart__group">
         <div className="job-quickstart__group-label">
-          {recommendedPresets.length > 0 ? "More presets" : "Available presets"}
+          {recommendedPresets.length > 0
+            ? "Matches this target"
+            : "Featured presets"}
         </div>
         {activePresets.length === 0 ? (
           <p className="job-quickstart__empty">{activeCopy.empty}</p>
         ) : (
-          <div className="job-quickstart__preset-list">
-            {(fallbackPresets.length > 0 ? fallbackPresets : activePresets).map(
-              (preset) => (
-                <PresetRailCard
-                  key={preset.id}
-                  preset={preset}
-                  onSelect={() => onSelectPreset(preset)}
-                />
-              ),
-            )}
+          <div className="job-quickstart__preset-grid">
+            {featuredPresets.map((preset) => (
+              <PresetChip
+                key={preset.id}
+                preset={preset}
+                tone={recommendedIds.has(preset.id) ? "recommended" : "default"}
+                onSelect={() => onSelectPreset(preset)}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      {remainingPresets.length > 0 ? (
+        <details className="job-quickstart__more">
+          <summary>
+            <span>More {activeCopy.label.toLowerCase()} presets</span>
+            <small>
+              {remainingPresets.length} additional workflow
+              {remainingPresets.length === 1 ? "" : "s"}
+            </small>
+          </summary>
+          <div className="job-quickstart__preset-grid job-quickstart__preset-grid--more">
+            {remainingPresets.map((preset) => (
+              <PresetChip
+                key={preset.id}
+                preset={preset}
+                onSelect={() => onSelectPreset(preset)}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

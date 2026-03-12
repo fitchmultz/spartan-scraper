@@ -117,38 +117,44 @@ export const JobSubmissionContainer = forwardRef<
       <div className="panel job-workflow__header">
         <div className="job-workflow__header-copy">
           <div className="job-workflow__eyebrow">New Job Workflow</div>
-          <h2>Focus the active job type</h2>
+          <h2>Run one job path at a time</h2>
           <p>
-            Swap modes or presets without dragging three full forms through the
-            viewport.
+            Keep the active workflow and submit action visible first, then pull
+            in presets or advanced controls only when you need them.
           </p>
         </div>
-        <div
-          className="job-workflow__tabs"
-          role="tablist"
-          aria-label="Job type"
-        >
-          <button
-            type="button"
-            className={activeTab === "scrape" ? "active" : "secondary"}
-            onClick={() => setActiveTab("scrape")}
+        <div className="job-workflow__header-controls">
+          <div className="job-workflow__status">
+            <span>{loading ? "Submitting..." : "Ready to submit"}</span>
+            <span>{activeTab}</span>
+          </div>
+          <div
+            className="job-workflow__tabs"
+            role="tablist"
+            aria-label="Job type"
           >
-            Scrape
-          </button>
-          <button
-            type="button"
-            className={activeTab === "crawl" ? "active" : "secondary"}
-            onClick={() => setActiveTab("crawl")}
-          >
-            Crawl
-          </button>
-          <button
-            type="button"
-            className={activeTab === "research" ? "active" : "secondary"}
-            onClick={() => setActiveTab("research")}
-          >
-            Research
-          </button>
+            <button
+              type="button"
+              className={activeTab === "scrape" ? "active" : "secondary"}
+              onClick={() => setActiveTab("scrape")}
+            >
+              Scrape
+            </button>
+            <button
+              type="button"
+              className={activeTab === "crawl" ? "active" : "secondary"}
+              onClick={() => setActiveTab("crawl")}
+            >
+              Crawl
+            </button>
+            <button
+              type="button"
+              className={activeTab === "research" ? "active" : "secondary"}
+              onClick={() => setActiveTab("research")}
+            >
+              Research
+            </button>
+          </div>
         </div>
       </div>
       <Suspense

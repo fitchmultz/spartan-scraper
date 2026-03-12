@@ -968,67 +968,34 @@ export function App() {
       )}
 
       {route.kind === "new-job" && (
-        <>
-          <div className="route-grid route-grid--new-job">
-            <div className="route-primary route-stack">
-              <JobSubmissionContainer
-                ref={jobSubmissionRef}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                formState={formState}
-                onSubmitScrape={handleSubmitScrape}
-                onSubmitCrawl={handleSubmitCrawl}
-                onSubmitResearch={handleSubmitResearch}
-                loading={loading}
-                profiles={profiles}
-              />
-            </div>
-            <aside className="route-sidebar">
-              <section className="panel route-sidebar-panel job-launch-panel">
-                <div className="route-sidebar-panel__eyebrow">
-                  Launch Signals
-                </div>
-                <h3>{routeMeta.title}</h3>
-                <p>{routeMeta.description}</p>
-                <div className="route-sidebar-panel__stats">
-                  <div>
-                    {loading ? "Refreshing runtime state" : "Ready to submit"}
-                  </div>
-                  <div>Total jobs: {jobs.length}</div>
-                  <div>Queued: {managerStatus?.queued ?? 0}</div>
-                  <div>Active: {managerStatus?.active ?? 0}</div>
-                  <div>
-                    Headless mode: {formState.headless ? "Enabled" : "Disabled"}
-                  </div>
-                  <div>
-                    Playwright:{" "}
-                    {formState.usePlaywright ? "Enabled" : "Disabled"}
-                  </div>
-                </div>
-                <div className="route-sidebar-panel__actions">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setIsAIGeneratorOpen(true)}
-                  >
-                    Generate Template with AI
-                  </button>
-                </div>
-              </section>
-
-              <PresetContainer
-                presets={presets}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                applyPreset={formState.applyPreset}
-                savePreset={savePreset}
-                getCurrentConfig={getCurrentConfig}
-                getCurrentUrl={getCurrentUrl}
-                onSelectPreset={handleSelectPreset}
-              />
-            </aside>
+        <div className="route-grid route-grid--new-job">
+          <div className="route-primary route-stack">
+            <JobSubmissionContainer
+              ref={jobSubmissionRef}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              formState={formState}
+              onSubmitScrape={handleSubmitScrape}
+              onSubmitCrawl={handleSubmitCrawl}
+              onSubmitResearch={handleSubmitResearch}
+              loading={loading}
+              profiles={profiles}
+            />
           </div>
-        </>
+          <aside className="route-sidebar">
+            <PresetContainer
+              presets={presets}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              applyPreset={formState.applyPreset}
+              savePreset={savePreset}
+              getCurrentConfig={getCurrentConfig}
+              getCurrentUrl={getCurrentUrl}
+              onSelectPreset={handleSelectPreset}
+              onOpenTemplateGenerator={() => setIsAIGeneratorOpen(true)}
+            />
+          </aside>
+        </div>
       )}
 
       {route.kind === "templates" && (
