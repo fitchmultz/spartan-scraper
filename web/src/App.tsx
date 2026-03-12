@@ -297,6 +297,10 @@ export function App() {
   );
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<JobPreset | null>(null);
+  const [pendingSubmission, setPendingSubmission] = useState<JobType | null>(
+    null,
+  );
   const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
 
   const {
@@ -506,19 +510,32 @@ export function App() {
   const handleSelectPreset = useCallback(
     (preset: JobPreset) => {
       navigate("/jobs/new");
-      if (preset.config.url) {
-        if (preset.jobType === "scrape") {
-          jobSubmissionRef.current?.setScrapeUrl(preset.config.url);
-        } else if (preset.jobType === "crawl") {
-          jobSubmissionRef.current?.setCrawlUrl(preset.config.url);
-        }
-      }
-      if (preset.config.query) {
-        jobSubmissionRef.current?.setResearchQuery(preset.config.query);
-      }
+      setActiveTab(preset.jobType);
+      setPendingPreset(preset);
     },
     [navigate],
   );
+
+  useEffect(() => {
+    if (!pendingPreset || route.kind !== "new-job") {
+      return;
+    }
+    if (pendingPreset.jobType !== activeTab) {
+      return;
+    }
+
+    if (pendingPreset.config.url) {
+      if (pendingPreset.jobType === "scrape") {
+        jobSubmissionRef.current?.setScrapeUrl(pendingPreset.config.url);
+      } else if (pendingPreset.jobType === "crawl") {
+        jobSubmissionRef.current?.setCrawlUrl(pendingPreset.config.url);
+      }
+    }
+    if (pendingPreset.config.query) {
+      jobSubmissionRef.current?.setResearchQuery(pendingPreset.config.query);
+    }
+    setPendingPreset(null);
+  }, [activeTab, pendingPreset, route.kind]);
 
   const getCurrentConfig = useCallback(() => {
     return {
@@ -570,16 +587,33 @@ export function App() {
   const handleSubmitForm = useCallback(
     async (formType: "scrape" | "crawl" | "research") => {
       navigate("/jobs/new");
-      if (formType === "scrape") {
-        await jobSubmissionRef.current?.submitScrape();
-      } else if (formType === "crawl") {
-        await jobSubmissionRef.current?.submitCrawl();
-      } else if (formType === "research") {
-        await jobSubmissionRef.current?.submitResearch();
-      }
+      setActiveTab(formType);
+      setPendingSubmission(formType);
     },
     [navigate],
   );
+
+  useEffect(() => {
+    if (!pendingSubmission || route.kind !== "new-job") {
+      return;
+    }
+    if (pendingSubmission !== activeTab) {
+      return;
+    }
+
+    const submit = async () => {
+      if (pendingSubmission === "scrape") {
+        await jobSubmissionRef.current?.submitScrape();
+      } else if (pendingSubmission === "crawl") {
+        await jobSubmissionRef.current?.submitCrawl();
+      } else {
+        await jobSubmissionRef.current?.submitResearch();
+      }
+      setPendingSubmission(null);
+    };
+
+    void submit();
+  }, [activeTab, pendingSubmission, route.kind]);
 
   const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
 
@@ -623,7 +657,7 @@ export function App() {
           eyebrow: "Submission",
           title: "Create Job",
           description:
-            "Compose a scrape, crawl, or research run with saved presets and launch it immediately.",
+            "Launch a scrape, crawl, or research run from one focused workflow.",
           meta: [
             { label: "Profiles", value: profiles.length.toString() },
             { label: "Templates", value: templates.length.toString() },
@@ -688,16 +722,18 @@ export function App() {
             <h1>Spartan Scraper</h1>
             <p>{routeMeta.description}</p>
           </div>
-          <div className="app-shell__signals">
-            <SignalPill label="Jobs" value={jobsTotal} />
-            <SignalPill label="Queued" value={managerStatus?.queued ?? 0} />
-            <SignalPill label="Active" value={managerStatus?.active ?? 0} />
-            <SignalPill
-              label="Fetcher"
-              value={formState.usePlaywright ? "Playwright" : "HTTP"}
-            />
-            <SignalPill label="Theme" value={resolvedTheme} />
-          </div>
+          {route.kind !== "new-job" ? (
+            <div className="app-shell__signals">
+              <SignalPill label="Jobs" value={jobsTotal} />
+              <SignalPill label="Queued" value={managerStatus?.queued ?? 0} />
+              <SignalPill label="Active" value={managerStatus?.active ?? 0} />
+              <SignalPill
+                label="Fetcher"
+                value={formState.usePlaywright ? "Playwright" : "HTTP"}
+              />
+              <SignalPill label="Theme" value={resolvedTheme} />
+            </div>
+          ) : null}
         </div>
         <div className="app-shell__controls">
           <AppNavigation
@@ -933,68 +969,65 @@ export function App() {
 
       {route.kind === "new-job" && (
         <>
-          <PageIntro
-            eyebrow={routeMeta.eyebrow}
-            title={routeMeta.title}
-            description={routeMeta.description}
-            meta={routeMeta.meta}
-            actions={
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setIsAIGeneratorOpen(true)}
-              >
-                Generate Template with AI
-              </button>
-            }
-          />
+          <div className="route-grid route-grid--new-job">
+            <div className="route-primary route-stack">
+              <JobSubmissionContainer
+                ref={jobSubmissionRef}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                formState={formState}
+                onSubmitScrape={handleSubmitScrape}
+                onSubmitCrawl={handleSubmitCrawl}
+                onSubmitResearch={handleSubmitResearch}
+                loading={loading}
+                profiles={profiles}
+              />
+            </div>
+            <aside className="route-sidebar">
+              <section className="panel route-sidebar-panel job-launch-panel">
+                <div className="route-sidebar-panel__eyebrow">
+                  Launch Signals
+                </div>
+                <h3>{routeMeta.title}</h3>
+                <p>{routeMeta.description}</p>
+                <div className="route-sidebar-panel__stats">
+                  <div>
+                    {loading ? "Refreshing runtime state" : "Ready to submit"}
+                  </div>
+                  <div>Total jobs: {jobs.length}</div>
+                  <div>Queued: {managerStatus?.queued ?? 0}</div>
+                  <div>Active: {managerStatus?.active ?? 0}</div>
+                  <div>
+                    Headless mode: {formState.headless ? "Enabled" : "Disabled"}
+                  </div>
+                  <div>
+                    Playwright:{" "}
+                    {formState.usePlaywright ? "Enabled" : "Disabled"}
+                  </div>
+                </div>
+                <div className="route-sidebar-panel__actions">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setIsAIGeneratorOpen(true)}
+                  >
+                    Generate Template with AI
+                  </button>
+                </div>
+              </section>
 
-          <div className="hero">
-            <section className="hero-card">
-              <div className="kicker">Command Center</div>
-              <h1>New job submission stays front and center.</h1>
-              <p>
-                Configure scrape, crawl, or research work with presets,
-                templates, and browser controls from one place.
-              </p>
-            </section>
-            <section className="stats">
-              <div className="stats__header">
-                <h3 style={{ margin: 0 }}>Launch Signals</h3>
-              </div>
-              <div>{loading ? "Refreshing…" : "Ready to submit"}</div>
-              <div>Total jobs: {jobs.length}</div>
-              <div>Queued: {managerStatus?.queued ?? 0}</div>
-              <div>Active: {managerStatus?.active ?? 0}</div>
-              <div>
-                Headless mode: {formState.headless ? "Enabled" : "Disabled"}
-              </div>
-              <div>
-                Playwright: {formState.usePlaywright ? "Enabled" : "Disabled"}
-              </div>
-            </section>
+              <PresetContainer
+                presets={presets}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                applyPreset={formState.applyPreset}
+                savePreset={savePreset}
+                getCurrentConfig={getCurrentConfig}
+                getCurrentUrl={getCurrentUrl}
+                onSelectPreset={handleSelectPreset}
+              />
+            </aside>
           </div>
-
-          <PresetContainer
-            presets={presets}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            applyPreset={formState.applyPreset}
-            savePreset={savePreset}
-            getCurrentConfig={getCurrentConfig}
-            getCurrentUrl={getCurrentUrl}
-            onSelectPreset={handleSelectPreset}
-          />
-
-          <JobSubmissionContainer
-            ref={jobSubmissionRef}
-            formState={formState}
-            onSubmitScrape={handleSubmitScrape}
-            onSubmitCrawl={handleSubmitCrawl}
-            onSubmitResearch={handleSubmitResearch}
-            loading={loading}
-            profiles={profiles}
-          />
         </>
       )}
 

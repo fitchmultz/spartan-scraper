@@ -26,6 +26,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
+import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
@@ -259,137 +260,167 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     };
 
     return (
-      <form className="panel" onSubmit={handleFormSubmit}>
-        <h2>Scrape a Page</h2>
-        <label htmlFor="scrape-url">Target URL</label>
-        <input
-          id="scrape-url"
-          value={scrapeUrl}
-          onChange={(event) => setScrapeUrl(event.target.value)}
-          placeholder="https://example.com"
-        />
-        <div className="row" style={{ marginTop: 12 }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(event) => setHeadless(event.target.checked)}
-            />{" "}
-            Headless
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={usePlaywright}
-              disabled={!headless}
-              onChange={(event) => setUsePlaywright(event.target.checked)}
-            />{" "}
-            Playwright
-          </label>
-          <label>
-            Timeout (s)
-            <input
-              type="number"
-              min={5}
-              value={timeoutSeconds}
-              onChange={(event) =>
-                setTimeoutSeconds(Number(event.target.value))
-              }
-            />
-          </label>
-        </div>
-        <DeviceSelector
-          device={device}
-          onChange={setDevice}
-          disabled={!headless}
-        />
-        <NetworkInterceptConfig
-          enabled={interceptEnabled}
-          setEnabled={setInterceptEnabled}
-          urlPatterns={interceptURLPatterns}
-          setURLPatterns={setInterceptURLPatterns}
-          resourceTypes={interceptResourceTypes}
-          setResourceTypes={setInterceptResourceTypes}
-          captureRequestBody={interceptCaptureRequestBody}
-          setCaptureRequestBody={setInterceptCaptureRequestBody}
-          captureResponseBody={interceptCaptureResponseBody}
-          setCaptureResponseBody={setInterceptCaptureResponseBody}
-          maxBodySize={interceptMaxBodySize}
-          setMaxBodySize={setInterceptMaxBodySize}
-          disabled={!headless}
-          inputPrefix="scrape"
-        />
-        <AuthConfig
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          profiles={profiles}
-        />
-        <PipelineOptions
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          inputPrefix="scrape"
-        />
-        <AIExtractSection
-          enabled={aiEnabled}
-          setEnabled={setAiEnabled}
-          mode={aiMode}
-          setMode={setAiMode}
-          prompt={aiPrompt}
-          setPrompt={setAiPrompt}
-          fields={aiFields}
-          setFields={setAiFields}
-        />
-        <WebhookConfig
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          inputPrefix="scrape"
-        />
-        <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="submit" disabled={loading}>
-            Deploy Scrape
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setScrapeUrl("")}
-          >
-            Clear
-          </button>
-        </div>
+      <form className="job-workflow-form" onSubmit={handleFormSubmit}>
+        <JobFormIntro
+          title="Scrape a Page"
+          description="Drop in one URL, keep the execution controls nearby, and launch without wading through the full advanced stack."
+          actions={
+            <>
+              <button type="submit" disabled={loading}>
+                Deploy Scrape
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setScrapeUrl("")}
+              >
+                Clear
+              </button>
+            </>
+          }
+        >
+          <label htmlFor="scrape-url">Target URL</label>
+          <input
+            id="scrape-url"
+            value={scrapeUrl}
+            onChange={(event) => setScrapeUrl(event.target.value)}
+            placeholder="https://example.com"
+          />
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={headless}
+                onChange={(event) => setHeadless(event.target.checked)}
+              />{" "}
+              Headless
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
+            </label>
+            <label>
+              Timeout (s)
+              <input
+                type="number"
+                min={5}
+                value={timeoutSeconds}
+                onChange={(event) =>
+                  setTimeoutSeconds(Number(event.target.value))
+                }
+              />
+            </label>
+          </div>
+        </JobFormIntro>
+
+        <JobFormAdvancedSection
+          title="Browser and capture controls"
+          description="Device emulation, network interception, and browser-only diagnostics."
+        >
+          <DeviceSelector
+            device={device}
+            onChange={setDevice}
+            disabled={!headless}
+          />
+          <NetworkInterceptConfig
+            enabled={interceptEnabled}
+            setEnabled={setInterceptEnabled}
+            urlPatterns={interceptURLPatterns}
+            setURLPatterns={setInterceptURLPatterns}
+            resourceTypes={interceptResourceTypes}
+            setResourceTypes={setInterceptResourceTypes}
+            captureRequestBody={interceptCaptureRequestBody}
+            setCaptureRequestBody={setInterceptCaptureRequestBody}
+            captureResponseBody={interceptCaptureResponseBody}
+            setCaptureResponseBody={setInterceptCaptureResponseBody}
+            maxBodySize={interceptMaxBodySize}
+            setMaxBodySize={setInterceptMaxBodySize}
+            disabled={!headless}
+            inputPrefix="scrape"
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Authentication and request shaping"
+          description="Profiles, cookies, login automation, and request overrides."
+        >
+          <AuthConfig
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            profiles={profiles}
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Extraction and processing"
+          description="Templates, validation, transformers, and AI extraction helpers."
+        >
+          <PipelineOptions
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            incremental={incremental}
+            setIncremental={setIncremental}
+            inputPrefix="scrape"
+          />
+          <AIExtractSection
+            enabled={aiEnabled}
+            setEnabled={setAiEnabled}
+            mode={aiMode}
+            setMode={setAiMode}
+            prompt={aiPrompt}
+            setPrompt={setAiPrompt}
+            fields={aiFields}
+            setFields={setAiFields}
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Delivery hooks"
+          description="Optional webhook notifications for external systems."
+        >
+          <WebhookConfig
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            inputPrefix="scrape"
+          />
+        </JobFormAdvancedSection>
       </form>
     );
   },

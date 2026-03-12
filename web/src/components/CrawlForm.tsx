@@ -26,6 +26,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
+import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { DeviceEmulation } from "../api";
 
 export interface CrawlFormRef {
@@ -263,196 +264,224 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     };
 
     return (
-      <form className="panel" onSubmit={handleFormSubmit}>
-        <h2>Crawl a Site</h2>
-        <label htmlFor="crawl-url">Root URL</label>
-        <input
-          id="crawl-url"
-          value={crawlUrl}
-          onChange={(event) => setCrawlUrl(event.target.value)}
-          placeholder="https://example.com"
-        />
-        <label htmlFor="sitemap-url" style={{ marginTop: 12 }}>
-          Sitemap URL (optional)
-        </label>
-        <input
-          id="sitemap-url"
-          value={sitemapURL}
-          onChange={(event) => setSitemapURL(event.target.value)}
-          placeholder="https://example.com/sitemap.xml"
-        />
-        <label
-          style={{
-            marginTop: 8,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
+      <form className="job-workflow-form" onSubmit={handleFormSubmit}>
+        <JobFormIntro
+          title="Crawl a Site"
+          description="Set the root URL, define the crawl boundaries, and launch the sweep without paging through every advanced block first."
+          actions={
+            <>
+              <button type="submit" disabled={loading}>
+                Launch Crawl
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setCrawlUrl("")}
+              >
+                Clear
+              </button>
+            </>
+          }
         >
+          <label htmlFor="crawl-url">Root URL</label>
           <input
-            type="checkbox"
-            checked={sitemapOnly}
-            disabled={!sitemapURL}
-            onChange={(event) => setSitemapOnly(event.target.checked)}
+            id="crawl-url"
+            value={crawlUrl}
+            onChange={(event) => setCrawlUrl(event.target.value)}
+            placeholder="https://example.com"
           />
-          Sitemap only (don't crawl root URL)
-        </label>
-        <label htmlFor="include-patterns" style={{ marginTop: 12 }}>
-          Include Patterns (optional)
-        </label>
-        <input
-          id="include-patterns"
-          value={includePatterns}
-          onChange={(event) => setIncludePatterns(event.target.value)}
-          placeholder="/blog/**, /products/*"
-        />
-        <small>
-          Comma-separated glob patterns. Only matching URLs will be crawled.
-        </small>
-        <label htmlFor="exclude-patterns" style={{ marginTop: 12 }}>
-          Exclude Patterns (optional)
-        </label>
-        <input
-          id="exclude-patterns"
-          value={excludePatterns}
-          onChange={(event) => setExcludePatterns(event.target.value)}
-          placeholder="/admin/*, /api/**"
-        />
-        <small>
-          Comma-separated glob patterns. Matching URLs will be skipped.
-        </small>
-        <div className="row" style={{ marginTop: 12 }}>
-          <label>
-            Max depth
-            <input
-              type="number"
-              min={1}
-              value={maxDepth}
-              onChange={(event) => setMaxDepth(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            Max pages
-            <input
-              type="number"
-              min={1}
-              value={maxPages}
-              onChange={(event) => setMaxPages(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="row" style={{ marginTop: 12 }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(event) => setHeadless(event.target.checked)}
-            />{" "}
-            Headless
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={usePlaywright}
-              disabled={!headless}
-              onChange={(event) => setUsePlaywright(event.target.checked)}
-            />{" "}
-            Playwright
-          </label>
-          <label>
-            Timeout (s)
-            <input
-              type="number"
-              min={5}
-              value={timeoutSeconds}
-              onChange={(event) =>
-                setTimeoutSeconds(Number(event.target.value))
-              }
-            />
-          </label>
-        </div>
-        <DeviceSelector
-          device={device}
-          onChange={setDevice}
-          disabled={!headless}
-        />
-        <NetworkInterceptConfig
-          enabled={interceptEnabled}
-          setEnabled={setInterceptEnabled}
-          urlPatterns={interceptURLPatterns}
-          setURLPatterns={setInterceptURLPatterns}
-          resourceTypes={interceptResourceTypes}
-          setResourceTypes={setInterceptResourceTypes}
-          captureRequestBody={interceptCaptureRequestBody}
-          setCaptureRequestBody={setInterceptCaptureRequestBody}
-          captureResponseBody={interceptCaptureResponseBody}
-          setCaptureResponseBody={setInterceptCaptureResponseBody}
-          maxBodySize={interceptMaxBodySize}
-          setMaxBodySize={setInterceptMaxBodySize}
-          disabled={!headless}
-          inputPrefix="crawl"
-        />
-        <AuthConfig
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          profiles={profiles}
-        />
-        <PipelineOptions
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          incremental={incremental}
-          setIncremental={setIncremental}
-          inputPrefix="crawl"
-        />
-        <WebhookConfig
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          inputPrefix="crawl"
-        />
-        <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="submit" disabled={loading}>
-            Launch Crawl
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setCrawlUrl("")}
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Max depth
+              <input
+                type="number"
+                min={1}
+                value={maxDepth}
+                onChange={(event) => setMaxDepth(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Max pages
+              <input
+                type="number"
+                min={1}
+                value={maxPages}
+                onChange={(event) => setMaxPages(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Timeout (s)
+              <input
+                type="number"
+                min={5}
+                value={timeoutSeconds}
+                onChange={(event) =>
+                  setTimeoutSeconds(Number(event.target.value))
+                }
+              />
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={headless}
+                onChange={(event) => setHeadless(event.target.checked)}
+              />{" "}
+              Headless
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
+            </label>
+          </div>
+        </JobFormIntro>
+
+        <JobFormAdvancedSection
+          title="Scope and discovery rules"
+          description="Sitemaps and include or exclude patterns that refine crawl coverage."
+        >
+          <label htmlFor="sitemap-url">Sitemap URL (optional)</label>
+          <input
+            id="sitemap-url"
+            value={sitemapURL}
+            onChange={(event) => setSitemapURL(event.target.value)}
+            placeholder="https://example.com/sitemap.xml"
+          />
+          <label
+            style={{
+              marginTop: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
           >
-            Clear
-          </button>
-        </div>
+            <input
+              type="checkbox"
+              checked={sitemapOnly}
+              disabled={!sitemapURL}
+              onChange={(event) => setSitemapOnly(event.target.checked)}
+            />
+            Sitemap only (don't crawl root URL)
+          </label>
+          <label htmlFor="include-patterns" style={{ marginTop: 12 }}>
+            Include Patterns (optional)
+          </label>
+          <input
+            id="include-patterns"
+            value={includePatterns}
+            onChange={(event) => setIncludePatterns(event.target.value)}
+            placeholder="/blog/**, /products/*"
+          />
+          <small>
+            Comma-separated glob patterns. Only matching URLs will be crawled.
+          </small>
+          <label htmlFor="exclude-patterns" style={{ marginTop: 12 }}>
+            Exclude Patterns (optional)
+          </label>
+          <input
+            id="exclude-patterns"
+            value={excludePatterns}
+            onChange={(event) => setExcludePatterns(event.target.value)}
+            placeholder="/admin/*, /api/**"
+          />
+          <small>
+            Comma-separated glob patterns. Matching URLs will be skipped.
+          </small>
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Browser and capture controls"
+          description="Device emulation, network interception, and browser-only diagnostics."
+        >
+          <DeviceSelector
+            device={device}
+            onChange={setDevice}
+            disabled={!headless}
+          />
+          <NetworkInterceptConfig
+            enabled={interceptEnabled}
+            setEnabled={setInterceptEnabled}
+            urlPatterns={interceptURLPatterns}
+            setURLPatterns={setInterceptURLPatterns}
+            resourceTypes={interceptResourceTypes}
+            setResourceTypes={setInterceptResourceTypes}
+            captureRequestBody={interceptCaptureRequestBody}
+            setCaptureRequestBody={setInterceptCaptureRequestBody}
+            captureResponseBody={interceptCaptureResponseBody}
+            setCaptureResponseBody={setInterceptCaptureResponseBody}
+            maxBodySize={interceptMaxBodySize}
+            setMaxBodySize={setInterceptMaxBodySize}
+            disabled={!headless}
+            inputPrefix="crawl"
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Authentication and request shaping"
+          description="Profiles, cookies, login automation, and request overrides."
+        >
+          <AuthConfig
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            profiles={profiles}
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Extraction and delivery"
+          description="Templates, processors, incremental runs, and webhook notifications."
+        >
+          <PipelineOptions
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            incremental={incremental}
+            setIncremental={setIncremental}
+            inputPrefix="crawl"
+          />
+          <WebhookConfig
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            inputPrefix="crawl"
+          />
+        </JobFormAdvancedSection>
       </form>
     );
   },

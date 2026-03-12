@@ -86,6 +86,7 @@ export function PresetContainer({
         <QuickStartPanel
           presets={presets}
           activeJobType={activeTab}
+          onJobTypeChange={setActiveTab}
           onSelectPreset={handleSelectPreset}
           onSavePreset={handleSavePreset}
           currentUrl={getCurrentUrl()}

@@ -54,6 +54,8 @@ export interface JobSubmissionContainerRef {
 }
 
 interface JobSubmissionContainerProps {
+  activeTab: "scrape" | "crawl" | "research";
+  setActiveTab: (tab: "scrape" | "crawl" | "research") => void;
   formState: FormController;
   onSubmitScrape: (request: ScrapeRequest) => void;
   onSubmitCrawl: (request: CrawlRequest) => void;
@@ -67,6 +69,8 @@ export const JobSubmissionContainer = forwardRef<
   JobSubmissionContainerProps
 >(function JobSubmissionContainer(
   {
+    activeTab,
+    setActiveTab,
     formState,
     onSubmitScrape,
     onSubmitCrawl,
@@ -109,39 +113,82 @@ export const JobSubmissionContainer = forwardRef<
   }));
 
   return (
-    <section id="forms" className="grid" data-tour="form-types">
+    <section id="forms" className="job-workflow" data-tour="form-types">
+      <div className="panel job-workflow__header">
+        <div className="job-workflow__header-copy">
+          <div className="job-workflow__eyebrow">New Job Workflow</div>
+          <h2>Focus the active job type</h2>
+          <p>
+            Swap modes or presets without dragging three full forms through the
+            viewport.
+          </p>
+        </div>
+        <div
+          className="job-workflow__tabs"
+          role="tablist"
+          aria-label="Job type"
+        >
+          <button
+            type="button"
+            className={activeTab === "scrape" ? "active" : "secondary"}
+            onClick={() => setActiveTab("scrape")}
+          >
+            Scrape
+          </button>
+          <button
+            type="button"
+            className={activeTab === "crawl" ? "active" : "secondary"}
+            onClick={() => setActiveTab("crawl")}
+          >
+            Crawl
+          </button>
+          <button
+            type="button"
+            className={activeTab === "research" ? "active" : "secondary"}
+            onClick={() => setActiveTab("research")}
+          >
+            Research
+          </button>
+        </div>
+      </div>
       <Suspense
         fallback={<div className="loading-placeholder">Loading forms...</div>}
       >
-        <ScrapeForm
-          ref={scrapeFormRef}
-          form={formState}
-          profiles={profiles}
-          onSubmit={async (req) => {
-            await onSubmitScrape(req);
-          }}
-          loading={loading}
-        />
+        {activeTab === "scrape" ? (
+          <ScrapeForm
+            ref={scrapeFormRef}
+            form={formState}
+            profiles={profiles}
+            onSubmit={async (req) => {
+              await onSubmitScrape(req);
+            }}
+            loading={loading}
+          />
+        ) : null}
 
-        <CrawlForm
-          ref={crawlFormRef}
-          form={formState}
-          profiles={profiles}
-          onSubmit={async (req) => {
-            await onSubmitCrawl(req);
-          }}
-          loading={loading}
-        />
+        {activeTab === "crawl" ? (
+          <CrawlForm
+            ref={crawlFormRef}
+            form={formState}
+            profiles={profiles}
+            onSubmit={async (req) => {
+              await onSubmitCrawl(req);
+            }}
+            loading={loading}
+          />
+        ) : null}
 
-        <ResearchForm
-          ref={researchFormRef}
-          form={formState}
-          profiles={profiles}
-          onSubmit={async (req) => {
-            await onSubmitResearch(req);
-          }}
-          loading={loading}
-        />
+        {activeTab === "research" ? (
+          <ResearchForm
+            ref={researchFormRef}
+            form={formState}
+            profiles={profiles}
+            onSubmit={async (req) => {
+              await onSubmitResearch(req);
+            }}
+            loading={loading}
+          />
+        ) : null}
       </Suspense>
     </section>
   );

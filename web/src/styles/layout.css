@@ -97,6 +97,14 @@
   line-height: 1.5;
 }
 
+.app--new-job .app-shell {
+  padding: 18px 22px;
+}
+
+.app--new-job .app-shell__brand {
+  gap: 6px;
+}
+
 .app-shell__signals {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -200,6 +208,11 @@
 .route-grid--automation,
 .route-grid--settings {
   grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
+  align-items: start;
+}
+
+.route-grid--new-job {
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.78fr);
   align-items: start;
 }
 
@@ -349,6 +362,246 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.job-workflow {
+  display: grid;
+  gap: 16px;
+}
+
+.job-workflow__header {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  padding: 16px 20px;
+}
+
+.job-workflow__header-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.job-workflow__eyebrow,
+.job-workflow-form__eyebrow,
+.job-quickstart__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.job-workflow__header h2,
+.job-quickstart h2 {
+  margin: 0;
+}
+
+.job-workflow__header p,
+.job-quickstart__header p,
+.job-workflow-form__intro p,
+.job-quickstart__empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.job-workflow__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.job-workflow__tabs button {
+  min-width: 104px;
+}
+
+.job-workflow__tabs .active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #1a1200;
+  border-color: transparent;
+}
+
+.job-workflow-form {
+  display: grid;
+  gap: 14px;
+}
+
+.job-workflow-form__primary {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(255, 183, 0, 0.12),
+      transparent 30%
+    ),
+    var(--panel);
+}
+
+.job-workflow-form__intro {
+  display: grid;
+  gap: 6px;
+}
+
+.job-workflow-form__intro h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+}
+
+.job-workflow-form__body {
+  display: grid;
+  gap: 12px;
+}
+
+.job-workflow-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.job-workflow-form__advanced {
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.job-workflow-form__advanced > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 18px 20px;
+}
+
+.job-workflow-form__advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.job-workflow-form__advanced > summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.job-workflow-form__advanced > summary span {
+  font-weight: 600;
+}
+
+.job-workflow-form__advanced > summary small {
+  color: var(--muted);
+}
+
+.job-workflow-form__advanced-body {
+  display: grid;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+
+.job-quickstart {
+  display: grid;
+  gap: 18px;
+}
+
+.job-quickstart__header {
+  display: grid;
+  gap: 12px;
+}
+
+.job-quickstart__types {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.job-quickstart__type {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-alt);
+}
+
+.job-quickstart__type strong {
+  font-size: 1.1rem;
+}
+
+.job-quickstart__type.is-active {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 183, 0, 0.18),
+    rgba(255, 123, 0, 0.12)
+  );
+  border-color: rgba(255, 183, 0, 0.35);
+}
+
+.job-quickstart__group {
+  display: grid;
+  gap: 10px;
+}
+
+.job-quickstart__group-label {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.job-quickstart__preset-list {
+  display: grid;
+  gap: 10px;
+}
+
+.job-quickstart__preset {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-alt);
+  text-align: left;
+}
+
+.job-quickstart__preset.is-recommended {
+  border-color: rgba(255, 183, 0, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 183, 0, 0.14),
+    rgba(255, 123, 0, 0.06)
+  );
+}
+
+.job-quickstart__preset-header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.job-quickstart__preset-header p,
+.job-quickstart__preset-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.job-quickstart__preset-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.job-quickstart__badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 183, 0, 0.18);
+  color: var(--accent);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--stroke);
@@ -368,6 +621,7 @@
 }
 
 @media (max-width: 1100px) {
+  .route-grid--new-job,
   .route-grid--jobs,
   .route-grid--job-detail,
   .route-grid--automation,
@@ -377,6 +631,14 @@
 
   .app-shell__signals {
     min-width: 100%;
+  }
+
+  .job-workflow__header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-workflow__tabs {
+    justify-content: flex-start;
   }
 }
 
@@ -389,5 +651,41 @@
   .app-shell,
   .route-intro {
     padding: 18px;
+  }
+
+  .job-quickstart__types {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-height: 820px) {
+  .app {
+    gap: 16px;
+    padding-top: 18px;
+  }
+
+  .app--new-job .app-shell {
+    padding: 16px 20px;
+  }
+
+  .job-workflow__header {
+    padding: 14px 18px;
+  }
+
+  .job-workflow-form__primary {
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .job-workflow-form__intro h2 {
+    font-size: clamp(1.5rem, 2.7vw, 1.9rem);
+  }
+
+  .job-workflow-form__advanced > summary {
+    padding: 16px 18px;
+  }
+
+  .job-workflow-form__advanced-body {
+    padding: 0 18px 18px;
   }
 }

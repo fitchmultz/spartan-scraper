@@ -27,6 +27,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
+import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { DeviceEmulation } from "../api";
 
 export interface ResearchFormRef {
@@ -245,158 +246,182 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
     };
 
     return (
-      <form className="panel" onSubmit={handleFormSubmit}>
-        <h2>Deep Research</h2>
-        <label htmlFor="research-query">Research query</label>
-        <input
-          id="research-query"
-          value={researchQuery}
-          onChange={(event) => setResearchQuery(event.target.value)}
-          placeholder="pricing model, security posture, roadmap..."
-        />
-        <label htmlFor="research-urls" style={{ marginTop: 12 }}>
-          Source URLs (comma-separated)
-        </label>
-        <textarea
-          id="research-urls"
-          rows={3}
-          value={researchUrls}
-          onChange={(event) => setResearchUrls(event.target.value)}
-          placeholder="https://example.com, https://example.com/docs"
-        />
-        <div className="row" style={{ marginTop: 12 }}>
-          <label>
-            Max depth
-            <input
-              type="number"
-              min={0}
-              value={maxDepth}
-              onChange={(event) => setMaxDepth(Number(event.target.value))}
-            />
+      <form className="job-workflow-form" onSubmit={handleFormSubmit}>
+        <JobFormIntro
+          title="Deep Research"
+          description="Frame the question, point Spartan at a source set, and keep the synthesis path visible right from the first viewport."
+          actions={
+            <>
+              <button type="submit" disabled={loading}>
+                Run Research
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setResearchQuery("");
+                  setResearchUrls("");
+                }}
+              >
+                Clear
+              </button>
+            </>
+          }
+        >
+          <label htmlFor="research-query">Research query</label>
+          <input
+            id="research-query"
+            value={researchQuery}
+            onChange={(event) => setResearchQuery(event.target.value)}
+            placeholder="pricing model, security posture, roadmap..."
+          />
+          <label htmlFor="research-urls" style={{ marginTop: 12 }}>
+            Source URLs (comma-separated)
           </label>
-          <label>
-            Max pages
-            <input
-              type="number"
-              min={1}
-              value={maxPages}
-              onChange={(event) => setMaxPages(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="row" style={{ marginTop: 12 }}>
-          <label>
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(event) => setHeadless(event.target.checked)}
-            />{" "}
-            Headless
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={usePlaywright}
-              disabled={!headless}
-              onChange={(event) => setUsePlaywright(event.target.checked)}
-            />{" "}
-            Playwright
-          </label>
-          <label>
-            Timeout (s)
-            <input
-              type="number"
-              min={5}
-              value={timeoutSeconds}
-              onChange={(event) =>
-                setTimeoutSeconds(Number(event.target.value))
-              }
-            />
-          </label>
-        </div>
-        <DeviceSelector
-          device={device}
-          onChange={setDevice}
-          disabled={!headless}
-        />
-        <NetworkInterceptConfig
-          enabled={interceptEnabled}
-          setEnabled={setInterceptEnabled}
-          urlPatterns={interceptURLPatterns}
-          setURLPatterns={setInterceptURLPatterns}
-          resourceTypes={interceptResourceTypes}
-          setResourceTypes={setInterceptResourceTypes}
-          captureRequestBody={interceptCaptureRequestBody}
-          setCaptureRequestBody={setInterceptCaptureRequestBody}
-          captureResponseBody={interceptCaptureResponseBody}
-          setCaptureResponseBody={setInterceptCaptureResponseBody}
-          maxBodySize={interceptMaxBodySize}
-          setMaxBodySize={setInterceptMaxBodySize}
-          disabled={!headless}
-          inputPrefix="research"
-        />
-        <AuthConfig
-          authProfile={authProfile}
-          setAuthProfile={setAuthProfile}
-          authBasic={authBasic}
-          setAuthBasic={setAuthBasic}
-          headersRaw={headersRaw}
-          setHeadersRaw={setHeadersRaw}
-          cookiesRaw={cookiesRaw}
-          setCookiesRaw={setCookiesRaw}
-          queryRaw={queryRaw}
-          setQueryRaw={setQueryRaw}
-          loginUrl={loginUrl}
-          setLoginUrl={setLoginUrl}
-          loginUserSelector={loginUserSelector}
-          setLoginUserSelector={setLoginUserSelector}
-          loginPassSelector={loginPassSelector}
-          setLoginPassSelector={setLoginPassSelector}
-          loginSubmitSelector={loginSubmitSelector}
-          setLoginSubmitSelector={setLoginSubmitSelector}
-          loginUser={loginUser}
-          setLoginUser={setLoginUser}
-          loginPass={loginPass}
-          setLoginPass={setLoginPass}
-          profiles={profiles}
-        />
-        <PipelineOptions
-          extractTemplate={extractTemplate}
-          setExtractTemplate={setExtractTemplate}
-          extractValidate={extractValidate}
-          setExtractValidate={setExtractValidate}
-          preProcessors={preProcessors}
-          setPreProcessors={setPreProcessors}
-          postProcessors={postProcessors}
-          setPostProcessors={setPostProcessors}
-          transformers={transformers}
-          setTransformers={setTransformers}
-          inputPrefix="research"
-        />
-        <WebhookConfig
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          webhookEvents={webhookEvents}
-          setWebhookEvents={setWebhookEvents}
-          webhookSecret={webhookSecret}
-          setWebhookSecret={setWebhookSecret}
-          inputPrefix="research"
-        />
-        <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="submit" disabled={loading}>
-            Run Research
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              setResearchQuery("");
-              setResearchUrls("");
-            }}
-          >
-            Clear
-          </button>
-        </div>
+          <textarea
+            id="research-urls"
+            rows={3}
+            value={researchUrls}
+            onChange={(event) => setResearchUrls(event.target.value)}
+            placeholder="https://example.com, https://example.com/docs"
+          />
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              Max depth
+              <input
+                type="number"
+                min={0}
+                value={maxDepth}
+                onChange={(event) => setMaxDepth(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Max pages
+              <input
+                type="number"
+                min={1}
+                value={maxPages}
+                onChange={(event) => setMaxPages(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Timeout (s)
+              <input
+                type="number"
+                min={5}
+                value={timeoutSeconds}
+                onChange={(event) =>
+                  setTimeoutSeconds(Number(event.target.value))
+                }
+              />
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 12 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={headless}
+                onChange={(event) => setHeadless(event.target.checked)}
+              />{" "}
+              Headless
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={usePlaywright}
+                disabled={!headless}
+                onChange={(event) => setUsePlaywright(event.target.checked)}
+              />{" "}
+              Playwright
+            </label>
+          </div>
+        </JobFormIntro>
+
+        <JobFormAdvancedSection
+          title="Browser and capture controls"
+          description="Device emulation, network interception, and browser-only diagnostics."
+        >
+          <DeviceSelector
+            device={device}
+            onChange={setDevice}
+            disabled={!headless}
+          />
+          <NetworkInterceptConfig
+            enabled={interceptEnabled}
+            setEnabled={setInterceptEnabled}
+            urlPatterns={interceptURLPatterns}
+            setURLPatterns={setInterceptURLPatterns}
+            resourceTypes={interceptResourceTypes}
+            setResourceTypes={setInterceptResourceTypes}
+            captureRequestBody={interceptCaptureRequestBody}
+            setCaptureRequestBody={setInterceptCaptureRequestBody}
+            captureResponseBody={interceptCaptureResponseBody}
+            setCaptureResponseBody={setInterceptCaptureResponseBody}
+            maxBodySize={interceptMaxBodySize}
+            setMaxBodySize={setInterceptMaxBodySize}
+            disabled={!headless}
+            inputPrefix="research"
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Authentication and request shaping"
+          description="Profiles, cookies, login automation, and request overrides."
+        >
+          <AuthConfig
+            authProfile={authProfile}
+            setAuthProfile={setAuthProfile}
+            authBasic={authBasic}
+            setAuthBasic={setAuthBasic}
+            headersRaw={headersRaw}
+            setHeadersRaw={setHeadersRaw}
+            cookiesRaw={cookiesRaw}
+            setCookiesRaw={setCookiesRaw}
+            queryRaw={queryRaw}
+            setQueryRaw={setQueryRaw}
+            loginUrl={loginUrl}
+            setLoginUrl={setLoginUrl}
+            loginUserSelector={loginUserSelector}
+            setLoginUserSelector={setLoginUserSelector}
+            loginPassSelector={loginPassSelector}
+            setLoginPassSelector={setLoginPassSelector}
+            loginSubmitSelector={loginSubmitSelector}
+            setLoginSubmitSelector={setLoginSubmitSelector}
+            loginUser={loginUser}
+            setLoginUser={setLoginUser}
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            profiles={profiles}
+          />
+        </JobFormAdvancedSection>
+
+        <JobFormAdvancedSection
+          title="Extraction and delivery"
+          description="Templates, processors, and optional webhook notifications."
+        >
+          <PipelineOptions
+            extractTemplate={extractTemplate}
+            setExtractTemplate={setExtractTemplate}
+            extractValidate={extractValidate}
+            setExtractValidate={setExtractValidate}
+            preProcessors={preProcessors}
+            setPreProcessors={setPreProcessors}
+            postProcessors={postProcessors}
+            setPostProcessors={setPostProcessors}
+            transformers={transformers}
+            setTransformers={setTransformers}
+            inputPrefix="research"
+          />
+          <WebhookConfig
+            webhookUrl={webhookUrl}
+            setWebhookUrl={setWebhookUrl}
+            webhookEvents={webhookEvents}
+            setWebhookEvents={setWebhookEvents}
+            webhookSecret={webhookSecret}
+            setWebhookSecret={setWebhookSecret}
+            inputPrefix="research"
+          />
+        </JobFormAdvancedSection>
       </form>
     );
   },
