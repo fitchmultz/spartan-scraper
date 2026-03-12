@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/api"
@@ -37,6 +38,16 @@ func RunHealth(ctx context.Context, cfg config.Config, _ []string) int {
 
 	// 2. Fallback local check
 	fmt.Println("Local health check (server not responding):")
+
+	preflightMessage, err := startupPreflightMessage(cfg, currentCommandName())
+	if err != nil {
+		fmt.Printf("Data directory: ERROR (%v)\n", err)
+		return 1
+	}
+	if preflightMessage != "" {
+		_, _ = fmt.Fprintln(os.Stderr, preflightMessage)
+		return 1
+	}
 
 	st, err := store.Open(cfg.DataDir)
 	if err != nil {

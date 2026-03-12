@@ -39,6 +39,7 @@ Commands:
   crawl-states List crawl states (incremental tracking)
   backup       Create and manage backups
   restore      Restore from a backup archive
+  reset-data   Archive and recreate the local data directory
   schedule     Manage scheduled jobs
   jobs         Manage jobs (list, get, cancel)
   server       Run API server + workers
@@ -71,6 +72,7 @@ Examples:
   spartan backup list
   spartan restore --from spartan-backup-20240115-120000.tar.gz
   spartan restore --from backup.tar.gz --dry-run
+  spartan reset-data
   spartan watch add --url https://example.com --interval 3600
   spartan watch add --url https://example.com --selector "#price" --webhook https://hooks.slack.com/...
   spartan watch list

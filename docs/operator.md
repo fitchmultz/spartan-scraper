@@ -13,6 +13,14 @@
 DATA_DIR=.data spartan server
 ```
 
+If startup blocks on a legacy `.data` directory, run:
+
+```bash
+spartan reset-data
+```
+
+That archives the current data directory to `output/cutover/` and recreates `.data` for a fresh Balanced 1.0 start.
+
 ## Runtime Expectations
 
 - Non-loopback API binds require API-key protection.
@@ -36,6 +44,7 @@ The manifest is the canonical local index for a finished job’s files, spec has
 
 ## Storage Reset
 
-- If startup reports a legacy storage schema, stop the server and archive the old data directory.
-- Start with a fresh data directory for the hard-cutover build.
+- If startup reports a legacy storage schema, stop the server and run `spartan reset-data`.
+- That command archives the full existing data directory to `output/cutover/` by default and recreates `DATA_DIR`.
+- Start the server again after the reset completes.
 - The same rule now applies to `schedules.json`: the retained 1.0 build only accepts `specVersion` plus typed `spec`, not legacy `params`.

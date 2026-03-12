@@ -41,6 +41,7 @@ Stable top-level commands:
 - `spartan retention`
 - `spartan backup`
 - `spartan restore`
+- `spartan reset-data`
 - `spartan server`
 - `spartan health`
 - `spartan tui`
@@ -316,6 +317,9 @@ Backup and restore:
 - `spartan backup create [-o <dir>] [--exclude-jobs]`
 - `spartan backup list [--dir <dir>]`
 - `spartan restore --from <archive.tar.gz> [--dry-run] [--force]`
+- `spartan reset-data [--backup-dir <dir>] [--force]`
+
+`spartan reset-data` is the operator cutover path for pre-Balanced 1.0 `.data` directories. It archives the full existing data directory to `output/cutover/` by default, recreates `DATA_DIR`, and leaves the next `spartan server` start on a fresh store.
 
 ### Service entrypoints
 
@@ -447,7 +451,7 @@ Balanced 1.0 is a hard storage cutover.
 
 - New data directories are initialized automatically.
 - Existing pre-cutover databases are rejected if they do not carry the Balanced 1.0 storage schema marker.
-- The supported path forward is to back up the old data directory and reset to a new one.
+- The supported path forward is to run `spartan reset-data` or point `DATA_DIR` at a different empty directory.
 
 This is deliberate: the project no longer attempts to open legacy layouts under the reduced 1.0 product boundary.
 

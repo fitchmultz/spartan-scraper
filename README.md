@@ -37,6 +37,8 @@ make build
 make web-dev
 ```
 
+If startup reports a legacy `.data` cutover, run `./bin/spartan reset-data` once. That archives the current data directory under `output/cutover/` and recreates `.data` for a fresh Balanced 1.0 boot.
+
 Open `http://localhost:5173`, submit a scrape job for `https://example.com`, and expect:
 
 - the dashboard to show a new job move into `succeeded`
@@ -81,6 +83,12 @@ make build
 ./bin/spartan --help
 ./bin/spartan server
 make web-dev
+```
+
+If the default `.data` directory came from a pre-cutover build, reset it with:
+
+```bash
+./bin/spartan reset-data
 ```
 
 Open `http://localhost:5173`, submit a scrape for `https://example.com`, and confirm the saved result contains `Example Domain`.
@@ -178,6 +186,9 @@ make install-bin
 
 # Run API server + background worker (API binds to localhost by default)
 ./bin/spartan server
+
+# Archive and recreate a legacy/default .data directory for Balanced 1.0
+./bin/spartan reset-data
 
 # Expose API on all interfaces (use with caution)
 # API key auth is auto-enforced when BIND_ADDR is non-localhost.

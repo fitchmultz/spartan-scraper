@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -33,6 +34,16 @@ Notes:
 
 	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	preflightMessage, err := startupPreflightMessage(cfg, currentCommandName())
+	if err != nil {
+		slog.Error("failed to inspect data directory", "error", err)
+		return 1
+	}
+	if preflightMessage != "" {
+		_, _ = fmt.Fprintln(os.Stderr, preflightMessage)
+		return 1
+	}
 
 	st, err := store.Open(cfg.DataDir)
 	if err != nil {

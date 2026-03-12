@@ -75,6 +75,8 @@ func Run(ctx context.Context) int {
 		return manage.RunBackup(ctx, cfg, os.Args[2:])
 	case "restore":
 		return manage.RunRestore(ctx, cfg, os.Args[2:])
+	case "reset-data":
+		return manage.RunResetData(ctx, cfg, os.Args[2:])
 	case "jobs":
 		return manage.RunJobs(ctx, cfg, os.Args[2:])
 	case "chains":

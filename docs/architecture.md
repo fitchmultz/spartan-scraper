@@ -83,7 +83,7 @@ Balanced 1.0 is a hard cutover.
 
 - A fresh data directory is initialized with the current storage schema marker.
 - An existing `jobs.db` without the Balanced 1.0 schema marker is treated as legacy and rejected at startup.
-- The supported migration path is: back up the old data directory, then reset to a fresh Balanced 1.0 data directory.
+- The supported migration path is: run `spartan reset-data` to archive the old directory and recreate a fresh Balanced 1.0 data directory, or point `DATA_DIR` at a different empty location.
 
 This avoids silently opening pre-cutover state under a materially different product boundary.
 
