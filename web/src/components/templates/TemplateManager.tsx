@@ -35,6 +35,13 @@ interface JsonParseResult<T> {
   error?: string;
 }
 
+interface SelectorDraft {
+  id: string;
+  rule: SelectorRule;
+}
+
+const BUILT_IN_TEMPLATE_NAMES = ["article", "default", "product"] as const;
+
 const EMPTY_SELECTOR: SelectorRule = {
   name: "",
   selector: "",
@@ -44,7 +51,26 @@ const EMPTY_SELECTOR: SelectorRule = {
   required: false,
 };
 
-const BUILT_IN_TEMPLATE_NAMES = ["article", "default", "product"];
+function createDraftId() {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `selector-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createSelectorDraft(rule?: SelectorRule): SelectorDraft {
+  return {
+    id: createDraftId(),
+    rule: {
+      ...EMPTY_SELECTOR,
+      ...rule,
+    },
+  };
+}
 
 function getDuplicateName(name: string) {
   return `${name}-copy`;
@@ -88,6 +114,10 @@ function normalizeSelectors(selectors: SelectorRule[]) {
     .filter((selector) => (selector.name?.length ?? 0) > 0);
 }
 
+function ruleKey(rule: SelectorRule) {
+  return `${rule.name ?? "selector"}-${rule.selector ?? ""}-${rule.attr ?? "text"}`;
+}
+
 function TemplateEditorModal({
   mode,
   originalName,
@@ -101,10 +131,12 @@ function TemplateEditorModal({
         ? getDuplicateName(originalName)
         : ""),
   );
-  const [selectors, setSelectors] = useState<SelectorRule[]>(
+  const [selectors, setSelectors] = useState<SelectorDraft[]>(
     initialTemplate?.selectors?.length
-      ? initialTemplate.selectors
-      : [{ ...EMPTY_SELECTOR }],
+      ? initialTemplate.selectors.map((selector) =>
+          createSelectorDraft(selector),
+        )
+      : [createSelectorDraft()],
   );
   const [jsonldText, setJsonldText] = useState(
     formatJSON(initialTemplate?.jsonld),
@@ -117,6 +149,7 @@ function TemplateEditorModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
   const title =
     mode === "edit"
       ? "Edit Template"
@@ -132,13 +165,18 @@ function TemplateEditorModal({
         : "Create Template";
 
   const updateSelectorField = (
-    index: number,
+    selectorId: string,
     key: keyof SelectorRule,
     value: string | boolean | number,
   ) => {
     setSelectors((current) =>
-      current.map((selector, selectorIndex) =>
-        selectorIndex === index ? { ...selector, [key]: value } : selector,
+      current.map((selector) =>
+        selector.id === selectorId
+          ? {
+              ...selector,
+              rule: { ...selector.rule, [key]: value },
+            }
+          : selector,
       ),
     );
   };
@@ -150,7 +188,9 @@ function TemplateEditorModal({
       return;
     }
 
-    const normalizedSelectors = normalizeSelectors(selectors);
+    const normalizedSelectors = normalizeSelectors(
+      selectors.map((selector) => selector.rule),
+    );
     if (normalizedSelectors.length === 0) {
       setError("Add at least one selector rule before saving.");
       return;
@@ -302,7 +342,7 @@ function TemplateEditorModal({
                   onClick={() =>
                     setSelectors((current) => [
                       ...current,
-                      { ...EMPTY_SELECTOR },
+                      createSelectorDraft(),
                     ])
                   }
                 >
@@ -317,25 +357,29 @@ function TemplateEditorModal({
                   <span>Attr</span>
                   <span>Options</span>
                 </div>
-                {selectors.map((selector, index) => (
+                {selectors.map((selector) => (
                   <div
-                    key={`selector-${index}-${selector.name ?? "new"}`}
+                    key={selector.id}
                     className="template-editor__selector-row"
                   >
                     <input
                       type="text"
-                      value={selector.name ?? ""}
+                      value={selector.rule.name ?? ""}
                       onChange={(event) =>
-                        updateSelectorField(index, "name", event.target.value)
+                        updateSelectorField(
+                          selector.id,
+                          "name",
+                          event.target.value,
+                        )
                       }
                       placeholder="title"
                     />
                     <input
                       type="text"
-                      value={selector.selector ?? ""}
+                      value={selector.rule.selector ?? ""}
                       onChange={(event) =>
                         updateSelectorField(
-                          index,
+                          selector.id,
                           "selector",
                           event.target.value,
                         )
@@ -343,9 +387,13 @@ function TemplateEditorModal({
                       placeholder="article h1"
                     />
                     <select
-                      value={selector.attr ?? "text"}
+                      value={selector.rule.attr ?? "text"}
                       onChange={(event) =>
-                        updateSelectorField(index, "attr", event.target.value)
+                        updateSelectorField(
+                          selector.id,
+                          "attr",
+                          event.target.value,
+                        )
                       }
                     >
                       <option value="text">text</option>
@@ -360,10 +408,10 @@ function TemplateEditorModal({
                       <label className="checkbox-label checkbox-label--small">
                         <input
                           type="checkbox"
-                          checked={selector.required ?? false}
+                          checked={selector.rule.required ?? false}
                           onChange={(event) =>
                             updateSelectorField(
-                              index,
+                              selector.id,
                               "required",
                               event.target.checked,
                             )
@@ -374,10 +422,10 @@ function TemplateEditorModal({
                       <label className="checkbox-label checkbox-label--small">
                         <input
                           type="checkbox"
-                          checked={selector.all ?? false}
+                          checked={selector.rule.all ?? false}
                           onChange={(event) =>
                             updateSelectorField(
-                              index,
+                              selector.id,
                               "all",
                               event.target.checked,
                             )
@@ -388,10 +436,10 @@ function TemplateEditorModal({
                       <label className="checkbox-label checkbox-label--small">
                         <input
                           type="checkbox"
-                          checked={selector.trim ?? true}
+                          checked={selector.rule.trim ?? true}
                           onChange={(event) =>
                             updateSelectorField(
-                              index,
+                              selector.id,
                               "trim",
                               event.target.checked,
                             )
@@ -405,7 +453,8 @@ function TemplateEditorModal({
                         onClick={() =>
                           setSelectors((current) =>
                             current.filter(
-                              (_, selectorIndex) => selectorIndex !== index,
+                              (currentSelector) =>
+                                currentSelector.id !== selector.id,
                             ),
                           )
                         }
@@ -534,6 +583,7 @@ export function TemplateManager({
     const loadTemplate = async () => {
       setIsLoadingDetail(true);
       setDetailError(null);
+
       try {
         const response = await getTemplate({
           baseUrl: getApiBaseUrl(),
@@ -542,6 +592,7 @@ export function TemplateManager({
         if (response.error) {
           throw new Error(String(response.error));
         }
+
         if (!cancelled) {
           setSelectedTemplate(response.data ?? null);
         }
@@ -574,8 +625,11 @@ export function TemplateManager({
 
   const stats = useMemo(() => {
     const builtInCount = templateNames.filter((name) =>
-      BUILT_IN_TEMPLATE_NAMES.includes(name),
+      BUILT_IN_TEMPLATE_NAMES.includes(
+        name as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
+      ),
     ).length;
+
     return {
       total: templateNames.length,
       builtIn: builtInCount,
@@ -616,6 +670,7 @@ export function TemplateManager({
 
     setIsDeleting(true);
     setDetailError(null);
+
     try {
       const response = await deleteTemplate({
         baseUrl: getApiBaseUrl(),
@@ -624,6 +679,7 @@ export function TemplateManager({
       if (response.error) {
         throw new Error(String(response.error));
       }
+
       onTemplatesChanged();
       setSelectedName((current) =>
         current === selectedTemplateData.name
@@ -697,34 +753,39 @@ export function TemplateManager({
       <section className="panel" style={{ marginTop: 16 }}>
         {hasTemplates ? (
           <div className="template-manager">
-            <div
+            <ul
               className="template-manager__list"
               aria-label="Extraction template list"
             >
               {templateNames.map((name) => {
                 const isSelected = name === selectedName;
+                const templateKind = BUILT_IN_TEMPLATE_NAMES.includes(
+                  name as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
+                )
+                  ? "Built-in"
+                  : "Custom";
+
                 return (
-                  <button
-                    key={name}
-                    type="button"
-                    className={`template-manager__list-item ${isSelected ? "is-selected" : ""}`}
-                    onClick={() => setSelectedName(name)}
-                  >
-                    <div className="template-manager__list-item-top">
-                      <strong>{name}</strong>
-                      <span
-                        className={`badge ${BUILT_IN_TEMPLATE_NAMES.includes(name) ? "running" : "success"}`}
-                      >
-                        {BUILT_IN_TEMPLATE_NAMES.includes(name)
-                          ? "Built-in"
-                          : "Custom"}
-                      </span>
-                    </div>
-                    <span>Open details and management actions</span>
-                  </button>
+                  <li key={name}>
+                    <button
+                      type="button"
+                      className={`template-manager__list-item ${isSelected ? "is-selected" : ""}`}
+                      onClick={() => setSelectedName(name)}
+                    >
+                      <div className="template-manager__list-item-top">
+                        <strong>{name}</strong>
+                        <span
+                          className={`badge ${templateKind === "Built-in" ? "running" : "success"}`}
+                        >
+                          {templateKind}
+                        </span>
+                      </div>
+                      <span>Open details and management actions</span>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
 
             <div className="template-manager__detail">
               {isLoadingDetail ? (
@@ -809,9 +870,9 @@ export function TemplateManager({
                       </div>
                       {selectedTemplateData.selectors?.length ? (
                         <div className="template-manager__rule-list">
-                          {selectedTemplateData.selectors.map((rule, index) => (
+                          {selectedTemplateData.selectors.map((rule) => (
                             <div
-                              key={`${rule.name ?? "selector"}-${index}`}
+                              key={ruleKey(rule)}
                               className="template-manager__rule"
                             >
                               <div className="template-manager__rule-top">
@@ -870,8 +931,9 @@ export function TemplateManager({
           <div className="template-manager__empty-state">
             <h3>No extraction templates saved yet</h3>
             <p>
-              Start with the Visual Builder for live selector capture or use AI
-              generation to bootstrap a custom template from a real page.
+              Start with the Visual Builder for live selector capture, create a
+              manual template, or use AI generation to bootstrap from a real
+              page.
             </p>
             <div className="template-manager__hero-actions">
               <button

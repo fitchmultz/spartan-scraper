@@ -153,14 +153,22 @@ describe("TemplateManager", () => {
     fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(api.updateTemplate).toHaveBeenCalledWith({
-        baseUrl: "http://127.0.0.1:8741",
-        path: { name: "custom-news" },
-        body: {
-          name: "custom-news-renamed",
-          selectors: [{ name: "title", selector: "main h1", attr: "text" }],
-        },
-      });
+      expect(api.updateTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseUrl: "http://127.0.0.1:8741",
+          path: { name: "custom-news" },
+          body: expect.objectContaining({
+            name: "custom-news-renamed",
+            selectors: [
+              expect.objectContaining({
+                name: "title",
+                selector: "main h1",
+                attr: "text",
+              }),
+            ],
+          }),
+        }),
+      );
     });
     expect(onTemplatesChanged).toHaveBeenCalled();
   });

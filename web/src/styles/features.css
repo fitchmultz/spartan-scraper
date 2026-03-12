@@ -83,6 +83,13 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.template-manager__list li {
+  margin: 0;
 }
 
 .template-manager__list-item {
