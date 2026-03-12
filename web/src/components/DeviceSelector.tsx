@@ -7,7 +7,7 @@
  *
  * @module DeviceSelector
  */
-import { useState, useMemo } from "react";
+import { useMemo, useState, type SVGProps } from "react";
 import type { DeviceEmulation, DeviceCategory, Orientation } from "../api";
 
 type DevicePreset = {
@@ -359,10 +359,66 @@ const CATEGORY_LABELS: Record<DeviceCategory | "all", string> = {
   desktop: "Desktop",
 };
 
-const CATEGORY_ICONS: Record<DeviceCategory, string> = {
-  mobile: "📱",
-  tablet: "📲",
-  desktop: "💻",
+function AllDevicesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <rect x="3.5" y="5" width="6" height="11" rx="1.8" />
+      <rect x="10.75" y="4" width="7" height="12.5" rx="2.2" />
+      <path d="M18.5 7.5h2.25a1.75 1.75 0 0 1 1.75 1.75v7a1.75 1.75 0 0 1-1.75 1.75H7.25" />
+    </svg>
+  );
+}
+
+function MobileIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <rect x="7" y="2.75" width="10" height="18.5" rx="2.5" />
+      <path d="M10.25 6h3.5" />
+      <circle cx="12" cy="17.75" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function TabletIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <rect x="4" y="4.5" width="16" height="15" rx="2.5" />
+      <circle cx="12" cy="16.75" r="0.85" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function DesktopIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <rect x="3" y="4.5" width="18" height="12" rx="2.5" />
+      <path d="M9 20h6M12 16.5V20" />
+    </svg>
+  );
+}
+
+function OrientationIcon({
+  orientation,
+  ...props
+}: SVGProps<SVGSVGElement> & { orientation: Orientation }) {
+  if (orientation === "portrait") {
+    return <MobileIcon {...props} />;
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+      <rect x="2.75" y="7" width="18.5" height="10" rx="2.5" />
+      <path d="M18 10.25v3.5" />
+      <circle cx="6.25" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+const CATEGORY_ICONS: Record<DeviceCategory | "all", typeof AllDevicesIcon> = {
+  all: AllDevicesIcon,
+  mobile: MobileIcon,
+  tablet: TabletIcon,
+  desktop: DesktopIcon,
 };
 
 export function DeviceSelector({
@@ -400,6 +456,11 @@ export function DeviceSelector({
       )?.key || ""
     );
   }, [device, showCustom]);
+
+  const activeCategory = category;
+  const SelectedCategoryIcon = device
+    ? CATEGORY_ICONS[device.category || "desktop"]
+    : DesktopIcon;
 
   const handlePresetSelect = (key: string) => {
     if (key === "") {
@@ -476,28 +537,30 @@ export function DeviceSelector({
 
   return (
     <div
-      className="device-selector"
-      style={{
-        opacity: disabled ? 0.5 : 1,
-        pointerEvents: disabled ? "none" : "auto",
-      }}
+      className={`device-selector ${disabled ? "is-disabled" : ""}`}
+      aria-disabled={disabled}
     >
       <div className="device-selector-header">
         <span className="device-selector-title">Device Emulation</span>
         <div className="device-category-filters">
-          {(["all", "mobile", "tablet", "desktop"] as const).map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`category-btn ${category === cat ? "active" : ""}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat !== "all" && (
-                <span className="category-icon">{CATEGORY_ICONS[cat]}</span>
-              )}
-              {CATEGORY_LABELS[cat]}
-            </button>
-          ))}
+          {(["all", "mobile", "tablet", "desktop"] as const).map((cat) => {
+            const Icon = CATEGORY_ICONS[cat];
+
+            return (
+              <button
+                key={cat}
+                type="button"
+                className={`category-btn ${activeCategory === cat ? "active" : ""}`}
+                onClick={() => setCategory(cat)}
+                aria-pressed={activeCategory === cat}
+              >
+                <span className="category-icon" aria-hidden="true">
+                  <Icon className="device-selector-icon" />
+                </span>
+                {CATEGORY_LABELS[cat]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -514,11 +577,10 @@ export function DeviceSelector({
           <option value="">None (default viewport)</option>
           {filteredPresets.map((preset) => (
             <option key={preset.key} value={preset.key}>
-              {CATEGORY_ICONS[preset.category]} {preset.name} ({preset.width}×
-              {preset.height})
+              {preset.name} ({preset.width}×{preset.height})
             </option>
           ))}
-          <option value="custom">⚙️ Custom Device...</option>
+          <option value="custom">Custom Device...</option>
         </select>
 
         {device && device.category !== "desktop" && !showCustom && (
@@ -528,7 +590,13 @@ export function DeviceSelector({
             onClick={handleOrientationToggle}
             title="Toggle orientation"
           >
-            {device.orientation === "portrait" ? "📱 Portrait" : "📲 Landscape"}
+            <OrientationIcon
+              className="device-selector-icon"
+              orientation={device.orientation ?? "portrait"}
+            />
+            {(device.orientation ?? "portrait") === "portrait"
+              ? "Portrait"
+              : "Landscape"}
           </button>
         )}
       </div>
@@ -652,7 +720,8 @@ export function DeviceSelector({
           </span>
           <span className="device-dpr">DPR: {device.deviceScaleFactor}</span>
           <span className="device-category">
-            {CATEGORY_ICONS[device.category || "desktop"]} {device.category}
+            <SelectedCategoryIcon className="device-selector-icon" />
+            {CATEGORY_LABELS[device.category || "desktop"]}
           </span>
         </div>
       )}

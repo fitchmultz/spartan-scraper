@@ -13,6 +13,7 @@ import { PipelineOptions } from "./PipelineOptions";
 import { buildSharedRequestConfig } from "../lib/form-utils";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
 import { WebhookConfig } from "./WebhookConfig";
+import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import type { DeviceEmulation } from "../api";
 import type {
@@ -509,34 +510,14 @@ export function BatchForm({
       )}
 
       {/* Common options */}
-      <div className="row" style={{ marginTop: 16 }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={headless}
-            onChange={(e) => setHeadless(e.target.checked)}
-          />{" "}
-          Headless
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={usePlaywright}
-            disabled={!headless}
-            onChange={(e) => setUsePlaywright(e.target.checked)}
-          />{" "}
-          Playwright
-        </label>
-        <label>
-          Timeout (s)
-          <input
-            type="number"
-            min={5}
-            value={timeoutSeconds}
-            onChange={(e) => setTimeoutSeconds(Number(e.target.value))}
-          />
-        </label>
-      </div>
+      <BrowserExecutionControls
+        headless={headless}
+        setHeadless={setHeadless}
+        usePlaywright={usePlaywright}
+        setUsePlaywright={setUsePlaywright}
+        timeoutSeconds={timeoutSeconds}
+        setTimeoutSeconds={setTimeoutSeconds}
+      />
 
       <DeviceSelector
         device={device}

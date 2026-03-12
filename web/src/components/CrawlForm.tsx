@@ -24,6 +24,7 @@ import {
 import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
+import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
@@ -321,25 +322,14 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
               />
             </label>
           </div>
-          <div className="row" style={{ marginTop: 12 }}>
-            <label>
-              <input
-                type="checkbox"
-                checked={headless}
-                onChange={(event) => setHeadless(event.target.checked)}
-              />{" "}
-              Headless
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={usePlaywright}
-                disabled={!headless}
-                onChange={(event) => setUsePlaywright(event.target.checked)}
-              />{" "}
-              Playwright
-            </label>
-          </div>
+          <BrowserExecutionControls
+            headless={headless}
+            setHeadless={setHeadless}
+            usePlaywright={usePlaywright}
+            setUsePlaywright={setUsePlaywright}
+            timeoutSeconds={timeoutSeconds}
+            setTimeoutSeconds={setTimeoutSeconds}
+          />
         </JobFormIntro>
 
         <JobFormAdvancedSection
