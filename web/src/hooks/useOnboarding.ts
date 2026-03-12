@@ -14,7 +14,7 @@
  * @module useOnboarding
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
 
 const STORAGE_KEY = "spartan-onboarding";
@@ -93,15 +93,50 @@ function loadStoredState(): Partial<OnboardingState> | null {
 /**
  * Save onboarding state to localStorage.
  */
-function saveState(state: OnboardingState): void {
+function saveState(state: Pick<OnboardingState, keyof OnboardingState>): void {
   if (typeof window === "undefined") return;
   try {
-    // Don't persist isFirstLoad or isTourActive (runtime state only)
+    // Don't persist isFirstLoad (runtime state only)
     const { isFirstLoad: _, ...stateToSave } = state;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
   } catch {
     // localStorage may be unavailable
   }
+}
+
+function buildInitialState(): OnboardingState {
+  const stored = loadStoredState();
+  const isForced = hasShowHelpParam();
+
+  if (stored) {
+    const hasCompletedOnboarding = isForced
+      ? false
+      : (stored.hasCompletedOnboarding ?? false);
+    const hasSkippedOnboarding = isForced
+      ? false
+      : (stored.hasSkippedOnboarding ?? false);
+    const hasStartedOnboarding = isForced
+      ? false
+      : (stored.hasStartedOnboarding ?? false);
+    const isFirstLoad =
+      !hasCompletedOnboarding && !hasSkippedOnboarding && !hasStartedOnboarding;
+
+    return {
+      ...DEFAULT_STATE,
+      ...stored,
+      hasCompletedOnboarding,
+      hasSkippedOnboarding,
+      hasStartedOnboarding,
+      firstVisitAt: stored.firstVisitAt ?? new Date().toISOString(),
+      isFirstLoad,
+    };
+  }
+
+  return {
+    ...DEFAULT_STATE,
+    firstVisitAt: new Date().toISOString(),
+    isFirstLoad: true,
+  };
 }
 
 /**
@@ -147,61 +182,31 @@ function hasShowHelpParam(): boolean {
  * ```
  */
 export function useOnboarding(): UseOnboardingReturn {
-  const [state, setState] = useState<OnboardingState>(DEFAULT_STATE);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [state, setState] = useState<OnboardingState>(() =>
+    buildInitialState(),
+  );
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = loadStoredState();
-    const isForced = hasShowHelpParam();
-
-    if (stored) {
-      const hasCompletedOnboarding = isForced
-        ? false
-        : (stored.hasCompletedOnboarding ?? false);
-      const hasSkippedOnboarding = isForced
-        ? false
-        : (stored.hasSkippedOnboarding ?? false);
-      const hasStartedOnboarding = isForced
-        ? false
-        : (stored.hasStartedOnboarding ?? false);
-      const isFirstLoad =
-        !hasCompletedOnboarding &&
-        !hasSkippedOnboarding &&
-        !hasStartedOnboarding;
-
-      setState({
-        ...DEFAULT_STATE,
-        ...stored,
-        hasCompletedOnboarding,
-        hasSkippedOnboarding,
-        hasStartedOnboarding,
-        firstVisitAt: stored.firstVisitAt ?? new Date().toISOString(),
-        isFirstLoad,
+  const updateState = useCallback(
+    (
+      updater:
+        | OnboardingState
+        | ((previousState: OnboardingState) => OnboardingState),
+    ) => {
+      setState((previousState) => {
+        const nextState =
+          typeof updater === "function" ? updater(previousState) : updater;
+        saveState(nextState);
+        return nextState;
       });
-    } else {
-      // First-time visitor
-      setState({
-        ...DEFAULT_STATE,
-        firstVisitAt: new Date().toISOString(),
-        isFirstLoad: true,
-      });
-    }
-
-    setIsLoaded(true);
-  }, []);
-
-  // Persist to localStorage when state changes
-  useEffect(() => {
-    if (!isLoaded) return;
-    saveState(state);
-  }, [state, isLoaded]);
+    },
+    [],
+  );
 
   /**
    * Start the onboarding tour from the beginning.
    */
   const startOnboarding = useCallback(() => {
-    setState((prev) => ({
+    updateState((prev) => ({
       ...prev,
       hasStartedOnboarding: true,
       currentStep: 0,
@@ -209,13 +214,13 @@ export function useOnboarding(): UseOnboardingReturn {
       hasSkippedOnboarding: false,
       isFirstLoad: false,
     }));
-  }, []);
+  }, [updateState]);
 
   /**
    * Skip the onboarding tour entirely.
    */
   const skipOnboarding = useCallback(() => {
-    setState((prev) => ({
+    updateState((prev) => ({
       ...prev,
       hasStartedOnboarding: false,
       hasSkippedOnboarding: true,
@@ -223,46 +228,52 @@ export function useOnboarding(): UseOnboardingReturn {
       completedSteps: [],
       isFirstLoad: false,
     }));
-  }, []);
+  }, [updateState]);
 
   /**
    * Reset onboarding state to start fresh.
    */
   const resetOnboarding = useCallback(() => {
-    setState({
+    updateState({
       ...DEFAULT_STATE,
       hasStartedOnboarding: false,
       firstVisitAt: new Date().toISOString(),
       isFirstLoad: true,
     });
-  }, []);
+  }, [updateState]);
 
   /**
    * Mark the current step as complete and advance.
    */
-  const completeStep = useCallback((stepIndex: number) => {
-    setState((prev) => ({
-      ...prev,
-      completedSteps: [...new Set([...prev.completedSteps, stepIndex])],
-      currentStep: stepIndex + 1,
-    }));
-  }, []);
+  const completeStep = useCallback(
+    (stepIndex: number) => {
+      updateState((prev) => ({
+        ...prev,
+        completedSteps: [...new Set([...prev.completedSteps, stepIndex])],
+        currentStep: stepIndex + 1,
+      }));
+    },
+    [updateState],
+  );
 
   /**
    * Go to a specific step.
    */
-  const goToStep = useCallback((stepIndex: number) => {
-    setState((prev) => ({
-      ...prev,
-      currentStep: Math.max(0, Math.min(stepIndex, TOTAL_STEPS - 1)),
-    }));
-  }, []);
+  const goToStep = useCallback(
+    (stepIndex: number) => {
+      updateState((prev) => ({
+        ...prev,
+        currentStep: Math.max(0, Math.min(stepIndex, TOTAL_STEPS - 1)),
+      }));
+    },
+    [updateState],
+  );
 
   /**
    * Mark the entire tour as complete.
    */
   const finishOnboarding = useCallback(() => {
-    setState((prev) => ({
+    updateState((prev) => ({
       ...prev,
       hasCompletedOnboarding: true,
       hasStartedOnboarding: false,
@@ -271,20 +282,18 @@ export function useOnboarding(): UseOnboardingReturn {
       currentStep: 0,
       isFirstLoad: false,
     }));
-  }, []);
+  }, [updateState]);
 
   /**
    * Whether to show the welcome modal.
    * Show if: first load, not completed, not skipped, and is loaded
    */
   const shouldShowWelcome = useMemo(() => {
-    if (!isLoaded) return false;
     if (!state.isFirstLoad) return false;
     if (state.hasCompletedOnboarding) return false;
     if (state.hasSkippedOnboarding) return false;
     return true;
   }, [
-    isLoaded,
     state.isFirstLoad,
     state.hasCompletedOnboarding,
     state.hasSkippedOnboarding,

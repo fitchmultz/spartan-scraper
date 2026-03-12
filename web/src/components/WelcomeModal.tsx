@@ -69,19 +69,17 @@ export function WelcomeModal({
 
   const handleStartTour = useCallback(() => {
     setIsAnimating(false);
-    setTimeout(onStartTour, 150);
+    onStartTour();
   }, [onStartTour]);
 
   const handleTryDemo = useCallback(() => {
     setIsAnimating(false);
-    setTimeout(() => {
-      onTryDemo?.();
-    }, 150);
+    onTryDemo?.();
   }, [onTryDemo]);
 
   const handleSkip = useCallback(() => {
     setIsAnimating(false);
-    setTimeout(onSkip, 150);
+    onSkip();
   }, [onSkip]);
 
   if (!isOpen) return null;

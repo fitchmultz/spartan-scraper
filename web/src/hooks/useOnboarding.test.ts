@@ -60,6 +60,36 @@ describe("useOnboarding", () => {
     expect(result.current.shouldShowWelcome).toBe(false);
     expect(result.current.isTourActive).toBe(true);
     expect(result.current.currentStep).toBe(0);
+    expect(localStorageMock.setItem).toHaveBeenCalled();
+    expect(storage.get("spartan-onboarding")).toContain(
+      '"hasStartedOnboarding":true',
+    );
+  });
+
+  it("persists skip immediately and respects it on refresh", async () => {
+    const { result, unmount } = renderHook(() => useOnboarding());
+
+    await waitFor(() => {
+      expect(result.current.shouldShowWelcome).toBe(true);
+    });
+
+    act(() => {
+      result.current.skipOnboarding();
+    });
+
+    expect(result.current.shouldShowWelcome).toBe(false);
+    expect(result.current.hasSkippedOnboarding).toBe(true);
+    expect(localStorageMock.setItem).toHaveBeenCalled();
+    expect(storage.get("spartan-onboarding")).toContain(
+      '"hasSkippedOnboarding":true',
+    );
+
+    unmount();
+
+    const { result: refreshed } = renderHook(() => useOnboarding());
+
+    expect(refreshed.current.shouldShowWelcome).toBe(false);
+    expect(refreshed.current.hasSkippedOnboarding).toBe(true);
   });
 
   it("resetOnboarding returns to welcome state instead of auto-starting", async () => {
@@ -82,6 +112,9 @@ describe("useOnboarding", () => {
     expect(result.current.shouldShowWelcome).toBe(true);
     expect(result.current.isTourActive).toBe(false);
     expect(result.current.currentStep).toBe(0);
+    expect(storage.get("spartan-onboarding")).toContain(
+      '"hasSkippedOnboarding":false',
+    );
   });
 
   it("keeps total steps aligned with onboarding constants", async () => {
