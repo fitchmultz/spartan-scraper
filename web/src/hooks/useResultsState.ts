@@ -10,13 +10,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  ResultItem,
-  EvidenceItem,
-  ClusterItem,
-  CitationItem,
-} from "../types";
 import { loadResults as loadResultsUtil } from "../lib/results";
+import type {
+  CitationItem,
+  ClusterItem,
+  EvidenceItem,
+  ResultItem,
+} from "../types";
 
 const RESULTS_PER_PAGE = 100;
 
@@ -93,9 +93,9 @@ export function useResultsState(): ResultsState & ResultsActions {
     async (jobId: string, format = "jsonl", page = 1) => {
       setSelectedJobId(jobId);
       setResultFormat(format);
+      setCurrentPage(page);
 
       if (page === 1) {
-        setCurrentPage(1);
         setTotalResults(0);
         setResultItems([]);
         setSelectedResultIndex(0);
@@ -125,7 +125,7 @@ export function useResultsState(): ResultsState & ResultsActions {
         }
 
         setResultItems(result.data as ResultItem[]);
-        setRawResult(JSON.stringify(result.data, null, 2));
+        setRawResult(result.raw ?? JSON.stringify(result.data, null, 2));
       } else if (result.raw) {
         setRawResult(result.raw);
         setResultItems([]);

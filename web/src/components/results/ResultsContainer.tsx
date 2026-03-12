@@ -13,9 +13,9 @@
  * @module ResultsContainer
  */
 
-import { Suspense, lazy } from "react";
+import { lazy, Suspense } from "react";
 import type { Job } from "../../api";
-import type { ResultsState, ResultsActions } from "../../hooks/useResultsState";
+import type { ResultsActions, ResultsState } from "../../hooks/useResultsState";
 
 const ResultsExplorer = lazy(() =>
   import("../../components/ResultsExplorer").then((mod) => ({
@@ -46,7 +46,7 @@ export function ResultsContainer({
     resultFormat,
     currentPage,
     totalResults,
-    setCurrentPage,
+    loadResults,
   } = resultsState;
 
   return (
@@ -71,7 +71,12 @@ export function ResultsContainer({
           currentPage={currentPage}
           totalResults={totalResults}
           resultsPerPage={100}
-          onLoadPage={setCurrentPage}
+          onLoadPage={(page) => {
+            if (!selectedJobId) {
+              return;
+            }
+            void loadResults(selectedJobId, resultFormat, page);
+          }}
           availableJobs={jobs}
         />
       </Suspense>

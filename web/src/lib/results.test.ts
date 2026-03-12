@@ -5,10 +5,11 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  loadResults,
-  parseJsonlResults,
   buildResultsUrl,
+  loadResults,
   parseErrorResponse,
+  parseJsonArrayResults,
+  parseJsonlResults,
 } from "./results";
 
 const validNDJSON = JSON.stringify({
@@ -165,6 +166,27 @@ describe("parseJsonlResults", () => {
   });
 });
 
+describe("parseJsonArrayResults", () => {
+  it("should parse a paginated JSON array response", () => {
+    const responseText = `[${validNDJSON}]`;
+
+    const result = parseJsonArrayResults(responseText);
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual([JSON.parse(validNDJSON)]);
+    expect(result.raw).toEqual(
+      JSON.stringify([JSON.parse(validNDJSON)], null, 2),
+    );
+  });
+
+  it("should reject non-array JSON payloads", () => {
+    const result = parseJsonArrayResults(validNDJSON);
+
+    expect(result.error).toBe("Expected paginated results to be a JSON array.");
+    expect(result.data).toBeUndefined();
+  });
+});
+
 describe("buildResultsUrl", () => {
   it("should return relative path when base URL is empty", () => {
     const url = buildResultsUrl("test-id", "jsonl");
@@ -277,8 +299,9 @@ describe("loadResults", () => {
       ok: true,
       headers: new Headers({
         "X-Total-Count": "42",
+        "Content-Type": "application/json",
       }),
-      text: async () => `${validNDJSON}\n`,
+      text: async () => `[${validNDJSON}]`,
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -288,5 +311,8 @@ describe("loadResults", () => {
     expect(result.error).toBeUndefined();
     expect(result.totalCount).toBe(42);
     expect(result.data).toEqual([JSON.parse(validNDJSON)]);
+    expect(result.raw).toEqual(
+      JSON.stringify([JSON.parse(validNDJSON)], null, 2),
+    );
   });
 });

@@ -12,31 +12,30 @@
  * @module ResultsExplorer
  */
 import { useEffect, useMemo, useState } from "react";
-import { TreeView } from "./TreeView";
-import { DiffViewer } from "./DiffViewer";
-import { EvidenceChart } from "./EvidenceChart";
-import { ClusterGraph } from "./ClusterGraph";
-import { ResultsViewer } from "./ResultsViewer";
-import { TransformPreview } from "./TransformPreview";
-import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import {
-  diffResults,
   type CrawlDiffResult,
+  diffResults,
   type ResearchDiffResult,
 } from "../lib/diff-utils";
 import { loadResults } from "../lib/results";
+import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import type {
-  ResultItem,
-  EvidenceItem,
-  ClusterItem,
   CitationItem,
-  Job,
+  ClusterItem,
   CrawlResultItem,
+  EvidenceItem,
+  Job,
+  ResultItem,
 } from "../types";
+import { ClusterGraph } from "./ClusterGraph";
+import { DiffViewer } from "./DiffViewer";
+import { EvidenceChart } from "./EvidenceChart";
+import { ResultsViewer } from "./ResultsViewer";
 import {
   buildDefaultExpandedTreeIds,
   buildExportFilename,
   collectTreeNodeIds,
+  type ExportFormat,
   exportFormats,
   filterResultItems,
   findComparableJobs,
@@ -44,10 +43,11 @@ import {
   getJobByID,
   hasResearchVisualization,
   resultsExplorerViewModes,
-  type ExportFormat,
   type StatusFilter,
   type ViewMode,
 } from "./results-explorer/resultsExplorerUtils";
+import { TransformPreview } from "./TransformPreview";
+import { TreeView } from "./TreeView";
 
 interface ResultsExplorerProps {
   jobId: string | null;
@@ -531,6 +531,9 @@ export function ResultsExplorer({
         {viewMode === "explorer" && (
           <ResultsViewer
             jobId={jobId}
+            jobKind={
+              currentJob?.kind as "scrape" | "crawl" | "research" | undefined
+            }
             resultItems={filteredResultItems}
             selectedResultIndex={selectedResultIndex}
             setSelectedResultIndex={setSelectedResultIndex}

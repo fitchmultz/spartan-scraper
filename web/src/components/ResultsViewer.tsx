@@ -8,19 +8,20 @@
  *
  * @module ResultsViewer
  */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isCrawlResultItem } from "../lib/form-utils";
 import { getSimpleHttpStatusClass } from "../lib/http-status";
-import { NormalizedView } from "./NormalizedView";
 import type {
-  ResultItem,
-  EvidenceItem,
-  ClusterItem,
   CitationItem,
+  ClusterItem,
+  EvidenceItem,
+  ResultItem,
 } from "../types";
+import { NormalizedView } from "./NormalizedView";
 
 interface ResultsViewerProps {
   jobId: string | null;
+  jobKind?: "scrape" | "crawl" | "research";
   resultItems: ResultItem[];
   selectedResultIndex: number;
   setSelectedResultIndex: (index: number) => void;
@@ -39,6 +40,7 @@ interface ResultsViewerProps {
 
 export function ResultsViewer({
   jobId,
+  jobKind,
   resultItems,
   selectedResultIndex,
   setSelectedResultIndex,
@@ -55,6 +57,7 @@ export function ResultsViewer({
   onLoadPage,
 }: ResultsViewerProps) {
   const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
+  const selectedItem = resultItems[selectedResultIndex] ?? null;
 
   useEffect(() => {
     setJumpInputValue(currentPage.toString());
@@ -276,7 +279,7 @@ export function ResultsViewer({
                     </>
                   ) : (
                     <div className="result-item-non-crawl">
-                      Result {index + 1} (research/aggregated)
+                      Result {index + 1} ({jobKind ?? "unknown"})
                     </div>
                   )}
                 </button>
@@ -286,10 +289,7 @@ export function ResultsViewer({
           {resultItems.length > 0 ? (
             <details style={{ marginTop: 12 }}>
               <summary>Normalized Data (Selected Item)</summary>
-              <NormalizedView
-                raw={rawResult ?? ""}
-                index={selectedResultIndex}
-              />
+              <NormalizedView item={selectedItem} />
             </details>
           ) : null}
           <details style={{ marginTop: 8 }}>

@@ -30,6 +30,35 @@ export interface JsonlParseResult {
 }
 
 /**
+ * Parse JSON array formatted results.
+ *
+ * Used by paginated jsonl responses, which return a structured JSON array plus
+ * pagination headers instead of newline-delimited raw file contents.
+ */
+export function parseJsonArrayResults(text: string): JsonlParseResult {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return {
+        error: "Expected paginated results to be a JSON array.",
+        raw: text,
+      };
+    }
+
+    return {
+      data: parsed,
+      raw: JSON.stringify(parsed, null, 2),
+    };
+  } catch {
+    return {
+      error: "Failed to parse paginated results response.",
+      raw: text,
+    };
+  }
+}
+
+/**
  * Build the results URL for a given job ID and format.
  *
  * Includes pagination parameters for jsonl format (limit, offset) but not for other formats.
@@ -175,7 +204,10 @@ export async function loadResults(
 
     if (format === "jsonl") {
       const text = await response.text();
-      const parsed = parseJsonlResults(text);
+      const contentType = response.headers.get("Content-Type") ?? "";
+      const parsed = contentType.includes("application/json")
+        ? parseJsonArrayResults(text)
+        : parseJsonlResults(text);
       const totalCountHeader = response.headers.get("X-Total-Count");
       if (totalCountHeader) {
         const totalCount = Number.parseInt(totalCountHeader, 10);
