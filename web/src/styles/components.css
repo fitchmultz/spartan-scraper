@@ -28,6 +28,25 @@ button:disabled {
   cursor: not-allowed;
 }
 
+a.route-sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  color: var(--text);
+  text-decoration: none;
+  background: transparent;
+  font-weight: 600;
+}
+
+a.route-sidebar-link:hover {
+  border-color: rgba(255, 183, 0, 0.45);
+  background: rgba(255, 183, 0, 0.1);
+}
+
 /* Focus states for accessibility */
 button:focus-visible,
 input:focus-visible,
@@ -144,6 +163,37 @@ textarea:focus-visible {
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
+}
+
+.signal-pill {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: rgba(12, 12, 16, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.signal-pill span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.signal-pill strong {
+  font-size: 1rem;
+}
+
+[data-theme="light"] .signal-pill {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .signal-pill {
+    background: rgba(255, 255, 255, 0.72);
+  }
 }
 
 /* Result Navigation Components */
