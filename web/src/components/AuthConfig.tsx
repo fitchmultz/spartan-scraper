@@ -8,6 +8,8 @@
  * @module AuthConfig
  */
 
+import type { CSSProperties } from "react";
+
 interface OAuth2Config {
   flowType: "authorization_code" | "client_credentials" | "device_code";
   clientId: string;
@@ -101,6 +103,10 @@ const OAUTH_PROVIDER_PRESETS: Record<
     requiresPkce: true,
   },
 };
+
+const maskedSecretStyle = {
+  WebkitTextSecurity: "disc",
+} as CSSProperties;
 
 export function AuthConfig({
   authProfile,
@@ -214,6 +220,7 @@ export function AuthConfig({
       </label>
       <input
         id="auth-basic"
+        autoComplete="off"
         value={authBasic}
         onChange={(event) => setAuthBasic(event.target.value)}
       />
@@ -324,7 +331,8 @@ export function AuthConfig({
                     </label>
                     <input
                       id="oauth-client-secret"
-                      type="password"
+                      type="text"
+                      autoComplete="off"
                       value={oauthConfig.clientSecret || ""}
                       onChange={(event) =>
                         setOauthConfig?.({
@@ -332,6 +340,8 @@ export function AuthConfig({
                           clientSecret: event.target.value || undefined,
                         })
                       }
+                      spellCheck={false}
+                      style={maskedSecretStyle}
                     />
                   </>
                 )}
@@ -511,6 +521,8 @@ export function AuthConfig({
             <label>
               User Selector
               <input
+                autoComplete="off"
+                name="login-user"
                 value={loginUserSelector}
                 onChange={(event) => setLoginUserSelector(event.target.value)}
                 placeholder="#email"
@@ -519,6 +531,8 @@ export function AuthConfig({
             <label>
               Pass Selector
               <input
+                autoComplete="off"
+                name="login-pass-selector"
                 value={loginPassSelector}
                 onChange={(event) => setLoginPassSelector(event.target.value)}
                 placeholder="#password"
@@ -540,6 +554,8 @@ export function AuthConfig({
               Username
               <input
                 type="text"
+                autoComplete="username"
+                name="login-username"
                 value={loginUser}
                 onChange={(event) => setLoginUser(event.target.value)}
                 placeholder="you@example.com"
@@ -549,6 +565,8 @@ export function AuthConfig({
               Password
               <input
                 type="password"
+                autoComplete="current-password"
+                name="login-password"
                 value={loginPass}
                 onChange={(event) => setLoginPass(event.target.value)}
                 placeholder="•••••••"

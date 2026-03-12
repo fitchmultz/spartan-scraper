@@ -15,6 +15,12 @@
 
 import type { WatchFormProps } from "../../types/watch";
 import { formatSecondsAsDuration } from "../../lib/formatting";
+import type { CSSProperties } from "react";
+
+const maskedSecretStyle = {
+  width: "100%",
+  WebkitTextSecurity: "disc",
+} as CSSProperties;
 
 /**
  * Form component for creating or editing a watch
@@ -412,11 +418,13 @@ export function WatchForm({
                 </label>
                 <input
                   id="watch-webhook-secret"
-                  type="password"
+                  type="text"
                   value={formData.webhookSecret}
                   onChange={(e) => onChange({ webhookSecret: e.target.value })}
                   placeholder="secret-for-hmac-signature"
-                  style={{ width: "100%" }}
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={maskedSecretStyle}
                 />
               </div>
             </div>

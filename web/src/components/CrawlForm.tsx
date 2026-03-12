@@ -7,7 +7,13 @@
  *
  * @module CrawlForm
  */
-import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import {
+  useState,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  type FormEvent,
+} from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
@@ -251,8 +257,13 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       getConfig,
     }));
 
+    const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void handleSubmit();
+    };
+
     return (
-      <div className="panel">
+      <form className="panel" onSubmit={handleFormSubmit}>
         <h2>Crawl a Site</h2>
         <label htmlFor="crawl-url">Root URL</label>
         <input
@@ -431,7 +442,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           inputPrefix="crawl"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="button" disabled={loading} onClick={handleSubmit}>
+          <button type="submit" disabled={loading}>
             Launch Crawl
           </button>
           <button
@@ -442,7 +453,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
             Clear
           </button>
         </div>
-      </div>
+      </form>
     );
   },
 );

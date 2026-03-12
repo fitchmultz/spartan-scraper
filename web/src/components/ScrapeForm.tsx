@@ -7,7 +7,13 @@
  *
  * @module ScrapeForm
  */
-import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import {
+  useState,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  type FormEvent,
+} from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import { AIExtractSection } from "./AIExtractSection";
@@ -247,8 +253,13 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       getConfig,
     }));
 
+    const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void handleSubmit();
+    };
+
     return (
-      <div className="panel">
+      <form className="panel" onSubmit={handleFormSubmit}>
         <h2>Scrape a Page</h2>
         <label htmlFor="scrape-url">Target URL</label>
         <input
@@ -368,7 +379,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           inputPrefix="scrape"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="button" disabled={loading} onClick={handleSubmit}>
+          <button type="submit" disabled={loading}>
             Deploy Scrape
           </button>
           <button
@@ -379,7 +390,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
             Clear
           </button>
         </div>
-      </div>
+      </form>
     );
   },
 );

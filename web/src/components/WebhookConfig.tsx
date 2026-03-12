@@ -7,6 +7,8 @@
  * @module WebhookConfig
  */
 
+import type { CSSProperties } from "react";
+
 interface WebhookConfigProps {
   webhookUrl: string;
   setWebhookUrl: (value: string) => void;
@@ -24,6 +26,10 @@ const AVAILABLE_EVENTS = [
   { value: "started", label: "Started" },
   { value: "all", label: "All Events" },
 ];
+
+const maskedSecretStyle = {
+  WebkitTextSecurity: "disc",
+} as CSSProperties;
 
 export function WebhookConfig({
   webhookUrl,
@@ -97,10 +103,14 @@ export function WebhookConfig({
       </label>
       <input
         id={`${inputPrefix}-secret`}
-        type="password"
+        type="text"
+        autoComplete="off"
+        name={`${inputPrefix}-secret`}
         value={webhookSecret}
         onChange={(e) => setWebhookSecret(e.target.value)}
         placeholder="Optional secret for signature verification"
+        spellCheck={false}
+        style={maskedSecretStyle}
       />
     </div>
   );

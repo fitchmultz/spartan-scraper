@@ -142,6 +142,9 @@ func TestMetricsCollector_RecordRequest(t *testing.T) {
 		if mc.successCount != 1 {
 			t.Errorf("expected successCount 1, got %d", mc.successCount)
 		}
+		if got := time.Duration(atomic.LoadInt64(&mc.totalResponseTime)); got != 100*time.Millisecond {
+			t.Errorf("expected totalResponseTime 100ms, got %v", got)
+		}
 	})
 
 	t.Run("records failure metric", func(t *testing.T) {
@@ -152,6 +155,9 @@ func TestMetricsCollector_RecordRequest(t *testing.T) {
 		}
 		if mc.failureCount != 1 {
 			t.Errorf("expected failureCount 1, got %d", mc.failureCount)
+		}
+		if got := time.Duration(atomic.LoadInt64(&mc.totalResponseTime)); got != 150*time.Millisecond {
+			t.Errorf("expected totalResponseTime 150ms, got %v", got)
 		}
 	})
 
@@ -215,6 +221,12 @@ func TestMetricsCollector_RecordJobDuration(t *testing.T) {
 	if mc.jobDurations.Size() != 2 {
 		t.Errorf("expected 2 durations recorded, got %d", mc.jobDurations.Size())
 	}
+	if got := atomic.LoadUint64(&mc.totalJobs); got != 2 {
+		t.Errorf("expected totalJobs 2, got %d", got)
+	}
+	if got := time.Duration(atomic.LoadInt64(&mc.totalJobDuration)); got != 15*time.Second {
+		t.Errorf("expected totalJobDuration 15s, got %v", got)
+	}
 }
 
 func TestMetricsCollector_GetSnapshot(t *testing.T) {
@@ -242,6 +254,10 @@ func TestMetricsCollector_GetSnapshot(t *testing.T) {
 		}
 		if snapshot.SuccessRate != 66.66666666666667 {
 			t.Errorf("expected SuccessRate ~66.67, got %f", snapshot.SuccessRate)
+		}
+		expectedAvg := 116.66666666666667
+		if snapshot.AvgResponseTime != expectedAvg {
+			t.Errorf("expected AvgResponseTime %f, got %f", expectedAvg, snapshot.AvgResponseTime)
 		}
 	})
 
@@ -328,6 +344,9 @@ func TestMetricsCollector_Reset(t *testing.T) {
 		if mc.successCount != 0 {
 			t.Errorf("expected successCount 0, got %d", mc.successCount)
 		}
+		if got := atomic.LoadInt64(&mc.totalResponseTime); got != 0 {
+			t.Errorf("expected totalResponseTime 0, got %d", got)
+		}
 	})
 
 	t.Run("clears host limiters", func(t *testing.T) {
@@ -342,7 +361,38 @@ func TestMetricsCollector_Reset(t *testing.T) {
 		if mc.jobDurations.Size() != 0 {
 			t.Errorf("expected 0 job durations, got %d", mc.jobDurations.Size())
 		}
+		if got := atomic.LoadUint64(&mc.totalJobs); got != 0 {
+			t.Errorf("expected totalJobs 0, got %d", got)
+		}
+		if got := atomic.LoadInt64(&mc.totalJobDuration); got != 0 {
+			t.Errorf("expected totalJobDuration 0, got %d", got)
+		}
 	})
+}
+
+func TestMetricsCollector_GetSnapshot_UsesLifetimeAveragesOutsideRetentionWindow(t *testing.T) {
+	mc := NewMetricsCollector()
+	mc.retention = time.Millisecond
+
+	mc.RecordRequest(161*time.Millisecond, true, "http", "https://example.com")
+	mc.RecordJobDuration(2 * time.Second)
+
+	time.Sleep(5 * time.Millisecond)
+
+	snapshot := mc.GetSnapshot()
+
+	if snapshot.TotalRequests != 1 {
+		t.Fatalf("expected TotalRequests 1, got %d", snapshot.TotalRequests)
+	}
+	if snapshot.AvgResponseTime != 161 {
+		t.Fatalf("expected AvgResponseTime 161, got %f", snapshot.AvgResponseTime)
+	}
+	if snapshot.SuccessRate != 100 {
+		t.Fatalf("expected SuccessRate 100, got %f", snapshot.SuccessRate)
+	}
+	if snapshot.AvgJobDuration != 2000 {
+		t.Fatalf("expected AvgJobDuration 2000, got %f", snapshot.AvgJobDuration)
+	}
 }
 
 func TestMetricsCollector_RequestMetric_URLSanitization(t *testing.T) {

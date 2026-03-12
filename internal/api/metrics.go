@@ -170,10 +170,13 @@ type MetricsCollector struct {
 	fetcherUsage FetcherUsageBreakdown
 
 	// Current state
-	activeRequests int64
-	totalRequests  uint64
-	successCount   uint64
-	failureCount   uint64
+	activeRequests    int64
+	totalRequests     uint64
+	successCount      uint64
+	failureCount      uint64
+	totalResponseTime int64
+	totalJobs         uint64
+	totalJobDuration  int64
 
 	// Configuration
 	retention time.Duration
@@ -236,6 +239,7 @@ func (m *MetricsCollector) RecordRequest(duration time.Duration, success bool, f
 	// Update counters
 	m.finishRequest()
 	atomic.AddUint64(&m.totalRequests, 1)
+	atomic.AddInt64(&m.totalResponseTime, duration.Nanoseconds())
 	if success {
 		atomic.AddUint64(&m.successCount, 1)
 	} else {
@@ -291,6 +295,8 @@ func (m *MetricsCollector) finishRequest() {
 // RecordJobDuration records a job duration measurement
 func (m *MetricsCollector) RecordJobDuration(duration time.Duration) {
 	m.jobDurations.Push(duration)
+	atomic.AddUint64(&m.totalJobs, 1)
+	atomic.AddInt64(&m.totalJobDuration, duration.Nanoseconds())
 }
 
 // GetSnapshot returns a point-in-time snapshot of all metrics
@@ -322,45 +328,41 @@ func (m *MetricsCollector) GetSnapshot() MetricsSnapshot {
 		}
 	}
 
-	// Calculate success rate
-	total := len(recentRequests)
-	if total > 0 {
-		var successes int
-		for _, req := range recentRequests {
-			if req.Success {
-				successes++
-			}
-		}
-		snapshot.SuccessRate = float64(successes) * 100.0 / float64(total)
+	totalRequests := atomic.LoadUint64(&m.totalRequests)
+	successCount := atomic.LoadUint64(&m.successCount)
+
+	// Calculate success rate across the same lifetime dataset as total requests
+	if totalRequests > 0 {
+		snapshot.SuccessRate = float64(successCount) * 100.0 / float64(totalRequests)
 	} else {
 		snapshot.SuccessRate = 100.0 // Default to 100% if no data
 	}
 
-	// Calculate average response time
-	if total > 0 {
-		var totalDuration time.Duration
-		for _, req := range recentRequests {
-			totalDuration += req.Duration
-		}
-		snapshot.AvgResponseTime = float64(totalDuration.Milliseconds()) / float64(total)
+	// Calculate average response time across the same lifetime dataset as total requests
+	if totalRequests > 0 {
+		totalResponseTime := time.Duration(atomic.LoadInt64(&m.totalResponseTime))
+		snapshot.AvgResponseTime =
+			float64(totalResponseTime.Microseconds()) / 1000.0 / float64(totalRequests)
 	}
 
 	// Calculate job metrics
 	durations := m.jobDurations.GetAll()
-	if len(durations) > 0 {
-		var totalDuration time.Duration
-		for _, d := range durations {
-			totalDuration += d
-		}
-		snapshot.AvgJobDuration = float64(totalDuration.Milliseconds()) / float64(len(durations))
+	totalJobs := atomic.LoadUint64(&m.totalJobs)
+	if totalJobs > 0 {
+		totalJobDuration := time.Duration(atomic.LoadInt64(&m.totalJobDuration))
+		snapshot.AvgJobDuration =
+			float64(totalJobDuration.Microseconds()) / 1000.0 / float64(totalJobs)
+	}
 
-		// Calculate throughput (jobs per minute)
-		if len(durations) > 1 {
-			// Estimate based on average duration and active jobs
-			avgDuration := totalDuration / time.Duration(len(durations))
-			if avgDuration > 0 {
-				snapshot.JobThroughput = float64(time.Minute) / float64(avgDuration)
-			}
+	// Throughput remains a recent signal derived from buffered durations.
+	if len(durations) > 1 {
+		var recentJobDuration time.Duration
+		for _, d := range durations {
+			recentJobDuration += d
+		}
+		avgDuration := recentJobDuration / time.Duration(len(durations))
+		if avgDuration > 0 {
+			snapshot.JobThroughput = float64(time.Minute) / float64(avgDuration)
 		}
 	}
 
@@ -446,6 +448,9 @@ func (m *MetricsCollector) Reset() {
 	atomic.StoreUint64(&m.totalRequests, 0)
 	atomic.StoreUint64(&m.successCount, 0)
 	atomic.StoreUint64(&m.failureCount, 0)
+	atomic.StoreInt64(&m.totalResponseTime, 0)
+	atomic.StoreUint64(&m.totalJobs, 0)
+	atomic.StoreInt64(&m.totalJobDuration, 0)
 	atomic.StoreUint64(&m.fetcherUsage.HTTP, 0)
 	atomic.StoreUint64(&m.fetcherUsage.Chromedp, 0)
 	atomic.StoreUint64(&m.fetcherUsage.Playwright, 0)

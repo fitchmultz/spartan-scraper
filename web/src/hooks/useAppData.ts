@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   getV1Jobs,
   getHealthz,
+  getMetrics,
   listTemplates,
   listCrawlStates,
   getV1AuthProfiles,
@@ -166,6 +167,21 @@ export function useAppData(): AppDataState & AppDataActions {
     }
   }, []);
 
+  const refreshMetrics = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await getMetrics({
+        baseUrl: getApiBaseUrl(),
+      });
+      if (apiError) {
+        console.error("Failed to fetch metrics:", apiError);
+        return;
+      }
+      setMetrics(data ?? null);
+    } catch (err) {
+      console.error("Failed to fetch metrics:", err);
+    }
+  }, []);
+
   const refreshProfiles = useCallback(async () => {
     try {
       const { data, error: apiError } = await getV1AuthProfiles({
@@ -306,6 +322,7 @@ export function useAppData(): AppDataState & AppDataActions {
   useEffect(() => {
     void refreshJobs();
     void refreshManagerStatus();
+    void refreshMetrics();
     void refreshProfiles();
     void refreshSchedules();
     void refreshTemplates();
@@ -313,6 +330,7 @@ export function useAppData(): AppDataState & AppDataActions {
   }, [
     refreshJobs,
     refreshManagerStatus,
+    refreshMetrics,
     refreshProfiles,
     refreshSchedules,
     refreshTemplates,
@@ -326,10 +344,11 @@ export function useAppData(): AppDataState & AppDataActions {
     const handle = window.setInterval(() => {
       void refreshJobs();
       void refreshManagerStatus();
+      void refreshMetrics();
     }, POLL_INTERVAL);
 
     return () => window.clearInterval(handle);
-  }, [usePolling, refreshJobs, refreshManagerStatus]);
+  }, [usePolling, refreshJobs, refreshManagerStatus, refreshMetrics]);
 
   return {
     jobs,

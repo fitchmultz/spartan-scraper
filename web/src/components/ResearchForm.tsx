@@ -8,7 +8,13 @@
  *
  * @module ResearchForm
  */
-import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import {
+  useState,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+  type FormEvent,
+} from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
@@ -233,8 +239,13 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       getConfig,
     }));
 
+    const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void handleSubmit();
+    };
+
     return (
-      <div className="panel">
+      <form className="panel" onSubmit={handleFormSubmit}>
         <h2>Deep Research</h2>
         <label htmlFor="research-query">Research query</label>
         <input
@@ -372,7 +383,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           inputPrefix="research"
         />
         <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-          <button type="button" disabled={loading} onClick={handleSubmit}>
+          <button type="submit" disabled={loading}>
             Run Research
           </button>
           <button
@@ -386,7 +397,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             Clear
           </button>
         </div>
-      </div>
+      </form>
     );
   },
 );

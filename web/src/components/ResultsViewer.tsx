@@ -193,7 +193,7 @@ export function ResultsViewer({
               </button>
 
               <span className="pagination-info">
-                Page {currentPage} of {maxPage}({totalResults} total results)
+                Page {currentPage} of {maxPage} ({totalResults} total results)
               </span>
 
               <button
