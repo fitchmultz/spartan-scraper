@@ -18,6 +18,7 @@ import { formatDateTime } from "../lib/formatting";
 interface BatchListProps {
   batches: BatchEntry[];
   jobs?: Map<string, Job[]>; // batch ID -> jobs
+  highlightedBatchId?: string | null;
   onViewStatus: (batchId: string) => void;
   onCancel: (batchId: string) => void;
   onRefresh: () => void;
@@ -43,6 +44,7 @@ export type BatchEntry = {
 export function BatchList({
   batches,
   jobs,
+  highlightedBatchId,
   onViewStatus,
   onCancel,
   onRefresh,
@@ -117,16 +119,22 @@ export function BatchList({
           const progress = calculateBatchProgress(batch.stats, batch.jobCount);
           const isExpanded = expandedBatch === batch.id;
           const batchJobs = jobs?.get(batch.id) || [];
+          const isHighlighted = batch.id === highlightedBatchId;
 
           return (
             <div
               key={batch.id}
               className="batch-item"
               style={{
-                border: "1px solid var(--border)",
+                border: isHighlighted
+                  ? "1px solid var(--accent)"
+                  : "1px solid var(--border)",
                 borderRadius: 8,
                 padding: 16,
                 background: "var(--panel-bg)",
+                boxShadow: isHighlighted
+                  ? "0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 20px 40px rgba(0, 0, 0, 0.14)"
+                  : undefined,
               }}
             >
               {/* Header */}
@@ -160,6 +168,9 @@ export function BatchList({
                   >
                     {batch.status}
                   </span>
+                  {isHighlighted ? (
+                    <span className="badge running">Just submitted</span>
+                  ) : null}
                   <span style={{ fontWeight: 600 }}>
                     {batch.id.slice(0, 8)}...
                   </span>

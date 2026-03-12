@@ -7,7 +7,14 @@
  *
  * @module BatchForm
  */
-import { useMemo, useState, useCallback, useRef, type FormEvent } from "react";
+import {
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type FormEvent,
+} from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import { buildSharedRequestConfig } from "../lib/form-utils";
@@ -22,6 +29,11 @@ import type {
   BatchResearchRequest,
   BatchJobRequest,
 } from "../api";
+import {
+  MAX_BATCH_SIZE,
+  parseBatchUrls,
+  summarizeBatchUrls,
+} from "../lib/batch-urls";
 
 interface BatchFormProps {
   // Job type selector
@@ -34,6 +46,8 @@ interface BatchFormProps {
   // Batch-specific
   urlsInput: string;
   setUrlsInput: (value: string) => void;
+  submissionNotice: BatchSubmissionNotice | null;
+  onViewSubmittedBatch: () => void;
 
   // Crawl-specific
   maxDepth: number;
@@ -52,7 +66,24 @@ interface BatchFormProps {
   loading: boolean;
 }
 
-const MAX_BATCH_SIZE = 100;
+export interface BatchSubmissionNotice {
+  batchId: string;
+  kind: "scrape" | "crawl" | "research";
+  submittedUrls: string[];
+}
+
+function formatSubmittedUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const suffix = `${parsed.pathname}${parsed.search}${parsed.hash}`.replace(
+      /\/$/,
+      "",
+    );
+    return `${parsed.host}${suffix}` || parsed.host;
+  } catch {
+    return url;
+  }
+}
 
 export function BatchForm({
   activeTab,
@@ -61,6 +92,8 @@ export function BatchForm({
   profiles,
   urlsInput,
   setUrlsInput,
+  submissionNotice,
+  onViewSubmittedBatch,
   maxDepth,
   setMaxDepth,
   maxPages,
@@ -125,15 +158,23 @@ export function BatchForm({
   const [fileError, setFileError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const submissionNoticeRef = useRef<HTMLOutputElement>(null);
 
   // Parse URLs from input (one per line or comma-separated)
-  const parsedUrls = useMemo(() => {
-    if (!urlsInput.trim()) return [];
-    return urlsInput
-      .split(/[\n,]/)
-      .map((u) => u.trim())
-      .filter(Boolean);
-  }, [urlsInput]);
+  const parsedUrls = useMemo(() => parseBatchUrls(urlsInput), [urlsInput]);
+  const submissionSummary = useMemo(
+    () =>
+      submissionNotice
+        ? summarizeBatchUrls(submissionNotice.submittedUrls)
+        : null,
+    [submissionNotice],
+  );
+
+  useEffect(() => {
+    if (submissionNotice) {
+      submissionNoticeRef.current?.focus();
+    }
+  }, [submissionNotice]);
 
   // Validate URL count
   const isValidBatchSize = parsedUrls.length <= MAX_BATCH_SIZE;
@@ -363,6 +404,48 @@ export function BatchForm({
   return (
     <form className="panel" onSubmit={handleFormSubmit}>
       <h2>Batch Jobs</h2>
+
+      {submissionNotice && submissionSummary ? (
+        <output
+          ref={submissionNoticeRef}
+          className="batch-form__confirmation"
+          aria-live="polite"
+          tabIndex={-1}
+        >
+          <div className="batch-form__confirmation-copy">
+            <div className="batch-form__confirmation-eyebrow">
+              Batch submitted
+            </div>
+            <h3>
+              Queued {submissionNotice.submittedUrls.length} URL
+              {submissionNotice.submittedUrls.length === 1 ? "" : "s"} for{" "}
+              {submissionNotice.kind}
+            </h3>
+            <p>
+              Batch <code>{submissionNotice.batchId.slice(0, 8)}...</code> is
+              now visible in Batch Jobs below. Use the list to inspect progress
+              and results as each URL completes.
+            </p>
+            <div className="batch-form__confirmation-preview">
+              {submissionSummary.visible.map((url) => (
+                <span key={url} className="signal-pill" title={url}>
+                  {formatSubmittedUrl(url)}
+                </span>
+              ))}
+              {submissionSummary.remaining > 0 ? (
+                <span className="signal-pill">
+                  +{submissionSummary.remaining} more
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="batch-form__confirmation-actions">
+            <button type="button" onClick={onViewSubmittedBatch}>
+              View Batch Progress
+            </button>
+          </div>
+        </output>
+      ) : null}
 
       {/* Tab selector */}
       <div

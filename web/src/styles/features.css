@@ -15,6 +15,86 @@
    Template Management
    ============================================================================ */
 
+.batch-form__confirmation {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin: 0 0 18px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--stroke));
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(255, 183, 0, 0.16),
+      transparent 42%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+}
+
+.batch-form__confirmation:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.batch-form__confirmation-copy {
+  display: grid;
+  gap: 10px;
+  min-width: min(100%, 320px);
+}
+
+.batch-form__confirmation-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.batch-form__confirmation-copy h3 {
+  margin: 0;
+}
+
+.batch-form__confirmation-copy p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 66ch;
+}
+
+.batch-form__confirmation-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-form__confirmation-actions {
+  display: flex;
+  align-items: center;
+}
+
+[data-theme="light"] .batch-form__confirmation {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(229, 160, 0, 0.14),
+      transparent 42%
+    ),
+    linear-gradient(180deg, rgba(26, 26, 31, 0.02), rgba(26, 26, 31, 0));
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .batch-form__confirmation {
+    background:
+      radial-gradient(
+        circle at top right,
+        rgba(229, 160, 0, 0.14),
+        transparent 42%
+      ),
+      linear-gradient(180deg, rgba(26, 26, 31, 0.02), rgba(26, 26, 31, 0));
+  }
+}
+
 .template-manager__hero,
 .settings-template-callout {
   display: flex;

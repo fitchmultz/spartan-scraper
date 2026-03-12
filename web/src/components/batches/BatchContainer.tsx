@@ -25,7 +25,10 @@ import type { Profile } from "../../hooks/useAppData";
 import type { FormController } from "../../hooks/useFormState";
 import { useBatches } from "../../hooks/useBatches";
 import { BatchList } from "../../components/BatchList";
-import { BatchForm } from "../../components/BatchForm";
+import {
+  BatchForm,
+  type BatchSubmissionNotice,
+} from "../../components/BatchForm";
 
 interface BatchContainerProps {
   formState: FormController;
@@ -39,6 +42,11 @@ export function BatchContainer(props: BatchContainerProps) {
   );
   const [batchUrls, setBatchUrls] = useState("");
   const [batchQuery, setBatchQuery] = useState("");
+  const [submissionNotice, setSubmissionNotice] =
+    useState<BatchSubmissionNotice | null>(null);
+  const [highlightedBatchId, setHighlightedBatchId] = useState<string | null>(
+    null,
+  );
 
   const {
     batches,
@@ -51,36 +59,103 @@ export function BatchContainer(props: BatchContainerProps) {
     submitBatchResearch,
   } = useBatches();
 
+  const clearSubmissionFeedback = useCallback(() => {
+    setSubmissionNotice(null);
+    setHighlightedBatchId(null);
+  }, []);
+
+  const handleSetBatchTab = useCallback(
+    (tab: "scrape" | "crawl" | "research") => {
+      clearSubmissionFeedback();
+      setBatchTab(tab);
+    },
+    [clearSubmissionFeedback],
+  );
+
+  const handleSetBatchUrls = useCallback(
+    (value: string) => {
+      clearSubmissionFeedback();
+      setBatchUrls(value);
+    },
+    [clearSubmissionFeedback],
+  );
+
+  const handleSetBatchQuery = useCallback(
+    (value: string) => {
+      clearSubmissionFeedback();
+      setBatchQuery(value);
+    },
+    [clearSubmissionFeedback],
+  );
+
+  const showSubmissionFeedback = useCallback(
+    (
+      kind: BatchSubmissionNotice["kind"],
+      batchId: string,
+      submittedUrls: string[],
+    ) => {
+      setSubmissionNotice({
+        batchId,
+        kind,
+        submittedUrls,
+      });
+      setHighlightedBatchId(batchId);
+    },
+    [],
+  );
+
+  const handleViewSubmittedBatch = useCallback(() => {
+    document.getElementById("batches")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
   const handleSubmitBatchScrape = useCallback(
     async (request: BatchScrapeRequest) => {
       try {
-        await submitBatchScrape(request);
+        const createdBatch = await submitBatchScrape(request);
+        showSubmissionFeedback(
+          createdBatch.kind,
+          createdBatch.id,
+          request.jobs.map((job) => job.url),
+        );
         setBatchUrls("");
       } catch (err) {
         console.error("Failed to submit batch scrape:", err);
         alert(`Failed to submit batch: ${String(err)}`);
       }
     },
-    [submitBatchScrape],
+    [showSubmissionFeedback, submitBatchScrape],
   );
 
   const handleSubmitBatchCrawl = useCallback(
     async (request: BatchCrawlRequest) => {
       try {
-        await submitBatchCrawl(request);
+        const createdBatch = await submitBatchCrawl(request);
+        showSubmissionFeedback(
+          createdBatch.kind,
+          createdBatch.id,
+          request.jobs.map((job) => job.url),
+        );
         setBatchUrls("");
       } catch (err) {
         console.error("Failed to submit batch crawl:", err);
         alert(`Failed to submit batch: ${String(err)}`);
       }
     },
-    [submitBatchCrawl],
+    [showSubmissionFeedback, submitBatchCrawl],
   );
 
   const handleSubmitBatchResearch = useCallback(
     async (request: BatchResearchRequest) => {
       try {
-        await submitBatchResearch(request);
+        const createdBatch = await submitBatchResearch(request);
+        showSubmissionFeedback(
+          createdBatch.kind,
+          createdBatch.id,
+          request.jobs.map((job) => job.url),
+        );
         setBatchUrls("");
         setBatchQuery("");
       } catch (err) {
@@ -88,7 +163,7 @@ export function BatchContainer(props: BatchContainerProps) {
         alert(`Failed to submit batch: ${String(err)}`);
       }
     },
-    [submitBatchResearch],
+    [showSubmissionFeedback, submitBatchResearch],
   );
 
   const handleCancelBatch = useCallback(
@@ -108,17 +183,19 @@ export function BatchContainer(props: BatchContainerProps) {
       <section id="batch-forms" className="grid" data-tour="batch-forms">
         <BatchForm
           activeTab={batchTab}
-          setActiveTab={setBatchTab}
+          setActiveTab={handleSetBatchTab}
           form={props.formState}
           profiles={props.profiles}
           urlsInput={batchUrls}
-          setUrlsInput={setBatchUrls}
+          setUrlsInput={handleSetBatchUrls}
+          submissionNotice={submissionNotice}
+          onViewSubmittedBatch={handleViewSubmittedBatch}
           maxDepth={props.formState.maxDepth}
           setMaxDepth={props.formState.setMaxDepth}
           maxPages={props.formState.maxPages}
           setMaxPages={props.formState.setMaxPages}
           query={batchQuery}
-          setQuery={setBatchQuery}
+          setQuery={handleSetBatchQuery}
           onSubmitScrape={handleSubmitBatchScrape}
           onSubmitCrawl={handleSubmitBatchCrawl}
           onSubmitResearch={handleSubmitBatchResearch}
@@ -130,6 +207,7 @@ export function BatchContainer(props: BatchContainerProps) {
         <BatchList
           batches={batches}
           jobs={batchJobs}
+          highlightedBatchId={highlightedBatchId}
           onViewStatus={refreshBatches}
           onCancel={handleCancelBatch}
           onRefresh={refreshBatches}
