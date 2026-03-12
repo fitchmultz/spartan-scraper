@@ -55,6 +55,7 @@ import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { AITemplateGenerator } from "./components/AITemplateGenerator";
+import { TemplateManager } from "./components/templates/TemplateManager";
 import { PresetContainer } from "./components/presets/PresetContainer";
 import {
   JobSubmissionContainer,
@@ -713,7 +714,7 @@ export function App() {
         <>
           <PageIntro
             title="Templates"
-            description="Build extraction templates visually or generate them from a live page with AI."
+            description="Create, inspect, edit, duplicate, and delete extraction templates from one place, with the Visual Builder and AI generator wired into the same flow."
             actions={
               <button type="button" onClick={() => setIsAIGeneratorOpen(true)}>
                 Generate Template with AI
@@ -721,18 +722,12 @@ export function App() {
             }
           />
 
-          <InfoSections
-            profiles={[]}
-            schedules={[]}
-            templates={templates}
-            crawlStates={[]}
-            crawlStatesPage={1}
-            crawlStatesTotal={0}
-            crawlStatesPerPage={100}
-            onCrawlStatesPageChange={() => {}}
+          <TemplateManager
+            templateNames={templates}
             onTemplatesChanged={() => {
               void refreshTemplates();
             }}
+            onOpenAIGenerator={() => setIsAIGeneratorOpen(true)}
           />
         </>
       )}
@@ -759,20 +754,43 @@ export function App() {
         <>
           <PageIntro
             title="Settings"
-            description="Manage runtime profiles, recurring schedules, crawl state inventory, retention, and pipeline scripts."
+            description="Manage runtime profiles, recurring schedules, crawl state inventory, retention, and pipeline scripts. Extraction templates now live on the dedicated Templates page."
           />
+          <section className="panel" style={{ marginTop: 16 }}>
+            <div className="settings-template-callout">
+              <div>
+                <h3>Extraction Templates</h3>
+                <p>
+                  Template lifecycle management now lives on the Templates page
+                  so existing templates are always actionable instead of split
+                  across multiple surfaces.
+                </p>
+              </div>
+              <div className="settings-template-callout__actions">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => navigate("/templates")}
+                >
+                  Open Templates
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAIGeneratorOpen(true)}
+                >
+                  Generate Template with AI
+                </button>
+              </div>
+            </div>
+          </section>
           <InfoSections
             profiles={profiles}
             schedules={schedules}
-            templates={templates}
             crawlStates={crawlStates}
             crawlStatesPage={crawlStatesPage}
             crawlStatesTotal={crawlStatesTotal}
             crawlStatesPerPage={100}
             onCrawlStatesPageChange={setCrawlStatesPage}
-            onTemplatesChanged={() => {
-              void refreshTemplates();
-            }}
           />
           <section className="panel" style={{ marginTop: 16 }}>
             <RenderProfileEditor

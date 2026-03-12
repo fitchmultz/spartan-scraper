@@ -35,6 +35,160 @@
   animation: slideIn 0.2s ease;
 }
 
+.modal-content--large {
+  max-width: 1080px;
+}
+
+/* ============================================================================
+   Template Editor
+   ============================================================================ */
+
+.template-editor {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.template-editor__header,
+.template-editor__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--stroke);
+  background: var(--bg-alt);
+}
+
+.template-editor__header {
+  align-items: flex-start;
+}
+
+.template-editor__header h3 {
+  margin: 0 0 8px;
+}
+
+.template-editor__header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.template-editor__footer {
+  border-bottom: none;
+  border-top: 1px solid var(--stroke);
+}
+
+.template-editor__body {
+  padding: 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.template-editor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+.template-editor__section > label,
+.template-editor__json-field > span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.template-editor__section input,
+.template-editor__section select,
+.template-editor__section textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-alt);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.template-editor__section textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+
+.template-editor__section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.template-editor__section-header h4 {
+  margin: 0 0 6px;
+}
+
+.template-editor__section-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.template-editor__selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-editor__selectors-header,
+.template-editor__selector-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 110px minmax(260px, auto);
+  gap: 10px;
+  align-items: center;
+}
+
+.template-editor__selectors-header {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 4px;
+}
+
+.template-editor__selector-row {
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--bg-alt);
+}
+
+.template-editor__selector-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.template-editor__json-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.template-editor__json-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* ============================================================================
    Visual Selector Builder Styles
    ============================================================================ */
@@ -511,6 +665,18 @@
 
   .selector-rule,
   .selector-rules__header {
+    grid-template-columns: 1fr;
+  }
+
+  .template-editor__header,
+  .template-editor__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .template-editor__selectors-header,
+  .template-editor__selector-row,
+  .template-editor__json-grid {
     grid-template-columns: 1fr;
   }
 }

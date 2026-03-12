@@ -10,7 +10,6 @@
 import { useState, useEffect } from "react";
 import type { CrawlState } from "../api";
 import { formatDateTime } from "../lib/formatting";
-import { VisualSelectorBuilder } from "./VisualSelectorBuilder";
 
 interface InfoSectionsProps {
   profiles: Array<{ name: string; parents: string[] }>;
@@ -20,30 +19,25 @@ interface InfoSectionsProps {
     intervalSeconds: number;
     nextRun: string;
   }>;
-  templates: string[];
   crawlStates: CrawlState[];
   crawlStatesPage: number;
   crawlStatesTotal: number;
   crawlStatesPerPage: number;
   onCrawlStatesPageChange: (page: number) => void;
-  onTemplatesChanged?: () => void;
 }
 
 export function InfoSections({
   profiles,
   schedules,
-  templates,
   crawlStates,
   crawlStatesPage,
   crawlStatesTotal,
   crawlStatesPerPage,
   onCrawlStatesPageChange,
-  onTemplatesChanged,
 }: InfoSectionsProps) {
   const [jumpInputValue, setJumpInputValue] = useState(
     crawlStatesPage.toString(),
   );
-  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
 
   useEffect(() => {
     setJumpInputValue(crawlStatesPage.toString());
@@ -88,60 +82,6 @@ export function InfoSections({
           </div>
         </section>
       )}
-
-      <section className="panel" style={{ marginTop: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h2>Extraction Templates</h2>
-          <button
-            type="button"
-            className="btn btn--primary btn--small"
-            onClick={() => setShowTemplateBuilder(true)}
-          >
-            Visual Builder
-          </button>
-        </div>
-
-        {showTemplateBuilder && (
-          // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern
-          // biome-ignore lint/a11y/useKeyWithClickEvents: handled by escape key in component
-          <div
-            className="modal-overlay"
-            onClick={() => setShowTemplateBuilder(false)}
-          >
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: handled by child component */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: modal content container */}
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <VisualSelectorBuilder
-                onSave={() => {
-                  setShowTemplateBuilder(false);
-                  onTemplatesChanged?.();
-                }}
-                onCancel={() => setShowTemplateBuilder(false)}
-              />
-            </div>
-          </div>
-        )}
-
-        {templates.length > 0 ? (
-          <div className="job-list">
-            {templates.map((name) => (
-              <div key={name} className="job-item">
-                <div>{name}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="job-list-empty">
-            No templates yet. Use the Visual Builder to create one.
-          </div>
-        )}
-      </section>
 
       {crawlStates.length > 0 && (
         <section className="panel" style={{ marginTop: 16 }}>
