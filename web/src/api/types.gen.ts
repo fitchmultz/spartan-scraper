@@ -274,6 +274,10 @@ export type AiExtractPreviewResponse = {
      */
     tokens_used?: number;
     /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
      * Provider selected by the pi route that handled the request
      */
     provider?: string;
@@ -336,6 +340,18 @@ export type AiExtractTemplateGenerateResponse = {
      * Explanation of the generated template
      */
     explanation?: string;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
 };
 
 export type PipelineOptions = {

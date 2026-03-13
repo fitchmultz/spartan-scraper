@@ -22,7 +22,7 @@ export class FixtureBackend {
     };
   }
 
-  extract(_capability: string, payload: ExtractPayload): ExtractResult {
+  extract(capability: string, payload: ExtractPayload): ExtractResult {
     const fieldNames =
       payload.fields && payload.fields.length > 0
         ? payload.fields
@@ -45,13 +45,14 @@ export class FixtureBackend {
       confidence: 0.75,
       explanation: "Deterministic fixture response from pi bridge.",
       tokens_used: 0,
+      route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",
     });
   }
 
   generateTemplate(
-    _capability: string,
+    capability: string,
     payload: GenerateTemplatePayload,
   ): TemplateResult {
     const sampleFields =
@@ -73,8 +74,14 @@ export class FixtureBackend {
         },
       },
       explanation: "Deterministic fixture template from pi bridge.",
+      route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",
     });
+  }
+
+  private firstRoute(capability: string): string | undefined {
+    const routes = this.resolvedRoutes[capability];
+    return routes && routes.length > 0 ? routes[0] : undefined;
   }
 }

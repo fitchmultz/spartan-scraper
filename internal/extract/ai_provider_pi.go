@@ -50,6 +50,7 @@ func (p *PIProvider) Extract(ctx context.Context, req AIExtractRequest) (AIExtra
 		Confidence:  result.Confidence,
 		Explanation: result.Explanation,
 		TokensUsed:  result.TokensUsed,
+		RouteID:     result.RouteID,
 		Provider:    result.Provider,
 		Model:       result.Model,
 	}, nil
@@ -115,6 +116,7 @@ func (p *PIProvider) GenerateTemplate(ctx context.Context, req AITemplateGenerat
 	return AITemplateGenerateResult{
 		Template:    template,
 		Explanation: result.Explanation,
+		RouteID:     result.RouteID,
 		Provider:    result.Provider,
 		Model:       result.Model,
 	}, nil

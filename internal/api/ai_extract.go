@@ -21,6 +21,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,6 +53,7 @@ type AIExtractPreviewResponse struct {
 	Confidence  float64                       `json:"confidence"`
 	Explanation string                        `json:"explanation,omitempty"`
 	TokensUsed  int                           `json:"tokens_used"`
+	RouteID     string                        `json:"route_id,omitempty"`
 	Provider    string                        `json:"provider,omitempty"`
 	Model       string                        `json:"model,omitempty"`
 	Cached      bool                          `json:"cached"`
@@ -69,6 +71,9 @@ type AIExtractTemplateGenerateRequest struct {
 type AIExtractTemplateGenerateResponse struct {
 	Template    extract.Template `json:"template"`
 	Explanation string           `json:"explanation,omitempty"`
+	RouteID     string           `json:"route_id,omitempty"`
+	Provider    string           `json:"provider,omitempty"`
+	Model       string           `json:"model,omitempty"`
 }
 
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
@@ -141,11 +146,14 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 		Confidence:  aiResult.Confidence,
 		Explanation: aiResult.Explanation,
 		TokensUsed:  aiResult.TokensUsed,
+		RouteID:     aiResult.RouteID,
 		Provider:    aiResult.Provider,
 		Model:       aiResult.Model,
 		Cached:      aiResult.Cached,
 	}
 
+	setAIResponseHeaders(w, aiResult.RouteID, aiResult.Provider, aiResult.Model)
+	logAIRequestCompletion("extract_preview", req.URL, aiResult.RouteID, aiResult.Provider, aiResult.Model, aiResult.Cached)
 	writeJSON(w, resp)
 }
 
@@ -207,10 +215,16 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 
 		validationErrors := validateGeneratedTemplate(result.HTML, aiResult.Template)
 		if len(validationErrors) == 0 {
-			writeJSON(w, AIExtractTemplateGenerateResponse{
+			resp := AIExtractTemplateGenerateResponse{
 				Template:    aiResult.Template,
 				Explanation: aiResult.Explanation,
-			})
+				RouteID:     aiResult.RouteID,
+				Provider:    aiResult.Provider,
+				Model:       aiResult.Model,
+			}
+			setAIResponseHeaders(w, aiResult.RouteID, aiResult.Provider, aiResult.Model)
+			logAIRequestCompletion("template_generate", req.URL, aiResult.RouteID, aiResult.Provider, aiResult.Model, false)
+			writeJSON(w, resp)
 			return
 		}
 
@@ -250,6 +264,29 @@ func (s *Server) fetchHTMLForAI(ctx context.Context, pageURL string, headless bo
 		return fetch.Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to fetch page", err)
 	}
 	return result, nil
+}
+
+func setAIResponseHeaders(w http.ResponseWriter, routeID string, provider string, model string) {
+	if strings.TrimSpace(routeID) != "" {
+		w.Header().Set("X-Spartan-AI-Route", routeID)
+	}
+	if strings.TrimSpace(provider) != "" {
+		w.Header().Set("X-Spartan-AI-Provider", provider)
+	}
+	if strings.TrimSpace(model) != "" {
+		w.Header().Set("X-Spartan-AI-Model", model)
+	}
+}
+
+func logAIRequestCompletion(operation string, requestURL string, routeID string, provider string, model string, cached bool) {
+	slog.Info("AI request completed",
+		"operation", operation,
+		"url", apperrors.SanitizeURL(requestURL),
+		"route_id", routeID,
+		"provider", provider,
+		"model", model,
+		"cached", cached,
+	)
 }
 
 func validateGeneratedTemplate(html string, template extract.Template) []string {

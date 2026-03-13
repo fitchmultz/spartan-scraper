@@ -84,6 +84,7 @@ func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
 				},
 			},
 			Confidence: 0.9,
+			RouteID:    "openai/gpt-5.4",
 			Provider:   "openai",
 			Model:      "gpt-5.4",
 		},
@@ -113,8 +114,11 @@ func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp.Provider != "openai" || resp.Model != "gpt-5.4" {
-		t.Fatalf("expected provider/model metadata, got %q/%q", resp.Provider, resp.Model)
+	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
+		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
+	}
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }
 
@@ -136,6 +140,7 @@ func TestAIExtractPreviewFetchesHTMLWhenNotProvided(t *testing.T) {
 				},
 			},
 			Confidence: 0.91,
+			RouteID:    "openai/gpt-5.4",
 			Provider:   "openai",
 			Model:      "gpt-5.4",
 		},
@@ -190,6 +195,7 @@ func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 					},
 				},
 				Explanation: "Selectors updated after validation feedback.",
+				RouteID:     "openai/gpt-5.4",
 				Provider:    "openai",
 				Model:       "gpt-5.4",
 			},
@@ -228,6 +234,12 @@ func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 	}
 	if len(resp.Template.Selectors) != 2 {
 		t.Fatalf("expected validated selectors in response, got %#v", resp.Template.Selectors)
+	}
+	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
+		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
+	}
+	if got := rr.Header().Get("X-Spartan-AI-Model"); got != "gpt-5.4" {
+		t.Fatalf("expected X-Spartan-AI-Model header, got %q", got)
 	}
 }
 

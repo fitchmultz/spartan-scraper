@@ -50,6 +50,7 @@ export interface ExtractResult {
   confidence: number;
   explanation?: string;
   tokens_used?: number;
+  route_id?: string;
   provider?: string;
   model?: string;
 }
@@ -106,6 +107,7 @@ export interface TemplateResult {
     normalize?: NormalizeSpec;
   };
   explanation?: string;
+  route_id?: string;
   provider?: string;
   model?: string;
 }

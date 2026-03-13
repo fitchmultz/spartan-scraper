@@ -3,6 +3,7 @@ import type { BridgeFieldValue, ExtractResult, TemplateResult } from "./protocol
 interface ExtractResultMetadata {
   model?: string;
   provider?: string;
+  route_id?: string;
   tokens_used?: number;
 }
 
@@ -18,6 +19,10 @@ export function normalizeExtractResult(
     model: metadata.model,
     tokens_used: metadata.tokens_used,
   };
+
+  if (metadata.route_id) {
+    result.route_id = metadata.route_id;
+  }
 
   if (typeof value.explanation === "string" && value.explanation.trim()) {
     result.explanation = value.explanation;

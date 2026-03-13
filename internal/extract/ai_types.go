@@ -38,6 +38,7 @@ type AIExtractResult struct {
 	Confidence  float64               `json:"confidence"` // 0.0-1.0
 	Explanation string                `json:"explanation,omitempty"`
 	TokensUsed  int                   `json:"tokens_used,omitempty"`
+	RouteID     string                `json:"route_id,omitempty"`
 	Provider    string                `json:"provider,omitempty"`
 	Model       string                `json:"model,omitempty"`
 	Cached      bool                  `json:"cached"`
@@ -56,6 +57,7 @@ type AITemplateGenerateRequest struct {
 type AITemplateGenerateResult struct {
 	Template    Template `json:"template"`
 	Explanation string   `json:"explanation,omitempty"`
+	RouteID     string   `json:"route_id,omitempty"`
 	Provider    string   `json:"provider,omitempty"`
 	Model       string   `json:"model,omitempty"`
 }

@@ -36,6 +36,9 @@ describe("AITemplateGenerator", () => {
       ],
     },
     explanation: "Generated selectors for product page extraction",
+    route_id: "openai/gpt-5.4",
+    provider: "openai",
+    model: "gpt-5.4",
   };
 
   beforeEach(() => {
@@ -230,6 +233,14 @@ describe("AITemplateGenerator", () => {
     expect(
       screen.getByText(mockGeneratedResponse.explanation),
     ).toBeInTheDocument();
+    expect(screen.getByText(/ai route/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(mockGeneratedResponse.route_id),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(mockGeneratedResponse.provider),
+    ).toBeInTheDocument();
+    expect(screen.getByText(mockGeneratedResponse.model)).toBeInTheDocument();
     expect(screen.getByText("title")).toBeInTheDocument();
     expect(screen.getByText("price")).toBeInTheDocument();
   });

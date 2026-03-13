@@ -92,7 +92,10 @@ func Execute(input ExecuteInput) (ExecuteOutput, error) {
 				"url", input.URL,
 				"fields", len(aiResult.Fields),
 				"confidence", aiResult.Confidence,
-				"cached", aiResult.Cached)
+				"cached", aiResult.Cached,
+				"route_id", aiResult.RouteID,
+				"provider", aiResult.Provider,
+				"model", aiResult.Model)
 		} else {
 			// AI errors are logged but don't fail extraction
 			slog.Warn("AI extraction failed, continuing with template extraction", "error", err)

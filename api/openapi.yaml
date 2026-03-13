@@ -3382,6 +3382,9 @@ components:
         tokens_used:
           type: integer
           description: Number of tokens consumed by the LLM
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
         provider:
           type: string
           description: Provider selected by the pi route that handled the request
@@ -3443,6 +3446,15 @@ components:
         explanation:
           type: string
           description: Explanation of the generated template
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
     PipelineOptions:
       type: object
       properties:

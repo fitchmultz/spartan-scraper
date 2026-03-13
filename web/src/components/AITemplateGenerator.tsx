@@ -31,6 +31,9 @@ interface GeneratorState {
   isGenerating: boolean;
   generatedTemplate: Template | null;
   explanation: string;
+  routeId: string;
+  provider: string;
+  model: string;
   error: string | null;
   templateName: string;
   isSaving: boolean;
@@ -49,6 +52,9 @@ export function AITemplateGenerator({
     isGenerating: false,
     generatedTemplate: null,
     explanation: "",
+    routeId: "",
+    provider: "",
+    model: "",
     error: null,
     templateName: "",
     isSaving: false,
@@ -63,6 +69,9 @@ export function AITemplateGenerator({
       isGenerating: false,
       generatedTemplate: null,
       explanation: "",
+      routeId: "",
+      provider: "",
+      model: "",
       error: null,
       templateName: "",
       isSaving: false,
@@ -102,6 +111,9 @@ export function AITemplateGenerator({
       error: null,
       generatedTemplate: null,
       explanation: "",
+      routeId: "",
+      provider: "",
+      model: "",
     }));
 
     try {
@@ -148,6 +160,9 @@ export function AITemplateGenerator({
         ...prev,
         generatedTemplate: response.template || null,
         explanation: response.explanation || "",
+        routeId: response.route_id || "",
+        provider: response.provider || "",
+        model: response.model || "",
         templateName: response.template?.name || "",
         isGenerating: false,
       }));
@@ -364,6 +379,36 @@ export function AITemplateGenerator({
                 </div>
               )}
 
+              {(state.routeId || state.provider || state.model) && (
+                <div className="mb-4 rounded-md border border-slate-700 bg-slate-900/70 p-3">
+                  <h4 className="mb-2 text-sm font-medium text-slate-300">
+                    AI Route
+                  </h4>
+                  <dl className="space-y-1 text-sm text-slate-400">
+                    {state.routeId && (
+                      <div className="flex flex-wrap gap-2">
+                        <dt className="font-medium text-slate-300">Route</dt>
+                        <dd className="font-mono text-emerald-300">
+                          {state.routeId}
+                        </dd>
+                      </div>
+                    )}
+                    {state.provider && (
+                      <div className="flex flex-wrap gap-2">
+                        <dt className="font-medium text-slate-300">Provider</dt>
+                        <dd>{state.provider}</dd>
+                      </div>
+                    )}
+                    {state.model && (
+                      <div className="flex flex-wrap gap-2">
+                        <dt className="font-medium text-slate-300">Model</dt>
+                        <dd>{state.model}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
+
               <div className="template-preview mb-4">
                 <h4 className="text-sm font-medium text-slate-300 mb-2">
                   Selectors
@@ -426,6 +471,9 @@ export function AITemplateGenerator({
                       ...prev,
                       generatedTemplate: null,
                       explanation: "",
+                      routeId: "",
+                      provider: "",
+                      model: "",
                       error: null,
                     }))
                   }

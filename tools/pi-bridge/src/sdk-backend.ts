@@ -100,6 +100,7 @@ export class SDKBackend {
       const call = getRequiredToolCall(response.content, tool.name);
       const args = validateToolCall([tool], call);
       return normalizeExtractResult(args, {
+        route_id: routeId,
         provider: response.provider,
         model: response.model,
         tokens_used: response.usage.totalTokens,
@@ -133,6 +134,7 @@ export class SDKBackend {
       const args = validateToolCall([tool], call);
       return validateTemplateResult({
         ...(args as TemplateResult),
+        route_id: routeId,
         provider: response.provider,
         model: response.model,
       });
