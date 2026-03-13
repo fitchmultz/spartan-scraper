@@ -6,8 +6,15 @@
  * Invariants/Assumptions: Batch entries consumed by UI must always include non-negative numeric stats.
  */
 
-import { describe, expect, it } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BatchResponse, BatchStatusResponse, Job } from "../api";
+import {
+  getV1JobsBatchById,
+  postV1JobsBatchCrawl,
+  postV1JobsBatchResearch,
+  postV1JobsBatchScrape,
+} from "../api";
 import {
   createEmptyBatchStats,
   deriveBatchStatsFromJobs,
@@ -15,7 +22,20 @@ import {
   mapBatchStatusResponse,
   normalizeBatchStats,
   normalizeStoredBatchEntries,
+  useBatches,
 } from "./useBatches";
+
+vi.mock("../api", () => ({
+  getV1JobsBatchById: vi.fn(),
+  deleteV1JobsBatchById: vi.fn(),
+  postV1JobsBatchScrape: vi.fn(),
+  postV1JobsBatchCrawl: vi.fn(),
+  postV1JobsBatchResearch: vi.fn(),
+}));
+
+vi.mock("../lib/api-config", () => ({
+  getApiBaseUrl: () => "http://127.0.0.1:8741",
+}));
 
 function makeJob(id: string, status: Job["status"]): Job {
   const now = "2026-03-05T00:00:00.000Z";
@@ -29,6 +49,36 @@ function makeJob(id: string, status: Job["status"]): Job {
     spec: { version: 1 },
   };
 }
+
+const storage = new Map<string, string>();
+
+beforeAll(() => {
+  const localStorageMock = {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      storage.set(key, value);
+    },
+    removeItem: (key: string) => {
+      storage.delete(key);
+    },
+    clear: () => {
+      storage.clear();
+    },
+  };
+
+  vi.stubGlobal("localStorage", localStorageMock);
+  if (typeof window !== "undefined") {
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      configurable: true,
+    });
+  }
+});
+
+beforeEach(() => {
+  storage.clear();
+  vi.clearAllMocks();
+});
 
 describe("useBatches helpers", () => {
   it("createEmptyBatchStats returns zeroed counters", () => {
@@ -258,5 +308,119 @@ describe("useBatches helpers", () => {
         updatedAt: "1970-01-01T00:00:00.000Z",
       },
     ]);
+  });
+});
+
+describe("useBatches persistence", () => {
+  it("restores the last submitted batch from localStorage for persisted sessions", async () => {
+    localStorage.setItem(
+      "spartan_batches",
+      JSON.stringify([
+        {
+          id: "batch-persisted-1",
+          kind: "scrape",
+          status: "pending",
+          jobCount: 2,
+          stats: {
+            queued: 2,
+            running: 0,
+            succeeded: 0,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T10:00:00.000Z",
+          updatedAt: "2026-03-05T10:00:00.000Z",
+        },
+      ]),
+    );
+    localStorage.setItem(
+      "spartan_last_submitted_batch",
+      JSON.stringify({
+        batchId: "batch-persisted-1",
+        kind: "scrape",
+        submittedUrls: ["https://example.com", "https://example.org"],
+        submittedAt: "2026-03-05T10:00:05.000Z",
+      }),
+    );
+
+    const { result } = renderHook(() => useBatches());
+
+    await waitFor(() => {
+      expect(result.current.lastSubmittedBatch).toEqual({
+        batchId: "batch-persisted-1",
+        kind: "scrape",
+        submittedUrls: ["https://example.com", "https://example.org"],
+        submittedAt: "2026-03-05T10:00:05.000Z",
+      });
+    });
+  });
+
+  it("persists the submitted batch summary and clears it when requested", async () => {
+    vi.mocked(getV1JobsBatchById).mockResolvedValue({
+      data: {
+        id: "batch-submit-1",
+        kind: "scrape",
+        status: "pending",
+        jobCount: 2,
+        stats: {
+          queued: 2,
+          running: 0,
+          succeeded: 0,
+          failed: 0,
+          canceled: 0,
+        },
+        jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
+        createdAt: "2026-03-05T10:00:00.000Z",
+        updatedAt: "2026-03-05T10:00:00.000Z",
+      },
+      request: new Request(
+        "http://127.0.0.1:8741/v1/jobs/batch/batch-submit-1",
+      ),
+      response: new Response(null, { status: 200 }),
+    } as never);
+    vi.mocked(postV1JobsBatchScrape).mockResolvedValue({
+      data: {
+        id: "batch-submit-1",
+        kind: "scrape",
+        status: "pending",
+        jobCount: 2,
+        jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
+        createdAt: "2026-03-05T10:00:00.000Z",
+      },
+      request: new Request("http://127.0.0.1:8741/v1/jobs/batch/scrape"),
+      response: new Response(null, { status: 202 }),
+    } as never);
+    vi.mocked(postV1JobsBatchCrawl).mockResolvedValue({} as never);
+    vi.mocked(postV1JobsBatchResearch).mockResolvedValue({} as never);
+
+    const { result } = renderHook(() => useBatches());
+
+    await act(async () => {
+      await result.current.submitBatchScrape({
+        jobs: [{ url: "https://example.com" }, { url: "https://example.org" }],
+      } as never);
+    });
+
+    expect(result.current.lastSubmittedBatch).toMatchObject({
+      batchId: "batch-submit-1",
+      kind: "scrape",
+      submittedUrls: ["https://example.com", "https://example.org"],
+    });
+    expect(
+      JSON.parse(
+        localStorage.getItem("spartan_last_submitted_batch") ?? "null",
+      ),
+    ).toMatchObject({
+      batchId: "batch-submit-1",
+      kind: "scrape",
+      submittedUrls: ["https://example.com", "https://example.org"],
+    });
+
+    act(() => {
+      result.current.clearLastSubmittedBatch();
+    });
+
+    expect(result.current.lastSubmittedBatch).toBeNull();
+    expect(localStorage.getItem("spartan_last_submitted_batch")).toBeNull();
   });
 });

@@ -422,9 +422,10 @@ export function BatchForm({
               {submissionNotice.kind}
             </h3>
             <p>
-              Batch <code>{submissionNotice.batchId.slice(0, 8)}...</code> is
-              now visible in Batch Jobs below. Use the list to inspect progress
-              and results as each URL completes.
+              Batch <code>{submissionNotice.batchId.slice(0, 8)}...</code> was
+              accepted and is now tracked in Batch Jobs below. Use the list to
+              inspect live progress and open results as each URL completes, even
+              after refreshing this browser session.
             </p>
             <div className="batch-form__confirmation-preview">
               {submissionSummary.visible.map((url) => (

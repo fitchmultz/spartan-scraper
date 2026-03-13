@@ -6,7 +6,7 @@
  *
  * @module BatchList
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { BatchJobStats, Job } from "../api";
 import {
   calculateBatchProgress,
@@ -51,6 +51,12 @@ export function BatchList({
   loading,
 }: BatchListProps) {
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (highlightedBatchId) {
+      setExpandedBatch(highlightedBatchId);
+    }
+  }, [highlightedBatchId]);
 
   const toggleExpand = useCallback((batchId: string) => {
     setExpandedBatch((current) => (current === batchId ? null : batchId));
@@ -124,6 +130,7 @@ export function BatchList({
           return (
             <div
               key={batch.id}
+              id={`batch-${batch.id}`}
               className="batch-item"
               style={{
                 border: isHighlighted

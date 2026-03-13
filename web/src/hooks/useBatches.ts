@@ -22,6 +22,8 @@ import {
 import { getApiBaseUrl } from "../lib/api-config";
 
 const POLL_INTERVAL_MS = 5000;
+const BATCHES_STORAGE_KEY = "spartan_batches";
+const LAST_SUBMITTED_BATCH_STORAGE_KEY = "spartan_last_submitted_batch";
 
 export type BatchEntry = {
   id: string;
@@ -43,6 +45,13 @@ export type BatchEntry = {
   };
   createdAt: string;
   updatedAt: string;
+};
+
+export type BatchSubmissionRecord = {
+  batchId: string;
+  kind: BatchEntry["kind"];
+  submittedUrls: string[];
+  submittedAt: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -100,6 +109,53 @@ function readIsoDate(value: unknown, fallback: string): string {
     return value;
   }
   return fallback;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
+}
+
+function normalizeStoredBatchSubmission(
+  input: unknown,
+): BatchSubmissionRecord | null {
+  if (!isRecord(input)) {
+    return null;
+  }
+
+  const batchId = typeof input.batchId === "string" ? input.batchId : "";
+  if (!batchId) {
+    return null;
+  }
+
+  const kind = isBatchKind(input.kind) ? input.kind : "scrape";
+  const submittedUrls = isStringArray(input.submittedUrls)
+    ? input.submittedUrls.filter((url) => url.trim().length > 0)
+    : [];
+
+  if (submittedUrls.length === 0) {
+    return null;
+  }
+
+  return {
+    batchId,
+    kind,
+    submittedUrls,
+    submittedAt: readIsoDate(input.submittedAt, new Date(0).toISOString()),
+  };
+}
+
+function extractSubmittedUrls(request: unknown): string[] {
+  if (!isRecord(request) || !Array.isArray(request.jobs)) {
+    return [];
+  }
+
+  return request.jobs
+    .map((job) =>
+      isRecord(job) && typeof job.url === "string" ? job.url.trim() : "",
+    )
+    .filter((url) => url.length > 0);
 }
 
 function toJobSummary(job: Partial<Job>): Job | null {
@@ -281,6 +337,8 @@ export function normalizeStoredBatchEntries(input: unknown): BatchEntry[] {
 export function useBatches() {
   const [batches, setBatches] = useState<BatchEntry[]>([]);
   const [batchJobs, setBatchJobs] = useState<Map<string, Job[]>>(new Map());
+  const [lastSubmittedBatch, setLastSubmittedBatch] =
+    useState<BatchSubmissionRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -288,7 +346,7 @@ export function useBatches() {
   // Load batches from localStorage (persisted across sessions)
   const loadBatches = useCallback(() => {
     try {
-      const stored = localStorage.getItem("spartan_batches");
+      const stored = localStorage.getItem(BATCHES_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
         const normalized = normalizeStoredBatchEntries(parsed);
@@ -302,11 +360,49 @@ export function useBatches() {
   // Save batches to localStorage
   const saveBatches = useCallback((newBatches: BatchEntry[]) => {
     try {
-      localStorage.setItem("spartan_batches", JSON.stringify(newBatches));
+      localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(newBatches));
     } catch {
       // Ignore localStorage errors
     }
   }, []);
+
+  const loadLastSubmittedBatch = useCallback(() => {
+    try {
+      const stored = localStorage.getItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as unknown;
+      setLastSubmittedBatch(normalizeStoredBatchSubmission(parsed));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const saveLastSubmittedBatch = useCallback(
+    (entry: BatchSubmissionRecord | null) => {
+      try {
+        if (!entry) {
+          localStorage.removeItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
+          return;
+        }
+
+        localStorage.setItem(
+          LAST_SUBMITTED_BATCH_STORAGE_KEY,
+          JSON.stringify(entry),
+        );
+      } catch {
+        // Ignore localStorage errors
+      }
+    },
+    [],
+  );
+
+  const clearLastSubmittedBatch = useCallback(() => {
+    setLastSubmittedBatch(null);
+    saveLastSubmittedBatch(null);
+  }, [saveLastSubmittedBatch]);
 
   // Get batch status from API
   const getBatchStatus = useCallback(
@@ -423,17 +519,30 @@ export function useBatches() {
       }
 
       const entry = mapBatchCreateResponse(data);
+      const submittedUrls = extractSubmittedUrls(request);
+      const submissionRecord =
+        submittedUrls.length > 0
+          ? {
+              batchId: entry.id,
+              kind: entry.kind,
+              submittedUrls,
+              submittedAt: new Date().toISOString(),
+            }
+          : null;
+
       setBatches((current) => {
         const newBatches = [entry, ...current];
         saveBatches(newBatches);
         return newBatches;
       });
+      setLastSubmittedBatch(submissionRecord);
+      saveLastSubmittedBatch(submissionRecord);
       void refreshBatch(entry.id).catch(() => {
         // Best-effort refresh to hydrate authoritative stats.
       });
       return entry;
     },
-    [refreshBatch, saveBatches],
+    [refreshBatch, saveBatches, saveLastSubmittedBatch],
   );
 
   const submitBatchScrape = useCallback(
@@ -466,8 +575,16 @@ export function useBatches() {
         next.delete(batchId);
         return next;
       });
+      setLastSubmittedBatch((current) => {
+        if (!current || current.batchId !== batchId) {
+          return current;
+        }
+
+        saveLastSubmittedBatch(null);
+        return null;
+      });
     },
-    [saveBatches],
+    [saveBatches, saveLastSubmittedBatch],
   );
 
   // Check if any batches are processing
@@ -479,6 +596,10 @@ export function useBatches() {
   useEffect(() => {
     loadBatches();
   }, [loadBatches]);
+
+  useEffect(() => {
+    loadLastSubmittedBatch();
+  }, [loadLastSubmittedBatch]);
 
   useEffect(() => {
     // Clear existing interval
@@ -504,6 +625,7 @@ export function useBatches() {
   return {
     batches,
     batchJobs,
+    lastSubmittedBatch,
     loading,
     error,
     refreshBatch,
@@ -513,6 +635,7 @@ export function useBatches() {
     submitBatchCrawl,
     submitBatchResearch,
     removeBatch,
+    clearLastSubmittedBatch,
     hasProcessing,
   };
 }

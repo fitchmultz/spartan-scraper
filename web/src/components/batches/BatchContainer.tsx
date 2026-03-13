@@ -42,27 +42,37 @@ export function BatchContainer(props: BatchContainerProps) {
   );
   const [batchUrls, setBatchUrls] = useState("");
   const [batchQuery, setBatchQuery] = useState("");
-  const [submissionNotice, setSubmissionNotice] =
-    useState<BatchSubmissionNotice | null>(null);
-  const [highlightedBatchId, setHighlightedBatchId] = useState<string | null>(
-    null,
-  );
 
   const {
     batches,
     batchJobs,
+    lastSubmittedBatch,
     loading: batchesLoading,
     refreshBatches,
     cancelBatch,
     submitBatchScrape,
     submitBatchCrawl,
     submitBatchResearch,
+    clearLastSubmittedBatch,
   } = useBatches();
 
+  const submissionNotice: BatchSubmissionNotice | null = lastSubmittedBatch
+    ? {
+        batchId: lastSubmittedBatch.batchId,
+        kind: lastSubmittedBatch.kind,
+        submittedUrls: lastSubmittedBatch.submittedUrls,
+      }
+    : null;
+
+  const highlightedBatchId = batches.some(
+    (batch) => batch.id === submissionNotice?.batchId,
+  )
+    ? (submissionNotice?.batchId ?? null)
+    : null;
+
   const clearSubmissionFeedback = useCallback(() => {
-    setSubmissionNotice(null);
-    setHighlightedBatchId(null);
-  }, []);
+    clearLastSubmittedBatch();
+  }, [clearLastSubmittedBatch]);
 
   const handleSetBatchTab = useCallback(
     (tab: "scrape" | "crawl" | "research") => {
@@ -88,39 +98,31 @@ export function BatchContainer(props: BatchContainerProps) {
     [clearSubmissionFeedback],
   );
 
-  const showSubmissionFeedback = useCallback(
-    (
-      kind: BatchSubmissionNotice["kind"],
-      batchId: string,
-      submittedUrls: string[],
-    ) => {
-      setSubmissionNotice({
-        batchId,
-        kind,
-        submittedUrls,
-      });
-      setHighlightedBatchId(batchId);
-    },
-    [],
-  );
-
-  const handleViewSubmittedBatch = useCallback(() => {
-    document.getElementById("batches")?.scrollIntoView({
+  const showSubmissionFeedback = useCallback(async () => {
+    await refreshBatches();
+    document.getElementById("batch-forms")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
-  }, []);
+  }, [refreshBatches]);
+
+  const handleViewSubmittedBatch = useCallback(() => {
+    const targetId = submissionNotice
+      ? `batch-${submissionNotice.batchId}`
+      : "batches";
+
+    document.getElementById(targetId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [submissionNotice]);
 
   const handleSubmitBatchScrape = useCallback(
     async (request: BatchScrapeRequest) => {
       try {
-        const createdBatch = await submitBatchScrape(request);
-        showSubmissionFeedback(
-          createdBatch.kind,
-          createdBatch.id,
-          request.jobs.map((job) => job.url),
-        );
+        await submitBatchScrape(request);
         setBatchUrls("");
+        await showSubmissionFeedback();
       } catch (err) {
         console.error("Failed to submit batch scrape:", err);
         alert(`Failed to submit batch: ${String(err)}`);
@@ -132,13 +134,9 @@ export function BatchContainer(props: BatchContainerProps) {
   const handleSubmitBatchCrawl = useCallback(
     async (request: BatchCrawlRequest) => {
       try {
-        const createdBatch = await submitBatchCrawl(request);
-        showSubmissionFeedback(
-          createdBatch.kind,
-          createdBatch.id,
-          request.jobs.map((job) => job.url),
-        );
+        await submitBatchCrawl(request);
         setBatchUrls("");
+        await showSubmissionFeedback();
       } catch (err) {
         console.error("Failed to submit batch crawl:", err);
         alert(`Failed to submit batch: ${String(err)}`);
@@ -150,14 +148,10 @@ export function BatchContainer(props: BatchContainerProps) {
   const handleSubmitBatchResearch = useCallback(
     async (request: BatchResearchRequest) => {
       try {
-        const createdBatch = await submitBatchResearch(request);
-        showSubmissionFeedback(
-          createdBatch.kind,
-          createdBatch.id,
-          request.jobs.map((job) => job.url),
-        );
+        await submitBatchResearch(request);
         setBatchUrls("");
         setBatchQuery("");
+        await showSubmissionFeedback();
       } catch (err) {
         console.error("Failed to submit batch research:", err);
         alert(`Failed to submit batch: ${String(err)}`);
