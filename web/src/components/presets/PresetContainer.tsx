@@ -33,6 +33,7 @@ interface PresetContainerProps {
   getCurrentConfig: () => PresetConfig;
   getCurrentUrl: () => string;
   onSelectPreset: (preset: JobPreset) => void;
+  onOpenAIPreview?: (url?: string) => void;
   onOpenTemplateGenerator?: () => void;
 }
 
@@ -45,6 +46,7 @@ export function PresetContainer({
   getCurrentConfig,
   getCurrentUrl,
   onSelectPreset,
+  onOpenAIPreview,
   onOpenTemplateGenerator,
 }: PresetContainerProps) {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -91,6 +93,7 @@ export function PresetContainer({
           onJobTypeChange={setActiveTab}
           onSelectPreset={handleSelectPreset}
           onSavePreset={handleSavePreset}
+          onOpenAIPreview={onOpenAIPreview}
           onOpenTemplateGenerator={onOpenTemplateGenerator}
           currentUrl={getCurrentUrl()}
         />

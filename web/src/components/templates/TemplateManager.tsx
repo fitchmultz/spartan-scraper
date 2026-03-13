@@ -19,6 +19,7 @@ import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 interface TemplateManagerProps {
   templateNames: string[];
   onTemplatesChanged: () => void;
+  onOpenAIPreview: () => void;
   onOpenAIGenerator: () => void;
 }
 
@@ -539,6 +540,7 @@ function TemplateEditorModal({
 export function TemplateManager({
   templateNames,
   onTemplatesChanged,
+  onOpenAIPreview,
   onOpenAIGenerator,
 }: TemplateManagerProps) {
   const [selectedName, setSelectedName] = useState<string | null>(
@@ -704,9 +706,9 @@ export function TemplateManager({
             <h3>Extraction Template Library</h3>
             <p>
               Use this page as the control plane for template inventory. Inspect
-              saved templates, edit selector rules, duplicate built-ins into
-              custom variants, and jump into the Visual Builder when you need
-              live DOM analysis.
+              saved templates, preview AI extraction against a real page, edit
+              selector rules, duplicate built-ins into custom variants, and jump
+              into the Visual Builder when you need live DOM analysis.
             </p>
           </div>
           <div className="template-manager__hero-actions">
@@ -723,6 +725,13 @@ export function TemplateManager({
               onClick={() => setBuilderState({ mode: "create" })}
             >
               Open Visual Builder
+            </button>
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={onOpenAIPreview}
+            >
+              Preview Extraction with AI
             </button>
             <button
               type="button"
@@ -931,9 +940,9 @@ export function TemplateManager({
           <div className="template-manager__empty-state">
             <h3>No extraction templates saved yet</h3>
             <p>
-              Start with the Visual Builder for live selector capture, create a
-              manual template, or use AI generation to bootstrap from a real
-              page.
+              Start with AI preview against a real page, use the Visual Builder
+              for live selector capture, create a manual template, or use AI
+              generation to bootstrap from a real page.
             </p>
             <div className="template-manager__hero-actions">
               <button
@@ -949,6 +958,13 @@ export function TemplateManager({
                 onClick={() => setBuilderState({ mode: "create" })}
               >
                 Open Visual Builder
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={onOpenAIPreview}
+              >
+                Preview Extraction with AI
               </button>
               <button
                 type="button"

@@ -45,6 +45,7 @@ vi.mock("../../VisualSelectorBuilder", () => ({
 
 describe("TemplateManager", () => {
   const onTemplatesChanged = vi.fn();
+  const onOpenAIPreview = vi.fn();
   const onOpenAIGenerator = vi.fn();
 
   beforeEach(() => {
@@ -74,6 +75,7 @@ describe("TemplateManager", () => {
       <TemplateManager
         templateNames={["article", "custom-news"]}
         onTemplatesChanged={onTemplatesChanged}
+        onOpenAIPreview={onOpenAIPreview}
         onOpenAIGenerator={onOpenAIGenerator}
       />,
     );
@@ -96,6 +98,39 @@ describe("TemplateManager", () => {
     expect(
       screen.queryByRole("button", { name: /^delete$/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens the AI preview surface from the template library", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "article",
+        is_built_in: true,
+        template: {
+          name: "article",
+          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+        },
+      },
+      error: undefined,
+      request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      response: new Response(),
+    });
+
+    render(
+      <TemplateManager
+        templateNames={["article"]}
+        onTemplatesChanged={onTemplatesChanged}
+        onOpenAIPreview={onOpenAIPreview}
+        onOpenAIGenerator={onOpenAIGenerator}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /preview extraction with ai/i,
+      }),
+    );
+
+    expect(onOpenAIPreview).toHaveBeenCalledTimes(1);
   });
 
   it("edits a custom template through the modal editor", async () => {
@@ -130,6 +165,7 @@ describe("TemplateManager", () => {
       <TemplateManager
         templateNames={["custom-news"]}
         onTemplatesChanged={onTemplatesChanged}
+        onOpenAIPreview={onOpenAIPreview}
         onOpenAIGenerator={onOpenAIGenerator}
       />,
     );
@@ -198,6 +234,7 @@ describe("TemplateManager", () => {
       <TemplateManager
         templateNames={["custom-news"]}
         onTemplatesChanged={onTemplatesChanged}
+        onOpenAIPreview={onOpenAIPreview}
         onOpenAIGenerator={onOpenAIGenerator}
       />,
     );

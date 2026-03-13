@@ -10,30 +10,19 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Improve bridge/process observability and startup diagnostics around auth, route selection, and fallback behavior.
-- Make bridge health reporting reflect auth-ready reality, not just model-registry presence.
-- Add operator-facing visibility into which `pi` provider/model route handled each AI request.
-
-## Next
-
-- Add a first-class browser/UI surface for `/v1/extract/ai-preview` so AI preview has feature symmetry with the existing AI template-generation flow.
 - Align AI extraction controls for scrape/crawl job submission across API, Web UI, CLI, and MCP where those job-launching interfaces already exist.
 - Decide and document the intended symmetry level for TUI AI features before adding TUI-specific AI surfaces.
 
-## After That
+## Next
 
 - Add richer bridge fallback regression coverage so route-selection behavior stays debuggable as providers change.
-- Revisit multimodal/template-debug loops once image-capable routes prove stable in production-like usage.
-
-## Later
-
-- Add AI capabilities to additional product features where they materially improve outcomes and fit the interface:
-  research first, then other workflow surfaces if usage justifies them.
+- Add AI capabilities to additional product features where they materially improve outcomes and fit the interface, starting with research.
 - Add agentic `research` powered by `pi`.
 - Keep this additive first: deterministic `internal/research` remains the baseline path unless a future roadmap item explicitly replaces or restructures it.
 - Reuse Spartan's existing evidence collection and fetch/extract primitives instead of bypassing them with a free-form agent loop.
 - Revisit interface symmetry for any new AI capability as part of feature design, rather than shipping API-only or Web-only by default.
 
-## Exploration
+## Later
 
+- Revisit multimodal/template-debug loops once image-capable routes prove stable in production-like usage.
 - Broaden `pi` usage beyond extraction/template generation where an agent harness improves real workflows.

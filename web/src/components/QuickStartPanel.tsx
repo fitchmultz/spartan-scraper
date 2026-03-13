@@ -18,6 +18,7 @@ interface QuickStartPanelProps {
   onJobTypeChange: (jobType: JobType) => void;
   onSelectPreset: (preset: JobPreset) => void;
   onSavePreset?: () => void;
+  onOpenAIPreview?: (url?: string) => void;
   onOpenTemplateGenerator?: () => void;
   currentUrl?: string;
 }
@@ -107,6 +108,7 @@ export function QuickStartPanel({
   onJobTypeChange,
   onSelectPreset,
   onSavePreset,
+  onOpenAIPreview,
   onOpenTemplateGenerator,
   currentUrl,
 }: QuickStartPanelProps) {
@@ -152,6 +154,15 @@ export function QuickStartPanel({
           <p>{activeCopy.summary}</p>
         </div>
         <div className="job-quickstart__header-actions">
+          {onOpenAIPreview ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => onOpenAIPreview(currentUrl)}
+            >
+              AI Preview
+            </button>
+          ) : null}
           {onOpenTemplateGenerator ? (
             <button
               type="button"

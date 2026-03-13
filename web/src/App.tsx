@@ -54,6 +54,7 @@ import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryC
 import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
+import { AIExtractPreview } from "./components/AIExtractPreview";
 import { AITemplateGenerator } from "./components/AITemplateGenerator";
 import { TemplateManager } from "./components/templates/TemplateManager";
 import { PresetContainer } from "./components/presets/PresetContainer";
@@ -296,6 +297,8 @@ export function App() {
     normalizePath(window.location.pathname),
   );
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
+  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
+  const [aiPreviewInitialURL, setAIPreviewInitialURL] = useState("");
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<JobPreset | null>(null);
   const [pendingSubmission, setPendingSubmission] = useState<JobType | null>(
@@ -584,6 +587,14 @@ export function App() {
     }
   }, [activeTab]);
 
+  const openAIPreview = useCallback(
+    (url?: string) => {
+      setAIPreviewInitialURL(url ?? getCurrentUrl());
+      setIsAIPreviewOpen(true);
+    },
+    [getCurrentUrl],
+  );
+
   const handleSubmitForm = useCallback(
     async (formType: "scrape" | "crawl" | "research") => {
       navigate("/jobs/new");
@@ -669,7 +680,7 @@ export function App() {
           eyebrow: "Extraction",
           title: "Templates",
           description:
-            "Open the template workspace directly, with creation and AI-assisted generation available without scrolling through dashboard chrome.",
+            "Open the template workspace directly, with creation, AI preview, and AI-assisted generation available without scrolling through dashboard chrome.",
           meta: [
             { label: "Templates", value: templates.length.toString() },
             { label: "Built-in", value: "3" },
@@ -992,6 +1003,7 @@ export function App() {
               getCurrentConfig={getCurrentConfig}
               getCurrentUrl={getCurrentUrl}
               onSelectPreset={handleSelectPreset}
+              onOpenAIPreview={openAIPreview}
               onOpenTemplateGenerator={() => setIsAIGeneratorOpen(true)}
             />
           </aside>
@@ -1006,9 +1018,21 @@ export function App() {
             description={routeMeta.description}
             meta={routeMeta.meta}
             actions={
-              <button type="button" onClick={() => setIsAIGeneratorOpen(true)}>
-                Generate Template with AI
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => openAIPreview()}
+                >
+                  Preview Extraction with AI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAIGeneratorOpen(true)}
+                >
+                  Generate Template with AI
+                </button>
+              </>
             }
           />
 
@@ -1017,6 +1041,7 @@ export function App() {
             onTemplatesChanged={() => {
               void refreshTemplates();
             }}
+            onOpenAIPreview={() => openAIPreview()}
             onOpenAIGenerator={() => setIsAIGeneratorOpen(true)}
           />
         </>
@@ -1102,8 +1127,8 @@ export function App() {
                     <h3>Extraction Templates</h3>
                     <p>
                       Template lifecycle management now lives on the Templates
-                      page so existing templates are always actionable instead
-                      of split across multiple surfaces.
+                      page so existing templates, AI preview, and AI generation
+                      stay actionable instead of split across multiple surfaces.
                     </p>
                   </div>
                   <div className="settings-template-callout__actions">
@@ -1113,6 +1138,13 @@ export function App() {
                       onClick={() => navigate("/templates")}
                     >
                       Open Templates
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => openAIPreview()}
+                    >
+                      Preview Extraction with AI
                     </button>
                     <button
                       type="button"
@@ -1155,6 +1187,12 @@ export function App() {
           <RetentionStatusPanel />
         </>
       )}
+
+      <AIExtractPreview
+        isOpen={isAIPreviewOpen}
+        initialUrl={aiPreviewInitialURL}
+        onClose={() => setIsAIPreviewOpen(false)}
+      />
 
       <AITemplateGenerator
         isOpen={isAIGeneratorOpen}
