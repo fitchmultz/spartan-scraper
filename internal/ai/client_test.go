@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -132,6 +133,71 @@ rl.on("line", (line) => {
 	}
 	if elapsed := time.Since(start); elapsed > 3*time.Second {
 		t.Fatalf("expected request timeout to stop quickly, took %v", elapsed)
+	}
+}
+
+func TestClientHealthFailsWhenNoAuthReadyRoutesExist(t *testing.T) {
+	nodeBin := requireNode(t)
+	scriptPath := writeBridgeScript(t, `
+const readline = require("node:readline");
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+const result = {
+  mode: "sdk",
+  resolved: {
+    "extract.natural_language": ["openai/gpt-5.4", "kimi-coding/k2p5"]
+  },
+  available: {
+    "extract.natural_language": []
+  },
+  route_status: {
+    "extract.natural_language": [
+      {
+        route_id: "openai/gpt-5.4",
+        provider: "openai",
+        model: "gpt-5.4",
+        status: "missing_auth",
+        message: "no auth configured for provider openai",
+        model_found: true,
+        auth_configured: false
+      },
+      {
+        route_id: "kimi-coding/k2p5",
+        provider: "kimi-coding",
+        model: "k2p5",
+        status: "missing_auth",
+        message: "no auth configured for provider kimi-coding",
+        model_found: true,
+        auth_configured: false
+      }
+    ]
+  }
+};
+rl.on("line", (line) => {
+  const request = JSON.parse(line);
+  if (request.op === "health") {
+    process.stdout.write(JSON.stringify({ id: request.id, ok: true, result }) + "\n");
+  }
+});
+`)
+
+	client := NewClient(config.AIConfig{
+		Enabled:            true,
+		NodeBin:            nodeBin,
+		BridgeScript:       scriptPath,
+		StartupTimeoutSecs: 1,
+		RequestTimeoutSecs: 5,
+	})
+	defer func() { _ = client.Close() }()
+
+	err := client.HealthCheck(context.Background())
+	if err == nil {
+		t.Fatal("expected startup diagnostics error")
+	}
+	if !strings.Contains(err.Error(), "no auth-ready pi routes available") {
+		t.Fatalf("expected missing auth diagnostic, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "openai/gpt-5.4") {
+		t.Fatalf("expected route diagnostics in error, got %v", err)
 	}
 }
 

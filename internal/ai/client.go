@@ -43,13 +43,24 @@ type bridgeError struct {
 	Message string `json:"message"`
 }
 
+type HealthRouteStatus struct {
+	RouteID        string `json:"route_id"`
+	Provider       string `json:"provider,omitempty"`
+	Model          string `json:"model,omitempty"`
+	Status         string `json:"status"`
+	Message        string `json:"message,omitempty"`
+	ModelFound     bool   `json:"model_found"`
+	AuthConfigured bool   `json:"auth_configured"`
+}
+
 type HealthResponse struct {
-	Mode         string              `json:"mode"`
-	AgentDir     string              `json:"agent_dir,omitempty"`
-	Resolved     map[string][]string `json:"resolved,omitempty"`
-	Available    map[string][]string `json:"available,omitempty"`
-	LoadError    string              `json:"load_error,omitempty"`
-	ProviderInfo string              `json:"provider_info,omitempty"`
+	Mode        string                         `json:"mode"`
+	AgentDir    string                         `json:"agent_dir,omitempty"`
+	Resolved    map[string][]string            `json:"resolved,omitempty"`
+	Available   map[string][]string            `json:"available,omitempty"`
+	RouteStatus map[string][]HealthRouteStatus `json:"route_status,omitempty"`
+	LoadError   string                         `json:"load_error,omitempty"`
+	AuthErrors  []string                       `json:"auth_errors,omitempty"`
 }
 
 type ExtractRequest struct {
@@ -281,6 +292,11 @@ func (c *Client) ensureStarted(ctx context.Context) error {
 			return fmt.Errorf("decode bridge health: %w", err)
 		}
 	}
+	logBridgeHealth(health)
+	if err := validateBridgeHealth(health); err != nil {
+		_ = c.stopLocked()
+		return err
+	}
 	return nil
 }
 
@@ -429,6 +445,90 @@ func resolveBridgeScriptPath(scriptPath string, searchRoots []string) (string, e
 		"resolve bridge script path %q: not found relative to PI_CONFIG_PATH, cwd, or executable; set PI_BRIDGE_SCRIPT to an absolute path",
 		scriptPath,
 	)
+}
+
+func logBridgeHealth(health HealthResponse) {
+	if health.Mode == "" && len(health.Resolved) == 0 && len(health.Available) == 0 && len(health.RouteStatus) == 0 && health.LoadError == "" && len(health.AuthErrors) == 0 {
+		return
+	}
+
+	slog.Info(
+		"pi bridge startup health",
+		"mode", health.Mode,
+		"ready_routes", summarizeRouteCounts(health.Available),
+		"configured_routes", summarizeRouteCounts(health.Resolved),
+	)
+
+	if health.LoadError != "" || len(health.AuthErrors) > 0 {
+		slog.Warn(
+			"pi bridge startup diagnostics",
+			"models_error", health.LoadError,
+			"auth_errors", health.AuthErrors,
+		)
+	}
+}
+
+func validateBridgeHealth(health HealthResponse) error {
+	var issues []string
+	for capability, routes := range health.Resolved {
+		if len(routes) == 0 {
+			continue
+		}
+		if len(health.Available[capability]) > 0 {
+			continue
+		}
+		issues = append(issues, fmt.Sprintf("%s: %s", capability, formatRouteStatuses(health.RouteStatus[capability], routes)))
+	}
+	if len(issues) == 0 {
+		return nil
+	}
+
+	parts := make([]string, 0, 2+len(health.AuthErrors))
+	parts = append(parts, "no auth-ready pi routes available for "+strings.Join(issues, "; "))
+	if health.LoadError != "" {
+		parts = append(parts, "models.json: "+health.LoadError)
+	}
+	for _, authErr := range health.AuthErrors {
+		if strings.TrimSpace(authErr) == "" {
+			continue
+		}
+		parts = append(parts, "auth: "+authErr)
+	}
+	return fmt.Errorf("bridge startup diagnostics: %s", strings.Join(parts, " | "))
+}
+
+func summarizeRouteCounts(routes map[string][]string) map[string]string {
+	if len(routes) == 0 {
+		return nil
+	}
+	counts := make(map[string]string, len(routes))
+	for capability, entries := range routes {
+		counts[capability] = fmt.Sprintf("%d", len(entries))
+	}
+	return counts
+}
+
+func formatRouteStatuses(statuses []HealthRouteStatus, fallbackRoutes []string) string {
+	if len(statuses) == 0 {
+		if len(fallbackRoutes) == 0 {
+			return "no routes configured"
+		}
+		return strings.Join(fallbackRoutes, ", ")
+	}
+
+	parts := make([]string, 0, len(statuses))
+	for _, status := range statuses {
+		label := status.RouteID
+		if strings.TrimSpace(label) == "" {
+			label = "<unknown-route>"
+		}
+		if strings.TrimSpace(status.Message) != "" {
+			parts = append(parts, fmt.Sprintf("%s (%s)", label, status.Message))
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s (%s)", label, status.Status))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func withConfiguredTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {

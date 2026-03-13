@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 )
 
 func TestHealth(t *testing.T) {
@@ -36,5 +38,38 @@ func TestHealth(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), `"queue"`) {
 		t.Errorf("handler missing queue status: got %v", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"ai"`) {
+		t.Errorf("handler missing ai status: got %v", rr.Body.String())
+	}
+}
+
+func TestHealthIncludesAIComponentWhenEnabled(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	srv.aiExtractor = extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Mode: "sdk", Routing: config.DefaultAIRoutingConfig()},
+		srv.cfg.DataDir,
+		&fakeAIProvider{},
+	)
+	srv.cfg.AI = config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}
+
+	req := httptest.NewRequest("GET", "/healthz", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+	if !strings.Contains(rr.Body.String(), `"ai":{"status":"ok"`) {
+		t.Fatalf("handler missing healthy ai component: got %v", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"mode":"sdk"`) {
+		t.Fatalf("handler missing ai mode detail: got %v", rr.Body.String())
 	}
 }

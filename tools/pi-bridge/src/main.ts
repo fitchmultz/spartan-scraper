@@ -17,7 +17,7 @@ import { SDKBackend } from "./sdk-backend.js";
 
 const config = loadBridgeConfig();
 interface Backend {
-  health(agentDir: string): unknown;
+  health(agentDir: string): Promise<unknown> | unknown;
   extract(capability: string, payload: ExtractPayload): Promise<unknown> | unknown;
   generateTemplate(
     capability: string,
@@ -61,7 +61,7 @@ rl.on("line", async (line) => {
         writeResponse({
           id: request.id,
           ok: true,
-          result: backend.health(config.agentDir),
+          result: await backend.health(config.agentDir),
         });
         return;
       case OP_EXTRACT_PREVIEW: {

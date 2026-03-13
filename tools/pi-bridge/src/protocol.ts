@@ -110,10 +110,22 @@ export interface TemplateResult {
   model?: string;
 }
 
+export interface HealthRouteStatus {
+  route_id: string;
+  provider?: string;
+  model?: string;
+  status: "ready" | "missing_auth" | "missing_model" | "invalid_route";
+  message?: string;
+  model_found: boolean;
+  auth_configured: boolean;
+}
+
 export interface HealthResult {
   mode: string;
   agent_dir?: string;
   resolved?: Record<string, string[]>;
   available?: Record<string, string[]>;
+  route_status?: Record<string, HealthRouteStatus[]>;
   load_error?: string;
+  auth_errors?: string[];
 }

@@ -10,6 +10,8 @@ import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type {
   ExtractPayload,
   GenerateTemplatePayload,
+  HealthResult,
+  HealthRouteStatus,
   TemplateResult,
 } from "./protocol.js";
 import { parseRouteId } from "./config.js";
@@ -39,25 +41,40 @@ export class SDKBackend {
   readonly authStorage: AuthStorage;
   readonly modelRegistry: ModelRegistry;
 
-  constructor(private readonly routes: Record<string, string[]>) {
-    this.authStorage = AuthStorage.create();
-    this.modelRegistry = new ModelRegistry(this.authStorage);
+  constructor(
+    private readonly routes: Record<string, string[]>,
+    deps: { authStorage?: AuthStorage; modelRegistry?: ModelRegistry } = {},
+  ) {
+    this.authStorage =
+      deps.modelRegistry?.authStorage ?? deps.authStorage ?? AuthStorage.create();
+    this.modelRegistry = deps.modelRegistry ?? new ModelRegistry(this.authStorage);
   }
 
-  health(agentDir: string) {
+  async health(agentDir: string): Promise<HealthResult> {
     const available: Record<string, string[]> = {};
+    const routeStatus: Record<string, HealthRouteStatus[]> = {};
+
     for (const [capability, routeIds] of Object.entries(this.routes)) {
-      available[capability] = routeIds.filter((routeId) => {
-        const { provider, model } = parseRouteId(routeId);
-        return !!this.modelRegistry.find(provider, model);
-      });
+      const statuses = routeIds.map((routeId) => this.inspectRoute(routeId));
+      routeStatus[capability] = statuses;
+      available[capability] = statuses
+        .filter((status) => status.status === "ready")
+        .map((status) => status.route_id);
     }
+
+    const authErrors = this.authStorage
+      .drainErrors()
+      .map((error) => error.message)
+      .filter(Boolean);
+
     return {
       mode: "sdk",
       agent_dir: agentDir,
       resolved: this.routes,
       available,
+      route_status: routeStatus,
       load_error: this.modelRegistry.getError(),
+      auth_errors: authErrors.length > 0 ? authErrors : undefined,
     };
   }
 
@@ -120,6 +137,54 @@ export class SDKBackend {
         model: response.model,
       });
     });
+  }
+
+  private inspectRoute(routeId: string): HealthRouteStatus {
+    try {
+      const { provider, model } = parseRouteId(routeId);
+      const selectedModel = this.modelRegistry.find(provider, model);
+      if (!selectedModel) {
+        return {
+          route_id: routeId,
+          provider,
+          model,
+          status: "missing_model",
+          message: `model not found for route ${routeId}`,
+          model_found: false,
+          auth_configured: false,
+        };
+      }
+
+      const authConfigured = this.authStorage.hasAuth(provider);
+      if (!authConfigured) {
+        return {
+          route_id: routeId,
+          provider,
+          model,
+          status: "missing_auth",
+          message: `no auth configured for provider ${provider}`,
+          model_found: true,
+          auth_configured: false,
+        };
+      }
+
+      return {
+        route_id: routeId,
+        provider,
+        model,
+        status: "ready",
+        model_found: true,
+        auth_configured: true,
+      };
+    } catch (error) {
+      return {
+        route_id: routeId,
+        status: "invalid_route",
+        message: error instanceof Error ? error.message : String(error),
+        model_found: false,
+        auth_configured: false,
+      };
+    }
   }
 
   private async selectRoute(
