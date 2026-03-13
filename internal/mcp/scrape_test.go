@@ -107,7 +107,7 @@ func TestScrapePageSchema(t *testing.T) {
 		requiredSet[f.(string)] = true
 	}
 
-	for _, field := range []string{"preProcessors", "postProcessors", "transformers", "incremental"} {
+	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}
@@ -127,6 +127,22 @@ func TestScrapePageSchema(t *testing.T) {
 	transformersType, ok := props["transformers"].(map[string]string)
 	if !ok || transformersType["type"] != "array" {
 		t.Error("transformers should be array type")
+	}
+	aiExtractType, ok := props["aiExtract"].(map[string]string)
+	if !ok || aiExtractType["type"] != "boolean" {
+		t.Error("aiExtract should be boolean type")
+	}
+	aiModeType, ok := props["aiMode"].(map[string]string)
+	if !ok || aiModeType["type"] != "string" {
+		t.Error("aiMode should be string type")
+	}
+	aiSchemaType, ok := props["aiSchema"].(map[string]string)
+	if !ok || aiSchemaType["type"] != "object" {
+		t.Error("aiSchema should be object type")
+	}
+	aiFieldsType, ok := props["aiFields"].(map[string]string)
+	if !ok || aiFieldsType["type"] != "array" {
+		t.Error("aiFields should be array type")
 	}
 	incrementalType, ok := props["incremental"].(map[string]string)
 	if !ok || incrementalType["type"] != "boolean" {

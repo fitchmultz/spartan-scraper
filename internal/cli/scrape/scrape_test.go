@@ -24,7 +24,26 @@ import (
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
+
+func latestJobSpec(t *testing.T, dataDir string) map[string]interface{} {
+	t.Helper()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	jobs, err := st.List(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list jobs: %v", err)
+	}
+	if len(jobs) == 0 {
+		t.Fatal("expected at least one job")
+	}
+	return jobs[0].SpecMap()
+}
 
 func TestLoadExtractOptions_NoConfigPath(t *testing.T) {
 	opts, err := loadExtractOptions("", "", false)
@@ -357,5 +376,92 @@ func TestRunScrape_NetworkInterceptFlags(t *testing.T) {
 	}
 	if !strings.Contains(output, "\"kind\": \"scrape\"") {
 		t.Errorf("expected output to contain job data, got %q", output)
+	}
+}
+
+func TestRunScrape_SchemaGuidedAIRejectsInvalidJSON(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.Config{DataDir: t.TempDir(), RequestTimeoutSecs: 30}
+
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	exitCode := RunScrape(ctx, cfg, []string{
+		"--url", "https://example.com",
+		"--ai-extract",
+		"--ai-mode", "schema_guided",
+		"--ai-schema", "{not-json}",
+	})
+
+	w.Close()
+	os.Stderr = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	stderr := buf.String()
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+	if !strings.Contains(stderr, "invalid --ai-schema JSON") {
+		t.Fatalf("expected invalid schema error, got %q", stderr)
+	}
+}
+
+func TestRunScrape_SchemaGuidedAIStoresStructuredSchema(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunScrape(ctx, cfg, []string{
+		"--url", "https://example.com",
+		"--ai-extract",
+		"--ai-mode", "schema_guided",
+		"--ai-schema", `{"title":"Example","price":"$19.99"}`,
+		"--ai-fields", "title,price",
+	})
+
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	spec := latestJobSpec(t, tmpDir)
+	extractMap, ok := spec["extract"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("extract spec missing: %#v", spec["extract"])
+	}
+	aiMap, ok := extractMap["ai"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("ai spec missing: %#v", extractMap["ai"])
+	}
+	if mode, _ := aiMap["mode"].(string); mode != "schema_guided" {
+		t.Fatalf("expected schema_guided mode, got %q", mode)
+	}
+	schema, ok := aiMap["schema"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("schema missing: %#v", aiMap["schema"])
+	}
+	if title, _ := schema["title"].(string); title != "Example" {
+		t.Fatalf("expected schema title Example, got %#v", schema["title"])
 	}
 }

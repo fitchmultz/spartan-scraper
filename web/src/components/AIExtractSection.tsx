@@ -7,6 +7,8 @@ interface AIExtractSectionProps {
   setMode: (value: "natural_language" | "schema_guided") => void;
   prompt: string;
   setPrompt: (value: string) => void;
+  schemaText: string;
+  setSchemaText: (value: string) => void;
   fields: string;
   setFields: (value: string) => void;
 }
@@ -18,6 +20,8 @@ export function AIExtractSection({
   setMode,
   prompt,
   setPrompt,
+  schemaText,
+  setSchemaText,
   fields,
   setFields,
 }: AIExtractSectionProps) {
@@ -42,8 +46,8 @@ export function AIExtractSection({
           </button>
         </div>
         <p className="mt-2 text-sm text-slate-400">
-          Use AI to intelligently extract data from HTML without writing
-          selectors.
+          Use AI to intelligently extract structured fields without hand-writing
+          selectors first.
         </p>
       </div>
     );
@@ -80,27 +84,30 @@ export function AIExtractSection({
         </div>
       </div>
 
-      {showHelp && (
+      {showHelp ? (
         <div className="mb-4 p-3 bg-slate-800 rounded-md text-sm text-slate-300">
           <p className="mb-2">
-            <strong>AI Extraction</strong> uses LLM technology to extract
-            structured data from HTML.
+            <strong>AI Extraction</strong> augments template extraction with
+            route-backed LLM extraction.
           </p>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
             <li>
-              <strong>Natural Language:</strong> Describe what you want to
-              extract in plain English
+              <strong>Natural Language:</strong> describe what to pull from the
+              page in plain English.
             </li>
             <li>
-              <strong>Schema Guided:</strong> Provide an example object to guide
-              extraction
+              <strong>Schema Guided:</strong> provide an example JSON object so
+              field names and shapes are explicit.
+            </li>
+            <li>
+              <strong>Fields:</strong> optionally constrain extraction to a
+              known set of output keys.
             </li>
           </ul>
         </div>
-      )}
+      ) : null}
 
       <div className="space-y-4">
-        {/* Mode selector */}
         <div>
           <span className="block text-sm font-medium text-slate-300 mb-2">
             Extraction Mode
@@ -131,7 +138,6 @@ export function AIExtractSection({
           </div>
         </div>
 
-        {/* Fields input */}
         <div>
           <label
             htmlFor="ai-fields"
@@ -143,43 +149,60 @@ export function AIExtractSection({
             id="ai-fields"
             type="text"
             value={fields}
-            onChange={(e) => setFields(e.target.value)}
+            onChange={(event) => setFields(event.target.value)}
             placeholder="e.g., title, price, description, rating"
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
           <p className="mt-1 text-xs text-slate-500">
-            Optional: Specify field names to guide the AI extraction
+            Optional: guide the extractor toward known output fields.
           </p>
         </div>
 
-        {/* Prompt input */}
-        <div>
-          <label
-            htmlFor="ai-prompt"
-            className="block text-sm font-medium text-slate-300 mb-2"
-          >
-            {mode === "natural_language"
-              ? "Extraction Instructions"
-              : "Schema Example (JSON)"}
-          </label>
-          <textarea
-            id="ai-prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={mode === "natural_language" ? 3 : 5}
-            placeholder={
-              mode === "natural_language"
-                ? "e.g., Extract all product prices, names, and ratings from this e-commerce page"
-                : '{"product_name": "Example Product", "price": "$19.99", "rating": 4.5}'
-            }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            {mode === "natural_language"
-              ? "Describe what data you want to extract in natural language"
-              : "Provide a JSON object with example field names and values"}
-          </p>
-        </div>
+        {mode === "natural_language" ? (
+          <div>
+            <label
+              htmlFor="ai-prompt"
+              className="block text-sm font-medium text-slate-300 mb-2"
+            >
+              Extraction Instructions
+            </label>
+            <textarea
+              id="ai-prompt"
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              rows={3}
+              placeholder="Extract the product title, price, availability, and shipping details from this page."
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Describe what data should be extracted and any normalization
+              hints.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label
+              htmlFor="ai-schema"
+              className="block text-sm font-medium text-slate-300 mb-2"
+            >
+              Schema Example (JSON object)
+            </label>
+            <textarea
+              id="ai-schema"
+              value={schemaText}
+              onChange={(event) => setSchemaText(event.target.value)}
+              rows={6}
+              placeholder={
+                '{\n  "title": "Example product",\n  "price": "$19.99",\n  "in_stock": true\n}'
+              }
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Provide an example JSON object. Spartan will send it as structured
+              schema guidance, not raw prompt text.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

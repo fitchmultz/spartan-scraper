@@ -5,12 +5,14 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  buildAIExtractOptions,
   buildAuth,
   parseProcessors,
   buildPipelineOptions,
   buildScrapeRequest,
   buildCrawlRequest,
   buildResearchRequest,
+  parseAIExtractSchemaText,
 } from "./form-utils";
 
 describe("pipeline options parsing", () => {
@@ -70,6 +72,60 @@ describe("buildPipelineOptions", () => {
       preProcessors: ["redact"],
       postProcessors: ["cleanup"],
       transformers: ["json-export"],
+    });
+  });
+});
+
+describe("AI extract helpers", () => {
+  it("parses schema-guided JSON into an object", () => {
+    expect(
+      parseAIExtractSchemaText('{"title":"Example","price":"$19.99"}'),
+    ).toEqual({
+      title: "Example",
+      price: "$19.99",
+    });
+  });
+
+  it("rejects non-object AI schema JSON", () => {
+    expect(() => parseAIExtractSchemaText('["bad"]')).toThrow(
+      "AI schema must be a JSON object",
+    );
+  });
+
+  it("builds natural-language AI extraction options", () => {
+    expect(
+      buildAIExtractOptions(
+        true,
+        "natural_language",
+        "Extract title and price",
+        "",
+        "title, price",
+      ),
+    ).toEqual({
+      enabled: true,
+      mode: "natural_language",
+      prompt: "Extract title and price",
+      fields: ["title", "price"],
+    });
+  });
+
+  it("builds schema-guided AI extraction options", () => {
+    expect(
+      buildAIExtractOptions(
+        true,
+        "schema_guided",
+        "ignored",
+        '{"title":"Example","price":"$19.99"}',
+        "title, price",
+      ),
+    ).toEqual({
+      enabled: true,
+      mode: "schema_guided",
+      schema: {
+        title: "Example",
+        price: "$19.99",
+      },
+      fields: ["title", "price"],
     });
   });
 });
@@ -150,6 +206,48 @@ describe("buildCrawlRequest with pipeline options", () => {
         transformers: undefined,
       },
       incremental: undefined,
+    });
+  });
+
+  it("should merge AI extraction options into crawl extract config", () => {
+    const request = buildCrawlRequest(
+      "https://example.com",
+      2,
+      10,
+      true,
+      false,
+      30,
+      undefined,
+      undefined,
+      { template: "article", validate: true },
+      "",
+      "",
+      "",
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        enabled: true,
+        mode: "natural_language",
+        prompt: "Extract title and price",
+        fields: ["title", "price"],
+      },
+    );
+
+    expect(request.extract).toEqual({
+      template: "article",
+      validate: true,
+      ai: {
+        enabled: true,
+        mode: "natural_language",
+        prompt: "Extract title and price",
+        fields: ["title", "price"],
+      },
     });
   });
 });

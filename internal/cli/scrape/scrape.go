@@ -39,22 +39,13 @@ Examples:
     --login-user-selector '#email' --login-pass-selector '#password' --login-submit-selector 'button[type=submit]' \
     --login-user you@example.com --login-pass '***'
   spartan scrape --url https://example.com --ai-extract --ai-prompt "extract all product names and prices"
-  spartan scrape --url https://example.com --ai-extract --ai-mode schema_guided --ai-fields "title,price,rating"
+  spartan scrape --url https://example.com --ai-extract --ai-mode schema_guided --ai-schema '{"title":"Example","price":"$19.99"}' --ai-fields "title,price,rating"
 
 Options:
 `)
 		fs.PrintDefaults()
 	}
 	_ = fs.Parse(args)
-
-	// Validate AI mode if AI extraction is enabled
-	if *cf.AIExtract {
-		mode := extract.AIExtractionMode(*cf.AIExtractMode)
-		if mode != extract.AIModeNaturalLanguage && mode != extract.AIModeSchemaGuided {
-			fmt.Fprintf(os.Stderr, "Invalid --ai-mode: %s (must be 'natural_language' or 'schema_guided')\n", *cf.AIExtractMode)
-			return 1
-		}
-	}
 
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "--url is required")
@@ -77,21 +68,13 @@ Options:
 		return 1
 	}
 
-	// Add AI extraction options if enabled
-	if *cf.AIExtract {
-		fields := []string{}
-		if *cf.AIExtractFields != "" {
-			fields = strings.Split(*cf.AIExtractFields, ",")
-			for i := range fields {
-				fields[i] = strings.TrimSpace(fields[i])
-			}
-		}
-		extractOpts.AI = &extract.AIExtractOptions{
-			Enabled: true,
-			Mode:    extract.AIExtractionMode(*cf.AIExtractMode),
-			Prompt:  *cf.AIExtractPrompt,
-			Fields:  fields,
-		}
+	aiExtractOptions, err := common.BuildAIExtractOptions(cf)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if aiExtractOptions != nil {
+		extractOpts.AI = aiExtractOptions
 	}
 	pipelineOpts := pipeline.Options{
 		PreProcessors:  []string(cf.PreProcessors),

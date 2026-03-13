@@ -12,11 +12,21 @@
 - Submit, store the returned job ID, then poll or wait for terminal status.
 - Use the job manifest on disk when you need artifact-level inspection.
 
+## AI extraction arguments
+
+`scrape_page` and `crawl_site` support the same AI extraction controls as the direct scrape and crawl surfaces:
+
+- `aiExtract: true`
+- `aiMode: "natural_language" | "schema_guided"`
+- `aiPrompt: "..."` for natural-language mode
+- `aiSchema: { ... }` for schema-guided mode
+- `aiFields: ["field1", "field2"]`
+
 ## Example
 
 ```json
 {"id":1,"method":"initialize"}
-{"id":2,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com","timeoutSeconds":30}}}
+{"id":2,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":"https://example.com","timeoutSeconds":30,"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the title and price","aiFields":["title","price"]}}}
 {"id":3,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
 {"id":4,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```

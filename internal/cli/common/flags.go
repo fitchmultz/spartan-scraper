@@ -60,6 +60,7 @@ type CommonFlags struct {
 	AIExtract       *bool
 	AIExtractMode   *string
 	AIExtractPrompt *string
+	AIExtractSchema *string
 	AIExtractFields *string
 
 	// Pipeline flags
@@ -237,7 +238,8 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		// AI extraction flags
 		AIExtract:       fs.Bool("ai-extract", false, "Enable AI-powered intelligent extraction (requires PI_ENABLED bridge config)"),
 		AIExtractMode:   fs.String("ai-mode", "natural_language", "AI extraction mode: natural_language|schema_guided"),
-		AIExtractPrompt: fs.String("ai-prompt", "", "Natural language prompt or schema JSON for AI extraction"),
+		AIExtractPrompt: fs.String("ai-prompt", "", "Natural language instructions for AI extraction"),
+		AIExtractSchema: fs.String("ai-schema", "", "Schema-guided extraction example as a JSON object string"),
 		AIExtractFields: fs.String("ai-fields", "", "Comma-separated list of fields to extract with AI"),
 	}
 

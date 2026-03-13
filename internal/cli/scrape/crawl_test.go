@@ -137,3 +137,56 @@ func TestRunCrawl_ValidFlagsCreateJob(t *testing.T) {
 		t.Errorf("expected output to contain job data, got %q", output)
 	}
 }
+
+func TestRunCrawl_NaturalLanguageAIStoresPromptAndFields(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunCrawl(ctx, cfg, []string{
+		"--url", "https://example.com",
+		"--max-depth", "2",
+		"--ai-extract",
+		"--ai-prompt", "Extract titles and prices",
+		"--ai-fields", "title,price",
+	})
+
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	spec := latestJobSpec(t, tmpDir)
+	extractMap, ok := spec["extract"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("extract spec missing: %#v", spec["extract"])
+	}
+	aiMap, ok := extractMap["ai"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("ai spec missing: %#v", extractMap["ai"])
+	}
+	if mode, _ := aiMap["mode"].(string); mode != "natural_language" {
+		t.Fatalf("expected natural_language mode, got %q", mode)
+	}
+	if prompt, _ := aiMap["prompt"].(string); prompt != "Extract titles and prices" {
+		t.Fatalf("expected prompt to be stored, got %q", prompt)
+	}
+}

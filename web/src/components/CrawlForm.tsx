@@ -16,7 +16,9 @@ import {
 } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
+import { AIExtractSection } from "./AIExtractSection";
 import {
+  buildAIExtractOptions,
   buildCrawlRequest,
   buildSharedRequestConfig,
   parsePatternList,
@@ -28,7 +30,7 @@ import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
-import type { DeviceEmulation } from "../api";
+import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface CrawlFormRef {
   /** Submit the form programmatically */
@@ -86,6 +88,16 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setExtractTemplate,
       extractValidate,
       setExtractValidate,
+      aiExtractEnabled,
+      setAIExtractEnabled,
+      aiExtractMode,
+      setAIExtractMode,
+      aiExtractPrompt,
+      setAIExtractPrompt,
+      aiExtractSchema,
+      setAIExtractSchema,
+      aiExtractFields,
+      setAIExtractFields,
       preProcessors,
       setPreProcessors,
       postProcessors,
@@ -129,6 +141,21 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         return;
       }
       const shared = buildSharedRequestConfig(form);
+
+      let aiExtractOptions: AiExtractOptions | undefined;
+      try {
+        aiExtractOptions = buildAIExtractOptions(
+          aiExtractEnabled,
+          aiExtractMode,
+          aiExtractPrompt,
+          aiExtractSchema,
+          aiExtractFields,
+        );
+      } catch (error) {
+        alert(error instanceof Error ? error.message : String(error));
+        return;
+      }
+
       const request = buildCrawlRequest(
         crawlUrl,
         maxDepth,
@@ -150,6 +177,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         parsePatternList(excludePatterns),
         device || undefined,
         shared.networkIntercept,
+        aiExtractOptions,
       );
       await onSubmit(request);
     }, [
@@ -160,6 +188,11 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       usePlaywright,
       timeoutSeconds,
       form,
+      aiExtractEnabled,
+      aiExtractMode,
+      aiExtractPrompt,
+      aiExtractSchema,
+      aiExtractFields,
       incremental,
       sitemapURL,
       sitemapOnly,
@@ -189,6 +222,11 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -228,6 +266,11 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -445,7 +488,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
 
         <JobFormAdvancedSection
           title="Extraction and delivery"
-          description="Templates, processors, incremental runs, and webhook notifications."
+          description="Templates, processors, AI extraction, incremental runs, and webhook notifications."
         >
           <PipelineOptions
             extractTemplate={extractTemplate}
@@ -461,6 +504,18 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
             incremental={incremental}
             setIncremental={setIncremental}
             inputPrefix="crawl"
+          />
+          <AIExtractSection
+            enabled={aiExtractEnabled}
+            setEnabled={setAIExtractEnabled}
+            mode={aiExtractMode}
+            setMode={setAIExtractMode}
+            prompt={aiExtractPrompt}
+            setPrompt={setAIExtractPrompt}
+            schemaText={aiExtractSchema}
+            setSchemaText={setAIExtractSchema}
+            fields={aiExtractFields}
+            setFields={setAIExtractFields}
           />
           <WebhookConfig
             webhookUrl={webhookUrl}

@@ -10,13 +10,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Align AI extraction controls for scrape/crawl job submission across API, Web UI, CLI, and MCP where those job-launching interfaces already exist.
-
-## Next
-
 - Add AI capabilities to additional product features where they materially improve outcomes and fit the interface, starting with research.
 - Keep this additive first: deterministic `internal/research` remains the baseline path unless a future roadmap item explicitly replaces or restructures it.
 - Reuse Spartan's existing evidence collection and fetch/extract primitives instead of bypassing them with a free-form agent loop.
+
+## Next
+
 - Add agentic `research` powered by `pi`.
 
 ## Later

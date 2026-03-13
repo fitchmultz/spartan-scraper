@@ -30,6 +30,11 @@ export interface FormState {
   loginPass: string;
   extractTemplate: string;
   extractValidate: boolean;
+  aiExtractEnabled: boolean;
+  aiExtractMode: "natural_language" | "schema_guided";
+  aiExtractPrompt: string;
+  aiExtractSchema: string;
+  aiExtractFields: string;
   preProcessors: string;
   postProcessors: string;
   transformers: string;
@@ -65,6 +70,11 @@ export interface FormActions {
   setLoginPass: (value: string) => void;
   setExtractTemplate: (value: string) => void;
   setExtractValidate: (value: boolean) => void;
+  setAIExtractEnabled: (value: boolean) => void;
+  setAIExtractMode: (value: "natural_language" | "schema_guided") => void;
+  setAIExtractPrompt: (value: string) => void;
+  setAIExtractSchema: (value: string) => void;
+  setAIExtractFields: (value: string) => void;
   setPreProcessors: (value: string) => void;
   setPostProcessors: (value: string) => void;
   setTransformers: (value: string) => void;
@@ -105,6 +115,11 @@ const INITIAL_STATE: FormState = {
   loginPass: "",
   extractTemplate: "",
   extractValidate: false,
+  aiExtractEnabled: false,
+  aiExtractMode: "natural_language",
+  aiExtractPrompt: "",
+  aiExtractSchema: '{\n  "title": "Example product",\n  "price": "$19.99"\n}',
+  aiExtractFields: "",
   preProcessors: "",
   postProcessors: "",
   transformers: "",
@@ -188,6 +203,29 @@ export function useFormState(): FormController {
 
   const setExtractValidate = useCallback((value: boolean) => {
     setState((prev) => ({ ...prev, extractValidate: value }));
+  }, []);
+
+  const setAIExtractEnabled = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, aiExtractEnabled: value }));
+  }, []);
+
+  const setAIExtractMode = useCallback(
+    (value: "natural_language" | "schema_guided") => {
+      setState((prev) => ({ ...prev, aiExtractMode: value }));
+    },
+    [],
+  );
+
+  const setAIExtractPrompt = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, aiExtractPrompt: value }));
+  }, []);
+
+  const setAIExtractSchema = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, aiExtractSchema: value }));
+  }, []);
+
+  const setAIExtractFields = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, aiExtractFields: value }));
   }, []);
 
   const setPreProcessors = useCallback((value: string) => {
@@ -291,6 +329,21 @@ export function useFormState(): FormController {
       ...(config.extractValidate !== undefined && {
         extractValidate: config.extractValidate,
       }),
+      ...(config.aiExtractEnabled !== undefined && {
+        aiExtractEnabled: config.aiExtractEnabled,
+      }),
+      ...(config.aiExtractMode !== undefined && {
+        aiExtractMode: config.aiExtractMode,
+      }),
+      ...(config.aiExtractPrompt !== undefined && {
+        aiExtractPrompt: config.aiExtractPrompt,
+      }),
+      ...(config.aiExtractSchema !== undefined && {
+        aiExtractSchema: config.aiExtractSchema,
+      }),
+      ...(config.aiExtractFields !== undefined && {
+        aiExtractFields: config.aiExtractFields,
+      }),
       ...(config.preProcessors !== undefined && {
         preProcessors: config.preProcessors,
       }),
@@ -351,6 +404,11 @@ export function useFormState(): FormController {
     setLoginPass,
     setExtractTemplate,
     setExtractValidate,
+    setAIExtractEnabled,
+    setAIExtractMode,
+    setAIExtractPrompt,
+    setAIExtractSchema,
+    setAIExtractFields,
     setPreProcessors,
     setPostProcessors,
     setTransformers,

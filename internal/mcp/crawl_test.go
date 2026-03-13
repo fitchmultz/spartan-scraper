@@ -73,7 +73,7 @@ func TestCrawlSiteSchema(t *testing.T) {
 	}
 	schema := crawlTool.InputSchema
 	props, _ := schema["properties"].(map[string]interface{})
-	for _, field := range []string{"preProcessors", "postProcessors", "transformers", "incremental"} {
+	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}

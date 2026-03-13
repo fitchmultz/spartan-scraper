@@ -18,6 +18,7 @@ import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import { AIExtractSection } from "./AIExtractSection";
 import {
+  buildAIExtractOptions,
   buildScrapeRequest,
   buildSharedRequestConfig,
 } from "../lib/form-utils";
@@ -28,7 +29,7 @@ import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
-import type { DeviceEmulation } from "../api";
+import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
   /** Submit the form programmatically */
@@ -86,6 +87,16 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setExtractTemplate,
       extractValidate,
       setExtractValidate,
+      aiExtractEnabled,
+      setAIExtractEnabled,
+      aiExtractMode,
+      setAIExtractMode,
+      aiExtractPrompt,
+      setAIExtractPrompt,
+      aiExtractSchema,
+      setAIExtractSchema,
+      aiExtractFields,
+      setAIExtractFields,
       preProcessors,
       setPreProcessors,
       postProcessors,
@@ -117,32 +128,26 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     const [scrapeUrl, setScrapeUrl] = useState("");
     const [device, setDevice] = useState<DeviceEmulation | null>(null);
 
-    // AI extraction state
-    const [aiEnabled, setAiEnabled] = useState(false);
-    const [aiMode, setAiMode] = useState<"natural_language" | "schema_guided">(
-      "natural_language",
-    );
-    const [aiPrompt, setAiPrompt] = useState("");
-    const [aiFields, setAiFields] = useState("");
-
     const handleSubmit = useCallback(async () => {
       if (!scrapeUrl) {
         alert("Scrape URL is required.");
         return;
       }
       const shared = buildSharedRequestConfig(form);
-      // Build AI extraction options if enabled
-      const aiExtractOptions = aiEnabled
-        ? {
-            enabled: true,
-            mode: aiMode,
-            prompt: aiPrompt || undefined,
-            fields: aiFields
-              .split(",")
-              .map((f) => f.trim())
-              .filter(Boolean),
-          }
-        : undefined;
+
+      let aiExtractOptions: AiExtractOptions | undefined;
+      try {
+        aiExtractOptions = buildAIExtractOptions(
+          aiExtractEnabled,
+          aiExtractMode,
+          aiExtractPrompt,
+          aiExtractSchema,
+          aiExtractFields,
+        );
+      } catch (error) {
+        alert(error instanceof Error ? error.message : String(error));
+        return;
+      }
 
       const request = buildScrapeRequest(
         scrapeUrl,
@@ -168,10 +173,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       usePlaywright,
       timeoutSeconds,
       form,
-      aiEnabled,
-      aiMode,
-      aiPrompt,
-      aiFields,
+      aiExtractEnabled,
+      aiExtractMode,
+      aiExtractPrompt,
+      aiExtractSchema,
+      aiExtractFields,
       incremental,
       device,
       onSubmit,
@@ -197,6 +203,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -230,6 +241,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -375,14 +391,16 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
             inputPrefix="scrape"
           />
           <AIExtractSection
-            enabled={aiEnabled}
-            setEnabled={setAiEnabled}
-            mode={aiMode}
-            setMode={setAiMode}
-            prompt={aiPrompt}
-            setPrompt={setAiPrompt}
-            fields={aiFields}
-            setFields={setAiFields}
+            enabled={aiExtractEnabled}
+            setEnabled={setAIExtractEnabled}
+            mode={aiExtractMode}
+            setMode={setAIExtractMode}
+            prompt={aiExtractPrompt}
+            setPrompt={setAIExtractPrompt}
+            schemaText={aiExtractSchema}
+            setSchemaText={setAIExtractSchema}
+            fields={aiExtractFields}
+            setFields={setAIExtractFields}
           />
         </JobFormAdvancedSection>
 

@@ -541,7 +541,7 @@ export function App() {
   }, [activeTab, pendingPreset, route.kind]);
 
   const getCurrentConfig = useCallback(() => {
-    return {
+    const baseConfig = {
       headless: formState.headless,
       usePlaywright: formState.usePlaywright,
       timeoutSeconds: formState.timeoutSeconds,
@@ -574,7 +574,20 @@ export function App() {
       interceptCaptureResponseBody: formState.interceptCaptureResponseBody,
       interceptMaxBodySize: formState.interceptMaxBodySize,
     };
-  }, [formState]);
+
+    if (activeTab === "scrape" || activeTab === "crawl") {
+      return {
+        ...baseConfig,
+        aiExtractEnabled: formState.aiExtractEnabled,
+        aiExtractMode: formState.aiExtractMode,
+        aiExtractPrompt: formState.aiExtractPrompt,
+        aiExtractSchema: formState.aiExtractSchema,
+        aiExtractFields: formState.aiExtractFields,
+      };
+    }
+
+    return baseConfig;
+  }, [activeTab, formState]);
 
   const getCurrentUrl = useCallback(() => {
     switch (activeTab) {

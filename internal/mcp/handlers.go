@@ -66,6 +66,13 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Template: paramdecode.String(params.Arguments, "extractTemplate"),
 			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
 		}
+		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
+		if err != nil {
+			return nil, apperrors.Validation(err.Error())
+		}
+		if aiExtractOpts != nil {
+			extractOpts.AI = aiExtractOpts
+		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{
 			Kind:           model.KindScrape,
@@ -116,6 +123,13 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		extractOpts := extract.ExtractOptions{
 			Template: paramdecode.String(params.Arguments, "extractTemplate"),
 			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
+		}
+		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
+		if err != nil {
+			return nil, apperrors.Validation(err.Error())
+		}
+		if aiExtractOpts != nil {
+			extractOpts.AI = aiExtractOpts
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{

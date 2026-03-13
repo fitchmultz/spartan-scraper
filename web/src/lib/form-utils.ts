@@ -9,6 +9,7 @@
  * @module form-utils
  */
 import type {
+  AiExtractOptions,
   AuthOptions,
   CrawlRequest,
   ExtractOptions,
@@ -154,6 +155,47 @@ export function buildNetworkInterceptConfig(
   };
 }
 
+export function parseAIExtractSchemaText(
+  raw: string,
+): Record<string, unknown> | undefined {
+  if (!raw.trim()) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(raw) as unknown;
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("AI schema must be a JSON object");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+export function buildAIExtractOptions(
+  enabled: boolean,
+  mode: "natural_language" | "schema_guided",
+  prompt: string,
+  schemaText: string,
+  fields: string,
+): AiExtractOptions | undefined {
+  if (!enabled) {
+    return undefined;
+  }
+
+  const parsedFields = splitAndTrim(fields, ",");
+  const trimmedPrompt = prompt.trim();
+  const parsedSchema =
+    mode === "schema_guided" ? parseAIExtractSchemaText(schemaText) : undefined;
+
+  return {
+    enabled: true,
+    mode,
+    prompt:
+      mode === "natural_language" && trimmedPrompt ? trimmedPrompt : undefined,
+    schema: parsedSchema,
+    fields: parsedFields.length > 0 ? parsedFields : undefined,
+  };
+}
+
 type SharedFormFields = Pick<
   FormController,
   | "authProfile"
@@ -257,7 +299,7 @@ export function buildScrapeRequest(
   webhook?: WebhookConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
-  aiExtract?: import("../api").AiExtractOptions,
+  aiExtract?: AiExtractOptions,
 ): ScrapeRequest {
   // Merge AI options into extract options if provided
   const mergedExtract: ExtractOptions | undefined =
@@ -305,7 +347,16 @@ export function buildCrawlRequest(
   excludePatterns?: string[],
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
+  aiExtract?: AiExtractOptions,
 ): CrawlRequest {
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
+
   return {
     url,
     maxDepth,
@@ -315,7 +366,7 @@ export function buildCrawlRequest(
     timeoutSeconds,
     authProfile: authProfile || undefined,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     sitemapURL: sitemapURL || undefined,

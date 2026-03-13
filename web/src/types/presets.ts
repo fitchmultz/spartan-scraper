@@ -47,6 +47,11 @@ export interface PresetConfig {
   loginPass?: string;
   extractTemplate?: string;
   extractValidate?: boolean;
+  aiExtractEnabled?: boolean;
+  aiExtractMode?: "natural_language" | "schema_guided";
+  aiExtractPrompt?: string;
+  aiExtractSchema?: string;
+  aiExtractFields?: string;
   preProcessors?: string;
   postProcessors?: string;
   transformers?: string;

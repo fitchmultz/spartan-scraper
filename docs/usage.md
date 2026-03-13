@@ -65,6 +65,11 @@ Common flags:
 - `--auth-basic user:pass`
 - `--header "Key: Value"` repeatable
 - `--cookie "name=value"` repeatable
+- `--ai-extract`
+- `--ai-mode natural_language|schema_guided`
+- `--ai-prompt "<instructions>"` for natural-language mode
+- `--ai-schema '{"field":"example"}'` for schema-guided mode
+- `--ai-fields "field1,field2"`
 
 Headless login flags:
 
@@ -86,6 +91,13 @@ spartan scrape \
   --playwright \
   --auth-profile acme \
   --out ./out/dashboard.json
+
+spartan scrape \
+  --url https://example.com/product \
+  --ai-extract \
+  --ai-mode schema_guided \
+  --ai-schema '{"title":"Example","price":"$19.99"}' \
+  --ai-fields "title,price"
 ```
 
 ### Crawl
@@ -104,6 +116,11 @@ Key flags:
 - `--headless`
 - `--playwright`
 - `--auth-profile <name>`
+- `--ai-extract`
+- `--ai-mode natural_language|schema_guided`
+- `--ai-prompt "<instructions>"` for natural-language mode
+- `--ai-schema '{"field":"example"}'` for schema-guided mode
+- `--ai-fields "field1,field2"`
 
 Example:
 
@@ -113,6 +130,13 @@ spartan crawl \
   --max-depth 2 \
   --max-pages 200 \
   --out ./out/site.jsonl
+
+spartan crawl \
+  --url https://example.com/catalog \
+  --max-depth 2 \
+  --ai-extract \
+  --ai-prompt "Extract the title, price, and availability from each crawled page" \
+  --ai-fields "title,price,availability"
 ```
 
 ### Research
@@ -404,6 +428,14 @@ Important endpoint groups:
 - `/v1/auth/oauth/*`
 - `/v1/ws`
 
+For scrape and crawl job creation, AI extraction rides inside the normal extract payload:
+
+- `extract.ai.enabled`
+- `extract.ai.mode`
+- `extract.ai.prompt` for natural-language mode
+- `extract.ai.schema` for schema-guided mode
+- `extract.ai.fields`
+
 When the server binds to a non-loopback address, API key auth is enforced automatically.
 
 ### WebSocket
@@ -434,6 +466,14 @@ Core tools:
 - `job_list`
 - `job_cancel`
 - `job_export`
+
+`scrape_page` and `crawl_site` both accept AI extraction arguments in addition to the normal execution controls:
+
+- `aiExtract: boolean`
+- `aiMode: "natural_language" | "schema_guided"`
+- `aiPrompt: string` for natural-language mode
+- `aiSchema: object` for schema-guided mode
+- `aiFields: string[]`
 
 Smoke example:
 
