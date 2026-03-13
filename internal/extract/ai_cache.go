@@ -17,10 +17,10 @@ const DefaultAICacheTTL = 24 * time.Hour
 
 // cacheEntry stores a cached result with metadata.
 type cacheEntry struct {
-	Result    AIExtractResult `json:"result"`
-	CreatedAt time.Time       `json:"created_at"`
-	Model     string          `json:"model"`
-	KeyHash   string          `json:"key_hash"`
+	Result           AIExtractResult `json:"result"`
+	CreatedAt        time.Time       `json:"created_at"`
+	RouteFingerprint string          `json:"route_fingerprint,omitempty"`
+	KeyHash          string          `json:"key_hash"`
 }
 
 // FileAICache implements AICache with file-based storage.
@@ -82,9 +82,9 @@ func (c *FileAICache) Set(key string, result *AIExtractResult) {
 	go c.saveToDisk()
 }
 
-// GenerateCacheKey creates a deterministic cache key from request and model.
-func GenerateCacheKey(req AIExtractRequest, model string) string {
-	// Include content hash, mode, fields, and model version
+// GenerateCacheKey creates a deterministic cache key from request and configured route fingerprint.
+func GenerateCacheKey(req AIExtractRequest, routeFingerprint string) string {
+	// Include content hash, mode, fields, and configured route order.
 	h := sha256.New()
 
 	// Hash the HTML content (truncated)
@@ -107,8 +107,8 @@ func GenerateCacheKey(req AIExtractRequest, model string) string {
 		h.Write([]byte(f))
 	}
 
-	// Include model version to avoid stale results when models update
-	h.Write([]byte(model))
+	// Include route fingerprint to avoid stale results when routing changes.
+	h.Write([]byte(routeFingerprint))
 
 	return hex.EncodeToString(h.Sum(nil))
 }

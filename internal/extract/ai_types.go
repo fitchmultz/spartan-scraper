@@ -38,13 +38,34 @@ type AIExtractResult struct {
 	Confidence  float64               `json:"confidence"` // 0.0-1.0
 	Explanation string                `json:"explanation,omitempty"`
 	TokensUsed  int                   `json:"tokens_used,omitempty"`
+	Provider    string                `json:"provider,omitempty"`
+	Model       string                `json:"model,omitempty"`
 	Cached      bool                  `json:"cached"`
+}
+
+// AITemplateGenerateRequest contains parameters for AI-powered template generation.
+type AITemplateGenerateRequest struct {
+	HTML         string   `json:"html"`
+	URL          string   `json:"url"`
+	Description  string   `json:"description"`
+	SampleFields []string `json:"sample_fields,omitempty"`
+	Feedback     string   `json:"feedback,omitempty"`
+}
+
+// AITemplateGenerateResult contains the generated template and model metadata.
+type AITemplateGenerateResult struct {
+	Template    Template `json:"template"`
+	Explanation string   `json:"explanation,omitempty"`
+	Provider    string   `json:"provider,omitempty"`
+	Model       string   `json:"model,omitempty"`
 }
 
 // LLMProvider defines the interface for LLM operations.
 type LLMProvider interface {
 	Extract(ctx context.Context, req AIExtractRequest) (AIExtractResult, error)
+	GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error)
 	HealthCheck(ctx context.Context) error
+	RouteFingerprint(capability string) string
 }
 
 // AICache provides caching for AI extraction results.
@@ -65,5 +86,15 @@ type AIExtractOptions struct {
 
 // IsAIEnabled returns true if AI extraction is configured and enabled.
 func IsAIEnabled(cfg config.AIConfig) bool {
-	return cfg.Provider != ""
+	return cfg.Enabled
+}
+
+// CapabilityForExtractMode maps extraction modes to pi routing capabilities.
+func CapabilityForExtractMode(mode AIExtractionMode) string {
+	switch mode {
+	case AIModeSchemaGuided:
+		return config.AICapabilityExtractSchema
+	default:
+		return config.AICapabilityExtractNatural
+	}
 }

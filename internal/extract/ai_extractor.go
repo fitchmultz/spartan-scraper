@@ -52,6 +52,15 @@ func NewAIExtractorWithDataDir(cfg config.AIConfig, dataDir string) (*AIExtracto
 	}, nil
 }
 
+// NewAIExtractorWithProvider creates an AI extractor around a caller-supplied provider.
+func NewAIExtractorWithProvider(cfg config.AIConfig, dataDir string, provider LLMProvider) *AIExtractor {
+	return &AIExtractor{
+		provider: provider,
+		cache:    NewFileAICache(dataDir, DefaultAICacheTTL),
+		config:   cfg,
+	}
+}
+
 // Extract performs AI-powered extraction with caching.
 func (a *AIExtractor) Extract(ctx context.Context, req AIExtractRequest) (AIExtractResult, error) {
 	if a == nil || a.provider == nil {
@@ -67,7 +76,7 @@ func (a *AIExtractor) Extract(ctx context.Context, req AIExtractRequest) (AIExtr
 	req.HTML = cleanHTMLForExtraction(req.HTML)
 
 	// Generate cache key
-	cacheKey := GenerateCacheKey(req, a.config.Model)
+	cacheKey := GenerateCacheKey(req, a.provider.RouteFingerprint(CapabilityForExtractMode(req.Mode)))
 
 	// Check cache
 	if cached, ok := a.cache.Get(cacheKey); ok {
@@ -76,7 +85,7 @@ func (a *AIExtractor) Extract(ctx context.Context, req AIExtractRequest) (AIExtr
 	}
 
 	// Call provider
-	slog.Debug("AI extraction cache miss, calling LLM", "provider", a.config.Provider, "model", a.config.Model)
+	slog.Debug("AI extraction cache miss, calling pi bridge", "capability", CapabilityForExtractMode(req.Mode))
 	result, err := a.provider.Extract(ctx, req)
 	if err != nil {
 		return AIExtractResult{}, fmt.Errorf("LLM extraction failed: %w", err)
@@ -85,6 +94,22 @@ func (a *AIExtractor) Extract(ctx context.Context, req AIExtractRequest) (AIExtr
 	// Store in cache
 	result.Cached = false
 	a.cache.Set(cacheKey, &result)
+
+	return result, nil
+}
+
+// GenerateTemplate performs AI-powered template generation without caching.
+func (a *AIExtractor) GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error) {
+	if a == nil || a.provider == nil {
+		return AITemplateGenerateResult{}, fmt.Errorf("AI extractor not initialized")
+	}
+
+	req.HTML = cleanHTMLForExtraction(req.HTML)
+
+	result, err := a.provider.GenerateTemplate(ctx, req)
+	if err != nil {
+		return AITemplateGenerateResult{}, fmt.Errorf("template generation failed: %w", err)
+	}
 
 	return result, nil
 }

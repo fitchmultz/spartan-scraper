@@ -14,6 +14,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -222,22 +223,54 @@ func TestGetenv_NormalizesInlineComments(t *testing.T) {
 	}
 }
 
-func TestLoad_IgnoresCommentOnlyAIProvider(t *testing.T) {
+func TestLoad_IgnoresLegacyAIProviderEnv(t *testing.T) {
 	dataDir := t.TempDir()
 	t.Setenv("DATA_DIR", dataDir)
-	t.Setenv("AI_PROVIDER", "   # openai")
-	t.Setenv("AI_API_KEY", "   # sk-...")
+	t.Setenv("AI_PROVIDER", "openai")
+	t.Setenv("AI_API_KEY", "sk-test")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected legacy AI_* env vars to hard fail")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("PI_ENABLED", "true")
+	configPath := filepath.Join(dataDir, "pi-config.json")
+	configFile := map[string]any{
+		"mode": "fixture",
+		"routes": map[string][]string{
+			AICapabilityTemplateGeneration: {"kimi-coding/k2p5", "zai/glm-5"},
+		},
+	}
+	data, err := json.Marshal(configFile)
+	if err != nil {
+		t.Fatalf("failed to marshal pi config: %v", err)
+	}
+	if err := os.WriteFile(configPath, data, 0o644); err != nil {
+		t.Fatalf("failed to write pi config: %v", err)
+	}
+	t.Setenv("PI_CONFIG_PATH", configPath)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() failed: %v", err)
 	}
 
-	if cfg.AI.Provider != "" {
-		t.Fatalf("expected comment-only AI_PROVIDER to be treated as empty, got %q", cfg.AI.Provider)
+	if !cfg.AI.Enabled {
+		t.Fatal("expected PI_ENABLED=true to enable AI")
 	}
-	if cfg.AI.APIKey != "" {
-		t.Fatalf("expected comment-only AI_API_KEY to be treated as empty, got %q", cfg.AI.APIKey)
+	if cfg.AI.Mode != "fixture" {
+		t.Fatalf("expected mode override from PI_CONFIG_PATH, got %q", cfg.AI.Mode)
+	}
+	if got := cfg.AI.Routing.RoutesFor(AICapabilityTemplateGeneration); len(got) != 2 || got[0] != "kimi-coding/k2p5" {
+		t.Fatalf("unexpected template routes: %#v", got)
 	}
 }
 

@@ -3,6 +3,7 @@ SHELL := /bin/bash
 APP_NAME := spartan
 BIN_DIR := bin
 WEB_DIR := web
+PI_BRIDGE_DIR := tools/pi-bridge
 DATA_DIR := .data
 
 # Installation directory (respects XDG_BIN_HOME if set, otherwise ~/.local/bin)
@@ -34,6 +35,7 @@ secret-scan:
 
 install:
 	go mod download
+	cd $(PI_BRIDGE_DIR) && npm ci
 	cd $(WEB_DIR) && pnpm install --frozen-lockfile
 
 update:
@@ -61,8 +63,9 @@ format:
 # Preserves: Source-controlled lock files (go.sum, web/pnpm-lock.yaml)
 clean:
 	rm -rf $(BIN_DIR) $(DATA_DIR)
-	rm -rf node_modules $(WEB_DIR)/node_modules
+	rm -rf node_modules $(WEB_DIR)/node_modules $(PI_BRIDGE_DIR)/node_modules
 	cd $(WEB_DIR) && rm -rf dist
+	cd $(PI_BRIDGE_DIR) && rm -rf dist
 	rm -f $(INSTALL_DIR)/$(APP_NAME)
 	find . -type f -name "*.test" -delete
 	find . -type f -name "*.out" -delete
@@ -76,6 +79,7 @@ test-ci:
 	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 5m
 	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	node $(CURDIR)/scripts/public_audit.test.mjs
+	cd $(PI_BRIDGE_DIR) && npm test
 	cd $(WEB_DIR) && CI=1 NODE_OPTIONS=--localstorage-file=.vitest-localstorage pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
 
 generate:
@@ -84,6 +88,7 @@ generate:
 
 build:
 	mkdir -p $(BIN_DIR)
+	cd $(PI_BRIDGE_DIR) && npm run build
 	go build $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 	cd $(WEB_DIR) && pnpm run build
 

@@ -92,7 +92,7 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jo
 			slog.Warn("failed to initialize AI extractor", "error", err)
 		} else if aiExtractor != nil {
 			manager.SetAIExtractor(aiExtractor)
-			slog.Info("AI extractor initialized", "provider", cfg.AI.Provider, "model", cfg.AI.Model)
+			slog.Info("AI extractor initialized", "mode", cfg.AI.Mode, "bridge", cfg.AI.BridgeScript)
 		}
 	}
 

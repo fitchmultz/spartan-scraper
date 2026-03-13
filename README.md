@@ -13,6 +13,8 @@ It is built for people who want one dependable workflow from fetch to stored art
 
 If you want the fastest path in, start with the 5-minute demo below. If you are integrating it into a real workflow, the API, MCP server, schedules, and local artifact model all build on that same core path.
 
+Planning and future work live in [docs/roadmap.md](docs/roadmap.md). That document is the canonical source of truth for what is in flight, next, and explicitly out of scope for the current cutover.
+
 ## Why It Exists
 
 - Start from a URL and get something useful quickly: extracted content, crawl output, or a research bundle.

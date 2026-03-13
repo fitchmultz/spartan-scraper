@@ -3,71 +3,44 @@ package extract
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
-// CreateLLMProvider creates the appropriate provider based on config.
+// CreateLLMProvider creates the pi-backed provider.
 func CreateLLMProvider(cfg config.AIConfig) (LLMProvider, error) {
-	switch cfg.Provider {
-	case config.AIProviderOpenAI:
-		return NewOpenAIProvider(cfg), nil
-	case config.AIProviderAnthropic:
-		return NewAnthropicProvider(cfg), nil
-	case config.AIProviderOllama:
-		return NewOllamaProvider(cfg), nil
-	case "":
-		return nil, fmt.Errorf("AI provider not configured")
-	default:
-		return nil, fmt.Errorf("unsupported AI provider: %s", cfg.Provider)
+	if !cfg.Enabled {
+		return nil, fmt.Errorf("pi bridge is disabled")
 	}
+	return NewPIProvider(cfg), nil
 }
 
-// GetDefaultModel returns the default model for a provider.
-func GetDefaultModel(provider config.AIProvider) string {
-	switch provider {
-	case config.AIProviderOpenAI:
-		return "gpt-4o-mini"
-	case config.AIProviderAnthropic:
-		return "claude-3-haiku-20240307"
-	case config.AIProviderOllama:
-		return "llama3.1"
-	default:
-		return ""
-	}
-}
-
-// ValidateProvider checks if provider configuration is valid.
+// ValidateProvider checks if pi bridge configuration is valid.
 func ValidateProvider(cfg config.AIConfig) error {
-	if cfg.Provider == "" {
-		return fmt.Errorf("AI provider not specified")
+	if !cfg.Enabled {
+		return fmt.Errorf("PI_ENABLED must be true")
 	}
-
-	validProviders := map[config.AIProvider]bool{
-		config.AIProviderOpenAI:    true,
-		config.AIProviderAnthropic: true,
-		config.AIProviderOllama:    true,
+	if strings.TrimSpace(cfg.NodeBin) == "" {
+		return fmt.Errorf("PI_NODE_BIN is required")
 	}
-	if !validProviders[cfg.Provider] {
-		return fmt.Errorf("invalid AI provider: %s", cfg.Provider)
+	if strings.TrimSpace(cfg.BridgeScript) == "" {
+		return fmt.Errorf("PI_BRIDGE_SCRIPT is required")
 	}
-
-	// Cloud providers require API key
-	if cfg.Provider == config.AIProviderOpenAI || cfg.Provider == config.AIProviderAnthropic {
-		if cfg.APIKey == "" {
-			return fmt.Errorf("API key required for %s provider", cfg.Provider)
+	for _, capability := range []string{
+		config.AICapabilityExtractNatural,
+		config.AICapabilityExtractSchema,
+		config.AICapabilityTemplateGeneration,
+	} {
+		if len(cfg.Routing.RoutesFor(capability)) == 0 {
+			return fmt.Errorf("no routes configured for capability %s", capability)
 		}
 	}
-
-	// Validate timeout
-	if cfg.TimeoutSecs < 5 || cfg.TimeoutSecs > 300 {
-		return fmt.Errorf("AI timeout must be between 5 and 300 seconds")
+	if cfg.StartupTimeoutSecs < 1 || cfg.StartupTimeoutSecs > 60 {
+		return fmt.Errorf("PI_STARTUP_TIMEOUT_SECONDS must be between 1 and 60 seconds")
 	}
-
-	// Validate temperature
-	if cfg.Temperature < 0 || cfg.Temperature > 1.0 {
-		return fmt.Errorf("AI temperature must be between 0.0 and 1.0")
+	if cfg.RequestTimeoutSecs < 5 || cfg.RequestTimeoutSecs > 300 {
+		return fmt.Errorf("PI_REQUEST_TIMEOUT_SECONDS must be between 5 and 300 seconds")
 	}
-
 	return nil
 }

@@ -758,8 +758,9 @@ paths:
   "/v1/extract/ai-preview":
     post:
       summary: Preview AI-powered extraction
-      description: Extract structured data from HTML using AI/LLM without creating
-        a job
+      description: Extract structured data using AI/LLM without creating a job.
+        Provide HTML directly or let Spartan fetch the URL through its existing
+        fetch stack.
       operationId: aiExtractPreview
       requestBody:
         required: true
@@ -801,7 +802,8 @@ paths:
   "/v1/extract/ai-template-generate":
     post:
       summary: Generate extraction template using AI
-      description: Analyze HTML and generate an extraction template using AI
+      description: Fetch a page through Spartan's existing fetch stack and generate
+        an extraction template using AI
       operationId: aiTemplateGenerate
       requestBody:
         required: true
@@ -3380,6 +3382,12 @@ components:
         tokens_used:
           type: integer
           description: Number of tokens consumed by the LLM
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
         cached:
           type: boolean
           description: Whether the result was served from cache

@@ -216,6 +216,14 @@ func (m *mockLLMProvider) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
+func (m *mockLLMProvider) GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error) {
+	return AITemplateGenerateResult{}, nil
+}
+
+func (m *mockLLMProvider) RouteFingerprint(capability string) string {
+	return "test-route"
+}
+
 // TestExecute_ContextPropagation verifies that context is propagated to AIExtractor
 func TestExecute_ContextPropagation(t *testing.T) {
 	mock := &mockLLMProvider{

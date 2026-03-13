@@ -132,7 +132,7 @@ export function AITemplateGenerator({
           errorMessage.includes("AI extraction is not configured")
         ) {
           throw new Error(
-            "AI extraction is not configured. Please set up AI provider credentials in your configuration.",
+            "AI extraction is not configured. Enable the pi bridge and ensure your pi credentials are available.",
           );
         }
         throw new Error(errorMessage);

@@ -1,0 +1,18 @@
+{
+  "name": "@spartan/pi-bridge",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "@mariozechner/pi-ai": "0.57.1",
+    "@mariozechner/pi-coding-agent": "0.57.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "typescript": "5.9.2"
+  }
+}

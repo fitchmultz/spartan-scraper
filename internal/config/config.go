@@ -20,6 +20,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -134,24 +135,69 @@ type Config struct {
 	AI AIConfig
 }
 
-// AIProvider identifies the LLM provider for AI-powered extraction.
-type AIProvider string
-
 const (
-	AIProviderOpenAI    AIProvider = "openai"
-	AIProviderAnthropic AIProvider = "anthropic"
-	AIProviderOllama    AIProvider = "ollama"
+	DefaultPIMode                  = "sdk"
+	DefaultPINodeBin               = "node"
+	DefaultPIBridgeScript          = "tools/pi-bridge/dist/main.js"
+	DefaultPIStartupTimeoutSecs    = 10
+	DefaultPIRequestTimeoutSecs    = 60
+	AICapabilityExtractNatural     = "extract.natural_language"
+	AICapabilityExtractSchema      = "extract.schema_guided"
+	AICapabilityTemplateGeneration = "template.generate"
 )
+
+// AIRoutingConfig maps AI capabilities to ordered provider/model routes.
+type AIRoutingConfig struct {
+	Routes map[string][]string `json:"routes"`
+}
+
+// RoutesFor returns the configured routes for a capability.
+func (r AIRoutingConfig) RoutesFor(capability string) []string {
+	if len(r.Routes) == 0 {
+		return nil
+	}
+	routes := r.Routes[capability]
+	out := make([]string, 0, len(routes))
+	for _, route := range routes {
+		trimmed := strings.TrimSpace(route)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// RouteFingerprint returns a stable cache fingerprint for the configured route order.
+func (r AIRoutingConfig) RouteFingerprint(capability string) string {
+	return strings.Join(r.RoutesFor(capability), "->")
+}
+
+// DefaultAIRoutingConfig returns the built-in pi routing defaults.
+func DefaultAIRoutingConfig() AIRoutingConfig {
+	defaultRouteOrder := []string{
+		"openai/gpt-5.4",
+		"kimi-coding/k2p5",
+		"zai/glm-5",
+	}
+	return AIRoutingConfig{
+		Routes: map[string][]string{
+			AICapabilityExtractNatural:     append([]string(nil), defaultRouteOrder...),
+			AICapabilityExtractSchema:      append([]string(nil), defaultRouteOrder...),
+			AICapabilityTemplateGeneration: append([]string(nil), defaultRouteOrder...),
+		},
+	}
+}
 
 // AIConfig holds configuration for AI-powered extraction.
 type AIConfig struct {
-	Provider    AIProvider
-	APIKey      string
-	Model       string
-	TimeoutSecs int
-	MaxTokens   int
-	Temperature float64
-	OllamaURL   string
+	Enabled            bool
+	ConfigPath         string
+	Mode               string
+	NodeBin            string
+	BridgeScript       string
+	StartupTimeoutSecs int
+	RequestTimeoutSecs int
+	Routing            AIRoutingConfig
 }
 
 // Load reads configuration from environment variables (optionally loading defaults from
@@ -258,6 +304,9 @@ func Load() (Config, error) {
 	cfg = validateAndFixCircuitBreakerConfig(cfg)
 	cfg = validateAndFixRetryConfig(cfg)
 	cfg = validateAndFixAIConfig(cfg)
+	if err := validateNoLegacyAIConfig(); err != nil {
+		return Config{}, err
+	}
 
 	return cfg, nil
 }
@@ -608,64 +657,126 @@ func getenvFloat64(key string, fallback float64) float64 {
 // It logs warnings and applies sensible defaults for invalid configurations.
 func validateAndFixAIConfig(cfg Config) Config {
 	ai := AIConfig{
-		Provider:    AIProvider(getenv("AI_PROVIDER", "")),
-		APIKey:      getenv("AI_API_KEY", ""),
-		Model:       getenv("AI_MODEL", ""),
-		TimeoutSecs: getenvInt("AI_TIMEOUT_SECONDS", 60),
-		MaxTokens:   getenvInt("AI_MAX_TOKENS", 4096),
-		Temperature: getenvFloat64("AI_TEMPERATURE", 0.1),
-		OllamaURL:   getenv("OLLAMA_URL", "http://localhost:11434"),
+		Enabled:            getenvBool("PI_ENABLED", false),
+		ConfigPath:         getenv("PI_CONFIG_PATH", ""),
+		Mode:               getenv("PI_MODE", DefaultPIMode),
+		NodeBin:            getenv("PI_NODE_BIN", DefaultPINodeBin),
+		BridgeScript:       getenv("PI_BRIDGE_SCRIPT", DefaultPIBridgeScript),
+		StartupTimeoutSecs: getenvInt("PI_STARTUP_TIMEOUT_SECONDS", DefaultPIStartupTimeoutSecs),
+		RequestTimeoutSecs: getenvInt("PI_REQUEST_TIMEOUT_SECONDS", DefaultPIRequestTimeoutSecs),
+		Routing:            DefaultAIRoutingConfig(),
 	}
 
-	// If AI provider is set, validate it
-	if ai.Provider != "" {
-		validProviders := map[AIProvider]bool{
-			AIProviderOpenAI:    true,
-			AIProviderAnthropic: true,
-			AIProviderOllama:    true,
-		}
-		if !validProviders[ai.Provider] {
-			fmt.Fprintf(os.Stderr, "[WARN] Invalid AI_PROVIDER: %q, AI features disabled\n", ai.Provider)
-			ai.Provider = ""
-		}
+	if ai.StartupTimeoutSecs < 1 {
+		fmt.Fprintf(os.Stderr, "[WARN] PI_STARTUP_TIMEOUT_SECONDS too low (%d), using minimum 1\n", ai.StartupTimeoutSecs)
+		ai.StartupTimeoutSecs = 1
+	}
+	if ai.StartupTimeoutSecs > 60 {
+		fmt.Fprintf(os.Stderr, "[WARN] PI_STARTUP_TIMEOUT_SECONDS too high (%d), using maximum 60\n", ai.StartupTimeoutSecs)
+		ai.StartupTimeoutSecs = 60
+	}
 
-		// Validate timeout bounds
-		if ai.TimeoutSecs < 5 {
-			fmt.Fprintf(os.Stderr, "[WARN] AI_TIMEOUT_SECONDS too low (%d), using minimum 5\n", ai.TimeoutSecs)
-			ai.TimeoutSecs = 5
-		}
-		if ai.TimeoutSecs > 300 {
-			fmt.Fprintf(os.Stderr, "[WARN] AI_TIMEOUT_SECONDS too high (%d), using maximum 300\n", ai.TimeoutSecs)
-			ai.TimeoutSecs = 300
-		}
+	if ai.RequestTimeoutSecs < 5 {
+		fmt.Fprintf(os.Stderr, "[WARN] PI_REQUEST_TIMEOUT_SECONDS too low (%d), using minimum 5\n", ai.RequestTimeoutSecs)
+		ai.RequestTimeoutSecs = 5
+	}
+	if ai.RequestTimeoutSecs > 300 {
+		fmt.Fprintf(os.Stderr, "[WARN] PI_REQUEST_TIMEOUT_SECONDS too high (%d), using maximum 300\n", ai.RequestTimeoutSecs)
+		ai.RequestTimeoutSecs = 300
+	}
 
-		// Validate temperature bounds
-		if ai.Temperature < 0 || ai.Temperature > 1.0 {
-			fmt.Fprintf(os.Stderr, "[WARN] AI_TEMPERATURE out of range (%f), using 0.1\n", ai.Temperature)
-			ai.Temperature = 0.1
-		}
+	if ai.Mode == "" {
+		ai.Mode = DefaultPIMode
+	}
+	if ai.NodeBin == "" {
+		ai.NodeBin = DefaultPINodeBin
+	}
+	if ai.BridgeScript == "" {
+		ai.BridgeScript = DefaultPIBridgeScript
+	}
 
-		// Set default models if not specified
-		if ai.Model == "" {
-			switch ai.Provider {
-			case AIProviderOpenAI:
-				ai.Model = "gpt-4o-mini"
-			case AIProviderAnthropic:
-				ai.Model = "claude-3-haiku-20240307"
-			case AIProviderOllama:
-				ai.Model = "llama3.1"
+	if ai.Enabled && ai.ConfigPath != "" {
+		loaded, err := loadAIRoutingConfig(ai.ConfigPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[WARN] invalid PI_CONFIG_PATH %q: %v; AI features disabled\n", ai.ConfigPath, err)
+			ai.Enabled = false
+		} else {
+			if loaded.Mode != "" {
+				ai.Mode = loaded.Mode
 			}
-		}
-
-		// Validate API key is present for cloud providers
-		if ai.Provider == AIProviderOpenAI || ai.Provider == AIProviderAnthropic {
-			if ai.APIKey == "" {
-				fmt.Fprintf(os.Stderr, "[WARN] AI_PROVIDER is %s but AI_API_KEY is not set, AI features disabled\n", ai.Provider)
-				ai.Provider = ""
+			if len(loaded.Routes.Routes) > 0 {
+				ai.Routing = loaded.Routes
 			}
 		}
 	}
 
 	cfg.AI = ai
 	return cfg
+}
+
+func validateNoLegacyAIConfig() error {
+	legacyKeys := []string{
+		"AI_PROVIDER",
+		"AI_API_KEY",
+		"AI_MODEL",
+		"AI_TIMEOUT_SECONDS",
+		"AI_MAX_TOKENS",
+		"AI_TEMPERATURE",
+		"OLLAMA_URL",
+	}
+
+	used := make([]string, 0)
+	for _, key := range legacyKeys {
+		if strings.TrimSpace(getenv(key, "")) != "" {
+			used = append(used, key)
+		}
+	}
+	if len(used) == 0 {
+		return nil
+	}
+
+	return apperrors.Validation(
+		"legacy AI configuration is no longer supported: " + strings.Join(used, ", ") + ". Use PI_ENABLED and related PI_* bridge settings instead.",
+	)
+}
+
+type aiBridgeConfigFile struct {
+	Mode   string              `json:"mode"`
+	Routes map[string][]string `json:"routes"`
+}
+
+type loadedAIRoutingConfig struct {
+	Mode   string
+	Routes AIRoutingConfig
+}
+
+func loadAIRoutingConfig(path string) (loadedAIRoutingConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return loadedAIRoutingConfig{}, err
+	}
+
+	var file aiBridgeConfigFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return loadedAIRoutingConfig{}, err
+	}
+
+	routing := DefaultAIRoutingConfig()
+	for capability, routes := range file.Routes {
+		normalized := make([]string, 0, len(routes))
+		for _, route := range routes {
+			trimmed := strings.TrimSpace(route)
+			if trimmed != "" {
+				normalized = append(normalized, trimmed)
+			}
+		}
+		if len(normalized) > 0 {
+			routing.Routes[capability] = normalized
+		}
+	}
+
+	return loadedAIRoutingConfig{
+		Mode:   strings.TrimSpace(file.Mode),
+		Routes: routing,
+	}, nil
 }

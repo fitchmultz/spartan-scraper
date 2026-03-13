@@ -1,0 +1,444 @@
+// Package ai manages the bridge process used for pi-backed LLM operations.
+package ai
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+)
+
+const (
+	OperationHealth           = "health"
+	OperationExtractPreview   = "extract_preview"
+	OperationGenerateTemplate = "generate_template"
+)
+
+type requestEnvelope struct {
+	ID      string      `json:"id"`
+	Op      string      `json:"op"`
+	Payload interface{} `json:"payload,omitempty"`
+}
+
+type responseEnvelope struct {
+	ID     string          `json:"id"`
+	OK     bool            `json:"ok"`
+	Result json.RawMessage `json:"result,omitempty"`
+	Error  *bridgeError    `json:"error,omitempty"`
+}
+
+type bridgeError struct {
+	Code    string `json:"code,omitempty"`
+	Message string `json:"message"`
+}
+
+type HealthResponse struct {
+	Mode         string              `json:"mode"`
+	AgentDir     string              `json:"agent_dir,omitempty"`
+	Resolved     map[string][]string `json:"resolved,omitempty"`
+	Available    map[string][]string `json:"available,omitempty"`
+	LoadError    string              `json:"load_error,omitempty"`
+	ProviderInfo string              `json:"provider_info,omitempty"`
+}
+
+type ExtractRequest struct {
+	HTML            string                 `json:"html"`
+	URL             string                 `json:"url"`
+	Mode            string                 `json:"mode"`
+	Prompt          string                 `json:"prompt,omitempty"`
+	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"`
+	Fields          []string               `json:"fields,omitempty"`
+	MaxContentChars int                    `json:"max_content_chars,omitempty"`
+}
+
+type ExtractResult struct {
+	Fields      map[string]BridgeFieldValue `json:"fields"`
+	Confidence  float64                     `json:"confidence"`
+	Explanation string                      `json:"explanation,omitempty"`
+	TokensUsed  int                         `json:"tokens_used,omitempty"`
+	Provider    string                      `json:"provider,omitempty"`
+	Model       string                      `json:"model,omitempty"`
+}
+
+type GenerateTemplateRequest struct {
+	HTML         string   `json:"html"`
+	URL          string   `json:"url"`
+	Description  string   `json:"description"`
+	SampleFields []string `json:"sample_fields,omitempty"`
+	Feedback     string   `json:"feedback,omitempty"`
+}
+
+type GenerateTemplateResult struct {
+	Template    BridgeTemplate `json:"template"`
+	Explanation string         `json:"explanation,omitempty"`
+	Provider    string         `json:"provider,omitempty"`
+	Model       string         `json:"model,omitempty"`
+}
+
+type BridgeFieldValue struct {
+	Values    []string `json:"values,omitempty"`
+	Source    string   `json:"source"`
+	RawObject string   `json:"rawObject,omitempty"`
+}
+
+type BridgeTemplate struct {
+	Name      string               `json:"name"`
+	Version   string               `json:"version,omitempty"`
+	Selectors []BridgeSelectorRule `json:"selectors,omitempty"`
+	JSONLD    []BridgeJSONLDRule   `json:"jsonld,omitempty"`
+	Regex     []BridgeRegexRule    `json:"regex,omitempty"`
+	Normalize BridgeNormalizeSpec  `json:"normalize,omitempty"`
+}
+
+type BridgeSelectorRule struct {
+	Name     string `json:"name"`
+	Selector string `json:"selector"`
+	Attr     string `json:"attr,omitempty"`
+	All      bool   `json:"all,omitempty"`
+	Join     string `json:"join,omitempty"`
+	Trim     bool   `json:"trim,omitempty"`
+	Required bool   `json:"required,omitempty"`
+}
+
+type BridgeJSONLDRule struct {
+	Name     string `json:"name"`
+	Type     string `json:"type,omitempty"`
+	Path     string `json:"path,omitempty"`
+	All      bool   `json:"all,omitempty"`
+	Required bool   `json:"required,omitempty"`
+}
+
+type BridgeRegexRule struct {
+	Name     string `json:"name"`
+	Pattern  string `json:"pattern"`
+	Group    int    `json:"group,omitempty"`
+	All      bool   `json:"all,omitempty"`
+	Source   string `json:"source,omitempty"`
+	Required bool   `json:"required,omitempty"`
+}
+
+type BridgeNormalizeSpec struct {
+	TitleField       string            `json:"titleField,omitempty"`
+	DescriptionField string            `json:"descriptionField,omitempty"`
+	TextField        string            `json:"textField,omitempty"`
+	MetaFields       map[string]string `json:"metaFields,omitempty"`
+}
+
+// Client manages a long-lived pi bridge subprocess.
+type Client struct {
+	cfg    config.AIConfig
+	mu     sync.Mutex
+	reqMu  sync.Mutex
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout *bufio.Reader
+	nextID uint64
+}
+
+func NewClient(cfg config.AIConfig) *Client {
+	return &Client{cfg: cfg}
+}
+
+func (c *Client) HealthCheck(ctx context.Context) error {
+	var resp HealthResponse
+	return c.call(ctx, OperationHealth, nil, &resp)
+}
+
+func (c *Client) Extract(ctx context.Context, req ExtractRequest) (ExtractResult, error) {
+	var resp ExtractResult
+	err := c.call(ctx, OperationExtractPreview, req, &resp)
+	if err != nil {
+		return ExtractResult{}, err
+	}
+	if err := resp.Canonicalize(); err != nil {
+		return ExtractResult{}, fmt.Errorf("validate bridge extract result: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *Client) GenerateTemplate(ctx context.Context, req GenerateTemplateRequest) (GenerateTemplateResult, error) {
+	var resp GenerateTemplateResult
+	err := c.call(ctx, OperationGenerateTemplate, req, &resp)
+	return resp, err
+}
+
+func (c *Client) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.stopLocked()
+}
+
+func (c *Client) call(ctx context.Context, op string, payload interface{}, target interface{}) error {
+	ctx, cancel := withConfiguredTimeout(ctx, time.Duration(c.cfg.RequestTimeoutSecs)*time.Second)
+	defer cancel()
+
+	if err := c.ensureStarted(ctx); err != nil {
+		return err
+	}
+
+	c.reqMu.Lock()
+	resp, err := c.sendRequest(ctx, op, payload)
+	c.reqMu.Unlock()
+	if err != nil {
+		c.resetProcess()
+		return err
+	}
+	if !resp.OK {
+		c.resetProcessOnFatal(resp.Error)
+		if resp.Error == nil {
+			return fmt.Errorf("bridge request %s failed", op)
+		}
+		if resp.Error.Code != "" {
+			return fmt.Errorf("bridge %s: %s", resp.Error.Code, resp.Error.Message)
+		}
+		return fmt.Errorf("bridge error: %s", resp.Error.Message)
+	}
+	if target == nil || len(resp.Result) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(resp.Result, target); err != nil {
+		return fmt.Errorf("decode bridge result: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) ensureStarted(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.cmd != nil && c.cmd.Process != nil {
+		return nil
+	}
+
+	scriptPath, err := c.resolveBridgeScriptPath()
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(c.cfg.NodeBin, scriptPath)
+	cmd.Env = append(os.Environ(), c.bridgeEnv()...)
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("open bridge stdin: %w", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("open bridge stdout: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("open bridge stderr: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start bridge process: %w", err)
+	}
+
+	go streamBridgeStderr(stderr)
+
+	c.cmd = cmd
+	c.stdin = stdin
+	c.stdout = bufio.NewReader(stdout)
+
+	startupCtx, cancel := withConfiguredTimeout(ctx, time.Duration(c.cfg.StartupTimeoutSecs)*time.Second)
+	defer cancel()
+
+	c.reqMu.Lock()
+	defer c.reqMu.Unlock()
+
+	resp, err := c.sendRequest(startupCtx, OperationHealth, nil)
+	if err != nil {
+		_ = c.stopLocked()
+		return fmt.Errorf("wait for bridge health: %w", err)
+	}
+	if !resp.OK {
+		_ = c.stopLocked()
+		if resp.Error == nil {
+			return fmt.Errorf("bridge health check failed")
+		}
+		if resp.Error.Code != "" {
+			return fmt.Errorf("bridge %s: %s", resp.Error.Code, resp.Error.Message)
+		}
+		return fmt.Errorf("bridge error: %s", resp.Error.Message)
+	}
+
+	var health HealthResponse
+	if len(resp.Result) > 0 {
+		if err := json.Unmarshal(resp.Result, &health); err != nil {
+			_ = c.stopLocked()
+			return fmt.Errorf("decode bridge health: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *Client) bridgeEnv() []string {
+	env := []string{
+		"PI_MODE=" + c.cfg.Mode,
+	}
+	if c.cfg.ConfigPath != "" {
+		env = append(env, "PI_CONFIG_PATH="+c.cfg.ConfigPath)
+	}
+	return env
+}
+
+func (c *Client) resetProcess() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_ = c.stopLocked()
+}
+
+func (c *Client) resetProcessOnFatal(err *bridgeError) {
+	if err == nil {
+		return
+	}
+	if strings.EqualFold(err.Code, "bad_request") {
+		return
+	}
+	c.resetProcess()
+}
+
+func (c *Client) stopLocked() error {
+	if c.stdin != nil {
+		_ = c.stdin.Close()
+	}
+	var waitErr error
+	if c.cmd != nil {
+		if c.cmd.Process != nil {
+			_ = c.cmd.Process.Kill()
+		}
+		waitErr = c.cmd.Wait()
+	}
+	c.cmd = nil
+	c.stdin = nil
+	c.stdout = nil
+	if waitErr != nil && strings.Contains(waitErr.Error(), "signal: killed") {
+		return nil
+	}
+	return waitErr
+}
+
+func streamBridgeStderr(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		slog.Debug("pi bridge", "stderr", scanner.Text())
+	}
+}
+
+func (c *Client) sendRequest(ctx context.Context, op string, payload interface{}) (responseEnvelope, error) {
+	req := requestEnvelope{
+		ID:      fmt.Sprintf("req-%d", atomic.AddUint64(&c.nextID, 1)),
+		Op:      op,
+		Payload: payload,
+	}
+
+	line, err := json.Marshal(req)
+	if err != nil {
+		return responseEnvelope{}, fmt.Errorf("marshal bridge request: %w", err)
+	}
+	line = append(line, '\n')
+
+	if _, err := c.stdin.Write(line); err != nil {
+		return responseEnvelope{}, fmt.Errorf("write bridge request: %w", err)
+	}
+
+	respCh := make(chan responseEnvelope, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		raw, err := c.stdout.ReadBytes('\n')
+		if err != nil {
+			errCh <- fmt.Errorf("read bridge response: %w", err)
+			return
+		}
+		var resp responseEnvelope
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			errCh <- fmt.Errorf("decode bridge response: %w", err)
+			return
+		}
+		respCh <- resp
+	}()
+
+	select {
+	case <-ctx.Done():
+		return responseEnvelope{}, ctx.Err()
+	case err := <-errCh:
+		return responseEnvelope{}, err
+	case resp := <-respCh:
+		return resp, nil
+	}
+}
+
+func (c *Client) resolveBridgeScriptPath() (string, error) {
+	wd, _ := os.Getwd()
+	executablePath, _ := os.Executable()
+	return resolveBridgeScriptPath(
+		c.cfg.BridgeScript,
+		bridgeScriptSearchRoots(wd, executablePath, c.cfg.ConfigPath),
+	)
+}
+
+func bridgeScriptSearchRoots(workingDir string, executablePath string, configPath string) []string {
+	roots := make([]string, 0, 4)
+	if configPath != "" {
+		roots = append(roots, filepath.Dir(configPath))
+	}
+	if workingDir != "" {
+		roots = append(roots, workingDir)
+	}
+	if executablePath != "" {
+		executableDir := filepath.Dir(executablePath)
+		roots = append(roots, executableDir, filepath.Join(executableDir, ".."))
+	}
+	return roots
+}
+
+func resolveBridgeScriptPath(scriptPath string, searchRoots []string) (string, error) {
+	if filepath.IsAbs(scriptPath) {
+		return scriptPath, nil
+	}
+
+	seen := make(map[string]struct{}, len(searchRoots))
+	for _, root := range searchRoots {
+		if root == "" {
+			continue
+		}
+		candidate := filepath.Clean(filepath.Join(root, scriptPath))
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		info, err := os.Stat(candidate)
+		if err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf(
+		"resolve bridge script path %q: not found relative to PI_CONFIG_PATH, cwd, or executable; set PI_BRIDGE_SCRIPT to an absolute path",
+		scriptPath,
+	)
+}
+
+func withConfiguredTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
+		return ctx, func() {}
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		if time.Until(deadline) <= timeout {
+			return ctx, func() {}
+		}
+	}
+	return context.WithTimeout(ctx, timeout)
+}

@@ -15,6 +15,10 @@
 /node_modules/
 /web/node_modules/
 /extensions/node_modules/
+/tools/pi-bridge/node_modules/
+
+# Tool build output
+/tools/pi-bridge/dist/
 
 # Environment files (keep examples)
 .env

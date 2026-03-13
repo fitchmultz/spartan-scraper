@@ -263,7 +263,7 @@ export const testSelector = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Preview AI-powered extraction
  *
- * Extract structured data from HTML using AI/LLM without creating a job
+ * Extract structured data using AI/LLM without creating a job. Provide HTML directly or let Spartan fetch the URL through its existing fetch stack.
  */
 export const aiExtractPreview = <ThrowOnError extends boolean = false>(options: Options<AiExtractPreviewData, ThrowOnError>) => (options.client ?? client).post<AiExtractPreviewResponses, AiExtractPreviewErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
@@ -278,7 +278,7 @@ export const aiExtractPreview = <ThrowOnError extends boolean = false>(options: 
 /**
  * Generate extraction template using AI
  *
- * Analyze HTML and generate an extraction template using AI
+ * Fetch a page through Spartan's existing fetch stack and generate an extraction template using AI
  */
 export const aiTemplateGenerate = <ThrowOnError extends boolean = false>(options: Options<AiTemplateGenerateData, ThrowOnError>) => (options.client ?? client).post<AiTemplateGenerateResponses, AiTemplateGenerateErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],

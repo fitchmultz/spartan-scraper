@@ -235,7 +235,7 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		InterceptMaxEntries:      fs.Int("intercept-max-entries", 1000, "Maximum number of entries to capture (default 1000)"),
 
 		// AI extraction flags
-		AIExtract:       fs.Bool("ai-extract", false, "Enable AI-powered intelligent extraction (requires AI_PROVIDER config)"),
+		AIExtract:       fs.Bool("ai-extract", false, "Enable AI-powered intelligent extraction (requires PI_ENABLED bridge config)"),
 		AIExtractMode:   fs.String("ai-mode", "natural_language", "AI extraction mode: natural_language|schema_guided"),
 		AIExtractPrompt: fs.String("ai-prompt", "", "Natural language prompt or schema JSON for AI extraction"),
 		AIExtractFields: fs.String("ai-fields", "", "Comma-separated list of fields to extract with AI"),

@@ -2,6 +2,8 @@
 
 This document explains where Spartan Scraper fits in the scraping/automation ecosystem and why the project is designed the way it is.
 
+For planned work and sequencing, use [docs/roadmap.md](roadmap.md). This landscape document explains direction; the roadmap is the source of truth for what is actually planned.
+
 > Privacy note: this document intentionally excludes local machine inventories, personal directory paths, and unrelated private project references.
 
 ## Problem Space
@@ -102,3 +104,4 @@ Likely next maturity steps include:
 - More explicit compatibility/versioning policy.
 - Additional observability metrics and dashboards.
 - Continued UX refinement in the web interface.
+- Agentic research workflows powered by `pi`, while keeping deterministic `internal/research` as the baseline until a roadmap item explicitly changes that.

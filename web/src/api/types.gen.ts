@@ -274,6 +274,14 @@ export type AiExtractPreviewResponse = {
      */
     tokens_used?: number;
     /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
      * Whether the result was served from cache
      */
     cached?: boolean;
