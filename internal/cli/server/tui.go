@@ -27,7 +27,8 @@ Examples:
   spartan tui --smoke
 
 Notes:
-  Terminal UI for browsing jobs and statuses.
+  Terminal UI for browsing jobs, templates, profiles, schedules, and statuses.
+  AI authoring flows stay in the Web UI, API, CLI, and MCP; the TUI remains an inspection surface.
   --smoke renders a single frame and exits (CI smoke test).
 `)
 		return 0

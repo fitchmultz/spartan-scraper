@@ -23,7 +23,15 @@ import {
 export async function runWithFallback<T>(
   routes: string[],
   invoke: (routeId: string) => Promise<T>,
+  options: { capability?: string } = {},
 ): Promise<T> {
+  if (routes.length === 0) {
+    const label = options.capability
+      ? ` for capability ${options.capability}`
+      : "";
+    throw new Error(`no routes configured${label}`);
+  }
+
   const errors: string[] = [];
   for (const routeId of routes) {
     try {
@@ -34,20 +42,30 @@ export async function runWithFallback<T>(
       );
     }
   }
-  throw new Error(errors.join(" | "));
+
+  const label = options.capability ? ` for capability ${options.capability}` : "";
+  throw new Error(
+    `all routes failed${label} after ${routes.length} attempt${routes.length === 1 ? "" : "s"}: ${errors.join(" | ")}`,
+  );
 }
 
 export class SDKBackend {
   readonly authStorage: AuthStorage;
   readonly modelRegistry: ModelRegistry;
+  private readonly completeFn: typeof complete;
 
   constructor(
     private readonly routes: Record<string, string[]>,
-    deps: { authStorage?: AuthStorage; modelRegistry?: ModelRegistry } = {},
+    deps: {
+      authStorage?: AuthStorage;
+      modelRegistry?: ModelRegistry;
+      completeFn?: typeof complete;
+    } = {},
   ) {
     this.authStorage =
       deps.modelRegistry?.authStorage ?? deps.authStorage ?? AuthStorage.create();
     this.modelRegistry = deps.modelRegistry ?? new ModelRegistry(this.authStorage);
+    this.completeFn = deps.completeFn ?? complete;
   }
 
   async health(agentDir: string): Promise<HealthResult> {
@@ -79,66 +97,74 @@ export class SDKBackend {
   }
 
   async extract(capability: string, payload: ExtractPayload) {
-    return runWithFallback(this.routes[capability] || [], async (routeId) => {
-      const selection = await this.selectRoute(routeId, { requiresImage: false });
-      const tool = this.extractTool();
-      const response = await complete(
-        selection.model,
-        this.buildContext({
-          userPrompt: buildExtractPrompt(payload),
-          systemPrompt:
-            "You extract structured data from HTML. Call the submit_extraction tool exactly once with concise, precise field values.",
-          tools: [tool],
-        }),
-        {
-          apiKey: selection.apiKey,
-          maxTokens: 4096,
-          temperature: 0,
-        },
-      );
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, { requiresImage: false });
+        const tool = this.extractTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildExtractPrompt(payload),
+            systemPrompt:
+              "You extract structured data from HTML. Call the submit_extraction tool exactly once with concise, precise field values.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
 
-      const call = getRequiredToolCall(response.content, tool.name);
-      const args = validateToolCall([tool], call);
-      return normalizeExtractResult(args, {
-        route_id: routeId,
-        provider: response.provider,
-        model: response.model,
-        tokens_used: response.usage.totalTokens,
-      });
-    });
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return normalizeExtractResult(args, {
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+          tokens_used: response.usage.totalTokens,
+        });
+      },
+      { capability },
+    );
   }
 
   async generateTemplate(
     capability: string,
     payload: GenerateTemplatePayload,
   ): Promise<TemplateResult> {
-    return runWithFallback(this.routes[capability] || [], async (routeId) => {
-      const selection = await this.selectRoute(routeId, { requiresImage: false });
-      const tool = this.templateTool();
-      const response = await complete(
-        selection.model,
-        this.buildContext({
-          userPrompt: buildTemplatePrompt(payload),
-          systemPrompt:
-            "You generate extraction templates from HTML. Call the submit_template tool exactly once. Prefer robust CSS selectors and only use jsonld/regex when they add real value.",
-          tools: [tool],
-        }),
-        {
-          apiKey: selection.apiKey,
-          maxTokens: 4096,
-          temperature: 0,
-        },
-      );
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, { requiresImage: false });
+        const tool = this.templateTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildTemplatePrompt(payload),
+            systemPrompt:
+              "You generate extraction templates from HTML. Call the submit_template tool exactly once. Prefer robust CSS selectors and only use jsonld/regex when they add real value.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
 
-      const call = getRequiredToolCall(response.content, tool.name);
-      const args = validateToolCall([tool], call);
-      return validateTemplateResult({
-        ...(args as TemplateResult),
-        route_id: routeId,
-        provider: response.provider,
-        model: response.model,
-      });
-    });
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validateTemplateResult({
+          ...(args as TemplateResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
   }
 
   private inspectRoute(routeId: string): HealthRouteStatus {
@@ -306,7 +332,7 @@ const WORD_BOUNDARY_THRESHOLD = 0.8;
 function getRequiredToolCall(
   content: Array<{ type: string; id?: string; name?: string; arguments?: Record<string, unknown> }>,
   toolName: string,
-) : ToolCall {
+): ToolCall {
   const toolCall = content.find(
     (block): block is ToolCall =>
       block.type === "toolCall" &&

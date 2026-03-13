@@ -9,6 +9,13 @@
 - Templates, pipeline JS, auth vault, schedules, batches, chains, watches, retention, and backup/restore
 - Exports: `json`, `jsonl`, `csv`, `md`, `xlsx`
 
+## AI Interface Policy
+
+- REST is the canonical machine surface for AI-backed extraction capabilities.
+- Web UI is the primary interactive AI surface.
+- CLI and MCP should expose job-launching AI controls where those controls fit naturally.
+- TUI is an operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, or agent-session workflows.
+
 ## Release Guarantee
 
 - The supported 1.0 core is the only compatibility target for release candidates and patch fixes.

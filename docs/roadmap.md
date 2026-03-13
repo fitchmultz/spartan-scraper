@@ -10,8 +10,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Decide and document the intended symmetry level for TUI AI features before adding TUI-specific AI surfaces.
-- Add richer bridge fallback regression coverage so route-selection behavior stays debuggable as providers change.
 - Align AI extraction controls for scrape/crawl job submission across API, Web UI, CLI, and MCP where those job-launching interfaces already exist.
 
 ## Next

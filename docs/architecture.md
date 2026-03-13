@@ -32,6 +32,17 @@ Everything runs against one local data directory. There is no supported distribu
 
 GraphQL is not part of the architecture anymore.
 
+## AI surface policy
+
+AI support is intentionally asymmetric by interface.
+
+- REST is the canonical machine surface for AI-backed extraction capabilities.
+- Web UI is the primary interactive AI surface for preview, template generation, and job-form controls.
+- CLI and MCP should expose the same job-launching AI controls where flags or tool parameters are a natural fit.
+- TUI stays focused on local operations and inspection. It may display AI-related metadata already attached to jobs, but it is not a first-class surface for prompt-heavy AI workflows such as preview, template generation, or agent sessions.
+
+This boundary is deliberate to avoid building a second interactive AI workbench inside a terminal screen model that already serves a different operational purpose.
+
 ## Core packages
 
 - `cmd/spartan`
