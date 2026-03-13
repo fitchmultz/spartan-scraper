@@ -10,19 +10,19 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Align AI extraction controls for scrape/crawl job submission across API, Web UI, CLI, and MCP where those job-launching interfaces already exist.
 - Decide and document the intended symmetry level for TUI AI features before adding TUI-specific AI surfaces.
+- Add richer bridge fallback regression coverage so route-selection behavior stays debuggable as providers change.
+- Align AI extraction controls for scrape/crawl job submission across API, Web UI, CLI, and MCP where those job-launching interfaces already exist.
 
 ## Next
 
-- Add richer bridge fallback regression coverage so route-selection behavior stays debuggable as providers change.
 - Add AI capabilities to additional product features where they materially improve outcomes and fit the interface, starting with research.
-- Add agentic `research` powered by `pi`.
 - Keep this additive first: deterministic `internal/research` remains the baseline path unless a future roadmap item explicitly replaces or restructures it.
 - Reuse Spartan's existing evidence collection and fetch/extract primitives instead of bypassing them with a free-form agent loop.
-- Revisit interface symmetry for any new AI capability as part of feature design, rather than shipping API-only or Web-only by default.
+- Add agentic `research` powered by `pi`.
 
 ## Later
 
+- Revisit interface symmetry for any new AI capability as part of feature design, rather than shipping API-only or Web-only by default.
 - Revisit multimodal/template-debug loops once image-capable routes prove stable in production-like usage.
 - Broaden `pi` usage beyond extraction/template generation where an agent harness improves real workflows.
