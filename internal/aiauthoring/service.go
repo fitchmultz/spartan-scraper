@@ -2,19 +2,13 @@ package aiauthoring
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
-	"github.com/andybalholm/cascadia"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
-	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 type Service struct {
@@ -32,17 +26,19 @@ type PreviewRequest struct {
 	Fields        []string
 	Headless      bool
 	UsePlaywright bool
+	Visual        bool
 }
 
 type PreviewResult struct {
-	Fields      map[string]extract.FieldValue `json:"fields"`
-	Confidence  float64                       `json:"confidence"`
-	Explanation string                        `json:"explanation,omitempty"`
-	TokensUsed  int                           `json:"tokens_used"`
-	RouteID     string                        `json:"route_id,omitempty"`
-	Provider    string                        `json:"provider,omitempty"`
-	Model       string                        `json:"model,omitempty"`
-	Cached      bool                          `json:"cached"`
+	Fields            map[string]extract.FieldValue `json:"fields"`
+	Confidence        float64                       `json:"confidence"`
+	Explanation       string                        `json:"explanation,omitempty"`
+	TokensUsed        int                           `json:"tokens_used"`
+	RouteID           string                        `json:"route_id,omitempty"`
+	Provider          string                        `json:"provider,omitempty"`
+	Model             string                        `json:"model,omitempty"`
+	Cached            bool                          `json:"cached"`
+	VisualContextUsed bool                          `json:"visual_context_used"`
 }
 
 type TemplateRequest struct {
@@ -52,14 +48,37 @@ type TemplateRequest struct {
 	SampleFields  []string
 	Headless      bool
 	UsePlaywright bool
+	Visual        bool
 }
 
 type TemplateResult struct {
-	Template    extract.Template `json:"template"`
-	Explanation string           `json:"explanation,omitempty"`
-	RouteID     string           `json:"route_id,omitempty"`
-	Provider    string           `json:"provider,omitempty"`
-	Model       string           `json:"model,omitempty"`
+	Template          extract.Template `json:"template"`
+	Explanation       string           `json:"explanation,omitempty"`
+	RouteID           string           `json:"route_id,omitempty"`
+	Provider          string           `json:"provider,omitempty"`
+	Model             string           `json:"model,omitempty"`
+	VisualContextUsed bool             `json:"visual_context_used"`
+}
+
+type TemplateDebugRequest struct {
+	URL           string
+	HTML          string
+	Template      extract.Template
+	Instructions  string
+	Headless      bool
+	UsePlaywright bool
+	Visual        bool
+}
+
+type TemplateDebugResult struct {
+	Issues            []string                      `json:"issues,omitempty"`
+	ExtractedFields   map[string]extract.FieldValue `json:"extracted_fields,omitempty"`
+	Explanation       string                        `json:"explanation,omitempty"`
+	SuggestedTemplate *extract.Template             `json:"suggested_template,omitempty"`
+	RouteID           string                        `json:"route_id,omitempty"`
+	Provider          string                        `json:"provider,omitempty"`
+	Model             string                        `json:"model,omitempty"`
+	VisualContextUsed bool                          `json:"visual_context_used"`
 }
 
 func NewService(cfg config.Config, aiExtractor *extract.AIExtractor, allowInternal bool) *Service {
@@ -82,29 +101,22 @@ func (s *Service) Preview(ctx context.Context, req PreviewRequest) (PreviewResul
 		}
 	}
 
-	requestTimeoutSecs := s.cfg.AI.RequestTimeoutSecs
-	if requestTimeoutSecs <= 0 {
-		requestTimeoutSecs = config.DefaultPIRequestTimeoutSecs
-	}
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(requestTimeoutSecs)*time.Second)
+	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	html := req.HTML
-	if strings.TrimSpace(html) == "" {
-		fetched, err := s.FetchHTML(ctx, req.URL, req.Headless, req.UsePlaywright)
-		if err != nil {
-			return PreviewResult{}, err
-		}
-		html = fetched.HTML
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	if err != nil {
+		return PreviewResult{}, err
 	}
 
 	aiResult, err := s.aiExtractor.Extract(ctx, extract.AIExtractRequest{
-		HTML:            html,
-		URL:             req.URL,
+		HTML:            page.HTML,
+		URL:             page.URL,
 		Mode:            req.Mode,
 		Prompt:          req.Prompt,
 		SchemaExample:   req.Schema,
 		Fields:          req.Fields,
+		Images:          page.Images,
 		MaxContentChars: extract.DefaultMaxContentChars,
 	})
 	if err != nil {
@@ -112,14 +124,15 @@ func (s *Service) Preview(ctx context.Context, req PreviewRequest) (PreviewResul
 	}
 
 	return PreviewResult{
-		Fields:      aiResult.Fields,
-		Confidence:  aiResult.Confidence,
-		Explanation: aiResult.Explanation,
-		TokensUsed:  aiResult.TokensUsed,
-		RouteID:     aiResult.RouteID,
-		Provider:    aiResult.Provider,
-		Model:       aiResult.Model,
-		Cached:      aiResult.Cached,
+		Fields:            aiResult.Fields,
+		Confidence:        aiResult.Confidence,
+		Explanation:       aiResult.Explanation,
+		TokensUsed:        aiResult.TokensUsed,
+		RouteID:           aiResult.RouteID,
+		Provider:          aiResult.Provider,
+		Model:             aiResult.Model,
+		Cached:            aiResult.Cached,
+		VisualContextUsed: page.VisualContextUsed,
 	}, nil
 }
 
@@ -139,53 +152,98 @@ func (s *Service) GenerateTemplate(ctx context.Context, req TemplateRequest) (Te
 		}
 	}
 
-	requestTimeoutSecs := s.cfg.AI.RequestTimeoutSecs
-	if requestTimeoutSecs <= 0 {
-		requestTimeoutSecs = config.DefaultPIRequestTimeoutSecs
-	}
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(requestTimeoutSecs)*time.Second)
+	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	html := req.HTML
-	if strings.TrimSpace(html) == "" {
-		fetched, err := s.FetchHTML(ctx, req.URL, req.Headless, req.UsePlaywright)
-		if err != nil {
-			return TemplateResult{}, err
-		}
-		html = fetched.HTML
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	if err != nil {
+		return TemplateResult{}, err
 	}
 
-	aiReq := extract.AITemplateGenerateRequest{
-		HTML:         html,
-		URL:          req.URL,
+	aiResult, err := s.generateTemplateWithValidation(ctx, page, extract.AITemplateGenerateRequest{
+		HTML:         page.HTML,
+		URL:          page.URL,
 		Description:  req.Description,
 		SampleFields: append([]string(nil), req.SampleFields...),
+		Images:       page.Images,
+	})
+	if err != nil {
+		return TemplateResult{}, err
 	}
 
-	for attempt := 0; attempt < 2; attempt++ {
-		aiResult, err := s.aiExtractor.GenerateTemplate(ctx, aiReq)
-		if err != nil {
-			return TemplateResult{}, apperrors.Wrap(apperrors.KindInternal, "AI template generation failed", err)
-		}
+	return TemplateResult{
+		Template:          aiResult.Template,
+		Explanation:       aiResult.Explanation,
+		RouteID:           aiResult.RouteID,
+		Provider:          aiResult.Provider,
+		Model:             aiResult.Model,
+		VisualContextUsed: page.VisualContextUsed,
+	}, nil
+}
 
-		validationErrors := validateGeneratedTemplate(html, aiResult.Template)
-		if len(validationErrors) == 0 {
-			return TemplateResult{
-				Template:    aiResult.Template,
-				Explanation: aiResult.Explanation,
-				RouteID:     aiResult.RouteID,
-				Provider:    aiResult.Provider,
-				Model:       aiResult.Model,
-			}, nil
+func (s *Service) DebugTemplate(ctx context.Context, req TemplateDebugRequest) (TemplateDebugResult, error) {
+	if err := s.requireAIExtractor(); err != nil {
+		return TemplateDebugResult{}, err
+	}
+	if strings.TrimSpace(req.URL) == "" && strings.TrimSpace(req.HTML) == "" {
+		return TemplateDebugResult{}, apperrors.Validation("url or html is required")
+	}
+	if strings.TrimSpace(req.Template.Name) == "" {
+		return TemplateDebugResult{}, apperrors.Validation("template.name is required")
+	}
+	if strings.TrimSpace(req.HTML) == "" {
+		if err := validateHTTPURL(req.URL); err != nil {
+			return TemplateDebugResult{}, err
 		}
-
-		if attempt == 1 {
-			return TemplateResult{}, apperrors.Validation(strings.Join(validationErrors, "; "))
-		}
-		aiReq.Feedback = "The previous template did not validate against the fetched HTML. Fix these issues: " + strings.Join(validationErrors, "; ")
 	}
 
-	return TemplateResult{}, apperrors.Internal("AI template generation failed")
+	ctx, cancel := s.withRequestTimeout(ctx)
+	defer cancel()
+
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	if err != nil {
+		return TemplateDebugResult{}, err
+	}
+
+	diagnostics := analyzeTemplate(page.URL, page.HTML, req.Template)
+	result := TemplateDebugResult{
+		Issues:            diagnostics.Issues,
+		ExtractedFields:   diagnostics.ExtractedFields,
+		VisualContextUsed: page.VisualContextUsed,
+	}
+	if len(diagnostics.Issues) == 0 && strings.TrimSpace(req.Instructions) == "" {
+		result.Explanation = "No local template issues detected."
+		return result, nil
+	}
+
+	feedback := buildTemplateDebugFeedback(req.Template, diagnostics, req.Instructions)
+	sampleFields := diagnostics.FieldNames()
+	if len(sampleFields) == 0 {
+		sampleFields = templateFieldNames(req.Template)
+	}
+
+	aiResult, err := s.generateTemplateWithValidation(ctx, page, extract.AITemplateGenerateRequest{
+		HTML:         page.HTML,
+		URL:          page.URL,
+		Description:  buildTemplateDebugDescription(req.Template, req.Instructions),
+		SampleFields: sampleFields,
+		Feedback:     feedback,
+		Images:       page.Images,
+	})
+	if err != nil {
+		return TemplateDebugResult{}, err
+	}
+
+	result.SuggestedTemplate = &aiResult.Template
+	result.Explanation = aiResult.Explanation
+	result.RouteID = aiResult.RouteID
+	result.Provider = aiResult.Provider
+	result.Model = aiResult.Model
+	return result, nil
+}
+
+func (s *Service) FetchHTML(ctx context.Context, pageURL string, headless bool, usePlaywright bool) (fetch.Result, error) {
+	return s.fetchPage(ctx, pageURL, headless, usePlaywright, false)
 }
 
 func (s *Service) requireAIExtractor() error {
@@ -195,66 +253,36 @@ func (s *Service) requireAIExtractor() error {
 	return nil
 }
 
-func (s *Service) FetchHTML(ctx context.Context, pageURL string, headless bool, usePlaywright bool) (fetch.Result, error) {
-	if err := webhook.ValidateURL(pageURL, s.allowInternal); err != nil {
-		return fetch.Result{}, err
+func (s *Service) withRequestTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	requestTimeoutSecs := s.cfg.AI.RequestTimeoutSecs
+	if requestTimeoutSecs <= 0 {
+		requestTimeoutSecs = config.DefaultPIRequestTimeoutSecs
 	}
-
-	fetcher := fetch.NewFetcher(s.cfg.DataDir)
-	result, err := fetcher.Fetch(ctx, fetch.Request{
-		URL:           pageURL,
-		Method:        http.MethodGet,
-		Timeout:       time.Duration(s.cfg.RequestTimeoutSecs) * time.Second,
-		UserAgent:     s.cfg.UserAgent,
-		Headless:      headless,
-		UsePlaywright: usePlaywright,
-		DataDir:       s.cfg.DataDir,
-	})
-	if err != nil {
-		return fetch.Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to fetch page", err)
-	}
-	return result, nil
+	return context.WithTimeout(ctx, time.Duration(requestTimeoutSecs)*time.Second)
 }
 
-func validateHTTPURL(raw string) error {
-	parsedURL, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-		return apperrors.Validation("invalid URL format")
-	}
-	return nil
-}
+func (s *Service) generateTemplateWithValidation(ctx context.Context, page pageContext, aiReq extract.AITemplateGenerateRequest) (extract.AITemplateGenerateResult, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		aiResult, err := s.aiExtractor.GenerateTemplate(ctx, aiReq)
+		if err != nil {
+			return extract.AITemplateGenerateResult{}, apperrors.Wrap(apperrors.KindInternal, "AI template generation failed", err)
+		}
 
-func validateGeneratedTemplate(html string, template extract.Template) []string {
-	if strings.TrimSpace(template.Name) == "" {
-		return []string{"name is required"}
-	}
-	if len(template.Selectors) == 0 {
-		return []string{"at least one selector is required"}
-	}
+		diagnostics := analyzeTemplate(page.URL, page.HTML, aiResult.Template)
+		if len(diagnostics.Issues) == 0 {
+			return aiResult, nil
+		}
+		if attempt == 1 {
+			return extract.AITemplateGenerateResult{}, apperrors.Validation(strings.Join(diagnostics.Issues, "; "))
+		}
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return []string{"generated template could not be validated because the fetched HTML was not parseable"}
-	}
-
-	validationErrors := make([]string, 0)
-	for _, rule := range template.Selectors {
-		if strings.TrimSpace(rule.Name) == "" {
-			validationErrors = append(validationErrors, "selector rule is missing a field name")
-			continue
+		feedbackParts := []string{}
+		if strings.TrimSpace(aiReq.Feedback) != "" {
+			feedbackParts = append(feedbackParts, strings.TrimSpace(aiReq.Feedback))
 		}
-		if strings.TrimSpace(rule.Selector) == "" {
-			validationErrors = append(validationErrors, fmt.Sprintf("selector %s is empty", rule.Name))
-			continue
-		}
-		if _, err := cascadia.ParseGroup(rule.Selector); err != nil {
-			validationErrors = append(validationErrors, fmt.Sprintf("selector %s is invalid: %s", rule.Name, err.Error()))
-			continue
-		}
-		if doc.Find(rule.Selector).Length() == 0 {
-			validationErrors = append(validationErrors, fmt.Sprintf("selector %s matched no elements", rule.Name))
-		}
+		feedbackParts = append(feedbackParts, "The previous template did not validate against the current page. Fix these issues: "+strings.Join(diagnostics.Issues, "; "))
+		aiReq.Feedback = strings.Join(feedbackParts, "\n\n")
 	}
 
-	return validationErrors
+	return extract.AITemplateGenerateResult{}, apperrors.Internal("AI template generation failed")
 }

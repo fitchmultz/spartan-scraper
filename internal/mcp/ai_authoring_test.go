@@ -53,7 +53,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -149,5 +149,56 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if provider.lastTemplateReq.Feedback == "" {
 		t.Fatal("expected validation feedback on retry")
+	}
+
+	provider.templateResults = []extract.AITemplateGenerateResult{{
+		Template: extract.Template{
+			Name:      "product-template",
+			Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}},
+		},
+		Explanation: "Updated selector to target the visible heading.",
+		RouteID:     "openai/gpt-5.4",
+		Provider:    "openai",
+		Model:       "gpt-5.4",
+	}}
+	provider.templateCalls = 0
+	provider.lastTemplateReq = extract.AITemplateGenerateRequest{}
+
+	debugBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_template_debug",
+			"arguments": map[string]interface{}{
+				"html": "<html><body><h1>Example</h1></body></html>",
+				"template": map[string]interface{}{
+					"name": "product-template",
+					"selectors": []map[string]interface{}{{
+						"name":     "title",
+						"selector": ".missing",
+						"attr":     "text",
+					}},
+				},
+				"instructions": "Prefer the visible heading",
+			},
+		}),
+	}
+	debugResult, err := srv.handleToolCall(context.Background(), debugBase)
+	if err != nil {
+		t.Fatalf("ai_template_debug failed: %v", err)
+	}
+	debugResp, ok := debugResult.(aiauthoring.TemplateDebugResult)
+	if !ok {
+		t.Fatalf("expected debug result type, got %#v", debugResult)
+	}
+	if len(debugResp.Issues) == 0 {
+		t.Fatal("expected local template issues in debug response")
+	}
+	if debugResp.SuggestedTemplate == nil || debugResp.SuggestedTemplate.Name != "product-template" {
+		t.Fatalf("unexpected suggested template: %#v", debugResp.SuggestedTemplate)
+	}
+	if provider.templateCalls != 1 {
+		t.Fatalf("expected single debug generation call, got %d", provider.templateCalls)
+	}
+	if provider.lastTemplateReq.Feedback == "" {
+		t.Fatal("expected template debug feedback to reach the provider")
 	}
 }

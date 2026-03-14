@@ -63,6 +63,11 @@ type HealthResponse struct {
 	AuthErrors  []string                       `json:"auth_errors,omitempty"`
 }
 
+type ImageInput struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mime_type"`
+}
+
 type ExtractRequest struct {
 	HTML            string                 `json:"html"`
 	URL             string                 `json:"url"`
@@ -70,6 +75,7 @@ type ExtractRequest struct {
 	Prompt          string                 `json:"prompt,omitempty"`
 	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"`
 	Fields          []string               `json:"fields,omitempty"`
+	Images          []ImageInput           `json:"images,omitempty"`
 	MaxContentChars int                    `json:"max_content_chars,omitempty"`
 }
 
@@ -84,11 +90,12 @@ type ExtractResult struct {
 }
 
 type GenerateTemplateRequest struct {
-	HTML         string   `json:"html"`
-	URL          string   `json:"url"`
-	Description  string   `json:"description"`
-	SampleFields []string `json:"sample_fields,omitempty"`
-	Feedback     string   `json:"feedback,omitempty"`
+	HTML         string       `json:"html"`
+	URL          string       `json:"url"`
+	Description  string       `json:"description"`
+	SampleFields []string     `json:"sample_fields,omitempty"`
+	Feedback     string       `json:"feedback,omitempty"`
+	Images       []ImageInput `json:"images,omitempty"`
 }
 
 type GenerateTemplateResult struct {

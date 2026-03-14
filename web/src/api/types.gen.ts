@@ -249,6 +249,10 @@ export type AiExtractPreviewRequest = {
      * Use Playwright instead of Chromedp for headless fetching
      */
     playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context when fetching the URL
+     */
+    visual?: boolean;
 };
 
 /**
@@ -289,6 +293,10 @@ export type AiExtractPreviewResponse = {
      * Whether the result was served from cache
      */
     cached?: boolean;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
 };
 
 /**
@@ -337,6 +345,10 @@ export type AiExtractTemplateGenerateRequest = {
      * Use Playwright instead of Chromedp for headless fetching
      */
     playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context when fetching the URL
+     */
+    visual?: boolean;
 };
 
 /**
@@ -360,6 +372,78 @@ export type AiExtractTemplateGenerateResponse = {
      * Model selected by the pi route that handled the request
      */
     model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
+};
+
+/**
+ * Request for AI template debugging. Provide either a URL to fetch or raw HTML directly.
+ */
+export type AiExtractTemplateDebugRequest = {
+    /**
+     * URL to analyze for template debugging (optional when html is provided)
+     */
+    url?: string;
+    /**
+     * HTML content to debug directly (optional when url is provided)
+     */
+    html?: string;
+    template: Template;
+    /**
+     * Optional operator guidance for the repair suggestion
+     */
+    instructions?: string;
+    /**
+     * Use headless browser to fetch content
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for headless fetching
+     */
+    playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context when fetching the URL
+     */
+    visual?: boolean;
+};
+
+/**
+ * Response from AI template debugging
+ */
+export type AiExtractTemplateDebugResponse = {
+    /**
+     * Deterministic local issues found while validating the template
+     */
+    issues?: Array<string>;
+    /**
+     * Current field output produced by the template against the supplied page
+     */
+    extracted_fields?: {
+        [key: string]: FieldValue;
+    };
+    /**
+     * Explanation of the suggested repair
+     */
+    explanation?: string;
+    suggested_template?: Template;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
 };
 
 export type PipelineOptions = {
@@ -3747,6 +3831,43 @@ export type AiTemplateGenerateResponses = {
 };
 
 export type AiTemplateGenerateResponse = AiTemplateGenerateResponses[keyof AiTemplateGenerateResponses];
+
+export type AiTemplateDebugData = {
+    body: AiExtractTemplateDebugRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/extract/ai-template-debug';
+};
+
+export type AiTemplateDebugErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiTemplateDebugError = AiTemplateDebugErrors[keyof AiTemplateDebugErrors];
+
+export type AiTemplateDebugResponses = {
+    /**
+     * Template debug diagnostics and repair suggestions
+     */
+    200: AiExtractTemplateDebugResponse;
+};
+
+export type AiTemplateDebugResponse = AiTemplateDebugResponses[keyof AiTemplateDebugResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

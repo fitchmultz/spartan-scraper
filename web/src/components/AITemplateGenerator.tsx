@@ -33,12 +33,14 @@ interface GeneratorState {
   sampleFields: string;
   headless: boolean;
   playwright: boolean;
+  visual: boolean;
   isGenerating: boolean;
   generatedTemplate: Template | null;
   explanation: string;
   routeId: string;
   provider: string;
   model: string;
+  visualContextUsed: boolean;
   error: string | null;
   templateName: string;
   isSaving: boolean;
@@ -57,12 +59,14 @@ export function AITemplateGenerator({
     sampleFields: "",
     headless: false,
     playwright: false,
+    visual: false,
     isGenerating: false,
     generatedTemplate: null,
     explanation: "",
     routeId: "",
     provider: "",
     model: "",
+    visualContextUsed: false,
     error: null,
     templateName: "",
     isSaving: false,
@@ -77,12 +81,14 @@ export function AITemplateGenerator({
       sampleFields: "",
       headless: false,
       playwright: false,
+      visual: false,
       isGenerating: false,
       generatedTemplate: null,
       explanation: "",
       routeId: "",
       provider: "",
       model: "",
+      visualContextUsed: false,
       error: null,
       templateName: "",
       isSaving: false,
@@ -132,6 +138,7 @@ export function AITemplateGenerator({
       routeId: "",
       provider: "",
       model: "",
+      visualContextUsed: false,
     }));
 
     try {
@@ -156,6 +163,7 @@ export function AITemplateGenerator({
             ? {
                 headless: state.headless,
                 ...(state.headless ? { playwright: state.playwright } : {}),
+                visual: state.visual,
               }
             : {}),
         },
@@ -192,6 +200,7 @@ export function AITemplateGenerator({
         routeId: response.route_id || "",
         provider: response.provider || "",
         model: response.model || "",
+        visualContextUsed: response.visual_context_used || false,
         templateName: response.template?.name || "",
         isGenerating: false,
       }));
@@ -308,6 +317,9 @@ export function AITemplateGenerator({
                       ...prev,
                       source: "html",
                       error: null,
+                      headless: false,
+                      playwright: false,
+                      visual: false,
                     }))
                   }
                   disabled={state.isGenerating}
@@ -351,6 +363,7 @@ export function AITemplateGenerator({
                           playwright: e.target.checked
                             ? prev.playwright
                             : false,
+                          visual: e.target.checked ? prev.visual : false,
                         }))
                       }
                       disabled={state.isGenerating}
@@ -379,6 +392,25 @@ export function AITemplateGenerator({
                     </label>
                   </div>
                 )}
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={state.visual}
+                      onChange={(e) =>
+                        setState((prev) => ({
+                          ...prev,
+                          visual: e.target.checked,
+                          headless: e.target.checked ? true : prev.headless,
+                        }))
+                      }
+                      disabled={state.isGenerating}
+                      className="form-checkbox"
+                    />
+                    Include screenshot context when fetching the page
+                  </label>
+                </div>
               </>
             ) : (
               <>
@@ -546,6 +578,12 @@ export function AITemplateGenerator({
                         <dd>{state.model}</dd>
                       </div>
                     )}
+                    <div className="flex flex-wrap gap-2">
+                      <dt className="font-medium text-slate-300">
+                        Visual context
+                      </dt>
+                      <dd>{state.visualContextUsed ? "Used" : "Not used"}</dd>
+                    </div>
                   </dl>
                 </div>
               )}

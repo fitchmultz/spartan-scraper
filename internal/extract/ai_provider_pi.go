@@ -23,6 +23,11 @@ func NewPIProvider(cfg config.AIConfig) *PIProvider {
 }
 
 func (p *PIProvider) Extract(ctx context.Context, req AIExtractRequest) (AIExtractResult, error) {
+	images := make([]piai.ImageInput, 0, len(req.Images))
+	for _, image := range req.Images {
+		images = append(images, piai.ImageInput{Data: image.Data, MimeType: image.MimeType})
+	}
+
 	result, err := p.client.Extract(ctx, piai.ExtractRequest{
 		HTML:            req.HTML,
 		URL:             req.URL,
@@ -30,6 +35,7 @@ func (p *PIProvider) Extract(ctx context.Context, req AIExtractRequest) (AIExtra
 		Prompt:          req.Prompt,
 		SchemaExample:   req.SchemaExample,
 		Fields:          req.Fields,
+		Images:          images,
 		MaxContentChars: req.MaxContentChars,
 	})
 	if err != nil {
@@ -57,12 +63,18 @@ func (p *PIProvider) Extract(ctx context.Context, req AIExtractRequest) (AIExtra
 }
 
 func (p *PIProvider) GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error) {
+	images := make([]piai.ImageInput, 0, len(req.Images))
+	for _, image := range req.Images {
+		images = append(images, piai.ImageInput{Data: image.Data, MimeType: image.MimeType})
+	}
+
 	result, err := p.client.GenerateTemplate(ctx, piai.GenerateTemplateRequest{
 		HTML:         req.HTML,
 		URL:          req.URL,
 		Description:  req.Description,
 		SampleFields: append([]string(nil), req.SampleFields...),
 		Feedback:     req.Feedback,
+		Images:       images,
 	})
 	if err != nil {
 		return AITemplateGenerateResult{}, err

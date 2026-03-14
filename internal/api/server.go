@@ -256,6 +256,7 @@ func (s *Server) Routes() http.Handler {
 	// AI extraction endpoints
 	mux.HandleFunc("/v1/extract/ai-preview", s.handleAIExtractPreview)
 	mux.HandleFunc("/v1/extract/ai-template-generate", s.handleAITemplateGenerate)
+	mux.HandleFunc("/v1/extract/ai-template-debug", s.handleAITemplateDebug)
 
 	// Deduplication endpoints
 	mux.HandleFunc("/v1/dedup/duplicates", s.handleDedupDuplicates)

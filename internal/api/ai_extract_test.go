@@ -288,6 +288,63 @@ func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 	}
 }
 
+func TestAITemplateDebugSuggestsRepairsForBrokenTemplate(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	provider := &fakeAIProvider{
+		templateResponses: []extract.AITemplateGenerateResult{{
+			Template: extract.Template{
+				Name: "product-template",
+				Selectors: []extract.SelectorRule{
+					{Name: "title", Selector: "h1", Attr: "text", Trim: true},
+				},
+			},
+			Explanation: "Updated the selector to use the visible heading.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		}},
+	}
+	srv.aiExtractor = extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig()},
+		srv.cfg.DataDir,
+		provider,
+	)
+	srv.cfg.AI = config.AIConfig{
+		Enabled:            true,
+		RequestTimeoutSecs: 30,
+		Routing:            config.DefaultAIRoutingConfig(),
+	}
+
+	body := `{"html":"<html><body><h1>Widget</h1></body></html>","template":{"name":"product-template","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible heading"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/extract/ai-template-debug", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if provider.templateCalls != 1 {
+		t.Fatalf("expected single repair call, got %d", provider.templateCalls)
+	}
+	if provider.lastTemplateReq.Feedback == "" {
+		t.Fatal("expected debug feedback on repair request")
+	}
+
+	var resp AIExtractTemplateDebugResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Issues) == 0 {
+		t.Fatal("expected local issues in debug response")
+	}
+	if resp.SuggestedTemplate == nil || resp.SuggestedTemplate.Name != "product-template" {
+		t.Fatalf("unexpected suggested template: %#v", resp.SuggestedTemplate)
+	}
+}
+
 func TestAITemplateGenerateBodySize(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

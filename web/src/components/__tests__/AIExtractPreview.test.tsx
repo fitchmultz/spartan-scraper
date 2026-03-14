@@ -38,6 +38,7 @@ describe("AIExtractPreview", () => {
     route_id: "openai/gpt-5.4",
     provider: "openai",
     model: "gpt-5.4",
+    visual_context_used: false,
   } satisfies AiExtractPreviewResponse;
 
   beforeEach(() => {
@@ -123,6 +124,7 @@ describe("AIExtractPreview", () => {
     });
     fireEvent.click(screen.getByLabelText(/use headless browser/i));
     fireEvent.click(screen.getByLabelText(/use playwright/i));
+    fireEvent.click(screen.getByLabelText(/include screenshot context/i));
     fireEvent.click(screen.getByRole("button", { name: /run ai preview/i }));
 
     await waitFor(() => {
@@ -135,6 +137,7 @@ describe("AIExtractPreview", () => {
           fields: ["title", "price", "metadata"],
           headless: true,
           playwright: true,
+          visual: true,
         },
       });
     });

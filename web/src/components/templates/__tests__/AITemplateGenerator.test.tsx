@@ -39,6 +39,7 @@ describe("AITemplateGenerator", () => {
     route_id: "openai/gpt-5.4",
     provider: "openai",
     model: "gpt-5.4",
+    visual_context_used: false,
   };
 
   beforeEach(() => {
@@ -187,6 +188,7 @@ describe("AITemplateGenerator", () => {
           description: "Extract product information",
           sample_fields: ["title", "price", "rating"],
           headless: false,
+          visual: false,
         },
       });
     });
@@ -486,7 +488,7 @@ describe("AITemplateGenerator", () => {
       />,
     );
 
-    const headlessCheckbox = screen.getByRole("checkbox");
+    const headlessCheckbox = screen.getByLabelText(/use headless browser/i);
     expect(headlessCheckbox).not.toBeChecked();
 
     fireEvent.click(headlessCheckbox);

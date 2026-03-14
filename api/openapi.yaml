@@ -842,6 +842,49 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/extract/ai-template-debug":
+    post:
+      summary: Debug extraction template using AI
+      description: Analyze an existing extraction template against fetched page content or raw HTML,
+        then optionally suggest a repaired template.
+      operationId: aiTemplateDebug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIExtractTemplateDebugRequest"
+      responses:
+        '200':
+          description: Template debug diagnostics and repair suggestions
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIExtractTemplateDebugResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/crawl-states":
     get:
       summary: List crawl states
@@ -3360,6 +3403,9 @@ components:
         playwright:
           type: boolean
           description: Use Playwright instead of Chromedp for headless fetching
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context when fetching the URL
     AIExtractPreviewResponse:
       type: object
       description: Response from AI extraction preview
@@ -3392,6 +3438,9 @@ components:
         cached:
           type: boolean
           description: Whether the result was served from cache
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
     FieldValue:
       type: object
       description: A field value with source information
@@ -3440,6 +3489,9 @@ components:
         playwright:
           type: boolean
           description: Use Playwright instead of Chromedp for headless fetching
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context when fetching the URL
     AIExtractTemplateGenerateResponse:
       type: object
       description: Response from AI template generation
@@ -3458,6 +3510,67 @@ components:
         model:
           type: string
           description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
+    AIExtractTemplateDebugRequest:
+      type: object
+      description: Request for AI template debugging. Provide either a URL to fetch or raw HTML directly.
+      required:
+      - template
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to analyze for template debugging (optional when html is provided)
+        html:
+          type: string
+          description: HTML content to debug directly (optional when url is provided)
+        template:
+          "$ref": "#/components/schemas/Template"
+        instructions:
+          type: string
+          description: Optional operator guidance for the repair suggestion
+        headless:
+          type: boolean
+          description: Use headless browser to fetch content
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for headless fetching
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context when fetching the URL
+    AIExtractTemplateDebugResponse:
+      type: object
+      description: Response from AI template debugging
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+          description: Deterministic local issues found while validating the template
+        extracted_fields:
+          type: object
+          description: Current field output produced by the template against the supplied page
+          additionalProperties:
+            "$ref": "#/components/schemas/FieldValue"
+        explanation:
+          type: string
+          description: Explanation of the suggested repair
+        suggested_template:
+          "$ref": "#/components/schemas/Template"
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
     PipelineOptions:
       type: object
       properties:

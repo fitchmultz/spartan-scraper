@@ -66,6 +66,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Fields:        paramdecode.StringSlice(params.Arguments, "fields"),
 			Headless:      paramdecode.Bool(params.Arguments, "headless"),
 			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
 		})
 		if err != nil {
 			return nil, err
@@ -79,6 +80,22 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			SampleFields:  paramdecode.StringSlice(params.Arguments, "sampleFields"),
 			Headless:      paramdecode.Bool(params.Arguments, "headless"),
 			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case "ai_template_debug":
+		template := paramdecode.Decode[extract.Template](params.Arguments, "template")
+		result, err := s.aiAuthoring.DebugTemplate(ctx, aiauthoring.TemplateDebugRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			HTML:          paramdecode.String(params.Arguments, "html"),
+			Template:      template,
+			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
 		})
 		if err != nil {
 			return nil, err

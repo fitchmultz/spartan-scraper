@@ -5,6 +5,8 @@ import {
   type Tool,
   type ToolCall,
   type Context,
+  type ImageContent,
+  type TextContent,
 } from "@mariozechner/pi-ai";
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type {
@@ -100,12 +102,15 @@ export class SDKBackend {
     return runWithFallback(
       this.routes[capability] || [],
       async (routeId) => {
-        const selection = await this.selectRoute(routeId, { requiresImage: false });
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: Boolean(payload.images?.length),
+        });
         const tool = this.extractTool();
         const response = await this.completeFn(
           selection.model,
           this.buildContext({
             userPrompt: buildExtractPrompt(payload),
+            images: payload.images,
             systemPrompt:
               "You extract structured data from HTML. Call the submit_extraction tool exactly once with concise, precise field values.",
             tools: [tool],
@@ -137,12 +142,15 @@ export class SDKBackend {
     return runWithFallback(
       this.routes[capability] || [],
       async (routeId) => {
-        const selection = await this.selectRoute(routeId, { requiresImage: false });
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: Boolean(payload.images?.length),
+        });
         const tool = this.templateTool();
         const response = await this.completeFn(
           selection.model,
           this.buildContext({
             userPrompt: buildTemplatePrompt(payload),
+            images: payload.images,
             systemPrompt:
               "You generate extraction templates from HTML. Call the submit_template tool exactly once. Prefer robust CSS selectors and only use jsonld/regex when they add real value.",
             tools: [tool],
@@ -237,6 +245,7 @@ export class SDKBackend {
   private buildContext(input: {
     systemPrompt: string;
     userPrompt: string;
+    images?: Array<{ data: string; mime_type: string }>;
     tools: Tool[];
   }): Context {
     return {
@@ -245,7 +254,7 @@ export class SDKBackend {
       messages: [
         {
           role: "user",
-          content: input.userPrompt,
+          content: buildUserContent(input.userPrompt, input.images),
           timestamp: Date.now(),
         },
       ],
@@ -364,6 +373,9 @@ function buildExtractPrompt(payload: ExtractPayload): string {
   if (payload.fields?.length) {
     parts.push(`Fields: ${payload.fields.join(", ")}`);
   }
+  if (payload.images?.length) {
+    parts.push("A screenshot is attached. Use it as supplemental visual context for layout, visibility, and extraction accuracy.");
+  }
   parts.push(`HTML:\n${html}`);
   return parts.join("\n\n");
 }
@@ -379,8 +391,28 @@ function buildTemplatePrompt(payload: GenerateTemplatePayload): string {
   if (payload.feedback?.trim()) {
     parts.push(`Validation feedback: ${payload.feedback.trim()}`);
   }
+  if (payload.images?.length) {
+    parts.push("A screenshot is attached. Use it as supplemental visual context for layout, visibility, and selector robustness.");
+  }
   parts.push(`HTML:\n${payload.html}`);
   return parts.join("\n\n");
+}
+
+function buildUserContent(
+  userPrompt: string,
+  images?: Array<{ data: string; mime_type: string }>,
+): string | (TextContent | ImageContent)[] {
+  if (!images?.length) {
+    return userPrompt;
+  }
+  return [
+    { type: "text", text: userPrompt },
+    ...images.map((image) => ({
+      type: "image" as const,
+      data: image.data,
+      mimeType: image.mime_type,
+    })),
+  ];
 }
 
 export function truncateHTMLForPrompt(html: string, maxChars?: number): string {

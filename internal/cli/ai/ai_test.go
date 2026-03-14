@@ -18,12 +18,16 @@ import (
 type fakeAuthoringRunner struct {
 	previewReq     aiauthoring.PreviewRequest
 	templateReq    aiauthoring.TemplateRequest
+	debugReq       aiauthoring.TemplateDebugRequest
 	previewResult  aiauthoring.PreviewResult
 	templateResult aiauthoring.TemplateResult
+	debugResult    aiauthoring.TemplateDebugResult
 	previewErr     error
 	templateErr    error
+	debugErr       error
 	previewCalled  bool
 	templateCalled bool
+	debugCalled    bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -36,6 +40,12 @@ func (f *fakeAuthoringRunner) GenerateTemplate(ctx context.Context, req aiauthor
 	f.templateCalled = true
 	f.templateReq = req
 	return f.templateResult, f.templateErr
+}
+
+func (f *fakeAuthoringRunner) DebugTemplate(ctx context.Context, req aiauthoring.TemplateDebugRequest) (aiauthoring.TemplateDebugResult, error) {
+	f.debugCalled = true
+	f.debugReq = req
+	return f.debugResult, f.debugErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -150,5 +160,43 @@ func TestRunTemplateReadsHTMLFileAndWritesOutputFile(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"name": "product-template"`) {
 		t.Fatalf("unexpected output file contents: %s", string(data))
+	}
+}
+
+func TestRunTemplateDebugLoadsTemplateByName(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		debugResult: aiauthoring.TemplateDebugResult{
+			Issues: []string{"selector title matched no elements"},
+			SuggestedTemplate: &extract.Template{
+				Name:      "product",
+				Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}},
+			},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	registryPath := filepath.Join(tmpDir, "extract_templates.json")
+	if err := os.WriteFile(registryPath, []byte(`{"templates":[{"name":"product","selectors":[{"name":"title","selector":".missing","attr":"text"}]}]}`), 0o644); err != nil {
+		t.Fatalf("write template registry: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"template-debug", "--html", "<html><h1>Widget</h1></html>", "--template-name", "product", "--instructions", "Prefer the visible h1", "--visual"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.debugCalled {
+		t.Fatal("expected debug runner to be called")
+	}
+	if runner.debugReq.Template.Name != "product" {
+		t.Fatalf("unexpected template name: %q", runner.debugReq.Template.Name)
+	}
+	if !runner.debugReq.Visual {
+		t.Fatal("expected visual mode to be forwarded")
+	}
+	if !strings.Contains(stdout, `"issues": [`) {
+		t.Fatalf("expected debug JSON output, got %s", stdout)
 	}
 }

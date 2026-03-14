@@ -26,6 +26,7 @@ interface PreviewState {
   fields: string;
   headless: boolean;
   playwright: boolean;
+  visual: boolean;
   isLoading: boolean;
   result: AiExtractPreviewResponse | null;
   error: string | null;
@@ -51,6 +52,7 @@ function createInitialState(initialUrl?: string): PreviewState {
     fields: "",
     headless: false,
     playwright: false,
+    visual: false,
     isLoading: false,
     result: null,
     error: null,
@@ -124,6 +126,10 @@ function ResultMetaCard({ result }: { result: AiExtractPreviewResponse }) {
             <dd>{result.model}</dd>
           </div>
         )}
+        <div className="flex flex-wrap gap-2">
+          <dt className="font-medium text-slate-300">Visual context</dt>
+          <dd>{result.visual_context_used ? "Used" : "Not used"}</dd>
+        </div>
       </dl>
     </div>
   );
@@ -236,6 +242,7 @@ export function AIExtractPreview({
           ? {
               headless: state.headless,
               playwright: state.headless ? state.playwright : false,
+              visual: state.visual,
             }
           : {}),
       };
@@ -328,6 +335,7 @@ export function AIExtractPreview({
                       error: null,
                       headless: false,
                       playwright: false,
+                      visual: false,
                     }))
                   }
                 />
@@ -507,6 +515,7 @@ export function AIExtractPreview({
                           playwright: event.target.checked
                             ? prev.playwright
                             : false,
+                          visual: event.target.checked ? prev.visual : false,
                         }))
                       }
                       disabled={state.isLoading}
@@ -532,6 +541,22 @@ export function AIExtractPreview({
                       className="form-checkbox"
                     />
                     Use Playwright
+                  </label>
+                  <label className="form-label m-0 flex items-center gap-2 text-sm font-normal text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={state.visual}
+                      onChange={(event) =>
+                        setState((prev) => ({
+                          ...prev,
+                          visual: event.target.checked,
+                          headless: event.target.checked ? true : prev.headless,
+                        }))
+                      }
+                      disabled={state.isLoading}
+                      className="form-checkbox"
+                    />
+                    Include screenshot context
                   </label>
                 </div>
                 {!state.headless && (

@@ -17,6 +17,7 @@ import (
 type authoringRunner interface {
 	Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error)
 	GenerateTemplate(ctx context.Context, req aiauthoring.TemplateRequest) (aiauthoring.TemplateResult, error)
+	DebugTemplate(ctx context.Context, req aiauthoring.TemplateDebugRequest) (aiauthoring.TemplateDebugResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -51,6 +52,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runTemplateGenerate(ctx, runner, args[1:])
+	case "template-debug":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runTemplateDebug(ctx, cfg, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -69,6 +77,7 @@ func runPreview(ctx context.Context, runner authoringRunner, args []string) int 
 	fields := fs.String("fields", "", "Comma-separated fields to focus")
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -120,6 +129,7 @@ Options:
 		Fields:        splitCSV(*fields),
 		Headless:      *headless,
 		UsePlaywright: *playwright,
+		Visual:        *visual,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -141,6 +151,7 @@ func runTemplateGenerate(ctx context.Context, runner authoringRunner, args []str
 	sampleFields := fs.String("sample-fields", "", "Comma-separated field names to seed the template")
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -172,6 +183,66 @@ Options:
 		SampleFields:  splitCSV(*sampleFields),
 		Headless:      *headless,
 		UsePlaywright: *playwright,
+		Visual:        *visual,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func runTemplateDebug(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-template-debug", flag.ContinueOnError)
+	url := fs.String("url", "", "Target URL to fetch for template debugging")
+	html := fs.String("html", "", "HTML content to debug directly")
+	htmlFile := fs.String("html-file", "", "Path to an HTML file to debug directly")
+	templateName := fs.String("template-name", "", "Saved template name to debug")
+	templateFile := fs.String("template-file", "", "Path to a template JSON file to debug")
+	instructions := fs.String("instructions", "", "Optional repair guidance for the AI")
+	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
+	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai template-debug [options]
+
+Examples:
+  spartan ai template-debug --url https://example.com/product --template-name product
+  spartan ai template-debug --html-file ./fixtures/page.html --template-file ./fixtures/template.json --instructions "Prefer stable selectors"
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	htmlValue, err := resolveHTMLInput(*html, *htmlFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	template, err := resolveTemplateInput(cfg, *templateName, *templateFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	result, err := runner.DebugTemplate(ctx, aiauthoring.TemplateDebugRequest{
+		URL:           strings.TrimSpace(*url),
+		HTML:          htmlValue,
+		Template:      template,
+		Instructions:  strings.TrimSpace(*instructions),
+		Headless:      *headless,
+		UsePlaywright: *playwright,
+		Visual:        *visual,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -193,10 +264,12 @@ Usage:
 Subcommands:
   preview             Run AI extraction preview without creating a job
   template            Generate an extraction template without creating a job
+  template-debug      Debug and repair an extraction template without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
+  spartan ai template-debug --url https://example.com --template-name product
 `)
 }
 
@@ -217,6 +290,33 @@ func resolveHTMLInput(raw string, path string) (string, error) {
 		return "", fmt.Errorf("read html file: %w", err)
 	}
 	return string(data), nil
+}
+
+func resolveTemplateInput(cfg config.Config, name string, path string) (extract.Template, error) {
+	trimmedName := strings.TrimSpace(name)
+	trimmedPath := strings.TrimSpace(path)
+	if trimmedName == "" && trimmedPath == "" {
+		return extract.Template{}, fmt.Errorf("--template-name or --template-file is required")
+	}
+	if trimmedName != "" && trimmedPath != "" {
+		return extract.Template{}, fmt.Errorf("--template-name and --template-file are mutually exclusive")
+	}
+	if trimmedPath != "" {
+		data, err := os.ReadFile(trimmedPath)
+		if err != nil {
+			return extract.Template{}, fmt.Errorf("read template file: %w", err)
+		}
+		var template extract.Template
+		if err := json.Unmarshal(data, &template); err != nil {
+			return extract.Template{}, fmt.Errorf("decode template file: %w", err)
+		}
+		return template, nil
+	}
+	registry, err := extract.LoadTemplateRegistry(cfg.DataDir)
+	if err != nil {
+		return extract.Template{}, fmt.Errorf("load template registry: %w", err)
+	}
+	return registry.GetTemplate(trimmedName)
 }
 
 func parseJSONObject(raw string, emptyMessage string) (map[string]interface{}, error) {

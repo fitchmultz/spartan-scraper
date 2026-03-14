@@ -345,6 +345,54 @@ test("generateTemplate reports aggregated fallback failures", async () => {
   );
 });
 
+test("extract sends screenshot context as multimodal user content", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.ok(Array.isArray(userMessage.content));
+        assert.equal(userMessage.content[0]?.type, "text");
+        assert.equal(userMessage.content[1]?.type, "image");
+        return createToolResponse({
+          toolName: "submit_extraction",
+          arguments: {
+            fields: { title: "Widget" },
+            confidence: 0.95,
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+    html: "<html><h1>Widget</h1></html>",
+    url: "https://example.com/widget",
+    mode: "natural_language",
+    prompt: "Extract the title",
+    images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
+  });
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.deepEqual(result.fields.title.values, ["Widget"]);
+});
+
 test("modelSupportsImages matches current verified model capabilities", () => {
   const registry = new ModelRegistry(AuthStorage.inMemory());
   const openai = registry.find("openai", "gpt-5.4");

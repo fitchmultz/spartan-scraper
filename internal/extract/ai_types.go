@@ -21,14 +21,21 @@ const (
 	AIModeSchemaGuided AIExtractionMode = "schema_guided"
 )
 
+// AIImageInput contains optional screenshot/image context for multimodal AI requests.
+type AIImageInput struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mime_type"`
+}
+
 // AIExtractRequest contains parameters for AI extraction.
 type AIExtractRequest struct {
 	HTML            string                 `json:"html"`
 	URL             string                 `json:"url"`
 	Mode            AIExtractionMode       `json:"mode"`
-	Prompt          string                 `json:"prompt,omitempty"`            // For natural language mode
-	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"`    // For schema-guided mode
-	Fields          []string               `json:"fields,omitempty"`            // Specific fields to extract
+	Prompt          string                 `json:"prompt,omitempty"`         // For natural language mode
+	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"` // For schema-guided mode
+	Fields          []string               `json:"fields,omitempty"`         // Specific fields to extract
+	Images          []AIImageInput         `json:"images,omitempty"`
 	MaxContentChars int                    `json:"max_content_chars,omitempty"` // Truncate HTML if needed
 }
 
@@ -46,11 +53,12 @@ type AIExtractResult struct {
 
 // AITemplateGenerateRequest contains parameters for AI-powered template generation.
 type AITemplateGenerateRequest struct {
-	HTML         string   `json:"html"`
-	URL          string   `json:"url"`
-	Description  string   `json:"description"`
-	SampleFields []string `json:"sample_fields,omitempty"`
-	Feedback     string   `json:"feedback,omitempty"`
+	HTML         string         `json:"html"`
+	URL          string         `json:"url"`
+	Description  string         `json:"description"`
+	SampleFields []string       `json:"sample_fields,omitempty"`
+	Feedback     string         `json:"feedback,omitempty"`
+	Images       []AIImageInput `json:"images,omitempty"`
 }
 
 // AITemplateGenerateResult contains the generated template and model metadata.

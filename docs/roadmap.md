@@ -10,12 +10,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Revisit multimodal/template-debug loops once image-capable routes prove stable in production-like usage.
+- Extend the shared AI authoring/runtime patterns as new pi-backed capabilities are introduced so API, Web, CLI, and MCP stay aligned by default.
 
 ## Next
 
-- Extend the shared AI authoring/runtime patterns as new pi-backed capabilities are introduced so API, Web, CLI, and MCP stay aligned by default.
+- Broaden `pi` usage beyond extraction/template generation where an agent harness improves real workflows.
 
 ## Later
 
-- Broaden `pi` usage beyond extraction/template generation where an agent harness improves real workflows.
+- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.

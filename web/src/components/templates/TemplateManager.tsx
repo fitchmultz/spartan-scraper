@@ -14,6 +14,7 @@ import {
   type TemplateDetail,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { AITemplateDebugger } from "../AITemplateDebugger";
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 
 interface TemplateManagerProps {
@@ -559,6 +560,7 @@ export function TemplateManager({
     mode: "create" | "edit";
     initialTemplate?: Template;
   } | null>(null);
+  const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -832,6 +834,13 @@ export function TemplateManager({
                       >
                         Edit in Visual Builder
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--small"
+                        onClick={() => setIsAIDebuggerOpen(true)}
+                      >
+                        Debug with AI
+                      </button>
                       {isBuiltIn ? (
                         <button
                           type="button"
@@ -991,6 +1000,16 @@ export function TemplateManager({
           }}
         />
       )}
+
+      <AITemplateDebugger
+        isOpen={isAIDebuggerOpen}
+        template={selectedTemplateData ?? null}
+        onClose={() => setIsAIDebuggerOpen(false)}
+        onTemplateSaved={() => {
+          setIsAIDebuggerOpen(false);
+          onTemplatesChanged();
+        }}
+      />
 
       {builderState?.mode === "edit" && builderState.initialTemplate && (
         // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern

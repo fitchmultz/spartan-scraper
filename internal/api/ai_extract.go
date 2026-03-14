@@ -41,18 +41,20 @@ type AIExtractPreviewRequest struct {
 	Fields        []string                 `json:"fields,omitempty"`
 	Headless      bool                     `json:"headless,omitempty"`
 	UsePlaywright bool                     `json:"playwright,omitempty"`
+	Visual        bool                     `json:"visual,omitempty"`
 }
 
 // AIExtractPreviewResponse for preview endpoint
 type AIExtractPreviewResponse struct {
-	Fields      map[string]extract.FieldValue `json:"fields"`
-	Confidence  float64                       `json:"confidence"`
-	Explanation string                        `json:"explanation,omitempty"`
-	TokensUsed  int                           `json:"tokens_used"`
-	RouteID     string                        `json:"route_id,omitempty"`
-	Provider    string                        `json:"provider,omitempty"`
-	Model       string                        `json:"model,omitempty"`
-	Cached      bool                          `json:"cached"`
+	Fields            map[string]extract.FieldValue `json:"fields"`
+	Confidence        float64                       `json:"confidence"`
+	Explanation       string                        `json:"explanation,omitempty"`
+	TokensUsed        int                           `json:"tokens_used"`
+	RouteID           string                        `json:"route_id,omitempty"`
+	Provider          string                        `json:"provider,omitempty"`
+	Model             string                        `json:"model,omitempty"`
+	Cached            bool                          `json:"cached"`
+	VisualContextUsed bool                          `json:"visual_context_used"`
 }
 
 // AIExtractTemplateGenerateRequest for POST /v1/extract/ai-template-generate
@@ -63,15 +65,38 @@ type AIExtractTemplateGenerateRequest struct {
 	SampleFields  []string `json:"sample_fields,omitempty"`
 	Headless      bool     `json:"headless,omitempty"`
 	UsePlaywright bool     `json:"playwright,omitempty"`
+	Visual        bool     `json:"visual,omitempty"`
 }
 
 // AIExtractTemplateGenerateResponse for template generation
 type AIExtractTemplateGenerateResponse struct {
-	Template    extract.Template `json:"template"`
-	Explanation string           `json:"explanation,omitempty"`
-	RouteID     string           `json:"route_id,omitempty"`
-	Provider    string           `json:"provider,omitempty"`
-	Model       string           `json:"model,omitempty"`
+	Template          extract.Template `json:"template"`
+	Explanation       string           `json:"explanation,omitempty"`
+	RouteID           string           `json:"route_id,omitempty"`
+	Provider          string           `json:"provider,omitempty"`
+	Model             string           `json:"model,omitempty"`
+	VisualContextUsed bool             `json:"visual_context_used"`
+}
+
+type AIExtractTemplateDebugRequest struct {
+	URL           string           `json:"url,omitempty"`
+	HTML          string           `json:"html,omitempty"`
+	Template      extract.Template `json:"template"`
+	Instructions  string           `json:"instructions,omitempty"`
+	Headless      bool             `json:"headless,omitempty"`
+	UsePlaywright bool             `json:"playwright,omitempty"`
+	Visual        bool             `json:"visual,omitempty"`
+}
+
+type AIExtractTemplateDebugResponse struct {
+	Issues            []string                      `json:"issues,omitempty"`
+	ExtractedFields   map[string]extract.FieldValue `json:"extracted_fields,omitempty"`
+	Explanation       string                        `json:"explanation,omitempty"`
+	SuggestedTemplate *extract.Template             `json:"suggested_template,omitempty"`
+	RouteID           string                        `json:"route_id,omitempty"`
+	Provider          string                        `json:"provider,omitempty"`
+	Model             string                        `json:"model,omitempty"`
+	VisualContextUsed bool                          `json:"visual_context_used"`
 }
 
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +120,7 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 		Fields:        req.Fields,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
 	})
 	if err != nil {
 		writeError(w, r, err)
@@ -102,14 +128,15 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 	}
 
 	resp := AIExtractPreviewResponse{
-		Fields:      result.Fields,
-		Confidence:  result.Confidence,
-		Explanation: result.Explanation,
-		TokensUsed:  result.TokensUsed,
-		RouteID:     result.RouteID,
-		Provider:    result.Provider,
-		Model:       result.Model,
-		Cached:      result.Cached,
+		Fields:            result.Fields,
+		Confidence:        result.Confidence,
+		Explanation:       result.Explanation,
+		TokensUsed:        result.TokensUsed,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		Cached:            result.Cached,
+		VisualContextUsed: result.VisualContextUsed,
 	}
 
 	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
@@ -136,6 +163,7 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 		SampleFields:  req.SampleFields,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
 	})
 	if err != nil {
 		writeError(w, r, err)
@@ -143,14 +171,56 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 	}
 
 	resp := AIExtractTemplateGenerateResponse{
-		Template:    result.Template,
-		Explanation: result.Explanation,
-		RouteID:     result.RouteID,
-		Provider:    result.Provider,
-		Model:       result.Model,
+		Template:          result.Template,
+		Explanation:       result.Explanation,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
 	}
 	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
 	logAIRequestCompletion("template_generate", req.URL, result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleAITemplateDebug(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIExtractTemplateDebugRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	result, err := s.aiAuthoringService().DebugTemplate(r.Context(), aiauthoring.TemplateDebugRequest{
+		URL:           req.URL,
+		HTML:          req.HTML,
+		Template:      req.Template,
+		Instructions:  req.Instructions,
+		Headless:      req.Headless,
+		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp := AIExtractTemplateDebugResponse{
+		Issues:            result.Issues,
+		ExtractedFields:   result.ExtractedFields,
+		Explanation:       result.Explanation,
+		SuggestedTemplate: result.SuggestedTemplate,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("template_debug", req.URL, result.RouteID, result.Provider, result.Model, false)
 	writeJSON(w, resp)
 }
 

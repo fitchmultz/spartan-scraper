@@ -195,6 +195,7 @@ spartan research \
 ```bash
 spartan ai preview [flags]
 spartan ai template [flags]
+spartan ai template-debug [flags]
 ```
 
 These commands run the same bounded AI preview/template-authoring workflows as the REST and Web surfaces, but without creating jobs.
@@ -208,6 +209,7 @@ Preview flags:
 - `--fields "field1,field2"`
 - `--headless`
 - `--playwright`
+- `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
 - `--out <path>`
 
 Template-generation flags:
@@ -217,6 +219,17 @@ Template-generation flags:
 - `--sample-fields "field1,field2"`
 - `--headless`
 - `--playwright`
+- `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
+- `--out <path>`
+
+Template-debug flags:
+
+- `--url <url>` or `--html-file <path>` / `--html '<html>...'`
+- `--template-name <saved-template>` or `--template-file <path>`
+- `--instructions "<repair guidance>"`
+- `--headless`
+- `--playwright`
+- `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
 - `--out <path>`
 
 Examples:
@@ -239,6 +252,12 @@ spartan ai template \
 spartan ai template \
   --html-file ./fixtures/product.html \
   --description "Extract the pricing table and support commitments"
+
+spartan ai template-debug \
+  --url https://example.com/product \
+  --template-name product \
+  --instructions "Prefer visible headings and avoid brittle nth-child selectors" \
+  --visual
 ```
 
 ### Auth
@@ -452,7 +471,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`) instead.
+- Dedicated AI preview, AI template generation, AI template debugging, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI

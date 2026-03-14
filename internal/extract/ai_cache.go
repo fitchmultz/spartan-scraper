@@ -107,6 +107,12 @@ func GenerateCacheKey(req AIExtractRequest, routeFingerprint string) string {
 		h.Write([]byte(f))
 	}
 
+	// Hash multimodal image context when present.
+	for _, image := range req.Images {
+		h.Write([]byte(image.MimeType))
+		h.Write([]byte(image.Data))
+	}
+
 	// Include route fingerprint to avoid stale results when routing changes.
 	h.Write([]byte(routeFingerprint))
 

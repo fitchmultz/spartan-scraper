@@ -29,6 +29,11 @@ export interface BridgeResponse<TResult = unknown> {
   error?: BridgeError;
 }
 
+export interface ImageInput {
+  data: string;
+  mime_type: string;
+}
+
 export interface ExtractPayload {
   html: string;
   url: string;
@@ -36,6 +41,7 @@ export interface ExtractPayload {
   prompt?: string;
   schema_example?: Record<string, unknown>;
   fields?: string[];
+  images?: ImageInput[];
   max_content_chars?: number;
 }
 
@@ -61,6 +67,7 @@ export interface GenerateTemplatePayload {
   description: string;
   sample_fields?: string[];
   feedback?: string;
+  images?: ImageInput[];
 }
 
 export interface SelectorRule {

@@ -22,12 +22,17 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "ai_extract_preview",
 			Description: "Preview AI-powered extraction against fetched or pasted HTML without creating a job",
-			InputSchema: schema(nil, map[string]string{"url": "string", "html": "string", "mode": "string", "prompt": "string", "schema": "object", "fields": "array", "headless": "boolean", "playwright": "boolean"}),
+			InputSchema: schema(nil, map[string]string{"url": "string", "html": "string", "mode": "string", "prompt": "string", "schema": "object", "fields": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_template_generate",
 			Description: "Generate an extraction template from fetched or pasted HTML without creating a job",
-			InputSchema: schema(map[string]string{"description": "string"}, map[string]string{"url": "string", "html": "string", "sampleFields": "array", "headless": "boolean", "playwright": "boolean"}),
+			InputSchema: schema(map[string]string{"description": "string"}, map[string]string{"url": "string", "html": "string", "sampleFields": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+		},
+		{
+			Name:        "ai_template_debug",
+			Description: "Debug and repair an extraction template against fetched or pasted HTML without creating a job",
+			InputSchema: schema(map[string]string{"template": "object"}, map[string]string{"url": "string", "html": "string", "instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "scrape_page",
