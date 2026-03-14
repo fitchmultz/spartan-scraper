@@ -116,6 +116,7 @@ make install-bin
 ## Community
 
 - [LICENSE](LICENSE) - Apache License 2.0
+- [NOTICE](NOTICE) - Apache 2.0 notice file
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
 - [SECURITY.md](SECURITY.md) - Security policy
