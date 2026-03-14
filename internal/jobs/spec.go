@@ -65,6 +65,7 @@ type JobSpec struct {
 	RespectRobotsTxt bool                          // Respect robots.txt files (default: false)
 	SkipDuplicates   bool                          // Skip pages with near-duplicate content (default: false)
 	SimHashThreshold int                           // Hamming distance threshold for duplicate detection (default: 3)
+	Agentic          *model.ResearchAgenticConfig  // Optional pi-powered bounded follow-up and synthesis for research jobs
 }
 
 // Validate checks that the JobSpec has all required fields for its Kind.
@@ -113,6 +114,9 @@ func (s JobSpec) Validate() error {
 			return err
 		}
 		if err := validate.ValidateTimeout(s.TimeoutSeconds); err != nil {
+			return err
+		}
+		if err := model.ValidateResearchAgenticConfig(s.Agentic); err != nil {
 			return err
 		}
 	default:

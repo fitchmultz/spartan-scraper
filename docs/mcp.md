@@ -22,11 +22,18 @@
 - `aiSchema: { ... }` for schema-guided mode
 - `aiFields: ["field1", "field2"]`
 
+`research` also supports bounded agentic follow-up controls:
+
+- `agentic: true`
+- `agenticInstructions: "..."`
+- `agenticMaxRounds: 1..3`
+- `agenticMaxFollowUpUrls: 1..10`
+
 ## Example
 
 ```json
 {"id":1,"method":"initialize"}
-{"id":2,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"]}}}
+{"id":2,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
 {"id":3,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
 {"id":4,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```

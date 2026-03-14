@@ -66,18 +66,19 @@ type BatchCrawlRequest struct {
 
 // BatchResearchRequest represents a batch research request.
 type BatchResearchRequest struct {
-	Jobs           []BatchJobRequest       `json:"jobs"`
-	Query          string                  `json:"query"`
-	MaxDepth       int                     `json:"maxDepth,omitempty"`
-	MaxPages       int                     `json:"maxPages,omitempty"`
-	Headless       bool                    `json:"headless,omitempty"`
-	Playwright     *bool                   `json:"playwright,omitempty"`
-	TimeoutSeconds int                     `json:"timeoutSeconds,omitempty"`
-	AuthProfile    string                  `json:"authProfile,omitempty"`
-	Auth           *fetch.AuthOptions      `json:"auth,omitempty"`
-	Extract        *extract.ExtractOptions `json:"extract,omitempty"`
-	Pipeline       *pipeline.Options       `json:"pipeline,omitempty"`
-	Webhook        *model.WebhookSpec      `json:"webhook,omitempty"`
+	Jobs           []BatchJobRequest            `json:"jobs"`
+	Query          string                       `json:"query"`
+	MaxDepth       int                          `json:"maxDepth,omitempty"`
+	MaxPages       int                          `json:"maxPages,omitempty"`
+	Headless       bool                         `json:"headless,omitempty"`
+	Playwright     *bool                        `json:"playwright,omitempty"`
+	TimeoutSeconds int                          `json:"timeoutSeconds,omitempty"`
+	AuthProfile    string                       `json:"authProfile,omitempty"`
+	Auth           *fetch.AuthOptions           `json:"auth,omitempty"`
+	Extract        *extract.ExtractOptions      `json:"extract,omitempty"`
+	Pipeline       *pipeline.Options            `json:"pipeline,omitempty"`
+	Webhook        *model.WebhookSpec           `json:"webhook,omitempty"`
+	Agentic        *model.ResearchAgenticConfig `json:"agentic,omitempty"`
 }
 
 // BatchResponse represents a batch creation response.

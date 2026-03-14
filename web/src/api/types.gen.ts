@@ -401,6 +401,41 @@ export type ResearchCitation = {
     canonical?: string;
 };
 
+export type ResearchAgenticConfig = {
+    enabled?: boolean;
+    instructions?: string;
+    maxRounds?: number;
+    maxFollowUpUrls?: number;
+};
+
+export type ResearchAgenticRound = {
+    round?: number;
+    goal?: string;
+    focusAreas?: Array<string>;
+    selectedUrls?: Array<string>;
+    addedEvidenceCount?: number;
+    reasoning?: string;
+};
+
+export type ResearchAgenticResult = {
+    status?: string;
+    instructions?: string;
+    summary?: string;
+    objective?: string;
+    focusAreas?: Array<string>;
+    keyFindings?: Array<string>;
+    openQuestions?: Array<string>;
+    recommendedNextSteps?: Array<string>;
+    followUpUrls?: Array<string>;
+    rounds?: Array<ResearchAgenticRound>;
+    confidence?: number;
+    route_id?: string;
+    provider?: string;
+    model?: string;
+    cached?: boolean;
+    error?: string;
+};
+
 export type ResearchResult = {
     query?: string;
     summary?: string;
@@ -408,6 +443,7 @@ export type ResearchResult = {
     evidence?: Array<ResearchEvidence>;
     clusters?: Array<ResearchEvidenceCluster>;
     citations?: Array<ResearchCitation>;
+    agentic?: ResearchAgenticResult;
 };
 
 export type HeaderKv = {
@@ -1271,6 +1307,7 @@ export type ResearchRequest = {
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
     networkIntercept?: NetworkInterceptConfig;
+    agentic?: ResearchAgenticConfig;
 };
 
 export type Job = {
@@ -2275,6 +2312,7 @@ export type BatchResearchRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    agentic?: ResearchAgenticConfig;
 };
 
 /**

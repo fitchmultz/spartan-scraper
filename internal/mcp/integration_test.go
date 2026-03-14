@@ -237,6 +237,40 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		}
 	})
 
+	t.Run("research stores agentic options", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name": "research",
+				"arguments": map[string]interface{}{
+					"query":                  "pricing model",
+					"urls":                   []string{"https://example.com"},
+					"agentic":                true,
+					"agenticInstructions":    "Prioritize pricing and support commitments",
+					"agenticMaxRounds":       2,
+					"agenticMaxFollowUpUrls": 4,
+				},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		jobs, err := srv.store.List(ctx)
+		if err != nil {
+			t.Fatalf("failed to list jobs: %v", err)
+		}
+		job := jobs[0]
+		agenticMap, _ := job.SpecMap()["agentic"].(map[string]interface{})
+		if enabled, _ := agenticMap["enabled"].(bool); !enabled {
+			t.Errorf("agentic.enabled: got %v, want true", enabled)
+		}
+		if instructions, _ := agenticMap["instructions"].(string); instructions != "Prioritize pricing and support commitments" {
+			t.Errorf("agentic.instructions: got %q", instructions)
+		}
+	})
+
 	t.Run("research rejects schema_guided AI without aiSchema", func(t *testing.T) {
 		base := map[string]json.RawMessage{
 			"params": mustMarshalJSON(map[string]interface{}{

@@ -15,6 +15,7 @@ import type {
   ExtractOptions,
   NetworkInterceptConfig,
   PipelineOptions,
+  ResearchAgenticConfig,
   ResearchRequest,
   ScrapeRequest,
   WebhookConfig,
@@ -193,6 +194,24 @@ export function buildAIExtractOptions(
       mode === "natural_language" && trimmedPrompt ? trimmedPrompt : undefined,
     schema: parsedSchema,
     fields: parsedFields.length > 0 ? parsedFields : undefined,
+  };
+}
+
+export function buildResearchAgenticOptions(
+  enabled: boolean,
+  instructions: string,
+  maxRounds: number,
+  maxFollowUpUrls: number,
+): ResearchAgenticConfig | undefined {
+  if (!enabled) {
+    return undefined;
+  }
+
+  return {
+    enabled: true,
+    instructions: instructions.trim() || undefined,
+    maxRounds,
+    maxFollowUpUrls,
   };
 }
 
@@ -397,6 +416,7 @@ export function buildResearchRequest(
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
+  agentic?: ResearchAgenticConfig,
 ): ResearchRequest {
   const mergedExtract: ExtractOptions | undefined =
     extract || aiExtract
@@ -421,6 +441,7 @@ export function buildResearchRequest(
     webhook,
     device,
     networkIntercept,
+    agentic,
   };
 }
 

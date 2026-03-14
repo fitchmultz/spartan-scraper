@@ -3526,6 +3526,89 @@ components:
           type: string
         canonical:
           type: string
+    ResearchAgenticConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        instructions:
+          type: string
+        maxRounds:
+          type: integer
+          minimum: 1
+          maximum: 3
+        maxFollowUpUrls:
+          type: integer
+          minimum: 1
+          maximum: 10
+    ResearchAgenticRound:
+      type: object
+      properties:
+        round:
+          type: integer
+        goal:
+          type: string
+        focusAreas:
+          type: array
+          items:
+            type: string
+        selectedUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+        addedEvidenceCount:
+          type: integer
+        reasoning:
+          type: string
+    ResearchAgenticResult:
+      type: object
+      properties:
+        status:
+          type: string
+        instructions:
+          type: string
+        summary:
+          type: string
+        objective:
+          type: string
+        focusAreas:
+          type: array
+          items:
+            type: string
+        keyFindings:
+          type: array
+          items:
+            type: string
+        openQuestions:
+          type: array
+          items:
+            type: string
+        recommendedNextSteps:
+          type: array
+          items:
+            type: string
+        followUpUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+        rounds:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ResearchAgenticRound"
+        confidence:
+          type: number
+        route_id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        cached:
+          type: boolean
+        error:
+          type: string
     ResearchResult:
       type: object
       properties:
@@ -3547,6 +3630,8 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/ResearchCitation"
+        agentic:
+          "$ref": "#/components/schemas/ResearchAgenticResult"
     HeaderKV:
       type: object
       properties:
@@ -4604,6 +4689,8 @@ components:
           "$ref": "#/components/schemas/DeviceEmulation"
         networkIntercept:
           "$ref": "#/components/schemas/NetworkInterceptConfig"
+        agentic:
+          "$ref": "#/components/schemas/ResearchAgenticConfig"
     Job:
       type: object
       required:
@@ -5861,6 +5948,8 @@ components:
           "$ref": "#/components/schemas/ScreenshotConfig"
         device:
           "$ref": "#/components/schemas/DeviceEmulation"
+        agentic:
+          "$ref": "#/components/schemas/ResearchAgenticConfig"
     BatchResponse:
       type: object
       description: Response after creating a batch

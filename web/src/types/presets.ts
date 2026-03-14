@@ -52,6 +52,10 @@ export interface PresetConfig {
   aiExtractPrompt?: string;
   aiExtractSchema?: string;
   aiExtractFields?: string;
+  agenticResearchEnabled?: boolean;
+  agenticResearchInstructions?: string;
+  agenticResearchMaxRounds?: number;
+  agenticResearchMaxFollowUpUrls?: number;
   preProcessors?: string;
   postProcessors?: string;
   transformers?: string;

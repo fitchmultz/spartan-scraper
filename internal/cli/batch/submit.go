@@ -23,6 +23,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
@@ -89,9 +90,13 @@ Crawl-specific Options:
   --incremental          Use incremental crawling
 
 Research-specific Options:
-  --query string         Research query (required)
-  --max-depth int        Maximum research depth (default: 3)
-  --max-pages int        Maximum pages to research (default: 100)
+  --query string                    Research query (required)
+  --max-depth int                   Maximum research depth (default: 3)
+  --max-pages int                   Maximum pages to research (default: 100)
+  --agentic                         Enable bounded pi-powered follow-up and synthesis
+  --agentic-instructions string     Additional instructions for agentic research
+  --agentic-max-rounds int          Maximum follow-up rounds (1-3)
+  --agentic-max-follow-up-urls int  Maximum follow-up URLs per round (1-10)
 
 File Formats:
   CSV:  url,method,body,contentType (headers optional)
@@ -335,6 +340,7 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 	waitFlag := fs.Bool("wait-completion", false, "Wait for batch completion")
 	waitTimeout := fs.Int("wait-timeout-secs", 0, "Max wait time in seconds (0 = no timeout)")
 	cf := common.RegisterCommonFlags(fs, cfg)
+	common.RegisterResearchAgenticFlags(fs, cf)
 
 	fs.Usage = func() {
 		printBatchSubmitHelp()
@@ -384,6 +390,11 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		fmt.Fprintf(os.Stderr, "Error building extract options: %v\n", err)
 		return 1
 	}
+	agenticConfig := common.BuildResearchAgenticConfig(cf)
+	if err := model.ValidateResearchAgenticConfig(agenticConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "Error validating agentic research options: %v\n", err)
+		return 1
+	}
 
 	// Build request
 	req := BatchResearchRequest{
@@ -397,6 +408,7 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		Auth:           &authOptions,
 		Extract:        extractOpts,
 		Pipeline:       pipelineOpts,
+		Agentic:        agenticConfig,
 	}
 
 	if *cf.Playwright != cfg.UsePlaywright {

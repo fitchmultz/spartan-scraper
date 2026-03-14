@@ -35,18 +35,19 @@ import (
 )
 
 type jobRequestOptions struct {
-	authURL        string
-	authProfile    string
-	auth           *fetch.AuthOptions
-	extract        *extract.ExtractOptions
-	pipeline       *pipeline.Options
-	webhook        *WebhookConfig
-	screenshot     *fetch.ScreenshotConfig
-	device         *fetch.DeviceEmulation
-	incremental    *bool
-	playwright     *bool
-	timeoutSeconds int
-	requestID      string
+	authURL          string
+	authProfile      string
+	auth             *fetch.AuthOptions
+	extract          *extract.ExtractOptions
+	pipeline         *pipeline.Options
+	webhook          *WebhookConfig
+	screenshot       *fetch.ScreenshotConfig
+	device           *fetch.DeviceEmulation
+	networkIntercept *fetch.NetworkInterceptConfig
+	incremental      *bool
+	playwright       *bool
+	timeoutSeconds   int
+	requestID        string
 }
 
 type singleJobSubmission[T any] struct {
@@ -75,6 +76,7 @@ func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, re
 	spec.RequestID = opts.requestID
 	spec.Screenshot = opts.screenshot
 	spec.Device = opts.device
+	spec.NetworkIntercept = opts.networkIntercept
 	applyWebhookConfig(spec, opts.webhook)
 
 	if !resolveAuth {

@@ -603,6 +603,57 @@ func TestRunBatchSubmitResearch_NoURLs(t *testing.T) {
 	}
 }
 
+func TestRunBatchSubmitResearch_StoresAgenticOptions(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunBatch(ctx, cfg, []string{
+		"submit", "research",
+		"--urls", "https://example.com,https://example.org",
+		"--query", "pricing model",
+		"--agentic",
+		"--agentic-instructions", "Prioritize pricing and support commitments",
+		"--agentic-max-rounds", "2",
+		"--agentic-max-follow-up-urls", "4",
+	})
+
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	spec := latestBatchJobSpec(t, tmpDir)
+	agenticMap, ok := spec["agentic"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("agentic spec missing: %#v", spec["agentic"])
+	}
+	if enabled, _ := agenticMap["enabled"].(bool); !enabled {
+		t.Fatalf("expected agentic.enabled true, got %v", enabled)
+	}
+	if instructions, _ := agenticMap["instructions"].(string); instructions != "Prioritize pricing and support commitments" {
+		t.Fatalf("expected instructions to be stored, got %q", instructions)
+	}
+}
+
 func TestRunBatchSubmitResearch_StoresAIExtractOptions(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()

@@ -160,6 +160,10 @@ Key flags:
 - `--ai-prompt "<instructions>"` for natural-language mode
 - `--ai-schema '{"field":"example"}'` for schema-guided mode
 - `--ai-fields "field1,field2"`
+- `--agentic`
+- `--agentic-instructions "<instructions>"`
+- `--agentic-max-rounds <1-3>`
+- `--agentic-max-follow-up-urls <1-10>`
 
 Examples:
 
@@ -175,6 +179,14 @@ spartan research \
   --ai-extract \
   --ai-prompt "Extract the pricing model, contract terms, and support commitments from each source" \
   --ai-fields "pricing_model,contract_terms,support_commitments"
+
+spartan research \
+  --query "pricing model" \
+  --urls https://example.com,https://example.com/docs \
+  --agentic \
+  --agentic-instructions "Prioritize pricing, contract terms, and support commitments" \
+  --agentic-max-rounds 2 \
+  --agentic-max-follow-up-urls 4
 ```
 
 ### Auth
@@ -263,6 +275,13 @@ Batch submit commands for scrape, crawl, and research accept the same AI extract
 - `--ai-prompt "<instructions>"`
 - `--ai-schema '{"field":"example"}'`
 - `--ai-fields "field1,field2"`
+
+Batch research also accepts bounded agentic controls:
+
+- `--agentic`
+- `--agentic-instructions "<instructions>"`
+- `--agentic-max-rounds <1-3>`
+- `--agentic-max-follow-up-urls <1-10>`
 
 ### Chains
 
@@ -456,6 +475,13 @@ For scrape, crawl, and research job creation, AI extraction rides inside the nor
 - `extract.ai.schema` for schema-guided mode
 - `extract.ai.fields`
 
+Research requests also accept additive bounded agentic controls at the top level:
+
+- `agentic.enabled`
+- `agentic.instructions`
+- `agentic.maxRounds`
+- `agentic.maxFollowUpUrls`
+
 When the server binds to a non-loopback address, API key auth is enforced automatically.
 
 ### WebSocket
@@ -487,13 +513,20 @@ Core tools:
 - `job_cancel`
 - `job_export`
 
-`scrape_page` and `crawl_site` both accept AI extraction arguments in addition to the normal execution controls:
+`scrape_page`, `crawl_site`, and `research` accept AI extraction arguments in addition to the normal execution controls:
 
 - `aiExtract: boolean`
 - `aiMode: "natural_language" | "schema_guided"`
 - `aiPrompt: string` for natural-language mode
 - `aiSchema: object` for schema-guided mode
 - `aiFields: string[]`
+
+`research` also accepts bounded agentic controls:
+
+- `agentic: boolean`
+- `agenticInstructions: string`
+- `agenticMaxRounds: number`
+- `agenticMaxFollowUpUrls: number`
 
 Smoke example:
 

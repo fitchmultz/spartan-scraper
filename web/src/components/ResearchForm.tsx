@@ -19,6 +19,7 @@ import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
   buildAIExtractOptions,
+  buildResearchAgenticOptions,
   buildResearchRequest,
   buildSharedRequestConfig,
   parseUrlList,
@@ -30,8 +31,13 @@ import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { AIExtractSection } from "./AIExtractSection";
+import { ResearchAgenticSection } from "./ResearchAgenticSection";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
-import type { AiExtractOptions, DeviceEmulation } from "../api";
+import type {
+  AiExtractOptions,
+  DeviceEmulation,
+  ResearchAgenticConfig,
+} from "../api";
 
 export interface ResearchFormRef {
   /** Submit the form programmatically */
@@ -103,6 +109,14 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setAIExtractSchema,
       aiExtractFields,
       setAIExtractFields,
+      agenticResearchEnabled,
+      setAgenticResearchEnabled,
+      agenticResearchInstructions,
+      setAgenticResearchInstructions,
+      agenticResearchMaxRounds,
+      setAgenticResearchMaxRounds,
+      agenticResearchMaxFollowUpUrls,
+      setAgenticResearchMaxFollowUpUrls,
       preProcessors,
       setPreProcessors,
       postProcessors,
@@ -141,6 +155,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       const shared = buildSharedRequestConfig(form);
 
       let aiExtractOptions: AiExtractOptions | undefined;
+      let agenticOptions: ResearchAgenticConfig | undefined;
       try {
         aiExtractOptions = buildAIExtractOptions(
           aiExtractEnabled,
@@ -148,6 +163,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           aiExtractPrompt,
           aiExtractSchema,
           aiExtractFields,
+        );
+        agenticOptions = buildResearchAgenticOptions(
+          agenticResearchEnabled,
+          agenticResearchInstructions,
+          agenticResearchMaxRounds,
+          agenticResearchMaxFollowUpUrls,
         );
       } catch (error) {
         alert(error instanceof Error ? error.message : String(error));
@@ -172,6 +193,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         device || undefined,
         shared.networkIntercept,
         aiExtractOptions,
+        agenticOptions,
       );
       await onSubmit(request);
     }, [
@@ -188,6 +210,10 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       aiExtractPrompt,
       aiExtractSchema,
       aiExtractFields,
+      agenticResearchEnabled,
+      agenticResearchInstructions,
+      agenticResearchMaxRounds,
+      agenticResearchMaxFollowUpUrls,
       device,
       onSubmit,
     ]);
@@ -218,6 +244,10 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         aiExtractPrompt,
         aiExtractSchema,
         aiExtractFields,
+        agenticResearchEnabled,
+        agenticResearchInstructions,
+        agenticResearchMaxRounds,
+        agenticResearchMaxFollowUpUrls,
         preProcessors,
         postProcessors,
         transformers,
@@ -258,6 +288,10 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         aiExtractPrompt,
         aiExtractSchema,
         aiExtractFields,
+        agenticResearchEnabled,
+        agenticResearchInstructions,
+        agenticResearchMaxRounds,
+        agenticResearchMaxFollowUpUrls,
         preProcessors,
         postProcessors,
         transformers,
@@ -456,6 +490,16 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             setSchemaText={setAIExtractSchema}
             fields={aiExtractFields}
             setFields={setAIExtractFields}
+          />
+          <ResearchAgenticSection
+            enabled={agenticResearchEnabled}
+            setEnabled={setAgenticResearchEnabled}
+            instructions={agenticResearchInstructions}
+            setInstructions={setAgenticResearchInstructions}
+            maxRounds={agenticResearchMaxRounds}
+            setMaxRounds={setAgenticResearchMaxRounds}
+            maxFollowUpUrls={agenticResearchMaxFollowUpUrls}
+            setMaxFollowUpUrls={setAgenticResearchMaxFollowUpUrls}
           />
           <WebhookConfig
             webhookUrl={webhookUrl}

@@ -140,6 +140,9 @@ func (s *Server) handleBatchResearch(w http.ResponseWriter, r *http.Request) {
 			if req.Query == "" {
 				return apperrors.Validation("query is required for research jobs")
 			}
+			if err := model.ValidateResearchAgenticConfig(req.Agentic); err != nil {
+				return err
+			}
 			if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
 				return err
 			}
@@ -157,6 +160,7 @@ func (s *Server) handleBatchResearch(w http.ResponseWriter, r *http.Request) {
 				MaxDepth: req.MaxDepth,
 				MaxPages: req.MaxPages,
 				Headless: req.Headless,
+				Agentic:  req.Agentic,
 			}
 			if err := s.applyJobDefaults(&spec, jobRequestOptions{
 				authURL:        researchURLs[0],

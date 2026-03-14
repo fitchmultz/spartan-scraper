@@ -190,6 +190,10 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
+		agenticOpts, err := decodeResearchAgenticOptions(params.Arguments)
+		if err != nil {
+			return nil, apperrors.Validation(err.Error())
+		}
 		extractOpts := extract.ExtractOptions{
 			Template: paramdecode.String(params.Arguments, "extractTemplate"),
 			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
@@ -209,6 +213,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			TimeoutSeconds: timeout,
 			Extract:        extractOpts,
 			Pipeline:       pipelineOpts,
+			Agentic:        agenticOpts,
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {

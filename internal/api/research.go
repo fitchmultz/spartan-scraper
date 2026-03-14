@@ -35,6 +35,9 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 			if req.Query == "" || len(req.URLs) == 0 {
 				return apperrors.Validation("query and urls are required")
 			}
+			if err := model.ValidateResearchAgenticConfig(req.Agentic); err != nil {
+				return err
+			}
 			return validate.ValidateJob(validate.JobValidationOpts{
 				Query:       req.Query,
 				URLs:        req.URLs,
@@ -52,21 +55,23 @@ func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 				MaxDepth: req.MaxDepth,
 				MaxPages: req.MaxPages,
 				Headless: req.Headless,
+				Agentic:  req.Agentic,
 			}
 		},
 		requestOptions: func(r *http.Request, req ResearchRequest) jobRequestOptions {
 			return jobRequestOptions{
-				authURL:        req.URLs[0],
-				authProfile:    req.AuthProfile,
-				auth:           req.Auth,
-				extract:        req.Extract,
-				pipeline:       req.Pipeline,
-				webhook:        req.Webhook,
-				screenshot:     req.Screenshot,
-				device:         req.Device,
-				playwright:     req.Playwright,
-				timeoutSeconds: req.TimeoutSeconds,
-				requestID:      contextRequestID(r.Context()),
+				authURL:          req.URLs[0],
+				authProfile:      req.AuthProfile,
+				auth:             req.Auth,
+				extract:          req.Extract,
+				pipeline:         req.Pipeline,
+				webhook:          req.Webhook,
+				screenshot:       req.Screenshot,
+				device:           req.Device,
+				networkIntercept: req.NetworkIntercept,
+				playwright:       req.Playwright,
+				timeoutSeconds:   req.TimeoutSeconds,
+				requestID:        contextRequestID(r.Context()),
 			}
 		},
 	})

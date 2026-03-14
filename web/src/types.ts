@@ -76,12 +76,41 @@ export type CrawlResultWithTraffic = CrawlResultItem & {
   interceptedData?: InterceptedEntry[];
 };
 
+export type AgenticResearchRoundItem = {
+  round: number;
+  goal?: string;
+  focusAreas?: string[];
+  selectedUrls?: string[];
+  addedEvidenceCount?: number;
+  reasoning?: string;
+};
+
+export type AgenticResearchItem = {
+  status: string;
+  instructions?: string;
+  summary?: string;
+  objective?: string;
+  focusAreas?: string[];
+  keyFindings?: string[];
+  openQuestions?: string[];
+  recommendedNextSteps?: string[];
+  followUpUrls?: string[];
+  rounds?: AgenticResearchRoundItem[];
+  confidence?: number;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+  cached?: boolean;
+  error?: string;
+};
+
 export type ResearchResultItem = {
   summary?: string;
   confidence?: number;
   evidence?: EvidenceItem[];
   clusters?: ClusterItem[];
   citations?: CitationItem[];
+  agentic?: AgenticResearchItem;
 };
 
 export type ResultItem = CrawlResultItem | ResearchResultItem;

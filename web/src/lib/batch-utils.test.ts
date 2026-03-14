@@ -79,4 +79,36 @@ describe("batch-utils AI extraction support", () => {
       },
     });
   });
+
+  it("includes agentic research config in batch research requests", () => {
+    const request = buildBatchResearchRequest(
+      ["https://example.com", "https://example.org"],
+      "pricing model",
+      2,
+      50,
+      false,
+      false,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        enabled: true,
+        instructions: "Prioritize pricing and support commitments",
+        maxRounds: 2,
+        maxFollowUpUrls: 4,
+      },
+    );
+
+    expect(request.agentic).toEqual({
+      enabled: true,
+      instructions: "Prioritize pricing and support commitments",
+      maxRounds: 2,
+      maxFollowUpUrls: 4,
+    });
+  });
 });

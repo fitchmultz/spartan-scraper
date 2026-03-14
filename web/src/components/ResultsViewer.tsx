@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { isCrawlResultItem } from "../lib/form-utils";
 import { getSimpleHttpStatusClass } from "../lib/http-status";
 import type {
+  AgenticResearchItem,
   CitationItem,
   ClusterItem,
   EvidenceItem,
@@ -77,6 +78,7 @@ interface ResultsViewerProps {
   resultEvidence: EvidenceItem[];
   resultClusters: ClusterItem[];
   resultCitations: CitationItem[];
+  resultAgentic: AgenticResearchItem | null;
   rawResult: string | null;
   resultFormat: string;
   currentPage: number;
@@ -96,6 +98,7 @@ export function ResultsViewer({
   resultEvidence,
   resultClusters,
   resultCitations,
+  resultAgentic,
   rawResult,
   resultFormat,
   currentPage,
@@ -156,6 +159,105 @@ export function ResultsViewer({
         </div>
       ) : null}
       {resultSummary ? <p>{resultSummary}</p> : null}
+      {resultAgentic ? (
+        <div className="panel" style={{ marginTop: 12 }}>
+          <h4>Agentic Research</h4>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="badge running">Status {resultAgentic.status}</div>
+            {typeof resultAgentic.confidence === "number" ? (
+              <div className="badge running">
+                Confidence {resultAgentic.confidence.toFixed(2)}
+              </div>
+            ) : null}
+            {resultAgentic.provider && resultAgentic.model ? (
+              <div className="badge running">
+                {resultAgentic.provider}/{resultAgentic.model}
+              </div>
+            ) : null}
+          </div>
+          {resultAgentic.summary ? <p>{resultAgentic.summary}</p> : null}
+          {resultAgentic.error ? (
+            <div style={{ color: "var(--status-failed)" }}>
+              {resultAgentic.error}
+            </div>
+          ) : null}
+          {resultAgentic.focusAreas?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Focus areas</div>
+              <ul>
+                {resultAgentic.focusAreas.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {resultAgentic.keyFindings?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Key findings</div>
+              <ul>
+                {resultAgentic.keyFindings.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {resultAgentic.openQuestions?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Open questions</div>
+              <ul>
+                {resultAgentic.openQuestions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {resultAgentic.recommendedNextSteps?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Recommended next steps</div>
+              <ul>
+                {resultAgentic.recommendedNextSteps.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {resultAgentic.followUpUrls?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Follow-up URLs</div>
+              <ul>
+                {resultAgentic.followUpUrls.map((item) => (
+                  <li key={item}>
+                    <a href={item} target="_blank" rel="noreferrer">
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {resultAgentic.rounds?.length ? (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontWeight: 600 }}>Follow-up rounds</div>
+              <div className="job-list">
+                {resultAgentic.rounds.map((round) => (
+                  <div key={round.round} className="job-item">
+                    <div>Round {round.round}</div>
+                    {round.goal ? <div>{round.goal}</div> : null}
+                    {round.selectedUrls?.length ? (
+                      <div>{round.selectedUrls.length} selected URL(s)</div>
+                    ) : null}
+                    {typeof round.addedEvidenceCount === "number" ? (
+                      <div>
+                        {round.addedEvidenceCount} evidence item(s) added
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {resultClusters.length > 0 ? (
         <div style={{ marginTop: 12 }}>
           <h4>Evidence Clusters</h4>

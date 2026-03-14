@@ -107,6 +107,41 @@ func writeResearchMarkdown(item ResearchResult, w io.Writer) error {
 	fmt.Fprintf(w, "**Query:** %s\n", item.Query)
 	fmt.Fprintf(w, "**Confidence:** %.2f\n\n", item.Confidence)
 	fmt.Fprint(w, "## Summary\n\n"+item.Summary+"\n")
+	if item.Agentic != nil {
+		fmt.Fprint(w, "\n## Agentic Research\n\n")
+		fmt.Fprintf(w, "**Status:** %s\n", safe(item.Agentic.Status, "unknown"))
+		if item.Agentic.Confidence > 0 {
+			fmt.Fprintf(w, "**Confidence:** %.2f\n", item.Agentic.Confidence)
+		}
+		if item.Agentic.Provider != "" || item.Agentic.Model != "" {
+			fmt.Fprintf(w, "**Route:** %s/%s\n", safe(item.Agentic.Provider, "unknown"), safe(item.Agentic.Model, "unknown"))
+		}
+		if item.Agentic.Summary != "" {
+			fmt.Fprint(w, "\n"+item.Agentic.Summary+"\n")
+		}
+		for _, section := range []struct {
+			Title string
+			Items []string
+		}{
+			{Title: "Focus Areas", Items: item.Agentic.FocusAreas},
+			{Title: "Key Findings", Items: item.Agentic.KeyFindings},
+			{Title: "Open Questions", Items: item.Agentic.OpenQuestions},
+			{Title: "Recommended Next Steps", Items: item.Agentic.RecommendedNextSteps},
+			{Title: "Follow-Up URLs", Items: item.Agentic.FollowUpUrls},
+		} {
+			if len(section.Items) == 0 {
+				continue
+			}
+			fmt.Fprintf(w, "\n### %s\n\n", section.Title)
+			for _, entry := range section.Items {
+				fmt.Fprintf(w, "- %s\n", entry)
+			}
+		}
+		if item.Agentic.Error != "" {
+			fmt.Fprintf(w, "\n**Error:** %s\n", item.Agentic.Error)
+		}
+		fmt.Fprint(w, "\n")
+	}
 	if len(item.Clusters) > 0 {
 		fmt.Fprint(w, "## Evidence Clusters\n\n")
 		for _, cluster := range item.Clusters {

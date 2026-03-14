@@ -100,6 +100,30 @@ func TestExportCrawlMarkdownFieldOrderIsStable(t *testing.T) {
 	}
 }
 
+func TestExportResearchMarkdownIncludesAgenticSection(t *testing.T) {
+	raw := []byte(`{"query":"pricing","summary":"Deterministic summary","confidence":0.73,"agentic":{"status":"completed","summary":"Agentic summary","focusAreas":["pricing model"],"followUpUrls":["https://example.com/support"]},"evidence":[],"clusters":[],"citations":[]}`)
+	job := model.Job{Kind: model.KindResearch}
+
+	result, err := Export(job, raw, "md")
+	if err != nil {
+		t.Fatalf("Export() failed: %v", err)
+	}
+
+	for _, want := range []string{
+		"## Agentic Research",
+		"**Status:** completed",
+		"Agentic summary",
+		"### Focus Areas",
+		"- pricing model",
+		"### Follow-Up URLs",
+		"- https://example.com/support",
+	} {
+		if !strings.Contains(result, want) {
+			t.Fatalf("expected markdown to contain %q\n%s", want, result)
+		}
+	}
+}
+
 func TestExportStreamMarkdown(t *testing.T) {
 	tests := []struct {
 		name string

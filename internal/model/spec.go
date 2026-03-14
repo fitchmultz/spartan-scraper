@@ -90,12 +90,13 @@ type CrawlSpecV1 struct {
 
 // ResearchSpecV1 is the persisted research job contract.
 type ResearchSpecV1 struct {
-	Version   int           `json:"version"`
-	Query     string        `json:"query"`
-	URLs      []string      `json:"urls"`
-	MaxDepth  int           `json:"maxDepth"`
-	MaxPages  int           `json:"maxPages"`
-	Execution ExecutionSpec `json:"execution"`
+	Version   int                    `json:"version"`
+	Query     string                 `json:"query"`
+	URLs      []string               `json:"urls"`
+	MaxDepth  int                    `json:"maxDepth"`
+	MaxPages  int                    `json:"maxPages"`
+	Agentic   *ResearchAgenticConfig `json:"agentic,omitempty"`
+	Execution ExecutionSpec          `json:"execution"`
 }
 
 // DecodeJobSpec decodes persisted spec JSON into the supported typed spec for the kind/version pair.

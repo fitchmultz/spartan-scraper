@@ -47,59 +47,63 @@ type WebhookConfig struct {
 
 // ScrapeRequest represents a request to scrape a single page.
 type ScrapeRequest struct {
-	URL            string                  `json:"url"`
-	Method         string                  `json:"method,omitempty"`      // HTTP method, default GET
-	Body           string                  `json:"body,omitempty"`        // Request body (base64 for binary data)
-	ContentType    string                  `json:"contentType,omitempty"` // Content-Type header for request body
-	Headless       bool                    `json:"headless"`
-	Playwright     *bool                   `json:"playwright"`
-	TimeoutSeconds int                     `json:"timeoutSeconds"`
-	AuthProfile    string                  `json:"authProfile,omitempty"`
-	Auth           *fetch.AuthOptions      `json:"auth"`
-	Extract        *extract.ExtractOptions `json:"extract"`
-	Pipeline       *pipeline.Options       `json:"pipeline"`
-	Incremental    *bool                   `json:"incremental"`
-	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
-	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
-	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
+	URL              string                        `json:"url"`
+	Method           string                        `json:"method,omitempty"`      // HTTP method, default GET
+	Body             string                        `json:"body,omitempty"`        // Request body (base64 for binary data)
+	ContentType      string                        `json:"contentType,omitempty"` // Content-Type header for request body
+	Headless         bool                          `json:"headless"`
+	Playwright       *bool                         `json:"playwright"`
+	TimeoutSeconds   int                           `json:"timeoutSeconds"`
+	AuthProfile      string                        `json:"authProfile,omitempty"`
+	Auth             *fetch.AuthOptions            `json:"auth"`
+	Extract          *extract.ExtractOptions       `json:"extract"`
+	Pipeline         *pipeline.Options             `json:"pipeline"`
+	Incremental      *bool                         `json:"incremental"`
+	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
+	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
+	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
+	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
 }
 
 // CrawlRequest represents a request to crawl a website.
 type CrawlRequest struct {
-	URL            string                  `json:"url"`
-	MaxDepth       int                     `json:"maxDepth"`
-	MaxPages       int                     `json:"maxPages"`
-	Headless       bool                    `json:"headless"`
-	Playwright     *bool                   `json:"playwright"`
-	TimeoutSeconds int                     `json:"timeoutSeconds"`
-	AuthProfile    string                  `json:"authProfile,omitempty"`
-	Auth           *fetch.AuthOptions      `json:"auth"`
-	Extract        *extract.ExtractOptions `json:"extract"`
-	Pipeline       *pipeline.Options       `json:"pipeline"`
-	Incremental    *bool                   `json:"incremental"`
-	SitemapURL     string                  `json:"sitemapURL,omitempty"`
-	SitemapOnly    *bool                   `json:"sitemapOnly,omitempty"`
-	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
-	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
-	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
+	URL              string                        `json:"url"`
+	MaxDepth         int                           `json:"maxDepth"`
+	MaxPages         int                           `json:"maxPages"`
+	Headless         bool                          `json:"headless"`
+	Playwright       *bool                         `json:"playwright"`
+	TimeoutSeconds   int                           `json:"timeoutSeconds"`
+	AuthProfile      string                        `json:"authProfile,omitempty"`
+	Auth             *fetch.AuthOptions            `json:"auth"`
+	Extract          *extract.ExtractOptions       `json:"extract"`
+	Pipeline         *pipeline.Options             `json:"pipeline"`
+	Incremental      *bool                         `json:"incremental"`
+	SitemapURL       string                        `json:"sitemapURL,omitempty"`
+	SitemapOnly      *bool                         `json:"sitemapOnly,omitempty"`
+	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
+	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
+	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
+	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
 }
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
 type ResearchRequest struct {
-	Query          string                  `json:"query"`
-	URLs           []string                `json:"urls"`
-	MaxDepth       int                     `json:"maxDepth"`
-	MaxPages       int                     `json:"maxPages"`
-	Headless       bool                    `json:"headless"`
-	Playwright     *bool                   `json:"playwright"`
-	TimeoutSeconds int                     `json:"timeoutSeconds"`
-	AuthProfile    string                  `json:"authProfile,omitempty"`
-	Auth           *fetch.AuthOptions      `json:"auth"`
-	Extract        *extract.ExtractOptions `json:"extract"`
-	Pipeline       *pipeline.Options       `json:"pipeline"`
-	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
-	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
-	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
+	Query            string                        `json:"query"`
+	URLs             []string                      `json:"urls"`
+	MaxDepth         int                           `json:"maxDepth"`
+	MaxPages         int                           `json:"maxPages"`
+	Headless         bool                          `json:"headless"`
+	Playwright       *bool                         `json:"playwright"`
+	TimeoutSeconds   int                           `json:"timeoutSeconds"`
+	AuthProfile      string                        `json:"authProfile,omitempty"`
+	Auth             *fetch.AuthOptions            `json:"auth"`
+	Extract          *extract.ExtractOptions       `json:"extract"`
+	Pipeline         *pipeline.Options             `json:"pipeline"`
+	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
+	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
+	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
+	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
+	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
 }
 
 // ScheduleRequest represents a request to add a scheduled job.
@@ -170,20 +174,21 @@ type BatchCrawlRequest struct {
 
 // BatchResearchRequest creates multiple research jobs.
 type BatchResearchRequest struct {
-	Jobs           []BatchJobRequest       `json:"jobs"`
-	Query          string                  `json:"query"`
-	MaxDepth       int                     `json:"maxDepth"`
-	MaxPages       int                     `json:"maxPages"`
-	Headless       bool                    `json:"headless"`
-	Playwright     *bool                   `json:"playwright,omitempty"`
-	TimeoutSeconds int                     `json:"timeoutSeconds"`
-	AuthProfile    string                  `json:"authProfile,omitempty"`
-	Auth           *fetch.AuthOptions      `json:"auth,omitempty"`
-	Extract        *extract.ExtractOptions `json:"extract,omitempty"`
-	Pipeline       *pipeline.Options       `json:"pipeline,omitempty"`
-	Webhook        *WebhookConfig          `json:"webhook,omitempty"`
-	Screenshot     *fetch.ScreenshotConfig `json:"screenshot,omitempty"`
-	Device         *fetch.DeviceEmulation  `json:"device,omitempty"`
+	Jobs           []BatchJobRequest            `json:"jobs"`
+	Query          string                       `json:"query"`
+	MaxDepth       int                          `json:"maxDepth"`
+	MaxPages       int                          `json:"maxPages"`
+	Headless       bool                         `json:"headless"`
+	Playwright     *bool                        `json:"playwright,omitempty"`
+	TimeoutSeconds int                          `json:"timeoutSeconds"`
+	AuthProfile    string                       `json:"authProfile,omitempty"`
+	Auth           *fetch.AuthOptions           `json:"auth,omitempty"`
+	Extract        *extract.ExtractOptions      `json:"extract,omitempty"`
+	Pipeline       *pipeline.Options            `json:"pipeline,omitempty"`
+	Webhook        *WebhookConfig               `json:"webhook,omitempty"`
+	Screenshot     *fetch.ScreenshotConfig      `json:"screenshot,omitempty"`
+	Device         *fetch.DeviceEmulation       `json:"device,omitempty"`
+	Agentic        *model.ResearchAgenticConfig `json:"agentic,omitempty"`
 }
 
 // BatchResponse represents a created batch.

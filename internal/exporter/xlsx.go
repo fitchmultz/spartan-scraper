@@ -227,7 +227,14 @@ func writeResearchXLSX(item ResearchResult, f *excelize.File, w io.Writer) error
 	summarySheet := "Summary"
 	f.SetSheetName("Sheet1", summarySheet)
 
-	summaryHeaders := []string{"query", "summary", "confidence"}
+	agenticStatus := ""
+	agenticSummary := ""
+	if item.Agentic != nil {
+		agenticStatus = item.Agentic.Status
+		agenticSummary = item.Agentic.Summary
+	}
+
+	summaryHeaders := []string{"query", "summary", "confidence", "agentic_status", "agentic_summary"}
 	for i, h := range summaryHeaders {
 		cell := fmt.Sprintf("%s1", string(rune('A'+i)))
 		f.SetCellValue(summarySheet, cell, h)
@@ -242,8 +249,10 @@ func writeResearchXLSX(item ResearchResult, f *excelize.File, w io.Writer) error
 	f.SetCellValue(summarySheet, "A2", item.Query)
 	f.SetCellValue(summarySheet, "B2", item.Summary)
 	f.SetCellValue(summarySheet, "C2", fmt.Sprintf("%.2f", item.Confidence))
+	f.SetCellValue(summarySheet, "D2", agenticStatus)
+	f.SetCellValue(summarySheet, "E2", agenticSummary)
 
-	setColumnWidths(f, summarySheet, summaryHeaders, [][]string{{item.Query, item.Summary, fmt.Sprintf("%.2f", item.Confidence)}})
+	setColumnWidths(f, summarySheet, summaryHeaders, [][]string{{item.Query, item.Summary, fmt.Sprintf("%.2f", item.Confidence), agenticStatus, agenticSummary}})
 
 	// Evidence sheet
 	evidenceSheet := "Evidence"

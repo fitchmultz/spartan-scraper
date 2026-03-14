@@ -31,8 +31,8 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "research",
-			Description: "Deep research across multiple sources with optional AI extraction controls",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array"}),
+			Description: "Deep research across multiple sources with optional AI extraction controls and bounded pi-powered follow-up synthesis",
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "agentic": "boolean", "agenticInstructions": "string", "agenticMaxRounds": "number", "agenticMaxFollowUpUrls": "number", "preProcessors": "array", "postProcessors": "array", "transformers": "array"}),
 		},
 		{
 			Name:        "job_status",

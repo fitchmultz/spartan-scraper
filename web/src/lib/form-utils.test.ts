@@ -11,6 +11,7 @@ import {
   buildPipelineOptions,
   buildScrapeRequest,
   buildCrawlRequest,
+  buildResearchAgenticOptions,
   buildResearchRequest,
   parseAIExtractSchemaText,
 } from "./form-utils";
@@ -252,6 +253,28 @@ describe("buildCrawlRequest with pipeline options", () => {
   });
 });
 
+describe("buildResearchAgenticOptions", () => {
+  it("returns undefined when disabled", () => {
+    expect(buildResearchAgenticOptions(false, "", 1, 3)).toBeUndefined();
+  });
+
+  it("builds bounded agentic research config", () => {
+    expect(
+      buildResearchAgenticOptions(
+        true,
+        "Prioritize pricing and support commitments",
+        2,
+        4,
+      ),
+    ).toEqual({
+      enabled: true,
+      instructions: "Prioritize pricing and support commitments",
+      maxRounds: 2,
+      maxFollowUpUrls: 4,
+    });
+  });
+});
+
 describe("buildResearchRequest with pipeline options", () => {
   it("should include pipeline options in request", () => {
     const request = buildResearchRequest(
@@ -316,6 +339,41 @@ describe("buildResearchRequest with pipeline options", () => {
         prompt: "Extract the pricing model and contract terms",
         fields: ["pricing_model", "contract_terms"],
       },
+    });
+  });
+
+  it("should include agentic research config when provided", () => {
+    const request = buildResearchRequest(
+      "pricing model",
+      ["https://example.com"],
+      2,
+      10,
+      false,
+      false,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      "",
+      "",
+      "",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        enabled: true,
+        instructions: "Prioritize pricing and support commitments",
+        maxRounds: 2,
+        maxFollowUpUrls: 4,
+      },
+    );
+
+    expect(request.agentic).toEqual({
+      enabled: true,
+      instructions: "Prioritize pricing and support commitments",
+      maxRounds: 2,
+      maxFollowUpUrls: 4,
     });
   });
 });

@@ -86,7 +86,24 @@ type ResearchResult struct {
 	Query      string  `json:"query"`
 	Summary    string  `json:"summary"`
 	Confidence float64 `json:"confidence"`
-	Evidence   []struct {
+	Agentic    *struct {
+		Status               string   `json:"status"`
+		Instructions         string   `json:"instructions"`
+		Summary              string   `json:"summary"`
+		Objective            string   `json:"objective"`
+		FocusAreas           []string `json:"focusAreas"`
+		KeyFindings          []string `json:"keyFindings"`
+		OpenQuestions        []string `json:"openQuestions"`
+		RecommendedNextSteps []string `json:"recommendedNextSteps"`
+		FollowUpUrls         []string `json:"followUpUrls"`
+		Confidence           float64  `json:"confidence"`
+		RouteID              string   `json:"route_id"`
+		Provider             string   `json:"provider"`
+		Model                string   `json:"model"`
+		Cached               bool     `json:"cached"`
+		Error                string   `json:"error"`
+	} `json:"agentic"`
+	Evidence []struct {
 		URL         string  `json:"url"`
 		Title       string  `json:"title"`
 		Snippet     string  `json:"snippet"`

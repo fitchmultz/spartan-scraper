@@ -125,6 +125,33 @@ func TestExportCrawlCSVFieldOrderIsStable(t *testing.T) {
 	}
 }
 
+func TestExportResearchCSVIncludesAgenticColumns(t *testing.T) {
+	raw := []byte(`{"query":"pricing","summary":"Deterministic summary","confidence":0.73,"agentic":{"status":"completed","summary":"Agentic summary"},"evidence":[],"clusters":[],"citations":[]}`)
+	job := model.Job{Kind: model.KindResearch}
+
+	result, err := Export(job, raw, "csv")
+	if err != nil {
+		t.Fatalf("Export() failed: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(result), "\n")
+	if len(lines) < 4 {
+		t.Fatalf("expected summary and evidence sections, got %d lines", len(lines))
+	}
+	for i := range lines {
+		lines[i] = strings.TrimSuffix(lines[i], "\r")
+	}
+	if lines[0] != "query,summary,confidence,agentic_status,agentic_summary" {
+		t.Fatalf("unexpected header: %s", lines[0])
+	}
+	if lines[1] != "pricing,Deterministic summary,0.73,completed,Agentic summary" {
+		t.Fatalf("unexpected row: %s", lines[1])
+	}
+	if lines[3] != "url,title,score,confidence,cluster_id,citation_url,snippet" {
+		t.Fatalf("unexpected evidence header: %s", lines[3])
+	}
+}
+
 func TestExportStreamCSV(t *testing.T) {
 	tests := []struct {
 		name string

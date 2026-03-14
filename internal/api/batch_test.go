@@ -26,6 +26,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
@@ -112,6 +113,53 @@ func TestHandleBatchResearchCreatesSingleResearchJob(t *testing.T) {
 	}
 	if len(jobsByBatch) != 1 {
 		t.Fatalf("expected 1 stored job, got %d", len(jobsByBatch))
+	}
+}
+
+func TestHandleBatchResearchStoresAgenticConfig(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body, err := json.Marshal(BatchResearchRequest{
+		Query: "recent announcements",
+		Jobs: []BatchJobRequest{
+			{URL: "https://example.com/one"},
+			{URL: "https://example.com/two"},
+		},
+		Agentic: &model.ResearchAgenticConfig{
+			Enabled:         true,
+			Instructions:    "Prioritize pricing and support commitments",
+			MaxRounds:       2,
+			MaxFollowUpURLs: 4,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/research", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp BatchResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.ID, store.ListOptions{})
+	if err != nil {
+		t.Fatalf("list jobs by batch: %v", err)
+	}
+	if len(jobsByBatch) != 1 {
+		t.Fatalf("expected 1 stored job, got %d", len(jobsByBatch))
+	}
+	if _, ok := jobsByBatch[0].SpecMap()["agentic"].(map[string]interface{}); !ok {
+		t.Fatalf("expected agentic config in persisted research spec: %#v", jobsByBatch[0].SpecMap())
 	}
 }
 

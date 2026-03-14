@@ -18,6 +18,7 @@ import type {
   DeviceEmulation,
   ExtractOptions,
   PipelineOptions,
+  ResearchAgenticConfig,
   WebhookConfig,
 } from "../api";
 import { splitAndTrim } from "./input-parsing";
@@ -280,6 +281,7 @@ export function buildBatchResearchRequest(
   webhook: WebhookConfig | undefined,
   device: DeviceEmulation | undefined,
   aiExtract?: AiExtractOptions,
+  agentic?: ResearchAgenticConfig,
 ): BatchResearchRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
   const mergedExtract: ExtractOptions | undefined =
@@ -304,6 +306,7 @@ export function buildBatchResearchRequest(
     pipeline,
     webhook,
     device,
+    agentic,
   };
 }
 

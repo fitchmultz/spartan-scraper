@@ -8,6 +8,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/scrape"
 )
@@ -42,6 +43,8 @@ type Request struct {
 	ProxyPool *fetch.ProxyPool
 	// AIExtractor enables optional AI-assisted extraction during evidence gathering.
 	AIExtractor *extract.AIExtractor
+	// Agentic enables optional bounded pi-powered follow-up and synthesis.
+	Agentic *model.ResearchAgenticConfig
 }
 
 // Evidence represents a single piece of gathered evidence with computed metrics.
@@ -59,12 +62,13 @@ type Evidence struct {
 
 // Result contains the complete research output including summary, evidence, and clusters.
 type Result struct {
-	Query      string            `json:"query"`
-	Summary    string            `json:"summary"`
-	Evidence   []Evidence        `json:"evidence"`
-	Clusters   []EvidenceCluster `json:"clusters"`
-	Citations  []Citation        `json:"citations"`
-	Confidence float64           `json:"confidence"`
+	Query      string                 `json:"query"`
+	Summary    string                 `json:"summary"`
+	Evidence   []Evidence             `json:"evidence"`
+	Clusters   []EvidenceCluster      `json:"clusters"`
+	Citations  []Citation             `json:"citations"`
+	Confidence float64                `json:"confidence"`
+	Agentic    *AgenticResearchResult `json:"agentic,omitempty"`
 }
 
 // EvidenceCluster represents a group of similar evidence items.
@@ -80,4 +84,34 @@ type Citation struct {
 	URL       string `json:"url"`
 	Anchor    string `json:"anchor,omitempty"`
 	Canonical string `json:"canonical"`
+}
+
+// AgenticResearchRound records a bounded AI-guided follow-up round.
+type AgenticResearchRound struct {
+	Round              int      `json:"round"`
+	Goal               string   `json:"goal,omitempty"`
+	FocusAreas         []string `json:"focusAreas,omitempty"`
+	SelectedURLs       []string `json:"selectedUrls,omitempty"`
+	AddedEvidenceCount int      `json:"addedEvidenceCount,omitempty"`
+	Reasoning          string   `json:"reasoning,omitempty"`
+}
+
+// AgenticResearchResult captures additive pi-guided research planning and synthesis.
+type AgenticResearchResult struct {
+	Status               string                 `json:"status"`
+	Instructions         string                 `json:"instructions,omitempty"`
+	Summary              string                 `json:"summary,omitempty"`
+	Objective            string                 `json:"objective,omitempty"`
+	FocusAreas           []string               `json:"focusAreas,omitempty"`
+	KeyFindings          []string               `json:"keyFindings,omitempty"`
+	OpenQuestions        []string               `json:"openQuestions,omitempty"`
+	RecommendedNextSteps []string               `json:"recommendedNextSteps,omitempty"`
+	FollowUpURLs         []string               `json:"followUpUrls,omitempty"`
+	Rounds               []AgenticResearchRound `json:"rounds,omitempty"`
+	Confidence           float64                `json:"confidence,omitempty"`
+	RouteID              string                 `json:"route_id,omitempty"`
+	Provider             string                 `json:"provider,omitempty"`
+	Model                string                 `json:"model,omitempty"`
+	Cached               bool                   `json:"cached,omitempty"`
+	Error                string                 `json:"error,omitempty"`
 }

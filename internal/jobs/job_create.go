@@ -99,6 +99,7 @@ func persistedSpecFromCreateSpec(spec JobSpec) (int, any, error) {
 			URLs:      spec.URLs,
 			MaxDepth:  spec.MaxDepth,
 			MaxPages:  spec.MaxPages,
+			Agentic:   model.NormalizeResearchAgenticConfig(spec.Agentic),
 			Execution: exec,
 		}, nil
 	default:

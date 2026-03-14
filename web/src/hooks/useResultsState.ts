@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadResults as loadResultsUtil } from "../lib/results";
 import type {
+  AgenticResearchItem,
   CitationItem,
   ClusterItem,
   EvidenceItem,
@@ -32,6 +33,7 @@ export interface ResultsState {
   resultEvidence: EvidenceItem[];
   resultClusters: ClusterItem[];
   resultCitations: CitationItem[];
+  resultAgentic: AgenticResearchItem | null;
   rawResult: string | null;
   resultFormat: string;
   currentPage: number;
@@ -71,6 +73,8 @@ export function useResultsState(): ResultsState & ResultsActions {
   const [resultEvidence, setResultEvidence] = useState<EvidenceItem[]>([]);
   const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
   const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
+  const [resultAgentic, setResultAgentic] =
+    useState<AgenticResearchItem | null>(null);
   const [rawResult, setRawResult] = useState<string | null>(null);
   const [resultFormat, setResultFormat] = useState<string>("jsonl");
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,6 +108,7 @@ export function useResultsState(): ResultsState & ResultsActions {
         setResultEvidence([]);
         setResultClusters([]);
         setResultCitations([]);
+        setResultAgentic(null);
         setRawResult(null);
       }
 
@@ -183,6 +188,7 @@ export function useResultsState(): ResultsState & ResultsActions {
       setResultEvidence([]);
       setResultClusters([]);
       setResultCitations([]);
+      setResultAgentic(null);
       return;
     }
     const item = resultItems[selectedResultIndex];
@@ -194,12 +200,16 @@ export function useResultsState(): ResultsState & ResultsActions {
       setResultCitations(
         (item as { citations?: CitationItem[] }).citations ?? [],
       );
+      setResultAgentic(
+        (item as { agentic?: AgenticResearchItem }).agentic ?? null,
+      );
     } else {
       setResultSummary(null);
       setResultConfidence(null);
       setResultEvidence([]);
       setResultClusters([]);
       setResultCitations([]);
+      setResultAgentic(null);
     }
   }, [selectedResultIndex, resultItems]);
 
@@ -212,6 +222,7 @@ export function useResultsState(): ResultsState & ResultsActions {
     resultEvidence,
     resultClusters,
     resultCitations,
+    resultAgentic,
     rawResult,
     resultFormat,
     currentPage,

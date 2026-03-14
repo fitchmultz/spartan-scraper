@@ -18,8 +18,10 @@ import {
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import { AIExtractSection } from "./AIExtractSection";
+import { ResearchAgenticSection } from "./ResearchAgenticSection";
 import {
   buildAIExtractOptions,
+  buildResearchAgenticOptions,
   buildSharedRequestConfig,
 } from "../lib/form-utils";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
@@ -156,6 +158,14 @@ export function BatchForm({
     setAIExtractSchema,
     aiExtractFields,
     setAIExtractFields,
+    agenticResearchEnabled,
+    setAgenticResearchEnabled,
+    agenticResearchInstructions,
+    setAgenticResearchInstructions,
+    agenticResearchMaxRounds,
+    setAgenticResearchMaxRounds,
+    agenticResearchMaxFollowUpUrls,
+    setAgenticResearchMaxFollowUpUrls,
     preProcessors,
     setPreProcessors,
     postProcessors,
@@ -211,6 +221,20 @@ export function BatchForm({
     aiExtractPrompt,
     aiExtractSchema,
     aiExtractFields,
+  ]);
+
+  const resolveAgenticOptions = useCallback(() => {
+    return buildResearchAgenticOptions(
+      agenticResearchEnabled,
+      agenticResearchInstructions,
+      agenticResearchMaxRounds,
+      agenticResearchMaxFollowUpUrls,
+    );
+  }, [
+    agenticResearchEnabled,
+    agenticResearchInstructions,
+    agenticResearchMaxRounds,
+    agenticResearchMaxFollowUpUrls,
   ]);
 
   // Handle file upload for CSV/JSON
@@ -403,6 +427,7 @@ export function BatchForm({
     const shared = buildSharedRequestConfig(form);
 
     let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
+    const agenticOptions = resolveAgenticOptions();
     try {
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
@@ -425,6 +450,7 @@ export function BatchForm({
       shared.webhook,
       device || undefined,
       aiExtractOptions,
+      agenticOptions,
     );
 
     await onSubmitResearch(request);
@@ -440,6 +466,7 @@ export function BatchForm({
     timeoutSeconds,
     device,
     resolveAIExtractOptions,
+    resolveAgenticOptions,
     onSubmitResearch,
   ]);
 
@@ -722,6 +749,19 @@ export function BatchForm({
         fields={aiExtractFields}
         setFields={setAIExtractFields}
       />
+
+      {activeTab === "research" ? (
+        <ResearchAgenticSection
+          enabled={agenticResearchEnabled}
+          setEnabled={setAgenticResearchEnabled}
+          instructions={agenticResearchInstructions}
+          setInstructions={setAgenticResearchInstructions}
+          maxRounds={agenticResearchMaxRounds}
+          setMaxRounds={setAgenticResearchMaxRounds}
+          maxFollowUpUrls={agenticResearchMaxFollowUpUrls}
+          setMaxFollowUpUrls={setAgenticResearchMaxFollowUpUrls}
+        />
+      ) : null}
 
       <WebhookConfig
         webhookUrl={webhookUrl}

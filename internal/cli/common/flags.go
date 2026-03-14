@@ -63,6 +63,12 @@ type CommonFlags struct {
 	AIExtractSchema *string
 	AIExtractFields *string
 
+	// Agentic research flags
+	AgenticResearch             *bool
+	AgenticResearchInstructions *string
+	AgenticResearchMaxRounds    *int
+	AgenticResearchMaxFollowUps *int
+
 	// Pipeline flags
 	PreProcessors  StringSliceFlag
 	PostProcessors StringSliceFlag
@@ -253,6 +259,16 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 	fs.Var(&cf.InterceptResourceTypes, "intercept-resource-type", "Resource type to intercept (repeatable: xhr,fetch,document,script,stylesheet,image,media,font,websocket,other)")
 
 	return cf
+}
+
+func RegisterResearchAgenticFlags(fs *flag.FlagSet, cf *CommonFlags) {
+	if cf == nil {
+		return
+	}
+	cf.AgenticResearch = fs.Bool("agentic", false, "Enable bounded pi-powered follow-up and synthesis for research jobs")
+	cf.AgenticResearchInstructions = fs.String("agentic-instructions", "", "Additional instructions for agentic research synthesis")
+	cf.AgenticResearchMaxRounds = fs.Int("agentic-max-rounds", 1, "Maximum bounded follow-up rounds for agentic research (1-3)")
+	cf.AgenticResearchMaxFollowUps = fs.Int("agentic-max-follow-up-urls", 3, "Maximum follow-up URLs selected per agentic research round (1-10)")
 }
 
 func RegisterBrowserFlags(fs *flag.FlagSet, cfg config.Config) *BrowserFlags {

@@ -27,6 +27,7 @@ func RunResearch(ctx context.Context, cfg config.Config, args []string) int {
 	maxDepth := fs.Int("max-depth", 2, "Max crawl depth per URL (0 for single-page scrape)")
 	maxPages := fs.Int("max-pages", 200, "Max pages to crawl per URL")
 	cf := common.RegisterCommonFlags(fs, cfg)
+	common.RegisterResearchAgenticFlags(fs, cf)
 
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -37,6 +38,7 @@ Examples:
   spartan research --query "login flow" --urls https://example.com --headless --wait --out ./out/research.jsonl
   spartan research --query "pricing model" --urls https://example.com --transformer json-clean
   spartan research --query "pricing model" --urls https://example.com --ai-extract --ai-prompt "Extract the pricing model and support terms" --ai-fields "pricing_model,support_terms"
+  spartan research --query "pricing model" --urls https://example.com,https://example.com/docs --agentic --agentic-instructions "Prioritize pricing and support commitments"
 
 Options:
 `)
@@ -60,6 +62,11 @@ Options:
 		AuthProfile: *cf.ProfileName,
 	}
 	if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return 1
+	}
+	agenticConfig := common.BuildResearchAgenticConfig(cf)
+	if err := model.ValidateResearchAgenticConfig(agenticConfig); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return 1
 	}
@@ -143,6 +150,7 @@ Options:
 		Incremental:      *cf.Incremental,
 		Device:           device,
 		NetworkIntercept: networkIntercept,
+		Agentic:          agenticConfig,
 	}
 	job, err := manager.CreateJob(ctx, spec)
 	if err != nil {

@@ -72,6 +72,7 @@ type researchExecutionInput struct {
 	URLs     []string
 	MaxDepth int
 	MaxPages int
+	Agentic  *model.ResearchAgenticConfig
 }
 
 func decodeExecutionConfig(spec model.ExecutionSpec, requestID string, manager *Manager) executionConfig {
@@ -192,6 +193,7 @@ func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExec
 		URLs:     spec.URLs,
 		MaxDepth: spec.MaxDepth,
 		MaxPages: spec.MaxPages,
+		Agentic:  model.NormalizeResearchAgenticConfig(spec.Agentic),
 	}
 	createSpec := JobSpec{
 		Kind:           model.KindResearch,
@@ -208,6 +210,7 @@ func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExec
 		Pipeline:       input.Config.Pipeline,
 		RequestID:      input.Config.RequestID,
 		Screenshot:     input.Config.Screenshot,
+		Agentic:        input.Agentic,
 	}
 	if err := createSpec.Validate(); err != nil {
 		return researchExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid research job parameters", err)

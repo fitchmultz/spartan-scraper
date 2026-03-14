@@ -145,10 +145,16 @@ func writeCrawlCSVStream(rs io.ReadSeeker, writer *csv.Writer) error {
 
 // writeResearchCSV writes a research result to the CSV writer.
 func writeResearchCSV(item ResearchResult, writer *csv.Writer) error {
-	if err := writer.Write([]string{"query", "summary", "confidence"}); err != nil {
+	agenticStatus := ""
+	agenticSummary := ""
+	if item.Agentic != nil {
+		agenticStatus = item.Agentic.Status
+		agenticSummary = item.Agentic.Summary
+	}
+	if err := writer.Write([]string{"query", "summary", "confidence", "agentic_status", "agentic_summary"}); err != nil {
 		return err
 	}
-	if err := writer.Write([]string{item.Query, item.Summary, fmt.Sprintf("%.2f", item.Confidence)}); err != nil {
+	if err := writer.Write([]string{item.Query, item.Summary, fmt.Sprintf("%.2f", item.Confidence), agenticStatus, agenticSummary}); err != nil {
 		return err
 	}
 	if err := writer.Write([]string{}); err != nil {

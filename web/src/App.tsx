@@ -587,6 +587,16 @@ export function App() {
         aiExtractPrompt: formState.aiExtractPrompt,
         aiExtractSchema: formState.aiExtractSchema,
         aiExtractFields: formState.aiExtractFields,
+        ...(activeTab === "research"
+          ? {
+              agenticResearchEnabled: formState.agenticResearchEnabled,
+              agenticResearchInstructions:
+                formState.agenticResearchInstructions,
+              agenticResearchMaxRounds: formState.agenticResearchMaxRounds,
+              agenticResearchMaxFollowUpUrls:
+                formState.agenticResearchMaxFollowUpUrls,
+            }
+          : {}),
       };
     }
 

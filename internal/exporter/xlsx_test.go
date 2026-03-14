@@ -300,7 +300,7 @@ func TestExportResearchXLSXMultiSheet(t *testing.T) {
 	}
 
 	// Check headers
-	expectedHeaders := []string{"query", "summary", "confidence"}
+	expectedHeaders := []string{"query", "summary", "confidence", "agentic_status", "agentic_summary"}
 	if len(rows) > 0 && !slicesEqual(rows[0], expectedHeaders) {
 		t.Errorf("Summary headers incorrect.\nGot: %v\nWant: %v", rows[0], expectedHeaders)
 	}

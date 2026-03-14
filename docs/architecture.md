@@ -58,7 +58,7 @@ This boundary is deliberate to avoid building a second interactive AI workbench 
 - `internal/crawl`
   - Same-host bounded crawling with dedup and optional robots handling.
 - `internal/research`
-  - Derived multi-source workflow built on scrape/crawl primitives, with optional AI-assisted field extraction flowing through the same evidence-gathering path rather than a separate agent loop.
+  - Derived multi-source workflow built on scrape/crawl primitives, with optional AI-assisted field extraction plus bounded pi-guided follow-up/synthesis flowing through the same evidence-gathering path rather than a separate free-form agent loop.
 - `internal/scheduler`
   - Interval schedules and export schedules.
 - `internal/exporter`

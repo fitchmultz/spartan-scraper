@@ -35,6 +35,10 @@ export interface FormState {
   aiExtractPrompt: string;
   aiExtractSchema: string;
   aiExtractFields: string;
+  agenticResearchEnabled: boolean;
+  agenticResearchInstructions: string;
+  agenticResearchMaxRounds: number;
+  agenticResearchMaxFollowUpUrls: number;
   preProcessors: string;
   postProcessors: string;
   transformers: string;
@@ -75,6 +79,10 @@ export interface FormActions {
   setAIExtractPrompt: (value: string) => void;
   setAIExtractSchema: (value: string) => void;
   setAIExtractFields: (value: string) => void;
+  setAgenticResearchEnabled: (value: boolean) => void;
+  setAgenticResearchInstructions: (value: string) => void;
+  setAgenticResearchMaxRounds: (value: number) => void;
+  setAgenticResearchMaxFollowUpUrls: (value: number) => void;
   setPreProcessors: (value: string) => void;
   setPostProcessors: (value: string) => void;
   setTransformers: (value: string) => void;
@@ -120,6 +128,10 @@ const INITIAL_STATE: FormState = {
   aiExtractPrompt: "",
   aiExtractSchema: '{\n  "title": "Example product",\n  "price": "$19.99"\n}',
   aiExtractFields: "",
+  agenticResearchEnabled: false,
+  agenticResearchInstructions: "",
+  agenticResearchMaxRounds: 1,
+  agenticResearchMaxFollowUpUrls: 3,
   preProcessors: "",
   postProcessors: "",
   transformers: "",
@@ -226,6 +238,22 @@ export function useFormState(): FormController {
 
   const setAIExtractFields = useCallback((value: string) => {
     setState((prev) => ({ ...prev, aiExtractFields: value }));
+  }, []);
+
+  const setAgenticResearchEnabled = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, agenticResearchEnabled: value }));
+  }, []);
+
+  const setAgenticResearchInstructions = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, agenticResearchInstructions: value }));
+  }, []);
+
+  const setAgenticResearchMaxRounds = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, agenticResearchMaxRounds: value }));
+  }, []);
+
+  const setAgenticResearchMaxFollowUpUrls = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, agenticResearchMaxFollowUpUrls: value }));
   }, []);
 
   const setPreProcessors = useCallback((value: string) => {
@@ -344,6 +372,18 @@ export function useFormState(): FormController {
       ...(config.aiExtractFields !== undefined && {
         aiExtractFields: config.aiExtractFields,
       }),
+      ...(config.agenticResearchEnabled !== undefined && {
+        agenticResearchEnabled: config.agenticResearchEnabled,
+      }),
+      ...(config.agenticResearchInstructions !== undefined && {
+        agenticResearchInstructions: config.agenticResearchInstructions,
+      }),
+      ...(config.agenticResearchMaxRounds !== undefined && {
+        agenticResearchMaxRounds: config.agenticResearchMaxRounds,
+      }),
+      ...(config.agenticResearchMaxFollowUpUrls !== undefined && {
+        agenticResearchMaxFollowUpUrls: config.agenticResearchMaxFollowUpUrls,
+      }),
       ...(config.preProcessors !== undefined && {
         preProcessors: config.preProcessors,
       }),
@@ -409,6 +449,10 @@ export function useFormState(): FormController {
     setAIExtractPrompt,
     setAIExtractSchema,
     setAIExtractFields,
+    setAgenticResearchEnabled,
+    setAgenticResearchInstructions,
+    setAgenticResearchMaxRounds,
+    setAgenticResearchMaxFollowUpUrls,
     setPreProcessors,
     setPostProcessors,
     setTransformers,

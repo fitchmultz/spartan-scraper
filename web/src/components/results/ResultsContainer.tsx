@@ -42,6 +42,7 @@ export function ResultsContainer({
     resultEvidence,
     resultClusters,
     resultCitations,
+    resultAgentic,
     rawResult,
     resultFormat,
     currentPage,
@@ -66,6 +67,7 @@ export function ResultsContainer({
           resultEvidence={resultEvidence}
           resultClusters={resultClusters}
           resultCitations={resultCitations}
+          resultAgentic={resultAgentic}
           rawResult={rawResult}
           resultFormat={resultFormat}
           currentPage={currentPage}

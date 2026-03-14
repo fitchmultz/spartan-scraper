@@ -152,6 +152,7 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 		Auth:           *req.Auth,
 		Extract:        *req.Extract,
 		Pipeline:       *req.Pipeline,
+		Agentic:        req.Agentic,
 	}
 
 	// Create batch

@@ -20,6 +20,7 @@ import {
 import { loadResults } from "../lib/results";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import type {
+  AgenticResearchItem,
   CitationItem,
   ClusterItem,
   CrawlResultItem,
@@ -59,6 +60,7 @@ interface ResultsExplorerProps {
   resultEvidence: EvidenceItem[];
   resultClusters: ClusterItem[];
   resultCitations: CitationItem[];
+  resultAgentic: AgenticResearchItem | null;
   rawResult: string | null;
   resultFormat: string;
   currentPage: number;
@@ -267,6 +269,7 @@ export function ResultsExplorer({
   resultEvidence,
   resultClusters,
   resultCitations,
+  resultAgentic,
   rawResult,
   resultFormat,
   currentPage,
@@ -542,6 +545,7 @@ export function ResultsExplorer({
             resultEvidence={resultEvidence}
             resultClusters={resultClusters}
             resultCitations={resultCitations}
+            resultAgentic={resultAgentic}
             rawResult={rawResult}
             resultFormat={resultFormat}
             currentPage={currentPage}
