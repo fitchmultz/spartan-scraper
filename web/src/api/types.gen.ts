@@ -708,6 +708,54 @@ export type AiPipelineJsDebugResponse = {
     recheck_error?: string;
 };
 
+/**
+ * Request for bounded research-output refinement.
+ */
+export type AiResearchRefineRequest = {
+    result: ResearchResult;
+    /**
+     * Optional operator guidance for the refinement rewrite
+     */
+    instructions?: string;
+};
+
+export type AiResearchRefineInputStats = {
+    evidenceCount?: number;
+    evidenceUsedCount?: number;
+    clusterCount?: number;
+    citationCount?: number;
+    hasAgentic?: boolean;
+};
+
+export type AiResearchEvidenceHighlight = {
+    url: string;
+    title?: string;
+    finding: string;
+    relevance?: string;
+    citationUrl?: string;
+};
+
+export type AiResearchRefinedContent = {
+    summary: string;
+    conciseSummary: string;
+    keyFindings: Array<string>;
+    openQuestions?: Array<string>;
+    recommendedNextSteps?: Array<string>;
+    evidenceHighlights?: Array<AiResearchEvidenceHighlight>;
+    confidence?: number;
+};
+
+export type AiResearchRefineResponse = {
+    issues?: Array<string>;
+    inputStats?: AiResearchRefineInputStats;
+    refined?: AiResearchRefinedContent;
+    markdown?: string;
+    explanation?: string;
+    route_id?: string;
+    provider?: string;
+    model?: string;
+};
+
 export type PipelineOptions = {
     preProcessors?: Array<string>;
     postProcessors?: Array<string>;
@@ -4278,6 +4326,43 @@ export type AiPipelineJsDebugResponses = {
 };
 
 export type AiPipelineJsDebugResponse2 = AiPipelineJsDebugResponses[keyof AiPipelineJsDebugResponses];
+
+export type AiResearchRefineData = {
+    body: AiResearchRefineRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/research-refine';
+};
+
+export type AiResearchRefineErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiResearchRefineError = AiResearchRefineErrors[keyof AiResearchRefineErrors];
+
+export type AiResearchRefineResponses = {
+    /**
+     * Refined research brief
+     */
+    200: AiResearchRefineResponse;
+};
+
+export type AiResearchRefineResponse2 = AiResearchRefineResponses[keyof AiResearchRefineResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,7 +14,10 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/research"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 type authoringRunner interface {
@@ -24,6 +28,7 @@ type authoringRunner interface {
 	DebugRenderProfile(ctx context.Context, req aiauthoring.RenderProfileDebugRequest) (aiauthoring.RenderProfileDebugResult, error)
 	GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error)
 	DebugPipelineJS(ctx context.Context, req aiauthoring.PipelineJSDebugRequest) (aiauthoring.PipelineJSDebugResult, error)
+	RefineResearch(ctx context.Context, req aiauthoring.ResearchRefineRequest) (aiauthoring.ResearchRefineResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -93,6 +98,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runPipelineJSDebug(ctx, cfg, runner, args[1:])
+	case "research-refine":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runResearchRefine(ctx, cfg, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -483,6 +495,49 @@ Options:
 	return 0
 }
 
+func runResearchRefine(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-research-refine", flag.ContinueOnError)
+	jobID := fs.String("job-id", "", "Research job ID to refine from the local data directory")
+	resultFile := fs.String("result-file", "", "Path to a research result JSON, single-item JSON array, or single-result JSONL file")
+	instructions := fs.String("instructions", "", "Optional rewrite guidance for the refinement")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai research-refine [options]
+
+Examples:
+  spartan ai research-refine --job-id <research-job-id>
+  spartan ai research-refine --result-file ./out/research-result.json --instructions "Condense this into an operator brief"
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	result, err := resolveResearchResultInput(cfg, *jobID, *resultFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	refined, err := runner.RefineResearch(ctx, aiauthoring.ResearchRefineRequest{
+		Result:       result,
+		Instructions: strings.TrimSpace(*instructions),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(refined, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Fprint(os.Stderr, `AI authoring utilities.
 
@@ -497,6 +552,7 @@ Subcommands:
   render-profile-debug Tune an existing render profile without creating a job
   pipeline-js         Generate a pipeline JS script without creating a job
   pipeline-js-debug   Tune an existing pipeline JS script without creating a job
+  research-refine     Refine an existing research result without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
@@ -506,6 +562,7 @@ Examples:
   spartan ai render-profile-debug --url https://example.com/app --profile-name example-app
   spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and dismiss the cookie banner"
   spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
+  spartan ai research-refine --job-id <research-job-id>
 `)
 }
 
@@ -613,6 +670,89 @@ func resolvePipelineJSScriptInput(cfg config.Config, name string, path string) (
 		return pipeline.JSTargetScript{}, fmt.Errorf("pipeline JS script not found: %s", trimmedName)
 	}
 	return script, nil
+}
+
+func resolveResearchResultInput(cfg config.Config, jobID string, resultFile string) (research.Result, error) {
+	trimmedJobID := strings.TrimSpace(jobID)
+	trimmedResultFile := strings.TrimSpace(resultFile)
+	if trimmedJobID == "" && trimmedResultFile == "" {
+		return research.Result{}, fmt.Errorf("--job-id or --result-file is required")
+	}
+	if trimmedJobID != "" && trimmedResultFile != "" {
+		return research.Result{}, fmt.Errorf("--job-id and --result-file are mutually exclusive")
+	}
+	if trimmedResultFile != "" {
+		data, err := os.ReadFile(trimmedResultFile)
+		if err != nil {
+			return research.Result{}, fmt.Errorf("read result file: %w", err)
+		}
+		return parseResearchResultBytes(data)
+	}
+
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		return research.Result{}, fmt.Errorf("open store: %w", err)
+	}
+	defer st.Close()
+
+	job, err := st.Get(context.Background(), trimmedJobID)
+	if err != nil {
+		return research.Result{}, fmt.Errorf("load job: %w", err)
+	}
+	if job.Kind != model.KindResearch {
+		return research.Result{}, fmt.Errorf("job %s is not a research job", trimmedJobID)
+	}
+	if strings.TrimSpace(job.ResultPath) == "" {
+		return research.Result{}, fmt.Errorf("job %s has no result file", trimmedJobID)
+	}
+	data, err := os.ReadFile(job.ResultPath)
+	if err != nil {
+		return research.Result{}, fmt.Errorf("read job result file: %w", err)
+	}
+	return parseResearchResultBytes(data)
+}
+
+func parseResearchResultBytes(data []byte) (research.Result, error) {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return research.Result{}, fmt.Errorf("result file is empty")
+	}
+
+	switch trimmed[0] {
+	case '{':
+		var result research.Result
+		if err := json.Unmarshal(trimmed, &result); err != nil {
+			return research.Result{}, fmt.Errorf("decode research result object: %w", err)
+		}
+		return result, nil
+	case '[':
+		var results []research.Result
+		if err := json.Unmarshal(trimmed, &results); err != nil {
+			return research.Result{}, fmt.Errorf("decode research result array: %w", err)
+		}
+		if len(results) != 1 {
+			return research.Result{}, fmt.Errorf("research result array must contain exactly 1 item")
+		}
+		return results[0], nil
+	default:
+		lines := strings.Split(string(trimmed), "\n")
+		results := make([]research.Result, 0, len(lines))
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var result research.Result
+			if err := json.Unmarshal([]byte(line), &result); err != nil {
+				return research.Result{}, fmt.Errorf("decode research result JSONL line: %w", err)
+			}
+			results = append(results, result)
+		}
+		if len(results) != 1 {
+			return research.Result{}, fmt.Errorf("research result JSONL must contain exactly 1 item")
+		}
+		return results[0], nil
+	}
 }
 
 func parseJSONObject(raw string, emptyMessage string) (map[string]interface{}, error) {

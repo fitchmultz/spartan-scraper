@@ -22,12 +22,15 @@ type fakeAuthoringProvider struct {
 }
 
 type fakeAutomationClient struct {
-	renderProfileResult piai.GenerateRenderProfileResult
-	pipelineJSResult    piai.GeneratePipelineJSResult
-	renderProfileReq    piai.GenerateRenderProfileRequest
-	pipelineJSReq       piai.GeneratePipelineJSRequest
-	renderProfileCalls  int
-	pipelineJSCalls     int
+	renderProfileResult  piai.GenerateRenderProfileResult
+	pipelineJSResult     piai.GeneratePipelineJSResult
+	researchRefineResult piai.ResearchRefineResult
+	renderProfileReq     piai.GenerateRenderProfileRequest
+	pipelineJSReq        piai.GeneratePipelineJSRequest
+	researchRefineReq    piai.ResearchRefineRequest
+	renderProfileCalls   int
+	pipelineJSCalls      int
+	researchRefineCalls  int
 }
 
 func (f *fakeAuthoringProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -67,6 +70,12 @@ func (f *fakeAutomationClient) GeneratePipelineJS(ctx context.Context, req piai.
 	return f.pipelineJSResult, nil
 }
 
+func (f *fakeAutomationClient) GenerateResearchRefinement(ctx context.Context, req piai.ResearchRefineRequest) (piai.ResearchRefineResult, error) {
+	f.researchRefineCalls++
+	f.researchRefineReq = req
+	return f.researchRefineResult, nil
+}
+
 func TestAIAuthoringToolsList(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -77,7 +86,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug", "ai_research_refine"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -129,6 +138,24 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 		pipelineJSResult: piai.GeneratePipelineJSResult{
 			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
 			Explanation: "Wait for the main element and normalize scroll position.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+		researchRefineResult: piai.ResearchRefineResult{
+			Refined: piai.ResearchRefinedContent{
+				Summary:        "Enterprise pricing appears to be sales-led, with support commitments documented across the supplied evidence.",
+				ConciseSummary: "Sales-led pricing with documented support commitments.",
+				KeyFindings:    []string{"Pricing is handled through direct sales rather than self-serve checkout."},
+				EvidenceHighlights: []piai.ResearchEvidenceHighlight{{
+					URL:         "https://example.com/pricing",
+					Title:       "Pricing",
+					Finding:     "The pricing page routes buyers to contact sales.",
+					CitationURL: "https://example.com/pricing",
+				}},
+				Confidence: 0.81,
+			},
+			Explanation: "Condensed the supplied research result into an operator brief.",
 			RouteID:     "openai/gpt-5.4",
 			Provider:    "openai",
 			Model:       "gpt-5.4",
@@ -374,5 +401,45 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.pipelineJSReq.Feedback == "" {
 		t.Fatal("expected pipeline JS debug feedback to reach the automation client")
+	}
+
+	researchRefineBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_research_refine",
+			"arguments": map[string]interface{}{
+				"result": map[string]interface{}{
+					"query":   "pricing and support commitments",
+					"summary": "Original summary",
+					"evidence": []map[string]interface{}{{
+						"url":         "https://example.com/pricing",
+						"title":       "Pricing",
+						"snippet":     "Contact sales for enterprise pricing.",
+						"citationUrl": "https://example.com/pricing",
+					}},
+					"citations": []map[string]interface{}{{
+						"canonical": "https://example.com/pricing",
+						"url":       "https://example.com/pricing",
+					}},
+				},
+				"instructions": "Condense this into a concise operator brief",
+			},
+		}),
+	}
+	researchRefineResult, err := srv.handleToolCall(context.Background(), researchRefineBase)
+	if err != nil {
+		t.Fatalf("ai_research_refine failed: %v", err)
+	}
+	researchRefineResp, ok := researchRefineResult.(aiauthoring.ResearchRefineResult)
+	if !ok {
+		t.Fatalf("expected research refine result type, got %#v", researchRefineResult)
+	}
+	if researchRefineResp.Refined.ConciseSummary != "Sales-led pricing with documented support commitments." {
+		t.Fatalf("unexpected concise summary: %q", researchRefineResp.Refined.ConciseSummary)
+	}
+	if automationClient.researchRefineCalls != 1 {
+		t.Fatalf("expected single research refine call, got %d", automationClient.researchRefineCalls)
+	}
+	if automationClient.researchRefineReq.Instructions != "Condense this into a concise operator brief" {
+		t.Fatalf("unexpected research refine instructions: %q", automationClient.researchRefineReq.Instructions)
 	}
 }

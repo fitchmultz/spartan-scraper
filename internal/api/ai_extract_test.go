@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
@@ -49,12 +50,15 @@ type fakeAIProvider struct {
 }
 
 type fakeAutomationClient struct {
-	renderProfileResult piai.GenerateRenderProfileResult
-	pipelineJSResult    piai.GeneratePipelineJSResult
-	renderProfileReq    piai.GenerateRenderProfileRequest
-	pipelineJSReq       piai.GeneratePipelineJSRequest
-	renderProfileCalls  int
-	pipelineJSCalls     int
+	renderProfileResult  piai.GenerateRenderProfileResult
+	pipelineJSResult     piai.GeneratePipelineJSResult
+	researchRefineResult piai.ResearchRefineResult
+	renderProfileReq     piai.GenerateRenderProfileRequest
+	pipelineJSReq        piai.GeneratePipelineJSRequest
+	researchRefineReq    piai.ResearchRefineRequest
+	renderProfileCalls   int
+	pipelineJSCalls      int
+	researchRefineCalls  int
 }
 
 func (f *fakeAIProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -92,6 +96,12 @@ func (f *fakeAutomationClient) GeneratePipelineJS(ctx context.Context, req piai.
 	f.pipelineJSCalls++
 	f.pipelineJSReq = req
 	return f.pipelineJSResult, nil
+}
+
+func (f *fakeAutomationClient) GenerateResearchRefinement(ctx context.Context, req piai.ResearchRefineRequest) (piai.ResearchRefineResult, error) {
+	f.researchRefineCalls++
+	f.researchRefineReq = req
+	return f.researchRefineResult, nil
 }
 
 func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
@@ -561,6 +571,73 @@ func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}
 	if resp.SuggestedScript == nil || len(resp.SuggestedScript.Selectors) != 1 || resp.SuggestedScript.Selectors[0] != "main" {
 		t.Fatalf("unexpected suggested script: %#v", resp.SuggestedScript)
+	}
+}
+
+func TestAIResearchRefineReturnsStructuredRefinement(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	automationClient := &fakeAutomationClient{
+		researchRefineResult: piai.ResearchRefineResult{
+			Refined: piai.ResearchRefinedContent{
+				Summary:        "Enterprise pricing appears to be sales-led, with support commitments documented across the supplied evidence.",
+				ConciseSummary: "Sales-led pricing with documented support commitments.",
+				KeyFindings: []string{
+					"Pricing is handled through direct sales rather than self-serve checkout.",
+				},
+				OpenQuestions: []string{"Are SLA terms publicly documented?"},
+				RecommendedNextSteps: []string{
+					"Confirm final SLA language with the vendor sales team.",
+				},
+				EvidenceHighlights: []piai.ResearchEvidenceHighlight{{
+					URL:         "https://example.com/pricing",
+					Title:       "Pricing",
+					Finding:     "The pricing page routes buyers to contact sales.",
+					CitationURL: "https://example.com/pricing",
+				}},
+				Confidence: 0.81,
+			},
+			Explanation: "Condensed the existing research result into an operator brief.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	body := `{"result":{"query":"pricing and support commitments","summary":"Original summary","confidence":0.78,"evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into a concise operator brief"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/research-refine", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if automationClient.researchRefineCalls != 1 {
+		t.Fatalf("expected single research refine call, got %d", automationClient.researchRefineCalls)
+	}
+	if automationClient.researchRefineReq.Instructions != "Condense this into a concise operator brief" {
+		t.Fatalf("unexpected instructions: %q", automationClient.researchRefineReq.Instructions)
+	}
+
+	var resp AIResearchRefineResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Refined.ConciseSummary != "Sales-led pricing with documented support commitments." {
+		t.Fatalf("unexpected concise summary: %q", resp.Refined.ConciseSummary)
+	}
+	if resp.InputStats.EvidenceCount != 1 || resp.InputStats.EvidenceUsedCount != 1 {
+		t.Fatalf("unexpected input stats: %#v", resp.InputStats)
+	}
+	if !strings.Contains(resp.Markdown, "Refined Research Brief") {
+		t.Fatalf("expected markdown output, got %q", resp.Markdown)
+	}
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }
 

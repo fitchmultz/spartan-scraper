@@ -7,12 +7,15 @@ import type {
   HealthResult,
   PipelineJsResult,
   RenderProfileResult,
+  ResearchRefinePayload,
+  ResearchRefineResult,
   TemplateResult,
 } from "./protocol.js";
 import {
   validateExtractResult,
   validatePipelineJsResult,
   validateRenderProfileResult,
+  validateResearchRefineResult,
   validateTemplateResult,
 } from "./validation.js";
 
@@ -118,6 +121,52 @@ export class FixtureBackend {
         postNav: "window.scrollTo(0, 0);",
       },
       explanation: "Deterministic fixture pipeline JS from pi bridge.",
+      route_id: this.firstRoute(capability),
+      provider: "fixture",
+      model: "fixture-model",
+    });
+  }
+
+  refineResearch(
+    capability: string,
+    payload: ResearchRefinePayload,
+  ): ResearchRefineResult {
+    const evidence = payload.result.evidence ?? [];
+    const summary = payload.result.summary?.trim() || "Fixture refined research summary.";
+    const conciseSummary = payload.result.query?.trim()
+      ? `Fixture refinement for ${payload.result.query.trim()}.`
+      : "Fixture concise research summary.";
+
+    return validateResearchRefineResult({
+      refined: {
+        summary,
+        conciseSummary,
+        keyFindings: [
+          payload.instructions?.trim()
+            ? `Operator focus: ${payload.instructions.trim()}`
+            : "Collected evidence was normalized into a bounded brief.",
+        ],
+        openQuestions: payload.result.query?.trim()
+          ? [`What additional evidence would further validate ${payload.result.query.trim()}?`]
+          : ["What additional evidence should be gathered next?"],
+        recommendedNextSteps: [
+          "Review the highlighted evidence before sharing the refined brief.",
+        ],
+        evidenceHighlights: evidence.slice(0, 2).map((item, index) => ({
+          url: item.url,
+          title: item.title,
+          finding:
+            item.snippet?.trim() ||
+            `Fixture evidence highlight ${index + 1} from ${item.url}.`,
+          relevance: "Top evidence selected by fixture backend.",
+          citationUrl: item.citationUrl,
+        })),
+        confidence:
+          typeof payload.result.confidence === "number"
+            ? Math.min(1, Math.max(0, payload.result.confidence))
+            : 0.75,
+      },
+      explanation: "Deterministic fixture research refinement from pi bridge.",
       route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",

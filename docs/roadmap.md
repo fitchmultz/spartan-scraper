@@ -10,12 +10,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Extend the shared `/v1/ai/*` authoring surface into bounded research-output refinement workflows that help operators rewrite, condense, or normalize collected evidence across API, Web, CLI, and MCP without introducing free-form agent loops.
+- Add bounded export-shaping authoring flows so operators can generate or tune export-ready field sets, summaries, and formatting hints before running recurring exports.
 
 ## Next
 
-- Add bounded export-shaping authoring flows so operators can generate or tune export-ready field sets, summaries, and formatting hints before running recurring exports.
+- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.
 
 ## Later
 
-- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.
+- Extend bounded AI authoring to more saved result-artifact workflows only after export-shaping lands cleanly across API, Web, CLI, and MCP without reintroducing interface drift.

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -25,6 +26,7 @@ type fakeAuthoringRunner struct {
 	renderProfileDebugReq    aiauthoring.RenderProfileDebugRequest
 	pipelineJSReq            aiauthoring.PipelineJSRequest
 	pipelineJSDebugReq       aiauthoring.PipelineJSDebugRequest
+	researchRefineReq        aiauthoring.ResearchRefineRequest
 	previewResult            aiauthoring.PreviewResult
 	templateResult           aiauthoring.TemplateResult
 	debugResult              aiauthoring.TemplateDebugResult
@@ -32,6 +34,7 @@ type fakeAuthoringRunner struct {
 	renderProfileDebugResult aiauthoring.RenderProfileDebugResult
 	pipelineJSResult         aiauthoring.PipelineJSResult
 	pipelineJSDebugResult    aiauthoring.PipelineJSDebugResult
+	researchRefineResult     aiauthoring.ResearchRefineResult
 	previewErr               error
 	templateErr              error
 	debugErr                 error
@@ -39,6 +42,7 @@ type fakeAuthoringRunner struct {
 	renderProfileDebugErr    error
 	pipelineJSErr            error
 	pipelineJSDebugErr       error
+	researchRefineErr        error
 	previewCalled            bool
 	templateCalled           bool
 	debugCalled              bool
@@ -46,6 +50,7 @@ type fakeAuthoringRunner struct {
 	renderProfileDebugCalled bool
 	pipelineJSCalled         bool
 	pipelineJSDebugCalled    bool
+	researchRefineCalled     bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -88,6 +93,12 @@ func (f *fakeAuthoringRunner) DebugPipelineJS(ctx context.Context, req aiauthori
 	f.pipelineJSDebugCalled = true
 	f.pipelineJSDebugReq = req
 	return f.pipelineJSDebugResult, f.pipelineJSDebugErr
+}
+
+func (f *fakeAuthoringRunner) RefineResearch(ctx context.Context, req aiauthoring.ResearchRefineRequest) (aiauthoring.ResearchRefineResult, error) {
+	f.researchRefineCalled = true
+	f.researchRefineReq = req
+	return f.researchRefineResult, f.researchRefineErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -380,5 +391,44 @@ func TestRunPipelineJSDebugLoadsScriptFile(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"suggested_script":`) {
 		t.Fatalf("expected debug JSON output, got %s", stdout)
+	}
+}
+
+func TestRunResearchRefineLoadsResultFile(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		researchRefineResult: aiauthoring.ResearchRefineResult{
+			Refined: piai.ResearchRefinedContent{
+				Summary:        "Refined summary",
+				ConciseSummary: "Concise summary",
+				KeyFindings:    []string{"Enterprise pricing is sales-led."},
+			},
+			Markdown: "# Refined Research Brief\n",
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	resultPath := filepath.Join(tmpDir, "research-result.json")
+	if err := os.WriteFile(resultPath, []byte(`{"query":"pricing model","summary":"Original summary","confidence":0.8,"evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]}`), 0o644); err != nil {
+		t.Fatalf("write research result file: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"research-refine", "--result-file", resultPath, "--instructions", "Condense this into an operator brief"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.researchRefineCalled {
+		t.Fatal("expected research refine runner to be called")
+	}
+	if runner.researchRefineReq.Result.Query != "pricing model" {
+		t.Fatalf("unexpected research query: %q", runner.researchRefineReq.Result.Query)
+	}
+	if runner.researchRefineReq.Instructions != "Condense this into an operator brief" {
+		t.Fatalf("unexpected research instructions: %q", runner.researchRefineReq.Instructions)
+	}
+	if !strings.Contains(stdout, `"markdown": "# Refined Research Brief`) {
+		t.Fatalf("expected research refine JSON output, got %s", stdout)
 	}
 }

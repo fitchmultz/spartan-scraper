@@ -105,6 +105,7 @@ export type AgenticResearchItem = {
 };
 
 export type ResearchResultItem = {
+  query?: string;
   summary?: string;
   confidence?: number;
   evidence?: EvidenceItem[];

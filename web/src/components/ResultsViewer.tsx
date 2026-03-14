@@ -16,8 +16,10 @@ import type {
   CitationItem,
   ClusterItem,
   EvidenceItem,
+  ResearchResultItem,
   ResultItem,
 } from "../types";
+import { AIResearchRefiner } from "./AIResearchRefiner";
 import { NormalizedView } from "./NormalizedView";
 
 function getFieldDisplayValues(
@@ -107,11 +109,22 @@ export function ResultsViewer({
   onLoadPage,
 }: ResultsViewerProps) {
   const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
+  const [isResearchRefinerOpen, setIsResearchRefinerOpen] = useState(false);
   const selectedItem = resultItems[selectedResultIndex] ?? null;
+  const selectedResearchResult =
+    selectedItem && !isCrawlResultItem(selectedItem)
+      ? (selectedItem as ResearchResultItem)
+      : null;
 
   useEffect(() => {
     setJumpInputValue(currentPage.toString());
   }, [currentPage]);
+
+  useEffect(() => {
+    if (!selectedResearchResult) {
+      setIsResearchRefinerOpen(false);
+    }
+  }, [selectedResearchResult]);
 
   if (!jobId) {
     return null;
@@ -158,7 +171,23 @@ export function ResultsViewer({
           Confidence {resultConfidence.toFixed(2)}
         </div>
       ) : null}
+      {selectedResearchResult?.query ? (
+        <div style={{ marginBottom: 8, color: "var(--text-muted)" }}>
+          Query: {selectedResearchResult.query}
+        </div>
+      ) : null}
       {resultSummary ? <p>{resultSummary}</p> : null}
+      {selectedResearchResult ? (
+        <div style={{ marginBottom: 12 }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setIsResearchRefinerOpen(true)}
+          >
+            Refine with AI
+          </button>
+        </div>
+      ) : null}
       {resultAgentic ? (
         <div className="panel" style={{ marginTop: 12 }}>
           <h4>Agentic Research</h4>
@@ -448,6 +477,11 @@ export function ResultsViewer({
           </details>
         </div>
       ) : null}
+      <AIResearchRefiner
+        isOpen={isResearchRefinerOpen}
+        onClose={() => setIsResearchRefinerOpen(false)}
+        result={selectedResearchResult}
+      />
     </div>
   );
 }

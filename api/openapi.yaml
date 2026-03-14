@@ -1055,6 +1055,48 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/research-refine":
+    post:
+      summary: Refine bounded research output using AI
+      description: Rewrite, condense, and normalize an existing research result without creating a job or launching new browsing.
+      operationId: aiResearchRefine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIResearchRefineRequest"
+      responses:
+        '200':
+          description: Refined research brief
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIResearchRefineResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/crawl-states":
     get:
       summary: List crawl states
@@ -3965,6 +4007,100 @@ components:
         recheck_error:
           type: string
           description: Error observed while rechecking the current pipeline JS script
+    AIResearchRefineRequest:
+      type: object
+      description: Request for bounded research-output refinement.
+      required:
+      - result
+      properties:
+        result:
+          "$ref": "#/components/schemas/ResearchResult"
+        instructions:
+          type: string
+          description: Optional operator guidance for the refinement rewrite
+    AIResearchRefineInputStats:
+      type: object
+      properties:
+        evidenceCount:
+          type: integer
+        evidenceUsedCount:
+          type: integer
+        clusterCount:
+          type: integer
+        citationCount:
+          type: integer
+        hasAgentic:
+          type: boolean
+    AIResearchEvidenceHighlight:
+      type: object
+      required:
+      - url
+      - finding
+      properties:
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        finding:
+          type: string
+        relevance:
+          type: string
+        citationUrl:
+          type: string
+          format: uri
+    AIResearchRefinedContent:
+      type: object
+      required:
+      - summary
+      - conciseSummary
+      - keyFindings
+      properties:
+        summary:
+          type: string
+        conciseSummary:
+          type: string
+        keyFindings:
+          type: array
+          items:
+            type: string
+        openQuestions:
+          type: array
+          items:
+            type: string
+        recommendedNextSteps:
+          type: array
+          items:
+            type: string
+        evidenceHighlights:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIResearchEvidenceHighlight"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+    AIResearchRefineResponse:
+      type: object
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+        inputStats:
+          "$ref": "#/components/schemas/AIResearchRefineInputStats"
+        refined:
+          "$ref": "#/components/schemas/AIResearchRefinedContent"
+        markdown:
+          type: string
+        explanation:
+          type: string
+        route_id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
     PipelineOptions:
       type: object
       properties:

@@ -25,6 +25,7 @@ const (
 	OperationGenerateTemplate      = "generate_template"
 	OperationGenerateRenderProfile = "generate_render_profile"
 	OperationGeneratePipelineJS    = "generate_pipeline_js"
+	OperationResearchRefine        = "research_refine"
 )
 
 type requestEnvelope struct {
@@ -193,6 +194,101 @@ type GeneratePipelineJSResult struct {
 	Model       string                 `json:"model,omitempty"`
 }
 
+type BridgeResearchEvidence struct {
+	URL         string                      `json:"url"`
+	Title       string                      `json:"title,omitempty"`
+	Snippet     string                      `json:"snippet,omitempty"`
+	Score       float64                     `json:"score,omitempty"`
+	SimHash     uint64                      `json:"simhash,omitempty"`
+	ClusterID   string                      `json:"clusterId,omitempty"`
+	Confidence  float64                     `json:"confidence,omitempty"`
+	CitationURL string                      `json:"citationUrl,omitempty"`
+	Fields      map[string]BridgeFieldValue `json:"fields,omitempty"`
+}
+
+type BridgeResearchEvidenceCluster struct {
+	ID         string                   `json:"id"`
+	Label      string                   `json:"label,omitempty"`
+	Evidence   []BridgeResearchEvidence `json:"evidence,omitempty"`
+	Confidence float64                  `json:"confidence,omitempty"`
+}
+
+type BridgeResearchCitation struct {
+	URL       string `json:"url,omitempty"`
+	Anchor    string `json:"anchor,omitempty"`
+	Canonical string `json:"canonical,omitempty"`
+}
+
+type BridgeResearchAgenticRound struct {
+	Round              int      `json:"round"`
+	Goal               string   `json:"goal,omitempty"`
+	FocusAreas         []string `json:"focusAreas,omitempty"`
+	SelectedURLs       []string `json:"selectedUrls,omitempty"`
+	AddedEvidenceCount int      `json:"addedEvidenceCount,omitempty"`
+	Reasoning          string   `json:"reasoning,omitempty"`
+}
+
+type BridgeResearchAgenticResult struct {
+	Status               string                       `json:"status"`
+	Instructions         string                       `json:"instructions,omitempty"`
+	Summary              string                       `json:"summary,omitempty"`
+	Objective            string                       `json:"objective,omitempty"`
+	FocusAreas           []string                     `json:"focusAreas,omitempty"`
+	KeyFindings          []string                     `json:"keyFindings,omitempty"`
+	OpenQuestions        []string                     `json:"openQuestions,omitempty"`
+	RecommendedNextSteps []string                     `json:"recommendedNextSteps,omitempty"`
+	FollowUpURLs         []string                     `json:"followUpUrls,omitempty"`
+	Rounds               []BridgeResearchAgenticRound `json:"rounds,omitempty"`
+	Confidence           float64                      `json:"confidence,omitempty"`
+	RouteID              string                       `json:"route_id,omitempty"`
+	Provider             string                       `json:"provider,omitempty"`
+	Model                string                       `json:"model,omitempty"`
+	Cached               bool                         `json:"cached,omitempty"`
+	Error                string                       `json:"error,omitempty"`
+}
+
+type BridgeResearchResult struct {
+	Query      string                          `json:"query,omitempty"`
+	Summary    string                          `json:"summary,omitempty"`
+	Confidence float64                         `json:"confidence,omitempty"`
+	Evidence   []BridgeResearchEvidence        `json:"evidence,omitempty"`
+	Clusters   []BridgeResearchEvidenceCluster `json:"clusters,omitempty"`
+	Citations  []BridgeResearchCitation        `json:"citations,omitempty"`
+	Agentic    *BridgeResearchAgenticResult    `json:"agentic,omitempty"`
+}
+
+type ResearchRefineRequest struct {
+	Result       BridgeResearchResult `json:"result"`
+	Instructions string               `json:"instructions,omitempty"`
+	Feedback     string               `json:"feedback,omitempty"`
+}
+
+type ResearchEvidenceHighlight struct {
+	URL         string `json:"url"`
+	Title       string `json:"title,omitempty"`
+	Finding     string `json:"finding"`
+	Relevance   string `json:"relevance,omitempty"`
+	CitationURL string `json:"citationUrl,omitempty"`
+}
+
+type ResearchRefinedContent struct {
+	Summary              string                      `json:"summary"`
+	ConciseSummary       string                      `json:"conciseSummary"`
+	KeyFindings          []string                    `json:"keyFindings"`
+	OpenQuestions        []string                    `json:"openQuestions,omitempty"`
+	RecommendedNextSteps []string                    `json:"recommendedNextSteps,omitempty"`
+	EvidenceHighlights   []ResearchEvidenceHighlight `json:"evidenceHighlights,omitempty"`
+	Confidence           float64                     `json:"confidence,omitempty"`
+}
+
+type ResearchRefineResult struct {
+	Refined     ResearchRefinedContent `json:"refined"`
+	Explanation string                 `json:"explanation,omitempty"`
+	RouteID     string                 `json:"route_id,omitempty"`
+	Provider    string                 `json:"provider,omitempty"`
+	Model       string                 `json:"model,omitempty"`
+}
+
 type BridgeFieldValue struct {
 	Values    []string `json:"values,omitempty"`
 	Source    string   `json:"source"`
@@ -289,6 +385,12 @@ func (c *Client) GenerateRenderProfile(ctx context.Context, req GenerateRenderPr
 func (c *Client) GeneratePipelineJS(ctx context.Context, req GeneratePipelineJSRequest) (GeneratePipelineJSResult, error) {
 	var resp GeneratePipelineJSResult
 	err := c.call(ctx, OperationGeneratePipelineJS, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GenerateResearchRefinement(ctx context.Context, req ResearchRefineRequest) (ResearchRefineResult, error) {
+	var resp ResearchRefineResult
+	err := c.call(ctx, OperationResearchRefine, req, &resp)
 	return resp, err
 }
 

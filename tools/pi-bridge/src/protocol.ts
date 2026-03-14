@@ -3,19 +3,22 @@ export const CAPABILITY_EXTRACT_SCHEMA = "extract.schema_guided";
 export const CAPABILITY_TEMPLATE_GENERATE = "template.generate";
 export const CAPABILITY_RENDER_PROFILE_GENERATE = "render_profile.generate";
 export const CAPABILITY_PIPELINE_JS_GENERATE = "pipeline_js.generate";
+export const CAPABILITY_RESEARCH_REFINE = "research.refine";
 
 export const OP_HEALTH = "health";
 export const OP_EXTRACT_PREVIEW = "extract_preview";
 export const OP_GENERATE_TEMPLATE = "generate_template";
 export const OP_GENERATE_RENDER_PROFILE = "generate_render_profile";
 export const OP_GENERATE_PIPELINE_JS = "generate_pipeline_js";
+export const OP_RESEARCH_REFINE = "research_refine";
 
 export type BridgeOperation =
   | typeof OP_HEALTH
   | typeof OP_EXTRACT_PREVIEW
   | typeof OP_GENERATE_TEMPLATE
   | typeof OP_GENERATE_RENDER_PROFILE
-  | typeof OP_GENERATE_PIPELINE_JS;
+  | typeof OP_GENERATE_PIPELINE_JS
+  | typeof OP_RESEARCH_REFINE;
 
 export interface BridgeRequest<TPayload = unknown> {
   id: string;
@@ -53,7 +56,7 @@ export interface ExtractPayload {
 
 export interface BridgeFieldValue {
   values: string[];
-  source: "llm";
+  source: string;
   rawObject?: string;
 }
 
@@ -92,6 +95,101 @@ export interface GeneratePipelineJsPayload {
   context_summary?: string;
   feedback?: string;
   images?: ImageInput[];
+}
+
+export interface ResearchEvidence {
+  url: string;
+  title?: string;
+  snippet?: string;
+  score?: number;
+  simhash?: number;
+  clusterId?: string;
+  confidence?: number;
+  citationUrl?: string;
+  fields?: Record<string, BridgeFieldValue>;
+}
+
+export interface ResearchEvidenceCluster {
+  id: string;
+  label?: string;
+  confidence?: number;
+  evidence?: ResearchEvidence[];
+}
+
+export interface ResearchCitation {
+  url?: string;
+  anchor?: string;
+  canonical?: string;
+}
+
+export interface ResearchAgenticRound {
+  round: number;
+  goal?: string;
+  focusAreas?: string[];
+  selectedUrls?: string[];
+  addedEvidenceCount?: number;
+  reasoning?: string;
+}
+
+export interface ResearchAgenticResult {
+  status: string;
+  instructions?: string;
+  summary?: string;
+  objective?: string;
+  focusAreas?: string[];
+  keyFindings?: string[];
+  openQuestions?: string[];
+  recommendedNextSteps?: string[];
+  followUpUrls?: string[];
+  rounds?: ResearchAgenticRound[];
+  confidence?: number;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+  cached?: boolean;
+  error?: string;
+}
+
+export interface ResearchResultInput {
+  query?: string;
+  summary?: string;
+  confidence?: number;
+  evidence?: ResearchEvidence[];
+  clusters?: ResearchEvidenceCluster[];
+  citations?: ResearchCitation[];
+  agentic?: ResearchAgenticResult;
+}
+
+export interface ResearchRefinePayload {
+  result: ResearchResultInput;
+  instructions?: string;
+  feedback?: string;
+}
+
+export interface ResearchEvidenceHighlight {
+  url: string;
+  title?: string;
+  finding: string;
+  relevance?: string;
+  citationUrl?: string;
+}
+
+export interface ResearchRefinedContent {
+  summary: string;
+  conciseSummary: string;
+  keyFindings: string[];
+  openQuestions?: string[];
+  recommendedNextSteps?: string[];
+  evidenceHighlights?: ResearchEvidenceHighlight[];
+  confidence?: number;
+}
+
+export interface ResearchRefineResult {
+  refined: ResearchRefinedContent;
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface SelectorRule {

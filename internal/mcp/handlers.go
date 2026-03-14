@@ -33,6 +33,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
@@ -153,6 +154,16 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			Headless:      paramdecode.Bool(params.Arguments, "headless"),
 			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
 			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case "ai_research_refine":
+		researchResult := paramdecode.Decode[research.Result](params.Arguments, "result")
+		result, err := s.aiAuthoring.RefineResearch(ctx, aiauthoring.ResearchRefineRequest{
+			Result:       researchResult,
+			Instructions: strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
 		})
 		if err != nil {
 			return nil, err

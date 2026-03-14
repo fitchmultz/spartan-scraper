@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { loadBridgeConfig, parseRouteId } from "./config.js";
 import {
   CAPABILITY_EXTRACT_NATURAL,
+  CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
 } from "./protocol.js";
 
@@ -13,6 +14,11 @@ test("loadBridgeConfig uses defaults without config file", () => {
   const config = loadBridgeConfig({});
   assert.equal(config.mode, "sdk");
   assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
+    "openai/gpt-5.4",
+    "kimi-coding/k2p5",
+    "zai/glm-5",
+  ]);
+  assert.deepEqual(config.routes[CAPABILITY_RESEARCH_REFINE], [
     "openai/gpt-5.4",
     "kimi-coding/k2p5",
     "zai/glm-5",

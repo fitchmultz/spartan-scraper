@@ -11,6 +11,7 @@ import {
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_PIPELINE_JS_GENERATE,
   CAPABILITY_RENDER_PROFILE_GENERATE,
+  CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
 } from "./protocol.js";
 
@@ -391,6 +392,96 @@ test("generateRenderProfile validates structured profile output", async () => {
   assert.equal(result.provider, "openai");
   assert.equal(result.model, "gpt-5.4");
   assert.equal(result.profile.preferHeadless, true);
+});
+
+test("refineResearch validates structured bounded research output", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_RESEARCH_REFINE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.equal(typeof userMessage.content, "string");
+        assert.match(
+          userMessage.content as string,
+          /Research result JSON:/,
+        );
+        return createToolResponse({
+          toolName: "submit_research_refinement",
+          arguments: {
+            refined: {
+              summary:
+                "Enterprise pricing appears to be handled through direct sales, with support commitments described in the vendor documentation.",
+              conciseSummary: "Direct-sales pricing with documented support commitments.",
+              keyFindings: [
+                "Pricing is described through sales-led or enterprise channels.",
+              ],
+              openQuestions: ["Are SLA terms documented publicly?"],
+              recommendedNextSteps: [
+                "Confirm final SLA details with the vendor sales team.",
+              ],
+              evidenceHighlights: [
+                {
+                  url: "https://example.com/pricing",
+                  title: "Pricing",
+                  finding: "The pricing page routes users to contact sales.",
+                  citationUrl: "https://example.com/pricing",
+                },
+              ],
+              confidence: 0.81,
+            },
+            explanation: "Rewrote the research brief into a tighter operator summary.",
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.refineResearch(CAPABILITY_RESEARCH_REFINE, {
+    result: {
+      query: "pricing and support commitments",
+      summary: "Original summary",
+      evidence: [
+        {
+          url: "https://example.com/pricing",
+          title: "Pricing",
+          snippet: "Contact sales for enterprise pricing.",
+          citationUrl: "https://example.com/pricing",
+        },
+      ],
+      citations: [
+        {
+          canonical: "https://example.com/pricing",
+          url: "https://example.com/pricing",
+        },
+      ],
+    },
+    instructions: "Produce a concise operator-ready brief.",
+  });
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.provider, "openai");
+  assert.equal(result.model, "gpt-5.4");
+  assert.equal(
+    result.refined.conciseSummary,
+    "Direct-sales pricing with documented support commitments.",
+  );
+  assert.equal(result.refined.evidenceHighlights?.[0]?.url, "https://example.com/pricing");
 });
 
 test("generatePipelineJs sends screenshot context as multimodal user content", async () => {

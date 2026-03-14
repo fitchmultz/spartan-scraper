@@ -3,6 +3,9 @@ import type {
   ExtractResult,
   PipelineJsResult,
   RenderProfileResult,
+  ResearchEvidenceHighlight,
+  ResearchRefineResult,
+  ResearchRefinedContent,
   TemplateResult,
 } from "./protocol.js";
 
@@ -92,6 +95,16 @@ export function validatePipelineJsResult(result: PipelineJsResult): PipelineJsRe
   return result;
 }
 
+export function validateResearchRefineResult(
+  result: ResearchRefineResult,
+): ResearchRefineResult {
+  if (!result || typeof result !== "object") {
+    throw new Error("research refinement result must be an object");
+  }
+  result.refined = normalizeRefinedContent(result.refined);
+  return result;
+}
+
 function validateFieldValue(fieldName: string, value: BridgeFieldValue) {
   if (!Array.isArray(value.values)) {
     throw new Error(`extract result field ${fieldName} must include values array`);
@@ -162,6 +175,131 @@ function normalizeConfidence(raw: unknown): number {
     }
   }
   throw new Error("extract result must include numeric confidence");
+}
+
+function normalizeRefinedContent(raw: unknown): ResearchRefinedContent {
+  const refined = expectRecord(raw, "research refinement result refined");
+  const summary = expectNonEmptyString(refined.summary, "research refinement summary");
+  const conciseSummary = expectNonEmptyString(
+    refined.conciseSummary,
+    "research refinement conciseSummary",
+  );
+  const keyFindings = normalizeStringArray(
+    refined.keyFindings,
+    "research refinement keyFindings",
+  );
+  if (keyFindings.length === 0) {
+    throw new Error("research refinement must include at least one key finding");
+  }
+
+  const normalized: ResearchRefinedContent = {
+    summary,
+    conciseSummary,
+    keyFindings,
+  };
+
+  const openQuestions = normalizeOptionalStringArray(
+    refined.openQuestions,
+    "research refinement openQuestions",
+  );
+  if (openQuestions.length > 0) {
+    normalized.openQuestions = openQuestions;
+  }
+
+  const recommendedNextSteps = normalizeOptionalStringArray(
+    refined.recommendedNextSteps,
+    "research refinement recommendedNextSteps",
+  );
+  if (recommendedNextSteps.length > 0) {
+    normalized.recommendedNextSteps = recommendedNextSteps;
+  }
+
+  const evidenceHighlights = normalizeEvidenceHighlights(refined.evidenceHighlights);
+  if (evidenceHighlights.length > 0) {
+    normalized.evidenceHighlights = evidenceHighlights;
+  }
+
+  if (refined.confidence !== undefined && refined.confidence !== null) {
+    normalized.confidence = normalizeUnitInterval(
+      refined.confidence,
+      "research refinement confidence",
+    );
+  }
+
+  return normalized;
+}
+
+function normalizeEvidenceHighlights(raw: unknown): ResearchEvidenceHighlight[] {
+  if (raw == null) {
+    return [];
+  }
+  if (!Array.isArray(raw)) {
+    throw new Error("research refinement evidenceHighlights must be an array");
+  }
+
+  return raw.map((entry, index) => {
+    const value = expectRecord(
+      entry,
+      `research refinement evidenceHighlight[${index}]`,
+    );
+    const highlight: ResearchEvidenceHighlight = {
+      url: expectNonEmptyString(
+        value.url,
+        `research refinement evidenceHighlight[${index}].url`,
+      ),
+      finding: expectNonEmptyString(
+        value.finding,
+        `research refinement evidenceHighlight[${index}].finding`,
+      ),
+    };
+
+    if (typeof value.title === "string" && value.title.trim()) {
+      highlight.title = value.title.trim();
+    }
+    if (typeof value.relevance === "string" && value.relevance.trim()) {
+      highlight.relevance = value.relevance.trim();
+    }
+    if (typeof value.citationUrl === "string" && value.citationUrl.trim()) {
+      highlight.citationUrl = value.citationUrl.trim();
+    }
+    return highlight;
+  });
+}
+
+function normalizeOptionalStringArray(raw: unknown, label: string): string[] {
+  if (raw == null) {
+    return [];
+  }
+  return normalizeStringArray(raw, label);
+}
+
+function normalizeStringArray(raw: unknown, label: string): string[] {
+  if (!Array.isArray(raw)) {
+    throw new Error(`${label} must be an array`);
+  }
+  return raw
+    .map((entry, index) =>
+      expectNonEmptyString(entry, `${label}[${index}]`),
+    )
+    .filter(Boolean);
+}
+
+function expectNonEmptyString(raw: unknown, label: string): string {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  return raw.trim();
+}
+
+function normalizeUnitInterval(raw: unknown, label: string): number {
+  const value = typeof raw === "string" && raw.trim() ? Number(raw) : raw;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be numeric`);
+  }
+  if (value < 0 || value > 1) {
+    throw new Error(`${label} must be between 0 and 1`);
+  }
+  return value;
 }
 
 function clampConfidence(value: number): number {

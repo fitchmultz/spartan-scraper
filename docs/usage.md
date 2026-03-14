@@ -200,6 +200,7 @@ spartan ai render-profile [flags]
 spartan ai render-profile-debug [flags]
 spartan ai pipeline-js [flags]
 spartan ai pipeline-js-debug [flags]
+spartan ai research-refine [flags]
 ```
 
 These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs.
@@ -278,6 +279,14 @@ Pipeline-JS-debug flags:
 - `--visual` to capture a screenshot and include multimodal visual context for tuning
 - `--out <path>`
 
+Research-refine flags:
+
+- `--job-id <research-job-id>` or `--result-file <path>`
+- `--instructions "<rewrite guidance>"`
+- `--out <path>`
+
+`--result-file` accepts a single research result as a JSON object, a single-item JSON array, or a single-result JSONL file.
+
 Examples:
 
 ```bash
@@ -326,6 +335,10 @@ spartan ai pipeline-js-debug \
   --script-name example-app \
   --instructions "Prefer selector waits over post-nav JS where possible" \
   --visual
+
+spartan ai research-refine \
+  --job-id <research-job-id> \
+  --instructions "Condense this into an operator-ready brief with the strongest evidence first"
 ```
 
 ### Auth
@@ -539,7 +552,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`) instead.
+- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI
@@ -616,6 +629,7 @@ Bounded AI authoring endpoints live under `/v1/ai/*`:
 - `/v1/ai/render-profile-debug`
 - `/v1/ai/pipeline-js-generate`
 - `/v1/ai/pipeline-js-debug`
+- `/v1/ai/research-refine`
 
 For scrape, crawl, and research job creation, AI extraction rides inside the normal extract payload:
 

@@ -18,6 +18,8 @@ import type {
   HealthRouteStatus,
   PipelineJsResult,
   RenderProfileResult,
+  ResearchRefinePayload,
+  ResearchRefineResult,
   TemplateResult,
 } from "./protocol.js";
 import { parseRouteId } from "./config.js";
@@ -25,6 +27,7 @@ import {
   normalizeExtractResult,
   validatePipelineJsResult,
   validateRenderProfileResult,
+  validateResearchRefineResult,
   validateTemplateResult,
 } from "./validation.js";
 
@@ -261,6 +264,45 @@ export class SDKBackend {
     );
   }
 
+  async refineResearch(
+    capability: string,
+    payload: ResearchRefinePayload,
+  ): Promise<ResearchRefineResult> {
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: false,
+        });
+        const tool = this.researchRefineTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildResearchRefinePrompt(payload),
+            systemPrompt:
+              "You refine bounded Spartan research outputs. Use only the supplied research result. Do not invent sources, URLs, or evidence. Call the submit_research_refinement tool exactly once with a grounded rewrite that preserves uncertainty.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
+
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validateResearchRefineResult({
+          ...(args as ResearchRefineResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
+  }
+
   private inspectRoute(routeId: string): HealthRouteStatus {
     try {
       const { provider, model } = parseRouteId(routeId);
@@ -485,6 +527,36 @@ export class SDKBackend {
       }),
     };
   }
+
+  private researchRefineTool(): Tool {
+    return {
+      name: "submit_research_refinement",
+      description:
+        "Submit a grounded refinement of the provided Spartan research result.",
+      parameters: Type.Object({
+        refined: Type.Object({
+          summary: Type.String(),
+          conciseSummary: Type.String(),
+          keyFindings: Type.Array(Type.String()),
+          openQuestions: Type.Optional(Type.Array(Type.String())),
+          recommendedNextSteps: Type.Optional(Type.Array(Type.String())),
+          evidenceHighlights: Type.Optional(
+            Type.Array(
+              Type.Object({
+                url: Type.String(),
+                title: Type.Optional(Type.String()),
+                finding: Type.String(),
+                relevance: Type.Optional(Type.String()),
+                citationUrl: Type.Optional(Type.String()),
+              }),
+            ),
+          ),
+          confidence: Type.Optional(Type.Number()),
+        }),
+        explanation: Type.Optional(Type.String()),
+      }),
+    };
+  }
 }
 
 export function modelSupportsImages(model: { input: string[] }): boolean {
@@ -586,6 +658,25 @@ function buildPipelineJsPrompt(payload: GeneratePipelineJsPayload): string {
     parts.push("A screenshot is attached. Use it as supplemental visual context for deciding selectors, waits, and any necessary browser-side automation.");
   }
   parts.push(`HTML:\n${payload.html}`);
+  return parts.join("\n\n");
+}
+
+function buildResearchRefinePrompt(payload: ResearchRefinePayload): string {
+  const parts: string[] = [
+    `Research query: ${payload.result.query?.trim() || "(missing)"}`,
+  ];
+  if (payload.instructions?.trim()) {
+    parts.push(`Operator goal: ${payload.instructions.trim()}`);
+  }
+  if (payload.feedback?.trim()) {
+    parts.push(`Validation feedback: ${payload.feedback.trim()}`);
+  }
+  parts.push(
+    "Refine only the supplied research output. Stay grounded in the provided evidence and preserve uncertainty where the evidence is incomplete.",
+  );
+  parts.push(
+    `Research result JSON:\n${JSON.stringify(payload.result, null, 2)}`,
+  );
   return parts.join("\n\n");
 }
 
