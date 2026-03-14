@@ -1,8 +1,7 @@
-// Package api provides integration tests for job results transform export functionality.
-// Tests cover applying JMESPath and JSONata transformations during export.
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,418 +17,224 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
-func TestHandleJobResultsWithTransform_JMESPath(t *testing.T) {
+func TestHandleJobExportWithTransform_JMESPath(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-jmespath"
+	jobID := "test-job-export-jmespath"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Test Page","content":"Hello World"}`)
 
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := `{"url":"https://example.com","status":200,"title":"Test Page","content":"Hello World"}`
-	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
-
-	// Test JMESPath transformation
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=json&transform_expression=%s&transform_language=jmespath",
-		jobID, "%7Btitle%3A%20title%2C%20url%3A%20url%7D"), nil)
+	body := `{"format":"json","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("expected 200, got %v: %s", status, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("expected application/json, got %q", ct)
 	}
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &results); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-
 	if len(results) != 1 {
-		t.Errorf("expected 1 result, got %d", len(results))
+		t.Fatalf("expected 1 result, got %d", len(results))
 	}
-
-	// Verify transformation was applied (only title and url fields)
 	if _, ok := results[0]["title"]; !ok {
-		t.Error("expected result to have 'title' field")
-	}
-	if _, ok := results[0]["url"]; !ok {
-		t.Error("expected result to have 'url' field")
+		t.Fatal("expected transformed result to contain title")
 	}
 	if _, ok := results[0]["content"]; ok {
-		t.Error("result should not have 'content' field after transformation")
-	}
-	if _, ok := results[0]["status"]; ok {
-		t.Error("result should not have 'status' field after transformation")
+		t.Fatalf("expected transformed result to omit content: %#v", results[0])
 	}
 }
 
-func TestHandleJobResultsWithTransform_JSONata(t *testing.T) {
+func TestHandleJobExportWithTransform_JSONata(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-jsonata"
+	jobID := "test-job-export-jsonata"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"name":"Product A","price":100,"quantity":2}`)
 
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := `{"name":"Product A","price":100,"quantity":2}`
-	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
-
-	// Test JSONata transformation with calculation
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=json&transform_expression=%s&transform_language=jsonata",
-		jobID, "%7B%22item%22%3A%20name%2C%20%22total%22%3A%20price%20*%20quantity%7D"), nil)
+	body := `{"format":"json","transform":{"expression":"{\"item\": name, \"total\": price * quantity}","language":"jsonata"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("expected 200, got %v: %s", status, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &results); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-
-	if len(results) != 1 {
-		t.Errorf("expected 1 result, got %d", len(results))
-	}
-
-	// Verify transformation was applied
-	if results[0]["item"] != "Product A" {
-		t.Errorf("expected item to be 'Product A', got %v", results[0]["item"])
-	}
-	if results[0]["total"] != float64(200) {
-		t.Errorf("expected total to be 200, got %v", results[0]["total"])
+	if len(results) != 1 || results[0]["item"] != "Product A" || results[0]["total"] != float64(200) {
+		t.Fatalf("unexpected transformed results: %#v", results)
 	}
 }
 
-func TestHandleJobResultsWithTransform_InvalidLanguage(t *testing.T) {
+func TestHandleJobExportWithTransform_InvalidLanguage(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-invalid-lang"
+	jobID := "test-job-export-invalid-language"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"test":"data"}`)
 
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	if err := os.WriteFile(resultPath, []byte(`{"test":"data"}`), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
-
-	// Test with invalid transform language
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=json&transform_expression=%s&transform_language=invalid",
-		jobID, "%7Btitle%3A%20title%7D"), nil)
+	body := `{"format":"json","transform":{"expression":"{title: title}","language":"invalid"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("expected 400 for invalid language, got %v", status)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rr.Code, rr.Body.String())
 	}
 }
 
-func TestHandleJobResultsWithTransform_InvalidExpression(t *testing.T) {
+func TestHandleJobExportWithTransform_InvalidExpression(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-invalid-expr"
+	jobID := "test-job-export-invalid-expression"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"test":"data"}`)
 
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	if err := os.WriteFile(resultPath, []byte(`{"test":"data"}`), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
-
-	// Test with invalid JMESPath expression
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=json&transform_expression=%s&transform_language=jmespath",
-		jobID, "%7Binvalid"), nil)
+	body := `{"format":"json","transform":{"expression":"{invalid","language":"jmespath"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("expected 400 for invalid expression, got %v", status)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rr.Code, rr.Body.String())
 	}
 }
 
-func TestHandleJobResultsWithTransform_CSVFormat(t *testing.T) {
+func TestHandleJobExportWithTransform_CSVFormat(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-csv-transform"
+	jobID := "test-job-export-csv-transform"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Test Page"}`)
 
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := `{"url":"https://example.com","status":200,"title":"Test Page"}`
-	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
-
-	// Test CSV export with transformation
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=csv&transform_expression=%s&transform_language=jmespath",
-		jobID, "%7Btitle%3A%20title%7D"), nil)
+	body := `{"format":"csv","transform":{"expression":"{title: title}","language":"jmespath"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("expected 200, got %v: %s", status, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
-
-	ct := rr.Header().Get("Content-Type")
-	if ct != "text/csv; charset=utf-8" {
-		t.Errorf("expected Content-Type text/csv; charset=utf-8, got %v", ct)
+	if ct := rr.Header().Get("Content-Type"); ct != "text/csv; charset=utf-8" {
+		t.Fatalf("expected text/csv; charset=utf-8, got %q", ct)
 	}
-
-	bodyStr := rr.Body.String()
-	if !strings.Contains(bodyStr, "title") {
-		t.Error("CSV should contain 'title' header")
-	}
-	if strings.Contains(bodyStr, "status") {
-		t.Error("CSV should not contain 'status' column after transformation")
+	if body := rr.Body.String(); !strings.Contains(body, "title") || strings.Contains(body, "status") {
+		t.Fatalf("unexpected csv export: %s", body)
 	}
 }
 
-func TestHandleJobResultsWithTransform_JSONL(t *testing.T) {
+func TestHandleJobExportWithTransform_JSONL(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-jsonl-transform"
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindCrawl,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := strings.Join([]string{
+	jobID := "test-job-export-jsonl-transform"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindCrawl, strings.Join([]string{
 		`{"url":"https://example.com/a","title":"A","status":200}`,
 		`{"url":"https://example.com/b","title":"B","status":200}`,
-	}, "\n")
-	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
-	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
-		t.Fatalf("failed to update job status: %v", err)
-	}
+	}, "\n"))
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=jsonl&transform_expression=%s&transform_language=jmespath",
-		jobID, "%7Btitle%3A%20title%2C%20url%3A%20url%7D"), nil)
+	body := `{"format":"jsonl","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 	if ct := rr.Header().Get("Content-Type"); ct != "application/x-ndjson" {
-		t.Fatalf("expected ndjson content type, got %q", ct)
+		t.Fatalf("expected application/x-ndjson, got %q", ct)
 	}
 	if strings.Contains(rr.Body.String(), "status") {
 		t.Fatalf("expected transformed jsonl to omit status: %s", rr.Body.String())
 	}
 }
 
-func TestHandleJobResultsWithTransform_JSONLPagination(t *testing.T) {
+func TestHandleJobExportWithShape(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-jsonl-transform-page"
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindCrawl,
-		Status:    model.StatusSucceeded,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := strings.Join([]string{
-		`{"url":"https://example.com/a","title":"A","status":200}`,
-		`{"url":"https://example.com/b","title":"B","status":200}`,
-		`{"url":"https://example.com/c","title":"C","status":200}`,
-	}, "\n")
-	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
-		t.Fatalf("failed to write result file: %v", err)
-	}
-	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
-	}
+	jobID := "test-job-export-shape"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Test Page","normalized":{"fields":{"price":{"values":["$10"]}}}}`)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=jsonl&limit=2&offset=1&transform_expression=%s&transform_language=jmespath",
-		jobID, "%7Btitle%3A%20title%2C%20url%3A%20url%7D"), nil)
+	body := `{"format":"md","shape":{"summaryFields":["title","url"],"normalizedFields":["field.price"]}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
-	if total := rr.Header().Get("X-Total-Count"); total != "3" {
-		t.Fatalf("expected X-Total-Count 3, got %q", total)
+	if ct := rr.Header().Get("Content-Type"); ct != "text/markdown; charset=utf-8" {
+		t.Fatalf("expected markdown content type, got %q", ct)
 	}
-	var items []map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &items); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if len(items) != 2 || items[0]["title"] != "B" || items[1]["title"] != "C" {
-		t.Fatalf("unexpected transformed page: %#v", items)
+	if !strings.Contains(rr.Body.String(), "Test Page") || !strings.Contains(rr.Body.String(), "$10") {
+		t.Fatalf("unexpected shaped markdown: %s", rr.Body.String())
 	}
 }
 
-func TestLoadAllJobResults(t *testing.T) {
+func TestHandleJobExportRejectsShapeAndTransform(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	jobID := "test-job-load-all"
+	jobID := "test-job-export-shape-and-transform"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","title":"Test Page"}`)
 
-	// Create job directly in store to avoid async processing
+	body := `{"format":"csv","shape":{"topLevelFields":["url"]},"transform":{"expression":"{url: url}","language":"jmespath"}}`
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleJobExportXLSX(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	jobID := "test-job-export-xlsx"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Test Page"}`)
+
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), `{"format":"xlsx"}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" {
+		t.Fatalf("unexpected xlsx content type: %q", ct)
+	}
+	if len(rr.Body.Bytes()) == 0 {
+		t.Fatal("expected xlsx bytes")
+	}
+}
+
+func createSucceededJobWithResult(t *testing.T, srv *Server, ctx context.Context, jobID string, kind model.Kind, resultContent string) {
+	t.Helper()
 	job := model.Job{
 		ID:        jobID,
-		Kind:      model.KindScrape,
+		Kind:      kind,
 		Status:    model.StatusQueued,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -438,111 +243,24 @@ func TestLoadAllJobResults(t *testing.T) {
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
 	}
-
 	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
 	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)
 	}
-
 	resultPath := filepath.Join(resultDir, "results.jsonl")
-	resultContent := `{"id":1,"name":"First"}
-{"id":2,"name":"Second"}
-{"id":3,"name":"Third"}`
 	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
 		t.Fatalf("failed to write result file: %v", err)
 	}
-
 	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
-		t.Fatalf("failed to update job result_path: %v", err)
+		t.Fatalf("failed to update job result path: %v", err)
 	}
 	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
 		t.Fatalf("failed to update job status: %v", err)
 	}
-
-	// Create a minimal job struct for testing
-	testJob := model.Job{
-		ID:         jobID,
-		ResultPath: resultPath,
-	}
-
-	results, err := srv.loadAllJobResults(testJob)
-	if err != nil {
-		t.Fatalf("failed to load all job results: %v", err)
-	}
-
-	if len(results) != 3 {
-		t.Errorf("expected 3 results, got %d", len(results))
-	}
-
-	// Verify each result
-	for i, r := range results {
-		result, ok := r.(map[string]interface{})
-		if !ok {
-			t.Fatalf("result %d is not an object", i)
-		}
-		expectedID := float64(i + 1)
-		if result["id"] != expectedID {
-			t.Errorf("expected result %d to have id %v, got %v", i, expectedID, result["id"])
-		}
-	}
 }
 
-func TestLoadAllJobResults_EmptyPath(t *testing.T) {
-	srv, cleanup := setupTestServer(t)
-	defer cleanup()
-	defer cleanup()
-
-	testJob := model.Job{
-		ID:         "test-job",
-		ResultPath: "",
-	}
-
-	results, err := srv.loadAllJobResults(testJob)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(results) != 0 {
-		t.Errorf("expected 0 results for empty path, got %d", len(results))
-	}
-}
-
-func TestLoadAllJobResults_MissingFile(t *testing.T) {
-	srv, cleanup := setupTestServer(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	jobID := "test-job-missing-file"
-
-	// Create job directly in store to avoid async processing
-	job := model.Job{
-		ID:        jobID,
-		Kind:      model.KindScrape,
-		Status:    model.StatusQueued,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Spec:      map[string]any{"url": "https://example.com"},
-	}
-	if err := srv.store.Create(ctx, job); err != nil {
-		t.Fatalf("failed to create job: %v", err)
-	}
-
-	// Create the result directory but not the file
-	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
-	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
-		t.Fatalf("failed to create result directory: %v", err)
-	}
-
-	// Use a path within the allowed directory that doesn't exist
-	resultPath := filepath.Join(resultDir, "results.jsonl")
-
-	testJob := model.Job{
-		ID:         jobID,
-		ResultPath: resultPath,
-	}
-
-	_, err := srv.loadAllJobResults(testJob)
-	if err == nil {
-		t.Error("expected error for missing file")
-	}
+func newJSONExportRequest(method, path, body string) *http.Request {
+	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }

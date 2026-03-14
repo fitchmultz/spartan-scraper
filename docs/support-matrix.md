@@ -8,12 +8,13 @@
 - Scrape, crawl, and research jobs
 - Templates, pipeline JS, auth vault, schedules, batches, chains, watches, retention, and backup/restore
 - Exports: `json`, `jsonl`, `csv`, `md`, `xlsx`
+- Direct saved-result exports use one shared `format` / `shape` / `transform` contract across REST, Web UI, CLI, and MCP; `shape` and `transform` are mutually exclusive.
 
 ## AI Interface Policy
 
 - REST is the canonical machine surface for bounded AI authoring and job-integrated AI extraction.
 - Web UI is the primary interactive AI surface.
-- CLI and MCP expose both job-launching AI controls and dedicated AI preview, template generation, template debugging, render-profile generation, render-profile debugging, pipeline-JS generation, pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, and recurring export-contract workflows.
+- CLI and MCP expose both job-launching AI controls and dedicated AI preview, template generation, template debugging, render-profile generation, render-profile debugging, pipeline-JS generation, pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, direct saved-result export contracts, and recurring export-contract workflows.
 - Optional proxy-pool execution is a supported runtime path with read-only status inspection across REST, Web UI, CLI, and MCP.
 - Explicit `PROXY_POOL_FILE` misconfiguration is treated as a startup error rather than silently disabling proxy-backed execution.
 - Request-scoped multimodal image context for AI authoring is supported on REST, Web, CLI, and MCP: operators can attach bounded uploaded/pasted images directly, and URL-based flows can additionally capture screenshots when an image-capable pi route is available.

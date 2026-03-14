@@ -91,6 +91,7 @@ Examples:
   spartan watch check <id>
   spartan watch start
   spartan export --job-id <id> --format md --out ./out/report.md
+  spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv
   spartan schedule add --kind scrape --interval 3600 --url https://example.com
   spartan schedule list
   spartan schedule delete --id <id>

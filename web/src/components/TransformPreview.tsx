@@ -12,7 +12,11 @@ import { useState, useCallback, useEffect } from "react";
 
 interface TransformPreviewProps {
   jobId: string;
-  onApply?: (expression: string, language: "jmespath" | "jsonata") => void;
+  onApply?: (
+    format: "jsonl" | "json" | "md" | "csv" | "xlsx",
+    expression: string,
+    language: "jmespath" | "jsonata",
+  ) => void;
 }
 
 interface TransformResult {
@@ -124,6 +128,9 @@ async function generateTransformWithAI(
 export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
   const [expression, setExpression] = useState("");
   const [language, setLanguage] = useState<"jmespath" | "jsonata">("jmespath");
+  const [exportFormat, setExportFormat] = useState<
+    "jsonl" | "json" | "md" | "csv" | "xlsx"
+  >("json");
   const [limit, setLimit] = useState(10);
   const [isValidating, setIsValidating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -190,9 +197,9 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
 
   const handleApply = useCallback(() => {
     if (onApply && validationResult?.valid) {
-      onApply(expression, language);
+      onApply(exportFormat, expression, language);
     }
-  }, [onApply, expression, language, validationResult]);
+  }, [onApply, exportFormat, expression, language, validationResult]);
 
   const handleGenerateAI = useCallback(async () => {
     setIsGeneratingAI(true);
@@ -289,6 +296,23 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
+              </select>
+            </label>
+            <label style={{ marginLeft: 12 }}>
+              Export format:
+              <select
+                value={exportFormat}
+                onChange={(e) =>
+                  setExportFormat(
+                    e.target.value as "jsonl" | "json" | "md" | "csv" | "xlsx",
+                  )
+                }
+              >
+                <option value="json">JSON</option>
+                <option value="jsonl">JSONL</option>
+                <option value="md">Markdown</option>
+                <option value="csv">CSV</option>
+                <option value="xlsx">XLSX</option>
               </select>
             </label>
           </div>

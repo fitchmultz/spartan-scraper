@@ -6,7 +6,7 @@
  *   supported view modes and export formats.
  *
  * Responsibilities:
- * - Cover filtering, job lookup, tree expansion, and export metadata.
+ * - Cover filtering, job lookup, and tree expansion helpers.
  *
  * Scope:
  * - Pure helper tests only.
@@ -25,11 +25,9 @@ import type { Job, ResultItem } from "../../types";
 
 import {
   buildDefaultExpandedTreeIds,
-  buildExportFilename,
   collectTreeNodeIds,
   filterResultItems,
   findComparableJobs,
-  getExportMimeType,
   getJobByID,
   hasResearchVisualization,
 } from "./resultsExplorerUtils";
@@ -144,15 +142,5 @@ describe("resultsExplorerUtils", () => {
       ]),
     ).toBe(true);
     expect(hasResearchVisualization("crawl", [])).toBe(false);
-  });
-
-  it("normalizes export metadata for supported formats", () => {
-    expect(getExportMimeType("jsonl")).toBe("application/x-ndjson");
-    expect(getExportMimeType("xlsx")).toBe(
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
-    expect(
-      buildExportFilename("job-1", "json", "2026-03-10T10-00-00Z", "filtered"),
-    ).toBe("results-job-1-filtered-2026-03-10T10-00-00Z.json");
   });
 });

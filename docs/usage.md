@@ -553,15 +553,29 @@ Supported formats:
 Direct export:
 
 ```bash
-spartan export --job-id <id> --format <json|jsonl|csv|md|xlsx> --out <path>
+spartan export --job-id <id> [flags]
 ```
+
+Key flags:
+
+- `--format <json|jsonl|csv|md|xlsx>`
+- `--out <path>`
+- `--schedule-id <export-schedule-id>` to seed format/shape/transform from a persisted recurring export
+- `--shape-file <path>` to apply a saved `ExportShapeConfig`
+- `--transform-file <path>` to apply a saved `ResultTransformConfig`
+- `--transform-expression "..."`
+- `--transform-language jmespath|jsonata`
 
 Examples:
 
 ```bash
 spartan export --job-id 123 --format jsonl --out ./out/results.jsonl
-spartan export --job-id 123 --format md --out ./out/report.md
+spartan export --job-id 123 --format md --shape-file ./out/report-shape.json --out ./out/report.md
+spartan export --job-id 123 --schedule-id <export-schedule-id> --out ./out/projected.csv
+spartan export --job-id 123 --format json --transform-language jmespath --transform-expression '{title: title, url: url}'
 ```
+
+Direct exports use the same bounded `format` / `shape` / `transform` contract as recurring export schedules. `shape` and `transform` remain mutually exclusive.
 
 ### Export schedules
 
@@ -696,6 +710,7 @@ Important endpoint groups:
 - `/v1/jobs`
 - `/v1/jobs/{id}`
 - `/v1/jobs/{id}/results`
+- `/v1/jobs/{id}/export`
 - `/v1/jobs/batch/*`
 - `/v1/chains*`
 - `/v1/watch*`
@@ -711,6 +726,8 @@ Important endpoint groups:
 - `/v1/auth/export`
 - `/v1/auth/oauth/*`
 - `/v1/ws`
+
+`GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls.
 
 Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts:
 
@@ -791,11 +808,21 @@ Core tools:
 - `agenticMaxRounds: number`
 - `agenticMaxFollowUpUrls: number`
 
-`job_export` accepts optional transformed text exports:
+`job_export` accepts the same direct export contract as `spartan export` / `POST /v1/jobs/{id}/export`:
 
-- `format: "jsonl" | "json" | "md" | "csv"`
-- `transformExpression: string`
-- `transformLanguage: "jmespath" | "jsonata"`
+- `format: "jsonl" | "json" | "md" | "csv" | "xlsx"`
+- `shape: ExportShapeConfig`
+- `transform: ResultTransformConfig`
+
+`shape` and `transform` are mutually exclusive for direct exports just as they are for recurring export schedules.
+
+`job_export` returns an object with:
+
+- `format`
+- `filename`
+- `contentType`
+- `encoding: "utf8" | "base64"`
+- `content`
 
 The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive).
 

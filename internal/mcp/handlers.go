@@ -17,6 +17,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -459,19 +460,12 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
-		format := paramdecode.String(params.Arguments, "format")
-		if format == "" {
-			format = "jsonl"
-		}
-		validFormats := map[string]bool{"jsonl": true, "json": true, "md": true, "csv": true}
-		if !validFormats[format] {
-			return nil, apperrors.Validation("invalid format: must be jsonl, json, md, or csv")
-		}
-		transform := exporter.TransformConfig{
-			Expression: strings.TrimSpace(paramdecode.String(params.Arguments, "transformExpression")),
-			Language:   strings.TrimSpace(paramdecode.String(params.Arguments, "transformLanguage")),
-		}
-		if err := exporter.ValidateTransformConfig(transform); err != nil {
+		exportConfig := exporter.NormalizeResultExportConfig(exporter.ResultExportConfig{
+			Format:    strings.TrimSpace(paramdecode.String(params.Arguments, "format")),
+			Shape:     paramdecode.Decode[exporter.ShapeConfig](params.Arguments, "shape"),
+			Transform: paramdecode.Decode[exporter.TransformConfig](params.Arguments, "transform"),
+		})
+		if err := exporter.ValidateResultExportConfig(exportConfig); err != nil {
 			return nil, err
 		}
 		job, err := s.store.Get(ctx, id)
@@ -485,11 +479,23 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
 		}
-		exported, err := exporter.ExportWithShapeAndTransform(job, rawBytes, format, exporter.ShapeConfig{}, transform)
+		exported, err := exporter.ExportResult(job, rawBytes, exportConfig)
 		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to export job", err)
 		}
-		return exported, nil
+		result := map[string]interface{}{
+			"format":      exportConfig.Format,
+			"filename":    exporter.ResultExportFilename(job, exportConfig),
+			"contentType": exporter.ResultExportContentType(exportConfig.Format),
+		}
+		if exporter.ResultExportIsBinary(exportConfig.Format) {
+			result["encoding"] = "base64"
+			result["content"] = encodeBase64(exported)
+		} else {
+			result["encoding"] = "utf8"
+			result["content"] = string(exported)
+		}
+		return result, nil
 	case "export_schedule_list":
 		schedules, err := scheduler.NewExportStorage(s.cfg.DataDir).List()
 		if err != nil {
@@ -640,4 +646,8 @@ func resolveAuthForTool(cfg config.Config, url string, profile string) (fetch.Au
 		return fetch.AuthOptions{}, err
 	}
 	return auth.ToFetchOptions(resolved), nil
+}
+
+func encodeBase64(value []byte) string {
+	return base64.StdEncoding.EncodeToString(value)
 }

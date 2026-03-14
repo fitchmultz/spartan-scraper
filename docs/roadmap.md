@@ -11,12 +11,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Group the next saved-result authoring contract changes around result-derived export workflows that can reuse the new transform helpers without reintroducing ad hoc interface drift.
-
-## Next
-
-- Collapse any remaining direct export/download parameter drift onto the shared saved-result transform/export helpers so ad hoc exports and recurring exports keep converging instead of forking.
-
-## Later
-
 - Deepen operator-facing proxy selection controls only if a concrete runtime need remains after the current global proxy-pool contract and verification coverage prove sufficient in day-to-day use.

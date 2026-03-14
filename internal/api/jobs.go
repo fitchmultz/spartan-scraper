@@ -64,6 +64,11 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	}) {
 		return
 	}
+	if handlePathSuffix(r.URL.Path, "/export", func() {
+		s.handleJobExport(w, r)
+	}) {
+		return
+	}
 	if handlePathSuffix(r.URL.Path, "/preview-transform", func() {
 		s.handlePreviewTransform(w, r)
 	}) {

@@ -1796,13 +1796,9 @@ paths:
           enum:
           - jsonl
           - json
-          - md
-          - csv
-          - xlsx
           default: jsonl
-        description: Output format for results (jsonl streams raw data, json converts
-          to JSON array, md generates markdown report, csv generates CSV, xlsx generates
-          an Excel spreadsheet)
+        description: Output format for raw persisted results. Use jsonl for the stored
+          newline-delimited artifact, or json for a JSON-encoded view.
       - in: query
         name: limit
         schema:
@@ -1820,49 +1816,9 @@ paths:
           minimum: 0
         description: Number of result items to skip before returning results (applies
           only to jsonl format)
-      - in: query
-        name: dbConnectionString
-        schema:
-          type: string
-        description: Database connection string (can also use SPARTAN_POSTGRES_URL,
-          SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL env vars)
-      - in: query
-        name: dbTable
-        schema:
-          type: string
-        description: Target table/collection name (defaults to job kind + timestamp)
-      - in: query
-        name: dbMode
-        schema:
-          type: string
-          enum:
-          - insert
-          - upsert
-          default: insert
-        description: Insert mode - insert (default) or upsert (update existing)
-      - in: query
-        name: dbUpsertKey
-        schema:
-          type: string
-        description: Column/field to use as unique key for upsert operations (required
-          when dbMode=upsert)
-      - in: query
-        name: transform_expression
-        schema:
-          type: string
-        description: JMESPath or JSONata expression to transform results before export
-      - in: query
-        name: transform_language
-        schema:
-          type: string
-          enum:
-          - jmespath
-          - jsonata
-        description: Transformation language (required if transform_expression is
-          provided)
       responses:
         '200':
-          description: Results in requested format
+          description: Raw persisted job results
           headers:
             X-Total-Count:
               description: Total number of items available in the result set (for
@@ -1876,18 +1832,62 @@ paths:
             application/json:
               schema:
                 type: object
+        '400':
+          description: Bad Request (invalid format)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/jobs/{id}/export":
+    post:
+      summary: Export saved job results
+      description: Export persisted saved results with optional direct shape or transform controls.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ResultExportRequest"
+      responses:
+        '200':
+          description: Exported result payload
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
             text/markdown:
               schema:
                 type: string
             text/csv:
               schema:
                 type: string
-            application/octet-stream:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
               schema:
                 type: string
                 format: binary
         '400':
-          description: Bad Request (invalid format)
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -3580,6 +3580,22 @@ components:
           type: string
           description: Path template with variables {job_id}, {timestamp}, {kind},
             {format}
+        shape:
+          "$ref": "#/components/schemas/ExportShapeConfig"
+        transform:
+          "$ref": "#/components/schemas/ResultTransformConfig"
+    ResultExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum:
+          - json
+          - jsonl
+          - md
+          - csv
+          - xlsx
+          default: jsonl
         shape:
           "$ref": "#/components/schemas/ExportShapeConfig"
         transform:

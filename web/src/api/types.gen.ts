@@ -95,6 +95,12 @@ export type ExportConfig = {
     transform?: ResultTransformConfig;
 };
 
+export type ResultExportRequest = {
+    format?: 'json' | 'jsonl' | 'md' | 'csv' | 'xlsx';
+    shape?: ExportShapeConfig;
+    transform?: ResultTransformConfig;
+};
+
 export type ExportShapeFormattingHints = {
     emptyValue?: string;
     multiValueJoin?: string;
@@ -5194,9 +5200,9 @@ export type GetV1JobsByIdResultsData = {
     };
     query?: {
         /**
-         * Output format for results (jsonl streams raw data, json converts to JSON array, md generates markdown report, csv generates CSV, xlsx generates an Excel spreadsheet)
+         * Output format for raw persisted results. Use jsonl for the stored newline-delimited artifact, or json for a JSON-encoded view.
          */
-        format?: 'jsonl' | 'json' | 'md' | 'csv' | 'xlsx';
+        format?: 'jsonl' | 'json';
         /**
          * Maximum number of result items to return (applies only to jsonl format)
          */
@@ -5205,30 +5211,6 @@ export type GetV1JobsByIdResultsData = {
          * Number of result items to skip before returning results (applies only to jsonl format)
          */
         offset?: number;
-        /**
-         * Database connection string (can also use SPARTAN_POSTGRES_URL, SPARTAN_MYSQL_URL, SPARTAN_MONGODB_URL env vars)
-         */
-        dbConnectionString?: string;
-        /**
-         * Target table/collection name (defaults to job kind + timestamp)
-         */
-        dbTable?: string;
-        /**
-         * Insert mode - insert (default) or upsert (update existing)
-         */
-        dbMode?: 'insert' | 'upsert';
-        /**
-         * Column/field to use as unique key for upsert operations (required when dbMode=upsert)
-         */
-        dbUpsertKey?: string;
-        /**
-         * JMESPath or JSONata expression to transform results before export
-         */
-        transform_expression?: string;
-        /**
-         * Transformation language (required if transform_expression is provided)
-         */
-        transform_language?: 'jmespath' | 'jsonata';
     };
     url: '/v1/jobs/{id}/results';
 };
@@ -5252,7 +5234,7 @@ export type GetV1JobsByIdResultsError = GetV1JobsByIdResultsErrors[keyof GetV1Jo
 
 export type GetV1JobsByIdResultsResponses = {
     /**
-     * Results in requested format
+     * Raw persisted job results
      */
     200: {
         [key: string]: unknown;
@@ -5260,6 +5242,43 @@ export type GetV1JobsByIdResultsResponses = {
 };
 
 export type GetV1JobsByIdResultsResponse = GetV1JobsByIdResultsResponses[keyof GetV1JobsByIdResultsResponses];
+
+export type PostV1JobsByIdExportData = {
+    body: ResultExportRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/jobs/{id}/export';
+};
+
+export type PostV1JobsByIdExportErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type PostV1JobsByIdExportError = PostV1JobsByIdExportErrors[keyof PostV1JobsByIdExportErrors];
+
+export type PostV1JobsByIdExportResponses = {
+    /**
+     * Exported result payload
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostV1JobsByIdExportResponse = PostV1JobsByIdExportResponses[keyof PostV1JobsByIdExportResponses];
 
 export type PostV1JobsByIdPreviewTransformData = {
     body: TransformPreviewRequest;

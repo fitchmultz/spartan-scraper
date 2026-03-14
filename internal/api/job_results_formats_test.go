@@ -1,7 +1,6 @@
-// Package api provides integration tests for job results endpoint format conversion.
-// Tests cover result type detection by file extension, format query parameter (jsonl, json, csv, md),
-// invalid format validation, and default behavior.
-// Does NOT test result file generation or export logic handled by exporter package.
+// Package api provides integration tests for raw job results endpoint behavior.
+// Tests cover raw content-type detection, jsonl/json views, invalid format validation,
+// and default behavior. Direct shaped/transformed exports are covered separately.
 package api
 
 import (
@@ -120,7 +119,7 @@ func TestHandleJobResultsMultipleTypes(t *testing.T) {
 }
 
 func TestHandleJobResultsWithFormats(t *testing.T) {
-	formats := []string{"jsonl", "json", "md", "csv", "xlsx"}
+	formats := []string{"jsonl", "json"}
 
 	for _, format := range formats {
 		t.Run("format_"+format, func(t *testing.T) {
@@ -172,9 +171,6 @@ func TestHandleJobResultsWithFormats(t *testing.T) {
 			expectedCT := map[string]string{
 				"jsonl": "application/x-ndjson",
 				"json":  "application/json",
-				"md":    "text/markdown; charset=utf-8",
-				"csv":   "text/csv; charset=utf-8",
-				"xlsx":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 			}
 			if ct := rr.Header().Get("Content-Type"); ct != expectedCT[format] {
 				t.Errorf("expected Content-Type %q, got %q", expectedCT[format], ct)

@@ -36,6 +36,7 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 		"  export-schedule Manage automated export schedules",
 		"  spartan ai preview --url https://example.com --prompt \"Extract the main product facts\"",
 		"  spartan export --job-id <id> --format md --out ./out/report.md",
+		"  spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv",
 		"  spartan export-schedule list",
 	} {
 		if !strings.Contains(output, expected) {

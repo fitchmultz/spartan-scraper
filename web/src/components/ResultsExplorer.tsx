@@ -12,12 +12,13 @@
  * @module ResultsExplorer
  */
 import { useEffect, useMemo, useState } from "react";
+import type { ExportShapeConfig } from "../api";
 import {
   type CrawlDiffResult,
   diffResults,
   type ResearchDiffResult,
 } from "../lib/diff-utils";
-import { loadResults } from "../lib/results";
+import { exportResults, loadResults } from "../lib/results";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import type {
   AgenticResearchItem,
@@ -28,19 +29,18 @@ import type {
   Job,
   ResultItem,
 } from "../types";
+import { AIExportShapeAssistant } from "./AIExportShapeAssistant";
 import { ClusterGraph } from "./ClusterGraph";
 import { DiffViewer } from "./DiffViewer";
 import { EvidenceChart } from "./EvidenceChart";
 import { ResultsViewer } from "./ResultsViewer";
 import {
   buildDefaultExpandedTreeIds,
-  buildExportFilename,
   collectTreeNodeIds,
   type ExportFormat,
   exportFormats,
   filterResultItems,
   findComparableJobs,
-  getExportMimeType,
   getJobByID,
   hasResearchVisualization,
   resultsExplorerViewModes,
@@ -310,6 +310,12 @@ export function ResultsExplorer({
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
+  const [shapeExportFormat, setShapeExportFormat] = useState<
+    "md" | "csv" | "xlsx"
+  >("md");
+  const [shapeConfigText, setShapeConfigText] = useState("");
+  const [shapeConfigError, setShapeConfigError] = useState<string | null>(null);
+  const [isShapeAssistantOpen, setIsShapeAssistantOpen] = useState(false);
 
   // Build tree from crawl results
   const treeNodes = useMemo(() => {
@@ -409,15 +415,12 @@ export function ResultsExplorer({
 
     setIsExporting(true);
     try {
-      const result = await loadResults(jobId, format, 1, 1000);
-      const content = result.raw || "";
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = buildExportFilename(jobId, format, timestamp);
+      const result = await exportResults(jobId, { format });
       downloadFile(
-        content,
-        filename,
-        getExportMimeType(format),
-        result.isBinary || false,
+        result.content,
+        result.filename,
+        result.contentType,
+        result.isBinary,
       );
     } catch (err) {
       console.error("Export failed:", err);
@@ -427,6 +430,7 @@ export function ResultsExplorer({
   };
 
   const handleExportWithTransform = async (
+    format: ExportFormat,
     expression: string,
     language: "jmespath" | "jsonata",
   ) => {
@@ -434,31 +438,70 @@ export function ResultsExplorer({
 
     setIsExporting(true);
     try {
-      const format = "json";
-      const result = await loadResults(
-        jobId,
+      const result = await exportResults(jobId, {
         format,
-        1,
-        1000,
-        expression,
-        language,
-      );
-
-      if (result.error) {
-        console.error("Transform export failed:", result.error);
-        return;
-      }
-
-      const content = result.raw || "";
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        transform: {
+          expression,
+          language,
+        },
+      });
       downloadFile(
-        content,
-        buildExportFilename(jobId, format, timestamp, "transformed"),
-        getExportMimeType(format),
-        false,
+        result.content,
+        result.filename,
+        result.contentType,
+        result.isBinary,
       );
     } catch (err) {
       console.error("Transform export failed:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const currentShapeConfig = useMemo<ExportShapeConfig | undefined>(() => {
+    const trimmed = shapeConfigText.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(trimmed) as ExportShapeConfig;
+    } catch {
+      return undefined;
+    }
+  }, [shapeConfigText]);
+
+  const handleShapeExport = async () => {
+    if (!jobId) return;
+
+    const trimmed = shapeConfigText.trim();
+    if (!trimmed) {
+      setShapeConfigError("Enter a shape JSON object or generate one with AI.");
+      return;
+    }
+
+    let shape: ExportShapeConfig;
+    try {
+      shape = JSON.parse(trimmed) as ExportShapeConfig;
+    } catch {
+      setShapeConfigError("Shape JSON must be a valid object.");
+      return;
+    }
+
+    setShapeConfigError(null);
+    setIsExporting(true);
+    try {
+      const result = await exportResults(jobId, {
+        format: shapeExportFormat,
+        shape,
+      });
+      downloadFile(
+        result.content,
+        result.filename,
+        result.contentType,
+        result.isBinary,
+      );
+    } catch (err) {
+      setShapeConfigError(String(err));
     } finally {
       setIsExporting(false);
     }
@@ -598,12 +641,84 @@ export function ResultsExplorer({
         )}
 
         {viewMode === "transform" && (
-          <TransformPreview
-            jobId={jobId}
-            onApply={(expression, language) => {
-              void handleExportWithTransform(expression, language);
-            }}
-          />
+          <>
+            <TransformPreview
+              jobId={jobId}
+              onApply={(format, expression, language) => {
+                void handleExportWithTransform(format, expression, language);
+              }}
+            />
+            <div className="panel" style={{ marginTop: 16 }}>
+              <h4>Direct Shape Export</h4>
+              <p className="form-help">
+                Apply a bounded export shape directly to this saved result for
+                markdown and tabular exports.
+              </p>
+              <div className="row" style={{ gap: 12, alignItems: "flex-end" }}>
+                <label>
+                  Format
+                  <select
+                    value={shapeExportFormat}
+                    onChange={(event) =>
+                      setShapeExportFormat(
+                        event.target.value as "md" | "csv" | "xlsx",
+                      )
+                    }
+                  >
+                    <option value="md">Markdown</option>
+                    <option value="csv">CSV</option>
+                    <option value="xlsx">XLSX</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setIsShapeAssistantOpen(true)}
+                >
+                  Generate Shape with AI
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setShapeConfigText("");
+                    setShapeConfigError(null);
+                  }}
+                >
+                  Clear Shape
+                </button>
+                <button type="button" onClick={() => void handleShapeExport()}>
+                  Export Shaped Result
+                </button>
+              </div>
+              <textarea
+                className="form-textarea"
+                rows={10}
+                style={{ marginTop: 12 }}
+                value={shapeConfigText}
+                onChange={(event) => {
+                  setShapeConfigText(event.target.value);
+                  setShapeConfigError(null);
+                }}
+                placeholder='{"summaryFields":["title","url"],"normalizedFields":["field.price"]}'
+              />
+              {shapeConfigError ? (
+                <div className="transform-error">Error: {shapeConfigError}</div>
+              ) : null}
+            </div>
+            <AIExportShapeAssistant
+              isOpen={isShapeAssistantOpen}
+              onClose={() => setIsShapeAssistantOpen(false)}
+              format={shapeExportFormat}
+              currentShape={currentShapeConfig}
+              initialJobId={jobId}
+              onApplyShape={(shape) => {
+                setShapeConfigText(JSON.stringify(shape, null, 2));
+                setShapeConfigError(null);
+                setIsShapeAssistantOpen(false);
+              }}
+            />
+          </>
         )}
       </div>
     </div>

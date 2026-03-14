@@ -1,12 +1,10 @@
 /**
- * Results loading utilities for job results API.
- *
- * This module provides functions for fetching and parsing job results from the API.
- * It handles HTTP requests, error parsing, JSONL parsing, and different result formats.
+ * Results loading and direct export utilities for saved job results.
  *
  * @module results
  */
 
+import type { ExportShapeConfig, ResultTransformConfig } from "../api";
 import { buildApiUrl } from "./api-config";
 
 /**
@@ -18,6 +16,19 @@ export interface ResultsResponse {
   raw?: string;
   isBinary?: boolean;
   totalCount?: number;
+}
+
+export interface ResultExportRequest {
+  format?: "jsonl" | "json" | "md" | "csv" | "xlsx";
+  shape?: ExportShapeConfig;
+  transform?: ResultTransformConfig;
+}
+
+export interface ResultExportResponse {
+  content: string;
+  filename: string;
+  contentType: string;
+  isBinary: boolean;
 }
 
 /**
@@ -59,40 +70,20 @@ export function parseJsonArrayResults(text: string): JsonlParseResult {
 }
 
 /**
- * Build the results URL for a given job ID and format.
+ * Build the raw-results URL for a given job ID and format.
  *
  * Includes pagination parameters for jsonl format (limit, offset) but not for other formats.
- * Supports optional transformation parameters for applying JMESPath/JSONata expressions.
- *
- * @param jobId - The job ID to fetch results for
- * @param format - The result format (e.g., "jsonl", "json", "csv", "md")
- * @param limit - Pagination limit for jsonl format
- * @param offset - Pagination offset for jsonl format
- * @param transformExpression - Optional JMESPath/JSONata expression to transform results
- * @param transformLanguage - Optional transformation language ("jmespath" or "jsonata")
- * @returns The complete URL for fetching results
  */
 export function buildResultsUrl(
   jobId: string,
   format: string,
   limit?: number,
   offset?: number,
-  transformExpression?: string,
-  transformLanguage?: "jmespath" | "jsonata",
 ): string {
   let path = `/v1/jobs/${jobId}/results?format=${format}`;
 
-  // Only add pagination for jsonl format
   if (format === "jsonl" && limit !== undefined && offset !== undefined) {
     path += `&limit=${limit}&offset=${offset}`;
-  }
-
-  // Add transform parameters if provided
-  if (transformExpression) {
-    path += `&transform_expression=${encodeURIComponent(transformExpression)}`;
-    if (transformLanguage) {
-      path += `&transform_language=${transformLanguage}`;
-    }
   }
 
   return buildApiUrl(path);
@@ -100,14 +91,6 @@ export function buildResultsUrl(
 
 /**
  * Parse error response from API.
- *
- * Tries to parse response body as JSON with an "error" field.
- * Falls back to default error message with status code and text.
- *
- * @param response - The HTTP response object
- * @param status - HTTP status code
- * @param statusText - HTTP status text
- * @returns The parsed error message
  */
 export async function parseErrorResponse(
   response: Response,
@@ -127,12 +110,6 @@ export async function parseErrorResponse(
 
 /**
  * Parse JSONL formatted results.
- *
- * Splits text by newlines, filters empty lines, and parses each line as JSON.
- * Skips malformed JSON lines but preserves raw text.
- *
- * @param text - The raw JSONL text
- * @returns The parsed results or error if all lines are malformed
  */
 export function parseJsonlResults(text: string): JsonlParseResult {
   const lines = text.split("\n").filter((line) => line.trim());
@@ -147,7 +124,6 @@ export function parseJsonlResults(text: string): JsonlParseResult {
     }
   }
 
-  // Check if we had input but failed to parse anything
   if (parsedItems.length === 0 && lines.length > 0) {
     return {
       error: "No valid results found. Results file may be corrupted.",
@@ -159,39 +135,19 @@ export function parseJsonlResults(text: string): JsonlParseResult {
 }
 
 /**
- * Load results for a job from the API.
- *
- * Fetches results in the specified format, handles HTTP errors, and parses JSONL responses.
- * For jsonl format, returns parsed data; for other formats, returns raw text.
- * Supports optional transformation parameters for applying JMESPath/JSONata expressions.
- *
- * @param jobId - The job ID to fetch results for
- * @param format - The result format (defaults to "jsonl")
- * @param page - The page number for jsonl pagination (1-based)
- * @param resultsPerPage - Number of results per page for jsonl format
- * @param transformExpression - Optional JMESPath/JSONata expression to transform results
- * @param transformLanguage - Optional transformation language ("jmespath" or "jsonata")
- * @returns The results response with data, raw text, or error
+ * Load raw saved results for a job from the API.
  */
 export async function loadResults(
   jobId: string,
   format: string = "jsonl",
   page: number = 1,
   resultsPerPage: number = 100,
-  transformExpression?: string,
-  transformLanguage?: "jmespath" | "jsonata",
 ): Promise<ResultsResponse> {
   try {
     const offset = (page - 1) * resultsPerPage;
-    const resultsUrl = buildResultsUrl(
-      jobId,
-      format,
-      resultsPerPage,
-      offset,
-      transformExpression,
-      transformLanguage,
+    const response = await fetch(
+      buildResultsUrl(jobId, format, resultsPerPage, offset),
     );
-    const response = await fetch(resultsUrl);
 
     if (!response.ok) {
       const errorMessage = await parseErrorResponse(
@@ -216,22 +172,85 @@ export async function loadResults(
         }
       }
       return parsed;
-    } else if (format === "xlsx") {
-      // For binary formats, convert to base64 for transport
-      const buffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = btoa(binary);
-      return { raw: base64, isBinary: true };
-    } else {
-      // For other formats, just store raw text for display
-      const text = await response.text();
-      return { raw: text };
     }
+
+    const text = await response.text();
+    return { raw: text };
   } catch (err) {
     return { error: String(err) };
   }
+}
+
+export async function exportResults(
+  jobId: string,
+  request: ResultExportRequest,
+): Promise<ResultExportResponse> {
+  const response = await fetch(buildApiUrl(`/v1/jobs/${jobId}/export`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorResponse(
+      response,
+      response.status,
+      response.statusText,
+    );
+    throw new Error(errorMessage);
+  }
+
+  const contentType =
+    response.headers.get("Content-Type") ?? "application/octet-stream";
+  const requestedFormat = request.format || "jsonl";
+  const filename = parseExportFilename(
+    response.headers.get("Content-Disposition"),
+    `${jobId}.${requestedFormat}`,
+  );
+  const isBinary = contentType.includes(
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+
+  if (isBinary) {
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return {
+      content: btoa(binary),
+      filename,
+      contentType,
+      isBinary: true,
+    };
+  }
+
+  return {
+    content: await response.text(),
+    filename,
+    contentType,
+    isBinary: false,
+  };
+}
+
+function parseExportFilename(
+  contentDisposition: string | null,
+  fallback: string,
+): string {
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const starMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (starMatch?.[1]) {
+    try {
+      return decodeURIComponent(starMatch[1]);
+    } catch {
+      return starMatch[1];
+    }
+  }
+
+  const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return match?.[1] || fallback;
 }

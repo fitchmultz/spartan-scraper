@@ -106,8 +106,8 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_export",
-			Description: "Export job results in specified text format (jsonl, json, md, csv) with optional transform controls",
-			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string", "transformExpression": "string", "transformLanguage": "string"}),
+			Description: "Export saved job results in jsonl, json, md, csv, or xlsx with optional shape or transform controls",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string", "shape": "object", "transform": "object"}),
 		},
 		{
 			Name:        "export_schedule_list",

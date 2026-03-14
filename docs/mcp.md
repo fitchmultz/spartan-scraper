@@ -96,9 +96,10 @@ These tools return structured authoring results immediately and do not create jo
 
 - `job_export`
   - `id: "..."`
-  - `format: "jsonl" | "json" | "md" | "csv"` optional, defaults to `jsonl`
-  - `transformExpression: "..."` optional saved-result projection/filter expression
-  - `transformLanguage: "jmespath" | "jsonata"` required when `transformExpression` is set
+  - `format: "jsonl" | "json" | "md" | "csv" | "xlsx"` optional, defaults to `jsonl`
+  - `shape: { ... }` optional `ExportShapeConfig` for markdown/tabular exports
+  - `transform: { expression: "...", language: "jmespath" | "jsonata" }` optional saved-result projection/filter
+  - returns `{ format, filename, contentType, encoding, content }` where `encoding` is `utf8` for text exports and `base64` for `xlsx`
 - `export_schedule_list`
   - no arguments
 - `export_schedule_get`
@@ -123,7 +124,7 @@ These tools return structured authoring results immediately and do not create jo
   - `limit: number` optional
   - `offset: number` optional
 
-Recurring export schedules can persist either `export.transform` or `export.shape`, but not both. Spartan enforces that mutual exclusion so recurring exports keep one deterministic projection contract.
+Direct `job_export` calls and recurring export schedules can persist either `transform` / `export.transform` or `shape` / `export.shape`, but not both. Spartan enforces that mutual exclusion so ad hoc and recurring exports keep one deterministic projection contract.
 
 ## AI extraction arguments
 
@@ -156,7 +157,7 @@ Recurring export schedules can persist either `export.transform` or `export.shap
 {"id":9,"method":"tools/call","params":{"name":"ai_research_refine","arguments":{"result":{"query":"pricing model","summary":"Original research summary","evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into an operator-ready brief"}}}
 {"id":10,"method":"tools/call","params":{"name":"ai_export_shape","arguments":{"jobId":"<job-id>","format":"md","instructions":"Prioritize summary and pricing fields for operator handoff"}}}
 {"id":11,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
-{"id":12,"method":"tools/call","params":{"name":"job_export","arguments":{"id":"<job-id>","format":"json","transformExpression":"{title: title, url: url}","transformLanguage":"jmespath"}}}
+{"id":12,"method":"tools/call","params":{"name":"job_export","arguments":{"id":"<job-id>","format":"json","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}
 {"id":13,"method":"tools/call","params":{"name":"export_schedule_create","arguments":{"name":"Projected Export","filters":{"job_kinds":["scrape"]},"export":{"format":"csv","destination_type":"local","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}}
 {"id":14,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
 {"id":15,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}

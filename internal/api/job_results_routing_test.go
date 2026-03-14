@@ -1,6 +1,6 @@
-// Package api provides integration tests for job results endpoint routing.
+// Package api provides integration tests for job result and direct export routing.
 // Responsibilities: validate malformed path handling, missing segments, and method restrictions.
-// Scope: HTTP routing behavior only; result generation/export logic is tested in exporter-focused tests.
+// Scope: HTTP routing behavior only; result/export payload logic is tested elsewhere.
 // Usage: executed by `go test ./internal/api` and `make ci`.
 // Invariants/Assumptions: redirect status for path normalization may vary by router/runtime (301, 307, or 308).
 package api
@@ -31,21 +31,27 @@ func TestHandleJobResultsRouting(t *testing.T) {
 		expectedStatuses []int
 	}{
 		{
-			name:             "malformed path double slash",
+			name:             "malformed results path double slash",
 			method:           "GET",
 			path:             "/v1/jobs//results",
 			expectedStatuses: []int{http.StatusMovedPermanently, http.StatusTemporaryRedirect, http.StatusPermanentRedirect},
 		},
 		{
-			name:             "missing id segment",
+			name:             "missing results id segment",
 			method:           "GET",
 			path:             "/v1/jobs/results",
 			expectedStatuses: []int{http.StatusNotFound},
 		},
 		{
-			name:             "method not allowed",
+			name:             "results method not allowed",
 			method:           "POST",
 			path:             "/v1/jobs/some-id/results",
+			expectedStatuses: []int{http.StatusMethodNotAllowed},
+		},
+		{
+			name:             "export method not allowed",
+			method:           "GET",
+			path:             "/v1/jobs/some-id/export",
 			expectedStatuses: []int{http.StatusMethodNotAllowed},
 		},
 	}

@@ -6,7 +6,7 @@
  *
  * Responsibilities:
  * - Build derived explorer state from raw result items and jobs.
- * - Normalize export metadata and filtered result sets.
+ * - Filter result sets and enumerate supported direct-export formats.
  * - Extract traffic payloads from crawl results with intercepted data.
  *
  * Scope:
@@ -17,7 +17,7 @@
  *
  * Invariants/Assumptions:
  * - Crawl-style results are identified by URL and HTTP status fields.
- * - Unknown export formats default to markdown-compatible naming and text mime types.
+ * - Supported direct-export formats stay aligned with the backend contract.
  * - Traffic extraction ignores result items without intercepted data arrays.
  */
 
@@ -124,29 +124,4 @@ export function hasResearchVisualization(
 
 export function getJobByID(availableJobs: Job[], jobId: string | null) {
   return availableJobs.find((job) => job.id === jobId) ?? null;
-}
-
-export function getExportMimeType(format: ExportFormat): string {
-  switch (format) {
-    case "json":
-      return "application/json";
-    case "csv":
-      return "text/csv";
-    case "xlsx":
-      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    case "jsonl":
-      return "application/x-ndjson";
-    default:
-      return "text/markdown";
-  }
-}
-
-export function buildExportFilename(
-  jobId: string,
-  format: string,
-  timestamp: string,
-  suffix?: string,
-): string {
-  const suffixSegment = suffix ? `-${suffix}` : "";
-  return `results-${jobId}${suffixSegment}-${timestamp}.${format}`;
 }

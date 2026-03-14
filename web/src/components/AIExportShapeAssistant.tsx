@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   aiExportShape,
   type AiExportShapeResponse,
@@ -12,6 +12,7 @@ interface AIExportShapeAssistantProps {
   onClose: () => void;
   format: "md" | "csv" | "xlsx";
   currentShape?: ExportShapeConfig;
+  initialJobId?: string;
   onApplyShape: (shape: ExportShapeConfig) => void;
 }
 
@@ -23,13 +24,15 @@ interface AssistantState {
   error: string | null;
 }
 
-const initialState: AssistantState = {
-  jobId: "",
-  instructions: "",
-  isLoading: false,
-  response: null,
-  error: null,
-};
+function buildInitialState(initialJobId?: string): AssistantState {
+  return {
+    jobId: initialJobId ?? "",
+    instructions: "",
+    isLoading: false,
+    response: null,
+    error: null,
+  };
+}
 
 function hasCurrentShape(shape: ExportShapeConfig | undefined): boolean {
   return formatExportShapeSummary(shape) !== "Default";
@@ -59,20 +62,29 @@ export function AIExportShapeAssistant({
   onClose,
   format,
   currentShape,
+  initialJobId,
   onApplyShape,
 }: AIExportShapeAssistantProps) {
-  const [state, setState] = useState<AssistantState>(initialState);
+  const [state, setState] = useState<AssistantState>(
+    buildInitialState(initialJobId),
+  );
   const currentShapeSummary = useMemo(
     () => formatExportShapeSummary(currentShape),
     [currentShape],
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setState(buildInitialState(initialJobId));
+    }
+  }, [initialJobId, isOpen]);
 
   if (!isOpen) {
     return null;
   }
 
   const handleClose = () => {
-    setState(initialState);
+    setState(buildInitialState(initialJobId));
     onClose();
   };
 
