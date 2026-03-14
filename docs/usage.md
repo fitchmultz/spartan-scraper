@@ -26,6 +26,7 @@ Stable top-level commands:
 - `spartan scrape`
 - `spartan crawl`
 - `spartan research`
+- `spartan ai`
 - `spartan auth`
 - `spartan batch`
 - `spartan chains`
@@ -187,6 +188,57 @@ spartan research \
   --agentic-instructions "Prioritize pricing, contract terms, and support commitments" \
   --agentic-max-rounds 2 \
   --agentic-max-follow-up-urls 4
+```
+
+### AI authoring
+
+```bash
+spartan ai preview [flags]
+spartan ai template [flags]
+```
+
+These commands run the same bounded AI preview/template-authoring workflows as the REST and Web surfaces, but without creating jobs.
+
+Preview flags:
+
+- `--url <url>` or `--html-file <path>` / `--html '<html>...'`
+- `--mode natural_language|schema_guided`
+- `--prompt "<instructions>"` for natural-language mode
+- `--schema '{"field":"example"}'` for schema-guided mode
+- `--fields "field1,field2"`
+- `--headless`
+- `--playwright`
+- `--out <path>`
+
+Template-generation flags:
+
+- `--url <url>` or `--html-file <path>` / `--html '<html>...'`
+- `--description "<what to extract>"`
+- `--sample-fields "field1,field2"`
+- `--headless`
+- `--playwright`
+- `--out <path>`
+
+Examples:
+
+```bash
+spartan ai preview \
+  --url https://example.com/product \
+  --prompt "Extract the title, price, and availability"
+
+spartan ai preview \
+  --html-file ./fixtures/product.html \
+  --mode schema_guided \
+  --schema '{"title":"Example","price":"$19.99"}'
+
+spartan ai template \
+  --url https://example.com/product \
+  --description "Extract the product title, price, and availability" \
+  --out ./out/product-template.json
+
+spartan ai template \
+  --html-file ./fixtures/product.html \
+  --description "Extract the pricing table and support commitments"
 ```
 
 ### Auth
@@ -400,7 +452,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI, and MCP instead.
+- Dedicated AI preview, AI template generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI

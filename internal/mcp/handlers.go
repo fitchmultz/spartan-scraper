@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
@@ -43,6 +45,45 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	}
 
 	switch params.Name {
+	case "ai_extract_preview":
+		mode := extract.AIExtractionMode(strings.TrimSpace(paramdecode.String(params.Arguments, "mode")))
+		if mode == "" {
+			mode = extract.AIModeNaturalLanguage
+		}
+		var schema map[string]interface{}
+		if mode == extract.AIModeSchemaGuided {
+			schema = paramdecode.Decode[map[string]interface{}](params.Arguments, "schema")
+			if len(schema) == 0 {
+				return nil, apperrors.Validation("schema is required when mode is schema_guided")
+			}
+		}
+		result, err := s.aiAuthoring.Preview(ctx, aiauthoring.PreviewRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			HTML:          paramdecode.String(params.Arguments, "html"),
+			Mode:          mode,
+			Prompt:        strings.TrimSpace(paramdecode.String(params.Arguments, "prompt")),
+			Schema:        schema,
+			Fields:        paramdecode.StringSlice(params.Arguments, "fields"),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case "ai_template_generate":
+		result, err := s.aiAuthoring.GenerateTemplate(ctx, aiauthoring.TemplateRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			HTML:          paramdecode.String(params.Arguments, "html"),
+			Description:   strings.TrimSpace(paramdecode.String(params.Arguments, "description")),
+			SampleFields:  paramdecode.StringSlice(params.Arguments, "sampleFields"),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case "scrape_page":
 		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {

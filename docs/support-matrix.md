@@ -13,7 +13,7 @@
 
 - REST is the canonical machine surface for AI-backed extraction capabilities.
 - Web UI is the primary interactive AI surface.
-- CLI and MCP should expose job-launching AI controls where those controls fit naturally.
+- CLI and MCP expose both job-launching AI controls and dedicated AI preview/template-generation workflows.
 - TUI is an operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, or agent-session workflows.
 
 ## Release Guarantee

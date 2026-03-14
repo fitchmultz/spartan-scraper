@@ -167,6 +167,51 @@ func TestAIExtractPreviewFetchesHTMLWhenNotProvided(t *testing.T) {
 	}
 }
 
+func TestAITemplateGenerateSupportsDirectHTML(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	provider := &fakeAIProvider{
+		templateResponses: []extract.AITemplateGenerateResult{{
+			Template: extract.Template{
+				Name: "product-template",
+				Selectors: []extract.SelectorRule{
+					{Name: "title", Selector: "h1", Attr: "text", Trim: true},
+				},
+			},
+			RouteID:  "openai/gpt-5.4",
+			Provider: "openai",
+			Model:    "gpt-5.4",
+		}},
+	}
+	srv.aiExtractor = extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig()},
+		srv.cfg.DataDir,
+		provider,
+	)
+	srv.cfg.AI = config.AIConfig{
+		Enabled:            true,
+		RequestTimeoutSecs: 30,
+		Routing:            config.DefaultAIRoutingConfig(),
+	}
+
+	body := `{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/extract/ai-template-generate", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if provider.templateCalls != 1 {
+		t.Fatalf("expected single template generation call, got %d", provider.templateCalls)
+	}
+	if provider.lastTemplateReq.URL != "" {
+		t.Fatalf("expected empty URL for direct HTML mode, got %q", provider.lastTemplateReq.URL)
+	}
+}
+
 func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

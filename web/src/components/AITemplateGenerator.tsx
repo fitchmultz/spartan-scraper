@@ -23,11 +23,16 @@ interface AITemplateGeneratorProps {
   onTemplateSaved: () => void;
 }
 
+type TemplateSource = "url" | "html";
+
 interface GeneratorState {
+  source: TemplateSource;
   url: string;
+  html: string;
   description: string;
   sampleFields: string;
   headless: boolean;
+  playwright: boolean;
   isGenerating: boolean;
   generatedTemplate: Template | null;
   explanation: string;
@@ -45,10 +50,13 @@ export function AITemplateGenerator({
   onTemplateSaved,
 }: AITemplateGeneratorProps) {
   const [state, setState] = useState<GeneratorState>({
+    source: "url",
     url: "",
+    html: "",
     description: "",
     sampleFields: "",
     headless: false,
+    playwright: false,
     isGenerating: false,
     generatedTemplate: null,
     explanation: "",
@@ -62,10 +70,13 @@ export function AITemplateGenerator({
 
   const resetState = () => {
     setState({
+      source: "url",
       url: "",
+      html: "",
       description: "",
       sampleFields: "",
       headless: false,
+      playwright: false,
       isGenerating: false,
       generatedTemplate: null,
       explanation: "",
@@ -84,14 +95,21 @@ export function AITemplateGenerator({
   };
 
   const validateInputs = (): string | null => {
-    if (!state.url.trim()) {
-      return "URL is required";
+    if (state.source === "url") {
+      if (!state.url.trim()) {
+        return "URL is required";
+      }
+      try {
+        new URL(state.url);
+      } catch {
+        return "Please enter a valid URL";
+      }
     }
-    try {
-      new URL(state.url);
-    } catch {
-      return "Please enter a valid URL";
+
+    if (state.source === "html" && !state.html.trim()) {
+      return "HTML is required when using pasted HTML mode";
     }
+
     if (!state.description.trim()) {
       return "Description is required";
     }
@@ -125,10 +143,21 @@ export function AITemplateGenerator({
       const { data, error: apiError } = await aiTemplateGenerate({
         baseUrl: getApiBaseUrl(),
         body: {
-          url: state.url,
+          ...(state.source === "url" ? { url: state.url } : {}),
+          ...(state.source === "html"
+            ? {
+                ...(state.url.trim() ? { url: state.url.trim() } : {}),
+                html: state.html,
+              }
+            : {}),
           description: state.description,
           sample_fields: sampleFields.length > 0 ? sampleFields : undefined,
-          headless: state.headless,
+          ...(state.source === "url"
+            ? {
+                headless: state.headless,
+                ...(state.headless ? { playwright: state.playwright } : {}),
+              }
+            : {}),
         },
       });
 
@@ -247,24 +276,154 @@ export function AITemplateGenerator({
           {/* Input Form */}
           <div className="form-section">
             <div className="form-group">
-              <label htmlFor="ai-template-url" className="form-label">
-                Target URL <span className="required">*</span>
-              </label>
-              <input
-                id="ai-template-url"
-                type="url"
-                value={state.url}
-                onChange={(e) =>
-                  setState((prev) => ({ ...prev, url: e.target.value }))
-                }
-                placeholder="https://example.com/products"
-                className="form-input"
-                disabled={state.isGenerating}
-              />
-              <p className="form-help">
-                The URL of the page to analyze for template generation
-              </p>
+              <span className="form-label">Source</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    state.source === "url"
+                      ? "bg-purple-600 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      source: "url",
+                      error: null,
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                >
+                  Fetch URL
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    state.source === "html"
+                      ? "bg-purple-600 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      source: "html",
+                      error: null,
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                >
+                  Paste HTML
+                </button>
+              </div>
             </div>
+
+            {state.source === "url" ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="ai-template-url" className="form-label">
+                    Target URL <span className="required">*</span>
+                  </label>
+                  <input
+                    id="ai-template-url"
+                    type="url"
+                    value={state.url}
+                    onChange={(e) =>
+                      setState((prev) => ({ ...prev, url: e.target.value }))
+                    }
+                    placeholder="https://example.com/products"
+                    className="form-input"
+                    disabled={state.isGenerating}
+                  />
+                  <p className="form-help">
+                    The URL of the page to analyze for template generation
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={state.headless}
+                      onChange={(e) =>
+                        setState((prev) => ({
+                          ...prev,
+                          headless: e.target.checked,
+                          playwright: e.target.checked
+                            ? prev.playwright
+                            : false,
+                        }))
+                      }
+                      disabled={state.isGenerating}
+                      className="form-checkbox"
+                    />
+                    Use headless browser (for JavaScript-rendered content)
+                  </label>
+                </div>
+
+                {state.headless && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      <input
+                        type="checkbox"
+                        checked={state.playwright}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            playwright: e.target.checked,
+                          }))
+                        }
+                        disabled={state.isGenerating}
+                        className="form-checkbox"
+                      />
+                      Use Playwright for fetching
+                    </label>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label htmlFor="ai-template-page-url" className="form-label">
+                    Page URL (optional)
+                  </label>
+                  <input
+                    id="ai-template-page-url"
+                    type="url"
+                    value={state.url}
+                    onChange={(e) =>
+                      setState((prev) => ({ ...prev, url: e.target.value }))
+                    }
+                    placeholder="https://example.com/products"
+                    className="form-input"
+                    disabled={state.isGenerating}
+                  />
+                  <p className="form-help">
+                    Preserve the original page URL when the model benefits from
+                    source context while you provide captured HTML directly.
+                  </p>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="ai-template-html" className="form-label">
+                    HTML <span className="required">*</span>
+                  </label>
+                  <textarea
+                    id="ai-template-html"
+                    value={state.html}
+                    onChange={(e) =>
+                      setState((prev) => ({ ...prev, html: e.target.value }))
+                    }
+                    placeholder="<html>...</html>"
+                    rows={8}
+                    className="form-textarea font-mono text-xs"
+                    disabled={state.isGenerating}
+                  />
+                  <p className="form-help">
+                    Paste captured HTML when you want deterministic template
+                    generation without refetching the page.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="form-group">
               <label htmlFor="ai-template-description" className="form-label">
@@ -307,24 +466,6 @@ export function AITemplateGenerator({
               <p className="form-help">
                 Comma-separated field names to guide the AI extraction
               </p>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <input
-                  type="checkbox"
-                  checked={state.headless}
-                  onChange={(e) =>
-                    setState((prev) => ({
-                      ...prev,
-                      headless: e.target.checked,
-                    }))
-                  }
-                  disabled={state.isGenerating}
-                  className="form-checkbox"
-                />
-                Use headless browser (for JavaScript-rendered content)
-              </label>
             </div>
 
             {state.error && (

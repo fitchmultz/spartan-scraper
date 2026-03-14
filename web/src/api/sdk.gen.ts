@@ -278,7 +278,7 @@ export const aiExtractPreview = <ThrowOnError extends boolean = false>(options: 
 /**
  * Generate extraction template using AI
  *
- * Fetch a page through Spartan's existing fetch stack and generate an extraction template using AI
+ * Generate an extraction template using AI from either fetched page content or raw HTML supplied directly.
  */
 export const aiTemplateGenerate = <ThrowOnError extends boolean = false>(options: Options<AiTemplateGenerateData, ThrowOnError>) => (options.client ?? client).post<AiTemplateGenerateResponses, AiTemplateGenerateErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],

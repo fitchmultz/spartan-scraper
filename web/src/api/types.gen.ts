@@ -212,15 +212,15 @@ export type AiExtractOptions = {
 };
 
 /**
- * Request for AI extraction preview
+ * Request for AI extraction preview. Provide either a URL to fetch or raw HTML directly.
  */
 export type AiExtractPreviewRequest = {
     /**
-     * URL of the page to extract from
+     * URL of the page to extract from (optional when html is provided)
      */
-    url: string;
+    url?: string;
     /**
-     * HTML content (if not provided, URL must be provided)
+     * HTML content to preview directly (optional when url is provided)
      */
     html?: string;
     /**
@@ -310,13 +310,17 @@ export type FieldValue = {
 };
 
 /**
- * Request for AI template generation
+ * Request for AI template generation. Provide either a URL to fetch or raw HTML directly.
  */
 export type AiExtractTemplateGenerateRequest = {
     /**
-     * URL to analyze for template generation
+     * URL to analyze for template generation (optional when html is provided)
      */
-    url: string;
+    url?: string;
+    /**
+     * HTML content to generate from directly (optional when url is provided)
+     */
+    html?: string;
     /**
      * Description of what data to extract
      */
@@ -329,6 +333,10 @@ export type AiExtractTemplateGenerateRequest = {
      * Use headless browser to fetch content
      */
     headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for headless fetching
+     */
+    playwright?: boolean;
 };
 
 /**

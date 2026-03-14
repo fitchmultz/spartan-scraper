@@ -802,8 +802,8 @@ paths:
   "/v1/extract/ai-template-generate":
     post:
       summary: Generate extraction template using AI
-      description: Fetch a page through Spartan's existing fetch stack and generate
-        an extraction template using AI
+      description: Generate an extraction template using AI from either fetched page content
+        or raw HTML supplied directly.
       operationId: aiTemplateGenerate
       requestBody:
         required: true
@@ -3328,17 +3328,15 @@ components:
           description: Use cached results to reduce API costs
     AIExtractPreviewRequest:
       type: object
-      description: Request for AI extraction preview
-      required:
-      - url
+      description: Request for AI extraction preview. Provide either a URL to fetch or raw HTML directly.
       properties:
         url:
           type: string
           format: uri
-          description: URL of the page to extract from
+          description: URL of the page to extract from (optional when html is provided)
         html:
           type: string
-          description: HTML content (if not provided, URL must be provided)
+          description: HTML content to preview directly (optional when url is provided)
         mode:
           type: string
           enum:
@@ -3417,15 +3415,17 @@ components:
           description: JSON-encoded object for complex nested values
     AIExtractTemplateGenerateRequest:
       type: object
-      description: Request for AI template generation
+      description: Request for AI template generation. Provide either a URL to fetch or raw HTML directly.
       required:
-      - url
       - description
       properties:
         url:
           type: string
           format: uri
-          description: URL to analyze for template generation
+          description: URL to analyze for template generation (optional when html is provided)
+        html:
+          type: string
+          description: HTML content to generate from directly (optional when url is provided)
         description:
           type: string
           description: Description of what data to extract
@@ -3437,6 +3437,9 @@ components:
         headless:
           type: boolean
           description: Use headless browser to fetch content
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for headless fetching
     AIExtractTemplateGenerateResponse:
       type: object
       description: Response from AI template generation

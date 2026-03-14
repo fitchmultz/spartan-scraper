@@ -192,6 +192,49 @@ describe("AITemplateGenerator", () => {
     });
   });
 
+  it("supports pasted HTML mode with Playwright-free generation", async () => {
+    vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
+      data: mockGeneratedResponse,
+      error: undefined,
+      request: new Request(
+        "http://localhost:8741/v1/extract/ai-template-generate",
+      ),
+      response: new Response(),
+    });
+
+    render(
+      <AITemplateGenerator
+        isOpen={true}
+        onClose={mockOnClose}
+        onTemplateSaved={mockOnTemplateSaved}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /paste html/i }));
+    fireEvent.change(screen.getByLabelText(/^html/i), {
+      target: { value: "<html><body><h1>Example</h1></body></html>" },
+    });
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: "Extract product information" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /generate template/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.aiTemplateGenerate).toHaveBeenCalledWith({
+        baseUrl: "http://localhost:8741",
+        body: {
+          html: "<html><body><h1>Example</h1></body></html>",
+          description: "Extract product information",
+        },
+      });
+    });
+  });
+
   it("displays generated template after successful generation", async () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,

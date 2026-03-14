@@ -20,6 +20,16 @@ import (
 func (s *Server) toolsList() []tool {
 	return []tool{
 		{
+			Name:        "ai_extract_preview",
+			Description: "Preview AI-powered extraction against fetched or pasted HTML without creating a job",
+			InputSchema: schema(nil, map[string]string{"url": "string", "html": "string", "mode": "string", "prompt": "string", "schema": "object", "fields": "array", "headless": "boolean", "playwright": "boolean"}),
+		},
+		{
+			Name:        "ai_template_generate",
+			Description: "Generate an extraction template from fetched or pasted HTML without creating a job",
+			InputSchema: schema(map[string]string{"description": "string"}, map[string]string{"url": "string", "html": "string", "sampleFields": "array", "headless": "boolean", "playwright": "boolean"}),
+		},
+		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless) with optional AI extraction controls",
 			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),

@@ -17,6 +17,7 @@ package mcp
 import (
 	"context"
 
+	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -24,11 +25,12 @@ import (
 )
 
 type Server struct {
-	store   *store.Store
-	manager *jobs.Manager
-	cfg     config.Config
-	ctx     context.Context
-	cancel  context.CancelFunc
+	store       *store.Store
+	manager     *jobs.Manager
+	cfg         config.Config
+	aiAuthoring *aiauthoring.Service
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 type request struct {

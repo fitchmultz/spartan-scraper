@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	aiCmd "github.com/fitchmultz/spartan-scraper/internal/cli/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/batch"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/manage"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/scrape"
@@ -52,6 +53,8 @@ func Run(ctx context.Context) int {
 		return scrape.RunCrawl(ctx, cfg, os.Args[2:])
 	case "research":
 		return scrape.RunResearch(ctx, cfg, os.Args[2:])
+	case "ai":
+		return aiCmd.RunAI(ctx, cfg, os.Args[2:])
 
 	case "auth":
 		return manage.RunAuth(ctx, cfg, os.Args[2:])

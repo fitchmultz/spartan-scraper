@@ -39,7 +39,7 @@ The backend uses Go for predictable concurrency, strong standard-library primiti
 
 CLI, API, TUI, and Web UI all route through shared internal packages so behavior stays aligned across interfaces.
 
-Interface symmetry is intentional, not absolute. Spartan aims for shared capability where it improves operator outcomes, but it does not force every interface to host every workflow. In particular, AI preview and template-authoring flows belong in the Web UI, API, CLI, and MCP rather than the TUI, which remains focused on local inspection and job operations.
+Interface symmetry is intentional, not absolute. Spartan aims for shared capability where it improves operator outcomes, but it does not force every interface to host every workflow. In particular, AI preview and template-authoring flows belong in the Web UI, API, CLI, and MCP rather than the TUI, which remains focused on local inspection and job operations. Those authoring flows now share the same bounded implementation path across the supported non-TUI surfaces instead of drifting into Web-only or API-only features.
 
 ### 3) Fetch Strategy Abstraction
 
