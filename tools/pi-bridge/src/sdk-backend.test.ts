@@ -68,11 +68,11 @@ function createToolResponse(options: {
   };
 }
 
-test("ModelRegistry resolves verified pi model IDs", () => {
+test("ModelRegistry resolves preferred default pi model IDs", () => {
   const registry = new ModelRegistry(AuthStorage.inMemory());
-  assert.ok(registry.find("openai", "gpt-5.4"));
   assert.ok(registry.find("kimi-coding", "k2p5"));
   assert.ok(registry.find("zai", "glm-5"));
+  assert.ok(registry.find("openai-codex", "gpt-5.4"));
 });
 
 test("health reports only auth-ready routes as available", async () => {

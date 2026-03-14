@@ -24,9 +24,9 @@ export interface BridgeConfig {
 }
 
 export const DEFAULT_ROUTE_ORDER = [
-  "openai/gpt-5.4",
   "kimi-coding/k2p5",
   "zai/glm-5",
+  "openai-codex/gpt-5.4",
 ] as const;
 
 export function defaultRoutes(): Record<string, string[]> {

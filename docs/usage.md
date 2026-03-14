@@ -791,31 +791,13 @@ Balanced 1.0 is a hard storage cutover.
 
 This is deliberate: the project no longer attempts to open legacy layouts under the reduced 1.0 product boundary.
 
-## Local CI
+## pi bridge defaults
 
-Required local gate:
+Repo-local AI defaults live in `.env` and `config/pi-routes.json`.
 
-```bash
-make ci
-```
-
-Useful commands:
-
-```bash
-make install
-make generate
-make build
-make test-ci
-make ci
-make ci-slow
-```
-
-`make ci-slow` provisions Playwright and runs the heavier local-fixture/browser validation lane.
-omatically.
-- Existing pre-cutover databases are rejected if they do not carry the Balanced 1.0 storage schema marker.
-- The supported path forward is to run `spartan reset-data` or point `DATA_DIR` at a different empty directory.
-
-This is deliberate: the project no longer attempts to open legacy layouts under the reduced 1.0 product boundary.
+- Default pi route order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`
+- Spartan only passes route IDs to pi; pi continues to own auth, account selection, and billing behavior.
+- Override `PI_CONFIG_PATH` or edit `config/pi-routes.json` if you want a different local route order.
 
 ## Local CI
 
@@ -837,4 +819,3 @@ make ci-slow
 ```
 
 `make ci-slow` provisions Playwright and runs the heavier local-fixture/browser validation lane.
-aywright and runs the heavier local-fixture/browser validation lane.

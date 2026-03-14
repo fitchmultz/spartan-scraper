@@ -15,19 +15,19 @@ test("loadBridgeConfig uses defaults without config file", () => {
   const config = loadBridgeConfig({});
   assert.equal(config.mode, "sdk");
   assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
-    "openai/gpt-5.4",
     "kimi-coding/k2p5",
     "zai/glm-5",
+    "openai-codex/gpt-5.4",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_RESEARCH_REFINE], [
-    "openai/gpt-5.4",
     "kimi-coding/k2p5",
     "zai/glm-5",
+    "openai-codex/gpt-5.4",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_EXPORT_SHAPE], [
-    "openai/gpt-5.4",
     "kimi-coding/k2p5",
     "zai/glm-5",
+    "openai-codex/gpt-5.4",
   ]);
 });
 

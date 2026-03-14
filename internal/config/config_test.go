@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sync"
 	"testing"
@@ -235,6 +236,26 @@ func TestLoad_IgnoresLegacyAIProviderEnv(t *testing.T) {
 	}
 	if !apperrors.IsKind(err, apperrors.KindValidation) {
 		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestDefaultAIRoutingConfig_UsesPreferredRouteOrder(t *testing.T) {
+	routing := DefaultAIRoutingConfig()
+	want := []string{"kimi-coding/k2p5", "zai/glm-5", "openai-codex/gpt-5.4"}
+
+	for _, capability := range []string{
+		AICapabilityExtractNatural,
+		AICapabilityExtractSchema,
+		AICapabilityTemplateGeneration,
+		AICapabilityRenderProfile,
+		AICapabilityPipelineJS,
+		AICapabilityResearchRefine,
+		AICapabilityExportShape,
+		AICapabilityTransformGenerate,
+	} {
+		if got := routing.RoutesFor(capability); !reflect.DeepEqual(got, want) {
+			t.Fatalf("RoutesFor(%q) = %#v, want %#v", capability, got, want)
+		}
 	}
 }
 

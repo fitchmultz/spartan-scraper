@@ -218,6 +218,8 @@ Non-browser clients without an `Origin` header remain supported.
 If you run the backend on a different local port, set `DEV_API_PROXY_TARGET=http://127.0.0.1:<port>` in `web/.env` so the dev proxy stays same-origin.
 Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser should call a remote API directly.
 
+Repo-local AI defaults live in `.env` and `config/pi-routes.json`. By default Spartan now asks pi for routes in this order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`. Auth, account selection, and billing stay in pi; if you want a different route order or different provider/model IDs, override `PI_CONFIG_PATH` or edit that routes file locally.
+
 ## Interfaces
 
 - Web UI for job submission, monitoring, automation, and settings
