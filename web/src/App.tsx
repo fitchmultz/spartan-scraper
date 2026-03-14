@@ -52,6 +52,7 @@ import { WatchContainer } from "./components/watches/WatchContainer";
 import { ExportScheduleContainer } from "./components/export-schedules/ExportScheduleContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
 import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
+import { ProxyPoolStatusPanel } from "./components/ProxyPoolStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { AIExtractPreview } from "./components/AIExtractPreview";
@@ -1211,6 +1212,7 @@ export function App() {
           <section className="panel" style={{ marginTop: 16 }}>
             <PipelineJSEditor onError={(message) => console.error(message)} />
           </section>
+          <ProxyPoolStatusPanel />
           <RetentionStatusPanel />
         </>
       )}

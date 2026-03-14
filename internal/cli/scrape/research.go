@@ -97,7 +97,11 @@ Options:
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	// Resolve auth using first URL as base (validator ensures urlList non-empty).
 	authOptions, err := common.ResolveAuthFromCommonFlags(cfg, urlList[0], cf)

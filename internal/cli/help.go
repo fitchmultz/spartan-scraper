@@ -32,6 +32,7 @@ Commands:
   chains       Manage job chains (create/list/get/submit/delete)
   watch        Watch content for changes
   retention    Manage data retention and cleanup
+  proxy-pool   Inspect proxy-pool configuration and runtime status
   export       Export job results (jsonl, json, md, csv, xlsx)
   export-schedule Manage automated export schedules
   render-profiles List render profiles

@@ -16,7 +16,7 @@ import (
 
 // InitJobManager builds a fully wired job manager for local runtime surfaces such as
 // CLI commands, the API server, and MCP.
-func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jobs.Manager {
+func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) (*jobs.Manager, error) {
 	cbConfig := fetch.CircuitBreakerConfig{
 		Enabled:             cfg.CircuitBreakerEnabled,
 		FailureThreshold:    cfg.CircuitBreakerFailureThreshold,
@@ -58,8 +58,9 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jo
 		_, proxyPoolExplicit := os.LookupEnv("PROXY_POOL_FILE")
 		proxyPool, err := fetch.ProxyPoolFromConfig(cfg.ProxyPoolFile, proxyPoolExplicit)
 		if err != nil {
-			slog.Warn("failed to load proxy pool", "path", cfg.ProxyPoolFile, "error", err)
-		} else if proxyPool != nil {
+			return nil, err
+		}
+		if proxyPool != nil {
 			manager.SetProxyPool(proxyPool)
 			slog.Info("proxy pool loaded", "path", cfg.ProxyPoolFile)
 		}
@@ -84,5 +85,5 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jo
 	}
 
 	manager.Start(ctx)
-	return manager
+	return manager, nil
 }

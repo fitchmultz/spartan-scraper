@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
@@ -446,6 +447,44 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to export job", err)
 		}
 		return exported, nil
+	case "proxy_pool_status":
+		pool := s.manager.GetProxyPool()
+		if pool == nil {
+			return api.ProxyPoolStatusResponse{
+				Strategy:       "none",
+				TotalProxies:   0,
+				HealthyProxies: 0,
+				Proxies:        []api.ProxyStatus{},
+			}, nil
+		}
+		stats := pool.GetStats()
+		entries := pool.GetEntries()
+		entryByID := make(map[string]fetch.ProxyEntry, len(entries))
+		for _, entry := range entries {
+			entryByID[entry.ID] = entry
+		}
+		proxies := make([]api.ProxyStatus, 0, len(stats))
+		for id, stat := range stats {
+			entry := entryByID[id]
+			proxies = append(proxies, api.ProxyStatus{
+				ID:               id,
+				Region:           entry.Region,
+				Tags:             entry.Tags,
+				IsHealthy:        stat.IsHealthy,
+				RequestCount:     stat.RequestCount,
+				SuccessCount:     stat.SuccessCount,
+				FailureCount:     stat.FailureCount,
+				SuccessRate:      stat.SuccessRate(),
+				AvgLatencyMs:     stat.AvgLatencyMs,
+				ConsecutiveFails: stat.ConsecutiveFails,
+			})
+		}
+		return api.ProxyPoolStatusResponse{
+			Strategy:       pool.GetStrategy().String(),
+			TotalProxies:   pool.GetTotalProxyCount(),
+			HealthyProxies: pool.GetHealthyProxyCount(),
+			Proxies:        proxies,
+		}, nil
 	default:
 		return nil, apperrors.Validation(fmt.Sprintf("unknown tool: %s", params.Name))
 	}

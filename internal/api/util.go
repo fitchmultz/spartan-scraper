@@ -253,13 +253,27 @@ func resolveAuthForRequest(cfg config.Config, url string, profile string, overri
 		return fetch.AuthOptions{}, err
 	}
 	authOptions := auth.ToFetchOptions(resolved)
-
-	// Pass through proxy configuration from API request
-	if override != nil && override.Proxy != nil {
-		authOptions.Proxy = override.Proxy
-	}
+	mergeAuthTransportOverrides(&authOptions, override)
 
 	return authOptions, nil
+}
+
+func mergeAuthTransportOverrides(dst *fetch.AuthOptions, override *fetch.AuthOptions) {
+	if dst == nil || override == nil {
+		return
+	}
+	if override.Proxy != nil {
+		dst.Proxy = override.Proxy
+	}
+	if strings.TrimSpace(override.ProxyPool) != "" {
+		dst.ProxyPool = strings.TrimSpace(override.ProxyPool)
+	}
+	if override.ProxyHints != nil {
+		dst.ProxyHints = override.ProxyHints
+	}
+	if override.OAuth2 != nil {
+		dst.OAuth2 = override.OAuth2
+	}
 }
 
 func toHeaderKVs(headers map[string]string) []auth.HeaderKV {

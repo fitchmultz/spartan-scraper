@@ -89,7 +89,11 @@ Options:
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	authOptions, err := common.ResolveAuthFromCommonFlags(cfg, *url, cf)
 	if err != nil {

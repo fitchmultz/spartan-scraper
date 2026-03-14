@@ -15,7 +15,7 @@
 //
 // Invariants/Assumptions:
 //   - Missing optional default proxy-pool files stay silent on startup.
-//   - Explicit misconfiguration still surfaces as warnings.
+//   - Explicit proxy-pool misconfiguration fails fast instead of silently disabling proxies.
 package common
 
 import (
@@ -27,6 +27,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
-func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) *jobs.Manager {
+func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) (*jobs.Manager, error) {
 	return appRuntime.InitJobManager(ctx, cfg, st)
 }

@@ -1393,6 +1393,32 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/proxy-pool/status":
+    get:
+      summary: Get proxy pool status
+      description: Returns the currently loaded proxy pool strategy, aggregate counts, and per-proxy stats.
+      operationId: getProxyPoolStatus
+      tags:
+      - ProxyPool
+      responses:
+        '200':
+          description: Proxy pool status
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProxyPoolStatusResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/retention/cleanup":
     post:
       summary: Run retention cleanup
@@ -4850,6 +4876,41 @@ components:
           type: string
         proxy:
           "$ref": "#/components/schemas/ProxyConfig"
+        proxyPool:
+          type: string
+          description: Named proxy-pool selection hint for future-compatible clients; the currently loaded local pool is applied automatically when present.
+        proxyHints:
+          "$ref": "#/components/schemas/ProxySelectionHints"
+        oauth2:
+          "$ref": "#/components/schemas/OAuth2AuthConfig"
+    ProxySelectionHints:
+      type: object
+      properties:
+        preferred_region:
+          type: string
+          description: Prefer proxies from this region when selecting from the loaded pool
+        required_tags:
+          type: array
+          items:
+            type: string
+          description: Require all of these tags on the selected proxy
+        exclude_proxy_ids:
+          type: array
+          items:
+            type: string
+          description: Exclude these proxy IDs from consideration
+    OAuth2AuthConfig:
+      type: object
+      properties:
+        profileName:
+          type: string
+          description: Auth profile name containing OAuth2 client configuration
+        accessToken:
+          type: string
+          description: Optional static access token override
+        tokenType:
+          type: string
+          description: Token type to use when accessToken is provided
     WebhookConfig:
       type: object
       properties:
@@ -5671,6 +5732,65 @@ components:
       - spaceReclaimedMB
       - durationMs
       - dryRun
+    ProxyStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        region:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        is_healthy:
+          type: boolean
+        request_count:
+          type: integer
+          format: int64
+        success_count:
+          type: integer
+          format: int64
+        failure_count:
+          type: integer
+          format: int64
+        success_rate:
+          type: number
+          format: double
+        avg_latency_ms:
+          type: integer
+          format: int64
+        consecutive_fails:
+          type: integer
+      required:
+      - id
+      - is_healthy
+      - request_count
+      - success_count
+      - failure_count
+      - success_rate
+      - avg_latency_ms
+      - consecutive_fails
+    ProxyPoolStatusResponse:
+      type: object
+      properties:
+        strategy:
+          type: string
+        total_proxies:
+          type: integer
+          format: int64
+        healthy_proxies:
+          type: integer
+          format: int64
+        proxies:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ProxyStatus"
+      required:
+      - strategy
+      - total_proxies
+      - healthy_proxies
+      - proxies
     Schedule:
       type: object
       properties:

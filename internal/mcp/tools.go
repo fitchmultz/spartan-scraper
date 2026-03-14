@@ -104,6 +104,11 @@ func (s *Server) toolsList() []tool {
 			Description: "Export job results in specified format (jsonl, json, md, csv)",
 			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string"}),
 		},
+		{
+			Name:        "proxy_pool_status",
+			Description: "Inspect the currently loaded proxy pool strategy and per-proxy health/runtime stats",
+			InputSchema: schema(nil, nil),
+		},
 	}
 }
 

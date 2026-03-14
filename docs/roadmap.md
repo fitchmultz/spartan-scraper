@@ -11,12 +11,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Vet the optional proxy-pool path end to end, confirm whether the current configuration and runtime behavior still work, and add durable verification coverage so future changes cannot silently break proxy-backed execution.
+- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.
 
 ## Next
 
-- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.
+- Extend bounded AI authoring to more saved result-artifact workflows now that export shaping and proxy-pool runtime guarantees are stable across API, Web, CLI, and MCP.
 
 ## Later
 
-- Extend bounded AI authoring to more saved result-artifact workflows only after proxy-pool vetting lands with explicit runtime/documentation guarantees and export-shaping remains stable across API, Web, CLI, and MCP.
+- Deepen operator-facing proxy selection controls only if a concrete runtime need remains after the current global proxy-pool contract and verification coverage prove sufficient in day-to-day use.

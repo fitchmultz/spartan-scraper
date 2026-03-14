@@ -37,7 +37,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	mgr := appRuntime.InitJobManager(ctx, cfg, st)
+	mgr, err := appRuntime.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		_ = st.Close()
+		cancel()
+		return nil, err
+	}
 	aiExtractor, err := extract.NewAIExtractor(cfg.AI)
 	if err != nil {
 		slog.Warn("failed to initialize AI extractor for MCP authoring tools", "error", err)

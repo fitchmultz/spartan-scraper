@@ -1281,6 +1281,42 @@ export type AuthOptions = {
     loginUser?: string;
     loginPass?: string;
     proxy?: ProxyConfig;
+    /**
+     * Named proxy-pool selection hint for future-compatible clients; the currently loaded local pool is applied automatically when present.
+     */
+    proxyPool?: string;
+    proxyHints?: ProxySelectionHints;
+    oauth2?: OAuth2AuthConfig;
+};
+
+export type ProxySelectionHints = {
+    /**
+     * Prefer proxies from this region when selecting from the loaded pool
+     */
+    preferred_region?: string;
+    /**
+     * Require all of these tags on the selected proxy
+     */
+    required_tags?: Array<string>;
+    /**
+     * Exclude these proxy IDs from consideration
+     */
+    exclude_proxy_ids?: Array<string>;
+};
+
+export type OAuth2AuthConfig = {
+    /**
+     * Auth profile name containing OAuth2 client configuration
+     */
+    profileName?: string;
+    /**
+     * Optional static access token override
+     */
+    accessToken?: string;
+    /**
+     * Token type to use when accessToken is provided
+     */
+    tokenType?: string;
 };
 
 export type WebhookConfig = {
@@ -1920,6 +1956,26 @@ export type RetentionCleanupResponse = {
      * Whether this was a dry-run
      */
     dryRun: boolean;
+};
+
+export type ProxyStatus = {
+    id: string;
+    region?: string;
+    tags?: Array<string>;
+    is_healthy: boolean;
+    request_count: number;
+    success_count: number;
+    failure_count: number;
+    success_rate: number;
+    avg_latency_ms: number;
+    consecutive_fails: number;
+};
+
+export type ProxyPoolStatusResponse = {
+    strategy: string;
+    total_proxies: number;
+    healthy_proxies: number;
+    proxies: Array<ProxyStatus>;
 };
 
 export type Schedule = {
@@ -4702,6 +4758,35 @@ export type GetRetentionStatusResponses = {
 };
 
 export type GetRetentionStatusResponse = GetRetentionStatusResponses[keyof GetRetentionStatusResponses];
+
+export type GetProxyPoolStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/proxy-pool/status';
+};
+
+export type GetProxyPoolStatusErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetProxyPoolStatusError = GetProxyPoolStatusErrors[keyof GetProxyPoolStatusErrors];
+
+export type GetProxyPoolStatusResponses = {
+    /**
+     * Proxy pool status
+     */
+    200: ProxyPoolStatusResponse;
+};
+
+export type GetProxyPoolStatusResponse = GetProxyPoolStatusResponses[keyof GetProxyPoolStatusResponses];
 
 export type RunRetentionCleanupData = {
     body: RetentionCleanupRequest;

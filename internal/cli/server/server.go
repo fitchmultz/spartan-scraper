@@ -52,7 +52,11 @@ Notes:
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(serverCtx, cfg, st)
+	manager, err := common.InitJobManager(serverCtx, cfg, st)
+	if err != nil {
+		slog.Error("failed to initialize job manager", "error", err)
+		return 1
+	}
 
 	// Initialize export trigger for automated export scheduling
 	exportStorage := scheduler.NewExportStorage(cfg.DataDir)

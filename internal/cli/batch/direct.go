@@ -32,7 +32,10 @@ func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchSc
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build job specs
 	specs := make([]jobs.JobSpec, len(req.Jobs))
@@ -81,7 +84,10 @@ func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCra
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build job specs
 	specs := make([]jobs.JobSpec, len(req.Jobs))
@@ -131,7 +137,10 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		return nil, err
+	}
 
 	// Collect URLs from jobs
 	urls := make([]string, len(req.Jobs))
@@ -214,7 +223,10 @@ func cancelBatchDirect(ctx context.Context, cfg config.Config, batchID string) e
 	}
 	defer st.Close()
 
-	manager := common.InitJobManager(ctx, cfg, st)
+	manager, err := common.InitJobManager(ctx, cfg, st)
+	if err != nil {
+		return err
+	}
 	_, err = manager.CancelBatch(ctx, batchID)
 	return err
 }

@@ -53,7 +53,7 @@ This boundary is deliberate to avoid building a second interactive AI workbench 
 - `internal/jobs`
   - Job creation, queueing, execution, cancellation, recovery, and event publication.
 - `internal/fetch`
-  - HTTP-first fetching with Chromedp/Playwright escalation, auth, rate limiting, and browser helpers.
+  - HTTP-first fetching with Chromedp/Playwright escalation, auth, rate limiting, browser helpers, and optional proxy-pool selection/health tracking.
 - `internal/extract`
   - HTML normalization, extraction templates, and AI-assisted extraction helpers.
 - `internal/crawl`
@@ -68,6 +68,8 @@ This boundary is deliberate to avoid building a second interactive AI workbench 
   - Auth profiles, presets, login flow definitions, OAuth helpers, and API key support.
 - `internal/store`
   - SQLite-backed persistence for jobs, crawl state, automation records, and analytics still retained in the core product.
+- `internal/runtime`
+  - Shared local-runtime wiring for job managers, proxy-pool loading, and AI initialization. Explicit proxy-pool misconfiguration fails fast instead of silently disabling proxy-backed execution.
 - `internal/mcp`
   - MCP tool definitions and handlers.
 - `web`

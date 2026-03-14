@@ -111,8 +111,10 @@ These tools return structured authoring results immediately and do not create jo
 {"id":9,"method":"tools/call","params":{"name":"ai_research_refine","arguments":{"result":{"query":"pricing model","summary":"Original research summary","evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into an operator-ready brief"}}}
 {"id":10,"method":"tools/call","params":{"name":"ai_export_shape","arguments":{"jobId":"<job-id>","format":"md","instructions":"Prioritize summary and pricing fields for operator handoff"}}}
 {"id":11,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
-{"id":12,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
-{"id":13,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":12,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
+{"id":13,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
+{"id":14,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```
 
 The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape output, and use the job tools when you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.
+ you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.

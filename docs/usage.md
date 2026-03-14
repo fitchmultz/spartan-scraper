@@ -66,6 +66,9 @@ Common flags:
 - `--auth-basic user:pass`
 - `--header "Key: Value"` repeatable
 - `--cookie "name=value"` repeatable
+- `--proxy <url>`
+- `--proxy-username <value>`
+- `--proxy-password <value>`
 - `--ai-extract`
 - `--ai-mode natural_language|schema_guided`
 - `--ai-prompt "<instructions>"` for natural-language mode
@@ -156,6 +159,9 @@ Key flags:
 - `--headless`
 - `--playwright`
 - `--auth-profile <name>`
+- `--proxy <url>`
+- `--proxy-username <value>`
+- `--proxy-password <value>`
 - `--ai-extract`
 - `--ai-mode natural_language|schema_guided`
 - `--ai-prompt "<instructions>"` for natural-language mode
@@ -567,6 +573,7 @@ Backup and restore:
 ```bash
 spartan server
 spartan health
+spartan proxy-pool status
 spartan tui
 spartan mcp
 spartan version
@@ -604,6 +611,8 @@ Balanced 1.0 routes:
 - `/templates`
 - `/automation`
 - `/settings`
+
+The Settings route includes read-only proxy-pool status inspection alongside render profiles, pipeline JS, retention, and other runtime inventory panels.
 
 The UI only exposes retained product areas. Deleted surfaces are not available behind feature flags.
 
@@ -743,6 +752,32 @@ Important files and directories:
 Balanced 1.0 is a hard storage cutover.
 
 - New data directories are initialized automatically.
+- Existing pre-cutover databases are rejected if they do not carry the Balanced 1.0 storage schema marker.
+- The supported path forward is to run `spartan reset-data` or point `DATA_DIR` at a different empty directory.
+
+This is deliberate: the project no longer attempts to open legacy layouts under the reduced 1.0 product boundary.
+
+## Local CI
+
+Required local gate:
+
+```bash
+make ci
+```
+
+Useful commands:
+
+```bash
+make install
+make generate
+make build
+make test-ci
+make ci
+make ci-slow
+```
+
+`make ci-slow` provisions Playwright and runs the heavier local-fixture/browser validation lane.
+omatically.
 - Existing pre-cutover databases are rejected if they do not carry the Balanced 1.0 storage schema marker.
 - The supported path forward is to run `spartan reset-data` or point `DATA_DIR` at a different empty directory.
 
