@@ -30,6 +30,9 @@ describe("useExportScheduleForm", () => {
 
     expect(result.current.formData.format).toBe("json");
     expect(result.current.formData.destinationType).toBe("local");
+    expect(result.current.formData.localPath).toBe(
+      "exports/{kind}/{job_id}.{format}",
+    );
     expect(result.current.formError).toBeNull();
     expect(result.current.editingId).toBeNull();
   });
@@ -117,6 +120,33 @@ describe("useExportScheduleForm", () => {
 
     expect(success).toBe(false);
     expect(result.current.formError).toBe("Webhook URL must be a valid URL");
+  });
+
+  it("rejects schedules that combine transform and shape", async () => {
+    const { result } = renderHook(() => useExportScheduleForm());
+
+    act(() => {
+      result.current.setFormField("name", "Conflicting export");
+      result.current.setFormField("destinationType", "local");
+      result.current.setFormField("localPath", "exports/{job_id}.md");
+      result.current.setFormField("pathTemplate", "exports/{job_id}.md");
+      result.current.setFormField("format", "md");
+      result.current.setFormField("transformExpression", "{title: title}");
+      result.current.setFormField("shapeTopLevelFields", "url");
+    });
+
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.submitForm(onCreate, onUpdate);
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.formError).toBe(
+      "Export transform and export shaping cannot be combined on the same schedule",
+    );
   });
 
   it("submits new local schedules through onCreate", async () => {

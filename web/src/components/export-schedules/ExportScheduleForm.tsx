@@ -16,13 +16,19 @@
 import { useState } from "react";
 import type { ExportScheduleFormProps } from "../../types/export-schedule";
 import { AIExportShapeAssistant } from "../AIExportShapeAssistant";
+import { AIExportTransformAssistant } from "../AIExportTransformAssistant";
 import {
   clearShapeFormData,
+  clearTransformFormData,
   formDataToShapeConfig,
+  formDataToTransformConfig,
   formatExportShapeSummary,
+  formatExportTransformSummary,
   hasShapeFormData,
+  hasTransformFormData,
   shapeConfigToFormData,
   supportsExportShapeFormat,
+  transformConfigToFormData,
 } from "../../lib/export-schedule-utils";
 
 const JOB_KIND_OPTIONS = [
@@ -64,13 +70,23 @@ export function ExportScheduleForm({
   onCancel,
 }: ExportScheduleFormProps) {
   const [showShapeAssistant, setShowShapeAssistant] = useState(false);
+  const [showTransformAssistant, setShowTransformAssistant] = useState(false);
   const shapeSupported = supportsExportShapeFormat(formData.format);
   const stagedShape = hasShapeFormData(formData);
-  const currentShape = shapeSupported
-    ? formDataToShapeConfig(formData)
-    : undefined;
+  const stagedTransform = hasTransformFormData(formData);
+  const currentTransform = formDataToTransformConfig(formData);
+  const transformSummary = formatExportTransformSummary(currentTransform);
+  const transformActive = stagedTransform;
+  const shapeLockedByTransform = transformActive;
+  const transformLockedByShape = stagedShape;
+  const currentShape =
+    shapeSupported && !shapeLockedByTransform
+      ? formDataToShapeConfig(formData)
+      : undefined;
   const shapeSummary = shapeSupported
-    ? formatExportShapeSummary(currentShape)
+    ? shapeLockedByTransform
+      ? "Disabled by transform"
+      : formatExportShapeSummary(currentShape)
     : stagedShape
       ? "Staged (unsupported format)"
       : "Default";
@@ -365,7 +381,7 @@ export function ExportScheduleForm({
                   type="text"
                   value={formData.pathTemplate}
                   onChange={(e) => onChange({ pathTemplate: e.target.value })}
-                  placeholder="{job_id}.{format}"
+                  placeholder="exports/{kind}/{job_id}.{format}"
                   style={{ width: "100%" }}
                 />
                 <small style={{ color: "var(--muted)" }}>
@@ -403,7 +419,7 @@ export function ExportScheduleForm({
                       type="text"
                       value={formData.localPath}
                       onChange={(e) => onChange({ localPath: e.target.value })}
-                      placeholder="/data/exports/{job_id}.{format}"
+                      placeholder="exports/{kind}/{job_id}.{format}"
                       style={{ width: "100%" }}
                     />
                   </div>
@@ -444,6 +460,140 @@ export function ExportScheduleForm({
                     />
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Result Transform */}
+            <div
+              style={{
+                marginBottom: 24,
+                padding: 16,
+                backgroundColor: "var(--bg-alt)",
+                borderRadius: 8,
+              }}
+            >
+              <div
+                className="row"
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 14 }}>Result Transform</h4>
+                  <div
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 13,
+                      marginTop: 4,
+                    }}
+                  >
+                    Optionally project or reshape saved results with JMESPath or
+                    JSONata before recurring export runs.
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <div className="badge running">{transformSummary}</div>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => onChange(clearTransformFormData())}
+                    disabled={!stagedTransform}
+                  >
+                    Clear Transform
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTransformAssistant(true)}
+                    disabled={transformLockedByShape}
+                  >
+                    AI Suggest Transform
+                  </button>
+                </div>
+              </div>
+
+              {transformLockedByShape ? (
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(148, 163, 184, 0.12)",
+                    border: "1px solid rgba(148, 163, 184, 0.25)",
+                    color: "var(--muted)",
+                  }}
+                >
+                  Export shaping is active for this schedule. Clear the shape
+                  before configuring a saved transform so recurring exports keep
+                  one deterministic projection contract.
+                </div>
+              ) : (
+                <>
+                  <div className="row" style={{ gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ flex: "0 0 220px" }}>
+                      <label
+                        htmlFor="transform-language"
+                        style={{
+                          display: "block",
+                          marginBottom: 4,
+                          fontSize: 13,
+                        }}
+                      >
+                        Transform language
+                      </label>
+                      <select
+                        id="transform-language"
+                        value={formData.transformLanguage}
+                        onChange={(e) =>
+                          onChange({
+                            transformLanguage: e.target
+                              .value as typeof formData.transformLanguage,
+                          })
+                        }
+                        style={{ width: "100%" }}
+                      >
+                        <option value="jmespath">JMESPath</option>
+                        <option value="jsonata">JSONata</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 16 }}>
+                    <label
+                      htmlFor="transform-expression"
+                      style={{
+                        display: "block",
+                        marginBottom: 4,
+                        fontSize: 13,
+                      }}
+                    >
+                      Transform expression
+                    </label>
+                    <textarea
+                      id="transform-expression"
+                      value={formData.transformExpression}
+                      onChange={(e) =>
+                        onChange({ transformExpression: e.target.value })
+                      }
+                      rows={5}
+                      placeholder={
+                        formData.transformLanguage === "jmespath"
+                          ? "{title: title, url: url, price: normalized.fields.price.values[0]}"
+                          : '$.{"title": title, "url": url}'
+                      }
+                      style={{
+                        width: "100%",
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                      }}
+                    />
+                    <small style={{ color: "var(--muted)" }}>
+                      Leave empty to export the canonical saved results without
+                      an additional transform.
+                    </small>
+                  </div>
+                </>
               )}
             </div>
 
@@ -491,14 +641,28 @@ export function ExportScheduleForm({
                   <button
                     type="button"
                     onClick={() => setShowShapeAssistant(true)}
-                    disabled={!shapeSupported}
+                    disabled={!shapeSupported || shapeLockedByTransform}
                   >
                     AI Suggest Shape
                   </button>
                 </div>
               </div>
 
-              {shapeSupported ? (
+              {shapeLockedByTransform ? (
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: "rgba(148, 163, 184, 0.12)",
+                    border: "1px solid rgba(148, 163, 184, 0.25)",
+                    color: "var(--muted)",
+                  }}
+                >
+                  This schedule already has a saved transform. Clear the
+                  transform before configuring export shaping so recurring
+                  exports keep one deterministic projection path.
+                </div>
+              ) : shapeSupported ? (
                 <>
                   <div
                     style={{
@@ -827,6 +991,17 @@ export function ExportScheduleForm({
           </form>
         </div>
       </div>
+
+      {showTransformAssistant ? (
+        <AIExportTransformAssistant
+          isOpen={showTransformAssistant}
+          onClose={() => setShowTransformAssistant(false)}
+          currentTransform={currentTransform}
+          onApplyTransform={(transform) =>
+            onChange(transformConfigToFormData(transform))
+          }
+        />
+      ) : null}
 
       {shapeSupported && showShapeAssistant ? (
         <AIExportShapeAssistant

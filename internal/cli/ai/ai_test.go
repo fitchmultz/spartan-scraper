@@ -18,6 +18,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
 type fakeAuthoringRunner struct {
@@ -568,5 +569,53 @@ func TestRunTransformLoadsResultFileAndForwardsCurrentTransform(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"transform":`) {
 		t.Fatalf("expected transform JSON output, got %s", stdout)
+	}
+}
+
+func TestRunTransformLoadsCurrentTransformFromSchedule(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		transformResult: aiauthoring.TransformResult{
+			Transform: exporter.TransformConfig{
+				Expression: "{title: title}",
+				Language:   "jmespath",
+			},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	resultPath := filepath.Join(tmpDir, "crawl.jsonl")
+	if err := os.WriteFile(resultPath, []byte("{\"url\":\"https://example.com\",\"title\":\"Example\",\"status\":200}\n"), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+	storage := scheduler.NewExportStorage(tmpDir)
+	created, err := storage.Add(scheduler.ExportSchedule{
+		Name:    "Projected Export",
+		Enabled: true,
+		Filters: scheduler.ExportFilters{JobKinds: []string{"scrape"}},
+		Export: scheduler.ExportConfig{
+			Format:          "csv",
+			DestinationType: "local",
+			Transform: exporter.TransformConfig{
+				Expression: "{title: title, url: url}",
+				Language:   "jsonata",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("storage.Add(): %v", err)
+	}
+
+	code, stderr := captureOutput(t, &os.Stderr, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"transform", "--result-file", resultPath, "--schedule-id", created.ID})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr)
+	}
+	if runner.transformReq.CurrentTransform.Expression != "{title: title, url: url}" {
+		t.Fatalf("unexpected current transform: %#v", runner.transformReq.CurrentTransform)
+	}
+	if runner.transformReq.PreferredLanguage != "jsonata" {
+		t.Fatalf("unexpected preferred language: %q", runner.transformReq.PreferredLanguage)
 	}
 }

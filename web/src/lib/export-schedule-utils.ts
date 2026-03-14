@@ -19,6 +19,7 @@ import type {
   ExportScheduleRequest,
   ExportFilters,
   ExportShapeConfig,
+  ResultTransformConfig,
 } from "../api";
 import {
   parseLineSeparatedMap,
@@ -45,11 +46,13 @@ export const defaultFormData: ExportScheduleFormData = {
   filterHasResults: true,
   format: "json",
   destinationType: "local",
-  pathTemplate: "{job_id}.{format}",
-  localPath: "",
+  pathTemplate: "exports/{kind}/{job_id}.{format}",
+  localPath: "exports/{kind}/{job_id}.{format}",
   webhookUrl: "",
   maxRetries: 3,
   baseDelayMs: 1000,
+  transformExpression: "",
+  transformLanguage: "jmespath",
   shapeTopLevelFields: "",
   shapeNormalizedFields: "",
   shapeEvidenceFields: "",
@@ -128,6 +131,54 @@ export function supportsExportShapeFormat(
   format: ExportScheduleFormData["format"] | undefined,
 ): format is Extract<ExportScheduleFormData["format"], "md" | "csv" | "xlsx"> {
   return format ? SHAPE_SUPPORTED_FORMATS.has(format) : false;
+}
+
+export function hasTransformFormData(data: ExportScheduleFormData): boolean {
+  return Boolean(data.transformExpression.trim());
+}
+
+export function transformConfigToFormData(
+  transform: ResultTransformConfig | undefined,
+): Pick<ExportScheduleFormData, "transformExpression" | "transformLanguage"> {
+  return {
+    transformExpression: transform?.expression || "",
+    transformLanguage:
+      (transform?.language as ExportScheduleFormData["transformLanguage"]) ||
+      "jmespath",
+  };
+}
+
+export function formDataToTransformConfig(
+  data: ExportScheduleFormData,
+): ResultTransformConfig | undefined {
+  const expression = data.transformExpression.trim();
+  if (!expression) {
+    return undefined;
+  }
+  return {
+    expression,
+    language: data.transformLanguage,
+  };
+}
+
+export function formatExportTransformSummary(
+  transform: ResultTransformConfig | undefined,
+): string {
+  const normalized = transformConfigToFormData({
+    expression: transform?.expression,
+    language: transform?.language,
+  });
+  if (!normalized.transformExpression.trim()) {
+    return "Default";
+  }
+  const compactExpression = normalized.transformExpression
+    .replace(/\s+/g, " ")
+    .trim();
+  const preview =
+    compactExpression.length > 48
+      ? `${compactExpression.slice(0, 45)}...`
+      : compactExpression;
+  return `${normalized.transformLanguage} · ${preview}`;
 }
 
 function formatLineSeparatedList(values: string[] | undefined): string {
@@ -234,6 +285,16 @@ export function formDataToShapeConfig(
   return undefined;
 }
 
+export function clearTransformFormData(): Pick<
+  ExportScheduleFormData,
+  "transformExpression" | "transformLanguage"
+> {
+  return {
+    transformExpression: "",
+    transformLanguage: "jmespath",
+  };
+}
+
 export function clearShapeFormData(): Pick<
   ExportScheduleFormData,
   | "shapeTopLevelFields"
@@ -313,11 +374,12 @@ export function scheduleToFormData(
     destinationType:
       (export_.destination_type as ExportScheduleFormData["destinationType"]) ||
       "local",
-    pathTemplate: export_.path_template || "{job_id}.{format}",
-    localPath: export_.local_path || "",
+    pathTemplate: export_.path_template || defaultFormData.pathTemplate,
+    localPath: export_.local_path || defaultFormData.localPath,
     webhookUrl: export_.webhook_url || "",
     maxRetries: retry.max_retries ?? 3,
     baseDelayMs: retry.base_delay_ms ?? 1000,
+    ...transformConfigToFormData(export_.transform),
     ...shapeConfigToFormData(export_.shape),
   };
 }
@@ -344,8 +406,13 @@ function buildExportConfig(data: ExportScheduleFormData): ExportConfig {
     config.webhook_url = data.webhookUrl;
   }
 
+  const transform = formDataToTransformConfig(data);
+  if (transform) {
+    config.transform = transform;
+  }
+
   const shape = formDataToShapeConfig(data);
-  if (shape) {
+  if (shape && !transform) {
     config.shape = shape;
   }
 

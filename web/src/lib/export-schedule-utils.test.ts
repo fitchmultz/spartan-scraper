@@ -22,18 +22,23 @@ import { describe, expect, it } from "vitest";
 import type { ExportSchedule } from "../api";
 import {
   clearShapeFormData,
+  clearTransformFormData,
   defaultFormData,
   formDataToScheduleRequest,
+  formDataToTransformConfig,
   formatDestination,
   formatExportShapeSummary,
+  formatExportTransformSummary,
   formatFileSize,
   formatFilters,
   formatShapeLabels,
   formDataToShapeConfig,
   hasShapeFormData,
+  hasTransformFormData,
   scheduleToFormData,
   shapeConfigToFormData,
   supportsExportShapeFormat,
+  transformConfigToFormData,
 } from "./export-schedule-utils";
 
 describe("defaultFormData", () => {
@@ -47,11 +52,13 @@ describe("defaultFormData", () => {
       filterHasResults: true,
       format: "json",
       destinationType: "local",
-      pathTemplate: "{job_id}.{format}",
-      localPath: "",
+      pathTemplate: "exports/{kind}/{job_id}.{format}",
+      localPath: "exports/{kind}/{job_id}.{format}",
       webhookUrl: "",
       maxRetries: 3,
       baseDelayMs: 1000,
+      transformExpression: "",
+      transformLanguage: "jmespath",
       shapeTopLevelFields: "",
       shapeNormalizedFields: "",
       shapeEvidenceFields: "",
@@ -218,6 +225,52 @@ describe("export shape helpers", () => {
   });
 });
 
+describe("export transform helpers", () => {
+  it("round-trips transform config to and from form fields", () => {
+    expect(
+      transformConfigToFormData({
+        expression: "{title: title, url: url}",
+        language: "jsonata",
+      }),
+    ).toEqual({
+      transformExpression: "{title: title, url: url}",
+      transformLanguage: "jsonata",
+    });
+
+    expect(
+      formDataToTransformConfig({
+        ...defaultFormData,
+        transformExpression: "{title: title, url: url}",
+        transformLanguage: "jmespath",
+      }),
+    ).toEqual({
+      expression: "{title: title, url: url}",
+      language: "jmespath",
+    });
+  });
+
+  it("formats and clears transform summaries", () => {
+    expect(
+      formatExportTransformSummary({
+        expression: "{title: title, url: url}",
+        language: "jmespath",
+      }),
+    ).toContain("jmespath");
+    expect(formatExportTransformSummary(undefined)).toBe("Default");
+    expect(
+      hasTransformFormData({
+        ...defaultFormData,
+        transformExpression: "{title: title}",
+      }),
+    ).toBe(true);
+    expect(hasTransformFormData(defaultFormData)).toBe(false);
+    expect(clearTransformFormData()).toEqual({
+      transformExpression: "",
+      transformLanguage: "jmespath",
+    });
+  });
+});
+
 describe("scheduleToFormData", () => {
   it("maps local schedules into form state", () => {
     const schedule: ExportSchedule = {
@@ -263,6 +316,8 @@ describe("scheduleToFormData", () => {
       webhookUrl: "",
       maxRetries: 5,
       baseDelayMs: 2000,
+      transformExpression: "",
+      transformLanguage: "jmespath",
       shapeTopLevelFields: "url\ntitle",
       shapeNormalizedFields: "",
       shapeEvidenceFields: "",
@@ -292,6 +347,8 @@ describe("formDataToScheduleRequest", () => {
         webhookUrl: "",
         maxRetries: 3,
         baseDelayMs: 1000,
+        transformExpression: "",
+        transformLanguage: "jmespath",
         shapeTopLevelFields: "",
         shapeNormalizedFields: "",
         shapeEvidenceFields: "",
@@ -335,6 +392,8 @@ describe("formDataToScheduleRequest", () => {
         webhookUrl: "https://example.com/hook",
         maxRetries: 5,
         baseDelayMs: 2500,
+        transformExpression: "",
+        transformLanguage: "jmespath",
         shapeTopLevelFields: "",
         shapeNormalizedFields: "",
         shapeEvidenceFields: "",
@@ -359,6 +418,37 @@ describe("formDataToScheduleRequest", () => {
       retry: {
         max_retries: 5,
         base_delay_ms: 2500,
+      },
+    });
+  });
+
+  it("includes export transform when configured", () => {
+    expect(
+      formDataToScheduleRequest({
+        ...defaultFormData,
+        name: "Projected export",
+        format: "csv",
+        localPath: "exports/{job_id}.csv",
+        pathTemplate: "exports/{job_id}.csv",
+        transformExpression: "{title: title, url: url}",
+        transformLanguage: "jmespath",
+      }),
+    ).toEqual({
+      name: "Projected export",
+      enabled: true,
+      filters: {
+        job_status: ["completed"],
+        has_results: true,
+      },
+      export: {
+        format: "csv",
+        destination_type: "local",
+        path_template: "exports/{job_id}.csv",
+        local_path: "exports/{job_id}.csv",
+        transform: {
+          expression: "{title: title, url: url}",
+          language: "jmespath",
+        },
       },
     });
   });

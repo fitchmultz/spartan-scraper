@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
@@ -67,12 +68,18 @@ func listExportSchedules(cfg config.Config) int {
 		if s.Enabled {
 			enabled = "yes"
 		}
+		format := s.Export.Format
+		if exporter.HasMeaningfulTransform(s.Export.Transform) {
+			format += "+transform"
+		} else if exporter.HasMeaningfulShape(s.Export.Shape) {
+			format += "+shape"
+		}
 		fmt.Printf("%-36s %-20s %-8s %-15s %-20s\n",
 			s.ID,
 			truncate(s.Name, 20),
 			enabled,
 			s.Export.DestinationType,
-			s.Export.Format)
+			format)
 	}
 	return 0
 }
@@ -86,8 +93,10 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	filterHasResults := fs.Bool("filter-has-results", false, "Only export jobs with non-empty results")
 	format := fs.String("format", "", "Export format: json,jsonl,md,csv,xlsx (required)")
 	destination := fs.String("destination", "", "Destination type: local,webhook (required)")
-	localPath := fs.String("local-path", "", "Local file path template (for local destination)")
+	localPath := fs.String("local-path", "", "Local file path template (defaults to exports/{kind}/{job_id}.{format})")
 	webhookURL := fs.String("webhook-url", "", "Webhook URL (for webhook destination)")
+	transformExpression := fs.String("transform-expression", "", "Optional JMESPath/JSONata expression to transform results before export")
+	transformLanguage := fs.String("transform-language", "", "Transformation language for --transform-expression: jmespath|jsonata")
 	maxRetries := fs.Int("max-retries", 3, "Maximum retry attempts")
 	baseDelayMs := fs.Int("base-delay-ms", 1000, "Base retry delay in milliseconds")
 
@@ -129,18 +138,23 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	// Set destination-specific config
 	switch *destination {
 	case "local":
-		if *localPath == "" {
-			fmt.Fprintln(os.Stderr, "--local-path is required for local destination")
-			return 1
+		if strings.TrimSpace(*localPath) != "" {
+			exportConfig.LocalPath = *localPath
+			exportConfig.PathTemplate = *localPath
 		}
-		exportConfig.LocalPath = *localPath
-		exportConfig.PathTemplate = *localPath
 	case "webhook":
 		if *webhookURL == "" {
 			fmt.Fprintln(os.Stderr, "--webhook-url is required for webhook destination")
 			return 1
 		}
 		exportConfig.WebhookURL = *webhookURL
+	}
+
+	if strings.TrimSpace(*transformExpression) != "" || strings.TrimSpace(*transformLanguage) != "" {
+		exportConfig.Transform = exporter.TransformConfig{
+			Expression: strings.TrimSpace(*transformExpression),
+			Language:   strings.TrimSpace(*transformLanguage),
+		}
 	}
 
 	// Build retry config
@@ -215,6 +229,11 @@ func getExportSchedule(cfg config.Config, args []string) int {
 	}
 	if schedule.Export.WebhookURL != "" {
 		fmt.Printf("  Webhook URL: %s\n", schedule.Export.WebhookURL)
+	}
+	if exporter.HasMeaningfulTransform(schedule.Export.Transform) {
+		fmt.Println("  Transform:")
+		fmt.Printf("    Language: %s\n", schedule.Export.Transform.Language)
+		fmt.Printf("    Expression: %s\n", schedule.Export.Transform.Expression)
 	}
 	fmt.Println("\nRetry:")
 	fmt.Printf("  Max Retries: %d\n", schedule.Retry.MaxRetries)
@@ -344,6 +363,15 @@ Examples:
     --format json \
     --destination webhook \
     --webhook-url https://example.com/webhook
+
+  # Create a schedule that transforms results before export
+  spartan export-schedule add \
+    --name "Projected CSV" \
+    --filter-kinds scrape \
+    --format csv \
+    --destination local \
+    --transform-language jmespath \
+    --transform-expression '{title: title, url: url}'
 
   # List all schedules
   spartan export-schedule list

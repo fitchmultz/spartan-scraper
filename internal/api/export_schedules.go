@@ -290,16 +290,5 @@ func toExportScheduleResponse(schedule scheduler.ExportSchedule) ExportScheduleR
 }
 
 func normalizeExportScheduleRequest(schedule scheduler.ExportSchedule) scheduler.ExportSchedule {
-	if schedule.Export.DestinationType == "local" {
-		if schedule.Export.PathTemplate == "" && schedule.Export.LocalPath == "" {
-			schedule.Export.PathTemplate = "exports/{kind}/{job_id}.{format}"
-		}
-		if schedule.Export.LocalPath == "" {
-			schedule.Export.LocalPath = schedule.Export.PathTemplate
-		}
-		if schedule.Export.PathTemplate == "" {
-			schedule.Export.PathTemplate = schedule.Export.LocalPath
-		}
-	}
-	return schedule
+	return scheduler.NormalizeExportSchedule(schedule)
 }

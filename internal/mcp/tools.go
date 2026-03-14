@@ -106,8 +106,38 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_export",
-			Description: "Export job results in specified format (jsonl, json, md, csv)",
-			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string"}),
+			Description: "Export job results in specified text format (jsonl, json, md, csv) with optional transform controls",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string", "transformExpression": "string", "transformLanguage": "string"}),
+		},
+		{
+			Name:        "export_schedule_list",
+			Description: "List automated export schedules",
+			InputSchema: schema(nil, nil),
+		},
+		{
+			Name:        "export_schedule_get",
+			Description: "Get a single automated export schedule by id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "export_schedule_create",
+			Description: "Create an automated export schedule",
+			InputSchema: schema(map[string]string{"name": "string", "filters": "object", "export": "object"}, map[string]string{"enabled": "boolean", "retry": "object"}),
+		},
+		{
+			Name:        "export_schedule_update",
+			Description: "Update an existing automated export schedule",
+			InputSchema: schema(map[string]string{"id": "string", "name": "string", "filters": "object", "export": "object"}, map[string]string{"enabled": "boolean", "retry": "object"}),
+		},
+		{
+			Name:        "export_schedule_delete",
+			Description: "Delete an automated export schedule",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "export_schedule_history",
+			Description: "Get export history for an automated export schedule",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{
 			Name:        "proxy_pool_status",

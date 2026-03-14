@@ -31,6 +31,7 @@ import (
 
 // ValidateExportSchedule validates an export schedule.
 func ValidateExportSchedule(schedule ExportSchedule) error {
+	schedule = NormalizeExportSchedule(schedule)
 	if strings.TrimSpace(schedule.Name) == "" {
 		return apperrors.Validation("export schedule name is required")
 	}
@@ -79,6 +80,7 @@ func ValidateExportFilters(filters ExportFilters) error {
 
 // ValidateExportConfig validates export configuration.
 func ValidateExportConfig(config ExportConfig) error {
+	config = NormalizeExportConfig(config)
 	if config.Format == "" {
 		return apperrors.Validation("export format is required")
 	}
@@ -97,6 +99,14 @@ func ValidateExportConfig(config ExportConfig) error {
 
 	if exporter.HasMeaningfulShape(config.Shape) && !exporter.SupportsShapeFormat(config.Format) {
 		return apperrors.Validation("export shaping is supported only for md, csv, and xlsx formats")
+	}
+	if exporter.HasMeaningfulTransform(config.Transform) {
+		if err := exporter.ValidateTransformConfig(config.Transform); err != nil {
+			return err
+		}
+	}
+	if exporter.HasMeaningfulShape(config.Shape) && exporter.HasMeaningfulTransform(config.Transform) {
+		return apperrors.Validation("export shape and transform cannot be combined on the same schedule")
 	}
 
 	// Validate destination-specific config

@@ -92,6 +92,7 @@ export type ExportConfig = {
      */
     path_template?: string;
     shape?: ExportShapeConfig;
+    transform?: ResultTransformConfig;
 };
 
 export type ExportShapeFormattingHints = {

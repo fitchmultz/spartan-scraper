@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 func TestValidateExportSchedule(t *testing.T) {
@@ -25,6 +26,25 @@ func TestValidateExportSchedule(t *testing.T) {
 					Format:          "jsonl",
 					DestinationType: "local",
 					LocalPath:       "/tmp/exports/{job_id}.jsonl",
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid schedule with transform",
+			schedule: ExportSchedule{
+				Name: "Projected Schedule",
+				Filters: ExportFilters{
+					JobKinds: []string{"scrape"},
+				},
+				Export: ExportConfig{
+					Format:          "csv",
+					DestinationType: "local",
+					LocalPath:       "/tmp/exports/{job_id}.csv",
+					Transform: exporter.TransformConfig{
+						Expression: "{title: title, url: url}",
+						Language:   "jmespath",
+					},
 				},
 			},
 			wantError: false,
@@ -218,12 +238,12 @@ func TestValidateExportConfig(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "local without path",
+			name: "local without path uses shared default",
 			config: ExportConfig{
 				Format:          "jsonl",
 				DestinationType: "local",
 			},
-			wantError: true,
+			wantError: false,
 		},
 		{
 			name: "webhook without url",
@@ -247,6 +267,48 @@ func TestValidateExportConfig(t *testing.T) {
 			config: ExportConfig{
 				Format:          "jsonl",
 				DestinationType: "s3",
+			},
+			wantError: true,
+		},
+		{
+			name: "valid transform config",
+			config: ExportConfig{
+				Format:          "csv",
+				DestinationType: "local",
+				LocalPath:       "/tmp/exports/{job_id}.csv",
+				Transform: exporter.TransformConfig{
+					Expression: "{title: title, url: url}",
+					Language:   "jmespath",
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "invalid transform config",
+			config: ExportConfig{
+				Format:          "csv",
+				DestinationType: "local",
+				LocalPath:       "/tmp/exports/{job_id}.csv",
+				Transform: exporter.TransformConfig{
+					Expression: "[",
+					Language:   "jmespath",
+				},
+			},
+			wantError: true,
+		},
+		{
+			name: "shape and transform cannot be combined",
+			config: ExportConfig{
+				Format:          "md",
+				DestinationType: "local",
+				LocalPath:       "/tmp/exports/{job_id}.md",
+				Shape: exporter.ShapeConfig{
+					TopLevelFields: []string{"url"},
+				},
+				Transform: exporter.TransformConfig{
+					Expression: "{title: title}",
+					Language:   "jmespath",
+				},
 			},
 			wantError: true,
 		},

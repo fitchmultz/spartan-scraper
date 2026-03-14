@@ -89,6 +89,88 @@ func TestExportScheduleCreateAndUpdateNormalizeLocalDefaults(t *testing.T) {
 	}
 }
 
+func TestExportScheduleCreateAndGetRoundTripsTransform(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{
+		"name": "projected export",
+		"filters": {"job_kinds": ["scrape"]},
+		"export": {
+			"format": "csv",
+			"destination_type": "local",
+			"transform": {
+				"expression": "{title: title, url: url}",
+				"language": "jmespath"
+			}
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+	if res.Code != http.StatusCreated {
+		t.Fatalf("expected create status 201, got %d: %s", res.Code, res.Body.String())
+	}
+
+	var created ExportScheduleResponse
+	if err := json.Unmarshal(res.Body.Bytes(), &created); err != nil {
+		t.Fatalf("failed to decode create response: %v", err)
+	}
+	if created.Export.Transform.Expression != "{title: title, url: url}" {
+		t.Fatalf("unexpected transform expression: %#v", created.Export.Transform)
+	}
+	if created.Export.LocalPath != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("expected default local path, got %q", created.Export.LocalPath)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/v1/export-schedules/"+created.ID, nil)
+	getRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(getRes, getReq)
+	if getRes.Code != http.StatusOK {
+		t.Fatalf("expected get status 200, got %d: %s", getRes.Code, getRes.Body.String())
+	}
+
+	var fetched ExportScheduleResponse
+	if err := json.Unmarshal(getRes.Body.Bytes(), &fetched); err != nil {
+		t.Fatalf("failed to decode get response: %v", err)
+	}
+	if fetched.Export.Transform.Language != "jmespath" {
+		t.Fatalf("unexpected transform language: %#v", fetched.Export.Transform)
+	}
+}
+
+func TestExportScheduleRejectsShapeAndTransformCombination(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{
+		"name": "invalid export",
+		"filters": {"job_kinds": ["scrape"]},
+		"export": {
+			"format": "md",
+			"destination_type": "local",
+			"shape": {"topLevelFields": ["url"]},
+			"transform": {
+				"expression": "{title: title}",
+				"language": "jmespath"
+			}
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", res.Code, res.Body.String())
+	}
+	if !strings.Contains(res.Body.String(), "cannot be combined") {
+		t.Fatalf("expected shape/transform validation error, got %s", res.Body.String())
+	}
+}
+
 func TestExportScheduleDeleteMissingReturnsNotFound(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

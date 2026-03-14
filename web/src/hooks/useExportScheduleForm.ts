@@ -19,6 +19,8 @@ import {
   defaultFormData,
   scheduleToFormData,
   formDataToScheduleRequest,
+  hasShapeFormData,
+  hasTransformFormData,
 } from "../lib/export-schedule-utils";
 
 interface UseExportScheduleFormReturn {
@@ -113,6 +115,13 @@ export function useExportScheduleForm(): UseExportScheduleFormReturn {
 
     if (formData.baseDelayMs < 0) {
       setFormError("Base delay must be 0 or greater");
+      return false;
+    }
+
+    if (hasTransformFormData(formData) && hasShapeFormData(formData)) {
+      setFormError(
+        "Export transform and export shaping cannot be combined on the same schedule",
+      );
       return false;
     }
 

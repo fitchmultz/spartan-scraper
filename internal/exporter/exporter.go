@@ -6,9 +6,11 @@
 // of large results.
 //
 // Public API:
-// - Export: Export job results and return as string
-// - ExportStream: Stream export job results to writer
-// - ExportWithShape / ExportStreamWithShape: Apply deterministic export shaping
+//   - Export: Export job results and return as string
+//   - ExportStream: Stream export job results to writer
+//   - ExportWithShape / ExportStreamWithShape: Apply deterministic export shaping
+//   - ExportWithShapeAndTransform / ExportStreamWithShapeAndTransform: Apply an
+//     optional deterministic transform before export
 //
 // This file contains only the public API entry points. Format-specific logic,
 // result types, parsing helpers, and pagination utilities are split into separate

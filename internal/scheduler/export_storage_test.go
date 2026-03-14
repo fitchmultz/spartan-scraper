@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 func TestExportStorage(t *testing.T) {
@@ -295,5 +297,43 @@ func TestExportStorage_LocalPathRoundTrip(t *testing.T) {
 
 	if retrieved.Export.PathTemplate != "exports/{kind}/{job_id}.jsonl" {
 		t.Fatalf("PathTemplate = %q, want %q", retrieved.Export.PathTemplate, "exports/{kind}/{job_id}.jsonl")
+	}
+}
+
+func TestExportStorage_TransformRoundTripAndDefaultLocalPath(t *testing.T) {
+	tempDir := t.TempDir()
+	storage := NewExportStorage(tempDir)
+
+	schedule := ExportSchedule{
+		Name:    "Projected Export",
+		Enabled: true,
+		Filters: ExportFilters{JobKinds: []string{"scrape"}},
+		Export: ExportConfig{
+			Format:          "csv",
+			DestinationType: "local",
+			Transform: exporter.TransformConfig{
+				Expression: "{title: title, url: url}",
+				Language:   "jmespath",
+			},
+		},
+	}
+
+	created, err := storage.Add(schedule)
+	if err != nil {
+		t.Fatalf("Add() error = %v", err)
+	}
+	if created.Export.LocalPath != "exports/{kind}/{job_id}.{format}" {
+		t.Fatalf("LocalPath = %q, want default path", created.Export.LocalPath)
+	}
+	if created.Export.Transform.Expression != "{title: title, url: url}" {
+		t.Fatalf("Transform expression = %q", created.Export.Transform.Expression)
+	}
+
+	retrieved, err := storage.Get(created.ID)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if retrieved.Export.Transform.Language != "jmespath" {
+		t.Fatalf("Transform language = %q", retrieved.Export.Transform.Language)
 	}
 }

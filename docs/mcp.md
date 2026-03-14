@@ -4,7 +4,7 @@
 
 - MCP remains the agent-facing control plane for the 1.0 core.
 - Submit scrape, crawl, and research jobs.
-- Poll status, fetch results, and export supported formats.
+- Poll status, fetch results, export supported text formats, and manage export schedules.
 
 ## Long-Running Jobs
 
@@ -92,6 +92,39 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
 
 These tools return structured authoring results immediately and do not create jobs. Attached `images` are bounded, request-scoped visual context only and are not persisted as job artifacts.
 
+## Export tools
+
+- `job_export`
+  - `id: "..."`
+  - `format: "jsonl" | "json" | "md" | "csv"` optional, defaults to `jsonl`
+  - `transformExpression: "..."` optional saved-result projection/filter expression
+  - `transformLanguage: "jmespath" | "jsonata"` required when `transformExpression` is set
+- `export_schedule_list`
+  - no arguments
+- `export_schedule_get`
+  - `id: "..."`
+- `export_schedule_create`
+  - `name: "..."`
+  - `filters: { ... }` persisted `ExportFilters`
+  - `export: { ... }` persisted `ExportConfig` including optional `shape` or `transform`
+  - `enabled: true|false` optional
+  - `retry: { ... }` optional
+- `export_schedule_update`
+  - `id: "..."`
+  - `name: "..."`
+  - `filters: { ... }`
+  - `export: { ... }`
+  - `enabled: true|false` optional
+  - `retry: { ... }` optional
+- `export_schedule_delete`
+  - `id: "..."`
+- `export_schedule_history`
+  - `id: "..."`
+  - `limit: number` optional
+  - `offset: number` optional
+
+Recurring export schedules can persist either `export.transform` or `export.shape`, but not both. Spartan enforces that mutual exclusion so recurring exports keep one deterministic projection contract.
+
 ## AI extraction arguments
 
 `scrape_page`, `crawl_site`, and `research` support the same AI extraction controls as the direct job-submission surfaces:
@@ -123,9 +156,11 @@ These tools return structured authoring results immediately and do not create jo
 {"id":9,"method":"tools/call","params":{"name":"ai_research_refine","arguments":{"result":{"query":"pricing model","summary":"Original research summary","evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into an operator-ready brief"}}}
 {"id":10,"method":"tools/call","params":{"name":"ai_export_shape","arguments":{"jobId":"<job-id>","format":"md","instructions":"Prioritize summary and pricing fields for operator handoff"}}}
 {"id":11,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
-{"id":12,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
-{"id":13,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
-{"id":14,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":12,"method":"tools/call","params":{"name":"job_export","arguments":{"id":"<job-id>","format":"json","transformExpression":"{title: title, url: url}","transformLanguage":"jmespath"}}}
+{"id":13,"method":"tools/call","params":{"name":"export_schedule_create","arguments":{"name":"Projected Export","filters":{"job_kinds":["scrape"]},"export":{"format":"csv","destination_type":"local","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}}
+{"id":14,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
+{"id":15,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
+{"id":16,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```
 
-The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape output, and use the job tools when you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.
+The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` tools when you need persisted scrape/crawl/research execution that can be polled and exported later, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.

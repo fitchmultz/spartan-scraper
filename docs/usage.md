@@ -316,12 +316,14 @@ Export-shape flags:
 Transform flags:
 
 - `--job-id <job-id>` or `--result-file <path>`
+- `--schedule-id <id>` to seed from an existing export schedule transform
+- `--transform-file <path>` to seed from a saved transform JSON file
 - `--language <jmespath|jsonata>` optional preferred language for the generated transform
 - `--expression "<current transform expression>"` optional current transform to tune
 - `--instructions "<projection/filter guidance>"`
 - `--out <path>`
 
-`--result-file` accepts a representative saved result artifact from disk. The generated transform is validated against bounded sample records before it is returned.
+`--result-file` accepts a representative saved result artifact from disk, and `--transform-file` accepts a JSON `ResultTransformConfig` object. The generated transform is validated against bounded sample records before it is returned.
 
 Examples:
 
@@ -399,7 +401,12 @@ spartan ai transform \
   --instructions "Project the URL, title, and pricing fields for export"
 
 spartan ai transform \
+  --schedule-id <export-schedule-id> \
+  --job-id <job-id>
+
+spartan ai transform \
   --result-file ./out/crawl.jsonl \
+  --transform-file ./out/current-transform.json \
   --language jsonata \
   --expression '$.{"url": url}' \
   --out ./out/transform.json
@@ -580,11 +587,27 @@ spartan export-schedule add \
   --name "Daily Crawl Exports" \
   --filter-kinds crawl \
   --format jsonl \
+  --destination local
+
+spartan export-schedule add \
+  --name "Projected CSV" \
+  --filter-kinds scrape \
+  --format csv \
   --destination local \
-  --local-path "exports/{kind}/{job_id}.jsonl"
+  --transform-language jmespath \
+  --transform-expression '{title: title, url: url}'
 ```
 
-For `md`, `csv`, and `xlsx` schedules, the Web UI, REST API, CLI (`spartan ai export-shape`), and MCP (`ai_export_shape`) can generate bounded `ExportShapeConfig` suggestions from a representative job result before you save or update the recurring export.
+Local destinations default to `exports/{kind}/{job_id}.{format}` when you do not pass `--local-path`.
+
+Recurring exports can persist either:
+
+- a bounded `transform` (`ResultTransformConfig`) for projecting/filtering saved results before export, or
+- a bounded `shape` (`ExportShapeConfig`) for field selection/formatting on canonical `md`/`csv`/`xlsx` exports.
+
+Do not combine both on the same schedule; Spartan treats transform and shape as mutually exclusive so recurring exports keep one deterministic projection contract.
+
+For `md`, `csv`, and `xlsx` schedules, the Web UI, REST API, CLI (`spartan ai export-shape`), and MCP (`ai_export_shape`) can generate bounded `ExportShapeConfig` suggestions from a representative job result before you save or update the recurring export. For any schedule format, the Web UI, REST API, CLI (`spartan ai transform`), and MCP (`ai_transform_generate`) can generate or tune a saved `ResultTransformConfig` from a representative job result before you save or update the recurring export.
 
 ### Retention, backup, and restore
 
@@ -619,7 +642,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, AI export shaping, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`, `ai_export_shape`) instead.
+- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, AI export shaping, AI transform generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`, `ai_export_shape`, `ai_transform_generate`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI
@@ -746,6 +769,12 @@ Core tools:
 - `job_list`
 - `job_cancel`
 - `job_export`
+- `export_schedule_list`
+- `export_schedule_get`
+- `export_schedule_create`
+- `export_schedule_update`
+- `export_schedule_delete`
+- `export_schedule_history`
 
 `scrape_page`, `crawl_site`, and `research` accept AI extraction arguments in addition to the normal execution controls:
 
@@ -761,6 +790,14 @@ Core tools:
 - `agenticInstructions: string`
 - `agenticMaxRounds: number`
 - `agenticMaxFollowUpUrls: number`
+
+`job_export` accepts optional transformed text exports:
+
+- `format: "jsonl" | "json" | "md" | "csv"`
+- `transformExpression: string`
+- `transformLanguage: "jmespath" | "jsonata"`
+
+The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive).
 
 Smoke example:
 

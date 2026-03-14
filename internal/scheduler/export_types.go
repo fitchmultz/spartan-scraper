@@ -19,6 +19,7 @@
 // - Filters must specify at least one criteria (job kind, status, or tags).
 // - ExportConfig.Format is one of json, jsonl, md, csv, or xlsx.
 // - ExportConfig.DestinationType is either local or webhook.
+// - ExportConfig.Shape and ExportConfig.Transform are mutually exclusive.
 package scheduler
 
 import (
@@ -87,6 +88,9 @@ type ExportConfig struct {
 
 	// Shape applies deterministic export shaping for markdown and tabular exports.
 	Shape exporter.ShapeConfig `json:"shape,omitempty"`
+
+	// Transform applies a deterministic result transformation before export.
+	Transform exporter.TransformConfig `json:"transform,omitempty"`
 }
 
 // ExportRetryConfig defines retry behavior for failed exports.

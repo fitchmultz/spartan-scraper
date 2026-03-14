@@ -102,6 +102,7 @@ func (s *ExportStorage) Get(id string) (*ExportSchedule, error) {
 
 // Add adds a new export schedule with generated ID and defaults.
 func (s *ExportStorage) Add(schedule ExportSchedule) (*ExportSchedule, error) {
+	schedule = NormalizeExportSchedule(schedule)
 	if schedule.ID == "" {
 		schedule.ID = uuid.NewString()
 	}
@@ -133,6 +134,7 @@ func (s *ExportStorage) Add(schedule ExportSchedule) (*ExportSchedule, error) {
 
 // Update updates an existing export schedule.
 func (s *ExportStorage) Update(schedule ExportSchedule) (*ExportSchedule, error) {
+	schedule = NormalizeExportSchedule(schedule)
 	schedule.UpdatedAt = time.Now()
 
 	if err := ValidateExportSchedule(schedule); err != nil {

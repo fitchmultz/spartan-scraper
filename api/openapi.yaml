@@ -3582,6 +3582,8 @@ components:
             {format}
         shape:
           "$ref": "#/components/schemas/ExportShapeConfig"
+        transform:
+          "$ref": "#/components/schemas/ResultTransformConfig"
     ExportShapeFormattingHints:
       type: object
       properties:

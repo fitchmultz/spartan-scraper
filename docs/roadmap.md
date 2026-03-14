@@ -11,11 +11,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Add persistent transform configuration to export schedules across API, Web UI, CLI, and MCP so saved transformed exports and recurring exports share one deterministic contract.
+- Group the next saved-result authoring contract changes around result-derived export workflows that can reuse the new transform helpers without reintroducing ad hoc interface drift.
 
 ## Next
 
-- Group the next saved-result authoring contract changes around result-derived export workflows that can reuse the new transform helpers without reintroducing ad hoc interface drift.
+- Collapse any remaining direct export/download parameter drift onto the shared saved-result transform/export helpers so ad hoc exports and recurring exports keep converging instead of forking.
 
 ## Later
 

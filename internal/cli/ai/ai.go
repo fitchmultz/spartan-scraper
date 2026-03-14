@@ -672,6 +672,8 @@ func runTransform(ctx context.Context, cfg config.Config, runner authoringRunner
 	fs := flag.NewFlagSet("ai-transform", flag.ContinueOnError)
 	jobID := fs.String("job-id", "", "Job ID whose saved results should seed the transform")
 	resultFile := fs.String("result-file", "", "Path to a result file when no local job ID is available")
+	scheduleID := fs.String("schedule-id", "", "Existing export schedule ID to tune")
+	transformFile := fs.String("transform-file", "", "Path to an existing transform JSON file")
 	language := fs.String("language", "", "Preferred transform language: jmespath|jsonata")
 	expression := fs.String("expression", "", "Current transform expression to tune")
 	instructions := fs.String("instructions", "", "Optional guidance for the transform")
@@ -682,8 +684,9 @@ func runTransform(ctx context.Context, cfg config.Config, runner authoringRunner
 
 Examples:
   spartan ai transform --job-id <job-id> --language jmespath
+  spartan ai transform --schedule-id <schedule-id> --job-id <job-id>
   spartan ai transform --job-id <job-id> --language jsonata --expression '$.{"url": url}'
-  spartan ai transform --result-file ./out/crawl.jsonl --instructions "Project the URL and title for export"
+  spartan ai transform --result-file ./out/crawl.jsonl --transform-file ./transform.json --instructions "Project the URL and title for export"
 
 Options:
 `)
@@ -693,19 +696,24 @@ Options:
 		return 1
 	}
 
-	rawResult, err := resolveTransformInput(cfg, strings.TrimSpace(*jobID), strings.TrimSpace(*resultFile))
+	rawResult, currentTransform, preferredLanguage, err := resolveTransformRequestInput(
+		cfg,
+		strings.TrimSpace(*jobID),
+		strings.TrimSpace(*resultFile),
+		strings.TrimSpace(*scheduleID),
+		strings.TrimSpace(*transformFile),
+		strings.TrimSpace(*language),
+		strings.TrimSpace(*expression),
+	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
 	result, err := runner.GenerateTransform(ctx, aiauthoring.TransformRequest{
-		RawResult: rawResult,
-		CurrentTransform: exporter.TransformConfig{
-			Expression: strings.TrimSpace(*expression),
-			Language:   strings.TrimSpace(*language),
-		},
-		PreferredLanguage: strings.TrimSpace(*language),
+		RawResult:         rawResult,
+		CurrentTransform:  currentTransform,
+		PreferredLanguage: preferredLanguage,
 		Instructions:      strings.TrimSpace(*instructions),
 	})
 	if err != nil {
@@ -951,24 +959,64 @@ func resolveExportShapeInput(cfg config.Config, jobID string, resultFile string,
 	return kind, data, resolvedFormat, currentShape, nil
 }
 
-func resolveTransformInput(cfg config.Config, jobID string, resultFile string) ([]byte, error) {
+func resolveTransformRequestInput(cfg config.Config, jobID string, resultFile string, scheduleID string, transformFile string, preferredLanguage string, expression string) ([]byte, exporter.TransformConfig, string, error) {
 	trimmedJobID := strings.TrimSpace(jobID)
 	trimmedResultFile := strings.TrimSpace(resultFile)
 	if trimmedJobID == "" && trimmedResultFile == "" {
-		return nil, fmt.Errorf("--job-id or --result-file is required")
+		return nil, exporter.TransformConfig{}, "", fmt.Errorf("--job-id or --result-file is required")
 	}
 	if trimmedJobID != "" && trimmedResultFile != "" {
-		return nil, fmt.Errorf("--job-id and --result-file are mutually exclusive")
+		return nil, exporter.TransformConfig{}, "", fmt.Errorf("--job-id and --result-file are mutually exclusive")
 	}
+	if strings.TrimSpace(scheduleID) != "" && strings.TrimSpace(transformFile) != "" {
+		return nil, exporter.TransformConfig{}, "", fmt.Errorf("--schedule-id and --transform-file are mutually exclusive")
+	}
+
+	var raw []byte
 	if trimmedResultFile != "" {
 		data, err := os.ReadFile(trimmedResultFile)
 		if err != nil {
-			return nil, fmt.Errorf("read result file: %w", err)
+			return nil, exporter.TransformConfig{}, "", fmt.Errorf("read result file: %w", err)
 		}
-		return data, nil
+		raw = data
+	} else {
+		_, data, err := loadJobResultBytes(cfg, trimmedJobID)
+		if err != nil {
+			return nil, exporter.TransformConfig{}, "", err
+		}
+		raw = data
 	}
-	_, data, err := loadJobResultBytes(cfg, trimmedJobID)
-	return data, err
+
+	current := exporter.TransformConfig{
+		Expression: strings.TrimSpace(expression),
+		Language:   strings.TrimSpace(preferredLanguage),
+	}
+	if current.Expression == "" {
+		switch {
+		case strings.TrimSpace(scheduleID) != "":
+			store := scheduler.NewExportStorage(cfg.DataDir)
+			schedule, err := store.Get(strings.TrimSpace(scheduleID))
+			if err != nil {
+				return nil, exporter.TransformConfig{}, "", fmt.Errorf("load export schedule: %w", err)
+			}
+			current = schedule.Export.Transform
+		case strings.TrimSpace(transformFile) != "":
+			transform, err := readTransformConfigFile(strings.TrimSpace(transformFile))
+			if err != nil {
+				return nil, exporter.TransformConfig{}, "", err
+			}
+			current = transform
+		}
+	}
+	if strings.TrimSpace(preferredLanguage) != "" {
+		current.Language = strings.TrimSpace(preferredLanguage)
+	}
+	current = exporter.NormalizeTransformConfig(current)
+	resolvedPreferred := strings.TrimSpace(preferredLanguage)
+	if resolvedPreferred == "" {
+		resolvedPreferred = current.Language
+	}
+	return raw, current, resolvedPreferred, nil
 }
 
 func loadJobResultBytes(cfg config.Config, jobID string) (model.Kind, []byte, error) {
@@ -1001,6 +1049,18 @@ func readExportShapeFile(path string) (exporter.ShapeConfig, error) {
 		return exporter.ShapeConfig{}, fmt.Errorf("decode shape file: %w", err)
 	}
 	return shape, nil
+}
+
+func readTransformConfigFile(path string) (exporter.TransformConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return exporter.TransformConfig{}, fmt.Errorf("read transform file: %w", err)
+	}
+	var transform exporter.TransformConfig
+	if err := json.Unmarshal(data, &transform); err != nil {
+		return exporter.TransformConfig{}, fmt.Errorf("decode transform file: %w", err)
+	}
+	return exporter.NormalizeTransformConfig(transform), nil
 }
 
 func inferJobKindFromResultBytes(data []byte, kindHint string) (model.Kind, error) {

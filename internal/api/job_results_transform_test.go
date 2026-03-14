@@ -314,6 +314,111 @@ func TestHandleJobResultsWithTransform_CSVFormat(t *testing.T) {
 	}
 }
 
+func TestHandleJobResultsWithTransform_JSONL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	jobID := "test-job-jsonl-transform"
+	job := model.Job{
+		ID:        jobID,
+		Kind:      model.KindCrawl,
+		Status:    model.StatusQueued,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Spec:      map[string]any{"url": "https://example.com"},
+	}
+	if err := srv.store.Create(ctx, job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
+		t.Fatalf("failed to create result directory: %v", err)
+	}
+	resultPath := filepath.Join(resultDir, "results.jsonl")
+	resultContent := strings.Join([]string{
+		`{"url":"https://example.com/a","title":"A","status":200}`,
+		`{"url":"https://example.com/b","title":"B","status":200}`,
+	}, "\n")
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update job result_path: %v", err)
+	}
+	if err := srv.store.UpdateStatus(ctx, jobID, model.StatusSucceeded, ""); err != nil {
+		t.Fatalf("failed to update job status: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=jsonl&transform_expression=%s&transform_language=jmespath",
+		jobID, "%7Btitle%3A%20title%2C%20url%3A%20url%7D"), nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/x-ndjson" {
+		t.Fatalf("expected ndjson content type, got %q", ct)
+	}
+	if strings.Contains(rr.Body.String(), "status") {
+		t.Fatalf("expected transformed jsonl to omit status: %s", rr.Body.String())
+	}
+}
+
+func TestHandleJobResultsWithTransform_JSONLPagination(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	jobID := "test-job-jsonl-transform-page"
+	job := model.Job{
+		ID:        jobID,
+		Kind:      model.KindCrawl,
+		Status:    model.StatusSucceeded,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Spec:      map[string]any{"url": "https://example.com"},
+	}
+	if err := srv.store.Create(ctx, job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
+	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
+		t.Fatalf("failed to create result directory: %v", err)
+	}
+	resultPath := filepath.Join(resultDir, "results.jsonl")
+	resultContent := strings.Join([]string{
+		`{"url":"https://example.com/a","title":"A","status":200}`,
+		`{"url":"https://example.com/b","title":"B","status":200}`,
+		`{"url":"https://example.com/c","title":"C","status":200}`,
+	}, "\n")
+	if err := os.WriteFile(resultPath, []byte(resultContent), 0o644); err != nil {
+		t.Fatalf("failed to write result file: %v", err)
+	}
+	if err := srv.store.UpdateResultPath(ctx, jobID, resultPath); err != nil {
+		t.Fatalf("failed to update job result_path: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/v1/jobs/%s/results?format=jsonl&limit=2&offset=1&transform_expression=%s&transform_language=jmespath",
+		jobID, "%7Btitle%3A%20title%2C%20url%3A%20url%7D"), nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if total := rr.Header().Get("X-Total-Count"); total != "3" {
+		t.Fatalf("expected X-Total-Count 3, got %q", total)
+	}
+	var items []map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &items); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(items) != 2 || items[0]["title"] != "B" || items[1]["title"] != "C" {
+		t.Fatalf("unexpected transformed page: %#v", items)
+	}
+}
+
 func TestLoadAllJobResults(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

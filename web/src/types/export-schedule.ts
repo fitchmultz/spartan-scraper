@@ -62,6 +62,9 @@ export interface ExportScheduleFormData {
   // Retry
   maxRetries: number;
   baseDelayMs: number;
+  // Optional result transform
+  transformExpression: string;
+  transformLanguage: "jmespath" | "jsonata";
   // Optional export shaping
   shapeTopLevelFields: string;
   shapeNormalizedFields: string;

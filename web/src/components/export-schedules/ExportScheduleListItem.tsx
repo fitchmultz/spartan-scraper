@@ -17,6 +17,7 @@ import { getEnabledStatusTone } from "../../lib/status-display";
 import {
   formatDestination,
   formatExportShapeSummary,
+  formatExportTransformSummary,
   formatFilters,
 } from "../../lib/export-schedule-utils";
 import { StatusPill } from "../StatusPill";
@@ -62,7 +63,9 @@ export function ExportScheduleListItem({
       <td style={{ padding: "12px", fontSize: 13 }}>
         <div>{schedule.export?.format?.toUpperCase() || "-"}</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-          {formatExportShapeSummary(schedule.export?.shape)}
+          {schedule.export?.transform?.expression
+            ? formatExportTransformSummary(schedule.export.transform)
+            : formatExportShapeSummary(schedule.export?.shape)}
         </div>
       </td>
       <td style={{ padding: "12px", textAlign: "right" }}>

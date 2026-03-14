@@ -35,6 +35,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
@@ -466,6 +467,13 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if !validFormats[format] {
 			return nil, apperrors.Validation("invalid format: must be jsonl, json, md, or csv")
 		}
+		transform := exporter.TransformConfig{
+			Expression: strings.TrimSpace(paramdecode.String(params.Arguments, "transformExpression")),
+			Language:   strings.TrimSpace(paramdecode.String(params.Arguments, "transformLanguage")),
+		}
+		if err := exporter.ValidateTransformConfig(transform); err != nil {
+			return nil, err
+		}
 		job, err := s.store.Get(ctx, id)
 		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindNotFound, "job not found", err)
@@ -477,11 +485,92 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
 		}
-		exported, err := exporter.Export(job, rawBytes, format)
+		exported, err := exporter.ExportWithShapeAndTransform(job, rawBytes, format, exporter.ShapeConfig{}, transform)
 		if err != nil {
 			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to export job", err)
 		}
 		return exported, nil
+	case "export_schedule_list":
+		schedules, err := scheduler.NewExportStorage(s.cfg.DataDir).List()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"schedules": schedules}, nil
+	case "export_schedule_get":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		schedule, err := scheduler.NewExportStorage(s.cfg.DataDir).Get(id)
+		if err != nil {
+			if scheduler.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("export schedule not found")
+			}
+			return nil, err
+		}
+		return schedule, nil
+	case "export_schedule_create":
+		schedule := scheduler.ExportSchedule{
+			Name:    strings.TrimSpace(paramdecode.String(params.Arguments, "name")),
+			Enabled: paramdecode.BoolDefault(params.Arguments, "enabled", true),
+			Filters: paramdecode.Decode[scheduler.ExportFilters](params.Arguments, "filters"),
+			Export:  paramdecode.Decode[scheduler.ExportConfig](params.Arguments, "export"),
+			Retry:   paramdecode.Decode[scheduler.ExportRetryConfig](params.Arguments, "retry"),
+		}
+		created, err := scheduler.NewExportStorage(s.cfg.DataDir).Add(schedule)
+		if err != nil {
+			return nil, err
+		}
+		return created, nil
+	case "export_schedule_update":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		store := scheduler.NewExportStorage(s.cfg.DataDir)
+		existing, err := store.Get(id)
+		if err != nil {
+			if scheduler.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("export schedule not found")
+			}
+			return nil, err
+		}
+		existing.Name = strings.TrimSpace(paramdecode.String(params.Arguments, "name"))
+		existing.Enabled = paramdecode.BoolDefault(params.Arguments, "enabled", existing.Enabled)
+		existing.Filters = paramdecode.Decode[scheduler.ExportFilters](params.Arguments, "filters")
+		existing.Export = paramdecode.Decode[scheduler.ExportConfig](params.Arguments, "export")
+		if _, ok := params.Arguments["retry"]; ok {
+			existing.Retry = paramdecode.Decode[scheduler.ExportRetryConfig](params.Arguments, "retry")
+		}
+		updated, err := store.Update(*existing)
+		if err != nil {
+			return nil, err
+		}
+		return updated, nil
+	case "export_schedule_delete":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		if err := scheduler.NewExportStorage(s.cfg.DataDir).Delete(id); err != nil {
+			if scheduler.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("export schedule not found")
+			}
+			return nil, err
+		}
+		return map[string]interface{}{"deleted": true, "id": id}, nil
+	case "export_schedule_history":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		records, total, err := scheduler.NewExportHistoryStore(s.cfg.DataDir).GetBySchedule(id, limit, offset)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"records": records, "total": total}, nil
 	case "proxy_pool_status":
 		pool := s.manager.GetProxyPool()
 		if pool == nil {
