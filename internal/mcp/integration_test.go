@@ -198,6 +198,67 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		}
 	})
 
+	t.Run("research stores AI extraction options", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name": "research",
+				"arguments": map[string]interface{}{
+					"query":         "pricing model",
+					"urls":          []string{"https://example.com"},
+					"aiExtract":     true,
+					"aiMode":        "natural_language",
+					"aiPrompt":      "Extract the pricing model and contract terms",
+					"aiFields":      []string{"pricing_model", "contract_terms"},
+					"preProcessors": []string{"prep1"},
+				},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err != nil {
+			t.Fatalf("handleToolCall failed: %v", err)
+		}
+
+		jobs, err := srv.store.List(ctx)
+		if err != nil {
+			t.Fatalf("failed to list jobs: %v", err)
+		}
+		job := jobs[0]
+		extractMap, _ := job.SpecMap()["extract"].(map[string]interface{})
+		aiMap, _ := extractMap["ai"].(map[string]interface{})
+		if enabled, _ := aiMap["enabled"].(bool); !enabled {
+			t.Errorf("ai.enabled: got %v, want true", enabled)
+		}
+		if mode, _ := aiMap["mode"].(string); mode != "natural_language" {
+			t.Errorf("ai.mode: got %q, want natural_language", mode)
+		}
+		if prompt, _ := aiMap["prompt"].(string); prompt != "Extract the pricing model and contract terms" {
+			t.Errorf("ai.prompt: got %q", prompt)
+		}
+	})
+
+	t.Run("research rejects schema_guided AI without aiSchema", func(t *testing.T) {
+		base := map[string]json.RawMessage{
+			"params": mustMarshalJSON(map[string]interface{}{
+				"name": "research",
+				"arguments": map[string]interface{}{
+					"query":     "pricing model",
+					"urls":      []string{"https://example.com"},
+					"aiExtract": true,
+					"aiMode":    "schema_guided",
+				},
+			}),
+		}
+
+		_, err := srv.handleToolCall(ctx, base)
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+		if err.Error() != "aiSchema is required when aiMode is schema_guided" {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
 	t.Run("research with empty pipeline options (default behavior)", func(t *testing.T) {
 		base := map[string]json.RawMessage{
 			"params": mustMarshalJSON(map[string]interface{}{

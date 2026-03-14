@@ -17,7 +17,11 @@ import {
 } from "react";
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
-import { buildSharedRequestConfig } from "../lib/form-utils";
+import { AIExtractSection } from "./AIExtractSection";
+import {
+  buildAIExtractOptions,
+  buildSharedRequestConfig,
+} from "../lib/form-utils";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
 import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
@@ -27,8 +31,12 @@ import type {
   BatchScrapeRequest,
   BatchCrawlRequest,
   BatchResearchRequest,
-  BatchJobRequest,
 } from "../api";
+import {
+  buildBatchCrawlRequest,
+  buildBatchResearchRequest,
+  buildBatchScrapeRequest,
+} from "../lib/batch-utils";
 import {
   MAX_BATCH_SIZE,
   parseBatchUrls,
@@ -138,6 +146,16 @@ export function BatchForm({
     setExtractTemplate,
     extractValidate,
     setExtractValidate,
+    aiExtractEnabled,
+    setAIExtractEnabled,
+    aiExtractMode,
+    setAIExtractMode,
+    aiExtractPrompt,
+    setAIExtractPrompt,
+    aiExtractSchema,
+    setAIExtractSchema,
+    aiExtractFields,
+    setAIExtractFields,
     preProcessors,
     setPreProcessors,
     postProcessors,
@@ -179,10 +197,21 @@ export function BatchForm({
   // Validate URL count
   const isValidBatchSize = parsedUrls.length <= MAX_BATCH_SIZE;
 
-  // Build job requests from URLs
-  const buildJobRequests = useCallback((): BatchJobRequest[] => {
-    return parsedUrls.map((url) => ({ url }));
-  }, [parsedUrls]);
+  const resolveAIExtractOptions = useCallback(() => {
+    return buildAIExtractOptions(
+      aiExtractEnabled,
+      aiExtractMode,
+      aiExtractPrompt,
+      aiExtractSchema,
+      aiExtractFields,
+    );
+  }, [
+    aiExtractEnabled,
+    aiExtractMode,
+    aiExtractPrompt,
+    aiExtractSchema,
+    aiExtractFields,
+  ]);
 
   // Handle file upload for CSV/JSON
   const handleFileUpload = useCallback(
@@ -277,32 +306,42 @@ export function BatchForm({
   const handleSubmitScrape = useCallback(async () => {
     if (!validateUrls()) return;
 
-    const jobs = buildJobRequests();
     const shared = buildSharedRequestConfig(form);
-    const request: BatchScrapeRequest = {
-      jobs,
+
+    let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
+    try {
+      aiExtractOptions = resolveAIExtractOptions();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    const request = buildBatchScrapeRequest(
+      parsedUrls,
       headless,
-      playwright: headless ? usePlaywright : false,
+      usePlaywright,
       timeoutSeconds,
-      authProfile: shared.authProfile,
-      auth: shared.auth,
-      extract: shared.extract,
-      pipeline: shared.pipeline,
-      incremental: incremental || undefined,
-      webhook: shared.webhook,
-      device: device || undefined,
-    };
+      shared.authProfile,
+      shared.auth,
+      shared.extract,
+      shared.pipeline,
+      incremental,
+      shared.webhook,
+      device || undefined,
+      aiExtractOptions,
+    );
 
     await onSubmitScrape(request);
   }, [
     validateUrls,
-    buildJobRequests,
+    form,
+    parsedUrls,
     headless,
     usePlaywright,
     timeoutSeconds,
-    form,
     incremental,
     device,
+    resolveAIExtractOptions,
     onSubmitScrape,
   ]);
 
@@ -310,36 +349,46 @@ export function BatchForm({
   const handleSubmitCrawl = useCallback(async () => {
     if (!validateUrls()) return;
 
-    const jobs = buildJobRequests();
     const shared = buildSharedRequestConfig(form);
-    const request: BatchCrawlRequest = {
-      jobs,
+
+    let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
+    try {
+      aiExtractOptions = resolveAIExtractOptions();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    const request = buildBatchCrawlRequest(
+      parsedUrls,
       maxDepth,
       maxPages,
       headless,
-      playwright: headless ? usePlaywright : false,
+      usePlaywright,
       timeoutSeconds,
-      authProfile: shared.authProfile,
-      auth: shared.auth,
-      extract: shared.extract,
-      pipeline: shared.pipeline,
-      incremental: incremental || undefined,
-      webhook: shared.webhook,
-      device: device || undefined,
-    };
+      shared.authProfile,
+      shared.auth,
+      shared.extract,
+      shared.pipeline,
+      incremental,
+      shared.webhook,
+      device || undefined,
+      aiExtractOptions,
+    );
 
     await onSubmitCrawl(request);
   }, [
     validateUrls,
-    buildJobRequests,
+    form,
+    parsedUrls,
     maxDepth,
     maxPages,
     headless,
     usePlaywright,
     timeoutSeconds,
-    form,
     incremental,
     device,
+    resolveAIExtractOptions,
     onSubmitCrawl,
   ]);
 
@@ -351,36 +400,46 @@ export function BatchForm({
       return;
     }
 
-    const jobs = buildJobRequests();
     const shared = buildSharedRequestConfig(form);
-    const request: BatchResearchRequest = {
-      jobs,
+
+    let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
+    try {
+      aiExtractOptions = resolveAIExtractOptions();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    const request = buildBatchResearchRequest(
+      parsedUrls,
       query,
       maxDepth,
       maxPages,
       headless,
-      playwright: headless ? usePlaywright : false,
+      usePlaywright,
       timeoutSeconds,
-      authProfile: shared.authProfile,
-      auth: shared.auth,
-      extract: shared.extract,
-      pipeline: shared.pipeline,
-      webhook: shared.webhook,
-      device: device || undefined,
-    };
+      shared.authProfile,
+      shared.auth,
+      shared.extract,
+      shared.pipeline,
+      shared.webhook,
+      device || undefined,
+      aiExtractOptions,
+    );
 
     await onSubmitResearch(request);
   }, [
     validateUrls,
-    buildJobRequests,
+    form,
+    parsedUrls,
     query,
     maxDepth,
     maxPages,
     headless,
     usePlaywright,
     timeoutSeconds,
-    form,
     device,
+    resolveAIExtractOptions,
     onSubmitResearch,
   ]);
 
@@ -649,6 +708,19 @@ export function BatchForm({
         incremental={incremental}
         setIncremental={setIncremental}
         inputPrefix="batch"
+      />
+
+      <AIExtractSection
+        enabled={aiExtractEnabled}
+        setEnabled={setAIExtractEnabled}
+        mode={aiExtractMode}
+        setMode={setAIExtractMode}
+        prompt={aiExtractPrompt}
+        setPrompt={setAIExtractPrompt}
+        schemaText={aiExtractSchema}
+        setSchemaText={setAIExtractSchema}
+        fields={aiExtractFields}
+        setFields={setAIExtractFields}
       />
 
       <WebhookConfig

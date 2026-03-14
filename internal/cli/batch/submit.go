@@ -66,6 +66,11 @@ Common Options:
   --playwright              Use Playwright instead of Chromedp
   --timeout int             Request timeout in seconds (default: from config)
   --auth-profile string     Named auth profile to use
+  --ai-extract              Enable AI-powered extraction
+  --ai-mode string          natural_language|schema_guided
+  --ai-prompt string        Instructions for natural-language AI extraction
+  --ai-schema string        JSON object example for schema-guided AI extraction
+  --ai-fields string        Comma-separated AI field names
   --wait-completion         Wait for batch completion
   --wait-timeout-secs int   Max wait time in seconds (0 = no timeout)
 
@@ -98,6 +103,26 @@ Examples:
   spartan batch submit crawl --file sites.csv --max-depth 2 --max-pages 50
   spartan batch submit research --file sources.json --query "pricing model" --max-depth 2
 `)
+}
+
+func buildBatchExtractAndPipelineOptions(cf *common.CommonFlags) (*extract.ExtractOptions, *pipeline.Options, error) {
+	extractOpts, err := common.LoadExtractOptions(*cf.ExtractTemplate, *cf.ExtractConfig, *cf.ExtractValidate)
+	if err != nil {
+		return nil, nil, err
+	}
+	aiExtractOptions, err := common.BuildAIExtractOptions(cf)
+	if err != nil {
+		return nil, nil, err
+	}
+	if aiExtractOptions != nil {
+		extractOpts.AI = aiExtractOptions
+	}
+	pipelineOpts := &pipeline.Options{
+		PreProcessors:  []string(cf.PreProcessors),
+		PostProcessors: []string(cf.PostProcessors),
+		Transformers:   []string(cf.Transformers),
+	}
+	return &extractOpts, pipelineOpts, nil
 }
 
 func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string) int {
@@ -145,18 +170,11 @@ func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string)
 		return 1
 	}
 
-	// Build extract options
-	extractOpts := &extract.ExtractOptions{}
-	if *cf.ExtractTemplate != "" {
-		extractOpts.Template = *cf.ExtractTemplate
-	}
-	extractOpts.Validate = *cf.ExtractValidate
-
-	// Build pipeline options
-	pipelineOpts := &pipeline.Options{
-		PreProcessors:  []string(cf.PreProcessors),
-		PostProcessors: []string(cf.PostProcessors),
-		Transformers:   []string(cf.Transformers),
+	// Build extract and pipeline options
+	extractOpts, pipelineOpts, err := buildBatchExtractAndPipelineOptions(cf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building extract options: %v\n", err)
+		return 1
 	}
 
 	// Build request
@@ -251,18 +269,11 @@ func runBatchSubmitCrawl(ctx context.Context, cfg config.Config, args []string) 
 		return 1
 	}
 
-	// Build extract options
-	extractOpts := &extract.ExtractOptions{}
-	if *cf.ExtractTemplate != "" {
-		extractOpts.Template = *cf.ExtractTemplate
-	}
-	extractOpts.Validate = *cf.ExtractValidate
-
-	// Build pipeline options
-	pipelineOpts := &pipeline.Options{
-		PreProcessors:  []string(cf.PreProcessors),
-		PostProcessors: []string(cf.PostProcessors),
-		Transformers:   []string(cf.Transformers),
+	// Build extract and pipeline options
+	extractOpts, pipelineOpts, err := buildBatchExtractAndPipelineOptions(cf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building extract options: %v\n", err)
+		return 1
 	}
 
 	// Build request
@@ -367,18 +378,11 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		return 1
 	}
 
-	// Build extract options
-	extractOpts := &extract.ExtractOptions{}
-	if *cf.ExtractTemplate != "" {
-		extractOpts.Template = *cf.ExtractTemplate
-	}
-	extractOpts.Validate = *cf.ExtractValidate
-
-	// Build pipeline options
-	pipelineOpts := &pipeline.Options{
-		PreProcessors:  []string(cf.PreProcessors),
-		PostProcessors: []string(cf.PostProcessors),
-		Transformers:   []string(cf.Transformers),
+	// Build extract and pipeline options
+	extractOpts, pipelineOpts, err := buildBatchExtractAndPipelineOptions(cf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building extract options: %v\n", err)
+		return 1
 	}
 
 	// Build request

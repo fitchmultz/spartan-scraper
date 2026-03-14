@@ -575,7 +575,11 @@ export function App() {
       interceptMaxBodySize: formState.interceptMaxBodySize,
     };
 
-    if (activeTab === "scrape" || activeTab === "crawl") {
+    if (
+      activeTab === "scrape" ||
+      activeTab === "crawl" ||
+      activeTab === "research"
+    ) {
       return {
         ...baseConfig,
         aiExtractEnabled: formState.aiExtractEnabled,

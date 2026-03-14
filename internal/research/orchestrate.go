@@ -57,6 +57,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				TemplateRegistry: req.TemplateRegistry,
 				Screenshot:       req.Screenshot,
 				ProxyPool:        req.ProxyPool,
+				AIExtractor:      req.AIExtractor,
 			})
 			if err != nil {
 				if ctx.Err() != nil {
@@ -71,11 +72,14 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				if page.Status == 304 {
 					continue
 				}
+				fields := cloneEvidenceFields(page.Normalized.Fields)
+				searchText := evidenceSearchText(page.Normalized.Title, page.Normalized.Text, fields)
 				items = append(items, Evidence{
 					URL:     page.URL,
-					Title:   page.Title,
-					Snippet: makeSnippet(page.Text),
-					Score:   scoreText(queryTokens, page.Text),
+					Title:   page.Normalized.Title,
+					Snippet: makeEvidenceSnippet(page.Normalized.Text, fields),
+					Score:   scoreText(queryTokens, searchText),
+					Fields:  fields,
 				})
 			}
 		} else {
@@ -101,6 +105,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				TemplateRegistry: req.TemplateRegistry,
 				Screenshot:       req.Screenshot,
 				ProxyPool:        req.ProxyPool,
+				AIExtractor:      req.AIExtractor,
 			})
 			if err != nil {
 				if ctx.Err() != nil {
@@ -112,11 +117,14 @@ func Run(ctx context.Context, req Request) (Result, error) {
 			}
 			successCount++
 			if res.Status != 304 {
+				fields := cloneEvidenceFields(res.Normalized.Fields)
+				searchText := evidenceSearchText(res.Normalized.Title, res.Normalized.Text, fields)
 				items = append(items, Evidence{
 					URL:     res.URL,
-					Title:   res.Title,
-					Snippet: makeSnippet(res.Text),
-					Score:   scoreText(queryTokens, res.Text),
+					Title:   res.Normalized.Title,
+					Snippet: makeEvidenceSnippet(res.Normalized.Text, fields),
+					Score:   scoreText(queryTokens, searchText),
+					Fields:  fields,
 				})
 			}
 		}

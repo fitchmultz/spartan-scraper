@@ -52,6 +52,7 @@ Examples:
   spartan scrape --url https://example.com --out ./out/example.json
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
+  spartan research --query "pricing model" --urls https://example.com --ai-extract --ai-prompt "Extract the pricing model and support terms"
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
   spartan auth set --name acme --parent base --token "token" --token-kind bearer

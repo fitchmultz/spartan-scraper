@@ -18,6 +18,7 @@ import {
 import { AuthConfig } from "./AuthConfig";
 import { PipelineOptions } from "./PipelineOptions";
 import {
+  buildAIExtractOptions,
   buildResearchRequest,
   buildSharedRequestConfig,
   parseUrlList,
@@ -28,8 +29,9 @@ import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
+import { AIExtractSection } from "./AIExtractSection";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
-import type { DeviceEmulation } from "../api";
+import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface ResearchFormRef {
   /** Submit the form programmatically */
@@ -91,6 +93,16 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setExtractTemplate,
       extractValidate,
       setExtractValidate,
+      aiExtractEnabled,
+      setAIExtractEnabled,
+      aiExtractMode,
+      setAIExtractMode,
+      aiExtractPrompt,
+      setAIExtractPrompt,
+      aiExtractSchema,
+      setAIExtractSchema,
+      aiExtractFields,
+      setAIExtractFields,
       preProcessors,
       setPreProcessors,
       postProcessors,
@@ -127,6 +139,21 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         return;
       }
       const shared = buildSharedRequestConfig(form);
+
+      let aiExtractOptions: AiExtractOptions | undefined;
+      try {
+        aiExtractOptions = buildAIExtractOptions(
+          aiExtractEnabled,
+          aiExtractMode,
+          aiExtractPrompt,
+          aiExtractSchema,
+          aiExtractFields,
+        );
+      } catch (error) {
+        alert(error instanceof Error ? error.message : String(error));
+        return;
+      }
+
       const request = buildResearchRequest(
         researchQuery,
         parseUrlList(researchUrls),
@@ -144,6 +171,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         shared.webhook,
         device || undefined,
         shared.networkIntercept,
+        aiExtractOptions,
       );
       await onSubmit(request);
     }, [
@@ -155,6 +183,11 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       usePlaywright,
       timeoutSeconds,
       form,
+      aiExtractEnabled,
+      aiExtractMode,
+      aiExtractPrompt,
+      aiExtractSchema,
+      aiExtractFields,
       device,
       onSubmit,
     ]);
@@ -180,6 +213,11 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -215,6 +253,11 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         loginPass,
         extractTemplate,
         extractValidate,
+        aiExtractEnabled,
+        aiExtractMode,
+        aiExtractPrompt,
+        aiExtractSchema,
+        aiExtractFields,
         preProcessors,
         postProcessors,
         transformers,
@@ -401,6 +444,18 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             transformers={transformers}
             setTransformers={setTransformers}
             inputPrefix="research"
+          />
+          <AIExtractSection
+            enabled={aiExtractEnabled}
+            setEnabled={setAIExtractEnabled}
+            mode={aiExtractMode}
+            setMode={setAIExtractMode}
+            prompt={aiExtractPrompt}
+            setPrompt={setAIExtractPrompt}
+            schemaText={aiExtractSchema}
+            setSchemaText={setAIExtractSchema}
+            fields={aiExtractFields}
+            setFields={setAIExtractFields}
           />
           <WebhookConfig
             webhookUrl={webhookUrl}

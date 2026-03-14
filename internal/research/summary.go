@@ -26,7 +26,7 @@ func summarize(tokens []string, items []Evidence) string {
 
 	sentences := make([]string, 0, len(items))
 	for _, item := range items {
-		sentences = append(sentences, splitSentences(item.Snippet)...)
+		sentences = append(sentences, evidenceSentences(item)...)
 		if len(sentences) > 40 {
 			break
 		}

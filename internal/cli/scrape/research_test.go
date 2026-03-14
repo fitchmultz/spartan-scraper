@@ -126,6 +126,59 @@ func TestRunResearch_EmptyURLList(t *testing.T) {
 	}
 }
 
+func TestRunResearch_NaturalLanguageAIStoresPromptAndFields(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunResearch(ctx, cfg, []string{
+		"--query", "pricing model",
+		"--urls", "https://example.com,https://example.org",
+		"--ai-extract",
+		"--ai-prompt", "Extract the pricing model and support terms",
+		"--ai-fields", "pricing_model,support_terms",
+	})
+
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	spec := latestJobSpec(t, tmpDir)
+	extractMap, ok := spec["extract"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("extract spec missing: %#v", spec["extract"])
+	}
+	aiMap, ok := extractMap["ai"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("ai spec missing: %#v", extractMap["ai"])
+	}
+	if mode, _ := aiMap["mode"].(string); mode != "natural_language" {
+		t.Fatalf("expected natural_language mode, got %q", mode)
+	}
+	if prompt, _ := aiMap["prompt"].(string); prompt != "Extract the pricing model and support terms" {
+		t.Fatalf("expected prompt to be stored, got %q", prompt)
+	}
+}
+
 func TestRunResearch_ValidFlagsCreateJob(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()

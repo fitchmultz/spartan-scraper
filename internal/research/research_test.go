@@ -10,9 +10,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/simhash"
 )
 
@@ -148,6 +151,89 @@ func TestRunAllTargetsFail(t *testing.T) {
 	expectedMsg := "all research targets failed"
 	if err.Error() != expectedMsg {
 		t.Errorf("expected error message %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+type fakeResearchAIProvider struct {
+	extractResult extract.AIExtractResult
+}
+
+func (f *fakeResearchAIProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
+	return f.extractResult, nil
+}
+
+func (f *fakeResearchAIProvider) GenerateTemplate(ctx context.Context, req extract.AITemplateGenerateRequest) (extract.AITemplateGenerateResult, error) {
+	return extract.AITemplateGenerateResult{}, nil
+}
+
+func (f *fakeResearchAIProvider) HealthCheck(ctx context.Context) error {
+	return nil
+}
+
+func (f *fakeResearchAIProvider) RouteFingerprint(capability string) string {
+	return "test-route"
+}
+
+func TestRunIncludesAIExtractedFieldsInEvidence(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><body><h1>Enterprise Pricing</h1><p>Talk to sales for pricing details.</p></body></html>`)
+	}))
+	defer srv.Close()
+
+	provider := &fakeResearchAIProvider{
+		extractResult: extract.AIExtractResult{
+			Fields: map[string]extract.FieldValue{
+				"pricing_model": {
+					Values: []string{"Usage-based enterprise contract"},
+					Source: extract.FieldSourceLLM,
+				},
+				"support_terms": {
+					Values: []string{"Dedicated support with SLA"},
+					Source: extract.FieldSourceLLM,
+				},
+			},
+			Confidence: 0.91,
+		},
+	}
+	aiExtractor := extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig()},
+		t.TempDir(),
+		provider,
+	)
+
+	result, err := Run(context.Background(), Request{
+		Query:       "pricing model",
+		URLs:        []string{srv.URL},
+		MaxDepth:    0,
+		Timeout:     5 * time.Second,
+		DataDir:     t.TempDir(),
+		AIExtractor: aiExtractor,
+		Extract: extract.ExtractOptions{
+			AI: &extract.AIExtractOptions{
+				Enabled: true,
+				Mode:    extract.AIModeNaturalLanguage,
+				Prompt:  "Extract the pricing model and support terms",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if len(result.Evidence) != 1 {
+		t.Fatalf("expected 1 evidence item, got %d", len(result.Evidence))
+	}
+	fields := result.Evidence[0].Fields
+	if len(fields) < 2 {
+		t.Fatalf("expected AI fields to be merged into evidence, got %d total fields", len(fields))
+	}
+	if values := fields["pricing_model"].Values; len(values) != 1 || values[0] != "Usage-based enterprise contract" {
+		t.Fatalf("unexpected pricing_model values: %#v", values)
+	}
+	if values := fields["support_terms"].Values; len(values) != 1 || values[0] != "Dedicated support with SLA" {
+		t.Fatalf("unexpected support_terms values: %#v", values)
+	}
+	if !strings.Contains(result.Summary, "pricing model") {
+		t.Fatalf("expected summary to reference AI field summary, got %q", result.Summary)
 	}
 }
 

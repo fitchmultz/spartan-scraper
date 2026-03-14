@@ -16,6 +16,7 @@ import type {
   ResearchRequest,
   PipelineOptions,
   AuthOptions,
+  FieldValue,
   InterceptedEntry,
 } from "./api";
 
@@ -40,6 +41,7 @@ export type EvidenceItem = {
   confidence?: number;
   citationUrl?: string;
   clusterId?: string;
+  fields?: Record<string, FieldValue>;
 };
 
 export type ClusterItem = {

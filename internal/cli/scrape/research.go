@@ -36,6 +36,7 @@ Examples:
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
   spartan research --query "login flow" --urls https://example.com --headless --wait --out ./out/research.jsonl
   spartan research --query "pricing model" --urls https://example.com --transformer json-clean
+  spartan research --query "pricing model" --urls https://example.com --ai-extract --ai-prompt "Extract the pricing model and support terms" --ai-fields "pricing_model,support_terms"
 
 Options:
 `)
@@ -67,6 +68,14 @@ Options:
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+	aiExtractOptions, err := common.BuildAIExtractOptions(cf)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if aiExtractOptions != nil {
+		extractOpts.AI = aiExtractOptions
 	}
 	pipelineOpts := pipeline.Options{
 		PreProcessors:  []string(cf.PreProcessors),

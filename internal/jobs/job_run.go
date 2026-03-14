@@ -354,6 +354,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			TemplateRegistry: m.templateRegistry,
 			Screenshot:       input.Config.Screenshot,
 			ProxyPool:        m.proxyPool,
+			AIExtractor:      m.aiExtractor,
 		})
 		if err != nil {
 			if jobCtx.Err() != nil {

@@ -40,18 +40,21 @@ type Request struct {
 	Screenshot *fetch.ScreenshotConfig
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
+	// AIExtractor enables optional AI-assisted extraction during evidence gathering.
+	AIExtractor *extract.AIExtractor
 }
 
 // Evidence represents a single piece of gathered evidence with computed metrics.
 type Evidence struct {
-	URL         string  `json:"url"`
-	Title       string  `json:"title"`
-	Snippet     string  `json:"snippet"`
-	Score       float64 `json:"score"`
-	SimHash     uint64  `json:"simhash"`
-	ClusterID   string  `json:"clusterId"`
-	Confidence  float64 `json:"confidence"`
-	CitationURL string  `json:"citationUrl"`
+	URL         string                        `json:"url"`
+	Title       string                        `json:"title"`
+	Snippet     string                        `json:"snippet"`
+	Score       float64                       `json:"score"`
+	SimHash     uint64                        `json:"simhash"`
+	ClusterID   string                        `json:"clusterId"`
+	Confidence  float64                       `json:"confidence"`
+	CitationURL string                        `json:"citationUrl"`
+	Fields      map[string]extract.FieldValue `json:"fields,omitempty"`
 }
 
 // Result contains the complete research output including summary, evidence, and clusters.

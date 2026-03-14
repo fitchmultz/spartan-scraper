@@ -186,9 +186,14 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
+		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
+		if err != nil {
+			return nil, err
+		}
 		extractOpts := extract.ExtractOptions{
 			Template: paramdecode.String(params.Arguments, "extractTemplate"),
 			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
+			AI:       aiExtractOpts,
 		}
 		pipelineOpts := getPipelineOptions(params.Arguments)
 		spec := jobs.JobSpec{

@@ -155,14 +155,26 @@ Key flags:
 - `--headless`
 - `--playwright`
 - `--auth-profile <name>`
+- `--ai-extract`
+- `--ai-mode natural_language|schema_guided`
+- `--ai-prompt "<instructions>"` for natural-language mode
+- `--ai-schema '{"field":"example"}'` for schema-guided mode
+- `--ai-fields "field1,field2"`
 
-Example:
+Examples:
 
 ```bash
 spartan research \
   --query "pricing model" \
   --urls https://example.com,https://example.com/docs \
   --out ./out/research.jsonl
+
+spartan research \
+  --query "pricing model" \
+  --urls https://example.com/pricing,https://example.com/support \
+  --ai-extract \
+  --ai-prompt "Extract the pricing model, contract terms, and support commitments from each source" \
+  --ai-fields "pricing_model,contract_terms,support_commitments"
 ```
 
 ### Auth
@@ -243,6 +255,14 @@ Render profile commands:
 - `spartan batch submit research --file <json>`
 - `spartan batch status <batch-id> [--watch]`
 - `spartan batch cancel <batch-id>`
+
+Batch submit commands for scrape, crawl, and research accept the same AI extraction flags as their single-job counterparts:
+
+- `--ai-extract`
+- `--ai-mode natural_language|schema_guided`
+- `--ai-prompt "<instructions>"`
+- `--ai-schema '{"field":"example"}'`
+- `--ai-fields "field1,field2"`
 
 ### Chains
 
@@ -428,7 +448,7 @@ Important endpoint groups:
 - `/v1/auth/oauth/*`
 - `/v1/ws`
 
-For scrape and crawl job creation, AI extraction rides inside the normal extract payload:
+For scrape, crawl, and research job creation, AI extraction rides inside the normal extract payload:
 
 - `extract.ai.enabled`
 - `extract.ai.mode`

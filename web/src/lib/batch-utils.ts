@@ -8,12 +8,13 @@
  */
 
 import type {
+  AiExtractOptions,
+  AuthOptions,
   BatchCrawlRequest,
   BatchJobStats,
   BatchJobRequest,
   BatchResearchRequest,
   BatchScrapeRequest,
-  AuthOptions,
   DeviceEmulation,
   ExtractOptions,
   PipelineOptions,
@@ -190,8 +191,16 @@ export function buildBatchScrapeRequest(
   incremental: boolean,
   webhook: WebhookConfig | undefined,
   device: DeviceEmulation | undefined,
+  aiExtract?: AiExtractOptions,
 ): BatchScrapeRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
 
   return {
     jobs,
@@ -200,7 +209,7 @@ export function buildBatchScrapeRequest(
     timeoutSeconds,
     authProfile,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -225,8 +234,16 @@ export function buildBatchCrawlRequest(
   incremental: boolean,
   webhook: WebhookConfig | undefined,
   device: DeviceEmulation | undefined,
+  aiExtract?: AiExtractOptions,
 ): BatchCrawlRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
 
   return {
     jobs,
@@ -237,7 +254,7 @@ export function buildBatchCrawlRequest(
     timeoutSeconds,
     authProfile,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -262,8 +279,16 @@ export function buildBatchResearchRequest(
   pipeline: PipelineOptions | undefined,
   webhook: WebhookConfig | undefined,
   device: DeviceEmulation | undefined,
+  aiExtract?: AiExtractOptions,
 ): BatchResearchRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
 
   return {
     jobs,
@@ -275,7 +300,7 @@ export function buildBatchResearchRequest(
     timeoutSeconds,
     authProfile,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline,
     webhook,
     device,

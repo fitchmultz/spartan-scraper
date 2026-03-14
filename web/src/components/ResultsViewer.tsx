@@ -19,6 +19,53 @@ import type {
 } from "../types";
 import { NormalizedView } from "./NormalizedView";
 
+function getFieldDisplayValues(
+  field: NonNullable<EvidenceItem["fields"]>[string],
+) {
+  if (field.values && field.values.length > 0) {
+    return field.values;
+  }
+  return [];
+}
+
+function renderEvidenceFields(fields: EvidenceItem["fields"]) {
+  if (!fields || Object.keys(fields).length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>Extracted fields</div>
+      <div className="job-list">
+        {Object.entries(fields).map(([name, field]) => {
+          const values = getFieldDisplayValues(field);
+          return (
+            <div key={name} className="job-item">
+              <div style={{ fontWeight: 600 }}>{name}</div>
+              {values.length > 0 ? (
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  {values.map((value) => (
+                    <li key={`${name}-${value}`}>{value}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ color: "var(--text-muted)" }}>
+                  No string values returned.
+                </div>
+              )}
+              {field.rawObject ? (
+                <pre style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+                  {field.rawObject}
+                </pre>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface ResultsViewerProps {
   jobId: string | null;
   jobKind?: "scrape" | "crawl" | "research";
@@ -172,6 +219,7 @@ export function ResultsViewer({
                 </a>
               ) : null}
               <div>{item.snippet}</div>
+              {renderEvidenceFields(item.fields)}
             </div>
           ))}
         </div>

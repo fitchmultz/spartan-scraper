@@ -396,7 +396,16 @@ export function buildResearchRequest(
   webhook?: WebhookConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
+  aiExtract?: AiExtractOptions,
 ): ResearchRequest {
+  const mergedExtract: ExtractOptions | undefined =
+    extract || aiExtract
+      ? {
+          ...extract,
+          ai: aiExtract,
+        }
+      : undefined;
+
   return {
     query,
     urls,
@@ -407,7 +416,7 @@ export function buildResearchRequest(
     timeoutSeconds,
     authProfile: authProfile || undefined,
     auth,
-    extract,
+    extract: mergedExtract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
     device,

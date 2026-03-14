@@ -383,6 +383,9 @@ export type ResearchEvidence = {
     clusterId?: string;
     confidence?: number;
     citationUrl?: string;
+    fields?: {
+        [key: string]: FieldValue;
+    };
 };
 
 export type ResearchEvidenceCluster = {

@@ -27,7 +27,26 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
+
+func latestBatchJobSpec(t *testing.T, dataDir string) map[string]interface{} {
+	t.Helper()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("failed to open store: %v", err)
+	}
+	defer st.Close()
+
+	jobs, err := st.List(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list jobs: %v", err)
+	}
+	if len(jobs) == 0 {
+		t.Fatal("expected at least one job")
+	}
+	return jobs[0].SpecMap()
+}
 
 func TestParseBatchJobs_FromURLs(t *testing.T) {
 	jobs, err := parseBatchJobs("", "https://a.com,https://b.com", "GET", "", "")
@@ -581,6 +600,60 @@ func TestRunBatchSubmitResearch_NoURLs(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "no URLs provided") {
 		t.Errorf("expected error about missing URLs, got %q", stderr)
+	}
+}
+
+func TestRunBatchSubmitResearch_StoresAIExtractOptions(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cfg := config.Config{
+		DataDir:            tmpDir,
+		UsePlaywright:      false,
+		RequestTimeoutSecs: 30,
+		MaxConcurrency:     1,
+		RateLimitQPS:       10,
+		RateLimitBurst:     10,
+		MaxRetries:         3,
+		RetryBaseMs:        100,
+		MaxResponseBytes:   10 * 1024 * 1024,
+		UserAgent:          "test-agent",
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunBatch(ctx, cfg, []string{
+		"submit", "research",
+		"--urls", "https://example.com,https://example.org",
+		"--query", "pricing model",
+		"--ai-extract",
+		"--ai-prompt", "Extract the pricing model and support terms",
+		"--ai-fields", "pricing_model,support_terms",
+	})
+
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	spec := latestBatchJobSpec(t, tmpDir)
+	extractMap, ok := spec["extract"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("extract spec missing: %#v", spec["extract"])
+	}
+	aiMap, ok := extractMap["ai"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("ai spec missing: %#v", extractMap["ai"])
+	}
+	if mode, _ := aiMap["mode"].(string); mode != "natural_language" {
+		t.Fatalf("expected natural_language mode, got %q", mode)
+	}
+	if prompt, _ := aiMap["prompt"].(string); prompt != "Extract the pricing model and support terms" {
+		t.Fatalf("expected prompt to be stored, got %q", prompt)
 	}
 }
 

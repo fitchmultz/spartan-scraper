@@ -106,4 +106,4 @@ Likely next maturity steps include:
 - More explicit compatibility/versioning policy.
 - Additional observability metrics and dashboards.
 - Continued UX refinement in the web interface.
-- Agentic research workflows powered by `pi`, while keeping deterministic `internal/research` as the baseline until a roadmap item explicitly changes that.
+- Agentic research workflows powered by `pi`, while keeping deterministic `internal/research` as the baseline. Current research AI remains additive through the existing extraction/evidence path until a roadmap item explicitly changes that.

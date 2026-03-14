@@ -280,6 +280,44 @@ describe("buildResearchRequest with pipeline options", () => {
       },
     });
   });
+
+  it("should merge AI extraction options into research extract config", () => {
+    const request = buildResearchRequest(
+      "pricing model",
+      ["https://example.com"],
+      2,
+      10,
+      false,
+      false,
+      30,
+      undefined,
+      undefined,
+      { template: "article", validate: true },
+      "",
+      "",
+      "",
+      undefined,
+      undefined,
+      undefined,
+      {
+        enabled: true,
+        mode: "natural_language",
+        prompt: "Extract the pricing model and contract terms",
+        fields: ["pricing_model", "contract_terms"],
+      },
+    );
+
+    expect(request.extract).toEqual({
+      template: "article",
+      validate: true,
+      ai: {
+        enabled: true,
+        mode: "natural_language",
+        prompt: "Extract the pricing model and contract terms",
+        fields: ["pricing_model", "contract_terms"],
+      },
+    });
+  });
 });
 
 describe("auth payload generation", () => {
