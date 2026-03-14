@@ -10,6 +10,8 @@ import {
 } from "@mariozechner/pi-ai";
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type {
+  ExportShapePayload,
+  ExportShapeResult,
   ExtractPayload,
   GeneratePipelineJsPayload,
   GenerateRenderProfilePayload,
@@ -25,6 +27,7 @@ import type {
 import { parseRouteId } from "./config.js";
 import {
   normalizeExtractResult,
+  validateExportShapeResult,
   validatePipelineJsResult,
   validateRenderProfileResult,
   validateResearchRefineResult,
@@ -303,6 +306,45 @@ export class SDKBackend {
     );
   }
 
+  async shapeExport(
+    capability: string,
+    payload: ExportShapePayload,
+  ): Promise<ExportShapeResult> {
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: false,
+        });
+        const tool = this.exportShapeTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildExportShapePrompt(payload),
+            systemPrompt:
+              "You shape bounded Spartan export configurations. Use only the supplied field catalog and existing shape. Do not invent field keys. Call the submit_export_shape tool exactly once with a deterministic export shape configuration.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
+
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validateExportShapeResult({
+          ...(args as ExportShapeResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
+  }
+
   private inspectRoute(routeId: string): HealthRouteStatus {
     try {
       const { provider, model } = parseRouteId(routeId);
@@ -557,6 +599,31 @@ export class SDKBackend {
       }),
     };
   }
+
+  private exportShapeTool(): Tool {
+    return {
+      name: "submit_export_shape",
+      description:
+        "Submit a deterministic Spartan export shape using only the supplied field catalog.",
+      parameters: Type.Object({
+        shape: Type.Object({
+          topLevelFields: Type.Optional(Type.Array(Type.String())),
+          normalizedFields: Type.Optional(Type.Array(Type.String())),
+          evidenceFields: Type.Optional(Type.Array(Type.String())),
+          summaryFields: Type.Optional(Type.Array(Type.String())),
+          fieldLabels: Type.Optional(Type.Record(Type.String(), Type.String())),
+          formatting: Type.Optional(
+            Type.Object({
+              emptyValue: Type.Optional(Type.String()),
+              multiValueJoin: Type.Optional(Type.String()),
+              markdownTitle: Type.Optional(Type.String()),
+            }),
+          ),
+        }),
+        explanation: Type.Optional(Type.String()),
+      }),
+    };
+  }
 }
 
 export function modelSupportsImages(model: { input: string[] }): boolean {
@@ -676,6 +743,29 @@ function buildResearchRefinePrompt(payload: ResearchRefinePayload): string {
   );
   parts.push(
     `Research result JSON:\n${JSON.stringify(payload.result, null, 2)}`,
+  );
+  return parts.join("\n\n");
+}
+
+function buildExportShapePrompt(payload: ExportShapePayload): string {
+  const parts: string[] = [
+    `Job kind: ${payload.jobKind}`,
+    `Target export format: ${payload.format}`,
+  ];
+  if (payload.instructions?.trim()) {
+    parts.push(`Operator goal: ${payload.instructions.trim()}`);
+  }
+  if (payload.feedback?.trim()) {
+    parts.push(`Validation feedback: ${payload.feedback.trim()}`);
+  }
+  parts.push(
+    "Use only the supplied field options. Do not invent field keys or categories.",
+  );
+  if (payload.currentShape && Object.keys(payload.currentShape).length > 0) {
+    parts.push(`Current shape:\n${JSON.stringify(payload.currentShape, null, 2)}`);
+  }
+  parts.push(
+    `Field options:\n${JSON.stringify(payload.fieldOptions ?? [], null, 2)}`,
   );
   return parts.join("\n\n");
 }

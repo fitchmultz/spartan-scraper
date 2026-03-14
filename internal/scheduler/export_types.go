@@ -21,7 +21,11 @@
 // - ExportConfig.DestinationType is either local or webhook.
 package scheduler
 
-import "time"
+import (
+	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+)
 
 // ExportSchedule represents an automated export configuration that triggers
 // when jobs complete matching specified filter criteria.
@@ -80,6 +84,9 @@ type ExportConfig struct {
 	// Default: "exports/{kind}/{job_id}.{format}"
 	// Supported variables: {job_id}, {timestamp}, {kind}, {format}
 	PathTemplate string `json:"path_template,omitempty"`
+
+	// Shape applies deterministic export shaping for markdown and tabular exports.
+	Shape exporter.ShapeConfig `json:"shape,omitempty"`
 }
 
 // ExportRetryConfig defines retry behavior for failed exports.

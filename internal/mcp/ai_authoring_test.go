@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 type fakeAuthoringProvider struct {
@@ -25,12 +28,15 @@ type fakeAutomationClient struct {
 	renderProfileResult  piai.GenerateRenderProfileResult
 	pipelineJSResult     piai.GeneratePipelineJSResult
 	researchRefineResult piai.ResearchRefineResult
+	exportShapeResult    piai.ExportShapeResult
 	renderProfileReq     piai.GenerateRenderProfileRequest
 	pipelineJSReq        piai.GeneratePipelineJSRequest
 	researchRefineReq    piai.ResearchRefineRequest
+	exportShapeReq       piai.ExportShapeRequest
 	renderProfileCalls   int
 	pipelineJSCalls      int
 	researchRefineCalls  int
+	exportShapeCalls     int
 }
 
 func (f *fakeAuthoringProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -76,6 +82,12 @@ func (f *fakeAutomationClient) GenerateResearchRefinement(ctx context.Context, r
 	return f.researchRefineResult, nil
 }
 
+func (f *fakeAutomationClient) GenerateExportShape(ctx context.Context, req piai.ExportShapeRequest) (piai.ExportShapeResult, error) {
+	f.exportShapeCalls++
+	f.exportShapeReq = req
+	return f.exportShapeResult, nil
+}
+
 func TestAIAuthoringToolsList(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -86,7 +98,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug", "ai_research_refine"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug", "ai_research_refine", "ai_export_shape"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -156,6 +168,18 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				Confidence: 0.81,
 			},
 			Explanation: "Condensed the supplied research result into an operator brief.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+		exportShapeResult: piai.ExportShapeResult{
+			Shape: piai.BridgeExportShapeConfig{
+				TopLevelFields:   []string{"url", "title", "status"},
+				NormalizedFields: []string{"field.price"},
+				SummaryFields:    []string{"title", "field.price"},
+				FieldLabels:      map[string]string{"field.price": "Price"},
+			},
+			Explanation: "Selected export-ready fields for the representative sample.",
 			RouteID:     "openai/gpt-5.4",
 			Provider:    "openai",
 			Model:       "gpt-5.4",
@@ -441,5 +465,54 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.researchRefineReq.Instructions != "Condense this into a concise operator brief" {
 		t.Fatalf("unexpected research refine instructions: %q", automationClient.researchRefineReq.Instructions)
+	}
+
+	resultDir := filepath.Join(tmpDir, "jobs", "job-export-shape")
+	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		t.Fatalf("mkdir result dir: %v", err)
+	}
+	resultPath := filepath.Join(resultDir, "result.json")
+	if err := os.WriteFile(resultPath, []byte(`{"url":"https://example.com","status":200,"title":"Example","text":"Body","normalized":{"fields":{"price":{"values":["$10"]}}}}`), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+	now := time.Now().UTC()
+	if err := srv.store.Create(context.Background(), model.Job{
+		ID:          "job-export-shape",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		SpecVersion: 1,
+		ResultPath:  resultPath,
+	}); err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	exportShapeBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_export_shape",
+			"arguments": map[string]interface{}{
+				"jobId":        "job-export-shape",
+				"format":       "md",
+				"instructions": "Focus on pricing fields",
+			},
+		}),
+	}
+	exportShapeResult, err := srv.handleToolCall(context.Background(), exportShapeBase)
+	if err != nil {
+		t.Fatalf("ai_export_shape failed: %v", err)
+	}
+	exportShapeResp, ok := exportShapeResult.(aiauthoring.ExportShapeResult)
+	if !ok {
+		t.Fatalf("expected export shape result type, got %#v", exportShapeResult)
+	}
+	if len(exportShapeResp.Shape.NormalizedFields) != 1 || exportShapeResp.Shape.NormalizedFields[0] != "field.price" {
+		t.Fatalf("unexpected export shape: %#v", exportShapeResp.Shape)
+	}
+	if automationClient.exportShapeCalls != 1 {
+		t.Fatalf("expected single export shape call, got %d", automationClient.exportShapeCalls)
+	}
+	if automationClient.exportShapeReq.JobKind != string(model.KindScrape) {
+		t.Fatalf("unexpected export shape job kind: %q", automationClient.exportShapeReq.JobKind)
 	}
 }

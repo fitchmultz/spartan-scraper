@@ -4,6 +4,7 @@ export const CAPABILITY_TEMPLATE_GENERATE = "template.generate";
 export const CAPABILITY_RENDER_PROFILE_GENERATE = "render_profile.generate";
 export const CAPABILITY_PIPELINE_JS_GENERATE = "pipeline_js.generate";
 export const CAPABILITY_RESEARCH_REFINE = "research.refine";
+export const CAPABILITY_EXPORT_SHAPE = "export.shape";
 
 export const OP_HEALTH = "health";
 export const OP_EXTRACT_PREVIEW = "extract_preview";
@@ -11,6 +12,7 @@ export const OP_GENERATE_TEMPLATE = "generate_template";
 export const OP_GENERATE_RENDER_PROFILE = "generate_render_profile";
 export const OP_GENERATE_PIPELINE_JS = "generate_pipeline_js";
 export const OP_RESEARCH_REFINE = "research_refine";
+export const OP_EXPORT_SHAPE = "export_shape";
 
 export type BridgeOperation =
   | typeof OP_HEALTH
@@ -18,7 +20,8 @@ export type BridgeOperation =
   | typeof OP_GENERATE_TEMPLATE
   | typeof OP_GENERATE_RENDER_PROFILE
   | typeof OP_GENERATE_PIPELINE_JS
-  | typeof OP_RESEARCH_REFINE;
+  | typeof OP_RESEARCH_REFINE
+  | typeof OP_EXPORT_SHAPE;
 
 export interface BridgeRequest<TPayload = unknown> {
   id: string;
@@ -186,6 +189,45 @@ export interface ResearchRefinedContent {
 
 export interface ResearchRefineResult {
   refined: ResearchRefinedContent;
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface ExportShapeFieldOption {
+  key: string;
+  category?: string;
+  label?: string;
+  sampleValues?: string[];
+}
+
+export interface ExportFormattingHints {
+  emptyValue?: string;
+  multiValueJoin?: string;
+  markdownTitle?: string;
+}
+
+export interface ExportShapeConfig {
+  topLevelFields?: string[];
+  normalizedFields?: string[];
+  evidenceFields?: string[];
+  summaryFields?: string[];
+  fieldLabels?: Record<string, string>;
+  formatting?: ExportFormattingHints;
+}
+
+export interface ExportShapePayload {
+  jobKind: string;
+  format: string;
+  fieldOptions?: ExportShapeFieldOption[];
+  currentShape?: ExportShapeConfig;
+  instructions?: string;
+  feedback?: string;
+}
+
+export interface ExportShapeResult {
+  shape: ExportShapeConfig;
   explanation?: string;
   route_id?: string;
   provider?: string;

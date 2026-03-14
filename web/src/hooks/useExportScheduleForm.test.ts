@@ -191,4 +191,43 @@ describe("useExportScheduleForm", () => {
       }),
     );
   });
+
+  it("includes export shaping when submitting supported formats", async () => {
+    const { result } = renderHook(() => useExportScheduleForm());
+
+    act(() => {
+      result.current.setFormField("name", "Shaped export");
+      result.current.setFormField("destinationType", "local");
+      result.current.setFormField("localPath", "exports/{job_id}.md");
+      result.current.setFormField("pathTemplate", "exports/{job_id}.md");
+      result.current.setFormField("format", "md");
+      result.current.setFormField("shapeTopLevelFields", "url\ntitle");
+      result.current.setFormField("shapeSummaryFields", "title\nfield.price");
+      result.current.setFormField("shapeFieldLabels", "field.price=Price");
+    });
+
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.submitForm(onCreate, onUpdate);
+    });
+
+    expect(success).toBe(true);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        export: expect.objectContaining({
+          format: "md",
+          shape: {
+            topLevelFields: ["url", "title"],
+            summaryFields: ["title", "field.price"],
+            fieldLabels: {
+              "field.price": "Price",
+            },
+          },
+        }),
+      }),
+    );
+  });
 });

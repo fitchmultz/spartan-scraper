@@ -1097,6 +1097,48 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/export-shape":
+    post:
+      summary: Generate or tune bounded export shaping using AI
+      description: Propose deterministic export-ready field selections, labels, and formatting hints from a representative job result without creating a job.
+      operationId: aiExportShape
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIExportShapeRequest"
+      responses:
+        '200':
+          description: Generated export shape
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIExportShapeResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/crawl-states":
     get:
       summary: List crawl states
@@ -3470,6 +3512,42 @@ components:
           type: string
           description: Path template with variables {job_id}, {timestamp}, {kind},
             {format}
+        shape:
+          "$ref": "#/components/schemas/ExportShapeConfig"
+    ExportShapeFormattingHints:
+      type: object
+      properties:
+        emptyValue:
+          type: string
+        multiValueJoin:
+          type: string
+        markdownTitle:
+          type: string
+    ExportShapeConfig:
+      type: object
+      properties:
+        topLevelFields:
+          type: array
+          items:
+            type: string
+        normalizedFields:
+          type: array
+          items:
+            type: string
+        evidenceFields:
+          type: array
+          items:
+            type: string
+        summaryFields:
+          type: array
+          items:
+            type: string
+        fieldLabels:
+          type: object
+          additionalProperties:
+            type: string
+        formatting:
+          "$ref": "#/components/schemas/ExportShapeFormattingHints"
     ExportRetryConfig:
       type: object
       properties:
@@ -4093,6 +4171,59 @@ components:
           "$ref": "#/components/schemas/AIResearchRefinedContent"
         markdown:
           type: string
+        explanation:
+          type: string
+        route_id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+    AIExportShapeRequest:
+      type: object
+      required:
+      - job_id
+      - format
+      properties:
+        job_id:
+          type: string
+          description: Representative job ID whose result file should seed the export shape.
+        format:
+          type: string
+          enum:
+          - md
+          - csv
+          - xlsx
+          description: Target export format to shape.
+        currentShape:
+          "$ref": "#/components/schemas/ExportShapeConfig"
+        instructions:
+          type: string
+          description: Optional operator guidance for the generated shape.
+    AIExportShapeInputStats:
+      type: object
+      properties:
+        fieldOptionCount:
+          type: integer
+        topLevelFieldCount:
+          type: integer
+        normalizedFieldCount:
+          type: integer
+        evidenceFieldCount:
+          type: integer
+        sampleRecordCount:
+          type: integer
+    AIExportShapeResponse:
+      type: object
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+        inputStats:
+          "$ref": "#/components/schemas/AIExportShapeInputStats"
+        shape:
+          "$ref": "#/components/schemas/ExportShapeConfig"
         explanation:
           type: string
         route_id:

@@ -10,13 +10,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
@@ -53,12 +57,15 @@ type fakeAutomationClient struct {
 	renderProfileResult  piai.GenerateRenderProfileResult
 	pipelineJSResult     piai.GeneratePipelineJSResult
 	researchRefineResult piai.ResearchRefineResult
+	exportShapeResult    piai.ExportShapeResult
 	renderProfileReq     piai.GenerateRenderProfileRequest
 	pipelineJSReq        piai.GeneratePipelineJSRequest
 	researchRefineReq    piai.ResearchRefineRequest
+	exportShapeReq       piai.ExportShapeRequest
 	renderProfileCalls   int
 	pipelineJSCalls      int
 	researchRefineCalls  int
+	exportShapeCalls     int
 }
 
 func (f *fakeAIProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -102,6 +109,12 @@ func (f *fakeAutomationClient) GenerateResearchRefinement(ctx context.Context, r
 	f.researchRefineCalls++
 	f.researchRefineReq = req
 	return f.researchRefineResult, nil
+}
+
+func (f *fakeAutomationClient) GenerateExportShape(ctx context.Context, req piai.ExportShapeRequest) (piai.ExportShapeResult, error) {
+	f.exportShapeCalls++
+	f.exportShapeReq = req
+	return f.exportShapeResult, nil
 }
 
 func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
@@ -635,6 +648,84 @@ func TestAIResearchRefineReturnsStructuredRefinement(t *testing.T) {
 	}
 	if !strings.Contains(resp.Markdown, "Refined Research Brief") {
 		t.Fatalf("expected markdown output, got %q", resp.Markdown)
+	}
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
+	}
+}
+
+func TestAIExportShapeLoadsJobResultAndReturnsShape(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	resultDir := filepath.Join(srv.cfg.DataDir, "jobs", "job-export-shape")
+	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		t.Fatalf("mkdir result dir: %v", err)
+	}
+	resultPath := filepath.Join(resultDir, "result.jsonl")
+	resultBody := `{"url":"https://example.com","status":200,"title":"Example","text":"Body","normalized":{"title":"Example","fields":{"price":{"values":["$10"]},"plan":{"values":["Pro"]}}}}`
+	if err := os.WriteFile(resultPath, []byte(resultBody), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+	now := time.Now().UTC()
+	job := model.Job{
+		ID:          "job-export-shape",
+		Kind:        model.KindScrape,
+		Status:      model.StatusSucceeded,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		SpecVersion: 1,
+		ResultPath:  resultPath,
+	}
+	if err := srv.store.Create(context.Background(), job); err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	automationClient := &fakeAutomationClient{
+		exportShapeResult: piai.ExportShapeResult{
+			Shape: piai.BridgeExportShapeConfig{
+				TopLevelFields:   []string{"url", "title", "status"},
+				NormalizedFields: []string{"field.price", "field.plan"},
+				SummaryFields:    []string{"title", "field.price"},
+				FieldLabels:      map[string]string{"field.price": "Price"},
+				Formatting:       piai.ExportFormattingHints{MarkdownTitle: "Pricing Export"},
+			},
+			Explanation: "Selected high-signal export fields for the representative scrape result.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	body := `{"job_id":"job-export-shape","format":"md","instructions":"Focus on pricing-related export fields"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/export-shape", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if automationClient.exportShapeCalls != 1 {
+		t.Fatalf("expected single export shape call, got %d", automationClient.exportShapeCalls)
+	}
+	if automationClient.exportShapeReq.JobKind != string(model.KindScrape) {
+		t.Fatalf("unexpected job kind: %q", automationClient.exportShapeReq.JobKind)
+	}
+	if automationClient.exportShapeReq.Format != "md" {
+		t.Fatalf("unexpected format: %q", automationClient.exportShapeReq.Format)
+	}
+	if automationClient.exportShapeReq.Instructions != "Focus on pricing-related export fields" {
+		t.Fatalf("unexpected instructions: %q", automationClient.exportShapeReq.Instructions)
+	}
+	var resp AIExportShapeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(resp.Shape.NormalizedFields) != 2 || resp.Shape.NormalizedFields[0] != "field.price" {
+		t.Fatalf("unexpected shape: %#v", resp.Shape)
 	}
 	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)

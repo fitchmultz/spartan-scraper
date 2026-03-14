@@ -21,12 +21,19 @@ import { describe, expect, it } from "vitest";
 
 import type { ExportSchedule } from "../api";
 import {
+  clearShapeFormData,
   defaultFormData,
-  formatDestination,
-  formatFilters,
-  formatFileSize,
   formDataToScheduleRequest,
+  formatDestination,
+  formatExportShapeSummary,
+  formatFileSize,
+  formatFilters,
+  formatShapeLabels,
+  formDataToShapeConfig,
+  hasShapeFormData,
   scheduleToFormData,
+  shapeConfigToFormData,
+  supportsExportShapeFormat,
 } from "./export-schedule-utils";
 
 describe("defaultFormData", () => {
@@ -45,6 +52,14 @@ describe("defaultFormData", () => {
       webhookUrl: "",
       maxRetries: 3,
       baseDelayMs: 1000,
+      shapeTopLevelFields: "",
+      shapeNormalizedFields: "",
+      shapeEvidenceFields: "",
+      shapeSummaryFields: "",
+      shapeFieldLabels: "",
+      shapeEmptyValue: "",
+      shapeMultiValueJoin: "",
+      shapeMarkdownTitle: "",
     });
   });
 });
@@ -94,6 +109,115 @@ describe("formatFileSize", () => {
   });
 });
 
+describe("export shape helpers", () => {
+  it("recognizes supported formats", () => {
+    expect(supportsExportShapeFormat("md")).toBe(true);
+    expect(supportsExportShapeFormat("csv")).toBe(true);
+    expect(supportsExportShapeFormat("xlsx")).toBe(true);
+    expect(supportsExportShapeFormat("json")).toBe(false);
+    expect(supportsExportShapeFormat("jsonl")).toBe(false);
+  });
+
+  it("round-trips shape config to and from form fields", () => {
+    const formFields = shapeConfigToFormData({
+      topLevelFields: ["url", "title"],
+      normalizedFields: ["field.price"],
+      evidenceFields: ["evidence.url"],
+      summaryFields: ["title", "field.price"],
+      fieldLabels: {
+        "field.price": "Price",
+        title: "Page Title",
+      },
+      formatting: {
+        emptyValue: "—",
+        multiValueJoin: "; ",
+        markdownTitle: "Pricing Export",
+      },
+    });
+
+    expect(formFields).toEqual({
+      shapeTopLevelFields: "url\ntitle",
+      shapeNormalizedFields: "field.price",
+      shapeEvidenceFields: "evidence.url",
+      shapeSummaryFields: "title\nfield.price",
+      shapeFieldLabels: "field.price=Price\ntitle=Page Title",
+      shapeEmptyValue: "—",
+      shapeMultiValueJoin: "; ",
+      shapeMarkdownTitle: "Pricing Export",
+    });
+
+    expect(
+      formDataToShapeConfig({
+        ...defaultFormData,
+        format: "md",
+        ...formFields,
+      }),
+    ).toEqual({
+      topLevelFields: ["url", "title"],
+      normalizedFields: ["field.price"],
+      evidenceFields: ["evidence.url"],
+      summaryFields: ["title", "field.price"],
+      fieldLabels: {
+        "field.price": "Price",
+        title: "Page Title",
+      },
+      formatting: {
+        emptyValue: "—",
+        multiValueJoin: ";",
+        markdownTitle: "Pricing Export",
+      },
+    });
+  });
+
+  it("returns undefined shape config for unsupported formats", () => {
+    expect(
+      formDataToShapeConfig({
+        ...defaultFormData,
+        format: "json",
+        shapeTopLevelFields: "url",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("formats shape summaries and label text", () => {
+    expect(
+      formatShapeLabels({
+        title: "Title",
+        "field.price": "Price",
+      }),
+    ).toBe("field.price=Price\ntitle=Title");
+
+    expect(
+      formatExportShapeSummary({
+        topLevelFields: ["url", "title"],
+        fieldLabels: { title: "Title" },
+        formatting: { markdownTitle: "Report" },
+      }),
+    ).toBe("2 fields · 1 label · formatting");
+    expect(formatExportShapeSummary(undefined)).toBe("Default");
+  });
+
+  it("detects and clears staged shape fields", () => {
+    expect(
+      hasShapeFormData({
+        ...defaultFormData,
+        shapeFieldLabels: "title=Title",
+      }),
+    ).toBe(true);
+    expect(hasShapeFormData(defaultFormData)).toBe(false);
+    expect(clearShapeFormData()).toEqual({
+      shapeTopLevelFields: "",
+      shapeNormalizedFields: "",
+      shapeEvidenceFields: "",
+      shapeSummaryFields: "",
+      shapeFieldLabels: "",
+      shapeEmptyValue: "",
+      shapeMultiValueJoin: "",
+      shapeMarkdownTitle: "",
+    });
+  });
+});
+
 describe("scheduleToFormData", () => {
   it("maps local schedules into form state", () => {
     const schedule: ExportSchedule = {
@@ -112,6 +236,12 @@ describe("scheduleToFormData", () => {
         destination_type: "local",
         local_path: "exports/{job_id}.csv",
         path_template: "exports/{job_id}.csv",
+        shape: {
+          topLevelFields: ["url", "title"],
+          summaryFields: ["title"],
+          fieldLabels: { title: "Page Title" },
+          formatting: { emptyValue: "—" },
+        },
       },
       retry: {
         max_retries: 5,
@@ -133,6 +263,14 @@ describe("scheduleToFormData", () => {
       webhookUrl: "",
       maxRetries: 5,
       baseDelayMs: 2000,
+      shapeTopLevelFields: "url\ntitle",
+      shapeNormalizedFields: "",
+      shapeEvidenceFields: "",
+      shapeSummaryFields: "title",
+      shapeFieldLabels: "title=Page Title",
+      shapeEmptyValue: "—",
+      shapeMultiValueJoin: "",
+      shapeMarkdownTitle: "",
     });
   });
 });
@@ -154,6 +292,14 @@ describe("formDataToScheduleRequest", () => {
         webhookUrl: "",
         maxRetries: 3,
         baseDelayMs: 1000,
+        shapeTopLevelFields: "",
+        shapeNormalizedFields: "",
+        shapeEvidenceFields: "",
+        shapeSummaryFields: "",
+        shapeFieldLabels: "",
+        shapeEmptyValue: "",
+        shapeMultiValueJoin: "",
+        shapeMarkdownTitle: "",
       }),
     ).toEqual({
       name: "Local export",
@@ -189,6 +335,14 @@ describe("formDataToScheduleRequest", () => {
         webhookUrl: "https://example.com/hook",
         maxRetries: 5,
         baseDelayMs: 2500,
+        shapeTopLevelFields: "",
+        shapeNormalizedFields: "",
+        shapeEvidenceFields: "",
+        shapeSummaryFields: "",
+        shapeFieldLabels: "",
+        shapeEmptyValue: "",
+        shapeMultiValueJoin: "",
+        shapeMarkdownTitle: "",
       }),
     ).toEqual({
       name: "Webhook export",
@@ -205,6 +359,47 @@ describe("formDataToScheduleRequest", () => {
       retry: {
         max_retries: 5,
         base_delay_ms: 2500,
+      },
+    });
+  });
+
+  it("includes export shape for supported formats", () => {
+    expect(
+      formDataToScheduleRequest({
+        ...defaultFormData,
+        name: "Shaped markdown export",
+        format: "md",
+        localPath: "exports/{job_id}.md",
+        pathTemplate: "exports/{job_id}.md",
+        shapeTopLevelFields: "url\ntitle",
+        shapeSummaryFields: "title\nfield.price",
+        shapeFieldLabels: "field.price=Price",
+        shapeEmptyValue: "—",
+        shapeMarkdownTitle: "Pricing Export",
+      }),
+    ).toEqual({
+      name: "Shaped markdown export",
+      enabled: true,
+      filters: {
+        job_status: ["completed"],
+        has_results: true,
+      },
+      export: {
+        format: "md",
+        destination_type: "local",
+        path_template: "exports/{job_id}.md",
+        local_path: "exports/{job_id}.md",
+        shape: {
+          topLevelFields: ["url", "title"],
+          summaryFields: ["title", "field.price"],
+          fieldLabels: {
+            "field.price": "Price",
+          },
+          formatting: {
+            emptyValue: "—",
+            markdownTitle: "Pricing Export",
+          },
+        },
       },
     });
   });

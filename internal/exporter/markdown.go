@@ -19,15 +19,24 @@ import (
 )
 
 // exportMarkdownStream exports job results to Markdown format with streaming.
-func exportMarkdownStream(job model.Job, r io.Reader, w io.Writer) error {
+func exportMarkdownStream(job model.Job, r io.Reader, w io.Writer, shape ShapeConfig) error {
 	switch job.Kind {
 	case model.KindScrape:
 		item, err := parseSingleReader[ScrapeResult](r)
 		if err != nil {
 			return err
 		}
+		if HasMeaningfulShape(shape) {
+			return writeScrapeMarkdownShaped(item, w, shape)
+		}
 		return writeScrapeMarkdown(item, w)
 	case model.KindCrawl:
+		if HasMeaningfulShape(shape) {
+			fmt.Fprintf(w, "# %s\n\n", safe(firstNonEmpty(shapeMarkdownTitle(shape), "Crawl Export"), "Crawl Export"))
+			return scanReader[CrawlResult](r, func(item CrawlResult) error {
+				return writeCrawlItemMarkdownShaped(item, w, shape)
+			})
+		}
 		fmt.Fprint(w, "# Crawl Results\n\n")
 		return scanReader[CrawlResult](r, func(item CrawlResult) error {
 			return writeCrawlItemMarkdown(item, w)
@@ -36,6 +45,9 @@ func exportMarkdownStream(job model.Job, r io.Reader, w io.Writer) error {
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {
 			return err
+		}
+		if HasMeaningfulShape(shape) {
+			return writeResearchMarkdownShaped(item, w, shape)
 		}
 		return writeResearchMarkdown(item, w)
 	default:
@@ -78,6 +90,29 @@ func writeScrapeMarkdown(item ScrapeResult, w io.Writer) error {
 	return nil
 }
 
+func writeScrapeMarkdownShaped(item ScrapeResult, w io.Writer, shape ShapeConfig) error {
+	title := firstNonEmpty(shapeMarkdownTitle(shape), scrapeShapeValue(item, "title", shape), "Scrape Export")
+	fmt.Fprintf(w, "# %s\n\n", safe(title, "Scrape Export"))
+	summaryFields := selectFields(shape.SummaryFields, nonEmptyFields([]string{"title", "description", "url", "status"}, func(key string) string {
+		return scrapeShapeValue(item, key, shape)
+	}))
+	writeMarkdownSummaryFields(w, shape, summaryFields, func(key string) string {
+		return scrapeShapeValue(item, key, shape)
+	})
+	normalizedFields := selectFields(shape.NormalizedFields, scrapeNormalizedFieldRefs(item))
+	if len(normalizedFields) > 0 {
+		fmt.Fprint(w, "## Extracted Fields\n\n")
+		for _, key := range normalizedFields {
+			fmt.Fprintf(w, "- **%s**: %s\n", labelForShapeField(shape, key), safe(scrapeShapeValue(item, key, shape), shapeEmptyValue(shape)))
+		}
+		fmt.Fprint(w, "\n")
+	}
+	if text := scrapeShapeValue(item, "text", shape); strings.TrimSpace(text) != "" {
+		fmt.Fprint(w, "## Text Content\n\n"+text+"\n")
+	}
+	return nil
+}
+
 // writeCrawlItemMarkdown writes a single crawl result to the writer in Markdown format.
 func writeCrawlItemMarkdown(item CrawlResult, w io.Writer) error {
 	title := item.Title
@@ -98,6 +133,26 @@ func writeCrawlItemMarkdown(item CrawlResult, w io.Writer) error {
 		}
 	}
 	fmt.Fprint(w, "\n")
+	return nil
+}
+
+func writeCrawlItemMarkdownShaped(item CrawlResult, w io.Writer, shape ShapeConfig) error {
+	title := firstNonEmpty(crawlShapeValue(item, "title", shape), item.URL)
+	fmt.Fprintf(w, "## %s\n\n", safe(title, item.URL))
+	summaryFields := selectFields(shape.SummaryFields, nonEmptyFields([]string{"title", "url", "status"}, func(key string) string {
+		return crawlShapeValue(item, key, shape)
+	}))
+	writeMarkdownSummaryFields(w, shape, summaryFields, func(key string) string {
+		return crawlShapeValue(item, key, shape)
+	})
+	normalizedFields := selectFields(shape.NormalizedFields, []string{})
+	if len(normalizedFields) > 0 {
+		fmt.Fprint(w, "### Extracted Fields\n\n")
+		for _, key := range normalizedFields {
+			fmt.Fprintf(w, "- **%s**: %s\n", labelForShapeField(shape, key), safe(crawlShapeValue(item, key, shape), shapeEmptyValue(shape)))
+		}
+		fmt.Fprint(w, "\n")
+	}
 	return nil
 }
 
@@ -165,4 +220,39 @@ func writeResearchMarkdown(item ResearchResult, w io.Writer) error {
 		fmt.Fprintf(w, "- **%s** (%s) — score %.2f, confidence %.2f\n  \n  %s\n", safe(ev.Title, ev.URL), ev.URL, ev.Score, ev.Confidence, ev.Snippet)
 	}
 	return nil
+}
+
+func writeResearchMarkdownShaped(item ResearchResult, w io.Writer, shape ShapeConfig) error {
+	title := firstNonEmpty(shapeMarkdownTitle(shape), item.Query, "Research Export")
+	fmt.Fprintf(w, "# %s\n\n", safe(title, "Research Export"))
+	summaryFields := selectFields(shape.SummaryFields, nonEmptyFields([]string{"query", "summary", "confidence", "agentic.status", "agentic.summary"}, func(key string) string {
+		return researchShapeValue(item, key, shape)
+	}))
+	writeMarkdownSummaryFields(w, shape, summaryFields, func(key string) string {
+		return researchShapeValue(item, key, shape)
+	})
+	evidenceFields := selectFields(shape.EvidenceFields, []string{"evidence.url", "evidence.title", "evidence.score", "evidence.confidence", "evidence.snippet"})
+	if len(item.Evidence) > 0 {
+		fmt.Fprint(w, "## Evidence\n\n")
+		for _, ev := range item.Evidence {
+			primary := firstNonEmpty(researchEvidenceShapeValue(ev, "evidence.title", shape), researchEvidenceShapeValue(ev, "evidence.url", shape), "Evidence")
+			fmt.Fprintf(w, "### %s\n\n", safe(primary, "Evidence"))
+			for _, key := range evidenceFields {
+				fmt.Fprintf(w, "- **%s**: %s\n", labelForShapeField(shape, key), safe(researchEvidenceShapeValue(ev, key, shape), shapeEmptyValue(shape)))
+			}
+			fmt.Fprint(w, "\n")
+		}
+	}
+	return nil
+}
+
+func writeMarkdownSummaryFields(w io.Writer, shape ShapeConfig, fields []string, resolve func(string) string) {
+	if len(fields) == 0 {
+		return
+	}
+	fmt.Fprint(w, "## Summary\n\n")
+	for _, field := range fields {
+		fmt.Fprintf(w, "- **%s**: %s\n", labelForShapeField(shape, field), safe(resolve(field), shapeEmptyValue(shape)))
+	}
+	fmt.Fprint(w, "\n")
 }

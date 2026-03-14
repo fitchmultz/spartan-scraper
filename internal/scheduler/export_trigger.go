@@ -316,7 +316,7 @@ func (et *ExportTrigger) exportToLocal(ctx context.Context, job *model.Job, sche
 	}
 	defer file.Close()
 
-	if err := exporter.ExportStream(*job, bytes.NewReader(resultData), schedule.Export.Format, file); err != nil {
+	if err := exporter.ExportStreamWithShape(*job, bytes.NewReader(resultData), schedule.Export.Format, schedule.Export.Shape, file); err != nil {
 		return err
 	}
 
@@ -348,7 +348,7 @@ func (et *ExportTrigger) exportToWebhook(ctx context.Context, job *model.Job, sc
 
 	// Export to buffer to get formatted output
 	var buf bytes.Buffer
-	if err := exporter.ExportStream(*job, bytes.NewReader(resultData), schedule.Export.Format, &buf); err != nil {
+	if err := exporter.ExportStreamWithShape(*job, bytes.NewReader(resultData), schedule.Export.Format, schedule.Export.Shape, &buf); err != nil {
 		return err
 	}
 

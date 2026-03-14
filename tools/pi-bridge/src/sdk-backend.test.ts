@@ -8,6 +8,7 @@ import {
   truncateHTMLForPrompt,
 } from "./sdk-backend.js";
 import {
+  CAPABILITY_EXPORT_SHAPE,
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_PIPELINE_JS_GENERATE,
   CAPABILITY_RENDER_PROFILE_GENERATE,
@@ -482,6 +483,73 @@ test("refineResearch validates structured bounded research output", async () => 
     "Direct-sales pricing with documented support commitments.",
   );
   assert.equal(result.refined.evidenceHighlights?.[0]?.url, "https://example.com/pricing");
+});
+
+test("shapeExport validates bounded export shape output", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_EXPORT_SHAPE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.equal(typeof userMessage.content, "string");
+        assert.match(userMessage.content as string, /Field options:/);
+        return createToolResponse({
+          toolName: "submit_export_shape",
+          arguments: {
+            shape: {
+              topLevelFields: ["url", "title", "status"],
+              normalizedFields: ["field.price"],
+              summaryFields: ["title", "field.price"],
+              fieldLabels: {
+                "field.price": "Price",
+              },
+              formatting: {
+                emptyValue: "—",
+                multiValueJoin: "; ",
+                markdownTitle: "Pricing Export",
+              },
+            },
+            explanation: "Selected export-ready fields and labels.",
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.shapeExport(CAPABILITY_EXPORT_SHAPE, {
+    jobKind: "scrape",
+    format: "md",
+    fieldOptions: [
+      { key: "url", category: "top_level", label: "URL" },
+      { key: "title", category: "top_level", label: "Title" },
+      { key: "status", category: "top_level", label: "Status" },
+      { key: "field.price", category: "normalized", label: "Price" },
+    ],
+    instructions: "Focus on pricing fields.",
+  });
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.provider, "openai");
+  assert.equal(result.model, "gpt-5.4");
+  assert.deepEqual(result.shape.topLevelFields, ["url", "title", "status"]);
+  assert.deepEqual(result.shape.normalizedFields, ["field.price"]);
+  assert.equal(result.shape.formatting?.markdownTitle, "Pricing Export");
 });
 
 test("generatePipelineJs sends screenshot context as multimodal user content", async () => {

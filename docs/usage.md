@@ -201,6 +201,7 @@ spartan ai render-profile-debug [flags]
 spartan ai pipeline-js [flags]
 spartan ai pipeline-js-debug [flags]
 spartan ai research-refine [flags]
+spartan ai export-shape [flags]
 ```
 
 These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs.
@@ -287,6 +288,18 @@ Research-refine flags:
 
 `--result-file` accepts a single research result as a JSON object, a single-item JSON array, or a single-result JSONL file.
 
+Export-shape flags:
+
+- `--job-id <job-id>` or `--result-file <path>`
+- `--kind <scrape|crawl|research>` when `--result-file` needs an explicit kind hint
+- `--format <md|csv|xlsx>`
+- `--schedule-id <id>` to seed from an existing export schedule shape
+- `--shape-file <path>` to seed from a saved shape JSON file
+- `--instructions "<field-selection guidance>"`
+- `--out <path>`
+
+`--result-file` accepts a representative scrape/crawl/research result artifact from disk, and `--shape-file` accepts a JSON `ExportShapeConfig` object.
+
 Examples:
 
 ```bash
@@ -339,6 +352,17 @@ spartan ai pipeline-js-debug \
 spartan ai research-refine \
   --job-id <research-job-id> \
   --instructions "Condense this into an operator-ready brief with the strongest evidence first"
+
+spartan ai export-shape \
+  --job-id <job-id> \
+  --format md \
+  --instructions "Prioritize operator-facing summary and pricing fields"
+
+spartan ai export-shape \
+  --schedule-id <export-schedule-id> \
+  --job-id <job-id> \
+  --format csv \
+  --out ./out/export-shape.json
 ```
 
 ### Auth
@@ -520,6 +544,8 @@ spartan export-schedule add \
   --local-path "exports/{kind}/{job_id}.jsonl"
 ```
 
+For `md`, `csv`, and `xlsx` schedules, the Web UI, REST API, CLI (`spartan ai export-shape`), and MCP (`ai_export_shape`) can generate bounded `ExportShapeConfig` suggestions from a representative job result before you save or update the recurring export.
+
 ### Retention, backup, and restore
 
 Retention:
@@ -552,7 +578,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`) instead.
+- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, AI export shaping, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`, `ai_export_shape`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI
@@ -630,6 +656,7 @@ Bounded AI authoring endpoints live under `/v1/ai/*`:
 - `/v1/ai/pipeline-js-generate`
 - `/v1/ai/pipeline-js-debug`
 - `/v1/ai/research-refine`
+- `/v1/ai/export-shape`
 
 For scrape, crawl, and research job creation, AI extraction rides inside the normal extract payload:
 

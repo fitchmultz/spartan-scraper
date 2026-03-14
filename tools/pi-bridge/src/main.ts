@@ -2,12 +2,14 @@ import readline from "node:readline";
 import { loadBridgeConfig } from "./config.js";
 import { FixtureBackend } from "./fixture-backend.js";
 import {
+  CAPABILITY_EXPORT_SHAPE,
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_EXTRACT_SCHEMA,
   CAPABILITY_PIPELINE_JS_GENERATE,
   CAPABILITY_RENDER_PROFILE_GENERATE,
   CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
+  OP_EXPORT_SHAPE,
   OP_EXTRACT_PREVIEW,
   OP_GENERATE_PIPELINE_JS,
   OP_GENERATE_RENDER_PROFILE,
@@ -17,6 +19,7 @@ import {
   type BridgeRequest,
   type BridgeResponse,
   type ExtractPayload,
+  type ExportShapePayload,
   type GeneratePipelineJsPayload,
   type GenerateRenderProfilePayload,
   type GenerateTemplatePayload,
@@ -43,6 +46,10 @@ interface Backend {
   refineResearch(
     capability: string,
     payload: ResearchRefinePayload,
+  ): Promise<unknown> | unknown;
+  shapeExport(
+    capability: string,
+    payload: ExportShapePayload,
   ): Promise<unknown> | unknown;
 }
 
@@ -126,6 +133,15 @@ rl.on("line", async (line) => {
         const payload = request.payload as ResearchRefinePayload;
         const result = await backend.refineResearch(
           CAPABILITY_RESEARCH_REFINE,
+          payload,
+        );
+        writeResponse({ id: request.id, ok: true, result });
+        return;
+      }
+      case OP_EXPORT_SHAPE: {
+        const payload = request.payload as ExportShapePayload;
+        const result = await backend.shapeExport(
+          CAPABILITY_EXPORT_SHAPE,
           payload,
         );
         writeResponse({ id: request.id, ok: true, result });

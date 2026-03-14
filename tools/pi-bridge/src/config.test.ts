@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadBridgeConfig, parseRouteId } from "./config.js";
 import {
+  CAPABILITY_EXPORT_SHAPE,
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
@@ -19,6 +20,11 @@ test("loadBridgeConfig uses defaults without config file", () => {
     "zai/glm-5",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_RESEARCH_REFINE], [
+    "openai/gpt-5.4",
+    "kimi-coding/k2p5",
+    "zai/glm-5",
+  ]);
+  assert.deepEqual(config.routes[CAPABILITY_EXPORT_SHAPE], [
     "openai/gpt-5.4",
     "kimi-coding/k2p5",
     "zai/glm-5",

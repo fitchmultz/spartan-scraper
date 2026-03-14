@@ -5,7 +5,7 @@
 // - Auto-sized columns based on content
 // - Multi-sheet support for research jobs
 //
-// This file does NOT handle other formats (JSON, JSONL, Markdown, CSV).
+// This file does NOT handle other formats (JSON, JSONL, Markdown).
 package exporter
 
 import (
@@ -20,7 +20,7 @@ import (
 )
 
 // exportXLSXStream exports job results to XLSX format with streaming.
-func exportXLSXStream(job model.Job, r io.Reader, w io.Writer) error {
+func exportXLSXStream(job model.Job, r io.Reader, w io.Writer, shape ShapeConfig) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -30,6 +30,9 @@ func exportXLSXStream(job model.Job, r io.Reader, w io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if HasMeaningfulShape(shape) {
+			return writeScrapeXLSXShaped(item, f, w, shape)
+		}
 		return writeScrapeXLSX(item, f, w)
 	case model.KindCrawl:
 		rs, cleanup, err := ensureSeekable(r)
@@ -37,11 +40,17 @@ func exportXLSXStream(job model.Job, r io.Reader, w io.Writer) error {
 			return err
 		}
 		defer cleanup()
+		if HasMeaningfulShape(shape) {
+			return writeCrawlXLSXStreamShaped(rs, f, w, shape)
+		}
 		return writeCrawlXLSXStream(rs, f, w)
 	case model.KindResearch:
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {
 			return err
+		}
+		if HasMeaningfulShape(shape) {
+			return writeResearchXLSXShaped(item, f, w, shape)
 		}
 		return writeResearchXLSX(item, f, w)
 	default:
@@ -147,6 +156,32 @@ func writeScrapeXLSX(item ScrapeResult, f *excelize.File, w io.Writer) error {
 	return f.Write(w)
 }
 
+func writeScrapeXLSXShaped(item ScrapeResult, f *excelize.File, w io.Writer, shape ShapeConfig) error {
+	sheetName := "Results"
+	f.SetSheetName("Sheet1", sheetName)
+	headers := append(shapeFieldHeaders(shape, selectFields(shape.TopLevelFields, []string{"url", "status", "title", "description"})), shapeFieldHeaders(shape, selectFields(shape.NormalizedFields, scrapeNormalizedFieldRefs(item)))...)
+	style, err := createHeaderStyle(f)
+	if err != nil {
+		return err
+	}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%s1", string(rune('A'+i)))
+		f.SetCellValue(sheetName, cell, header)
+	}
+	f.SetRowStyle(sheetName, 1, 1, style)
+	fields := append(selectFields(shape.TopLevelFields, []string{"url", "status", "title", "description"}), selectFields(shape.NormalizedFields, scrapeNormalizedFieldRefs(item))...)
+	row := make([]string, 0, len(fields))
+	for _, key := range fields {
+		row = append(row, scrapeShapeValue(item, key, shape))
+	}
+	for i, value := range row {
+		cell := fmt.Sprintf("%s2", string(rune('A'+i)))
+		f.SetCellValue(sheetName, cell, value)
+	}
+	setColumnWidths(f, sheetName, headers, [][]string{row})
+	return f.Write(w)
+}
+
 // writeCrawlXLSXStream writes multiple crawl results to the XLSX file using two-pass streaming.
 func writeCrawlXLSXStream(rs io.ReadSeeker, f *excelize.File, w io.Writer) error {
 	sheetName := "Results"
@@ -221,6 +256,52 @@ func writeCrawlXLSXStream(rs io.ReadSeeker, f *excelize.File, w io.Writer) error
 	return f.Write(w)
 }
 
+func writeCrawlXLSXStreamShaped(rs io.ReadSeeker, f *excelize.File, w io.Writer, shape ShapeConfig) error {
+	sheetName := "Results"
+	f.SetSheetName("Sheet1", sheetName)
+	fieldSet := make(map[string]bool)
+	var allRows []CrawlResult
+	if err := scanReader[CrawlResult](rs, func(item CrawlResult) error {
+		for k := range item.Normalized.Fields {
+			fieldSet[k] = true
+		}
+		allRows = append(allRows, item)
+		return nil
+	}); err != nil {
+		return err
+	}
+	availableNormalized := make([]string, 0, len(fieldSet))
+	for k := range fieldSet {
+		availableNormalized = append(availableNormalized, "field."+k)
+	}
+	sort.Strings(availableNormalized)
+	fields := append(selectFields(shape.TopLevelFields, []string{"url", "status", "title"}), selectFields(shape.NormalizedFields, availableNormalized)...)
+	headers := shapeFieldHeaders(shape, fields)
+	style, err := createHeaderStyle(f)
+	if err != nil {
+		return err
+	}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%s1", string(rune('A'+i)))
+		f.SetCellValue(sheetName, cell, header)
+	}
+	f.SetRowStyle(sheetName, 1, 1, style)
+	dataRows := make([][]string, 0, len(allRows))
+	for rowIdx, item := range allRows {
+		row := make([]string, 0, len(fields))
+		for _, key := range fields {
+			row = append(row, crawlShapeValue(item, key, shape))
+		}
+		dataRows = append(dataRows, row)
+		for i, value := range row {
+			cell := fmt.Sprintf("%s%d", string(rune('A'+i)), rowIdx+2)
+			f.SetCellValue(sheetName, cell, value)
+		}
+	}
+	setColumnWidths(f, sheetName, headers, dataRows)
+	return f.Write(w)
+}
+
 // writeResearchXLSX writes a research result to the XLSX file with multiple sheets.
 func writeResearchXLSX(item ResearchResult, f *excelize.File, w io.Writer) error {
 	// Summary sheet - rename the default sheet
@@ -290,5 +371,56 @@ func writeResearchXLSX(item ResearchResult, f *excelize.File, w io.Writer) error
 	idx, _ := f.GetSheetIndex(summarySheet)
 	f.SetActiveSheet(idx)
 
+	return f.Write(w)
+}
+
+func writeResearchXLSXShaped(item ResearchResult, f *excelize.File, w io.Writer, shape ShapeConfig) error {
+	summarySheet := "Summary"
+	f.SetSheetName("Sheet1", summarySheet)
+	style, err := createHeaderStyle(f)
+	if err != nil {
+		return err
+	}
+	topLevelFields := selectFields(shape.TopLevelFields, []string{"query", "summary", "confidence", "agentic.status", "agentic.summary"})
+	summaryHeaders := shapeFieldHeaders(shape, topLevelFields)
+	for i, header := range summaryHeaders {
+		cell := fmt.Sprintf("%s1", string(rune('A'+i)))
+		f.SetCellValue(summarySheet, cell, header)
+	}
+	f.SetRowStyle(summarySheet, 1, 1, style)
+	summaryRow := make([]string, 0, len(topLevelFields))
+	for _, key := range topLevelFields {
+		summaryRow = append(summaryRow, researchShapeValue(item, key, shape))
+	}
+	for i, value := range summaryRow {
+		cell := fmt.Sprintf("%s2", string(rune('A'+i)))
+		f.SetCellValue(summarySheet, cell, value)
+	}
+	setColumnWidths(f, summarySheet, summaryHeaders, [][]string{summaryRow})
+
+	evidenceSheet := "Evidence"
+	f.NewSheet(evidenceSheet)
+	evidenceFields := selectFields(shape.EvidenceFields, []string{"evidence.url", "evidence.title", "evidence.score", "evidence.confidence", "evidence.clusterId", "evidence.citationUrl", "evidence.snippet"})
+	evidenceHeaders := shapeFieldHeaders(shape, evidenceFields)
+	for i, header := range evidenceHeaders {
+		cell := fmt.Sprintf("%s1", string(rune('A'+i)))
+		f.SetCellValue(evidenceSheet, cell, header)
+	}
+	f.SetRowStyle(evidenceSheet, 1, 1, style)
+	rows := make([][]string, 0, len(item.Evidence))
+	for rowIdx, ev := range item.Evidence {
+		row := make([]string, 0, len(evidenceFields))
+		for _, key := range evidenceFields {
+			row = append(row, researchEvidenceShapeValue(ev, key, shape))
+		}
+		rows = append(rows, row)
+		for i, value := range row {
+			cell := fmt.Sprintf("%s%d", string(rune('A'+i)), rowIdx+2)
+			f.SetCellValue(evidenceSheet, cell, value)
+		}
+	}
+	setColumnWidths(f, evidenceSheet, evidenceHeaders, rows)
+	idx, _ := f.GetSheetIndex(summarySheet)
+	f.SetActiveSheet(idx)
 	return f.Write(w)
 }

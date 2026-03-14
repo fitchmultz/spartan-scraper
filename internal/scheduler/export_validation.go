@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
 // ValidateExportSchedule validates an export schedule.
@@ -92,6 +93,10 @@ func ValidateExportConfig(config ExportConfig) error {
 
 	if !IsValidDestinationType(config.DestinationType) {
 		return apperrors.Validation(fmt.Sprintf("unsupported destination type: %s (must be one of: local, webhook)", config.DestinationType))
+	}
+
+	if exporter.HasMeaningfulShape(config.Shape) && !exporter.SupportsShapeFormat(config.Format) {
+		return apperrors.Validation("export shaping is supported only for md, csv, and xlsx formats")
 	}
 
 	// Validate destination-specific config

@@ -60,6 +60,11 @@ func (s *Server) toolsList() []tool {
 			InputSchema: schema(map[string]string{"result": "object"}, map[string]string{"instructions": "string"}),
 		},
 		{
+			Name:        "ai_export_shape",
+			Description: "Generate or tune a bounded export shape for a representative job result before configuring recurring exports",
+			InputSchema: schema(map[string]string{"jobId": "string", "format": "string"}, map[string]string{"currentShape": "object", "instructions": "string"}),
+		},
+		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless) with optional AI extraction controls",
 			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),

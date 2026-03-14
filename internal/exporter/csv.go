@@ -20,7 +20,7 @@ import (
 )
 
 // exportCSVStream exports job results to CSV format with streaming.
-func exportCSVStream(job model.Job, r io.Reader, w io.Writer) error {
+func exportCSVStream(job model.Job, r io.Reader, w io.Writer, shape ShapeConfig) error {
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
@@ -30,6 +30,9 @@ func exportCSVStream(job model.Job, r io.Reader, w io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if HasMeaningfulShape(shape) {
+			return writeScrapeCSVShaped(item, writer, shape)
+		}
 		return writeScrapeCSV(item, writer)
 	case model.KindCrawl:
 		rs, cleanup, err := ensureSeekable(r)
@@ -37,11 +40,17 @@ func exportCSVStream(job model.Job, r io.Reader, w io.Writer) error {
 			return err
 		}
 		defer cleanup()
+		if HasMeaningfulShape(shape) {
+			return writeCrawlCSVStreamShaped(rs, writer, shape)
+		}
 		return writeCrawlCSVStream(rs, writer)
 	case model.KindResearch:
 		item, err := parseSingleReader[ResearchResult](r)
 		if err != nil {
 			return err
+		}
+		if HasMeaningfulShape(shape) {
+			return writeResearchCSVShaped(item, writer, shape)
 		}
 		return writeResearchCSV(item, writer)
 	default:
@@ -80,6 +89,27 @@ func writeScrapeCSV(item ScrapeResult, writer *csv.Writer) error {
 			val = strings.Join(v.Values, "; ")
 		}
 		row = append(row, val)
+	}
+	if err := writer.Write(row); err != nil {
+		return err
+	}
+	return writer.Error()
+}
+
+func writeScrapeCSVShaped(item ScrapeResult, writer *csv.Writer, shape ShapeConfig) error {
+	topLevelFields := selectFields(shape.TopLevelFields, []string{"url", "status", "title", "description"})
+	normalizedFields := selectFields(shape.NormalizedFields, scrapeNormalizedFieldRefs(item))
+	headers := append(shapeFieldHeaders(shape, topLevelFields), shapeFieldHeaders(shape, normalizedFields)...)
+	if err := writer.Write(headers); err != nil {
+		return err
+	}
+
+	row := make([]string, 0, len(headers))
+	for _, key := range topLevelFields {
+		row = append(row, scrapeShapeValue(item, key, shape))
+	}
+	for _, key := range normalizedFields {
+		row = append(row, scrapeShapeValue(item, key, shape))
 	}
 	if err := writer.Write(row); err != nil {
 		return err
@@ -143,6 +173,47 @@ func writeCrawlCSVStream(rs io.ReadSeeker, writer *csv.Writer) error {
 	return writer.Error()
 }
 
+func writeCrawlCSVStreamShaped(rs io.ReadSeeker, writer *csv.Writer, shape ShapeConfig) error {
+	fieldSet := make(map[string]bool)
+	err := scanReader[CrawlResult](rs, func(item CrawlResult) error {
+		for k := range item.Normalized.Fields {
+			fieldSet[k] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	availableNormalized := make([]string, 0, len(fieldSet))
+	for k := range fieldSet {
+		availableNormalized = append(availableNormalized, "field."+k)
+	}
+	sort.Strings(availableNormalized)
+
+	topLevelFields := selectFields(shape.TopLevelFields, []string{"url", "status", "title"})
+	normalizedFields := selectFields(shape.NormalizedFields, availableNormalized)
+	headers := append(shapeFieldHeaders(shape, topLevelFields), shapeFieldHeaders(shape, normalizedFields)...)
+	if err := writer.Write(headers); err != nil {
+		return err
+	}
+	if _, err := rs.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	if err := scanReader[CrawlResult](rs, func(item CrawlResult) error {
+		row := make([]string, 0, len(headers))
+		for _, key := range topLevelFields {
+			row = append(row, crawlShapeValue(item, key, shape))
+		}
+		for _, key := range normalizedFields {
+			row = append(row, crawlShapeValue(item, key, shape))
+		}
+		return writer.Write(row)
+	}); err != nil {
+		return err
+	}
+	return writer.Error()
+}
+
 // writeResearchCSV writes a research result to the CSV writer.
 func writeResearchCSV(item ResearchResult, writer *csv.Writer) error {
 	agenticStatus := ""
@@ -177,4 +248,181 @@ func writeResearchCSV(item ResearchResult, writer *csv.Writer) error {
 		}
 	}
 	return writer.Error()
+}
+
+func writeResearchCSVShaped(item ResearchResult, writer *csv.Writer, shape ShapeConfig) error {
+	topLevelFields := selectFields(shape.TopLevelFields, []string{"query", "summary", "confidence", "agentic.status", "agentic.summary"})
+	evidenceFields := selectFields(shape.EvidenceFields, []string{"evidence.url", "evidence.title", "evidence.score", "evidence.confidence", "evidence.clusterId", "evidence.citationUrl", "evidence.snippet"})
+	if err := writer.Write(shapeFieldHeaders(shape, topLevelFields)); err != nil {
+		return err
+	}
+	summaryRow := make([]string, 0, len(topLevelFields))
+	for _, key := range topLevelFields {
+		summaryRow = append(summaryRow, researchShapeValue(item, key, shape))
+	}
+	if err := writer.Write(summaryRow); err != nil {
+		return err
+	}
+	if err := writer.Write([]string{}); err != nil {
+		return err
+	}
+	if err := writer.Write(shapeFieldHeaders(shape, evidenceFields)); err != nil {
+		return err
+	}
+	for _, ev := range item.Evidence {
+		row := make([]string, 0, len(evidenceFields))
+		for _, key := range evidenceFields {
+			row = append(row, researchEvidenceShapeValue(ev, key, shape))
+		}
+		if err := writer.Write(row); err != nil {
+			return err
+		}
+	}
+	return writer.Error()
+}
+
+func shapeFieldHeaders(shape ShapeConfig, fields []string) []string {
+	headers := make([]string, 0, len(fields))
+	for _, field := range fields {
+		headers = append(headers, labelForShapeField(shape, field))
+	}
+	return headers
+}
+
+func scrapeNormalizedFieldRefs(item ScrapeResult) []string {
+	fieldNames := make([]string, 0, len(item.Normalized.Fields))
+	for k := range item.Normalized.Fields {
+		fieldNames = append(fieldNames, "field."+k)
+	}
+	sort.Strings(fieldNames)
+	return fieldNames
+}
+
+func scrapeShapeValue(item ScrapeResult, key string, shape ShapeConfig) string {
+	title := item.Title
+	description := item.Metadata.Description
+	text := item.Text
+	if item.Normalized.Title != "" {
+		title = item.Normalized.Title
+	}
+	if item.Normalized.Description != "" {
+		description = item.Normalized.Description
+	}
+	if item.Normalized.Text != "" {
+		text = item.Normalized.Text
+	}
+	switch key {
+	case "url":
+		return item.URL
+	case "status":
+		return formatInt(item.Status)
+	case "title":
+		return title
+	case "description":
+		return description
+	case "text":
+		return text
+	default:
+		if strings.HasPrefix(key, "field.") {
+			fieldName := strings.TrimPrefix(key, "field.")
+			if value, ok := item.Normalized.Fields[fieldName]; ok {
+				return joinValues(value.Values, shape)
+			}
+		}
+		return shapeEmptyValue(shape)
+	}
+}
+
+func crawlShapeValue(item CrawlResult, key string, shape ShapeConfig) string {
+	title := item.Title
+	if item.Normalized.Title != "" {
+		title = item.Normalized.Title
+	}
+	switch key {
+	case "url":
+		return item.URL
+	case "status":
+		return formatInt(item.Status)
+	case "title":
+		return title
+	case "text":
+		if item.Normalized.Text != "" {
+			return item.Normalized.Text
+		}
+		return item.Text
+	default:
+		if strings.HasPrefix(key, "field.") {
+			fieldName := strings.TrimPrefix(key, "field.")
+			if value, ok := item.Normalized.Fields[fieldName]; ok {
+				return joinValues(value.Values, shape)
+			}
+		}
+		return shapeEmptyValue(shape)
+	}
+}
+
+func researchShapeValue(item ResearchResult, key string, shape ShapeConfig) string {
+	switch key {
+	case "query":
+		return item.Query
+	case "summary":
+		return item.Summary
+	case "confidence":
+		return formatFloat(item.Confidence)
+	case "agentic.status":
+		if item.Agentic != nil {
+			return item.Agentic.Status
+		}
+	case "agentic.summary":
+		if item.Agentic != nil {
+			return item.Agentic.Summary
+		}
+	case "agentic.objective":
+		if item.Agentic != nil {
+			return item.Agentic.Objective
+		}
+	case "agentic.error":
+		if item.Agentic != nil {
+			return item.Agentic.Error
+		}
+	case "agentic.instructions":
+		if item.Agentic != nil {
+			return item.Agentic.Instructions
+		}
+	default:
+		if strings.HasPrefix(key, "field.") {
+			return shapeEmptyValue(shape)
+		}
+	}
+	return shapeEmptyValue(shape)
+}
+
+func researchEvidenceShapeValue(item struct {
+	URL         string  `json:"url"`
+	Title       string  `json:"title"`
+	Snippet     string  `json:"snippet"`
+	Score       float64 `json:"score"`
+	SimHash     uint64  `json:"simhash"`
+	ClusterID   string  `json:"clusterId"`
+	Confidence  float64 `json:"confidence"`
+	CitationURL string  `json:"citationUrl"`
+}, key string, shape ShapeConfig) string {
+	switch key {
+	case "evidence.url":
+		return item.URL
+	case "evidence.title":
+		return item.Title
+	case "evidence.score":
+		return formatFloat(item.Score)
+	case "evidence.confidence":
+		return formatFloat(item.Confidence)
+	case "evidence.clusterId":
+		return item.ClusterID
+	case "evidence.citationUrl":
+		return item.CitationURL
+	case "evidence.snippet":
+		return item.Snippet
+	default:
+		return shapeEmptyValue(shape)
+	}
 }

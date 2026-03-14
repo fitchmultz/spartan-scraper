@@ -26,6 +26,7 @@ const (
 	OperationGenerateRenderProfile = "generate_render_profile"
 	OperationGeneratePipelineJS    = "generate_pipeline_js"
 	OperationResearchRefine        = "research_refine"
+	OperationExportShape           = "export_shape"
 )
 
 type requestEnvelope struct {
@@ -289,6 +290,45 @@ type ResearchRefineResult struct {
 	Model       string                 `json:"model,omitempty"`
 }
 
+type ExportShapeFieldOption struct {
+	Key          string   `json:"key"`
+	Category     string   `json:"category,omitempty"`
+	Label        string   `json:"label,omitempty"`
+	SampleValues []string `json:"sampleValues,omitempty"`
+}
+
+type ExportFormattingHints struct {
+	EmptyValue     string `json:"emptyValue,omitempty"`
+	MultiValueJoin string `json:"multiValueJoin,omitempty"`
+	MarkdownTitle  string `json:"markdownTitle,omitempty"`
+}
+
+type BridgeExportShapeConfig struct {
+	TopLevelFields   []string              `json:"topLevelFields,omitempty"`
+	NormalizedFields []string              `json:"normalizedFields,omitempty"`
+	EvidenceFields   []string              `json:"evidenceFields,omitempty"`
+	SummaryFields    []string              `json:"summaryFields,omitempty"`
+	FieldLabels      map[string]string     `json:"fieldLabels,omitempty"`
+	Formatting       ExportFormattingHints `json:"formatting,omitempty"`
+}
+
+type ExportShapeRequest struct {
+	JobKind      string                   `json:"jobKind"`
+	Format       string                   `json:"format"`
+	FieldOptions []ExportShapeFieldOption `json:"fieldOptions,omitempty"`
+	CurrentShape BridgeExportShapeConfig  `json:"currentShape,omitempty"`
+	Instructions string                   `json:"instructions,omitempty"`
+	Feedback     string                   `json:"feedback,omitempty"`
+}
+
+type ExportShapeResult struct {
+	Shape       BridgeExportShapeConfig `json:"shape"`
+	Explanation string                  `json:"explanation,omitempty"`
+	RouteID     string                  `json:"route_id,omitempty"`
+	Provider    string                  `json:"provider,omitempty"`
+	Model       string                  `json:"model,omitempty"`
+}
+
 type BridgeFieldValue struct {
 	Values    []string `json:"values,omitempty"`
 	Source    string   `json:"source"`
@@ -391,6 +431,12 @@ func (c *Client) GeneratePipelineJS(ctx context.Context, req GeneratePipelineJSR
 func (c *Client) GenerateResearchRefinement(ctx context.Context, req ResearchRefineRequest) (ResearchRefineResult, error) {
 	var resp ResearchRefineResult
 	err := c.call(ctx, OperationResearchRefine, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GenerateExportShape(ctx context.Context, req ExportShapeRequest) (ExportShapeResult, error) {
+	var resp ExportShapeResult
+	err := c.call(ctx, OperationExportShape, req, &resp)
 	return resp, err
 }
 

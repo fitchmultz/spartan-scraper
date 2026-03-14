@@ -8,6 +8,7 @@
 // Public API:
 // - Export: Export job results and return as string
 // - ExportStream: Stream export job results to writer
+// - ExportWithShape / ExportStreamWithShape: Apply deterministic export shaping
 //
 // This file contains only the public API entry points. Format-specific logic,
 // result types, parsing helpers, and pagination utilities are split into separate
@@ -28,8 +29,13 @@ import (
 // For large result files, consider using ExportStream instead to avoid loading the entire
 // output into memory.
 func Export(job model.Job, raw []byte, format string) (string, error) {
+	return ExportWithShape(job, raw, format, ShapeConfig{})
+}
+
+// ExportWithShape exports job results with optional deterministic shaping.
+func ExportWithShape(job model.Job, raw []byte, format string, shape ShapeConfig) (string, error) {
 	var buf strings.Builder
-	if err := ExportStream(job, bytes.NewReader(raw), format, &buf); err != nil {
+	if err := ExportStreamWithShape(job, bytes.NewReader(raw), format, shape, &buf); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -39,17 +45,23 @@ func Export(job model.Job, raw []byte, format string) (string, error) {
 // to the provided writer. This is more memory-efficient for large result files as it
 // streams the input and processes it incrementally where possible.
 func ExportStream(job model.Job, r io.Reader, format string, w io.Writer) error {
+	return ExportStreamWithShape(job, r, format, ShapeConfig{}, w)
+}
+
+// ExportStreamWithShape exports job results with optional deterministic shaping.
+func ExportStreamWithShape(job model.Job, r io.Reader, format string, shape ShapeConfig, w io.Writer) error {
+	shape = NormalizeShapeConfig(shape)
 	switch format {
 	case "json":
 		return exportJSONStream(job, r, w)
 	case "jsonl":
 		return exportJSONLStream(r, w)
 	case "md":
-		return exportMarkdownStream(job, r, w)
+		return exportMarkdownStream(job, r, w, shape)
 	case "csv":
-		return exportCSVStream(job, r, w)
+		return exportCSVStream(job, r, w, shape)
 	case "xlsx":
-		return exportXLSXStream(job, r, w)
+		return exportXLSXStream(job, r, w, shape)
 	default:
 		return apperrors.Validation(fmt.Sprintf("unsupported format: %s", format))
 	}

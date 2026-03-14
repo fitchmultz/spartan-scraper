@@ -1,5 +1,7 @@
 import type {
   BridgeFieldValue,
+  ExportShapeConfig,
+  ExportShapeResult,
   ExtractResult,
   PipelineJsResult,
   RenderProfileResult,
@@ -102,6 +104,16 @@ export function validateResearchRefineResult(
     throw new Error("research refinement result must be an object");
   }
   result.refined = normalizeRefinedContent(result.refined);
+  return result;
+}
+
+export function validateExportShapeResult(
+  result: ExportShapeResult,
+): ExportShapeResult {
+  if (!result || typeof result !== "object") {
+    throw new Error("export shape result must be an object");
+  }
+  result.shape = normalizeExportShapeConfig(result.shape);
   return result;
 }
 
@@ -273,6 +285,83 @@ function normalizeOptionalStringArray(raw: unknown, label: string): string[] {
   return normalizeStringArray(raw, label);
 }
 
+function normalizeExportShapeConfig(raw: unknown): ExportShapeConfig {
+  const config = expectRecord(raw, "export shape config");
+  const normalized: ExportShapeConfig = {};
+
+  const topLevelFields = normalizeOptionalStringArray(
+    config.topLevelFields,
+    "export shape topLevelFields",
+  );
+  if (topLevelFields.length > 0) {
+    normalized.topLevelFields = dedupeStrings(topLevelFields);
+  }
+
+  const normalizedFields = normalizeOptionalStringArray(
+    config.normalizedFields,
+    "export shape normalizedFields",
+  );
+  if (normalizedFields.length > 0) {
+    normalized.normalizedFields = dedupeStrings(normalizedFields);
+  }
+
+  const evidenceFields = normalizeOptionalStringArray(
+    config.evidenceFields,
+    "export shape evidenceFields",
+  );
+  if (evidenceFields.length > 0) {
+    normalized.evidenceFields = dedupeStrings(evidenceFields);
+  }
+
+  const summaryFields = normalizeOptionalStringArray(
+    config.summaryFields,
+    "export shape summaryFields",
+  );
+  if (summaryFields.length > 0) {
+    normalized.summaryFields = dedupeStrings(summaryFields);
+  }
+
+  if (config.fieldLabels != null) {
+    const fieldLabels = expectRecord(config.fieldLabels, "export shape fieldLabels");
+    const normalizedLabels: Record<string, string> = {};
+    for (const [key, value] of Object.entries(fieldLabels)) {
+      const trimmedKey = key.trim();
+      if (!trimmedKey) {
+        throw new Error("export shape fieldLabels keys must be non-empty");
+      }
+      normalizedLabels[trimmedKey] = expectNonEmptyString(
+        value,
+        `export shape fieldLabels.${trimmedKey}`,
+      );
+    }
+    if (Object.keys(normalizedLabels).length > 0) {
+      normalized.fieldLabels = normalizedLabels;
+    }
+  }
+
+  if (config.formatting != null) {
+    const formatting = expectRecord(config.formatting, "export shape formatting");
+    const normalizedFormatting: ExportShapeConfig["formatting"] = {};
+    if (typeof formatting.emptyValue === "string" && formatting.emptyValue.trim()) {
+      normalizedFormatting.emptyValue = formatting.emptyValue.trim();
+    }
+    if (
+      typeof formatting.multiValueJoin === "string" &&
+      formatting.multiValueJoin.trim()
+    ) {
+      normalizedFormatting.multiValueJoin = formatting.multiValueJoin.trim();
+    }
+    if (typeof formatting.markdownTitle === "string" && formatting.markdownTitle.trim()) {
+      normalizedFormatting.markdownTitle = formatting.markdownTitle.trim();
+    }
+    if (Object.keys(normalizedFormatting).length > 0) {
+      normalized.formatting = normalizedFormatting;
+    }
+  }
+
+  return normalized;
+}
+
 function normalizeStringArray(raw: unknown, label: string): string[] {
   if (!Array.isArray(raw)) {
     throw new Error(`${label} must be an array`);
@@ -282,6 +371,10 @@ function normalizeStringArray(raw: unknown, label: string): string[] {
       expectNonEmptyString(entry, `${label}[${index}]`),
     )
     .filter(Boolean);
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 function expectNonEmptyString(raw: unknown, label: string): string {

@@ -1,4 +1,6 @@
 import type {
+  ExportShapePayload,
+  ExportShapeResult,
   ExtractPayload,
   ExtractResult,
   GeneratePipelineJsPayload,
@@ -12,6 +14,7 @@ import type {
   TemplateResult,
 } from "./protocol.js";
 import {
+  validateExportShapeResult,
   validateExtractResult,
   validatePipelineJsResult,
   validateRenderProfileResult,
@@ -167,6 +170,49 @@ export class FixtureBackend {
             : 0.75,
       },
       explanation: "Deterministic fixture research refinement from pi bridge.",
+      route_id: this.firstRoute(capability),
+      provider: "fixture",
+      model: "fixture-model",
+    });
+  }
+
+  shapeExport(
+    capability: string,
+    payload: ExportShapePayload,
+  ): ExportShapeResult {
+    const fieldOptions = payload.fieldOptions ?? [];
+    const topLevelFields = fieldOptions
+      .filter((option) => option.category === "top_level")
+      .slice(0, 4)
+      .map((option) => option.key);
+    const normalizedFields = fieldOptions
+      .filter((option) => option.category === "normalized")
+      .slice(0, 4)
+      .map((option) => option.key);
+    const evidenceFields = fieldOptions
+      .filter((option) => option.category === "evidence")
+      .slice(0, 5)
+      .map((option) => option.key);
+
+    return validateExportShapeResult({
+      shape: {
+        topLevelFields,
+        normalizedFields,
+        evidenceFields,
+        summaryFields: topLevelFields.slice(0, 3),
+        fieldLabels: Object.fromEntries(
+          fieldOptions.slice(0, 4).map((option) => [option.key, option.label || option.key]),
+        ),
+        formatting: {
+          emptyValue: "—",
+          multiValueJoin: payload.format === "md" ? ", " : "; ",
+          markdownTitle:
+            payload.jobKind === "research"
+              ? "Fixture Research Export"
+              : "Fixture Export",
+        },
+      },
+      explanation: "Deterministic fixture export shaping from pi bridge.",
       route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",

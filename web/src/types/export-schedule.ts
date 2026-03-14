@@ -62,6 +62,15 @@ export interface ExportScheduleFormData {
   // Retry
   maxRetries: number;
   baseDelayMs: number;
+  // Optional export shaping
+  shapeTopLevelFields: string;
+  shapeNormalizedFields: string;
+  shapeEvidenceFields: string;
+  shapeSummaryFields: string;
+  shapeFieldLabels: string;
+  shapeEmptyValue: string;
+  shapeMultiValueJoin: string;
+  shapeMarkdownTitle: string;
 }
 
 /**

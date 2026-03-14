@@ -12,11 +12,13 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
@@ -29,6 +31,7 @@ type authoringRunner interface {
 	GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error)
 	DebugPipelineJS(ctx context.Context, req aiauthoring.PipelineJSDebugRequest) (aiauthoring.PipelineJSDebugResult, error)
 	RefineResearch(ctx context.Context, req aiauthoring.ResearchRefineRequest) (aiauthoring.ResearchRefineResult, error)
+	GenerateExportShape(ctx context.Context, req aiauthoring.ExportShapeRequest) (aiauthoring.ExportShapeResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -105,6 +108,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runResearchRefine(ctx, cfg, runner, args[1:])
+	case "export-shape":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runExportShape(ctx, cfg, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -538,6 +548,57 @@ Options:
 	return 0
 }
 
+func runExportShape(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-export-shape", flag.ContinueOnError)
+	jobID := fs.String("job-id", "", "Job ID to use as the representative export sample")
+	resultFile := fs.String("result-file", "", "Path to a result file when no local job ID is available")
+	kind := fs.String("kind", "", "Optional job kind for --result-file: scrape|crawl|research")
+	format := fs.String("format", "", "Target export format: md,csv,xlsx")
+	scheduleID := fs.String("schedule-id", "", "Existing export schedule ID to tune")
+	shapeFile := fs.String("shape-file", "", "Path to an existing export shape JSON file")
+	instructions := fs.String("instructions", "", "Optional guidance for the export shape")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai export-shape [options]
+
+Examples:
+  spartan ai export-shape --job-id <job-id> --format md
+  spartan ai export-shape --schedule-id <schedule-id> --job-id <job-id>
+  spartan ai export-shape --result-file ./out/crawl.jsonl --kind crawl --format csv --shape-file ./shape.json
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	jobKind, rawResult, resolvedFormat, currentShape, err := resolveExportShapeInput(cfg, strings.TrimSpace(*jobID), strings.TrimSpace(*resultFile), strings.TrimSpace(*kind), strings.TrimSpace(*format), strings.TrimSpace(*scheduleID), strings.TrimSpace(*shapeFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	result, err := runner.GenerateExportShape(ctx, aiauthoring.ExportShapeRequest{
+		JobKind:      jobKind,
+		Format:       resolvedFormat,
+		RawResult:    rawResult,
+		CurrentShape: currentShape,
+		Instructions: strings.TrimSpace(*instructions),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Fprint(os.Stderr, `AI authoring utilities.
 
@@ -553,6 +614,7 @@ Subcommands:
   pipeline-js         Generate a pipeline JS script without creating a job
   pipeline-js-debug   Tune an existing pipeline JS script without creating a job
   research-refine     Refine an existing research result without creating a job
+  export-shape        Generate or tune an export shape for recurring exports without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
@@ -563,6 +625,7 @@ Examples:
   spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and dismiss the cookie banner"
   spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
   spartan ai research-refine --job-id <research-job-id>
+  spartan ai export-shape --job-id <job-id> --format md
 `)
 }
 
@@ -710,6 +773,140 @@ func resolveResearchResultInput(cfg config.Config, jobID string, resultFile stri
 		return research.Result{}, fmt.Errorf("read job result file: %w", err)
 	}
 	return parseResearchResultBytes(data)
+}
+
+func resolveExportShapeInput(cfg config.Config, jobID string, resultFile string, kindHint string, format string, scheduleID string, shapeFile string) (model.Kind, []byte, string, exporter.ShapeConfig, error) {
+	if scheduleID != "" && shapeFile != "" {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("--schedule-id and --shape-file are mutually exclusive")
+	}
+	resolvedFormat := strings.TrimSpace(format)
+	currentShape := exporter.ShapeConfig{}
+	if scheduleID != "" {
+		store := scheduler.NewExportStorage(cfg.DataDir)
+		schedule, err := store.Get(scheduleID)
+		if err != nil {
+			return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("load export schedule: %w", err)
+		}
+		if resolvedFormat == "" {
+			resolvedFormat = strings.TrimSpace(schedule.Export.Format)
+		}
+		currentShape = schedule.Export.Shape
+	}
+	if shapeFile != "" {
+		shape, err := readExportShapeFile(shapeFile)
+		if err != nil {
+			return "", nil, "", exporter.ShapeConfig{}, err
+		}
+		currentShape = shape
+	}
+	if resolvedFormat == "" {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("--format is required unless --schedule-id supplies one")
+	}
+	if !exporter.SupportsShapeFormat(resolvedFormat) {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("--format must be one of: md, csv, xlsx")
+	}
+	if jobID == "" && resultFile == "" {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("--job-id or --result-file is required")
+	}
+	if jobID != "" && resultFile != "" {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("--job-id and --result-file are mutually exclusive")
+	}
+	if jobID != "" {
+		kind, data, err := loadJobResultBytes(cfg, jobID)
+		if err != nil {
+			return "", nil, "", exporter.ShapeConfig{}, err
+		}
+		return kind, data, resolvedFormat, currentShape, nil
+	}
+	data, err := os.ReadFile(resultFile)
+	if err != nil {
+		return "", nil, "", exporter.ShapeConfig{}, fmt.Errorf("read result file: %w", err)
+	}
+	kind, err := inferJobKindFromResultBytes(data, kindHint)
+	if err != nil {
+		return "", nil, "", exporter.ShapeConfig{}, err
+	}
+	return kind, data, resolvedFormat, currentShape, nil
+}
+
+func loadJobResultBytes(cfg config.Config, jobID string) (model.Kind, []byte, error) {
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		return "", nil, fmt.Errorf("open store: %w", err)
+	}
+	defer st.Close()
+	job, err := st.Get(context.Background(), jobID)
+	if err != nil {
+		return "", nil, fmt.Errorf("load job: %w", err)
+	}
+	if strings.TrimSpace(job.ResultPath) == "" {
+		return "", nil, fmt.Errorf("job %s has no result file", jobID)
+	}
+	data, err := os.ReadFile(job.ResultPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("read job result file: %w", err)
+	}
+	return job.Kind, data, nil
+}
+
+func readExportShapeFile(path string) (exporter.ShapeConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return exporter.ShapeConfig{}, fmt.Errorf("read shape file: %w", err)
+	}
+	var shape exporter.ShapeConfig
+	if err := json.Unmarshal(data, &shape); err != nil {
+		return exporter.ShapeConfig{}, fmt.Errorf("decode shape file: %w", err)
+	}
+	return shape, nil
+}
+
+func inferJobKindFromResultBytes(data []byte, kindHint string) (model.Kind, error) {
+	if trimmedHint := strings.TrimSpace(kindHint); trimmedHint != "" {
+		kind := model.Kind(trimmedHint)
+		switch kind {
+		case model.KindScrape, model.KindCrawl, model.KindResearch:
+			return kind, nil
+		default:
+			return "", fmt.Errorf("--kind must be scrape, crawl, or research")
+		}
+	}
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return "", fmt.Errorf("result file is empty")
+	}
+	if trimmed[0] == '{' {
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(trimmed, &probe); err != nil {
+			return "", fmt.Errorf("decode result file: %w", err)
+		}
+		if _, ok := probe["query"]; ok {
+			return model.KindResearch, nil
+		}
+		if _, ok := probe["evidence"]; ok {
+			return model.KindResearch, nil
+		}
+		if _, ok := probe["normalized"]; ok {
+			return model.KindScrape, nil
+		}
+		return model.KindScrape, nil
+	}
+	if trimmed[0] == '[' {
+		return model.KindCrawl, nil
+	}
+	lines := strings.Split(string(trimmed), "\n")
+	jsonLines := 0
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		jsonLines++
+	}
+	if jsonLines > 1 {
+		return model.KindCrawl, nil
+	}
+	return "", fmt.Errorf("unable to infer job kind from result file; pass --kind")
 }
 
 func parseResearchResultBytes(data []byte) (research.Result, error) {

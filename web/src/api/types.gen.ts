@@ -91,6 +91,24 @@ export type ExportConfig = {
      * Path template with variables {job_id}, {timestamp}, {kind}, {format}
      */
     path_template?: string;
+    shape?: ExportShapeConfig;
+};
+
+export type ExportShapeFormattingHints = {
+    emptyValue?: string;
+    multiValueJoin?: string;
+    markdownTitle?: string;
+};
+
+export type ExportShapeConfig = {
+    topLevelFields?: Array<string>;
+    normalizedFields?: Array<string>;
+    evidenceFields?: Array<string>;
+    summaryFields?: Array<string>;
+    fieldLabels?: {
+        [key: string]: string;
+    };
+    formatting?: ExportShapeFormattingHints;
 };
 
 export type ExportRetryConfig = {
@@ -750,6 +768,40 @@ export type AiResearchRefineResponse = {
     inputStats?: AiResearchRefineInputStats;
     refined?: AiResearchRefinedContent;
     markdown?: string;
+    explanation?: string;
+    route_id?: string;
+    provider?: string;
+    model?: string;
+};
+
+export type AiExportShapeRequest = {
+    /**
+     * Representative job ID whose result file should seed the export shape.
+     */
+    job_id: string;
+    /**
+     * Target export format to shape.
+     */
+    format: 'md' | 'csv' | 'xlsx';
+    currentShape?: ExportShapeConfig;
+    /**
+     * Optional operator guidance for the generated shape.
+     */
+    instructions?: string;
+};
+
+export type AiExportShapeInputStats = {
+    fieldOptionCount?: number;
+    topLevelFieldCount?: number;
+    normalizedFieldCount?: number;
+    evidenceFieldCount?: number;
+    sampleRecordCount?: number;
+};
+
+export type AiExportShapeResponse = {
+    issues?: Array<string>;
+    inputStats?: AiExportShapeInputStats;
+    shape?: ExportShapeConfig;
     explanation?: string;
     route_id?: string;
     provider?: string;
@@ -4363,6 +4415,43 @@ export type AiResearchRefineResponses = {
 };
 
 export type AiResearchRefineResponse2 = AiResearchRefineResponses[keyof AiResearchRefineResponses];
+
+export type AiExportShapeData = {
+    body: AiExportShapeRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/export-shape';
+};
+
+export type AiExportShapeErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiExportShapeError = AiExportShapeErrors[keyof AiExportShapeErrors];
+
+export type AiExportShapeResponses = {
+    /**
+     * Generated export shape
+     */
+    200: AiExportShapeResponse;
+};
+
+export type AiExportShapeResponse2 = AiExportShapeResponses[keyof AiExportShapeResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

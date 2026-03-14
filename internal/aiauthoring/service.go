@@ -16,6 +16,7 @@ type AutomationClient interface {
 	GenerateRenderProfile(ctx context.Context, req piai.GenerateRenderProfileRequest) (piai.GenerateRenderProfileResult, error)
 	GeneratePipelineJS(ctx context.Context, req piai.GeneratePipelineJSRequest) (piai.GeneratePipelineJSResult, error)
 	GenerateResearchRefinement(ctx context.Context, req piai.ResearchRefineRequest) (piai.ResearchRefineResult, error)
+	GenerateExportShape(ctx context.Context, req piai.ExportShapeRequest) (piai.ExportShapeResult, error)
 }
 
 type Service struct {

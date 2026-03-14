@@ -13,8 +13,10 @@ import (
 	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
@@ -27,6 +29,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSReq            aiauthoring.PipelineJSRequest
 	pipelineJSDebugReq       aiauthoring.PipelineJSDebugRequest
 	researchRefineReq        aiauthoring.ResearchRefineRequest
+	exportShapeReq           aiauthoring.ExportShapeRequest
 	previewResult            aiauthoring.PreviewResult
 	templateResult           aiauthoring.TemplateResult
 	debugResult              aiauthoring.TemplateDebugResult
@@ -35,6 +38,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSResult         aiauthoring.PipelineJSResult
 	pipelineJSDebugResult    aiauthoring.PipelineJSDebugResult
 	researchRefineResult     aiauthoring.ResearchRefineResult
+	exportShapeResult        aiauthoring.ExportShapeResult
 	previewErr               error
 	templateErr              error
 	debugErr                 error
@@ -43,6 +47,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSErr            error
 	pipelineJSDebugErr       error
 	researchRefineErr        error
+	exportShapeErr           error
 	previewCalled            bool
 	templateCalled           bool
 	debugCalled              bool
@@ -51,6 +56,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSCalled         bool
 	pipelineJSDebugCalled    bool
 	researchRefineCalled     bool
+	exportShapeCalled        bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -99,6 +105,12 @@ func (f *fakeAuthoringRunner) RefineResearch(ctx context.Context, req aiauthorin
 	f.researchRefineCalled = true
 	f.researchRefineReq = req
 	return f.researchRefineResult, f.researchRefineErr
+}
+
+func (f *fakeAuthoringRunner) GenerateExportShape(ctx context.Context, req aiauthoring.ExportShapeRequest) (aiauthoring.ExportShapeResult, error) {
+	f.exportShapeCalled = true
+	f.exportShapeReq = req
+	return f.exportShapeResult, f.exportShapeErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -430,5 +442,53 @@ func TestRunResearchRefineLoadsResultFile(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"markdown": "# Refined Research Brief`) {
 		t.Fatalf("expected research refine JSON output, got %s", stdout)
+	}
+}
+
+func TestRunExportShapeLoadsShapeAndResultFile(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		exportShapeResult: aiauthoring.ExportShapeResult{
+			Shape: exporter.ShapeConfig{
+				TopLevelFields:   []string{"url", "title"},
+				NormalizedFields: []string{"field.price"},
+				FieldLabels:      map[string]string{"field.price": "Price"},
+			},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	resultPath := filepath.Join(tmpDir, "crawl.jsonl")
+	shapePath := filepath.Join(tmpDir, "shape.json")
+	if err := os.WriteFile(resultPath, []byte("{\"url\":\"https://example.com\",\"status\":200,\"title\":\"Example\",\"text\":\"Body\",\"normalized\":{\"fields\":{\"price\":{\"values\":[\"$10\"]}}}}\n{\"url\":\"https://example.com/2\",\"status\":200,\"title\":\"Example 2\",\"text\":\"Body\",\"normalized\":{\"fields\":{\"price\":{\"values\":[\"$12\"]}}}}\n"), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+	if err := os.WriteFile(shapePath, []byte(`{"topLevelFields":["url"],"normalizedFields":["field.price"]}`), 0o644); err != nil {
+		t.Fatalf("write shape file: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"export-shape", "--result-file", resultPath, "--kind", string(model.KindCrawl), "--format", "csv", "--shape-file", shapePath, "--instructions", "Focus on pricing"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.exportShapeCalled {
+		t.Fatal("expected export shape runner to be called")
+	}
+	if runner.exportShapeReq.JobKind != model.KindCrawl {
+		t.Fatalf("unexpected job kind: %q", runner.exportShapeReq.JobKind)
+	}
+	if runner.exportShapeReq.Format != "csv" {
+		t.Fatalf("unexpected format: %q", runner.exportShapeReq.Format)
+	}
+	if runner.exportShapeReq.CurrentShape.TopLevelFields[0] != "url" {
+		t.Fatalf("unexpected current shape: %#v", runner.exportShapeReq.CurrentShape)
+	}
+	if runner.exportShapeReq.Instructions != "Focus on pricing" {
+		t.Fatalf("unexpected instructions: %q", runner.exportShapeReq.Instructions)
+	}
+	if !strings.Contains(stdout, `"shape":`) {
+		t.Fatalf("expected export shape JSON output, got %s", stdout)
 	}
 }

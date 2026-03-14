@@ -23,13 +23,16 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 )
@@ -198,6 +201,23 @@ type AIResearchRefineResponse struct {
 	RouteID     string                               `json:"route_id,omitempty"`
 	Provider    string                               `json:"provider,omitempty"`
 	Model       string                               `json:"model,omitempty"`
+}
+
+type AIExportShapeRequest struct {
+	JobID        string               `json:"job_id"`
+	Format       string               `json:"format"`
+	CurrentShape exporter.ShapeConfig `json:"currentShape,omitempty"`
+	Instructions string               `json:"instructions,omitempty"`
+}
+
+type AIExportShapeResponse struct {
+	Issues      []string                          `json:"issues,omitempty"`
+	InputStats  aiauthoring.ExportShapeInputStats `json:"inputStats"`
+	Shape       exporter.ShapeConfig              `json:"shape"`
+	Explanation string                            `json:"explanation,omitempty"`
+	RouteID     string                            `json:"route_id,omitempty"`
+	Provider    string                            `json:"provider,omitempty"`
+	Model       string                            `json:"model,omitempty"`
 }
 
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
@@ -521,6 +541,65 @@ func (s *Server) handleAIResearchRefine(w http.ResponseWriter, r *http.Request) 
 	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
 	logAIRequestCompletion("research_refine", "", result.RouteID, result.Provider, result.Model, false)
 	writeJSON(w, resp)
+}
+
+func (s *Server) handleAIExportShape(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIExportShapeRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	job, rawResult, err := s.loadAIJobResult(r.Context(), strings.TrimSpace(req.JobID))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	result, err := s.aiAuthoringService().GenerateExportShape(r.Context(), aiauthoring.ExportShapeRequest{
+		JobKind:      job.Kind,
+		Format:       strings.TrimSpace(req.Format),
+		RawResult:    rawResult,
+		CurrentShape: req.CurrentShape,
+		Instructions: req.Instructions,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp := AIExportShapeResponse{
+		Issues:      result.Issues,
+		InputStats:  result.InputStats,
+		Shape:       result.Shape,
+		Explanation: result.Explanation,
+		RouteID:     result.RouteID,
+		Provider:    result.Provider,
+		Model:       result.Model,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("export_shape", "", result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) loadAIJobResult(ctx context.Context, jobID string) (*model.Job, []byte, error) {
+	if jobID == "" {
+		return nil, nil, apperrors.Validation("job_id is required")
+	}
+	job, err := s.store.Get(ctx, jobID)
+	if err != nil {
+		return nil, nil, apperrors.Wrap(apperrors.KindNotFound, "job not found", err)
+	}
+	if strings.TrimSpace(job.ResultPath) == "" {
+		return nil, nil, apperrors.NotFound("job has no result file")
+	}
+	data, err := os.ReadFile(job.ResultPath)
+	if err != nil {
+		return nil, nil, apperrors.Wrap(apperrors.KindInternal, "read job result file", err)
+	}
+	return &job, data, nil
 }
 
 func (s *Server) aiAuthoringService() *aiauthoring.Service {

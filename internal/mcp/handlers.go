@@ -169,6 +169,38 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return result, nil
+	case "ai_export_shape":
+		jobID := strings.TrimSpace(paramdecode.String(params.Arguments, "jobId"))
+		if jobID == "" {
+			return nil, apperrors.Validation("jobId is required")
+		}
+		format := strings.TrimSpace(paramdecode.String(params.Arguments, "format"))
+		if format == "" {
+			return nil, apperrors.Validation("format is required")
+		}
+		job, err := s.store.Get(ctx, jobID)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindNotFound, "job not found", err)
+		}
+		if strings.TrimSpace(job.ResultPath) == "" {
+			return nil, apperrors.NotFound("job has no result file")
+		}
+		rawResult, err := os.ReadFile(job.ResultPath)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
+		}
+		currentShape := paramdecode.Decode[exporter.ShapeConfig](params.Arguments, "currentShape")
+		result, err := s.aiAuthoring.GenerateExportShape(ctx, aiauthoring.ExportShapeRequest{
+			JobKind:      job.Kind,
+			Format:       format,
+			RawResult:    rawResult,
+			CurrentShape: currentShape,
+			Instructions: strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case "scrape_page":
 		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {
