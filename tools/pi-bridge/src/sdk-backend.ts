@@ -16,6 +16,7 @@ import type {
   GeneratePipelineJsPayload,
   GenerateRenderProfilePayload,
   GenerateTemplatePayload,
+  GenerateTransformPayload,
   HealthResult,
   HealthRouteStatus,
   PipelineJsResult,
@@ -23,6 +24,7 @@ import type {
   ResearchRefinePayload,
   ResearchRefineResult,
   TemplateResult,
+  TransformResult,
 } from "./protocol.js";
 import { parseRouteId } from "./config.js";
 import {
@@ -32,6 +34,7 @@ import {
   validateRenderProfileResult,
   validateResearchRefineResult,
   validateTemplateResult,
+  validateTransformResult,
 } from "./validation.js";
 
 export async function runWithFallback<T>(
@@ -345,6 +348,45 @@ export class SDKBackend {
     );
   }
 
+  async generateTransform(
+    capability: string,
+    payload: GenerateTransformPayload,
+  ): Promise<TransformResult> {
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: false,
+        });
+        const tool = this.transformTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildTransformPrompt(payload),
+            systemPrompt:
+              "You author bounded Spartan result transformations. Use only the supplied sample records, field paths, and optional current transform. Do not invent fields outside the provided samples. Call the submit_transform tool exactly once with a deterministic JMESPath or JSONata transform.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
+
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validateTransformResult({
+          ...(args as TransformResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
+  }
+
   private inspectRoute(routeId: string): HealthRouteStatus {
     try {
       const { provider, model } = parseRouteId(routeId);
@@ -624,6 +666,21 @@ export class SDKBackend {
       }),
     };
   }
+
+  private transformTool(): Tool {
+    return {
+      name: "submit_transform",
+      description:
+        "Submit a deterministic Spartan result transform using JMESPath or JSONata.",
+      parameters: Type.Object({
+        transform: Type.Object({
+          expression: Type.String(),
+          language: Type.String(),
+        }),
+        explanation: Type.Optional(Type.String()),
+      }),
+    };
+  }
 }
 
 export function modelSupportsImages(model: { input: string[] }): boolean {
@@ -766,6 +823,37 @@ function buildExportShapePrompt(payload: ExportShapePayload): string {
   }
   parts.push(
     `Field options:\n${JSON.stringify(payload.fieldOptions ?? [], null, 2)}`,
+  );
+  return parts.join("\n\n");
+}
+
+function buildTransformPrompt(payload: GenerateTransformPayload): string {
+  const parts: string[] = [];
+  if (payload.jobKind?.trim()) {
+    parts.push(`Job kind: ${payload.jobKind.trim()}`);
+  }
+  if (payload.preferredLanguage?.trim()) {
+    parts.push(`Preferred language: ${payload.preferredLanguage.trim()}`);
+  }
+  if (payload.instructions?.trim()) {
+    parts.push(`Operator goal: ${payload.instructions.trim()}`);
+  }
+  if (payload.feedback?.trim()) {
+    parts.push(`Validation feedback: ${payload.feedback.trim()}`);
+  }
+  parts.push(
+    "Use only the supplied sample records and field paths. Do not invent fields outside the provided result structure.",
+  );
+  if (payload.currentTransform && Object.keys(payload.currentTransform).length > 0) {
+    parts.push(
+      `Current transform:\n${JSON.stringify(payload.currentTransform, null, 2)}`,
+    );
+  }
+  if (payload.sampleFields?.length) {
+    parts.push(`Sample fields:\n${JSON.stringify(payload.sampleFields, null, 2)}`);
+  }
+  parts.push(
+    `Sample records:\n${JSON.stringify(payload.sampleRecords ?? [], null, 2)}`,
   );
   return parts.join("\n\n");
 }

@@ -111,6 +111,7 @@ make install-bin
 
 - Agents get an MCP surface, a deterministic local API, and a persistent job store they can inspect and reuse.
 - Developers get one local system for UI, CLI, and API validation instead of separate throwaway scripts.
+- Saved results can be re-authored locally too: bounded AI helpers can now refine research output, shape recurring exports, and generate validated JMESPath/JSONata transforms from representative persisted artifacts without launching new jobs.
 - Teams get reproducible CI, generated API types, and stored artifacts that make behavior easier to verify.
 
 ## Community

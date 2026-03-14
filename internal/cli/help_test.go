@@ -30,7 +30,7 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 	})
 
 	for _, expected := range []string{
-		"  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS, research refinement)",
+		"  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS, research refinement, transforms)",
 		"  proxy-pool   Inspect proxy-pool configuration and runtime status",
 		"  export       Export job results (jsonl, json, md, csv, xlsx)",
 		"  export-schedule Manage automated export schedules",

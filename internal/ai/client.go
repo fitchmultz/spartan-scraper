@@ -27,6 +27,7 @@ const (
 	OperationGeneratePipelineJS    = "generate_pipeline_js"
 	OperationResearchRefine        = "research_refine"
 	OperationExportShape           = "export_shape"
+	OperationGenerateTransform     = "generate_transform"
 )
 
 type requestEnvelope struct {
@@ -329,6 +330,34 @@ type ExportShapeResult struct {
 	Model       string                  `json:"model,omitempty"`
 }
 
+type BridgeTransformConfig struct {
+	Expression string `json:"expression,omitempty"`
+	Language   string `json:"language,omitempty"`
+}
+
+type TransformSampleField struct {
+	Path         string   `json:"path"`
+	SampleValues []string `json:"sampleValues,omitempty"`
+}
+
+type GenerateTransformRequest struct {
+	JobKind           string                 `json:"jobKind,omitempty"`
+	SampleRecords     []map[string]any       `json:"sampleRecords,omitempty"`
+	SampleFields      []TransformSampleField `json:"sampleFields,omitempty"`
+	CurrentTransform  BridgeTransformConfig  `json:"currentTransform,omitempty"`
+	PreferredLanguage string                 `json:"preferredLanguage,omitempty"`
+	Instructions      string                 `json:"instructions,omitempty"`
+	Feedback          string                 `json:"feedback,omitempty"`
+}
+
+type GenerateTransformResult struct {
+	Transform   BridgeTransformConfig `json:"transform"`
+	Explanation string                `json:"explanation,omitempty"`
+	RouteID     string                `json:"route_id,omitempty"`
+	Provider    string                `json:"provider,omitempty"`
+	Model       string                `json:"model,omitempty"`
+}
+
 type BridgeFieldValue struct {
 	Values    []string `json:"values,omitempty"`
 	Source    string   `json:"source"`
@@ -437,6 +466,12 @@ func (c *Client) GenerateResearchRefinement(ctx context.Context, req ResearchRef
 func (c *Client) GenerateExportShape(ctx context.Context, req ExportShapeRequest) (ExportShapeResult, error) {
 	var resp ExportShapeResult
 	err := c.call(ctx, OperationExportShape, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GenerateTransform(ctx context.Context, req GenerateTransformRequest) (GenerateTransformResult, error) {
+	var resp GenerateTransformResult
+	err := c.call(ctx, OperationGenerateTransform, req, &resp)
 	return resp, err
 }
 

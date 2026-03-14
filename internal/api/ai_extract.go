@@ -229,6 +229,24 @@ type AIExportShapeResponse struct {
 	Model       string                            `json:"model,omitempty"`
 }
 
+type AITransformGenerateRequest struct {
+	JobID             string                   `json:"job_id"`
+	CurrentTransform  exporter.TransformConfig `json:"currentTransform,omitempty"`
+	PreferredLanguage string                   `json:"preferredLanguage,omitempty"`
+	Instructions      string                   `json:"instructions,omitempty"`
+}
+
+type AITransformGenerateResponse struct {
+	Issues      []string                        `json:"issues,omitempty"`
+	InputStats  aiauthoring.TransformInputStats `json:"inputStats"`
+	Transform   exporter.TransformConfig        `json:"transform"`
+	Preview     []any                           `json:"preview,omitempty"`
+	Explanation string                          `json:"explanation,omitempty"`
+	RouteID     string                          `json:"route_id,omitempty"`
+	Provider    string                          `json:"provider,omitempty"`
+	Model       string                          `json:"model,omitempty"`
+}
+
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
@@ -597,6 +615,48 @@ func (s *Server) handleAIExportShape(w http.ResponseWriter, r *http.Request) {
 	}
 	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
 	logAIRequestCompletion("export_shape", "", result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleAITransformGenerate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AITransformGenerateRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	job, rawResult, err := s.loadAIJobResult(r.Context(), strings.TrimSpace(req.JobID))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	result, err := s.aiAuthoringService().GenerateTransform(r.Context(), aiauthoring.TransformRequest{
+		JobKind:           job.Kind,
+		RawResult:         rawResult,
+		CurrentTransform:  req.CurrentTransform,
+		PreferredLanguage: strings.TrimSpace(req.PreferredLanguage),
+		Instructions:      req.Instructions,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp := AITransformGenerateResponse{
+		Issues:      result.Issues,
+		InputStats:  result.InputStats,
+		Transform:   result.Transform,
+		Preview:     result.Preview,
+		Explanation: result.Explanation,
+		RouteID:     result.RouteID,
+		Provider:    result.Provider,
+		Model:       result.Model,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("transform_generate", "", result.RouteID, result.Provider, result.Model, false)
 	writeJSON(w, resp)
 }
 

@@ -850,6 +850,44 @@ export type AiExportShapeResponse = {
     model?: string;
 };
 
+export type ResultTransformConfig = {
+    expression?: string;
+    language?: 'jmespath' | 'jsonata';
+};
+
+export type AiTransformGenerateRequest = {
+    /**
+     * Representative job ID whose result file should seed the transform.
+     */
+    job_id: string;
+    currentTransform?: ResultTransformConfig;
+    /**
+     * Preferred transform language for the generated output.
+     */
+    preferredLanguage?: 'jmespath' | 'jsonata';
+    /**
+     * Optional operator guidance for the generated transform.
+     */
+    instructions?: string;
+};
+
+export type AiTransformGenerateInputStats = {
+    sampleRecordCount?: number;
+    fieldPathCount?: number;
+    currentTransformProvided?: boolean;
+};
+
+export type AiTransformGenerateResponse = {
+    issues?: Array<string>;
+    inputStats?: AiTransformGenerateInputStats;
+    transform?: ResultTransformConfig;
+    preview?: Array<unknown>;
+    explanation?: string;
+    route_id?: string;
+    provider?: string;
+    model?: string;
+};
+
 export type PipelineOptions = {
     preProcessors?: Array<string>;
     postProcessors?: Array<string>;
@@ -4550,6 +4588,43 @@ export type AiExportShapeResponses = {
 };
 
 export type AiExportShapeResponse2 = AiExportShapeResponses[keyof AiExportShapeResponses];
+
+export type AiTransformGenerateData = {
+    body: AiTransformGenerateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/transform-generate';
+};
+
+export type AiTransformGenerateErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiTransformGenerateError = AiTransformGenerateErrors[keyof AiTransformGenerateErrors];
+
+export type AiTransformGenerateResponses = {
+    /**
+     * Generated result transform
+     */
+    200: AiTransformGenerateResponse;
+};
+
+export type AiTransformGenerateResponse2 = AiTransformGenerateResponses[keyof AiTransformGenerateResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

@@ -146,6 +146,9 @@ const (
 	AICapabilityTemplateGeneration = "template.generate"
 	AICapabilityRenderProfile      = "render_profile.generate"
 	AICapabilityPipelineJS         = "pipeline_js.generate"
+	AICapabilityResearchRefine     = "research.refine"
+	AICapabilityExportShape        = "export.shape"
+	AICapabilityTransformGenerate  = "transform.generate"
 )
 
 // AIRoutingConfig maps AI capabilities to ordered provider/model routes.
@@ -188,6 +191,9 @@ func DefaultAIRoutingConfig() AIRoutingConfig {
 			AICapabilityTemplateGeneration: append([]string(nil), defaultRouteOrder...),
 			AICapabilityRenderProfile:      append([]string(nil), defaultRouteOrder...),
 			AICapabilityPipelineJS:         append([]string(nil), defaultRouteOrder...),
+			AICapabilityResearchRefine:     append([]string(nil), defaultRouteOrder...),
+			AICapabilityExportShape:        append([]string(nil), defaultRouteOrder...),
+			AICapabilityTransformGenerate:  append([]string(nil), defaultRouteOrder...),
 		},
 	}
 }

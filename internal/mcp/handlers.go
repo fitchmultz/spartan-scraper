@@ -209,6 +209,34 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return result, nil
+	case "ai_transform_generate":
+		jobID := strings.TrimSpace(paramdecode.String(params.Arguments, "jobId"))
+		if jobID == "" {
+			return nil, apperrors.Validation("jobId is required")
+		}
+		job, err := s.store.Get(ctx, jobID)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindNotFound, "job not found", err)
+		}
+		if strings.TrimSpace(job.ResultPath) == "" {
+			return nil, apperrors.NotFound("job has no result file")
+		}
+		rawResult, err := os.ReadFile(job.ResultPath)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
+		}
+		currentTransform := paramdecode.Decode[exporter.TransformConfig](params.Arguments, "currentTransform")
+		result, err := s.aiAuthoring.GenerateTransform(ctx, aiauthoring.TransformRequest{
+			JobKind:           job.Kind,
+			RawResult:         rawResult,
+			CurrentTransform:  currentTransform,
+			PreferredLanguage: strings.TrimSpace(paramdecode.String(params.Arguments, "preferredLanguage")),
+			Instructions:      strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case "scrape_page":
 		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {

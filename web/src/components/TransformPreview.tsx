@@ -2,8 +2,9 @@
  * Transform Preview Component
  *
  * Provides a UI for testing JMESPath and JSONata transformations on job results.
- * Allows users to input expressions, preview the transformed output, and
- * apply transformations to exports.
+ * Allows users to input expressions, preview the transformed output, apply
+ * transformations to exports, and generate bounded transform suggestions from
+ * saved job results.
  *
  * @module TransformPreview
  */
@@ -18,6 +19,24 @@ interface TransformResult {
   results: unknown[];
   error?: string;
   resultCount: number;
+}
+
+interface AITransformGenerateResponse {
+  issues?: string[];
+  inputStats?: {
+    sampleRecordCount: number;
+    fieldPathCount: number;
+    currentTransformProvided: boolean;
+  };
+  transform: {
+    expression: string;
+    language: "jmespath" | "jsonata";
+  };
+  preview?: unknown[];
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
 }
 
 /**
@@ -64,6 +83,41 @@ async function previewTransform(
   return response.json();
 }
 
+async function generateTransformWithAI(
+  jobId: string,
+  language: "jmespath" | "jsonata",
+  instructions: string,
+  currentExpression: string,
+): Promise<AITransformGenerateResponse> {
+  const response = await fetch("/v1/ai/transform-generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      job_id: jobId,
+      preferredLanguage: language,
+      currentTransform: currentExpression.trim()
+        ? {
+            expression: currentExpression.trim(),
+            language,
+          }
+        : undefined,
+      instructions: instructions.trim() || undefined,
+    }),
+  });
+
+  const data = (await response.json()) as
+    | AITransformGenerateResponse
+    | { error?: string; message?: string };
+  if (!response.ok) {
+    const errorData = data as { error?: string; message?: string };
+    throw new Error(
+      errorData.error || errorData.message || "AI transform generation failed",
+    );
+  }
+
+  return data as AITransformGenerateResponse;
+}
+
 /**
  * Main TransformPreview component.
  */
@@ -73,6 +127,12 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
   const [limit, setLimit] = useState(10);
   const [isValidating, setIsValidating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [aiInstructions, setAIInstructions] = useState("");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiResult, setAIResult] = useState<AITransformGenerateResponse | null>(
+    null,
+  );
   const [validationResult, setValidationResult] = useState<{
     valid: boolean;
     message?: string;
@@ -133,6 +193,37 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
       onApply(expression, language);
     }
   }, [onApply, expression, language, validationResult]);
+
+  const handleGenerateAI = useCallback(async () => {
+    setIsGeneratingAI(true);
+    setError(null);
+    setAIResult(null);
+
+    try {
+      const result = await generateTransformWithAI(
+        jobId,
+        language,
+        aiInstructions,
+        expression,
+      );
+      setAIResult(result);
+      setExpression(result.transform.expression);
+      setLanguage(result.transform.language);
+      setValidationResult({
+        valid: true,
+        message:
+          "AI-generated transform validated against representative results.",
+      });
+      setPreviewResult({
+        results: result.preview || [],
+        resultCount: result.preview?.length || 0,
+      });
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [aiInstructions, expression, jobId, language]);
 
   const insertExample = useCallback((exampleExpr: string) => {
     setExpression(exampleExpr);
@@ -205,6 +296,18 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
             <button
               type="button"
               className="secondary"
+              onClick={() => setShowAIAssistant((value) => !value)}
+              disabled={isGeneratingAI}
+            >
+              {showAIAssistant
+                ? "Hide AI"
+                : expression.trim()
+                  ? "Revise with AI"
+                  : "Generate with AI"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
               onClick={handlePreview}
               disabled={isPreviewing || !validationResult?.valid}
             >
@@ -222,6 +325,95 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
             )}
           </div>
         </div>
+
+        {showAIAssistant && (
+          <div className="panel" style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>
+              Generate bounded transform with AI
+            </div>
+            <textarea
+              value={aiInstructions}
+              onChange={(event) => setAIInstructions(event.target.value)}
+              rows={3}
+              placeholder="Project the URL, title, and pricing fields for a lightweight export."
+              className="form-textarea"
+              aria-label="AI transform instructions"
+              disabled={isGeneratingAI}
+            />
+            <p className="form-help" style={{ marginTop: 8 }}>
+              Spartan sends only representative saved result records. The AI
+              does not fetch new data or browse.
+            </p>
+            <div className="row" style={{ gap: 8, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => void handleGenerateAI()}
+                disabled={isGeneratingAI}
+              >
+                {isGeneratingAI ? "Generating..." : "Generate Transform"}
+              </button>
+            </div>
+
+            {aiResult ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="flex gap-2" style={{ flexWrap: "wrap" }}>
+                  <div className="badge running">
+                    {aiResult.transform.language}
+                  </div>
+                  {aiResult.route_id ? (
+                    <div className="badge running">{aiResult.route_id}</div>
+                  ) : null}
+                  {aiResult.provider && aiResult.model ? (
+                    <div className="badge running">
+                      {aiResult.provider}/{aiResult.model}
+                    </div>
+                  ) : null}
+                </div>
+                {aiResult.issues?.length ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 600 }}>Input diagnostics</div>
+                    <ul>
+                      {aiResult.issues.map((issue) => (
+                        <li key={issue}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {aiResult.inputStats ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 600 }}>Input stats</div>
+                    <div className="job-list">
+                      <div className="job-item">
+                        Sample records {aiResult.inputStats.sampleRecordCount}
+                      </div>
+                      <div className="job-item">
+                        Field paths {aiResult.inputStats.fieldPathCount}
+                      </div>
+                      <div className="job-item">
+                        Current transform{" "}
+                        {aiResult.inputStats.currentTransformProvided
+                          ? "provided"
+                          : "not provided"}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontWeight: 600 }}>Suggested expression</div>
+                  <pre className="preview-output">
+                    {aiResult.transform.expression}
+                  </pre>
+                </div>
+                {aiResult.explanation ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 600 }}>Model explanation</div>
+                    <p>{aiResult.explanation}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {error && <div className="transform-error">Error: {error}</div>}
       </div>

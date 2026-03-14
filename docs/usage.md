@@ -313,6 +313,16 @@ Export-shape flags:
 
 `--result-file` accepts a representative scrape/crawl/research result artifact from disk, and `--shape-file` accepts a JSON `ExportShapeConfig` object.
 
+Transform flags:
+
+- `--job-id <job-id>` or `--result-file <path>`
+- `--language <jmespath|jsonata>` optional preferred language for the generated transform
+- `--expression "<current transform expression>"` optional current transform to tune
+- `--instructions "<projection/filter guidance>"`
+- `--out <path>`
+
+`--result-file` accepts a representative saved result artifact from disk. The generated transform is validated against bounded sample records before it is returned.
+
 Examples:
 
 ```bash
@@ -382,6 +392,17 @@ spartan ai export-shape \
   --job-id <job-id> \
   --format csv \
   --out ./out/export-shape.json
+
+spartan ai transform \
+  --job-id <job-id> \
+  --language jmespath \
+  --instructions "Project the URL, title, and pricing fields for export"
+
+spartan ai transform \
+  --result-file ./out/crawl.jsonl \
+  --language jsonata \
+  --expression '$.{"url": url}' \
+  --out ./out/transform.json
 ```
 
 ### Auth
@@ -816,3 +837,4 @@ make ci-slow
 ```
 
 `make ci-slow` provisions Playwright and runs the heavier local-fixture/browser validation lane.
+aywright and runs the heavier local-fixture/browser validation lane.

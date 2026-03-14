@@ -9,11 +9,13 @@ import {
   CAPABILITY_RENDER_PROFILE_GENERATE,
   CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
+  CAPABILITY_TRANSFORM_GENERATE,
   OP_EXPORT_SHAPE,
   OP_EXTRACT_PREVIEW,
   OP_GENERATE_PIPELINE_JS,
   OP_GENERATE_RENDER_PROFILE,
   OP_GENERATE_TEMPLATE,
+  OP_GENERATE_TRANSFORM,
   OP_HEALTH,
   OP_RESEARCH_REFINE,
   type BridgeRequest,
@@ -23,6 +25,7 @@ import {
   type GeneratePipelineJsPayload,
   type GenerateRenderProfilePayload,
   type GenerateTemplatePayload,
+  type GenerateTransformPayload,
   type ResearchRefinePayload,
 } from "./protocol.js";
 import { SDKBackend } from "./sdk-backend.js";
@@ -50,6 +53,10 @@ interface Backend {
   shapeExport(
     capability: string,
     payload: ExportShapePayload,
+  ): Promise<unknown> | unknown;
+  generateTransform(
+    capability: string,
+    payload: GenerateTransformPayload,
   ): Promise<unknown> | unknown;
 }
 
@@ -142,6 +149,15 @@ rl.on("line", async (line) => {
         const payload = request.payload as ExportShapePayload;
         const result = await backend.shapeExport(
           CAPABILITY_EXPORT_SHAPE,
+          payload,
+        );
+        writeResponse({ id: request.id, ok: true, result });
+        return;
+      }
+      case OP_GENERATE_TRANSFORM: {
+        const payload = request.payload as GenerateTransformPayload;
+        const result = await backend.generateTransform(
+          CAPABILITY_TRANSFORM_GENERATE,
           payload,
         );
         writeResponse({ id: request.id, ok: true, result });

@@ -26,7 +26,7 @@ Commands:
   scrape       Scrape a single page
   crawl        Crawl a website
   research     Deep research across multiple sources
-  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS, research refinement)
+  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS, research refinement, transforms)
   auth         Manage auth vault and profiles
   batch        Submit and manage batch jobs
   chains       Manage job chains (create/list/get/submit/delete)
@@ -63,6 +63,7 @@ Examples:
   spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and reset scroll position"
   spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
   spartan ai research-refine --job-id <research-job-id>
+  spartan ai transform --job-id <job-id> --language jmespath
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
   spartan auth set --name acme --parent base --token "token" --token-kind bearer

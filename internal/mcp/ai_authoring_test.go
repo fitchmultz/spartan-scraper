@@ -31,14 +31,17 @@ type fakeAutomationClient struct {
 	pipelineJSResult     piai.GeneratePipelineJSResult
 	researchRefineResult piai.ResearchRefineResult
 	exportShapeResult    piai.ExportShapeResult
+	transformResult      piai.GenerateTransformResult
 	renderProfileReq     piai.GenerateRenderProfileRequest
 	pipelineJSReq        piai.GeneratePipelineJSRequest
 	researchRefineReq    piai.ResearchRefineRequest
 	exportShapeReq       piai.ExportShapeRequest
+	transformReq         piai.GenerateTransformRequest
 	renderProfileCalls   int
 	pipelineJSCalls      int
 	researchRefineCalls  int
 	exportShapeCalls     int
+	transformCalls       int
 }
 
 func (f *fakeAuthoringProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -92,6 +95,12 @@ func (f *fakeAutomationClient) GenerateExportShape(ctx context.Context, req piai
 	return f.exportShapeResult, nil
 }
 
+func (f *fakeAutomationClient) GenerateTransform(ctx context.Context, req piai.GenerateTransformRequest) (piai.GenerateTransformResult, error) {
+	f.transformCalls++
+	f.transformReq = req
+	return f.transformResult, nil
+}
+
 func TestAIAuthoringToolsList(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -102,7 +111,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug", "ai_research_refine", "ai_export_shape", "proxy_pool_status"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug", "ai_research_refine", "ai_export_shape", "ai_transform_generate", "proxy_pool_status"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -577,5 +586,50 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.exportShapeReq.JobKind != string(model.KindScrape) {
 		t.Fatalf("unexpected export shape job kind: %q", automationClient.exportShapeReq.JobKind)
+	}
+
+	automationClient.transformResult = piai.GenerateTransformResult{
+		Transform: piai.BridgeTransformConfig{
+			Expression: "{title: title, url: url}",
+			Language:   "jmespath",
+		},
+		Explanation: "Projected the URL and title fields.",
+		RouteID:     "openai/gpt-5.4",
+		Provider:    "openai",
+		Model:       "gpt-5.4",
+	}
+	transformBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_transform_generate",
+			"arguments": map[string]interface{}{
+				"jobId":             "job-export-shape",
+				"preferredLanguage": "jmespath",
+				"currentTransform": map[string]interface{}{
+					"expression": "[",
+					"language":   "jmespath",
+				},
+				"instructions": "Project the URL and title for export",
+			},
+		}),
+	}
+	transformResult, err := srv.handleToolCall(context.Background(), transformBase)
+	if err != nil {
+		t.Fatalf("ai_transform_generate failed: %v", err)
+	}
+	transformResp, ok := transformResult.(aiauthoring.TransformResult)
+	if !ok {
+		t.Fatalf("expected transform result type, got %#v", transformResult)
+	}
+	if transformResp.Transform.Expression != "{title: title, url: url}" || transformResp.Transform.Language != "jmespath" {
+		t.Fatalf("unexpected transform response: %#v", transformResp)
+	}
+	if automationClient.transformCalls != 1 {
+		t.Fatalf("expected single transform call, got %d", automationClient.transformCalls)
+	}
+	if automationClient.transformReq.JobKind != string(model.KindScrape) {
+		t.Fatalf("unexpected transform job kind: %q", automationClient.transformReq.JobKind)
+	}
+	if automationClient.transformReq.PreferredLanguage != "jmespath" {
+		t.Fatalf("unexpected preferred language: %q", automationClient.transformReq.PreferredLanguage)
 	}
 }

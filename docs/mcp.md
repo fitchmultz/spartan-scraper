@@ -84,6 +84,11 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `format: "md" | "csv" | "xlsx"`
   - `currentShape: { ... }` optional existing `ExportShapeConfig`
   - `instructions: "..."` optional field-selection guidance
+- `ai_transform_generate`
+  - `jobId: "..."` representative completed job whose persisted result should seed the transform
+  - `currentTransform: { expression: "...", language: "jmespath" | "jsonata" }` optional existing transform to tune
+  - `preferredLanguage: "jmespath" | "jsonata"` optional preferred output language
+  - `instructions: "..."` optional projection/filter guidance
 
 These tools return structured authoring results immediately and do not create jobs. Attached `images` are bounded, request-scoped visual context only and are not persisted as job artifacts.
 

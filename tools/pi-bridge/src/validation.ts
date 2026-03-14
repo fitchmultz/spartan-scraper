@@ -9,6 +9,7 @@ import type {
   ResearchRefineResult,
   ResearchRefinedContent,
   TemplateResult,
+  TransformResult,
 } from "./protocol.js";
 
 interface ExtractResultMetadata {
@@ -114,6 +115,28 @@ export function validateExportShapeResult(
     throw new Error("export shape result must be an object");
   }
   result.shape = normalizeExportShapeConfig(result.shape);
+  return result;
+}
+
+export function validateTransformResult(
+  result: TransformResult,
+): TransformResult {
+  if (!result || typeof result !== "object") {
+    throw new Error("transform result must be an object");
+  }
+  const transform = expectRecord(result.transform, "transform result transform");
+  const expression = expectNonEmptyString(
+    transform.expression,
+    "transform result expression",
+  );
+  const language = expectNonEmptyString(
+    transform.language,
+    "transform result language",
+  );
+  if (language !== "jmespath" && language !== "jsonata") {
+    throw new Error("transform result language must be jmespath or jsonata");
+  }
+  result.transform = { expression, language };
   return result;
 }
 

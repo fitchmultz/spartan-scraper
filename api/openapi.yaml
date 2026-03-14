@@ -1139,6 +1139,48 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/transform-generate":
+    post:
+      summary: Generate or tune bounded result transforms using AI
+      description: Propose a deterministic JMESPath or JSONata transform from a representative saved job result without creating a job.
+      operationId: aiTransformGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AITransformGenerateRequest"
+      responses:
+        '200':
+          description: Generated result transform
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AITransformGenerateResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/crawl-states":
     get:
       summary: List crawl states
@@ -4303,6 +4345,66 @@ components:
           "$ref": "#/components/schemas/AIExportShapeInputStats"
         shape:
           "$ref": "#/components/schemas/ExportShapeConfig"
+        explanation:
+          type: string
+        route_id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+    ResultTransformConfig:
+      type: object
+      properties:
+        expression:
+          type: string
+        language:
+          type: string
+          enum:
+          - jmespath
+          - jsonata
+    AITransformGenerateRequest:
+      type: object
+      required:
+      - job_id
+      properties:
+        job_id:
+          type: string
+          description: Representative job ID whose result file should seed the transform.
+        currentTransform:
+          "$ref": "#/components/schemas/ResultTransformConfig"
+        preferredLanguage:
+          type: string
+          enum:
+          - jmespath
+          - jsonata
+          description: Preferred transform language for the generated output.
+        instructions:
+          type: string
+          description: Optional operator guidance for the generated transform.
+    AITransformGenerateInputStats:
+      type: object
+      properties:
+        sampleRecordCount:
+          type: integer
+        fieldPathCount:
+          type: integer
+        currentTransformProvided:
+          type: boolean
+    AITransformGenerateResponse:
+      type: object
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+        inputStats:
+          "$ref": "#/components/schemas/AITransformGenerateInputStats"
+        transform:
+          "$ref": "#/components/schemas/ResultTransformConfig"
+        preview:
+          type: array
+          items: {}
         explanation:
           type: string
         route_id:

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
@@ -96,7 +97,7 @@ func (s *Server) handlePreviewTransform(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Apply transformation
-	transformedResults, transformErr := ApplyTransformation(results, req.Expression, req.Language)
+	transformedResults, transformErr := exporter.ApplyTransformation(results, req.Expression, req.Language)
 
 	resp := TransformPreviewResponse{
 		Results:     transformedResults,
@@ -173,30 +174,7 @@ func (s *Server) loadJobResults(job model.Job, limit int) ([]any, error) {
 }
 
 // ApplyTransformation applies a transformation expression to data.
-// This function is exported for use by other handlers (e.g., job_results.go).
+// This wrapper preserves existing api package call sites and tests.
 func ApplyTransformation(data []any, expression, language string) ([]any, error) {
-	if len(data) == 0 {
-		return []any{}, nil
-	}
-
-	results := make([]any, 0, len(data))
-
-	for _, item := range data {
-		var result any
-		var err error
-
-		if language == "jmespath" {
-			result, err = pipeline.ApplyJMESPath(expression, item)
-		} else {
-			result, err = pipeline.ApplyJSONata(expression, item)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, result)
-	}
-
-	return results, nil
+	return exporter.ApplyTransformation(data, expression, language)
 }

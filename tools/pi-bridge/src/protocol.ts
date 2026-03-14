@@ -5,6 +5,7 @@ export const CAPABILITY_RENDER_PROFILE_GENERATE = "render_profile.generate";
 export const CAPABILITY_PIPELINE_JS_GENERATE = "pipeline_js.generate";
 export const CAPABILITY_RESEARCH_REFINE = "research.refine";
 export const CAPABILITY_EXPORT_SHAPE = "export.shape";
+export const CAPABILITY_TRANSFORM_GENERATE = "transform.generate";
 
 export const OP_HEALTH = "health";
 export const OP_EXTRACT_PREVIEW = "extract_preview";
@@ -13,6 +14,7 @@ export const OP_GENERATE_RENDER_PROFILE = "generate_render_profile";
 export const OP_GENERATE_PIPELINE_JS = "generate_pipeline_js";
 export const OP_RESEARCH_REFINE = "research_refine";
 export const OP_EXPORT_SHAPE = "export_shape";
+export const OP_GENERATE_TRANSFORM = "generate_transform";
 
 export type BridgeOperation =
   | typeof OP_HEALTH
@@ -21,7 +23,8 @@ export type BridgeOperation =
   | typeof OP_GENERATE_RENDER_PROFILE
   | typeof OP_GENERATE_PIPELINE_JS
   | typeof OP_RESEARCH_REFINE
-  | typeof OP_EXPORT_SHAPE;
+  | typeof OP_EXPORT_SHAPE
+  | typeof OP_GENERATE_TRANSFORM;
 
 export interface BridgeRequest<TPayload = unknown> {
   id: string;
@@ -228,6 +231,34 @@ export interface ExportShapePayload {
 
 export interface ExportShapeResult {
   shape: ExportShapeConfig;
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface TransformConfig {
+  expression?: string;
+  language?: "jmespath" | "jsonata" | string;
+}
+
+export interface TransformSampleField {
+  path: string;
+  sampleValues?: string[];
+}
+
+export interface GenerateTransformPayload {
+  jobKind?: string;
+  sampleRecords?: Record<string, unknown>[];
+  sampleFields?: TransformSampleField[];
+  currentTransform?: TransformConfig;
+  preferredLanguage?: "jmespath" | "jsonata" | string;
+  instructions?: string;
+  feedback?: string;
+}
+
+export interface TransformResult {
+  transform: TransformConfig;
   explanation?: string;
   route_id?: string;
   provider?: string;

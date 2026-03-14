@@ -6,12 +6,14 @@ import type {
   GeneratePipelineJsPayload,
   GenerateRenderProfilePayload,
   GenerateTemplatePayload,
+  GenerateTransformPayload,
   HealthResult,
   PipelineJsResult,
   RenderProfileResult,
   ResearchRefinePayload,
   ResearchRefineResult,
   TemplateResult,
+  TransformResult,
 } from "./protocol.js";
 import {
   validateExportShapeResult,
@@ -20,6 +22,7 @@ import {
   validateRenderProfileResult,
   validateResearchRefineResult,
   validateTemplateResult,
+  validateTransformResult,
 } from "./validation.js";
 
 export class FixtureBackend {
@@ -213,6 +216,37 @@ export class FixtureBackend {
         },
       },
       explanation: "Deterministic fixture export shaping from pi bridge.",
+      route_id: this.firstRoute(capability),
+      provider: "fixture",
+      model: "fixture-model",
+    });
+  }
+
+  generateTransform(
+    capability: string,
+    payload: GenerateTransformPayload,
+  ): TransformResult {
+    const current = payload.currentTransform;
+    const preferredLanguage = payload.preferredLanguage?.trim();
+    const language =
+      preferredLanguage === "jmespath" || preferredLanguage === "jsonata"
+        ? preferredLanguage
+        : current?.language === "jsonata"
+          ? "jsonata"
+          : "jmespath";
+    const firstField = payload.sampleFields?.[0]?.path || "url";
+    const expression =
+      current?.expression?.trim() ||
+      (language === "jsonata"
+        ? `$.{"${firstField}": ${firstField}}`
+        : `{"${firstField}": ${firstField}}`);
+
+    return validateTransformResult({
+      transform: {
+        expression,
+        language,
+      },
+      explanation: "Deterministic fixture transform suggestion from pi bridge.",
       route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",

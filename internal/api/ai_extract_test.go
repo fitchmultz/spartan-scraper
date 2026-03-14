@@ -60,14 +60,17 @@ type fakeAutomationClient struct {
 	pipelineJSResult     piai.GeneratePipelineJSResult
 	researchRefineResult piai.ResearchRefineResult
 	exportShapeResult    piai.ExportShapeResult
+	transformResult      piai.GenerateTransformResult
 	renderProfileReq     piai.GenerateRenderProfileRequest
 	pipelineJSReq        piai.GeneratePipelineJSRequest
 	researchRefineReq    piai.ResearchRefineRequest
 	exportShapeReq       piai.ExportShapeRequest
+	transformReq         piai.GenerateTransformRequest
 	renderProfileCalls   int
 	pipelineJSCalls      int
 	researchRefineCalls  int
 	exportShapeCalls     int
+	transformCalls       int
 }
 
 func (f *fakeAIProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -119,6 +122,12 @@ func (f *fakeAutomationClient) GenerateExportShape(ctx context.Context, req piai
 	f.exportShapeCalls++
 	f.exportShapeReq = req
 	return f.exportShapeResult, nil
+}
+
+func (f *fakeAutomationClient) GenerateTransform(ctx context.Context, req piai.GenerateTransformRequest) (piai.GenerateTransformResult, error) {
+	f.transformCalls++
+	f.transformReq = req
+	return f.transformResult, nil
 }
 
 func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
@@ -796,6 +805,86 @@ func TestAIExportShapeLoadsJobResultAndReturnsShape(t *testing.T) {
 	}
 	if len(resp.Shape.NormalizedFields) != 2 || resp.Shape.NormalizedFields[0] != "field.price" {
 		t.Fatalf("unexpected shape: %#v", resp.Shape)
+	}
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
+	}
+}
+
+func TestAITransformGenerateLoadsJobResultAndReturnsTransform(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	resultDir := filepath.Join(srv.cfg.DataDir, "jobs", "job-transform")
+	if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		t.Fatalf("mkdir result dir: %v", err)
+	}
+	resultPath := filepath.Join(resultDir, "result.jsonl")
+	resultBody := "{\"url\":\"https://example.com\",\"title\":\"Example\",\"status\":200}\n{\"url\":\"https://example.com/2\",\"title\":\"Example 2\",\"status\":200}\n"
+	if err := os.WriteFile(resultPath, []byte(resultBody), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+	now := time.Now().UTC()
+	if err := srv.store.Create(context.Background(), model.Job{
+		ID:          "job-transform",
+		Kind:        model.KindCrawl,
+		Status:      model.StatusSucceeded,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		SpecVersion: 1,
+		ResultPath:  resultPath,
+	}); err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	automationClient := &fakeAutomationClient{
+		transformResult: piai.GenerateTransformResult{
+			Transform: piai.BridgeTransformConfig{
+				Expression: "{title: title, url: url}",
+				Language:   "jmespath",
+			},
+			Explanation: "Projected the title and URL for export.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	body := `{"job_id":"job-transform","preferredLanguage":"jmespath","currentTransform":{"expression":"[","language":"jmespath"},"instructions":"Project the URL and title"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/transform-generate", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if automationClient.transformCalls != 1 {
+		t.Fatalf("expected single transform call, got %d", automationClient.transformCalls)
+	}
+	if automationClient.transformReq.JobKind != string(model.KindCrawl) {
+		t.Fatalf("unexpected job kind: %q", automationClient.transformReq.JobKind)
+	}
+	if automationClient.transformReq.PreferredLanguage != "jmespath" {
+		t.Fatalf("unexpected preferred language: %q", automationClient.transformReq.PreferredLanguage)
+	}
+	if automationClient.transformReq.CurrentTransform.Expression != "[" {
+		t.Fatalf("unexpected current transform: %#v", automationClient.transformReq.CurrentTransform)
+	}
+	var resp AITransformGenerateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Transform.Language != "jmespath" || resp.Transform.Expression != "{title: title, url: url}" {
+		t.Fatalf("unexpected transform: %#v", resp.Transform)
+	}
+	if len(resp.Preview) != 2 {
+		t.Fatalf("expected preview output, got %#v", resp.Preview)
+	}
+	if !resp.InputStats.CurrentTransformProvided {
+		t.Fatalf("expected current transform indicator, got %#v", resp.InputStats)
 	}
 	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)

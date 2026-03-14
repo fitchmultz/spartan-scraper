@@ -14,6 +14,7 @@ import {
   CAPABILITY_RENDER_PROFILE_GENERATE,
   CAPABILITY_RESEARCH_REFINE,
   CAPABILITY_TEMPLATE_GENERATE,
+  CAPABILITY_TRANSFORM_GENERATE,
 } from "./protocol.js";
 
 type FakeModel = {
@@ -550,6 +551,68 @@ test("shapeExport validates bounded export shape output", async () => {
   assert.deepEqual(result.shape.topLevelFields, ["url", "title", "status"]);
   assert.deepEqual(result.shape.normalizedFields, ["field.price"]);
   assert.equal(result.shape.formatting?.markdownTitle, "Pricing Export");
+});
+
+test("generateTransform validates bounded transform output", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_TRANSFORM_GENERATE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.equal(typeof userMessage.content, "string");
+        assert.match(userMessage.content as string, /Sample records:/);
+        return createToolResponse({
+          toolName: "submit_transform",
+          arguments: {
+            transform: {
+              expression: "{title: title, url: url}",
+              language: "jmespath",
+            },
+            explanation: "Projected the high-signal fields needed for export.",
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.generateTransform(CAPABILITY_TRANSFORM_GENERATE, {
+    jobKind: "crawl",
+    sampleFields: [
+      { path: "url", sampleValues: ["https://example.com"] },
+      { path: "title", sampleValues: ["Example"] },
+    ],
+    sampleRecords: [
+      {
+        url: "https://example.com",
+        title: "Example",
+        status: 200,
+      },
+    ],
+    preferredLanguage: "jmespath",
+    instructions: "Project the URL and title for a lightweight export.",
+  });
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.provider, "openai");
+  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.transform.language, "jmespath");
+  assert.equal(result.transform.expression, "{title: title, url: url}");
 });
 
 test("generatePipelineJs sends screenshot context as multimodal user content", async () => {

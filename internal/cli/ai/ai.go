@@ -36,6 +36,7 @@ type authoringRunner interface {
 	DebugPipelineJS(ctx context.Context, req aiauthoring.PipelineJSDebugRequest) (aiauthoring.PipelineJSDebugResult, error)
 	RefineResearch(ctx context.Context, req aiauthoring.ResearchRefineRequest) (aiauthoring.ResearchRefineResult, error)
 	GenerateExportShape(ctx context.Context, req aiauthoring.ExportShapeRequest) (aiauthoring.ExportShapeResult, error)
+	GenerateTransform(ctx context.Context, req aiauthoring.TransformRequest) (aiauthoring.TransformResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -119,6 +120,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runExportShape(ctx, cfg, runner, args[1:])
+	case "transform":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runTransform(ctx, cfg, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -660,6 +668,57 @@ Options:
 	return 0
 }
 
+func runTransform(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-transform", flag.ContinueOnError)
+	jobID := fs.String("job-id", "", "Job ID whose saved results should seed the transform")
+	resultFile := fs.String("result-file", "", "Path to a result file when no local job ID is available")
+	language := fs.String("language", "", "Preferred transform language: jmespath|jsonata")
+	expression := fs.String("expression", "", "Current transform expression to tune")
+	instructions := fs.String("instructions", "", "Optional guidance for the transform")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai transform [options]
+
+Examples:
+  spartan ai transform --job-id <job-id> --language jmespath
+  spartan ai transform --job-id <job-id> --language jsonata --expression '$.{"url": url}'
+  spartan ai transform --result-file ./out/crawl.jsonl --instructions "Project the URL and title for export"
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	rawResult, err := resolveTransformInput(cfg, strings.TrimSpace(*jobID), strings.TrimSpace(*resultFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	result, err := runner.GenerateTransform(ctx, aiauthoring.TransformRequest{
+		RawResult: rawResult,
+		CurrentTransform: exporter.TransformConfig{
+			Expression: strings.TrimSpace(*expression),
+			Language:   strings.TrimSpace(*language),
+		},
+		PreferredLanguage: strings.TrimSpace(*language),
+		Instructions:      strings.TrimSpace(*instructions),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Fprint(os.Stderr, `AI authoring utilities.
 
@@ -676,6 +735,7 @@ Subcommands:
   pipeline-js-debug   Tune an existing pipeline JS script without creating a job
   research-refine     Refine an existing research result without creating a job
   export-shape        Generate or tune an export shape for recurring exports without creating a job
+  transform           Generate or tune a bounded result transform without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
@@ -687,6 +747,7 @@ Examples:
   spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
   spartan ai research-refine --job-id <research-job-id>
   spartan ai export-shape --job-id <job-id> --format md
+  spartan ai transform --job-id <job-id> --language jmespath
 `)
 }
 
@@ -888,6 +949,26 @@ func resolveExportShapeInput(cfg config.Config, jobID string, resultFile string,
 		return "", nil, "", exporter.ShapeConfig{}, err
 	}
 	return kind, data, resolvedFormat, currentShape, nil
+}
+
+func resolveTransformInput(cfg config.Config, jobID string, resultFile string) ([]byte, error) {
+	trimmedJobID := strings.TrimSpace(jobID)
+	trimmedResultFile := strings.TrimSpace(resultFile)
+	if trimmedJobID == "" && trimmedResultFile == "" {
+		return nil, fmt.Errorf("--job-id or --result-file is required")
+	}
+	if trimmedJobID != "" && trimmedResultFile != "" {
+		return nil, fmt.Errorf("--job-id and --result-file are mutually exclusive")
+	}
+	if trimmedResultFile != "" {
+		data, err := os.ReadFile(trimmedResultFile)
+		if err != nil {
+			return nil, fmt.Errorf("read result file: %w", err)
+		}
+		return data, nil
+	}
+	_, data, err := loadJobResultBytes(cfg, trimmedJobID)
+	return data, err
 }
 
 func loadJobResultBytes(cfg config.Config, jobID string) (model.Kind, []byte, error) {

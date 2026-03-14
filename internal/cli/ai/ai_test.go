@@ -30,6 +30,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSDebugReq       aiauthoring.PipelineJSDebugRequest
 	researchRefineReq        aiauthoring.ResearchRefineRequest
 	exportShapeReq           aiauthoring.ExportShapeRequest
+	transformReq             aiauthoring.TransformRequest
 	previewResult            aiauthoring.PreviewResult
 	templateResult           aiauthoring.TemplateResult
 	debugResult              aiauthoring.TemplateDebugResult
@@ -39,6 +40,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSDebugResult    aiauthoring.PipelineJSDebugResult
 	researchRefineResult     aiauthoring.ResearchRefineResult
 	exportShapeResult        aiauthoring.ExportShapeResult
+	transformResult          aiauthoring.TransformResult
 	previewErr               error
 	templateErr              error
 	debugErr                 error
@@ -48,6 +50,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSDebugErr       error
 	researchRefineErr        error
 	exportShapeErr           error
+	transformErr             error
 	previewCalled            bool
 	templateCalled           bool
 	debugCalled              bool
@@ -57,6 +60,7 @@ type fakeAuthoringRunner struct {
 	pipelineJSDebugCalled    bool
 	researchRefineCalled     bool
 	exportShapeCalled        bool
+	transformCalled          bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -111,6 +115,12 @@ func (f *fakeAuthoringRunner) GenerateExportShape(ctx context.Context, req aiaut
 	f.exportShapeCalled = true
 	f.exportShapeReq = req
 	return f.exportShapeResult, f.exportShapeErr
+}
+
+func (f *fakeAuthoringRunner) GenerateTransform(ctx context.Context, req aiauthoring.TransformRequest) (aiauthoring.TransformResult, error) {
+	f.transformCalled = true
+	f.transformReq = req
+	return f.transformResult, f.transformErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -517,5 +527,46 @@ func TestRunExportShapeLoadsShapeAndResultFile(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"shape":`) {
 		t.Fatalf("expected export shape JSON output, got %s", stdout)
+	}
+}
+
+func TestRunTransformLoadsResultFileAndForwardsCurrentTransform(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		transformResult: aiauthoring.TransformResult{
+			Transform: exporter.TransformConfig{
+				Expression: "{title: title, url: url}",
+				Language:   "jmespath",
+			},
+			Preview: []any{map[string]any{"title": "Example", "url": "https://example.com"}},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	resultPath := filepath.Join(tmpDir, "crawl.jsonl")
+	if err := os.WriteFile(resultPath, []byte("{\"url\":\"https://example.com\",\"title\":\"Example\",\"status\":200}\n"), 0o644); err != nil {
+		t.Fatalf("write result file: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"transform", "--result-file", resultPath, "--language", "jmespath", "--expression", "[", "--instructions", "Project the URL and title"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.transformCalled {
+		t.Fatal("expected transform runner to be called")
+	}
+	if runner.transformReq.PreferredLanguage != "jmespath" {
+		t.Fatalf("unexpected preferred language: %q", runner.transformReq.PreferredLanguage)
+	}
+	if runner.transformReq.CurrentTransform.Expression != "[" || runner.transformReq.CurrentTransform.Language != "jmespath" {
+		t.Fatalf("unexpected current transform: %#v", runner.transformReq.CurrentTransform)
+	}
+	if runner.transformReq.Instructions != "Project the URL and title" {
+		t.Fatalf("unexpected instructions: %q", runner.transformReq.Instructions)
+	}
+	if !strings.Contains(stdout, `"transform":`) {
+		t.Fatalf("expected transform JSON output, got %s", stdout)
 	}
 }

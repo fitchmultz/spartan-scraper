@@ -11,11 +11,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Extend bounded AI authoring to more saved result-artifact workflows now that direct image support, export shaping, and proxy-pool runtime guarantees are stable across API, Web, CLI, and MCP.
+- Add persistent transform configuration to export schedules across API, Web UI, CLI, and MCP so saved transformed exports and recurring exports share one deterministic contract.
 
 ## Next
 
-- Review which persisted-result workflows should gain the next bounded multimodal authoring passes so future contract changes can be grouped and regenerated together.
+- Group the next saved-result authoring contract changes around result-derived export workflows that can reuse the new transform helpers without reintroducing ad hoc interface drift.
 
 ## Later
 
