@@ -37,6 +37,8 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 )
 
+const maxAIAuthoringRequestBodySize int64 = 8 * 1024 * 1024
+
 // AIExtractPreviewRequest for POST /v1/ai/extract-preview
 type AIExtractPreviewRequest struct {
 	URL           string                   `json:"url"`
@@ -45,6 +47,7 @@ type AIExtractPreviewRequest struct {
 	Prompt        string                   `json:"prompt,omitempty"`
 	Schema        map[string]interface{}   `json:"schema,omitempty"`
 	Fields        []string                 `json:"fields,omitempty"`
+	Images        []extract.AIImageInput   `json:"images,omitempty"`
 	Headless      bool                     `json:"headless,omitempty"`
 	UsePlaywright bool                     `json:"playwright,omitempty"`
 	Visual        bool                     `json:"visual,omitempty"`
@@ -65,13 +68,14 @@ type AIExtractPreviewResponse struct {
 
 // AIExtractTemplateGenerateRequest for POST /v1/ai/template-generate
 type AIExtractTemplateGenerateRequest struct {
-	URL           string   `json:"url,omitempty"`
-	HTML          string   `json:"html,omitempty"`
-	Description   string   `json:"description"`
-	SampleFields  []string `json:"sample_fields,omitempty"`
-	Headless      bool     `json:"headless,omitempty"`
-	UsePlaywright bool     `json:"playwright,omitempty"`
-	Visual        bool     `json:"visual,omitempty"`
+	URL           string                 `json:"url,omitempty"`
+	HTML          string                 `json:"html,omitempty"`
+	Description   string                 `json:"description"`
+	SampleFields  []string               `json:"sample_fields,omitempty"`
+	Images        []extract.AIImageInput `json:"images,omitempty"`
+	Headless      bool                   `json:"headless,omitempty"`
+	UsePlaywright bool                   `json:"playwright,omitempty"`
+	Visual        bool                   `json:"visual,omitempty"`
 }
 
 // AIExtractTemplateGenerateResponse for template generation
@@ -85,13 +89,14 @@ type AIExtractTemplateGenerateResponse struct {
 }
 
 type AIExtractTemplateDebugRequest struct {
-	URL           string           `json:"url,omitempty"`
-	HTML          string           `json:"html,omitempty"`
-	Template      extract.Template `json:"template"`
-	Instructions  string           `json:"instructions,omitempty"`
-	Headless      bool             `json:"headless,omitempty"`
-	UsePlaywright bool             `json:"playwright,omitempty"`
-	Visual        bool             `json:"visual,omitempty"`
+	URL           string                 `json:"url,omitempty"`
+	HTML          string                 `json:"html,omitempty"`
+	Template      extract.Template       `json:"template"`
+	Instructions  string                 `json:"instructions,omitempty"`
+	Images        []extract.AIImageInput `json:"images,omitempty"`
+	Headless      bool                   `json:"headless,omitempty"`
+	UsePlaywright bool                   `json:"playwright,omitempty"`
+	Visual        bool                   `json:"visual,omitempty"`
 }
 
 type AIExtractTemplateDebugResponse struct {
@@ -106,13 +111,14 @@ type AIExtractTemplateDebugResponse struct {
 }
 
 type AIRenderProfileGenerateRequest struct {
-	URL           string   `json:"url"`
-	Name          string   `json:"name,omitempty"`
-	HostPatterns  []string `json:"host_patterns,omitempty"`
-	Instructions  string   `json:"instructions"`
-	Headless      bool     `json:"headless,omitempty"`
-	UsePlaywright bool     `json:"playwright,omitempty"`
-	Visual        bool     `json:"visual,omitempty"`
+	URL           string                 `json:"url"`
+	Name          string                 `json:"name,omitempty"`
+	HostPatterns  []string               `json:"host_patterns,omitempty"`
+	Instructions  string                 `json:"instructions"`
+	Images        []extract.AIImageInput `json:"images,omitempty"`
+	Headless      bool                   `json:"headless,omitempty"`
+	UsePlaywright bool                   `json:"playwright,omitempty"`
+	Visual        bool                   `json:"visual,omitempty"`
 }
 
 type AIRenderProfileGenerateResponse struct {
@@ -125,12 +131,13 @@ type AIRenderProfileGenerateResponse struct {
 }
 
 type AIRenderProfileDebugRequest struct {
-	URL           string              `json:"url"`
-	Profile       fetch.RenderProfile `json:"profile"`
-	Instructions  string              `json:"instructions,omitempty"`
-	Headless      bool                `json:"headless,omitempty"`
-	UsePlaywright bool                `json:"playwright,omitempty"`
-	Visual        bool                `json:"visual,omitempty"`
+	URL           string                 `json:"url"`
+	Profile       fetch.RenderProfile    `json:"profile"`
+	Instructions  string                 `json:"instructions,omitempty"`
+	Images        []extract.AIImageInput `json:"images,omitempty"`
+	Headless      bool                   `json:"headless,omitempty"`
+	UsePlaywright bool                   `json:"playwright,omitempty"`
+	Visual        bool                   `json:"visual,omitempty"`
 }
 
 type AIRenderProfileDebugResponse struct {
@@ -147,13 +154,14 @@ type AIRenderProfileDebugResponse struct {
 }
 
 type AIPipelineJSGenerateRequest struct {
-	URL           string   `json:"url"`
-	Name          string   `json:"name,omitempty"`
-	HostPatterns  []string `json:"host_patterns,omitempty"`
-	Instructions  string   `json:"instructions"`
-	Headless      bool     `json:"headless,omitempty"`
-	UsePlaywright bool     `json:"playwright,omitempty"`
-	Visual        bool     `json:"visual,omitempty"`
+	URL           string                 `json:"url"`
+	Name          string                 `json:"name,omitempty"`
+	HostPatterns  []string               `json:"host_patterns,omitempty"`
+	Instructions  string                 `json:"instructions"`
+	Images        []extract.AIImageInput `json:"images,omitempty"`
+	Headless      bool                   `json:"headless,omitempty"`
+	UsePlaywright bool                   `json:"playwright,omitempty"`
+	Visual        bool                   `json:"visual,omitempty"`
 }
 
 type AIPipelineJSGenerateResponse struct {
@@ -169,6 +177,7 @@ type AIPipelineJSDebugRequest struct {
 	URL           string                  `json:"url"`
 	Script        pipeline.JSTargetScript `json:"script"`
 	Instructions  string                  `json:"instructions,omitempty"`
+	Images        []extract.AIImageInput  `json:"images,omitempty"`
 	Headless      bool                    `json:"headless,omitempty"`
 	UsePlaywright bool                    `json:"playwright,omitempty"`
 	Visual        bool                    `json:"visual,omitempty"`
@@ -227,7 +236,7 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req AIExtractPreviewRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -239,6 +248,7 @@ func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) 
 		Prompt:        req.Prompt,
 		Schema:        req.Schema,
 		Fields:        req.Fields,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -272,7 +282,7 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 	}
 
 	var req AIExtractTemplateGenerateRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -282,6 +292,7 @@ func (s *Server) handleAITemplateGenerate(w http.ResponseWriter, r *http.Request
 		HTML:          req.HTML,
 		Description:   req.Description,
 		SampleFields:  req.SampleFields,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -311,7 +322,7 @@ func (s *Server) handleAITemplateDebug(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req AIExtractTemplateDebugRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -321,6 +332,7 @@ func (s *Server) handleAITemplateDebug(w http.ResponseWriter, r *http.Request) {
 		HTML:          req.HTML,
 		Template:      req.Template,
 		Instructions:  req.Instructions,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -352,7 +364,7 @@ func (s *Server) handleAIRenderProfileGenerate(w http.ResponseWriter, r *http.Re
 	}
 
 	var req AIRenderProfileGenerateRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -362,6 +374,7 @@ func (s *Server) handleAIRenderProfileGenerate(w http.ResponseWriter, r *http.Re
 		Name:          req.Name,
 		HostPatterns:  req.HostPatterns,
 		Instructions:  req.Instructions,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -391,7 +404,7 @@ func (s *Server) handleAIPipelineJSGenerate(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req AIPipelineJSGenerateRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -401,6 +414,7 @@ func (s *Server) handleAIPipelineJSGenerate(w http.ResponseWriter, r *http.Reque
 		Name:          req.Name,
 		HostPatterns:  req.HostPatterns,
 		Instructions:  req.Instructions,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -430,7 +444,7 @@ func (s *Server) handleAIRenderProfileDebug(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req AIRenderProfileDebugRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -439,6 +453,7 @@ func (s *Server) handleAIRenderProfileDebug(w http.ResponseWriter, r *http.Reque
 		URL:           req.URL,
 		Profile:       req.Profile,
 		Instructions:  req.Instructions,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,
@@ -472,7 +487,7 @@ func (s *Server) handleAIPipelineJSDebug(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req AIPipelineJSDebugRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
+	if err := decodeJSONBodyWithLimit(w, r, &req, maxAIAuthoringRequestBodySize); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -481,6 +496,7 @@ func (s *Server) handleAIPipelineJSDebug(w http.ResponseWriter, r *http.Request)
 		URL:           req.URL,
 		Script:        req.Script,
 		Instructions:  req.Instructions,
+		Images:        req.Images,
 		Headless:      req.Headless,
 		UsePlaywright: req.UsePlaywright,
 		Visual:        req.Visual,

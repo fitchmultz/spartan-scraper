@@ -210,7 +210,7 @@ spartan ai research-refine [flags]
 spartan ai export-shape [flags]
 ```
 
-These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs.
+These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs. Preview/template/render-profile/pipeline authoring commands also accept repeatable `--image-file <path>` flags for request-scoped reference images. Those attachments are bounded visual context only and are not persisted as job artifacts.
 
 Preview flags:
 
@@ -219,6 +219,7 @@ Preview flags:
 - `--prompt "<instructions>"` for natural-language mode
 - `--schema '{"field":"example"}'` for schema-guided mode
 - `--fields "field1,field2"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
@@ -229,6 +230,7 @@ Template-generation flags:
 - `--url <url>` or `--html-file <path>` / `--html '<html>...'`
 - `--description "<what to extract>"`
 - `--sample-fields "field1,field2"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
@@ -239,6 +241,7 @@ Template-debug flags:
 - `--url <url>` or `--html-file <path>` / `--html '<html>...'`
 - `--template-name <saved-template>` or `--template-file <path>`
 - `--instructions "<repair guidance>"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
@@ -250,6 +253,7 @@ Render-profile flags:
 - `--name <profile-name>`
 - `--host-patterns "example.com,*.example.com"`
 - `--instructions "<fetch-behavior guidance>"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
@@ -260,6 +264,7 @@ Render-profile-debug flags:
 - `--url <url>`
 - `--profile-name <saved-profile>` or `--profile-file <path>`
 - `--instructions "<tuning guidance>"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context for tuning
@@ -271,6 +276,7 @@ Pipeline-JS flags:
 - `--name <script-name>`
 - `--host-patterns "example.com,*.example.com"`
 - `--instructions "<browser-automation guidance>"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
@@ -281,6 +287,7 @@ Pipeline-JS-debug flags:
 - `--url <url>`
 - `--script-name <saved-script>` or `--script-file <path>`
 - `--instructions "<tuning guidance>"`
+- `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
 - `--visual` to capture a screenshot and include multimodal visual context for tuning
@@ -317,6 +324,12 @@ spartan ai preview \
   --html-file ./fixtures/product.html \
   --mode schema_guided \
   --schema '{"title":"Example","price":"$19.99"}'
+
+spartan ai template \
+  --url https://example.com/product \
+  --description "Extract the title and price" \
+  --image-file ./fixtures/product-hero.png \
+  --image-file ./fixtures/product-gallery.png
 
 spartan ai template \
   --url https://example.com/product \
@@ -655,7 +668,7 @@ Important endpoint groups:
 - `/v1/auth/oauth/*`
 - `/v1/ws`
 
-Bounded AI authoring endpoints live under `/v1/ai/*`:
+Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts:
 
 - `/v1/ai/extract-preview`
 - `/v1/ai/template-generate`

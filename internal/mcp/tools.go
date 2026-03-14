@@ -22,37 +22,37 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "ai_extract_preview",
 			Description: "Preview AI-powered extraction against fetched or pasted HTML without creating a job",
-			InputSchema: schema(nil, map[string]string{"url": "string", "html": "string", "mode": "string", "prompt": "string", "schema": "object", "fields": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(nil, map[string]string{"url": "string", "html": "string", "mode": "string", "prompt": "string", "schema": "object", "fields": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_template_generate",
 			Description: "Generate an extraction template from fetched or pasted HTML without creating a job",
-			InputSchema: schema(map[string]string{"description": "string"}, map[string]string{"url": "string", "html": "string", "sampleFields": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"description": "string"}, map[string]string{"url": "string", "html": "string", "sampleFields": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_template_debug",
 			Description: "Debug and repair an extraction template against fetched or pasted HTML without creating a job",
-			InputSchema: schema(map[string]string{"template": "object"}, map[string]string{"url": "string", "html": "string", "instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"template": "object"}, map[string]string{"url": "string", "html": "string", "instructions": "string", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_render_profile_generate",
 			Description: "Generate a render profile for a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_render_profile_debug",
 			Description: "Debug and tune an existing render profile against a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "profile": "object"}, map[string]string{"instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string", "profile": "object"}, map[string]string{"instructions": "string", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_pipeline_js_generate",
 			Description: "Generate a pipeline JS script for a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_pipeline_js_debug",
 			Description: "Debug and tune an existing pipeline JS script against a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "script": "object"}, map[string]string{"instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string", "script": "object"}, map[string]string{"instructions": "string", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_research_refine",

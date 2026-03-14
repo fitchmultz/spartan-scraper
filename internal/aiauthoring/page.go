@@ -28,13 +28,16 @@ type pageContext struct {
 	JSHeaviness       fetch.JSHeaviness
 }
 
-func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html string, headless bool, usePlaywright bool, visual bool) (pageContext, error) {
+func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html string, directImages []extract.AIImageInput, headless bool, usePlaywright bool, visual bool) (pageContext, error) {
 	if strings.TrimSpace(html) != "" {
 		trimmedURL := strings.TrimSpace(pageURL)
+		images := appendAIImages(directImages)
 		return pageContext{
-			URL:         trimmedURL,
-			HTML:        html,
-			JSHeaviness: fetch.DetectJSHeaviness(html),
+			URL:               trimmedURL,
+			HTML:              html,
+			Images:            images,
+			VisualContextUsed: len(images) > 0,
+			JSHeaviness:       fetch.DetectJSHeaviness(html),
 		}, nil
 	}
 
@@ -46,6 +49,7 @@ func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html s
 	ctxResult := pageContext{
 		URL:         strings.TrimSpace(pageURL),
 		HTML:        result.HTML,
+		Images:      appendAIImages(directImages),
 		FetchStatus: result.Status,
 		FetchEngine: string(result.Engine),
 		JSHeaviness: fetch.DetectJSHeaviness(result.HTML),
@@ -56,10 +60,10 @@ func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html s
 			return pageContext{}, err
 		}
 		if image != nil {
-			ctxResult.Images = []extract.AIImageInput{*image}
-			ctxResult.VisualContextUsed = true
+			ctxResult.Images = appendAIImages(ctxResult.Images, []extract.AIImageInput{*image})
 		}
 	}
+	ctxResult.VisualContextUsed = len(ctxResult.Images) > 0
 	return ctxResult, nil
 }
 

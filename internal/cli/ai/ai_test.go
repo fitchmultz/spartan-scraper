@@ -189,6 +189,33 @@ func TestRunPreviewCallsRunnerAndPrintsJSON(t *testing.T) {
 	}
 }
 
+func TestRunPreviewLoadsImageFiles(t *testing.T) {
+	runner := &fakeAuthoringRunner{previewResult: aiauthoring.PreviewResult{Confidence: 0.9}}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	imagePath := filepath.Join(tmpDir, "ref.png")
+	if err := os.WriteFile(imagePath, []byte("fake"), 0o644); err != nil {
+		t.Fatalf("write image file: %v", err)
+	}
+
+	code, stderr := captureOutput(t, &os.Stderr, func() int {
+		return RunAI(context.Background(), config.Config{}, []string{"preview", "--html", "<html><h1>Example</h1></html>", "--prompt", "Extract title", "--image-file", imagePath})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr)
+	}
+	if len(runner.previewReq.Images) != 1 {
+		t.Fatalf("expected single image, got %#v", runner.previewReq.Images)
+	}
+	if runner.previewReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("unexpected image mime type: %q", runner.previewReq.Images[0].MimeType)
+	}
+	if runner.previewReq.Images[0].Data != "ZmFrZQ==" {
+		t.Fatalf("unexpected image data: %q", runner.previewReq.Images[0].Data)
+	}
+}
+
 func TestRunTemplateReadsHTMLFileAndWritesOutputFile(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		templateResult: aiauthoring.TemplateResult{

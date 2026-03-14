@@ -6,7 +6,9 @@ import {
   type AiExtractTemplateDebugResponse,
   type Template,
 } from "../api";
+import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AITemplateDebuggerProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ interface DebugState {
   url: string;
   html: string;
   instructions: string;
+  images: AttachedAIImage[];
   headless: boolean;
   playwright: boolean;
   visual: boolean;
@@ -37,6 +40,7 @@ function createInitialState(): DebugState {
     url: "",
     html: "",
     instructions: "",
+    images: [],
     headless: false,
     playwright: false,
     visual: false,
@@ -135,6 +139,9 @@ export function AITemplateDebugger({
           template,
           ...(state.instructions.trim()
             ? { instructions: state.instructions.trim() }
+            : {}),
+          ...(state.images.length > 0
+            ? { images: toAIImagePayloads(state.images) }
             : {}),
           ...(state.source === "url"
             ? {
@@ -329,6 +336,12 @@ export function AITemplateDebugger({
                 />
               </div>
             )}
+
+            <AIImageAttachments
+              images={state.images}
+              onChange={(images) => setState((prev) => ({ ...prev, images }))}
+              disabled={state.isLoading || state.isSaving}
+            />
 
             <div className="form-group">
               <label

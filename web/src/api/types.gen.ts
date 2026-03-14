@@ -230,6 +230,20 @@ export type AiExtractOptions = {
 };
 
 /**
+ * Ephemeral operator-supplied image context for bounded AI authoring requests. These images are used only for the current request and are not persisted as job artifacts.
+ */
+export type AiImageInput = {
+    /**
+     * Base64-encoded image payload
+     */
+    data: string;
+    /**
+     * Image MIME type
+     */
+    mime_type: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+};
+
+/**
  * Request for AI extraction preview. Provide either a URL to fetch or raw HTML directly.
  */
 export type AiExtractPreviewRequest = {
@@ -259,6 +273,10 @@ export type AiExtractPreviewRequest = {
      * Specific fields to extract
      */
     fields?: Array<string>;
+    /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
     /**
      * Use headless browser to fetch content
      */
@@ -312,7 +330,7 @@ export type AiExtractPreviewResponse = {
      */
     cached?: boolean;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
 };
@@ -356,6 +374,10 @@ export type AiExtractTemplateGenerateRequest = {
      */
     sample_fields?: Array<string>;
     /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
+    /**
      * Use headless browser to fetch content
      */
     headless?: boolean;
@@ -391,7 +413,7 @@ export type AiExtractTemplateGenerateResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
 };
@@ -413,6 +435,10 @@ export type AiExtractTemplateDebugRequest = {
      * Optional operator guidance for the repair suggestion
      */
     instructions?: string;
+    /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
     /**
      * Use headless browser to fetch content
      */
@@ -459,7 +485,7 @@ export type AiExtractTemplateDebugResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
 };
@@ -484,6 +510,10 @@ export type AiRenderProfileGenerateRequest = {
      * Operator guidance for the generated render profile
      */
     instructions: string;
+    /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
     /**
      * Use headless browser to fetch content
      */
@@ -520,7 +550,7 @@ export type AiRenderProfileGenerateResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
 };
@@ -538,6 +568,10 @@ export type AiRenderProfileDebugRequest = {
      * Optional operator guidance for tuning the profile
      */
     instructions?: string;
+    /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
     /**
      * Use headless browser to fetch the baseline page before tuning
      */
@@ -578,7 +612,7 @@ export type AiRenderProfileDebugResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
     /**
@@ -616,6 +650,10 @@ export type AiPipelineJsGenerateRequest = {
      */
     instructions: string;
     /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
+    /**
      * Use headless browser to fetch content
      */
     headless?: boolean;
@@ -651,7 +689,7 @@ export type AiPipelineJsGenerateResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
 };
@@ -669,6 +707,10 @@ export type AiPipelineJsDebugRequest = {
      * Optional operator guidance for tuning the script
      */
     instructions?: string;
+    /**
+     * Optional operator-supplied image context. These images are request-scoped and not persisted.
+     */
+    images?: Array<AiImageInput>;
     /**
      * Use headless browser to fetch the baseline page before tuning
      */
@@ -709,7 +751,7 @@ export type AiPipelineJsDebugResponse = {
      */
     model?: string;
     /**
-     * Whether screenshot-based visual context was included in the AI request
+     * Whether image-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
     /**

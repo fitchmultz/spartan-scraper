@@ -3,14 +3,18 @@ package ai
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
+	commoncli "github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -134,6 +138,8 @@ func runPreview(ctx context.Context, runner authoringRunner, args []string) int 
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -176,6 +182,12 @@ Options:
 		}
 	}
 
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
 	result, err := runner.Preview(ctx, aiauthoring.PreviewRequest{
 		URL:           strings.TrimSpace(*url),
 		HTML:          htmlValue,
@@ -183,6 +195,7 @@ Options:
 		Prompt:        strings.TrimSpace(*prompt),
 		Schema:        schema,
 		Fields:        splitCSV(*fields),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -208,6 +221,8 @@ func runTemplateGenerate(ctx context.Context, runner authoringRunner, args []str
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -231,12 +246,18 @@ Options:
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.GenerateTemplate(ctx, aiauthoring.TemplateRequest{
 		URL:           strings.TrimSpace(*url),
 		HTML:          htmlValue,
 		Description:   strings.TrimSpace(*description),
 		SampleFields:  splitCSV(*sampleFields),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -263,6 +284,8 @@ func runTemplateDebug(ctx context.Context, cfg config.Config, runner authoringRu
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -290,12 +313,18 @@ Options:
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.DebugTemplate(ctx, aiauthoring.TemplateDebugRequest{
 		URL:           strings.TrimSpace(*url),
 		HTML:          htmlValue,
 		Template:      template,
 		Instructions:  strings.TrimSpace(*instructions),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -320,6 +349,8 @@ func runRenderProfile(ctx context.Context, runner authoringRunner, args []string
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -336,12 +367,18 @@ Options:
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.GenerateRenderProfile(ctx, aiauthoring.RenderProfileRequest{
 		URL:           strings.TrimSpace(*url),
 		Name:          strings.TrimSpace(*name),
 		HostPatterns:  splitCSV(*hostPatterns),
 		Instructions:  strings.TrimSpace(*instructions),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -366,6 +403,8 @@ func runPipelineJS(ctx context.Context, runner authoringRunner, args []string) i
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -382,12 +421,18 @@ Options:
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.GeneratePipelineJS(ctx, aiauthoring.PipelineJSRequest{
 		URL:           strings.TrimSpace(*url),
 		Name:          strings.TrimSpace(*name),
 		HostPatterns:  splitCSV(*hostPatterns),
 		Instructions:  strings.TrimSpace(*instructions),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -412,6 +457,8 @@ func runRenderProfileDebug(ctx context.Context, cfg config.Config, runner author
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the baseline page")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the baseline page")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -434,11 +481,17 @@ Options:
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.DebugRenderProfile(ctx, aiauthoring.RenderProfileDebugRequest{
 		URL:           strings.TrimSpace(*url),
 		Profile:       profile,
 		Instructions:  strings.TrimSpace(*instructions),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -463,6 +516,8 @@ func runPipelineJSDebug(ctx context.Context, cfg config.Config, runner authoring
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the baseline page")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the baseline page")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
+	var imageFiles commoncli.StringSliceFlag
+	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
 	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
@@ -485,11 +540,17 @@ Options:
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	images, err := loadAIImageFiles([]string(imageFiles))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	result, err := runner.DebugPipelineJS(ctx, aiauthoring.PipelineJSDebugRequest{
 		URL:           strings.TrimSpace(*url),
 		Script:        script,
 		Instructions:  strings.TrimSpace(*instructions),
+		Images:        images,
 		Headless:      *headless,
 		UsePlaywright: *playwright,
 		Visual:        *visual,
@@ -983,6 +1044,49 @@ func splitCSV(raw string) []string {
 		return nil
 	}
 	return out
+}
+
+func loadAIImageFiles(paths []string) ([]extract.AIImageInput, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	images := make([]extract.AIImageInput, 0, len(paths))
+	for _, rawPath := range paths {
+		path := strings.TrimSpace(rawPath)
+		if path == "" {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read image file %q: %w", path, err)
+		}
+		mimeType := detectAIImageMimeType(path, data)
+		images = append(images, extract.AIImageInput{
+			Data:     base64.StdEncoding.EncodeToString(data),
+			MimeType: mimeType,
+		})
+	}
+	if len(images) == 0 {
+		return nil, nil
+	}
+	return images, nil
+}
+
+func detectAIImageMimeType(path string, data []byte) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	case ".gif":
+		return "image/gif"
+	case ".png":
+		return "image/png"
+	}
+	if detected := http.DetectContentType(data); strings.HasPrefix(detected, "image/") {
+		return detected
+	}
+	return "application/octet-stream"
 }
 
 func writeJSONResult(v interface{}, outPath string) error {

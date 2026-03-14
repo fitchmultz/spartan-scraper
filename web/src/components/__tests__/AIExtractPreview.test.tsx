@@ -119,6 +119,11 @@ describe("AIExtractPreview", () => {
     fireEvent.change(screen.getByLabelText(/specific fields/i), {
       target: { value: "title, price, metadata" },
     });
+    const image = new File(["fake"], "preview.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("preview.png");
     fireEvent.change(screen.getByLabelText(/extraction instructions/i), {
       target: { value: "Extract the main product facts" },
     });
@@ -135,6 +140,7 @@ describe("AIExtractPreview", () => {
           mode: "natural_language",
           prompt: "Extract the main product facts",
           fields: ["title", "price", "metadata"],
+          images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
           headless: true,
           playwright: true,
           visual: true,

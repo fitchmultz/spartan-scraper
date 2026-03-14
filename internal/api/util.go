@@ -133,13 +133,20 @@ func isJSONContentType(contentType string) bool {
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
+	return decodeJSONBodyWithLimit(w, r, dst, maxRequestBodySize)
+}
+
+func decodeJSONBodyWithLimit(w http.ResponseWriter, r *http.Request, dst any, maxBytes int64) error {
 	if !isJSONContentType(r.Header.Get("Content-Type")) {
 		return apperrors.UnsupportedMediaType("content-type must be application/json")
 	}
-	if r.ContentLength > maxRequestBodySize {
+	if maxBytes <= 0 {
+		maxBytes = maxRequestBodySize
+	}
+	if r.ContentLength > maxBytes {
 		return apperrors.RequestEntityTooLarge("request body too large")
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {

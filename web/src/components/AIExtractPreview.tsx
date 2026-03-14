@@ -5,7 +5,9 @@ import {
   type AiExtractPreviewResponse,
   type FieldValue,
 } from "../api";
+import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 type PreviewSource = "url" | "html";
 type PreviewMode = "natural_language" | "schema_guided";
@@ -24,6 +26,7 @@ interface PreviewState {
   prompt: string;
   schemaText: string;
   fields: string;
+  images: AttachedAIImage[];
   headless: boolean;
   playwright: boolean;
   visual: boolean;
@@ -50,6 +53,7 @@ function createInitialState(initialUrl?: string): PreviewState {
     prompt: "",
     schemaText: SCHEMA_GUIDED_PLACEHOLDER,
     fields: "",
+    images: [],
     headless: false,
     playwright: false,
     visual: false,
@@ -238,6 +242,9 @@ export function AIExtractPreview({
               schema: JSON.parse(state.schemaText) as Record<string, unknown>,
             }),
         ...(trimmedFields.length > 0 ? { fields: trimmedFields } : {}),
+        ...(state.images.length > 0
+          ? { images: toAIImagePayloads(state.images) }
+          : {}),
         ...(state.source === "url"
           ? {
               headless: state.headless,
@@ -395,6 +402,17 @@ export function AIExtractPreview({
                 </p>
               </div>
             )}
+
+            <AIImageAttachments
+              images={state.images}
+              onChange={(images) =>
+                setState((prev) => ({
+                  ...prev,
+                  images,
+                }))
+              }
+              disabled={state.isLoading}
+            />
 
             <div className="form-group">
               <span className="form-label">Extraction Mode</span>

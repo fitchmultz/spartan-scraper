@@ -3685,6 +3685,24 @@ components:
           type: boolean
           default: true
           description: Use cached results to reduce API costs
+    AIImageInput:
+      type: object
+      description: Ephemeral operator-supplied image context for bounded AI authoring requests. These images are used only for the current request and are not persisted as job artifacts.
+      required:
+      - data
+      - mime_type
+      properties:
+        data:
+          type: string
+          description: Base64-encoded image payload
+        mime_type:
+          type: string
+          enum:
+          - image/png
+          - image/jpeg
+          - image/webp
+          - image/gif
+          description: Image MIME type
     AIExtractPreviewRequest:
       type: object
       description: Request for AI extraction preview. Provide either a URL to fetch or raw HTML directly.
@@ -3713,6 +3731,11 @@ components:
           items:
             type: string
           description: Specific fields to extract
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch content
@@ -3756,7 +3779,7 @@ components:
           description: Whether the result was served from cache
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
     FieldValue:
       type: object
       description: A field value with source information
@@ -3799,6 +3822,11 @@ components:
           items:
             type: string
           description: Example fields that should be extracted
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch content
@@ -3828,7 +3856,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
     AIExtractTemplateDebugRequest:
       type: object
       description: Request for AI template debugging. Provide either a URL to fetch or raw HTML directly.
@@ -3847,6 +3875,11 @@ components:
         instructions:
           type: string
           description: Optional operator guidance for the repair suggestion
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch content
@@ -3886,7 +3919,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
     AIRenderProfileGenerateRequest:
       type: object
       description: Request for AI render profile generation from a live URL.
@@ -3909,6 +3942,11 @@ components:
         instructions:
           type: string
           description: Operator guidance for the generated render profile
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch content
@@ -3938,7 +3976,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
     AIRenderProfileDebugRequest:
       type: object
       description: Request for AI render profile debugging against a live URL.
@@ -3955,6 +3993,11 @@ components:
         instructions:
           type: string
           description: Optional operator guidance for tuning the profile
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch the baseline page before tuning
@@ -3989,7 +4032,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
         recheck_status:
           type: integer
           description: HTTP status observed while rechecking the current render profile
@@ -4021,6 +4064,11 @@ components:
         instructions:
           type: string
           description: Operator guidance for the generated pipeline JS script
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch content
@@ -4050,7 +4098,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
     AIPipelineJSDebugRequest:
       type: object
       description: Request for AI pipeline JS debugging against a live URL.
@@ -4067,6 +4115,11 @@ components:
         instructions:
           type: string
           description: Optional operator guidance for tuning the script
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AIImageInput"
+          description: Optional operator-supplied image context. These images are request-scoped and not persisted.
         headless:
           type: boolean
           description: Use headless browser to fetch the baseline page before tuning
@@ -4101,7 +4154,7 @@ components:
           description: Model selected by the pi route that handled the request
         visual_context_used:
           type: boolean
-          description: Whether screenshot-based visual context was included in the AI request
+          description: Whether image-based visual context was included in the AI request
         recheck_status:
           type: integer
           description: HTTP status observed while rechecking the current pipeline JS script

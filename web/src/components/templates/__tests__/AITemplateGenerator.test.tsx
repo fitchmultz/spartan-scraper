@@ -172,6 +172,11 @@ describe("AITemplateGenerator", () => {
     fireEvent.change(fieldsInput, {
       target: { value: "title, price, rating" },
     });
+    const image = new File(["fake"], "template.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("template.png");
 
     const generateButton = screen.getByRole("button", {
       name: /generate template/i,
@@ -185,6 +190,7 @@ describe("AITemplateGenerator", () => {
           url: "https://example.com/products",
           description: "Extract product information",
           sample_fields: ["title", "price", "rating"],
+          images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
           headless: false,
           visual: false,
         },

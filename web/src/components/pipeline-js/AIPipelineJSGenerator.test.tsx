@@ -63,6 +63,11 @@ describe("AIPipelineJSGenerator", () => {
         value: "Wait for the main dashboard and reset scroll position",
       },
     });
+    const image = new File(["fake"], "script.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("script.png");
     fireEvent.click(screen.getByLabelText(/include screenshot context/i));
     fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
 
@@ -74,6 +79,7 @@ describe("AIPipelineJSGenerator", () => {
           name: "example-app",
           host_patterns: ["example.com"],
           instructions: "Wait for the main dashboard and reset scroll position",
+          images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
           headless: true,
           playwright: false,
           visual: true,

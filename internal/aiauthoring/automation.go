@@ -23,6 +23,7 @@ type RenderProfileRequest struct {
 	Name          string
 	HostPatterns  []string
 	Instructions  string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -41,6 +42,7 @@ type RenderProfileDebugRequest struct {
 	URL           string
 	Profile       fetch.RenderProfile
 	Instructions  string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -64,6 +66,7 @@ type PipelineJSRequest struct {
 	Name          string
 	HostPatterns  []string
 	Instructions  string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -82,6 +85,7 @@ type PipelineJSDebugRequest struct {
 	URL           string
 	Script        pipeline.JSTargetScript
 	Instructions  string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -122,11 +126,15 @@ func (s *Service) GenerateRenderProfile(ctx context.Context, req RenderProfileRe
 	if err != nil {
 		return RenderProfileResult{}, err
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return RenderProfileResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	page, err := s.resolvePageContext(ctx, req.URL, "", req.Headless, req.UsePlaywright, req.Visual)
+	page, err := s.resolvePageContext(ctx, req.URL, "", images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return RenderProfileResult{}, err
 	}
@@ -164,11 +172,15 @@ func (s *Service) DebugRenderProfile(ctx context.Context, req RenderProfileDebug
 	if err := fetch.ValidateRenderProfile(req.Profile); err != nil {
 		return RenderProfileDebugResult{}, err
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return RenderProfileDebugResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	baselinePage, err := s.resolvePageContext(ctx, req.URL, "", req.Headless, req.UsePlaywright, req.Visual)
+	baselinePage, err := s.resolvePageContext(ctx, req.URL, "", images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return RenderProfileDebugResult{}, err
 	}
@@ -225,11 +237,15 @@ func (s *Service) GeneratePipelineJS(ctx context.Context, req PipelineJSRequest)
 	if err != nil {
 		return PipelineJSResult{}, err
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return PipelineJSResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	page, err := s.resolvePageContext(ctx, req.URL, "", req.Headless, req.UsePlaywright, req.Visual)
+	page, err := s.resolvePageContext(ctx, req.URL, "", images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return PipelineJSResult{}, err
 	}
@@ -267,11 +283,15 @@ func (s *Service) DebugPipelineJS(ctx context.Context, req PipelineJSDebugReques
 	if err := pipeline.ValidateJSTargetScript(req.Script); err != nil {
 		return PipelineJSDebugResult{}, err
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return PipelineJSDebugResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	baselinePage, err := s.resolvePageContext(ctx, req.URL, "", req.Headless, req.UsePlaywright, req.Visual)
+	baselinePage, err := s.resolvePageContext(ctx, req.URL, "", images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return PipelineJSDebugResult{}, err
 	}

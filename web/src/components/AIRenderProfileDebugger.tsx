@@ -6,8 +6,10 @@ import {
   type AiRenderProfileDebugResponse,
   type RenderProfile,
 } from "../api";
+import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIRenderProfileDebuggerProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ interface AIRenderProfileDebuggerProps {
 interface DebugState {
   url: string;
   instructions: string;
+  images: AttachedAIImage[];
   headless: boolean;
   playwright: boolean;
   visual: boolean;
@@ -32,6 +35,7 @@ function createInitialState(): DebugState {
   return {
     url: "",
     instructions: "",
+    images: [],
     headless: false,
     playwright: false,
     visual: false,
@@ -86,6 +90,9 @@ export function AIRenderProfileDebugger({
           profile,
           ...(state.instructions.trim()
             ? { instructions: state.instructions.trim() }
+            : {}),
+          ...(state.images.length > 0
+            ? { images: toAIImagePayloads(state.images) }
             : {}),
           headless: state.headless,
           ...(state.headless ? { playwright: state.playwright } : {}),
@@ -220,6 +227,12 @@ export function AIRenderProfileDebugger({
               disabled={state.isLoading || state.isSaving}
             />
           </div>
+
+          <AIImageAttachments
+            images={state.images}
+            onChange={(images) => setState((prev) => ({ ...prev, images }))}
+            disabled={state.isLoading || state.isSaving}
+          />
 
           <div className="rounded-md border border-slate-700 bg-slate-900/60 p-4">
             <h3 className="mb-3 text-sm font-medium text-slate-200">

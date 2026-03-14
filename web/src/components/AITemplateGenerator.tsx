@@ -15,7 +15,9 @@ import {
   type Template,
   type AiExtractTemplateGenerateResponse,
 } from "../api";
+import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AITemplateGeneratorProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ interface GeneratorState {
   html: string;
   description: string;
   sampleFields: string;
+  images: AttachedAIImage[];
   headless: boolean;
   playwright: boolean;
   visual: boolean;
@@ -57,6 +60,7 @@ export function AITemplateGenerator({
     html: "",
     description: "",
     sampleFields: "",
+    images: [],
     headless: false,
     playwright: false,
     visual: false,
@@ -79,6 +83,7 @@ export function AITemplateGenerator({
       html: "",
       description: "",
       sampleFields: "",
+      images: [],
       headless: false,
       playwright: false,
       visual: false,
@@ -159,6 +164,9 @@ export function AITemplateGenerator({
             : {}),
           description: state.description,
           sample_fields: sampleFields.length > 0 ? sampleFields : undefined,
+          ...(state.images.length > 0
+            ? { images: toAIImagePayloads(state.images) }
+            : {}),
           ...(state.source === "url"
             ? {
                 headless: state.headless,
@@ -456,6 +464,12 @@ export function AITemplateGenerator({
                 </div>
               </>
             )}
+
+            <AIImageAttachments
+              images={state.images}
+              onChange={(images) => setState((prev) => ({ ...prev, images }))}
+              disabled={state.isGenerating || state.isSaving}
+            />
 
             <div className="form-group">
               <label htmlFor="ai-template-description" className="form-label">

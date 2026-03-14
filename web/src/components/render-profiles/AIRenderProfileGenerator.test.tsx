@@ -63,6 +63,11 @@ describe("AIRenderProfileGenerator", () => {
         value: "Wait for the dashboard shell and prefer headless mode",
       },
     });
+    const image = new File(["fake"], "profile.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("profile.png");
     fireEvent.click(screen.getByLabelText(/fetch headless/i));
     fireEvent.click(screen.getByLabelText(/use playwright/i));
     fireEvent.click(screen.getByLabelText(/include screenshot context/i));
@@ -76,6 +81,7 @@ describe("AIRenderProfileGenerator", () => {
           name: "example-app",
           host_patterns: ["example.com", "*.example.com"],
           instructions: "Wait for the dashboard shell and prefer headless mode",
+          images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
           headless: true,
           playwright: true,
           visual: true,

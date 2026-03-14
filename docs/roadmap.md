@@ -11,11 +11,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Revisit direct image upload/paste support for AI authoring once request-envelope constraints and artifact retention expectations are settled.
+- Extend bounded AI authoring to more saved result-artifact workflows now that direct image support, export shaping, and proxy-pool runtime guarantees are stable across API, Web, CLI, and MCP.
 
 ## Next
 
-- Extend bounded AI authoring to more saved result-artifact workflows now that export shaping and proxy-pool runtime guarantees are stable across API, Web, CLI, and MCP.
+- Review which persisted-result workflows should gain the next bounded multimodal authoring passes so future contract changes can be grouped and regenerated together.
 
 ## Later
 

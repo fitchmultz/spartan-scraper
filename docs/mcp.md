@@ -17,6 +17,7 @@
 MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submission:
 
 - `ai_extract_preview`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url` or `html`
   - `mode: "natural_language" | "schema_guided"`
   - `prompt: "..."` for natural-language mode
@@ -26,6 +27,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false` to capture a screenshot and send multimodal visual context when fetching a URL
 - `ai_template_generate`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url` or `html`
   - `description: "..."`
   - `sampleFields: ["field1", "field2"]`
@@ -33,6 +35,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false` to capture a screenshot and send multimodal visual context when fetching a URL
 - `ai_template_debug`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url` or `html`
   - `template: { ... }`
   - `instructions: "..."`
@@ -40,6 +43,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false`
 - `ai_render_profile_generate`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
   - `instructions: "..."`
   - `name: "..."` optional
@@ -48,6 +52,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false`
 - `ai_render_profile_debug`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
   - `profile: { ... }`
   - `instructions: "..."` optional
@@ -55,6 +60,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false`
 - `ai_pipeline_js_generate`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
   - `instructions: "..."`
   - `name: "..."` optional
@@ -63,6 +69,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `playwright: true|false`
   - `visual: true|false`
 - `ai_pipeline_js_debug`
+  - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
   - `script: { ... }`
   - `instructions: "..."` optional
@@ -78,7 +85,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `currentShape: { ... }` optional existing `ExportShapeConfig`
   - `instructions: "..."` optional field-selection guidance
 
-These tools return structured authoring results immediately and do not create jobs.
+These tools return structured authoring results immediately and do not create jobs. Attached `images` are bounded, request-scoped visual context only and are not persisted as job artifacts.
 
 ## AI extraction arguments
 
@@ -101,7 +108,7 @@ These tools return structured authoring results immediately and do not create jo
 
 ```json
 {"id":1,"method":"initialize"}
-{"id":2,"method":"tools/call","params":{"name":"ai_extract_preview","arguments":{"url":"https://example.com/product","mode":"natural_language","prompt":"Extract the title, price, and availability","fields":["title","price","availability"],"headless":true,"visual":true}}}
+{"id":2,"method":"tools/call","params":{"name":"ai_extract_preview","arguments":{"url":"https://example.com/product","mode":"natural_language","prompt":"Extract the title, price, and availability","fields":["title","price","availability"],"images":[{"mime_type":"image/png","data":"<base64>"}],"headless":true,"visual":true}}}
 {"id":3,"method":"tools/call","params":{"name":"ai_template_generate","arguments":{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title"}}}
 {"id":4,"method":"tools/call","params":{"name":"ai_template_debug","arguments":{"url":"https://example.com/product","template":{"name":"product","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible h1","headless":true,"visual":true}}}
 {"id":5,"method":"tools/call","params":{"name":"ai_render_profile_generate","arguments":{"url":"https://example.com/app","instructions":"Wait for the dashboard shell and prefer headless mode","visual":true}}}
@@ -117,4 +124,3 @@ These tools return structured authoring results immediately and do not create jo
 ```
 
 The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape output, and use the job tools when you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.
- you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.

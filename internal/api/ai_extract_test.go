@@ -28,8 +28,8 @@ func TestAIExtractPreviewBodySize(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	// Create a very large request body that exceeds maxRequestBodySize
-	largeBody := make([]byte, maxRequestBodySize+1000)
+	// Create a very large request body that exceeds maxAIAuthoringRequestBodySize
+	largeBody := make([]byte, maxAIAuthoringRequestBodySize+1000)
 	for i := range largeBody {
 		largeBody[i] = 'a'
 	}
@@ -50,6 +50,8 @@ type fakeAIProvider struct {
 	extractResult     extract.AIExtractResult
 	templateResponses []extract.AITemplateGenerateResult
 	templateCalls     int
+	extractCalls      int
+	lastExtractReq    extract.AIExtractRequest
 	lastTemplateReq   extract.AITemplateGenerateRequest
 }
 
@@ -69,6 +71,8 @@ type fakeAutomationClient struct {
 }
 
 func (f *fakeAIProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
+	f.extractCalls++
+	f.lastExtractReq = req
 	return f.extractResult, nil
 }
 
@@ -168,6 +172,54 @@ func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
 	}
 }
 
+func TestAIExtractPreviewIncludesDirectImages(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	provider := &fakeAIProvider{
+		extractResult: extract.AIExtractResult{
+			Fields: map[string]extract.FieldValue{
+				"title": {Values: []string{"Example"}, Source: extract.FieldSourceLLM},
+			},
+			Confidence: 0.9,
+		},
+	}
+	srv.aiExtractor = extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig()},
+		srv.cfg.DataDir,
+		provider,
+	)
+	srv.cfg.AI = config.AIConfig{
+		Enabled:            true,
+		RequestTimeoutSecs: 30,
+		Routing:            config.DefaultAIRoutingConfig(),
+	}
+
+	body := `{"html":"<html><h1>Example</h1></html>","mode":"natural_language","prompt":"Extract the title","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/extract-preview", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if provider.extractCalls != 1 {
+		t.Fatalf("expected single extract call, got %d", provider.extractCalls)
+	}
+	if len(provider.lastExtractReq.Images) != 1 || provider.lastExtractReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach provider, got %#v", provider.lastExtractReq.Images)
+	}
+
+	var resp AIExtractPreviewResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if !resp.VisualContextUsed {
+		t.Fatal("expected visual context to be reported when direct images are attached")
+	}
+}
+
 func TestAIExtractPreviewFetchesHTMLWhenNotProvided(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -241,7 +293,7 @@ func TestAITemplateGenerateSupportsDirectHTML(t *testing.T) {
 		Routing:            config.DefaultAIRoutingConfig(),
 	}
 
-	body := `{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title"}`
+	body := `{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/template-generate", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -255,6 +307,9 @@ func TestAITemplateGenerateSupportsDirectHTML(t *testing.T) {
 	}
 	if provider.lastTemplateReq.URL != "" {
 		t.Fatalf("expected empty URL for direct HTML mode, got %q", provider.lastTemplateReq.URL)
+	}
+	if len(provider.lastTemplateReq.Images) != 1 || provider.lastTemplateReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach template provider, got %#v", provider.lastTemplateReq.Images)
 	}
 }
 
@@ -363,7 +418,7 @@ func TestAITemplateDebugSuggestsRepairsForBrokenTemplate(t *testing.T) {
 		Routing:            config.DefaultAIRoutingConfig(),
 	}
 
-	body := `{"html":"<html><body><h1>Widget</h1></body></html>","template":{"name":"product-template","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible heading"}`
+	body := `{"html":"<html><body><h1>Widget</h1></body></html>","template":{"name":"product-template","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible heading","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/template-debug", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -377,6 +432,9 @@ func TestAITemplateDebugSuggestsRepairsForBrokenTemplate(t *testing.T) {
 	}
 	if provider.lastTemplateReq.Feedback == "" {
 		t.Fatal("expected debug feedback on repair request")
+	}
+	if len(provider.lastTemplateReq.Images) != 1 || provider.lastTemplateReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach template debug provider, got %#v", provider.lastTemplateReq.Images)
 	}
 
 	var resp AIExtractTemplateDebugResponse
@@ -412,7 +470,7 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	}))
 	defer source.Close()
 
-	body := `{"url":"` + source.URL + `","name":"dashboard","host_patterns":["example.com"],"instructions":"Wait for the dashboard shell and prefer headless mode"}`
+	body := `{"url":"` + source.URL + `","name":"dashboard","host_patterns":["example.com"],"instructions":"Wait for the dashboard shell and prefer headless mode","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/render-profile-generate", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -423,6 +481,9 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	}
 	if automationClient.renderProfileCalls != 1 {
 		t.Fatalf("expected single render profile generation call, got %d", automationClient.renderProfileCalls)
+	}
+	if len(automationClient.renderProfileReq.Images) != 1 || automationClient.renderProfileReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach automation client, got %#v", automationClient.renderProfileReq.Images)
 	}
 
 	var resp AIRenderProfileGenerateResponse
@@ -461,7 +522,7 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	}))
 	defer source.Close()
 
-	body := `{"url":"` + source.URL + `","instructions":"Wait for the dashboard shell and reset scroll position"}`
+	body := `{"url":"` + source.URL + `","instructions":"Wait for the dashboard shell and reset scroll position","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/pipeline-js-generate", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -472,6 +533,9 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	}
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
+	}
+	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach pipeline JS automation client, got %#v", automationClient.pipelineJSReq.Images)
 	}
 
 	var resp AIPipelineJSGenerateResponse
@@ -507,7 +571,7 @@ func TestAIRenderProfileDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}))
 	defer source.Close()
 
-	body := `{"url":"` + source.URL + `","profile":{"name":"example-app","hostPatterns":["127.0.0.1"],"wait":{"mode":"selector","selector":".missing"}},"instructions":"Prefer the visible main shell"}`
+	body := `{"url":"` + source.URL + `","profile":{"name":"example-app","hostPatterns":["127.0.0.1"],"wait":{"mode":"selector","selector":".missing"}},"instructions":"Prefer the visible main shell","images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/render-profile-debug", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -521,6 +585,9 @@ func TestAIRenderProfileDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}
 	if automationClient.renderProfileReq.Feedback == "" {
 		t.Fatal("expected render profile debug feedback")
+	}
+	if len(automationClient.renderProfileReq.Images) != 1 || automationClient.renderProfileReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach render profile debug automation client, got %#v", automationClient.renderProfileReq.Images)
 	}
 
 	var resp AIRenderProfileDebugResponse
@@ -559,7 +626,7 @@ func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}))
 	defer source.Close()
 
-	body := `{"url":"` + source.URL + `","script":{"name":"example-app","hostPatterns":["127.0.0.1"],"selectors":[".missing"]}}`
+	body := `{"url":"` + source.URL + `","script":{"name":"example-app","hostPatterns":["127.0.0.1"],"selectors":[".missing"]},"images":[{"data":"ZmFrZQ==","mime_type":"image/png"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/ai/pipeline-js-debug", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -573,6 +640,9 @@ func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}
 	if automationClient.pipelineJSReq.Feedback == "" {
 		t.Fatal("expected pipeline JS debug feedback")
+	}
+	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected direct image to reach pipeline JS debug automation client, got %#v", automationClient.pipelineJSReq.Images)
 	}
 
 	var resp AIPipelineJSDebugResponse
@@ -736,8 +806,8 @@ func TestAITemplateGenerateBodySize(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	// Create a very large request body that exceeds maxRequestBodySize
-	largeBody := make([]byte, maxRequestBodySize+1000)
+	// Create a very large request body that exceeds maxAIAuthoringRequestBodySize
+	largeBody := make([]byte, maxAIAuthoringRequestBodySize+1000)
 	for i := range largeBody {
 		largeBody[i] = 'a'
 	}

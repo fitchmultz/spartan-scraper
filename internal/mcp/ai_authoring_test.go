@@ -21,6 +21,8 @@ type fakeAuthoringProvider struct {
 	extractResult   extract.AIExtractResult
 	templateResults []extract.AITemplateGenerateResult
 	templateCalls   int
+	extractCalls    int
+	lastExtractReq  extract.AIExtractRequest
 	lastTemplateReq extract.AITemplateGenerateRequest
 }
 
@@ -40,6 +42,8 @@ type fakeAutomationClient struct {
 }
 
 func (f *fakeAuthoringProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
+	f.extractCalls++
+	f.lastExtractReq = req
 	return f.extractResult, nil
 }
 
@@ -205,6 +209,10 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				"mode":   "natural_language",
 				"prompt": "Extract the title",
 				"fields": []string{"title"},
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 			},
 		}),
 	}
@@ -219,6 +227,12 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if previewMap.RouteID != "openai/gpt-5.4" {
 		t.Fatalf("unexpected route id: %q", previewMap.RouteID)
 	}
+	if provider.extractCalls != 1 {
+		t.Fatalf("expected single extract call, got %d", provider.extractCalls)
+	}
+	if len(provider.lastExtractReq.Images) != 1 || provider.lastExtractReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected preview image to reach provider, got %#v", provider.lastExtractReq.Images)
+	}
 
 	templateBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
@@ -226,6 +240,10 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			"arguments": map[string]interface{}{
 				"html":        "<html><body><h1>Example</h1></body></html>",
 				"description": "Extract the title",
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 			},
 		}),
 	}
@@ -246,6 +264,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if provider.lastTemplateReq.Feedback == "" {
 		t.Fatal("expected validation feedback on retry")
 	}
+	if len(provider.lastTemplateReq.Images) != 1 || provider.lastTemplateReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected template image to reach provider, got %#v", provider.lastTemplateReq.Images)
+	}
 
 	provider.templateResults = []extract.AITemplateGenerateResult{{
 		Template: extract.Template{
@@ -265,6 +286,10 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			"name": "ai_template_debug",
 			"arguments": map[string]interface{}{
 				"html": "<html><body><h1>Example</h1></body></html>",
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 				"template": map[string]interface{}{
 					"name": "product-template",
 					"selectors": []map[string]interface{}{{
@@ -297,6 +322,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if provider.lastTemplateReq.Feedback == "" {
 		t.Fatal("expected template debug feedback to reach the provider")
 	}
+	if len(provider.lastTemplateReq.Images) != 1 || provider.lastTemplateReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected template debug image to reach provider, got %#v", provider.lastTemplateReq.Images)
+	}
 
 	renderProfileBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
@@ -306,7 +334,11 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				"name":         "example-app",
 				"hostPatterns": []string{"example.com", "*.example.com"},
 				"instructions": "Wait for the main shell and prefer headless mode",
-				"visual":       true,
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
+				"visual": true,
 			},
 		}),
 	}
@@ -330,12 +362,26 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if automationClient.renderProfileReq.Instructions == "" {
 		t.Fatal("expected render profile instructions to reach the automation client")
 	}
+	directImageFound := false
+	for _, image := range automationClient.renderProfileReq.Images {
+		if image.MimeType == "image/png" && image.Data == "ZmFrZQ==" {
+			directImageFound = true
+			break
+		}
+	}
+	if !directImageFound {
+		t.Fatalf("expected render profile direct image to reach automation client, got %#v", automationClient.renderProfileReq.Images)
+	}
 
 	renderProfileDebugBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
 			"name": "ai_render_profile_debug",
 			"arguments": map[string]interface{}{
 				"url": source.URL,
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 				"profile": map[string]interface{}{
 					"name":         "example-app",
 					"hostPatterns": []string{"127.0.0.1"},
@@ -368,6 +414,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if automationClient.renderProfileReq.Feedback == "" {
 		t.Fatal("expected render profile debug feedback to reach the automation client")
 	}
+	if len(automationClient.renderProfileReq.Images) != 1 || automationClient.renderProfileReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected render profile debug image to reach automation client, got %#v", automationClient.renderProfileReq.Images)
+	}
 
 	pipelineBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
@@ -375,6 +424,10 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			"arguments": map[string]interface{}{
 				"url":          source.URL,
 				"instructions": "Wait for the main shell and reset scroll position",
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 			},
 		}),
 	}
@@ -392,12 +445,19 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
 	}
+	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected pipeline JS image to reach automation client, got %#v", automationClient.pipelineJSReq.Images)
+	}
 
 	pipelineDebugBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
 			"name": "ai_pipeline_js_debug",
 			"arguments": map[string]interface{}{
 				"url": source.URL,
+				"images": []map[string]interface{}{{
+					"data":      "ZmFrZQ==",
+					"mime_type": "image/png",
+				}},
 				"script": map[string]interface{}{
 					"name":         "example-app",
 					"hostPatterns": []string{"127.0.0.1"},
@@ -425,6 +485,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.pipelineJSReq.Feedback == "" {
 		t.Fatal("expected pipeline JS debug feedback to reach the automation client")
+	}
+	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
+		t.Fatalf("expected pipeline JS debug image to reach automation client, got %#v", automationClient.pipelineJSReq.Images)
 	}
 
 	researchRefineBase := map[string]json.RawMessage{

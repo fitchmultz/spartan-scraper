@@ -5,8 +5,10 @@ import {
   type AiRenderProfileGenerateResponse,
   type RenderProfile,
 } from "../api";
+import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIRenderProfileGeneratorProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ interface GeneratorState {
   name: string;
   hostPatterns: string;
   instructions: string;
+  images: AttachedAIImage[];
   headless: boolean;
   playwright: boolean;
   visual: boolean;
@@ -38,6 +41,7 @@ const INITIAL_STATE: GeneratorState = {
   name: "",
   hostPatterns: "",
   instructions: "",
+  images: [],
   headless: false,
   playwright: false,
   visual: false,
@@ -113,6 +117,9 @@ export function AIRenderProfileGenerator({
           ...(state.name.trim() ? { name: state.name.trim() } : {}),
           ...(hostPatterns.length > 0 ? { host_patterns: hostPatterns } : {}),
           instructions: state.instructions.trim(),
+          ...(state.images.length > 0
+            ? { images: toAIImagePayloads(state.images) }
+            : {}),
           headless: state.headless,
           ...(state.headless ? { playwright: state.playwright } : {}),
           visual: state.visual,
@@ -289,6 +296,12 @@ export function AIRenderProfileGenerator({
               disabled={state.isGenerating}
             />
           </div>
+
+          <AIImageAttachments
+            images={state.images}
+            onChange={(images) => setState((prev) => ({ ...prev, images }))}
+            disabled={state.isGenerating || state.isSaving}
+          />
 
           <div className="grid gap-3 md:grid-cols-3">
             <label className="form-label flex items-center gap-2">

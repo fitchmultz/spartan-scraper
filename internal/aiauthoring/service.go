@@ -33,6 +33,7 @@ type PreviewRequest struct {
 	Prompt        string
 	Schema        map[string]interface{}
 	Fields        []string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -55,6 +56,7 @@ type TemplateRequest struct {
 	HTML          string
 	Description   string
 	SampleFields  []string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -74,6 +76,7 @@ type TemplateDebugRequest struct {
 	HTML          string
 	Template      extract.Template
 	Instructions  string
+	Images        []extract.AIImageInput
 	Headless      bool
 	UsePlaywright bool
 	Visual        bool
@@ -122,11 +125,15 @@ func (s *Service) Preview(ctx context.Context, req PreviewRequest) (PreviewResul
 			return PreviewResult{}, err
 		}
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return PreviewResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return PreviewResult{}, err
 	}
@@ -173,11 +180,15 @@ func (s *Service) GenerateTemplate(ctx context.Context, req TemplateRequest) (Te
 			return TemplateResult{}, err
 		}
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return TemplateResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return TemplateResult{}, err
 	}
@@ -218,11 +229,15 @@ func (s *Service) DebugTemplate(ctx context.Context, req TemplateDebugRequest) (
 			return TemplateDebugResult{}, err
 		}
 	}
+	images, err := normalizeDirectAIImages(req.Images)
+	if err != nil {
+		return TemplateDebugResult{}, err
+	}
 
 	ctx, cancel := s.withRequestTimeout(ctx)
 	defer cancel()
 
-	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, req.Headless, req.UsePlaywright, req.Visual)
+	page, err := s.resolvePageContext(ctx, req.URL, req.HTML, images, req.Headless, req.UsePlaywright, req.Visual)
 	if err != nil {
 		return TemplateDebugResult{}, err
 	}

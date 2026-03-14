@@ -16,7 +16,7 @@
 - CLI and MCP expose both job-launching AI controls and dedicated AI preview, template generation, template debugging, render-profile generation, render-profile debugging, pipeline-JS generation, pipeline-JS debugging, research-refinement, and export-shaping workflows.
 - Optional proxy-pool execution is a supported runtime path with read-only status inspection across REST, Web UI, CLI, and MCP.
 - Explicit `PROXY_POOL_FILE` misconfiguration is treated as a startup error rather than silently disabling proxy-backed execution.
-- Multimodal screenshot context for AI authoring is supported on REST, Web, CLI, and MCP when the workflow fetches a URL through a headless browser and an image-capable pi route is available.
+- Request-scoped multimodal image context for AI authoring is supported on REST, Web, CLI, and MCP: operators can attach bounded uploaded/pasted images directly, and URL-based flows can additionally capture screenshots when an image-capable pi route is available.
 - TUI is an operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, research-refinement, export-shaping, or agent-session workflows.
 
 ## Release Guarantee
