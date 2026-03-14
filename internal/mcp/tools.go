@@ -40,9 +40,19 @@ func (s *Server) toolsList() []tool {
 			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
+			Name:        "ai_render_profile_debug",
+			Description: "Debug and tune an existing render profile against a live page without creating a job",
+			InputSchema: schema(map[string]string{"url": "string", "profile": "object"}, map[string]string{"instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+		},
+		{
 			Name:        "ai_pipeline_js_generate",
 			Description: "Generate a pipeline JS script for a live page without creating a job",
 			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+		},
+		{
+			Name:        "ai_pipeline_js_debug",
+			Description: "Debug and tune an existing pipeline JS script against a live page without creating a job",
+			InputSchema: schema(map[string]string{"url": "string", "script": "object"}, map[string]string{"instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "scrape_page",

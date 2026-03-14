@@ -22,6 +22,7 @@ import {
   type PipelineJsInput,
 } from "../../api";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 
 interface PipelineJSEditorProps {
@@ -33,6 +34,9 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingScript, setEditingScript] = useState<JsTargetScript | null>(
+    null,
+  );
+  const [debuggingScript, setDebuggingScript] = useState<JsTargetScript | null>(
     null,
   );
   const [isCreating, setIsCreating] = useState(false);
@@ -207,6 +211,15 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
         }}
       />
 
+      <AIPipelineJSDebugger
+        isOpen={debuggingScript !== null}
+        script={debuggingScript}
+        onClose={() => setDebuggingScript(null)}
+        onSaved={() => {
+          void loadScripts();
+        }}
+      />
+
       <div className="space-y-2">
         {scripts.map((script) => (
           <div
@@ -241,6 +254,13 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
               )}
             </div>
             <div className="space-x-2">
+              <button
+                type="button"
+                onClick={() => setDebuggingScript(script)}
+                className="text-sm text-purple-600 hover:underline"
+              >
+                Tune with AI
+              </button>
               <button
                 type="button"
                 onClick={() => setEditingScript(script)}

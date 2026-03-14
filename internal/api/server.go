@@ -260,7 +260,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/ai/template-generate", s.handleAITemplateGenerate)
 	mux.HandleFunc("/v1/ai/template-debug", s.handleAITemplateDebug)
 	mux.HandleFunc("/v1/ai/render-profile-generate", s.handleAIRenderProfileGenerate)
+	mux.HandleFunc("/v1/ai/render-profile-debug", s.handleAIRenderProfileDebug)
 	mux.HandleFunc("/v1/ai/pipeline-js-generate", s.handleAIPipelineJSGenerate)
+	mux.HandleFunc("/v1/ai/pipeline-js-debug", s.handleAIPipelineJSDebug)
 
 	// Deduplication endpoints
 	mux.HandleFunc("/v1/dedup/duplicates", s.handleDedupDuplicates)

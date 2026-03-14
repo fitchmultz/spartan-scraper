@@ -12,6 +12,8 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 type authoringRunner interface {
@@ -19,7 +21,9 @@ type authoringRunner interface {
 	GenerateTemplate(ctx context.Context, req aiauthoring.TemplateRequest) (aiauthoring.TemplateResult, error)
 	DebugTemplate(ctx context.Context, req aiauthoring.TemplateDebugRequest) (aiauthoring.TemplateDebugResult, error)
 	GenerateRenderProfile(ctx context.Context, req aiauthoring.RenderProfileRequest) (aiauthoring.RenderProfileResult, error)
+	DebugRenderProfile(ctx context.Context, req aiauthoring.RenderProfileDebugRequest) (aiauthoring.RenderProfileDebugResult, error)
 	GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error)
+	DebugPipelineJS(ctx context.Context, req aiauthoring.PipelineJSDebugRequest) (aiauthoring.PipelineJSDebugResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -68,6 +72,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runRenderProfile(ctx, runner, args[1:])
+	case "render-profile-debug":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runRenderProfileDebug(ctx, cfg, runner, args[1:])
 	case "pipeline-js":
 		runner, err := newAuthoringRunner(cfg)
 		if err != nil {
@@ -75,6 +86,13 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runPipelineJS(ctx, runner, args[1:])
+	case "pipeline-js-debug":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runPipelineJSDebug(ctx, cfg, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -363,6 +381,108 @@ Options:
 	return 0
 }
 
+func runRenderProfileDebug(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-render-profile-debug", flag.ContinueOnError)
+	url := fs.String("url", "", "Target URL to recheck with the current render profile")
+	profileName := fs.String("profile-name", "", "Saved render profile name to debug")
+	profileFile := fs.String("profile-file", "", "Path to a render profile JSON file to debug")
+	instructions := fs.String("instructions", "", "Optional tuning guidance for the AI")
+	headless := fs.Bool("headless", false, "Use headless browser when fetching the baseline page")
+	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the baseline page")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai render-profile-debug [options]
+
+Examples:
+  spartan ai render-profile-debug --url https://example.com/app --profile-name example-app
+  spartan ai render-profile-debug --url https://example.com/app --profile-file ./fixtures/render-profile.json --instructions "Prefer a selector wait for the dashboard shell" --visual
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	profile, err := resolveRenderProfileInput(cfg, *profileName, *profileFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	result, err := runner.DebugRenderProfile(ctx, aiauthoring.RenderProfileDebugRequest{
+		URL:           strings.TrimSpace(*url),
+		Profile:       profile,
+		Instructions:  strings.TrimSpace(*instructions),
+		Headless:      *headless,
+		UsePlaywright: *playwright,
+		Visual:        *visual,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func runPipelineJSDebug(ctx context.Context, cfg config.Config, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-pipeline-js-debug", flag.ContinueOnError)
+	url := fs.String("url", "", "Target URL to recheck with the current pipeline JS script")
+	scriptName := fs.String("script-name", "", "Saved pipeline JS script name to debug")
+	scriptFile := fs.String("script-file", "", "Path to a pipeline JS JSON file to debug")
+	instructions := fs.String("instructions", "", "Optional tuning guidance for the AI")
+	headless := fs.Bool("headless", false, "Use headless browser when fetching the baseline page")
+	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the baseline page")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai pipeline-js-debug [options]
+
+Examples:
+  spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
+  spartan ai pipeline-js-debug --url https://example.com/app --script-file ./fixtures/pipeline-js.json --instructions "Prefer selector waits over post-nav JavaScript" --visual
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	script, err := resolvePipelineJSScriptInput(cfg, *scriptName, *scriptFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	result, err := runner.DebugPipelineJS(ctx, aiauthoring.PipelineJSDebugRequest{
+		URL:           strings.TrimSpace(*url),
+		Script:        script,
+		Instructions:  strings.TrimSpace(*instructions),
+		Headless:      *headless,
+		UsePlaywright: *playwright,
+		Visual:        *visual,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Fprint(os.Stderr, `AI authoring utilities.
 
@@ -374,14 +494,18 @@ Subcommands:
   template            Generate an extraction template without creating a job
   template-debug      Debug and repair an extraction template without creating a job
   render-profile      Generate a render profile without creating a job
+  render-profile-debug Tune an existing render profile without creating a job
   pipeline-js         Generate a pipeline JS script without creating a job
+  pipeline-js-debug   Tune an existing pipeline JS script without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
   spartan ai template-debug --url https://example.com --template-name product
   spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell"
+  spartan ai render-profile-debug --url https://example.com/app --profile-name example-app
   spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and dismiss the cookie banner"
+  spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
 `)
 }
 
@@ -429,6 +553,66 @@ func resolveTemplateInput(cfg config.Config, name string, path string) (extract.
 		return extract.Template{}, fmt.Errorf("load template registry: %w", err)
 	}
 	return registry.GetTemplate(trimmedName)
+}
+
+func resolveRenderProfileInput(cfg config.Config, name string, path string) (fetch.RenderProfile, error) {
+	trimmedName := strings.TrimSpace(name)
+	trimmedPath := strings.TrimSpace(path)
+	if trimmedName == "" && trimmedPath == "" {
+		return fetch.RenderProfile{}, fmt.Errorf("--profile-name or --profile-file is required")
+	}
+	if trimmedName != "" && trimmedPath != "" {
+		return fetch.RenderProfile{}, fmt.Errorf("--profile-name and --profile-file are mutually exclusive")
+	}
+	if trimmedPath != "" {
+		data, err := os.ReadFile(trimmedPath)
+		if err != nil {
+			return fetch.RenderProfile{}, fmt.Errorf("read render profile file: %w", err)
+		}
+		var profile fetch.RenderProfile
+		if err := json.Unmarshal(data, &profile); err != nil {
+			return fetch.RenderProfile{}, fmt.Errorf("decode render profile file: %w", err)
+		}
+		return profile, nil
+	}
+	profile, found, err := fetch.GetRenderProfile(cfg.DataDir, trimmedName)
+	if err != nil {
+		return fetch.RenderProfile{}, fmt.Errorf("load render profiles: %w", err)
+	}
+	if !found {
+		return fetch.RenderProfile{}, fmt.Errorf("render profile not found: %s", trimmedName)
+	}
+	return profile, nil
+}
+
+func resolvePipelineJSScriptInput(cfg config.Config, name string, path string) (pipeline.JSTargetScript, error) {
+	trimmedName := strings.TrimSpace(name)
+	trimmedPath := strings.TrimSpace(path)
+	if trimmedName == "" && trimmedPath == "" {
+		return pipeline.JSTargetScript{}, fmt.Errorf("--script-name or --script-file is required")
+	}
+	if trimmedName != "" && trimmedPath != "" {
+		return pipeline.JSTargetScript{}, fmt.Errorf("--script-name and --script-file are mutually exclusive")
+	}
+	if trimmedPath != "" {
+		data, err := os.ReadFile(trimmedPath)
+		if err != nil {
+			return pipeline.JSTargetScript{}, fmt.Errorf("read pipeline JS file: %w", err)
+		}
+		var script pipeline.JSTargetScript
+		if err := json.Unmarshal(data, &script); err != nil {
+			return pipeline.JSTargetScript{}, fmt.Errorf("decode pipeline JS file: %w", err)
+		}
+		return script, nil
+	}
+	script, found, err := pipeline.GetJSScript(cfg.DataDir, trimmedName)
+	if err != nil {
+		return pipeline.JSTargetScript{}, fmt.Errorf("load pipeline JS registry: %w", err)
+	}
+	if !found {
+		return pipeline.JSTargetScript{}, fmt.Errorf("pipeline JS script not found: %s", trimmedName)
+	}
+	return script, nil
 }
 
 func parseJSONObject(raw string, emptyMessage string) (map[string]interface{}, error) {

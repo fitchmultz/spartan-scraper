@@ -119,6 +119,28 @@ type AIRenderProfileGenerateResponse struct {
 	VisualContextUsed bool                `json:"visual_context_used"`
 }
 
+type AIRenderProfileDebugRequest struct {
+	URL           string              `json:"url"`
+	Profile       fetch.RenderProfile `json:"profile"`
+	Instructions  string              `json:"instructions,omitempty"`
+	Headless      bool                `json:"headless,omitempty"`
+	UsePlaywright bool                `json:"playwright,omitempty"`
+	Visual        bool                `json:"visual,omitempty"`
+}
+
+type AIRenderProfileDebugResponse struct {
+	Issues            []string             `json:"issues,omitempty"`
+	Explanation       string               `json:"explanation,omitempty"`
+	SuggestedProfile  *fetch.RenderProfile `json:"suggested_profile,omitempty"`
+	RouteID           string               `json:"route_id,omitempty"`
+	Provider          string               `json:"provider,omitempty"`
+	Model             string               `json:"model,omitempty"`
+	VisualContextUsed bool                 `json:"visual_context_used"`
+	RecheckStatus     int                  `json:"recheck_status,omitempty"`
+	RecheckEngine     string               `json:"recheck_engine,omitempty"`
+	RecheckError      string               `json:"recheck_error,omitempty"`
+}
+
 type AIPipelineJSGenerateRequest struct {
 	URL           string   `json:"url"`
 	Name          string   `json:"name,omitempty"`
@@ -136,6 +158,28 @@ type AIPipelineJSGenerateResponse struct {
 	Provider          string                  `json:"provider,omitempty"`
 	Model             string                  `json:"model,omitempty"`
 	VisualContextUsed bool                    `json:"visual_context_used"`
+}
+
+type AIPipelineJSDebugRequest struct {
+	URL           string                  `json:"url"`
+	Script        pipeline.JSTargetScript `json:"script"`
+	Instructions  string                  `json:"instructions,omitempty"`
+	Headless      bool                    `json:"headless,omitempty"`
+	UsePlaywright bool                    `json:"playwright,omitempty"`
+	Visual        bool                    `json:"visual,omitempty"`
+}
+
+type AIPipelineJSDebugResponse struct {
+	Issues            []string                 `json:"issues,omitempty"`
+	Explanation       string                   `json:"explanation,omitempty"`
+	SuggestedScript   *pipeline.JSTargetScript `json:"suggested_script,omitempty"`
+	RouteID           string                   `json:"route_id,omitempty"`
+	Provider          string                   `json:"provider,omitempty"`
+	Model             string                   `json:"model,omitempty"`
+	VisualContextUsed bool                     `json:"visual_context_used"`
+	RecheckStatus     int                      `json:"recheck_status,omitempty"`
+	RecheckEngine     string                   `json:"recheck_engine,omitempty"`
+	RecheckError      string                   `json:"recheck_error,omitempty"`
 }
 
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
@@ -338,6 +382,90 @@ func (s *Server) handleAIPipelineJSGenerate(w http.ResponseWriter, r *http.Reque
 	}
 	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
 	logAIRequestCompletion("pipeline_js_generate", req.URL, result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleAIRenderProfileDebug(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIRenderProfileDebugRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	result, err := s.aiAuthoringService().DebugRenderProfile(r.Context(), aiauthoring.RenderProfileDebugRequest{
+		URL:           req.URL,
+		Profile:       req.Profile,
+		Instructions:  req.Instructions,
+		Headless:      req.Headless,
+		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp := AIRenderProfileDebugResponse{
+		Issues:            result.Issues,
+		Explanation:       result.Explanation,
+		SuggestedProfile:  result.SuggestedProfile,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
+		RecheckStatus:     result.RecheckStatus,
+		RecheckEngine:     result.RecheckEngine,
+		RecheckError:      result.RecheckError,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("render_profile_debug", req.URL, result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleAIPipelineJSDebug(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIPipelineJSDebugRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	result, err := s.aiAuthoringService().DebugPipelineJS(r.Context(), aiauthoring.PipelineJSDebugRequest{
+		URL:           req.URL,
+		Script:        req.Script,
+		Instructions:  req.Instructions,
+		Headless:      req.Headless,
+		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp := AIPipelineJSDebugResponse{
+		Issues:            result.Issues,
+		Explanation:       result.Explanation,
+		SuggestedScript:   result.SuggestedScript,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
+		RecheckStatus:     result.RecheckStatus,
+		RecheckEngine:     result.RecheckEngine,
+		RecheckError:      result.RecheckError,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("pipeline_js_debug", req.URL, result.RouteID, result.Provider, result.Model, false)
 	writeJSON(w, resp)
 }
 

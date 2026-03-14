@@ -18,26 +18,34 @@ import (
 )
 
 type fakeAuthoringRunner struct {
-	previewReq          aiauthoring.PreviewRequest
-	templateReq         aiauthoring.TemplateRequest
-	debugReq            aiauthoring.TemplateDebugRequest
-	renderProfileReq    aiauthoring.RenderProfileRequest
-	pipelineJSReq       aiauthoring.PipelineJSRequest
-	previewResult       aiauthoring.PreviewResult
-	templateResult      aiauthoring.TemplateResult
-	debugResult         aiauthoring.TemplateDebugResult
-	renderProfileResult aiauthoring.RenderProfileResult
-	pipelineJSResult    aiauthoring.PipelineJSResult
-	previewErr          error
-	templateErr         error
-	debugErr            error
-	renderProfileErr    error
-	pipelineJSErr       error
-	previewCalled       bool
-	templateCalled      bool
-	debugCalled         bool
-	renderProfileCalled bool
-	pipelineJSCalled    bool
+	previewReq               aiauthoring.PreviewRequest
+	templateReq              aiauthoring.TemplateRequest
+	debugReq                 aiauthoring.TemplateDebugRequest
+	renderProfileReq         aiauthoring.RenderProfileRequest
+	renderProfileDebugReq    aiauthoring.RenderProfileDebugRequest
+	pipelineJSReq            aiauthoring.PipelineJSRequest
+	pipelineJSDebugReq       aiauthoring.PipelineJSDebugRequest
+	previewResult            aiauthoring.PreviewResult
+	templateResult           aiauthoring.TemplateResult
+	debugResult              aiauthoring.TemplateDebugResult
+	renderProfileResult      aiauthoring.RenderProfileResult
+	renderProfileDebugResult aiauthoring.RenderProfileDebugResult
+	pipelineJSResult         aiauthoring.PipelineJSResult
+	pipelineJSDebugResult    aiauthoring.PipelineJSDebugResult
+	previewErr               error
+	templateErr              error
+	debugErr                 error
+	renderProfileErr         error
+	renderProfileDebugErr    error
+	pipelineJSErr            error
+	pipelineJSDebugErr       error
+	previewCalled            bool
+	templateCalled           bool
+	debugCalled              bool
+	renderProfileCalled      bool
+	renderProfileDebugCalled bool
+	pipelineJSCalled         bool
+	pipelineJSDebugCalled    bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -64,10 +72,22 @@ func (f *fakeAuthoringRunner) GenerateRenderProfile(ctx context.Context, req aia
 	return f.renderProfileResult, f.renderProfileErr
 }
 
+func (f *fakeAuthoringRunner) DebugRenderProfile(ctx context.Context, req aiauthoring.RenderProfileDebugRequest) (aiauthoring.RenderProfileDebugResult, error) {
+	f.renderProfileDebugCalled = true
+	f.renderProfileDebugReq = req
+	return f.renderProfileDebugResult, f.renderProfileDebugErr
+}
+
 func (f *fakeAuthoringRunner) GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error) {
 	f.pipelineJSCalled = true
 	f.pipelineJSReq = req
 	return f.pipelineJSResult, f.pipelineJSErr
+}
+
+func (f *fakeAuthoringRunner) DebugPipelineJS(ctx context.Context, req aiauthoring.PipelineJSDebugRequest) (aiauthoring.PipelineJSDebugResult, error) {
+	f.pipelineJSDebugCalled = true
+	f.pipelineJSDebugReq = req
+	return f.pipelineJSDebugResult, f.pipelineJSDebugErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -279,5 +299,86 @@ func TestRunPipelineJSForwardsOptions(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"script":`) {
 		t.Fatalf("expected script JSON output, got %s", stdout)
+	}
+}
+
+func TestRunRenderProfileDebugLoadsSavedProfile(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		renderProfileDebugResult: aiauthoring.RenderProfileDebugResult{
+			Issues: []string{"wait.selector matched no elements"},
+			SuggestedProfile: &fetch.RenderProfile{
+				Name:           "example-app",
+				HostPatterns:   []string{"example.com"},
+				PreferHeadless: true,
+			},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	if err := fetch.SaveRenderProfilesFile(tmpDir, fetch.RenderProfilesFile{Profiles: []fetch.RenderProfile{{
+		Name:         "example-app",
+		HostPatterns: []string{"example.com"},
+		Wait:         fetch.RenderWaitPolicy{Mode: fetch.RenderWaitModeSelector, Selector: ".missing"},
+	}}}); err != nil {
+		t.Fatalf("save render profile: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"render-profile-debug", "--url", "https://example.com/app", "--profile-name", "example-app", "--instructions", "Prefer a stable wait selector", "--visual"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.renderProfileDebugCalled {
+		t.Fatal("expected render profile debug runner to be called")
+	}
+	if runner.renderProfileDebugReq.Profile.Name != "example-app" {
+		t.Fatalf("unexpected profile name: %q", runner.renderProfileDebugReq.Profile.Name)
+	}
+	if !runner.renderProfileDebugReq.Visual {
+		t.Fatal("expected visual flag to be forwarded")
+	}
+	if !strings.Contains(stdout, `"suggested_profile":`) {
+		t.Fatalf("expected debug JSON output, got %s", stdout)
+	}
+}
+
+func TestRunPipelineJSDebugLoadsScriptFile(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		pipelineJSDebugResult: aiauthoring.PipelineJSDebugResult{
+			Issues: []string{"selectors[0] matched no elements"},
+			SuggestedScript: &pipeline.JSTargetScript{
+				Name:         "example-app",
+				HostPatterns: []string{"example.com"},
+				Selectors:    []string{"main"},
+			},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "pipeline-js.json")
+	if err := os.WriteFile(scriptPath, []byte(`{"name":"example-app","hostPatterns":["example.com"],"selectors":[".missing"]}`), 0o644); err != nil {
+		t.Fatalf("write pipeline JS file: %v", err)
+	}
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{DataDir: tmpDir}, []string{"pipeline-js-debug", "--url", "https://example.com/app", "--script-file", scriptPath, "--headless"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.pipelineJSDebugCalled {
+		t.Fatal("expected pipeline JS debug runner to be called")
+	}
+	if runner.pipelineJSDebugReq.Script.Name != "example-app" {
+		t.Fatalf("unexpected script name: %q", runner.pipelineJSDebugReq.Script.Name)
+	}
+	if !runner.pipelineJSDebugReq.Headless {
+		t.Fatal("expected headless flag to be forwarded")
+	}
+	if !strings.Contains(stdout, `"suggested_script":`) {
+		t.Fatalf("expected debug JSON output, got %s", stdout)
 	}
 }

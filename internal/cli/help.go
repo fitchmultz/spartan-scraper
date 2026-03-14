@@ -58,7 +58,9 @@ Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
   spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell"
+  spartan ai render-profile-debug --url https://example.com/app --profile-name example-app
   spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and reset scroll position"
+  spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
   spartan auth set --name acme --parent base --token "token" --token-kind bearer

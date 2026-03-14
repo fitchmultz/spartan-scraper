@@ -508,6 +508,76 @@ export type AiRenderProfileGenerateResponse = {
 };
 
 /**
+ * Request for AI render profile debugging against a live URL.
+ */
+export type AiRenderProfileDebugRequest = {
+    /**
+     * URL to recheck with the current render profile
+     */
+    url: string;
+    profile: RenderProfile;
+    /**
+     * Optional operator guidance for tuning the profile
+     */
+    instructions?: string;
+    /**
+     * Use headless browser to fetch the baseline page before tuning
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for the baseline fetch
+     */
+    playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context for tuning
+     */
+    visual?: boolean;
+};
+
+/**
+ * Response from AI render profile debugging
+ */
+export type AiRenderProfileDebugResponse = {
+    /**
+     * Deterministic local issues found while rechecking the current render profile
+     */
+    issues?: Array<string>;
+    /**
+     * Explanation of the suggested render profile changes
+     */
+    explanation?: string;
+    suggested_profile?: RenderProfile;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
+    /**
+     * HTTP status observed while rechecking the current render profile
+     */
+    recheck_status?: number;
+    /**
+     * Fetch engine used while rechecking the current render profile
+     */
+    recheck_engine?: string;
+    /**
+     * Error observed while rechecking the current render profile
+     */
+    recheck_error?: string;
+};
+
+/**
  * Request for AI pipeline JS generation from a live URL.
  */
 export type AiPipelineJsGenerateRequest = {
@@ -566,6 +636,76 @@ export type AiPipelineJsGenerateResponse = {
      * Whether screenshot-based visual context was included in the AI request
      */
     visual_context_used?: boolean;
+};
+
+/**
+ * Request for AI pipeline JS debugging against a live URL.
+ */
+export type AiPipelineJsDebugRequest = {
+    /**
+     * URL to recheck with the current pipeline JS script
+     */
+    url: string;
+    script: JsTargetScript;
+    /**
+     * Optional operator guidance for tuning the script
+     */
+    instructions?: string;
+    /**
+     * Use headless browser to fetch the baseline page before tuning
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for the baseline fetch
+     */
+    playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context for tuning
+     */
+    visual?: boolean;
+};
+
+/**
+ * Response from AI pipeline JS debugging
+ */
+export type AiPipelineJsDebugResponse = {
+    /**
+     * Deterministic local issues found while rechecking the current pipeline JS script
+     */
+    issues?: Array<string>;
+    /**
+     * Explanation of the suggested pipeline JS changes
+     */
+    explanation?: string;
+    suggested_script?: JsTargetScript;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
+    /**
+     * HTTP status observed while rechecking the current pipeline JS script
+     */
+    recheck_status?: number;
+    /**
+     * Fetch engine used while rechecking the current pipeline JS script
+     */
+    recheck_engine?: string;
+    /**
+     * Error observed while rechecking the current pipeline JS script
+     */
+    recheck_error?: string;
 };
 
 export type PipelineOptions = {
@@ -4028,6 +4168,43 @@ export type AiRenderProfileGenerateResponses = {
 
 export type AiRenderProfileGenerateResponse2 = AiRenderProfileGenerateResponses[keyof AiRenderProfileGenerateResponses];
 
+export type AiRenderProfileDebugData = {
+    body: AiRenderProfileDebugRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/render-profile-debug';
+};
+
+export type AiRenderProfileDebugErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiRenderProfileDebugError = AiRenderProfileDebugErrors[keyof AiRenderProfileDebugErrors];
+
+export type AiRenderProfileDebugResponses = {
+    /**
+     * Render profile debug diagnostics and tuned suggestion
+     */
+    200: AiRenderProfileDebugResponse;
+};
+
+export type AiRenderProfileDebugResponse2 = AiRenderProfileDebugResponses[keyof AiRenderProfileDebugResponses];
+
 export type AiPipelineJsGenerateData = {
     body: AiPipelineJsGenerateRequest;
     path?: never;
@@ -4064,6 +4241,43 @@ export type AiPipelineJsGenerateResponses = {
 };
 
 export type AiPipelineJsGenerateResponse2 = AiPipelineJsGenerateResponses[keyof AiPipelineJsGenerateResponses];
+
+export type AiPipelineJsDebugData = {
+    body: AiPipelineJsDebugRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/pipeline-js-debug';
+};
+
+export type AiPipelineJsDebugErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiPipelineJsDebugError = AiPipelineJsDebugErrors[keyof AiPipelineJsDebugErrors];
+
+export type AiPipelineJsDebugResponses = {
+    /**
+     * Pipeline JS debug diagnostics and tuned suggestion
+     */
+    200: AiPipelineJsDebugResponse;
+};
+
+export type AiPipelineJsDebugResponse2 = AiPipelineJsDebugResponses[keyof AiPipelineJsDebugResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

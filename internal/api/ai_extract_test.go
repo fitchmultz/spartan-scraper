@@ -463,6 +463,107 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	}
 }
 
+func TestAIRenderProfileDebugReturnsIssuesAndSuggestion(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	automationClient := &fakeAutomationClient{
+		renderProfileResult: piai.GenerateRenderProfileResult{
+			Profile:     piai.BridgeRenderProfile{PreferHeadless: true, Wait: piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"}},
+			Explanation: "Prefer headless mode and wait for the main shell.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Dashboard</main></body></html>`))
+	}))
+	defer source.Close()
+
+	body := `{"url":"` + source.URL + `","profile":{"name":"example-app","hostPatterns":["127.0.0.1"],"wait":{"mode":"selector","selector":".missing"}},"instructions":"Prefer the visible main shell"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/render-profile-debug", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if automationClient.renderProfileCalls != 1 {
+		t.Fatalf("expected single render profile debug call, got %d", automationClient.renderProfileCalls)
+	}
+	if automationClient.renderProfileReq.Feedback == "" {
+		t.Fatal("expected render profile debug feedback")
+	}
+
+	var resp AIRenderProfileDebugResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Issues) == 0 {
+		t.Fatal("expected local render profile issues")
+	}
+	if resp.SuggestedProfile == nil || resp.SuggestedProfile.Wait.Selector != "main" {
+		t.Fatalf("unexpected suggested profile: %#v", resp.SuggestedProfile)
+	}
+	if resp.RecheckStatus != http.StatusOK {
+		t.Fatalf("expected recheck status 200, got %d", resp.RecheckStatus)
+	}
+}
+
+func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	automationClient := &fakeAutomationClient{
+		pipelineJSResult: piai.GeneratePipelineJSResult{
+			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
+			Explanation: "Wait for the main shell and normalize scroll.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Dashboard</main></body></html>`))
+	}))
+	defer source.Close()
+
+	body := `{"url":"` + source.URL + `","script":{"name":"example-app","hostPatterns":["127.0.0.1"],"selectors":[".missing"]}}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/pipeline-js-debug", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if automationClient.pipelineJSCalls != 1 {
+		t.Fatalf("expected single pipeline JS debug call, got %d", automationClient.pipelineJSCalls)
+	}
+	if automationClient.pipelineJSReq.Feedback == "" {
+		t.Fatal("expected pipeline JS debug feedback")
+	}
+
+	var resp AIPipelineJSDebugResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Issues) == 0 {
+		t.Fatal("expected local pipeline JS issues")
+	}
+	if resp.SuggestedScript == nil || len(resp.SuggestedScript.Selectors) != 1 || resp.SuggestedScript.Selectors[0] != "main" {
+		t.Fatalf("unexpected suggested script: %#v", resp.SuggestedScript)
+	}
+}
+
 func TestAITemplateGenerateBodySize(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

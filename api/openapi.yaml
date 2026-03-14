@@ -927,6 +927,49 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/render-profile-debug":
+    post:
+      summary: Debug render profile using AI
+      description: Recheck an existing render profile against a live page, report deterministic issues,
+        and optionally suggest a tuned replacement.
+      operationId: aiRenderProfileDebug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIRenderProfileDebugRequest"
+      responses:
+        '200':
+          description: Render profile debug diagnostics and tuned suggestion
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIRenderProfileDebugResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/ai/pipeline-js-generate":
     post:
       summary: Generate pipeline JS script using AI
@@ -945,6 +988,49 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/AIPipelineJSGenerateResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/pipeline-js-debug":
+    post:
+      summary: Debug pipeline JS script using AI
+      description: Recheck an existing pipeline JS script against a live page, report deterministic
+        issues, and optionally suggest a tuned replacement.
+      operationId: aiPipelineJsDebug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIPipelineJSDebugRequest"
+      responses:
+        '200':
+          description: Pipeline JS debug diagnostics and tuned suggestion
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIPipelineJSDebugResponse"
         '400':
           description: Bad Request - invalid parameters
           content:
@@ -3707,6 +3793,66 @@ components:
         visual_context_used:
           type: boolean
           description: Whether screenshot-based visual context was included in the AI request
+    AIRenderProfileDebugRequest:
+      type: object
+      description: Request for AI render profile debugging against a live URL.
+      required:
+      - url
+      - profile
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to recheck with the current render profile
+        profile:
+          "$ref": "#/components/schemas/RenderProfile"
+        instructions:
+          type: string
+          description: Optional operator guidance for tuning the profile
+        headless:
+          type: boolean
+          description: Use headless browser to fetch the baseline page before tuning
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for the baseline fetch
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context for tuning
+    AIRenderProfileDebugResponse:
+      type: object
+      description: Response from AI render profile debugging
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+          description: Deterministic local issues found while rechecking the current render profile
+        explanation:
+          type: string
+          description: Explanation of the suggested render profile changes
+        suggested_profile:
+          "$ref": "#/components/schemas/RenderProfile"
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
+        recheck_status:
+          type: integer
+          description: HTTP status observed while rechecking the current render profile
+        recheck_engine:
+          type: string
+          description: Fetch engine used while rechecking the current render profile
+        recheck_error:
+          type: string
+          description: Error observed while rechecking the current render profile
     AIPipelineJSGenerateRequest:
       type: object
       description: Request for AI pipeline JS generation from a live URL.
@@ -3759,6 +3905,66 @@ components:
         visual_context_used:
           type: boolean
           description: Whether screenshot-based visual context was included in the AI request
+    AIPipelineJSDebugRequest:
+      type: object
+      description: Request for AI pipeline JS debugging against a live URL.
+      required:
+      - url
+      - script
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to recheck with the current pipeline JS script
+        script:
+          "$ref": "#/components/schemas/JSTargetScript"
+        instructions:
+          type: string
+          description: Optional operator guidance for tuning the script
+        headless:
+          type: boolean
+          description: Use headless browser to fetch the baseline page before tuning
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for the baseline fetch
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context for tuning
+    AIPipelineJSDebugResponse:
+      type: object
+      description: Response from AI pipeline JS debugging
+      properties:
+        issues:
+          type: array
+          items:
+            type: string
+          description: Deterministic local issues found while rechecking the current pipeline JS script
+        explanation:
+          type: string
+          description: Explanation of the suggested pipeline JS changes
+        suggested_script:
+          "$ref": "#/components/schemas/JSTargetScript"
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
+        recheck_status:
+          type: integer
+          description: HTTP status observed while rechecking the current pipeline JS script
+        recheck_engine:
+          type: string
+          description: Fetch engine used while rechecking the current pipeline JS script
+        recheck_error:
+          type: string
+          description: Error observed while rechecking the current pipeline JS script
     PipelineOptions:
       type: object
       properties:

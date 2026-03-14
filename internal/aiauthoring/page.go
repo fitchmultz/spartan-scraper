@@ -14,6 +14,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
@@ -67,7 +68,11 @@ func (s *Service) fetchPage(ctx context.Context, pageURL string, headless bool, 
 		return fetch.Result{}, err
 	}
 
-	fetcher := fetch.NewFetcher(s.cfg.DataDir)
+	fetcher := fetch.NewAdaptiveFetcher(s.cfg.DataDir)
+	defer func() {
+		_ = fetcher.Close()
+	}()
+
 	request := fetch.Request{
 		URL:           pageURL,
 		Method:        http.MethodGet,
@@ -90,6 +95,86 @@ func (s *Service) fetchPage(ctx context.Context, pageURL string, headless bool, 
 		return fetch.Result{}, apperrors.Wrap(apperrors.KindInternal, "failed to fetch page", err)
 	}
 	return result, nil
+}
+
+func (s *Service) recheckAutomationPage(ctx context.Context, pageURL string, profile *fetch.RenderProfile, script *pipeline.JSTargetScript) (pageContext, error) {
+	if err := webhook.ValidateURL(pageURL, s.allowInternal); err != nil {
+		return pageContext{}, err
+	}
+
+	tmpDir, err := os.MkdirTemp("", "spartan-ai-authoring-*")
+	if err != nil {
+		return pageContext{}, apperrors.Wrap(apperrors.KindInternal, "failed to create automation recheck workspace", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	if profile != nil {
+		if err := fetch.SaveRenderProfilesFile(tmpDir, fetch.RenderProfilesFile{Profiles: []fetch.RenderProfile{*profile}}); err != nil {
+			return pageContext{}, err
+		}
+	}
+	if script != nil {
+		if err := pipeline.SaveJSRegistry(tmpDir, pipeline.JSRegistry{Scripts: []pipeline.JSTargetScript{*script}}); err != nil {
+			return pageContext{}, err
+		}
+	}
+
+	fetcher := fetch.NewAdaptiveFetcher(tmpDir)
+	defer func() {
+		_ = fetcher.Close()
+	}()
+
+	request := fetch.Request{
+		URL:       pageURL,
+		Method:    http.MethodGet,
+		Timeout:   time.Duration(s.cfg.RequestTimeoutSecs) * time.Second,
+		UserAgent: s.cfg.UserAgent,
+		DataDir:   tmpDir,
+	}
+	if script != nil {
+		applyScriptToRequest(&request, *script)
+	}
+
+	result, err := fetcher.Fetch(ctx, request)
+	if err != nil {
+		return pageContext{}, apperrors.Wrap(apperrors.KindInternal, "failed to recheck page with current automation config", err)
+	}
+
+	resolvedURL := strings.TrimSpace(result.URL)
+	if resolvedURL == "" {
+		resolvedURL = strings.TrimSpace(pageURL)
+	}
+	return pageContext{
+		URL:         resolvedURL,
+		HTML:        result.HTML,
+		FetchStatus: result.Status,
+		FetchEngine: string(result.Engine),
+		JSHeaviness: fetch.DetectJSHeaviness(result.HTML),
+	}, nil
+}
+
+func applyScriptToRequest(request *fetch.Request, script pipeline.JSTargetScript) {
+	if request == nil {
+		return
+	}
+	request.Headless = true
+	switch strings.ToLower(strings.TrimSpace(script.Engine)) {
+	case pipeline.EnginePlaywright:
+		request.UsePlaywright = true
+	case pipeline.EngineChromedp:
+		request.UsePlaywright = false
+	}
+	if strings.TrimSpace(script.PreNav) != "" {
+		request.PreNavJS = []string{script.PreNav}
+	}
+	if strings.TrimSpace(script.PostNav) != "" {
+		request.PostNavJS = []string{script.PostNav}
+	}
+	if len(script.Selectors) > 0 {
+		request.WaitSelectors = append([]string(nil), script.Selectors...)
+	}
 }
 
 func validateHTTPURL(raw string) error {

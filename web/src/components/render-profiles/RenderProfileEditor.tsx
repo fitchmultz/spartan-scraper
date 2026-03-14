@@ -22,6 +22,7 @@ import {
   type RenderProfileInput,
 } from "../../api";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 
 interface RenderProfileEditorProps {
@@ -35,6 +36,8 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
   const [editingProfile, setEditingProfile] = useState<RenderProfile | null>(
     null,
   );
+  const [debuggingProfile, setDebuggingProfile] =
+    useState<RenderProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
@@ -205,6 +208,15 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
         }}
       />
 
+      <AIRenderProfileDebugger
+        isOpen={debuggingProfile !== null}
+        profile={debuggingProfile}
+        onClose={() => setDebuggingProfile(null)}
+        onSaved={() => {
+          void loadProfiles();
+        }}
+      />
+
       <div className="space-y-2">
         {profiles.map((profile) => (
           <div
@@ -223,6 +235,13 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
               )}
             </div>
             <div className="space-x-2">
+              <button
+                type="button"
+                onClick={() => setDebuggingProfile(profile)}
+                className="text-sm text-purple-600 hover:underline"
+              >
+                Tune with AI
+              </button>
               <button
                 type="button"
                 onClick={() => setEditingProfile(profile)}

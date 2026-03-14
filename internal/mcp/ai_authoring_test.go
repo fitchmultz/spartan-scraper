@@ -77,7 +77,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_pipeline_js_generate"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_render_profile_debug", "ai_pipeline_js_generate", "ai_pipeline_js_debug"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -280,6 +280,44 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 		t.Fatal("expected render profile instructions to reach the automation client")
 	}
 
+	renderProfileDebugBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_render_profile_debug",
+			"arguments": map[string]interface{}{
+				"url": source.URL,
+				"profile": map[string]interface{}{
+					"name":         "example-app",
+					"hostPatterns": []string{"127.0.0.1"},
+					"wait": map[string]interface{}{
+						"mode":     "selector",
+						"selector": ".missing",
+					},
+				},
+				"instructions": "Prefer the visible main shell",
+			},
+		}),
+	}
+	renderProfileDebugResult, err := srv.handleToolCall(context.Background(), renderProfileDebugBase)
+	if err != nil {
+		t.Fatalf("ai_render_profile_debug failed: %v", err)
+	}
+	renderProfileDebugResp, ok := renderProfileDebugResult.(aiauthoring.RenderProfileDebugResult)
+	if !ok {
+		t.Fatalf("expected render profile debug result type, got %#v", renderProfileDebugResult)
+	}
+	if len(renderProfileDebugResp.Issues) == 0 {
+		t.Fatal("expected local render profile issues")
+	}
+	if renderProfileDebugResp.SuggestedProfile == nil || renderProfileDebugResp.SuggestedProfile.Wait.Selector != "main" {
+		t.Fatalf("unexpected render profile suggestion: %#v", renderProfileDebugResp.SuggestedProfile)
+	}
+	if automationClient.renderProfileCalls != 2 {
+		t.Fatalf("expected debug call to reuse automation client, got %d total calls", automationClient.renderProfileCalls)
+	}
+	if automationClient.renderProfileReq.Feedback == "" {
+		t.Fatal("expected render profile debug feedback to reach the automation client")
+	}
+
 	pipelineBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
 			"name": "ai_pipeline_js_generate",
@@ -302,5 +340,39 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
+	}
+
+	pipelineDebugBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_pipeline_js_debug",
+			"arguments": map[string]interface{}{
+				"url": source.URL,
+				"script": map[string]interface{}{
+					"name":         "example-app",
+					"hostPatterns": []string{"127.0.0.1"},
+					"selectors":    []string{".missing"},
+				},
+			},
+		}),
+	}
+	pipelineDebugResult, err := srv.handleToolCall(context.Background(), pipelineDebugBase)
+	if err != nil {
+		t.Fatalf("ai_pipeline_js_debug failed: %v", err)
+	}
+	pipelineDebugResp, ok := pipelineDebugResult.(aiauthoring.PipelineJSDebugResult)
+	if !ok {
+		t.Fatalf("expected pipeline JS debug result type, got %#v", pipelineDebugResult)
+	}
+	if len(pipelineDebugResp.Issues) == 0 {
+		t.Fatal("expected local pipeline JS issues")
+	}
+	if pipelineDebugResp.SuggestedScript == nil || len(pipelineDebugResp.SuggestedScript.Selectors) != 1 || pipelineDebugResp.SuggestedScript.Selectors[0] != "main" {
+		t.Fatalf("unexpected pipeline JS suggestion: %#v", pipelineDebugResp.SuggestedScript)
+	}
+	if automationClient.pipelineJSCalls != 2 {
+		t.Fatalf("expected debug call to reuse automation client, got %d total calls", automationClient.pipelineJSCalls)
+	}
+	if automationClient.pipelineJSReq.Feedback == "" {
+		t.Fatal("expected pipeline JS debug feedback to reach the automation client")
 	}
 }

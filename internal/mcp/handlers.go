@@ -32,6 +32,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
@@ -115,11 +116,39 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return result, nil
+	case "ai_render_profile_debug":
+		profile := paramdecode.Decode[fetch.RenderProfile](params.Arguments, "profile")
+		result, err := s.aiAuthoring.DebugRenderProfile(ctx, aiauthoring.RenderProfileDebugRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			Profile:       profile,
+			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case "ai_pipeline_js_generate":
 		result, err := s.aiAuthoring.GeneratePipelineJS(ctx, aiauthoring.PipelineJSRequest{
 			URL:           paramdecode.String(params.Arguments, "url"),
 			Name:          strings.TrimSpace(paramdecode.String(params.Arguments, "name")),
 			HostPatterns:  paramdecode.StringSlice(params.Arguments, "hostPatterns"),
+			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case "ai_pipeline_js_debug":
+		script := paramdecode.Decode[pipeline.JSTargetScript](params.Arguments, "script")
+		result, err := s.aiAuthoring.DebugPipelineJS(ctx, aiauthoring.PipelineJSDebugRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			Script:        script,
 			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
 			Headless:      paramdecode.Bool(params.Arguments, "headless"),
 			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),

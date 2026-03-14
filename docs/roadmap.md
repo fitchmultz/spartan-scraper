@@ -10,11 +10,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Add bounded debug/tuning loops for AI-authored runtime automation configs (render profiles and pipeline JS) using live page rechecks, deterministic validation, and shared retry patterns across API, Web, CLI, and MCP.
+- Extend the shared `/v1/ai/*` authoring surface into bounded research-output refinement workflows that help operators rewrite, condense, or normalize collected evidence across API, Web, CLI, and MCP without introducing free-form agent loops.
 
 ## Next
 
-- Extend the shared `/v1/ai/*` authoring surface into other bounded operator workflows where `pi` materially improves outcomes, such as export shaping or research-output refinement, without introducing free-form agent loops.
+- Add bounded export-shaping authoring flows so operators can generate or tune export-ready field sets, summaries, and formatting hints before running recurring exports.
 
 ## Later
 
