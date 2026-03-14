@@ -146,9 +146,7 @@ describe("AITemplateGenerator", () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 
@@ -198,9 +196,7 @@ describe("AITemplateGenerator", () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 
@@ -241,9 +237,7 @@ describe("AITemplateGenerator", () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 
@@ -296,9 +290,7 @@ describe("AITemplateGenerator", () => {
       error: {
         error: "AI extraction is not configured",
       } as ErrorResponse,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 
@@ -361,9 +353,7 @@ describe("AITemplateGenerator", () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 
@@ -425,9 +415,7 @@ describe("AITemplateGenerator", () => {
     vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
       data: mockGeneratedResponse,
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-generate",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-generate"),
       response: new Response(),
     });
 

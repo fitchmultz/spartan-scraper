@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	OperationHealth           = "health"
-	OperationExtractPreview   = "extract_preview"
-	OperationGenerateTemplate = "generate_template"
+	OperationHealth                = "health"
+	OperationExtractPreview        = "extract_preview"
+	OperationGenerateTemplate      = "generate_template"
+	OperationGenerateRenderProfile = "generate_render_profile"
+	OperationGeneratePipelineJS    = "generate_pipeline_js"
 )
 
 type requestEnvelope struct {
@@ -104,6 +106,91 @@ type GenerateTemplateResult struct {
 	RouteID     string         `json:"route_id,omitempty"`
 	Provider    string         `json:"provider,omitempty"`
 	Model       string         `json:"model,omitempty"`
+}
+
+type GenerateRenderProfileRequest struct {
+	HTML           string       `json:"html"`
+	URL            string       `json:"url"`
+	Instructions   string       `json:"instructions"`
+	ContextSummary string       `json:"context_summary,omitempty"`
+	Feedback       string       `json:"feedback,omitempty"`
+	Images         []ImageInput `json:"images,omitempty"`
+}
+
+type BridgeRenderBlockPolicy struct {
+	ResourceTypes []string `json:"resourceTypes,omitempty"`
+	URLPatterns   []string `json:"urlPatterns,omitempty"`
+}
+
+type BridgeRenderWaitPolicy struct {
+	Mode                string `json:"mode,omitempty"`
+	Selector            string `json:"selector,omitempty"`
+	NetworkIdleQuietMs  int    `json:"networkIdleQuietMs,omitempty"`
+	MinTextLength       int    `json:"minTextLength,omitempty"`
+	StabilityPollMs     int    `json:"stabilityPollMs,omitempty"`
+	StabilityIterations int    `json:"stabilityIterations,omitempty"`
+	ExtraSleepMs        int    `json:"extraSleepMs,omitempty"`
+}
+
+type BridgeRenderTimeoutPolicy struct {
+	MaxRenderMs  int `json:"maxRenderMs,omitempty"`
+	ScriptEvalMs int `json:"scriptEvalMs,omitempty"`
+	NavigationMs int `json:"navigationMs,omitempty"`
+}
+
+type BridgeScreenshotConfig struct {
+	Enabled  bool   `json:"enabled,omitempty"`
+	FullPage bool   `json:"fullPage,omitempty"`
+	Format   string `json:"format,omitempty"`
+	Quality  int    `json:"quality,omitempty"`
+	Width    int    `json:"width,omitempty"`
+	Height   int    `json:"height,omitempty"`
+}
+
+type BridgeRenderProfile struct {
+	ForceEngine      string                    `json:"forceEngine,omitempty"`
+	PreferHeadless   bool                      `json:"preferHeadless,omitempty"`
+	AssumeJSHeavy    bool                      `json:"assumeJsHeavy,omitempty"`
+	NeverHeadless    bool                      `json:"neverHeadless,omitempty"`
+	JSHeavyThreshold float64                   `json:"jsHeavyThreshold,omitempty"`
+	RateLimitQPS     int                       `json:"rateLimitQPS,omitempty"`
+	RateLimitBurst   int                       `json:"rateLimitBurst,omitempty"`
+	Block            BridgeRenderBlockPolicy   `json:"block,omitempty"`
+	Wait             BridgeRenderWaitPolicy    `json:"wait,omitempty"`
+	Timeouts         BridgeRenderTimeoutPolicy `json:"timeouts,omitempty"`
+	Screenshot       BridgeScreenshotConfig    `json:"screenshot,omitempty"`
+}
+
+type GenerateRenderProfileResult struct {
+	Profile     BridgeRenderProfile `json:"profile"`
+	Explanation string              `json:"explanation,omitempty"`
+	RouteID     string              `json:"route_id,omitempty"`
+	Provider    string              `json:"provider,omitempty"`
+	Model       string              `json:"model,omitempty"`
+}
+
+type GeneratePipelineJSRequest struct {
+	HTML           string       `json:"html"`
+	URL            string       `json:"url"`
+	Instructions   string       `json:"instructions"`
+	ContextSummary string       `json:"context_summary,omitempty"`
+	Feedback       string       `json:"feedback,omitempty"`
+	Images         []ImageInput `json:"images,omitempty"`
+}
+
+type BridgePipelineJSScript struct {
+	Engine    string   `json:"engine,omitempty"`
+	PreNav    string   `json:"preNav,omitempty"`
+	PostNav   string   `json:"postNav,omitempty"`
+	Selectors []string `json:"selectors,omitempty"`
+}
+
+type GeneratePipelineJSResult struct {
+	Script      BridgePipelineJSScript `json:"script"`
+	Explanation string                 `json:"explanation,omitempty"`
+	RouteID     string                 `json:"route_id,omitempty"`
+	Provider    string                 `json:"provider,omitempty"`
+	Model       string                 `json:"model,omitempty"`
 }
 
 type BridgeFieldValue struct {
@@ -190,6 +277,18 @@ func (c *Client) Extract(ctx context.Context, req ExtractRequest) (ExtractResult
 func (c *Client) GenerateTemplate(ctx context.Context, req GenerateTemplateRequest) (GenerateTemplateResult, error) {
 	var resp GenerateTemplateResult
 	err := c.call(ctx, OperationGenerateTemplate, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GenerateRenderProfile(ctx context.Context, req GenerateRenderProfileRequest) (GenerateRenderProfileResult, error) {
+	var resp GenerateRenderProfileResult
+	err := c.call(ctx, OperationGenerateRenderProfile, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GeneratePipelineJS(ctx context.Context, req GeneratePipelineJSRequest) (GeneratePipelineJSResult, error) {
+	var resp GeneratePipelineJSResult
+	err := c.call(ctx, OperationGeneratePipelineJS, req, &resp)
 	return resp, err
 }
 

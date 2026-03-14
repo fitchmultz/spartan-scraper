@@ -144,6 +144,8 @@ const (
 	AICapabilityExtractNatural     = "extract.natural_language"
 	AICapabilityExtractSchema      = "extract.schema_guided"
 	AICapabilityTemplateGeneration = "template.generate"
+	AICapabilityRenderProfile      = "render_profile.generate"
+	AICapabilityPipelineJS         = "pipeline_js.generate"
 )
 
 // AIRoutingConfig maps AI capabilities to ordered provider/model routes.
@@ -184,6 +186,8 @@ func DefaultAIRoutingConfig() AIRoutingConfig {
 			AICapabilityExtractNatural:     append([]string(nil), defaultRouteOrder...),
 			AICapabilityExtractSchema:      append([]string(nil), defaultRouteOrder...),
 			AICapabilityTemplateGeneration: append([]string(nil), defaultRouteOrder...),
+			AICapabilityRenderProfile:      append([]string(nil), defaultRouteOrder...),
+			AICapabilityPipelineJS:         append([]string(nil), defaultRouteOrder...),
 		},
 	}
 }

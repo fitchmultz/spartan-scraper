@@ -31,6 +31,8 @@ func ValidateProvider(cfg config.AIConfig) error {
 		config.AICapabilityExtractNatural,
 		config.AICapabilityExtractSchema,
 		config.AICapabilityTemplateGeneration,
+		config.AICapabilityRenderProfile,
+		config.AICapabilityPipelineJS,
 	} {
 		if len(cfg.Routing.RoutesFor(capability)) == 0 {
 			return fmt.Errorf("no routes configured for capability %s", capability)

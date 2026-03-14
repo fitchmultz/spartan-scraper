@@ -26,7 +26,7 @@ Commands:
   scrape       Scrape a single page
   crawl        Crawl a website
   research     Deep research across multiple sources
-  ai           AI authoring utilities (preview, template generation)
+  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS)
   auth         Manage auth vault and profiles
   batch        Submit and manage batch jobs
   chains       Manage job chains (create/list/get/submit/delete)
@@ -57,6 +57,8 @@ Examples:
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs --agentic --agentic-instructions "Prioritize pricing and support commitments"
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
+  spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell"
+  spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and reset scroll position"
   spartan auth list
   spartan auth set --name acme --auth-basic user:pass --header "X-API: token"
   spartan auth set --name acme --parent base --token "token" --token-kind bearer

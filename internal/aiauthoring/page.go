@@ -22,13 +22,18 @@ type pageContext struct {
 	HTML              string
 	Images            []extract.AIImageInput
 	VisualContextUsed bool
+	FetchStatus       int
+	FetchEngine       string
+	JSHeaviness       fetch.JSHeaviness
 }
 
 func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html string, headless bool, usePlaywright bool, visual bool) (pageContext, error) {
 	if strings.TrimSpace(html) != "" {
+		trimmedURL := strings.TrimSpace(pageURL)
 		return pageContext{
-			URL:  strings.TrimSpace(pageURL),
-			HTML: html,
+			URL:         trimmedURL,
+			HTML:        html,
+			JSHeaviness: fetch.DetectJSHeaviness(html),
 		}, nil
 	}
 
@@ -38,8 +43,11 @@ func (s *Service) resolvePageContext(ctx context.Context, pageURL string, html s
 	}
 
 	ctxResult := pageContext{
-		URL:  strings.TrimSpace(pageURL),
-		HTML: result.HTML,
+		URL:         strings.TrimSpace(pageURL),
+		HTML:        result.HTML,
+		FetchStatus: result.Status,
+		FetchEngine: string(result.Engine),
+		JSHeaviness: fetch.DetectJSHeaviness(result.HTML),
 	}
 	if visual {
 		image, err := loadScreenshotImage(result.ScreenshotPath)

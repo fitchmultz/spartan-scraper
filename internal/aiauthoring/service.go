@@ -5,16 +5,23 @@ import (
 	"strings"
 	"time"
 
+	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
 
+type AutomationClient interface {
+	GenerateRenderProfile(ctx context.Context, req piai.GenerateRenderProfileRequest) (piai.GenerateRenderProfileResult, error)
+	GeneratePipelineJS(ctx context.Context, req piai.GeneratePipelineJSRequest) (piai.GeneratePipelineJSResult, error)
+}
+
 type Service struct {
-	cfg           config.Config
-	aiExtractor   *extract.AIExtractor
-	allowInternal bool
+	cfg              config.Config
+	aiExtractor      *extract.AIExtractor
+	automationClient AutomationClient
+	allowInternal    bool
 }
 
 type PreviewRequest struct {
@@ -82,7 +89,20 @@ type TemplateDebugResult struct {
 }
 
 func NewService(cfg config.Config, aiExtractor *extract.AIExtractor, allowInternal bool) *Service {
-	return &Service{cfg: cfg, aiExtractor: aiExtractor, allowInternal: allowInternal}
+	var automationClient AutomationClient
+	if cfg.AI.Enabled {
+		automationClient = piai.NewClient(cfg.AI)
+	}
+	return NewServiceWithAutomationClient(cfg, aiExtractor, automationClient, allowInternal)
+}
+
+func NewServiceWithAutomationClient(cfg config.Config, aiExtractor *extract.AIExtractor, automationClient AutomationClient, allowInternal bool) *Service {
+	return &Service{
+		cfg:              cfg,
+		aiExtractor:      aiExtractor,
+		automationClient: automationClient,
+		allowInternal:    allowInternal,
+	}
 }
 
 func (s *Service) Preview(ctx context.Context, req PreviewRequest) (PreviewResult, error) {
@@ -249,6 +269,13 @@ func (s *Service) FetchHTML(ctx context.Context, pageURL string, headless bool, 
 func (s *Service) requireAIExtractor() error {
 	if s == nil || s.aiExtractor == nil {
 		return apperrors.Validation("AI extraction is not configured. Enable the pi bridge with PI_ENABLED and build tools/pi-bridge.")
+	}
+	return nil
+}
+
+func (s *Service) requireAutomationClient() error {
+	if s == nil || s.automationClient == nil {
+		return apperrors.Validation("AI authoring is not configured. Enable the pi bridge with PI_ENABLED and build tools/pi-bridge.")
 	}
 	return nil
 }

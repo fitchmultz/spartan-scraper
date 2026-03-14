@@ -446,6 +446,128 @@ export type AiExtractTemplateDebugResponse = {
     visual_context_used?: boolean;
 };
 
+/**
+ * Request for AI render profile generation from a live URL.
+ */
+export type AiRenderProfileGenerateRequest = {
+    /**
+     * URL to inspect while generating the render profile
+     */
+    url: string;
+    /**
+     * Optional profile name override
+     */
+    name?: string;
+    /**
+     * Optional host patterns override for the generated profile
+     */
+    host_patterns?: Array<string>;
+    /**
+     * Operator guidance for the generated render profile
+     */
+    instructions: string;
+    /**
+     * Use headless browser to fetch content
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for headless fetching
+     */
+    playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context when fetching the URL
+     */
+    visual?: boolean;
+};
+
+/**
+ * Response from AI render profile generation
+ */
+export type AiRenderProfileGenerateResponse = {
+    profile?: RenderProfile;
+    /**
+     * Explanation of the generated render profile
+     */
+    explanation?: string;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
+};
+
+/**
+ * Request for AI pipeline JS generation from a live URL.
+ */
+export type AiPipelineJsGenerateRequest = {
+    /**
+     * URL to inspect while generating the pipeline JS script
+     */
+    url: string;
+    /**
+     * Optional script name override
+     */
+    name?: string;
+    /**
+     * Optional host patterns override for the generated script
+     */
+    host_patterns?: Array<string>;
+    /**
+     * Operator guidance for the generated pipeline JS script
+     */
+    instructions: string;
+    /**
+     * Use headless browser to fetch content
+     */
+    headless?: boolean;
+    /**
+     * Use Playwright instead of Chromedp for headless fetching
+     */
+    playwright?: boolean;
+    /**
+     * Capture a screenshot and include visual context when fetching the URL
+     */
+    visual?: boolean;
+};
+
+/**
+ * Response from AI pipeline JS generation
+ */
+export type AiPipelineJsGenerateResponse = {
+    script?: JsTargetScript;
+    /**
+     * Explanation of the generated pipeline JS script
+     */
+    explanation?: string;
+    /**
+     * Exact pi route ID selected to handle the request
+     */
+    route_id?: string;
+    /**
+     * Provider selected by the pi route that handled the request
+     */
+    provider?: string;
+    /**
+     * Model selected by the pi route that handled the request
+     */
+    model?: string;
+    /**
+     * Whether screenshot-based visual context was included in the AI request
+     */
+    visual_context_used?: boolean;
+};
+
 export type PipelineOptions = {
     preProcessors?: Array<string>;
     postProcessors?: Array<string>;
@@ -3762,7 +3884,7 @@ export type AiExtractPreviewData = {
     body: AiExtractPreviewRequest;
     path?: never;
     query?: never;
-    url: '/v1/extract/ai-preview';
+    url: '/v1/ai/extract-preview';
 };
 
 export type AiExtractPreviewErrors = {
@@ -3799,7 +3921,7 @@ export type AiTemplateGenerateData = {
     body: AiExtractTemplateGenerateRequest;
     path?: never;
     query?: never;
-    url: '/v1/extract/ai-template-generate';
+    url: '/v1/ai/template-generate';
 };
 
 export type AiTemplateGenerateErrors = {
@@ -3836,7 +3958,7 @@ export type AiTemplateDebugData = {
     body: AiExtractTemplateDebugRequest;
     path?: never;
     query?: never;
-    url: '/v1/extract/ai-template-debug';
+    url: '/v1/ai/template-debug';
 };
 
 export type AiTemplateDebugErrors = {
@@ -3868,6 +3990,80 @@ export type AiTemplateDebugResponses = {
 };
 
 export type AiTemplateDebugResponse = AiTemplateDebugResponses[keyof AiTemplateDebugResponses];
+
+export type AiRenderProfileGenerateData = {
+    body: AiRenderProfileGenerateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/render-profile-generate';
+};
+
+export type AiRenderProfileGenerateErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiRenderProfileGenerateError = AiRenderProfileGenerateErrors[keyof AiRenderProfileGenerateErrors];
+
+export type AiRenderProfileGenerateResponses = {
+    /**
+     * Generated render profile
+     */
+    200: AiRenderProfileGenerateResponse;
+};
+
+export type AiRenderProfileGenerateResponse2 = AiRenderProfileGenerateResponses[keyof AiRenderProfileGenerateResponses];
+
+export type AiPipelineJsGenerateData = {
+    body: AiPipelineJsGenerateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/ai/pipeline-js-generate';
+};
+
+export type AiPipelineJsGenerateErrors = {
+    /**
+     * Bad Request - invalid parameters
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Unsupported Media Type
+     */
+    415: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type AiPipelineJsGenerateError = AiPipelineJsGenerateErrors[keyof AiPipelineJsGenerateErrors];
+
+export type AiPipelineJsGenerateResponses = {
+    /**
+     * Generated pipeline JS script
+     */
+    200: AiPipelineJsGenerateResponse;
+};
+
+export type AiPipelineJsGenerateResponse2 = AiPipelineJsGenerateResponses[keyof AiPipelineJsGenerateResponses];
 
 export type DeleteCrawlStatesData = {
     body?: never;

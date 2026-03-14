@@ -755,7 +755,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
-  "/v1/extract/ai-preview":
+  "/v1/ai/extract-preview":
     post:
       summary: Preview AI-powered extraction
       description: Extract structured data using AI/LLM without creating a job.
@@ -799,7 +799,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
-  "/v1/extract/ai-template-generate":
+  "/v1/ai/template-generate":
     post:
       summary: Generate extraction template using AI
       description: Generate an extraction template using AI from either fetched page content
@@ -842,7 +842,7 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
-  "/v1/extract/ai-template-debug":
+  "/v1/ai/template-debug":
     post:
       summary: Debug extraction template using AI
       description: Analyze an existing extraction template against fetched page content or raw HTML,
@@ -861,6 +861,90 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/AIExtractTemplateDebugResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/render-profile-generate":
+    post:
+      summary: Generate render profile using AI
+      description: Generate a Spartan render profile for a live page without creating a job.
+      operationId: aiRenderProfileGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIRenderProfileGenerateRequest"
+      responses:
+        '200':
+          description: Generated render profile
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIRenderProfileGenerateResponse"
+        '400':
+          description: Bad Request - invalid parameters
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/ai/pipeline-js-generate":
+    post:
+      summary: Generate pipeline JS script using AI
+      description: Generate a Spartan pipeline JS script for a live page without creating a job.
+      operationId: aiPipelineJsGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AIPipelineJSGenerateRequest"
+      responses:
+        '200':
+          description: Generated pipeline JS script
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AIPipelineJSGenerateResponse"
         '400':
           description: Bad Request - invalid parameters
           content:
@@ -3559,6 +3643,110 @@ components:
           description: Explanation of the suggested repair
         suggested_template:
           "$ref": "#/components/schemas/Template"
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
+    AIRenderProfileGenerateRequest:
+      type: object
+      description: Request for AI render profile generation from a live URL.
+      required:
+      - url
+      - instructions
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to inspect while generating the render profile
+        name:
+          type: string
+          description: Optional profile name override
+        host_patterns:
+          type: array
+          items:
+            type: string
+          description: Optional host patterns override for the generated profile
+        instructions:
+          type: string
+          description: Operator guidance for the generated render profile
+        headless:
+          type: boolean
+          description: Use headless browser to fetch content
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for headless fetching
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context when fetching the URL
+    AIRenderProfileGenerateResponse:
+      type: object
+      description: Response from AI render profile generation
+      properties:
+        profile:
+          "$ref": "#/components/schemas/RenderProfile"
+        explanation:
+          type: string
+          description: Explanation of the generated render profile
+        route_id:
+          type: string
+          description: Exact pi route ID selected to handle the request
+        provider:
+          type: string
+          description: Provider selected by the pi route that handled the request
+        model:
+          type: string
+          description: Model selected by the pi route that handled the request
+        visual_context_used:
+          type: boolean
+          description: Whether screenshot-based visual context was included in the AI request
+    AIPipelineJSGenerateRequest:
+      type: object
+      description: Request for AI pipeline JS generation from a live URL.
+      required:
+      - url
+      - instructions
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to inspect while generating the pipeline JS script
+        name:
+          type: string
+          description: Optional script name override
+        host_patterns:
+          type: array
+          items:
+            type: string
+          description: Optional host patterns override for the generated script
+        instructions:
+          type: string
+          description: Operator guidance for the generated pipeline JS script
+        headless:
+          type: boolean
+          description: Use headless browser to fetch content
+        playwright:
+          type: boolean
+          description: Use Playwright instead of Chromedp for headless fetching
+        visual:
+          type: boolean
+          description: Capture a screenshot and include visual context when fetching the URL
+    AIPipelineJSGenerateResponse:
+      type: object
+      description: Response from AI pipeline JS generation
+      properties:
+        script:
+          "$ref": "#/components/schemas/JSTargetScript"
+        explanation:
+          type: string
+          description: Explanation of the generated pipeline JS script
         route_id:
           type: string
           description: Exact pi route ID selected to handle the request

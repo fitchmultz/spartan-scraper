@@ -101,6 +101,34 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return result, nil
+	case "ai_render_profile_generate":
+		result, err := s.aiAuthoring.GenerateRenderProfile(ctx, aiauthoring.RenderProfileRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			Name:          strings.TrimSpace(paramdecode.String(params.Arguments, "name")),
+			HostPatterns:  paramdecode.StringSlice(params.Arguments, "hostPatterns"),
+			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	case "ai_pipeline_js_generate":
+		result, err := s.aiAuthoring.GeneratePipelineJS(ctx, aiauthoring.PipelineJSRequest{
+			URL:           paramdecode.String(params.Arguments, "url"),
+			Name:          strings.TrimSpace(paramdecode.String(params.Arguments, "name")),
+			HostPatterns:  paramdecode.StringSlice(params.Arguments, "hostPatterns"),
+			Instructions:  strings.TrimSpace(paramdecode.String(params.Arguments, "instructions")),
+			Headless:      paramdecode.Bool(params.Arguments, "headless"),
+			UsePlaywright: paramdecode.Bool(params.Arguments, "playwright"),
+			Visual:        paramdecode.Bool(params.Arguments, "visual"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case "scrape_page":
 		url := paramdecode.String(params.Arguments, "url")
 		if url == "" {

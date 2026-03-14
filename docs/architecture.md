@@ -36,11 +36,11 @@ GraphQL is not part of the architecture anymore.
 
 AI support is intentionally asymmetric by interface.
 
-- REST is the canonical machine surface for AI-backed extraction capabilities.
-- Web UI is the primary interactive AI surface for preview, template generation, template debugging, and job-form controls.
-- CLI and MCP expose both job-launching AI controls and dedicated preview/template-authoring flows where flags or tool parameters are a natural fit.
-- The shared `internal/aiauthoring` service now owns bounded AI preview, template generation, template debugging, validation retries, and optional multimodal screenshot context so REST, Web, CLI, and MCP do not drift.
-- TUI stays focused on local operations and inspection. It may display AI-related metadata already attached to jobs, but it is not a first-class surface for prompt-heavy AI workflows such as preview, template generation, template debugging, or agent sessions.
+- REST is the canonical machine surface for bounded AI authoring and AI-backed extraction capabilities.
+- Web UI is the primary interactive AI surface for preview, template generation, template debugging, render-profile generation, pipeline-JS generation, and job-form controls.
+- CLI and MCP expose both job-launching AI controls and dedicated authoring flows where flags or tool parameters are a natural fit.
+- The shared `internal/aiauthoring` service now owns bounded AI preview, template generation, template debugging, render-profile generation, pipeline-JS generation, validation retries, and optional multimodal screenshot context so REST, Web, CLI, and MCP do not drift.
+- TUI stays focused on local operations and inspection. It may display AI-related metadata already attached to jobs, but it is not a first-class surface for prompt-heavy AI workflows such as preview, template generation, template debugging, render-profile generation, pipeline-JS generation, or agent sessions.
 
 This boundary is deliberate to avoid building a second interactive AI workbench inside a terminal screen model that already serves a different operational purpose.
 

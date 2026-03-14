@@ -1,22 +1,22 @@
-// Package api provides HTTP handlers for AI-powered extraction endpoints.
+// Package api provides HTTP handlers for bounded AI authoring endpoints.
 //
 // Purpose:
-// - Expose AI-assisted extraction preview and template-generation routes.
+// - Expose prompt-heavy AI preview and authoring routes without creating jobs.
 //
 // Responsibilities:
-// - Validate extraction requests and shared AI configuration.
+// - Validate authoring requests and shared AI configuration.
 // - Enforce strict JSON request parsing and bounded request sizes.
-// - Adapt extractor results into stable API responses.
+// - Adapt authoring results into stable API responses.
 //
 // Scope:
-// - AI extraction request handlers only.
+// - AI authoring request handlers only.
 //
 // Usage:
-// - Mounted under `/v1/extract/ai-preview` and `/v1/extract/ai-template-generate`.
+// - Mounted under `/v1/ai/*`.
 //
 // Invariants/Assumptions:
 // - Requests must use `application/json`.
-// - AI handlers require `Server.aiExtractor` to be configured.
+// - AI handlers require the shared `aiauthoring.Service`.
 package api
 
 import (
@@ -29,9 +29,10 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
-// AIExtractPreviewRequest for POST /v1/extract/ai-preview
+// AIExtractPreviewRequest for POST /v1/ai/extract-preview
 type AIExtractPreviewRequest struct {
 	URL           string                   `json:"url"`
 	HTML          string                   `json:"html,omitempty"` // Optional: provide HTML directly
@@ -57,7 +58,7 @@ type AIExtractPreviewResponse struct {
 	VisualContextUsed bool                          `json:"visual_context_used"`
 }
 
-// AIExtractTemplateGenerateRequest for POST /v1/extract/ai-template-generate
+// AIExtractTemplateGenerateRequest for POST /v1/ai/template-generate
 type AIExtractTemplateGenerateRequest struct {
 	URL           string   `json:"url,omitempty"`
 	HTML          string   `json:"html,omitempty"`
@@ -97,6 +98,44 @@ type AIExtractTemplateDebugResponse struct {
 	Provider          string                        `json:"provider,omitempty"`
 	Model             string                        `json:"model,omitempty"`
 	VisualContextUsed bool                          `json:"visual_context_used"`
+}
+
+type AIRenderProfileGenerateRequest struct {
+	URL           string   `json:"url"`
+	Name          string   `json:"name,omitempty"`
+	HostPatterns  []string `json:"host_patterns,omitempty"`
+	Instructions  string   `json:"instructions"`
+	Headless      bool     `json:"headless,omitempty"`
+	UsePlaywright bool     `json:"playwright,omitempty"`
+	Visual        bool     `json:"visual,omitempty"`
+}
+
+type AIRenderProfileGenerateResponse struct {
+	Profile           fetch.RenderProfile `json:"profile"`
+	Explanation       string              `json:"explanation,omitempty"`
+	RouteID           string              `json:"route_id,omitempty"`
+	Provider          string              `json:"provider,omitempty"`
+	Model             string              `json:"model,omitempty"`
+	VisualContextUsed bool                `json:"visual_context_used"`
+}
+
+type AIPipelineJSGenerateRequest struct {
+	URL           string   `json:"url"`
+	Name          string   `json:"name,omitempty"`
+	HostPatterns  []string `json:"host_patterns,omitempty"`
+	Instructions  string   `json:"instructions"`
+	Headless      bool     `json:"headless,omitempty"`
+	UsePlaywright bool     `json:"playwright,omitempty"`
+	Visual        bool     `json:"visual,omitempty"`
+}
+
+type AIPipelineJSGenerateResponse struct {
+	Script            pipeline.JSTargetScript `json:"script"`
+	Explanation       string                  `json:"explanation,omitempty"`
+	RouteID           string                  `json:"route_id,omitempty"`
+	Provider          string                  `json:"provider,omitempty"`
+	Model             string                  `json:"model,omitempty"`
+	VisualContextUsed bool                    `json:"visual_context_used"`
 }
 
 func (s *Server) handleAIExtractPreview(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +263,88 @@ func (s *Server) handleAITemplateDebug(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, resp)
 }
 
+func (s *Server) handleAIRenderProfileGenerate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIRenderProfileGenerateRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	result, err := s.aiAuthoringService().GenerateRenderProfile(r.Context(), aiauthoring.RenderProfileRequest{
+		URL:           req.URL,
+		Name:          req.Name,
+		HostPatterns:  req.HostPatterns,
+		Instructions:  req.Instructions,
+		Headless:      req.Headless,
+		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp := AIRenderProfileGenerateResponse{
+		Profile:           result.Profile,
+		Explanation:       result.Explanation,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("render_profile_generate", req.URL, result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleAIPipelineJSGenerate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	var req AIPipelineJSGenerateRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	result, err := s.aiAuthoringService().GeneratePipelineJS(r.Context(), aiauthoring.PipelineJSRequest{
+		URL:           req.URL,
+		Name:          req.Name,
+		HostPatterns:  req.HostPatterns,
+		Instructions:  req.Instructions,
+		Headless:      req.Headless,
+		UsePlaywright: req.UsePlaywright,
+		Visual:        req.Visual,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp := AIPipelineJSGenerateResponse{
+		Script:            result.Script,
+		Explanation:       result.Explanation,
+		RouteID:           result.RouteID,
+		Provider:          result.Provider,
+		Model:             result.Model,
+		VisualContextUsed: result.VisualContextUsed,
+	}
+	setAIResponseHeaders(w, result.RouteID, result.Provider, result.Model)
+	logAIRequestCompletion("pipeline_js_generate", req.URL, result.RouteID, result.Provider, result.Model, false)
+	writeJSON(w, resp)
+}
+
 func (s *Server) aiAuthoringService() *aiauthoring.Service {
+	if s.aiAuthoring != nil {
+		return s.aiAuthoring
+	}
 	return aiauthoring.NewService(s.cfg, s.aiExtractor, !s.cfg.APIAuthEnabled && isLocalhost(s.cfg.BindAddr))
 }
 

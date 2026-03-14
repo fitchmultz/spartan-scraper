@@ -57,9 +57,7 @@ describe("AITemplateDebugger", () => {
         visual_context_used: true,
       },
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-debug",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-debug"),
       response: new Response(),
     });
 
@@ -113,9 +111,7 @@ describe("AITemplateDebugger", () => {
         },
       },
       error: undefined,
-      request: new Request(
-        "http://localhost:8741/v1/extract/ai-template-debug",
-      ),
+      request: new Request("http://localhost:8741/v1/ai/template-debug"),
       response: new Response(),
     });
     vi.mocked(api.updateTemplate).mockResolvedValue({

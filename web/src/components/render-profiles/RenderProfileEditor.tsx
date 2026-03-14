@@ -22,6 +22,7 @@ import {
   type RenderProfileInput,
 } from "../../api";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
@@ -35,6 +36,7 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
     null,
   );
   const [isCreating, setIsCreating] = useState(false);
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
 
   const loadProfiles = useCallback(async () => {
@@ -136,6 +138,13 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
           </button>
           <button
             type="button"
+            onClick={() => setIsAIGeneratorOpen(true)}
+            className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+          >
+            Generate with AI
+          </button>
+          <button
+            type="button"
             onClick={() => setIsCreating(true)}
             className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
           >
@@ -187,6 +196,14 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
           <pre className="text-sm">{JSON.stringify(profiles, null, 2)}</pre>
         </div>
       )}
+
+      <AIRenderProfileGenerator
+        isOpen={isAIGeneratorOpen}
+        onClose={() => setIsAIGeneratorOpen(false)}
+        onSaved={() => {
+          void loadProfiles();
+        }}
+      />
 
       <div className="space-y-2">
         {profiles.map((profile) => (

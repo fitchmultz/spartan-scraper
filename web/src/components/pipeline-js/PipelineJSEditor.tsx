@@ -22,6 +22,7 @@ import {
   type PipelineJsInput,
 } from "../../api";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
@@ -35,6 +36,7 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
     null,
   );
   const [isCreating, setIsCreating] = useState(false);
+  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
 
   const loadScripts = useCallback(async () => {
@@ -136,6 +138,13 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
           </button>
           <button
             type="button"
+            onClick={() => setIsAIGeneratorOpen(true)}
+            className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+          >
+            Generate with AI
+          </button>
+          <button
+            type="button"
             onClick={() => setIsCreating(true)}
             className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
           >
@@ -189,6 +198,14 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
           <pre className="text-sm">{JSON.stringify(scripts, null, 2)}</pre>
         </div>
       )}
+
+      <AIPipelineJSGenerator
+        isOpen={isAIGeneratorOpen}
+        onClose={() => setIsAIGeneratorOpen(false)}
+        onSaved={() => {
+          void loadScripts();
+        }}
+      />
 
       <div className="space-y-2">
         {scripts.map((script) => (

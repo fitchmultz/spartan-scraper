@@ -104,7 +104,7 @@ describe("AIExtractPreview", () => {
     vi.mocked(api.aiExtractPreview).mockResolvedValue({
       data: mockPreviewResponse,
       error: undefined,
-      request: new Request("http://localhost:8741/v1/extract/ai-preview"),
+      request: new Request("http://localhost:8741/v1/ai/extract-preview"),
       response: new Response(),
     });
 
@@ -147,7 +147,7 @@ describe("AIExtractPreview", () => {
     vi.mocked(api.aiExtractPreview).mockResolvedValue({
       data: mockPreviewResponse,
       error: undefined,
-      request: new Request("http://localhost:8741/v1/extract/ai-preview"),
+      request: new Request("http://localhost:8741/v1/ai/extract-preview"),
       response: new Response(),
     });
 
@@ -187,7 +187,7 @@ describe("AIExtractPreview", () => {
     vi.mocked(api.aiExtractPreview).mockResolvedValue({
       data: mockPreviewResponse,
       error: undefined,
-      request: new Request("http://localhost:8741/v1/extract/ai-preview"),
+      request: new Request("http://localhost:8741/v1/ai/extract-preview"),
       response: new Response(),
     });
 
@@ -227,7 +227,7 @@ describe("AIExtractPreview", () => {
       error: {
         error: "AI extraction is not configured",
       } as ErrorResponse,
-      request: new Request("http://localhost:8741/v1/extract/ai-preview"),
+      request: new Request("http://localhost:8741/v1/ai/extract-preview"),
       response: new Response(),
     });
 

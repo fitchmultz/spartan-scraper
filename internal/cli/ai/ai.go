@@ -18,6 +18,8 @@ type authoringRunner interface {
 	Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error)
 	GenerateTemplate(ctx context.Context, req aiauthoring.TemplateRequest) (aiauthoring.TemplateResult, error)
 	DebugTemplate(ctx context.Context, req aiauthoring.TemplateDebugRequest) (aiauthoring.TemplateDebugResult, error)
+	GenerateRenderProfile(ctx context.Context, req aiauthoring.RenderProfileRequest) (aiauthoring.RenderProfileResult, error)
+	GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error)
 }
 
 var newAuthoringRunner = func(cfg config.Config) (authoringRunner, error) {
@@ -59,6 +61,20 @@ func RunAI(ctx context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 		return runTemplateDebug(ctx, cfg, runner, args[1:])
+	case "render-profile":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runRenderProfile(ctx, runner, args[1:])
+	case "pipeline-js":
+		runner, err := newAuthoringRunner(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return runPipelineJS(ctx, runner, args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown ai subcommand: %s\n", args[0])
 		printHelp()
@@ -255,6 +271,98 @@ Options:
 	return 0
 }
 
+func runRenderProfile(ctx context.Context, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-render-profile", flag.ContinueOnError)
+	url := fs.String("url", "", "Target URL to inspect for render profile generation")
+	name := fs.String("name", "", "Optional render profile name")
+	hostPatterns := fs.String("host-patterns", "", "Optional comma-separated host patterns")
+	instructions := fs.String("instructions", "", "Describe the fetch behavior the generated profile should optimize")
+	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
+	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai render-profile [options]
+
+Examples:
+  spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell and prefer headless if needed"
+  spartan ai render-profile --url https://example.com/catalog --name catalog --host-patterns example.com,*.example.com --instructions "Keep static assets light but wait for the product grid" --visual
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	result, err := runner.GenerateRenderProfile(ctx, aiauthoring.RenderProfileRequest{
+		URL:           strings.TrimSpace(*url),
+		Name:          strings.TrimSpace(*name),
+		HostPatterns:  splitCSV(*hostPatterns),
+		Instructions:  strings.TrimSpace(*instructions),
+		Headless:      *headless,
+		UsePlaywright: *playwright,
+		Visual:        *visual,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func runPipelineJS(ctx context.Context, runner authoringRunner, args []string) int {
+	fs := flag.NewFlagSet("ai-pipeline-js", flag.ContinueOnError)
+	url := fs.String("url", "", "Target URL to inspect for pipeline JS generation")
+	name := fs.String("name", "", "Optional pipeline JS script name")
+	hostPatterns := fs.String("host-patterns", "", "Optional comma-separated host patterns")
+	instructions := fs.String("instructions", "", "Describe what the generated pipeline JS should wait for or automate")
+	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
+	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
+	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
+	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan ai pipeline-js [options]
+
+Examples:
+  spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and scroll back to the top before extraction"
+  spartan ai pipeline-js --url https://example.com/catalog --name catalog --host-patterns example.com --instructions "Wait for the product grid and dismiss any cookie banner" --visual
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	result, err := runner.GeneratePipelineJS(ctx, aiauthoring.PipelineJSRequest{
+		URL:           strings.TrimSpace(*url),
+		Name:          strings.TrimSpace(*name),
+		HostPatterns:  splitCSV(*hostPatterns),
+		Instructions:  strings.TrimSpace(*instructions),
+		Headless:      *headless,
+		UsePlaywright: *playwright,
+		Visual:        *visual,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSONResult(result, *out); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func printHelp() {
 	fmt.Fprint(os.Stderr, `AI authoring utilities.
 
@@ -265,11 +373,15 @@ Subcommands:
   preview             Run AI extraction preview without creating a job
   template            Generate an extraction template without creating a job
   template-debug      Debug and repair an extraction template without creating a job
+  render-profile      Generate a render profile without creating a job
+  pipeline-js         Generate a pipeline JS script without creating a job
 
 Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
   spartan ai template-debug --url https://example.com --template-name product
+  spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell"
+  spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and dismiss the cookie banner"
 `)
 }
 

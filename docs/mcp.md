@@ -39,8 +39,24 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `headless: true|false`
   - `playwright: true|false`
   - `visual: true|false`
+- `ai_render_profile_generate`
+  - `url`
+  - `instructions: "..."`
+  - `name: "..."` optional
+  - `hostPatterns: ["example.com", "*.example.com"]` optional
+  - `headless: true|false`
+  - `playwright: true|false`
+  - `visual: true|false`
+- `ai_pipeline_js_generate`
+  - `url`
+  - `instructions: "..."`
+  - `name: "..."` optional
+  - `hostPatterns: ["example.com", "*.example.com"]` optional
+  - `headless: true|false`
+  - `playwright: true|false`
+  - `visual: true|false`
 
-These tools return structured preview/template results immediately and do not create jobs.
+These tools return structured authoring results immediately and do not create jobs.
 
 ## AI extraction arguments
 
@@ -66,9 +82,11 @@ These tools return structured preview/template results immediately and do not cr
 {"id":2,"method":"tools/call","params":{"name":"ai_extract_preview","arguments":{"url":"https://example.com/product","mode":"natural_language","prompt":"Extract the title, price, and availability","fields":["title","price","availability"],"headless":true,"visual":true}}}
 {"id":3,"method":"tools/call","params":{"name":"ai_template_generate","arguments":{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title"}}}
 {"id":4,"method":"tools/call","params":{"name":"ai_template_debug","arguments":{"url":"https://example.com/product","template":{"name":"product","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible h1","headless":true,"visual":true}}}
-{"id":5,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
-{"id":6,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
-{"id":7,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":5,"method":"tools/call","params":{"name":"ai_render_profile_generate","arguments":{"url":"https://example.com/app","instructions":"Wait for the dashboard shell and prefer headless mode","visual":true}}}
+{"id":6,"method":"tools/call","params":{"name":"ai_pipeline_js_generate","arguments":{"url":"https://example.com/app","instructions":"Wait for the dashboard shell and reset scroll position","visual":true}}}
+{"id":7,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
+{"id":8,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
+{"id":9,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```
 
-The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template output, and use the job tools when you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.
+The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration output, and use the job tools when you need persisted scrape/crawl/research execution that can be polled, exported, and inspected later.

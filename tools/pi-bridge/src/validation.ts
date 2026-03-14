@@ -1,4 +1,10 @@
-import type { BridgeFieldValue, ExtractResult, TemplateResult } from "./protocol.js";
+import type {
+  BridgeFieldValue,
+  ExtractResult,
+  PipelineJsResult,
+  RenderProfileResult,
+  TemplateResult,
+} from "./protocol.js";
 
 interface ExtractResultMetadata {
   model?: string;
@@ -60,6 +66,28 @@ export function validateTemplateResult(result: TemplateResult): TemplateResult {
   }
   if (!Array.isArray(result.template.selectors) || result.template.selectors.length === 0) {
     throw new Error("template result must include at least one selector");
+  }
+  return result;
+}
+
+export function validateRenderProfileResult(
+  result: RenderProfileResult,
+): RenderProfileResult {
+  if (!result.profile || typeof result.profile !== "object" || Array.isArray(result.profile)) {
+    throw new Error("render profile result must include a profile object");
+  }
+  if (!hasAnyMeaningfulValue(result.profile)) {
+    throw new Error("render profile result must include at least one configuration field");
+  }
+  return result;
+}
+
+export function validatePipelineJsResult(result: PipelineJsResult): PipelineJsResult {
+  if (!result.script || typeof result.script !== "object" || Array.isArray(result.script)) {
+    throw new Error("pipeline script result must include a script object");
+  }
+  if (!hasAnyMeaningfulValue(result.script)) {
+    throw new Error("pipeline script result must include at least one configuration field");
   }
   return result;
 }
@@ -178,6 +206,27 @@ function normalizeRawObject(raw: unknown): string | undefined {
 
 function looksLikeWrappedField(value: Record<string, unknown>): boolean {
   return "values" in value || "source" in value || "rawObject" in value;
+}
+
+function hasAnyMeaningfulValue(value: Record<string, unknown>): boolean {
+  return Object.values(value).some((entry) => {
+    if (entry == null) {
+      return false;
+    }
+    if (typeof entry === "string") {
+      return entry.trim().length > 0;
+    }
+    if (typeof entry === "number" || typeof entry === "boolean") {
+      return true;
+    }
+    if (Array.isArray(entry)) {
+      return entry.length > 0;
+    }
+    if (typeof entry === "object") {
+      return Object.keys(entry as Record<string, unknown>).length > 0;
+    }
+    return false;
+  });
 }
 
 function expectRecord(raw: unknown, label: string): Record<string, unknown> {

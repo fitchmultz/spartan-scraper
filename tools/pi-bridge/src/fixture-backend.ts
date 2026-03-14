@@ -1,11 +1,20 @@
 import type {
   ExtractPayload,
   ExtractResult,
+  GeneratePipelineJsPayload,
+  GenerateRenderProfilePayload,
   GenerateTemplatePayload,
   HealthResult,
+  PipelineJsResult,
+  RenderProfileResult,
   TemplateResult,
 } from "./protocol.js";
-import { validateExtractResult, validateTemplateResult } from "./validation.js";
+import {
+  validateExtractResult,
+  validatePipelineJsResult,
+  validateRenderProfileResult,
+  validateTemplateResult,
+} from "./validation.js";
 
 export class FixtureBackend {
   constructor(
@@ -74,6 +83,41 @@ export class FixtureBackend {
         },
       },
       explanation: "Deterministic fixture template from pi bridge.",
+      route_id: this.firstRoute(capability),
+      provider: "fixture",
+      model: "fixture-model",
+    });
+  }
+
+  generateRenderProfile(
+    capability: string,
+    _payload: GenerateRenderProfilePayload,
+  ): RenderProfileResult {
+    return validateRenderProfileResult({
+      profile: {
+        preferHeadless: true,
+        wait: {
+          mode: "selector",
+          selector: "main",
+        },
+      },
+      explanation: "Deterministic fixture render profile from pi bridge.",
+      route_id: this.firstRoute(capability),
+      provider: "fixture",
+      model: "fixture-model",
+    });
+  }
+
+  generatePipelineJs(
+    capability: string,
+    _payload: GeneratePipelineJsPayload,
+  ): PipelineJsResult {
+    return validatePipelineJsResult({
+      script: {
+        selectors: ["main"],
+        postNav: "window.scrollTo(0, 0);",
+      },
+      explanation: "Deterministic fixture pipeline JS from pi bridge.",
       route_id: this.firstRoute(capability),
       provider: "fixture",
       model: "fixture-model",

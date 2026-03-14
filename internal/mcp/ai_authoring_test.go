@@ -3,9 +3,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
+	piai "github.com/fitchmultz/spartan-scraper/internal/ai"
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -16,6 +19,15 @@ type fakeAuthoringProvider struct {
 	templateResults []extract.AITemplateGenerateResult
 	templateCalls   int
 	lastTemplateReq extract.AITemplateGenerateRequest
+}
+
+type fakeAutomationClient struct {
+	renderProfileResult piai.GenerateRenderProfileResult
+	pipelineJSResult    piai.GeneratePipelineJSResult
+	renderProfileReq    piai.GenerateRenderProfileRequest
+	pipelineJSReq       piai.GeneratePipelineJSRequest
+	renderProfileCalls  int
+	pipelineJSCalls     int
 }
 
 func (f *fakeAuthoringProvider) Extract(ctx context.Context, req extract.AIExtractRequest) (extract.AIExtractResult, error) {
@@ -43,6 +55,18 @@ func (f *fakeAuthoringProvider) RouteFingerprint(capability string) string {
 	return "test-route"
 }
 
+func (f *fakeAutomationClient) GenerateRenderProfile(ctx context.Context, req piai.GenerateRenderProfileRequest) (piai.GenerateRenderProfileResult, error) {
+	f.renderProfileCalls++
+	f.renderProfileReq = req
+	return f.renderProfileResult, nil
+}
+
+func (f *fakeAutomationClient) GeneratePipelineJS(ctx context.Context, req piai.GeneratePipelineJSRequest) (piai.GeneratePipelineJSResult, error) {
+	f.pipelineJSCalls++
+	f.pipelineJSReq = req
+	return f.pipelineJSResult, nil
+}
+
 func TestAIAuthoringToolsList(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -53,7 +77,7 @@ func TestAIAuthoringToolsList(t *testing.T) {
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug"} {
+	for _, name := range []string{"ai_extract_preview", "ai_template_generate", "ai_template_debug", "ai_render_profile_generate", "ai_pipeline_js_generate"} {
 		if !toolNames[name] {
 			t.Fatalf("expected tool %s in list", name)
 		}
@@ -94,12 +118,33 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			},
 		},
 	}
+	automationClient := &fakeAutomationClient{
+		renderProfileResult: piai.GenerateRenderProfileResult{
+			Profile:     piai.BridgeRenderProfile{PreferHeadless: true, Wait: piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"}},
+			Explanation: "Prefer headless mode and wait for the main element.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+		pipelineJSResult: piai.GeneratePipelineJSResult{
+			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
+			Explanation: "Wait for the main element and normalize scroll position.",
+			RouteID:     "openai/gpt-5.4",
+			Provider:    "openai",
+			Model:       "gpt-5.4",
+		},
+	}
 	aiExtractor := extract.NewAIExtractorWithProvider(
 		config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30},
 		tmpDir,
 		provider,
 	)
-	srv.aiAuthoring = aiauthoring.NewService(config.Config{DataDir: tmpDir, UserAgent: "test-agent", RequestTimeoutSecs: 30, AI: config.AIConfig{RequestTimeoutSecs: 30}}, aiExtractor, true)
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(config.Config{DataDir: tmpDir, UserAgent: "test-agent", RequestTimeoutSecs: 30, AI: config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}}, aiExtractor, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Example</main><h1>Example</h1></body></html>`))
+	}))
+	defer source.Close()
 
 	previewBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
@@ -200,5 +245,62 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if provider.lastTemplateReq.Feedback == "" {
 		t.Fatal("expected template debug feedback to reach the provider")
+	}
+
+	renderProfileBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_render_profile_generate",
+			"arguments": map[string]interface{}{
+				"url":          source.URL,
+				"name":         "example-app",
+				"hostPatterns": []string{"example.com", "*.example.com"},
+				"instructions": "Wait for the main shell and prefer headless mode",
+				"visual":       true,
+			},
+		}),
+	}
+	renderProfileResult, err := srv.handleToolCall(context.Background(), renderProfileBase)
+	if err != nil {
+		t.Fatalf("ai_render_profile_generate failed: %v", err)
+	}
+	renderProfileResp, ok := renderProfileResult.(aiauthoring.RenderProfileResult)
+	if !ok {
+		t.Fatalf("expected render profile result type, got %#v", renderProfileResult)
+	}
+	if renderProfileResp.Profile.Name != "example-app" {
+		t.Fatalf("unexpected render profile name: %q", renderProfileResp.Profile.Name)
+	}
+	if renderProfileResp.Profile.Wait.Selector != "main" {
+		t.Fatalf("unexpected render profile wait selector: %#v", renderProfileResp.Profile.Wait)
+	}
+	if automationClient.renderProfileCalls != 1 {
+		t.Fatalf("expected single render profile generation call, got %d", automationClient.renderProfileCalls)
+	}
+	if automationClient.renderProfileReq.Instructions == "" {
+		t.Fatal("expected render profile instructions to reach the automation client")
+	}
+
+	pipelineBase := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_pipeline_js_generate",
+			"arguments": map[string]interface{}{
+				"url":          source.URL,
+				"instructions": "Wait for the main shell and reset scroll position",
+			},
+		}),
+	}
+	pipelineResult, err := srv.handleToolCall(context.Background(), pipelineBase)
+	if err != nil {
+		t.Fatalf("ai_pipeline_js_generate failed: %v", err)
+	}
+	pipelineResp, ok := pipelineResult.(aiauthoring.PipelineJSResult)
+	if !ok {
+		t.Fatalf("expected pipeline JS result type, got %#v", pipelineResult)
+	}
+	if len(pipelineResp.Script.Selectors) != 1 || pipelineResp.Script.Selectors[0] != "main" {
+		t.Fatalf("unexpected pipeline JS selectors: %#v", pipelineResp.Script.Selectors)
+	}
+	if automationClient.pipelineJSCalls != 1 {
+		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
 	}
 }

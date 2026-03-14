@@ -13,21 +13,31 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
 type fakeAuthoringRunner struct {
-	previewReq     aiauthoring.PreviewRequest
-	templateReq    aiauthoring.TemplateRequest
-	debugReq       aiauthoring.TemplateDebugRequest
-	previewResult  aiauthoring.PreviewResult
-	templateResult aiauthoring.TemplateResult
-	debugResult    aiauthoring.TemplateDebugResult
-	previewErr     error
-	templateErr    error
-	debugErr       error
-	previewCalled  bool
-	templateCalled bool
-	debugCalled    bool
+	previewReq          aiauthoring.PreviewRequest
+	templateReq         aiauthoring.TemplateRequest
+	debugReq            aiauthoring.TemplateDebugRequest
+	renderProfileReq    aiauthoring.RenderProfileRequest
+	pipelineJSReq       aiauthoring.PipelineJSRequest
+	previewResult       aiauthoring.PreviewResult
+	templateResult      aiauthoring.TemplateResult
+	debugResult         aiauthoring.TemplateDebugResult
+	renderProfileResult aiauthoring.RenderProfileResult
+	pipelineJSResult    aiauthoring.PipelineJSResult
+	previewErr          error
+	templateErr         error
+	debugErr            error
+	renderProfileErr    error
+	pipelineJSErr       error
+	previewCalled       bool
+	templateCalled      bool
+	debugCalled         bool
+	renderProfileCalled bool
+	pipelineJSCalled    bool
 }
 
 func (f *fakeAuthoringRunner) Preview(ctx context.Context, req aiauthoring.PreviewRequest) (aiauthoring.PreviewResult, error) {
@@ -46,6 +56,18 @@ func (f *fakeAuthoringRunner) DebugTemplate(ctx context.Context, req aiauthoring
 	f.debugCalled = true
 	f.debugReq = req
 	return f.debugResult, f.debugErr
+}
+
+func (f *fakeAuthoringRunner) GenerateRenderProfile(ctx context.Context, req aiauthoring.RenderProfileRequest) (aiauthoring.RenderProfileResult, error) {
+	f.renderProfileCalled = true
+	f.renderProfileReq = req
+	return f.renderProfileResult, f.renderProfileErr
+}
+
+func (f *fakeAuthoringRunner) GeneratePipelineJS(ctx context.Context, req aiauthoring.PipelineJSRequest) (aiauthoring.PipelineJSResult, error) {
+	f.pipelineJSCalled = true
+	f.pipelineJSReq = req
+	return f.pipelineJSResult, f.pipelineJSErr
 }
 
 func withFakeRunner(t *testing.T, runner *fakeAuthoringRunner) {
@@ -198,5 +220,64 @@ func TestRunTemplateDebugLoadsTemplateByName(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"issues": [`) {
 		t.Fatalf("expected debug JSON output, got %s", stdout)
+	}
+}
+
+func TestRunRenderProfileForwardsOptions(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		renderProfileResult: aiauthoring.RenderProfileResult{
+			Profile: fetch.RenderProfile{Name: "example.com", HostPatterns: []string{"example.com"}, PreferHeadless: true},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{}, []string{"render-profile", "--url", "https://example.com/app", "--name", "example-app", "--host-patterns", "example.com,*.example.com", "--instructions", "Wait for the dashboard shell", "--headless", "--playwright", "--visual"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.renderProfileCalled {
+		t.Fatal("expected render profile runner to be called")
+	}
+	if runner.renderProfileReq.Name != "example-app" {
+		t.Fatalf("unexpected profile name: %q", runner.renderProfileReq.Name)
+	}
+	if len(runner.renderProfileReq.HostPatterns) != 2 {
+		t.Fatalf("unexpected host patterns: %#v", runner.renderProfileReq.HostPatterns)
+	}
+	if !runner.renderProfileReq.Visual || !runner.renderProfileReq.Headless || !runner.renderProfileReq.UsePlaywright {
+		t.Fatalf("expected browser flags to be forwarded: %#v", runner.renderProfileReq)
+	}
+	if !strings.Contains(stdout, `"profile":`) {
+		t.Fatalf("expected profile JSON output, got %s", stdout)
+	}
+}
+
+func TestRunPipelineJSForwardsOptions(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		pipelineJSResult: aiauthoring.PipelineJSResult{
+			Script: pipeline.JSTargetScript{Name: "example.com", HostPatterns: []string{"example.com"}, Selectors: []string{"main"}},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	code, stdout := captureOutput(t, &os.Stdout, func() int {
+		return RunAI(context.Background(), config.Config{}, []string{"pipeline-js", "--url", "https://example.com/app", "--instructions", "Wait for the main dashboard", "--visual"})
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	if !runner.pipelineJSCalled {
+		t.Fatal("expected pipeline JS runner to be called")
+	}
+	if runner.pipelineJSReq.URL != "https://example.com/app" {
+		t.Fatalf("unexpected URL: %q", runner.pipelineJSReq.URL)
+	}
+	if !runner.pipelineJSReq.Visual {
+		t.Fatal("expected visual flag to be forwarded")
+	}
+	if !strings.Contains(stdout, `"script":`) {
+		t.Fatalf("expected script JSON output, got %s", stdout)
 	}
 }

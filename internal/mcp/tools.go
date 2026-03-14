@@ -35,6 +35,16 @@ func (s *Server) toolsList() []tool {
 			InputSchema: schema(map[string]string{"template": "object"}, map[string]string{"url": "string", "html": "string", "instructions": "string", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
+			Name:        "ai_render_profile_generate",
+			Description: "Generate a render profile for a live page without creating a job",
+			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+		},
+		{
+			Name:        "ai_pipeline_js_generate",
+			Description: "Generate a pipeline JS script for a live page without creating a job",
+			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+		},
+		{
 			Name:        "scrape_page",
 			Description: "Scrape a single page (static or headless) with optional AI extraction controls",
 			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),

@@ -1,15 +1,21 @@
 export const CAPABILITY_EXTRACT_NATURAL = "extract.natural_language";
 export const CAPABILITY_EXTRACT_SCHEMA = "extract.schema_guided";
 export const CAPABILITY_TEMPLATE_GENERATE = "template.generate";
+export const CAPABILITY_RENDER_PROFILE_GENERATE = "render_profile.generate";
+export const CAPABILITY_PIPELINE_JS_GENERATE = "pipeline_js.generate";
 
 export const OP_HEALTH = "health";
 export const OP_EXTRACT_PREVIEW = "extract_preview";
 export const OP_GENERATE_TEMPLATE = "generate_template";
+export const OP_GENERATE_RENDER_PROFILE = "generate_render_profile";
+export const OP_GENERATE_PIPELINE_JS = "generate_pipeline_js";
 
 export type BridgeOperation =
   | typeof OP_HEALTH
   | typeof OP_EXTRACT_PREVIEW
-  | typeof OP_GENERATE_TEMPLATE;
+  | typeof OP_GENERATE_TEMPLATE
+  | typeof OP_GENERATE_RENDER_PROFILE
+  | typeof OP_GENERATE_PIPELINE_JS;
 
 export interface BridgeRequest<TPayload = unknown> {
   id: string;
@@ -70,6 +76,24 @@ export interface GenerateTemplatePayload {
   images?: ImageInput[];
 }
 
+export interface GenerateRenderProfilePayload {
+  html: string;
+  url: string;
+  instructions: string;
+  context_summary?: string;
+  feedback?: string;
+  images?: ImageInput[];
+}
+
+export interface GeneratePipelineJsPayload {
+  html: string;
+  url: string;
+  instructions: string;
+  context_summary?: string;
+  feedback?: string;
+  images?: ImageInput[];
+}
+
 export interface SelectorRule {
   name: string;
   selector: string;
@@ -113,6 +137,22 @@ export interface TemplateResult {
     regex?: RegexRule[];
     normalize?: NormalizeSpec;
   };
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface RenderProfileResult {
+  profile: Record<string, unknown>;
+  explanation?: string;
+  route_id?: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface PipelineJsResult {
+  script: Record<string, unknown>;
   explanation?: string;
   route_id?: string;
   provider?: string;

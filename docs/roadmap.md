@@ -10,11 +10,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Extend the shared AI authoring/runtime patterns as new pi-backed capabilities are introduced so API, Web, CLI, and MCP stay aligned by default.
+- Add bounded debug/tuning loops for AI-authored runtime automation configs (render profiles and pipeline JS) using live page rechecks, deterministic validation, and shared retry patterns across API, Web, CLI, and MCP.
 
 ## Next
 
-- Broaden `pi` usage beyond extraction/template generation where an agent harness improves real workflows.
+- Extend the shared `/v1/ai/*` authoring surface into other bounded operator workflows where `pi` materially improves outcomes, such as export shaping or research-output refinement, without introducing free-form agent loops.
 
 ## Later
 

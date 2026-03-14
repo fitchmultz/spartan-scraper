@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
 	"github.com/fitchmultz/spartan-scraper/internal/analytics"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
@@ -29,6 +30,7 @@ type Server struct {
 	analyticsCollector *analytics.Collector
 	analyticsService   *analytics.Service
 	aiExtractor        *extract.AIExtractor
+	aiAuthoring        *aiauthoring.Service
 	ctx                context.Context
 	cancel             context.CancelFunc
 }
@@ -253,10 +255,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/analytics/trends", s.handleAnalyticsTrends)
 	mux.HandleFunc("/v1/analytics/dashboard", s.handleAnalyticsDashboard)
 
-	// AI extraction endpoints
-	mux.HandleFunc("/v1/extract/ai-preview", s.handleAIExtractPreview)
-	mux.HandleFunc("/v1/extract/ai-template-generate", s.handleAITemplateGenerate)
-	mux.HandleFunc("/v1/extract/ai-template-debug", s.handleAITemplateDebug)
+	// AI authoring endpoints
+	mux.HandleFunc("/v1/ai/extract-preview", s.handleAIExtractPreview)
+	mux.HandleFunc("/v1/ai/template-generate", s.handleAITemplateGenerate)
+	mux.HandleFunc("/v1/ai/template-debug", s.handleAITemplateDebug)
+	mux.HandleFunc("/v1/ai/render-profile-generate", s.handleAIRenderProfileGenerate)
+	mux.HandleFunc("/v1/ai/pipeline-js-generate", s.handleAIPipelineJSGenerate)
 
 	// Deduplication endpoints
 	mux.HandleFunc("/v1/dedup/duplicates", s.handleDedupDuplicates)

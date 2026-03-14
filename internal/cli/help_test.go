@@ -30,7 +30,7 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 	})
 
 	for _, expected := range []string{
-		"  ai           AI authoring utilities (preview, template generation)",
+		"  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS)",
 		"  export       Export job results (jsonl, json, md, csv, xlsx)",
 		"  export-schedule Manage automated export schedules",
 		"  spartan ai preview --url https://example.com --prompt \"Extract the main product facts\"",

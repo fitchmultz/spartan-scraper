@@ -4,13 +4,19 @@ import { FixtureBackend } from "./fixture-backend.js";
 import {
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_EXTRACT_SCHEMA,
+  CAPABILITY_PIPELINE_JS_GENERATE,
+  CAPABILITY_RENDER_PROFILE_GENERATE,
   CAPABILITY_TEMPLATE_GENERATE,
   OP_EXTRACT_PREVIEW,
+  OP_GENERATE_PIPELINE_JS,
+  OP_GENERATE_RENDER_PROFILE,
   OP_GENERATE_TEMPLATE,
   OP_HEALTH,
   type BridgeRequest,
   type BridgeResponse,
   type ExtractPayload,
+  type GeneratePipelineJsPayload,
+  type GenerateRenderProfilePayload,
   type GenerateTemplatePayload,
 } from "./protocol.js";
 import { SDKBackend } from "./sdk-backend.js";
@@ -22,6 +28,14 @@ interface Backend {
   generateTemplate(
     capability: string,
     payload: GenerateTemplatePayload,
+  ): Promise<unknown> | unknown;
+  generateRenderProfile(
+    capability: string,
+    payload: GenerateRenderProfilePayload,
+  ): Promise<unknown> | unknown;
+  generatePipelineJs(
+    capability: string,
+    payload: GeneratePipelineJsPayload,
   ): Promise<unknown> | unknown;
 }
 
@@ -78,6 +92,24 @@ rl.on("line", async (line) => {
         const payload = request.payload as GenerateTemplatePayload;
         const result = await backend.generateTemplate(
           CAPABILITY_TEMPLATE_GENERATE,
+          payload,
+        );
+        writeResponse({ id: request.id, ok: true, result });
+        return;
+      }
+      case OP_GENERATE_RENDER_PROFILE: {
+        const payload = request.payload as GenerateRenderProfilePayload;
+        const result = await backend.generateRenderProfile(
+          CAPABILITY_RENDER_PROFILE_GENERATE,
+          payload,
+        );
+        writeResponse({ id: request.id, ok: true, result });
+        return;
+      }
+      case OP_GENERATE_PIPELINE_JS: {
+        const payload = request.payload as GeneratePipelineJsPayload;
+        const result = await backend.generatePipelineJs(
+          CAPABILITY_PIPELINE_JS_GENERATE,
           payload,
         );
         writeResponse({ id: request.id, ok: true, result });

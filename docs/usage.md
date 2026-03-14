@@ -196,9 +196,11 @@ spartan research \
 spartan ai preview [flags]
 spartan ai template [flags]
 spartan ai template-debug [flags]
+spartan ai render-profile [flags]
+spartan ai pipeline-js [flags]
 ```
 
-These commands run the same bounded AI preview/template-authoring workflows as the REST and Web surfaces, but without creating jobs.
+These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs.
 
 Preview flags:
 
@@ -232,6 +234,28 @@ Template-debug flags:
 - `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
 - `--out <path>`
 
+Render-profile flags:
+
+- `--url <url>`
+- `--name <profile-name>`
+- `--host-patterns "example.com,*.example.com"`
+- `--instructions "<fetch-behavior guidance>"`
+- `--headless`
+- `--playwright`
+- `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
+- `--out <path>`
+
+Pipeline-JS flags:
+
+- `--url <url>`
+- `--name <script-name>`
+- `--host-patterns "example.com,*.example.com"`
+- `--instructions "<browser-automation guidance>"`
+- `--headless`
+- `--playwright`
+- `--visual` to capture a screenshot and include multimodal visual context when fetching a URL
+- `--out <path>`
+
 Examples:
 
 ```bash
@@ -257,6 +281,16 @@ spartan ai template-debug \
   --url https://example.com/product \
   --template-name product \
   --instructions "Prefer visible headings and avoid brittle nth-child selectors" \
+  --visual
+
+spartan ai render-profile \
+  --url https://example.com/app \
+  --instructions "Wait for the dashboard shell and prefer headless mode when the HTTP shell is sparse" \
+  --visual
+
+spartan ai pipeline-js \
+  --url https://example.com/app \
+  --instructions "Wait for the main dashboard shell and reset scroll position before extraction" \
   --visual
 ```
 
@@ -471,7 +505,7 @@ spartan version
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
-- Dedicated AI preview, AI template generation, AI template debugging, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`) instead.
+- Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI pipeline-JS generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_pipeline_js_generate`) instead.
 - Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI
@@ -530,6 +564,7 @@ Important endpoint groups:
 - `/v1/export-schedules*`
 - `/v1/webhooks/deliveries*`
 - `/v1/templates*`
+- `/v1/ai/*`
 - `/v1/render-profiles*`
 - `/v1/pipeline-js*`
 - `/v1/auth/profiles*`
@@ -537,6 +572,14 @@ Important endpoint groups:
 - `/v1/auth/export`
 - `/v1/auth/oauth/*`
 - `/v1/ws`
+
+Bounded AI authoring endpoints live under `/v1/ai/*`:
+
+- `/v1/ai/extract-preview`
+- `/v1/ai/template-generate`
+- `/v1/ai/template-debug`
+- `/v1/ai/render-profile-generate`
+- `/v1/ai/pipeline-js-generate`
 
 For scrape, crawl, and research job creation, AI extraction rides inside the normal extract payload:
 

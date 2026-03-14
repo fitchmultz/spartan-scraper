@@ -9,6 +9,8 @@ import {
 } from "./sdk-backend.js";
 import {
   CAPABILITY_EXTRACT_NATURAL,
+  CAPABILITY_PIPELINE_JS_GENERATE,
+  CAPABILITY_RENDER_PROFILE_GENERATE,
   CAPABILITY_TEMPLATE_GENERATE,
 } from "./protocol.js";
 
@@ -343,6 +345,105 @@ test("generateTemplate reports aggregated fallback failures", async () => {
       }),
     /all routes failed for capability template\.generate after 2 attempts: openai\/gpt-5\.4: model did not call submit_template \| kimi-coding\/k2p5: template result must include at least one selector/,
   );
+});
+
+test("generateRenderProfile validates structured profile output", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async () =>
+        createToolResponse({
+          toolName: "submit_render_profile",
+          arguments: {
+            profile: {
+              preferHeadless: true,
+              wait: { mode: "selector", selector: "main" },
+            },
+            explanation: "Use a headless browser and wait for the main content.",
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        })) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.generateRenderProfile(
+    CAPABILITY_RENDER_PROFILE_GENERATE,
+    {
+      html: "<html><body><main>Widget</main></body></html>",
+      url: "https://example.com/widget",
+      instructions: "Use headless mode if the main content needs to settle.",
+      context_summary: "HTTP fetch returned sparse shell HTML.",
+    },
+  );
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.provider, "openai");
+  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.profile.preferHeadless, true);
+});
+
+test("generatePipelineJs sends screenshot context as multimodal user content", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.ok(Array.isArray(userMessage.content));
+        assert.equal(userMessage.content[0]?.type, "text");
+        assert.equal(userMessage.content[1]?.type, "image");
+        return createToolResponse({
+          toolName: "submit_pipeline_js",
+          arguments: {
+            script: {
+              selectors: ["main", "[data-ready='true']"],
+              postNav: "window.scrollTo(0, 0);",
+            },
+            explanation: "Wait for the main container and normalize scroll position.",
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.generatePipelineJs(
+    CAPABILITY_PIPELINE_JS_GENERATE,
+    {
+      html: "<html><body><main data-ready='true'>Widget</main></body></html>",
+      url: "https://example.com/widget",
+      instructions: "Wait for the main app shell and scroll back to the top.",
+      images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
+    },
+  );
+
+  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.deepEqual(result.script.selectors, ["main", "[data-ready='true']"]);
 });
 
 test("extract sends screenshot context as multimodal user content", async () => {

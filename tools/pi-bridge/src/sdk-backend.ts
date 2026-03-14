@@ -11,14 +11,20 @@ import {
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type {
   ExtractPayload,
+  GeneratePipelineJsPayload,
+  GenerateRenderProfilePayload,
   GenerateTemplatePayload,
   HealthResult,
   HealthRouteStatus,
+  PipelineJsResult,
+  RenderProfileResult,
   TemplateResult,
 } from "./protocol.js";
 import { parseRouteId } from "./config.js";
 import {
   normalizeExtractResult,
+  validatePipelineJsResult,
+  validateRenderProfileResult,
   validateTemplateResult,
 } from "./validation.js";
 
@@ -166,6 +172,86 @@ export class SDKBackend {
         const args = validateToolCall([tool], call);
         return validateTemplateResult({
           ...(args as TemplateResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
+  }
+
+  async generateRenderProfile(
+    capability: string,
+    payload: GenerateRenderProfilePayload,
+  ): Promise<RenderProfileResult> {
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: Boolean(payload.images?.length),
+        });
+        const tool = this.renderProfileTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildRenderProfilePrompt(payload),
+            images: payload.images,
+            systemPrompt:
+              "You author Spartan render profile patches for difficult sites. Call the submit_render_profile tool exactly once. Prefer omission over speculative settings and only set fields that materially improve fetch behavior.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
+
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validateRenderProfileResult({
+          ...(args as RenderProfileResult),
+          route_id: routeId,
+          provider: response.provider,
+          model: response.model,
+        });
+      },
+      { capability },
+    );
+  }
+
+  async generatePipelineJs(
+    capability: string,
+    payload: GeneratePipelineJsPayload,
+  ): Promise<PipelineJsResult> {
+    return runWithFallback(
+      this.routes[capability] || [],
+      async (routeId) => {
+        const selection = await this.selectRoute(routeId, {
+          requiresImage: Boolean(payload.images?.length),
+        });
+        const tool = this.pipelineJsTool();
+        const response = await this.completeFn(
+          selection.model,
+          this.buildContext({
+            userPrompt: buildPipelineJsPrompt(payload),
+            images: payload.images,
+            systemPrompt:
+              "You author Spartan pipeline JS scripts for page automation. Call the submit_pipeline_js tool exactly once. Keep scripts focused, deterministic, and minimal; prefer wait selectors unless JavaScript is clearly necessary.",
+            tools: [tool],
+          }),
+          {
+            apiKey: selection.apiKey,
+            maxTokens: 4096,
+            temperature: 0,
+          },
+        );
+
+        const call = getRequiredToolCall(response.content, tool.name);
+        const args = validateToolCall([tool], call);
+        return validatePipelineJsResult({
+          ...(args as PipelineJsResult),
           route_id: routeId,
           provider: response.provider,
           model: response.model,
@@ -330,6 +416,75 @@ export class SDKBackend {
       }),
     };
   }
+
+  private renderProfileTool(): Tool {
+    return {
+      name: "submit_render_profile",
+      description: "Submit a Spartan render profile patch for the provided page.",
+      parameters: Type.Object({
+        profile: Type.Object({
+          forceEngine: Type.Optional(Type.String()),
+          preferHeadless: Type.Optional(Type.Boolean()),
+          assumeJsHeavy: Type.Optional(Type.Boolean()),
+          neverHeadless: Type.Optional(Type.Boolean()),
+          jsHeavyThreshold: Type.Optional(Type.Number()),
+          rateLimitQPS: Type.Optional(Type.Number()),
+          rateLimitBurst: Type.Optional(Type.Number()),
+          block: Type.Optional(
+            Type.Object({
+              resourceTypes: Type.Optional(Type.Array(Type.String())),
+              urlPatterns: Type.Optional(Type.Array(Type.String())),
+            }),
+          ),
+          wait: Type.Optional(
+            Type.Object({
+              mode: Type.Optional(Type.String()),
+              selector: Type.Optional(Type.String()),
+              networkIdleQuietMs: Type.Optional(Type.Number()),
+              minTextLength: Type.Optional(Type.Number()),
+              stabilityPollMs: Type.Optional(Type.Number()),
+              stabilityIterations: Type.Optional(Type.Number()),
+              extraSleepMs: Type.Optional(Type.Number()),
+            }),
+          ),
+          timeouts: Type.Optional(
+            Type.Object({
+              maxRenderMs: Type.Optional(Type.Number()),
+              scriptEvalMs: Type.Optional(Type.Number()),
+              navigationMs: Type.Optional(Type.Number()),
+            }),
+          ),
+          screenshot: Type.Optional(
+            Type.Object({
+              enabled: Type.Optional(Type.Boolean()),
+              fullPage: Type.Optional(Type.Boolean()),
+              format: Type.Optional(Type.String()),
+              quality: Type.Optional(Type.Number()),
+              width: Type.Optional(Type.Number()),
+              height: Type.Optional(Type.Number()),
+            }),
+          ),
+        }),
+        explanation: Type.Optional(Type.String()),
+      }),
+    };
+  }
+
+  private pipelineJsTool(): Tool {
+    return {
+      name: "submit_pipeline_js",
+      description: "Submit a Spartan pipeline JS script for the provided page.",
+      parameters: Type.Object({
+        script: Type.Object({
+          engine: Type.Optional(Type.String()),
+          preNav: Type.Optional(Type.String()),
+          postNav: Type.Optional(Type.String()),
+          selectors: Type.Optional(Type.Array(Type.String())),
+        }),
+        explanation: Type.Optional(Type.String()),
+      }),
+    };
+  }
 }
 
 export function modelSupportsImages(model: { input: string[] }): boolean {
@@ -393,6 +548,42 @@ function buildTemplatePrompt(payload: GenerateTemplatePayload): string {
   }
   if (payload.images?.length) {
     parts.push("A screenshot is attached. Use it as supplemental visual context for layout, visibility, and selector robustness.");
+  }
+  parts.push(`HTML:\n${payload.html}`);
+  return parts.join("\n\n");
+}
+
+function buildRenderProfilePrompt(payload: GenerateRenderProfilePayload): string {
+  const parts: string[] = [
+    `URL: ${payload.url}`,
+    `Operator goal: ${payload.instructions}`,
+  ];
+  if (payload.context_summary?.trim()) {
+    parts.push(`Context summary:\n${payload.context_summary.trim()}`);
+  }
+  if (payload.feedback?.trim()) {
+    parts.push(`Validation feedback: ${payload.feedback.trim()}`);
+  }
+  if (payload.images?.length) {
+    parts.push("A screenshot is attached. Use it as supplemental visual context for choosing wait strategy, browser engine, and other fetch settings.");
+  }
+  parts.push(`HTML:\n${payload.html}`);
+  return parts.join("\n\n");
+}
+
+function buildPipelineJsPrompt(payload: GeneratePipelineJsPayload): string {
+  const parts: string[] = [
+    `URL: ${payload.url}`,
+    `Operator goal: ${payload.instructions}`,
+  ];
+  if (payload.context_summary?.trim()) {
+    parts.push(`Context summary:\n${payload.context_summary.trim()}`);
+  }
+  if (payload.feedback?.trim()) {
+    parts.push(`Validation feedback: ${payload.feedback.trim()}`);
+  }
+  if (payload.images?.length) {
+    parts.push("A screenshot is attached. Use it as supplemental visual context for deciding selectors, waits, and any necessary browser-side automation.");
   }
   parts.push(`HTML:\n${payload.html}`);
   return parts.join("\n\n");
