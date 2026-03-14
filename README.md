@@ -3,7 +3,7 @@
 [![CI PR](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml)
 [![CI Slow](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fitchmultz/spartan-scraper)](https://goreportcard.com/report/github.com/fitchmultz/spartan-scraper)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![Go Version](https://img.shields.io/badge/Go-1.26.1-00ADD8)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6)
 
@@ -115,7 +115,7 @@ make install-bin
 
 ## Community
 
-- [LICENSE](LICENSE) - MIT License
+- [LICENSE](LICENSE) - Apache License 2.0
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
 - [SECURITY.md](SECURITY.md) - Security policy
