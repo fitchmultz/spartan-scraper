@@ -24,7 +24,7 @@ const SAMPLE_CHAIN = JSON.stringify(
         {
           id: "step1",
           kind: "scrape",
-          spec: {
+          request: {
             url: "https://example.com",
             headless: true,
           },
@@ -36,7 +36,7 @@ const SAMPLE_CHAIN = JSON.stringify(
         {
           id: "step2",
           kind: "crawl",
-          spec: {
+          request: {
             url: "https://example.com",
             maxDepth: 2,
             maxPages: 50,
@@ -117,9 +117,9 @@ export function ChainBuilder({ onCreate, onCancel }: ChainBuilderProps) {
           );
         }
 
-        if (typeof node.spec !== "object" || node.spec === null) {
+        if (typeof node.request !== "object" || node.request === null) {
           throw new Error(
-            `definition.nodes[${i}].spec is required and must be an object`,
+            `definition.nodes[${i}].request is required and must be an object`,
           );
         }
       }
@@ -310,7 +310,7 @@ export function ChainBuilder({ onCreate, onCancel }: ChainBuilderProps) {
             </li>
             <li>
               Each node needs: <code>id</code>, <code>kind</code>{" "}
-              (scrape/crawl/research), <code>spec</code>
+              (scrape/crawl/research), <code>request</code>
             </li>
           </ul>
         </div>

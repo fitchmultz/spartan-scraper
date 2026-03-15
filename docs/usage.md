@@ -528,15 +528,22 @@ Batch research also accepts bounded agentic controls:
 - `spartan chains submit <chain-id>`
 - `spartan chains delete <chain-id>`
 
+Chain nodes persist a `request` object that matches the live scrape/crawl/research submission JSON for that node kind. `spartan chains submit --overrides` uses that same per-node request shape.
+
 ### Watches
 
 - `spartan watch add --url <url> [flags]`
 - `spartan watch list`
-- `spartan watch get <id>`
-- `spartan watch update <id> [flags]`
 - `spartan watch delete <id>`
 - `spartan watch check <id>`
 - `spartan watch start`
+
+Optional trigger flags on `spartan watch add` let a watch submit a job when change is detected:
+
+- `--trigger-kind scrape|crawl|research`
+- `--trigger-request-file <path>` or `--trigger-request-json '{...}'`
+
+The trigger request uses the same operator-facing scrape/crawl/research JSON contract as the live REST job submission endpoints and schedule `request` payloads.
 
 ### Schedules
 

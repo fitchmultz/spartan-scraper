@@ -3005,7 +3005,7 @@ paths:
   "/v1/chains/{id}/submit":
     post:
       summary: Submit/instantiate a chain
-      description: Creates jobs from a chain definition with optional parameter overrides
+      description: Creates jobs from a chain definition with optional per-node request overrides
       operationId: submitChain
       parameters:
       - in: path
@@ -5215,6 +5215,8 @@ components:
           maximum: 1
           default: 0.1
           description: Visual diff threshold (0-1) for detecting changes
+        jobTrigger:
+          "$ref": "#/components/schemas/JobTrigger"
     WatchInput:
       type: object
       required:
@@ -5287,6 +5289,24 @@ components:
           maximum: 1
           default: 0.1
           description: Visual diff threshold (0-1) for detecting changes
+        jobTrigger:
+          "$ref": "#/components/schemas/JobTrigger"
+    JobTrigger:
+      type: object
+      required:
+      - kind
+      - request
+      properties:
+        kind:
+          type: string
+          enum:
+          - scrape
+          - crawl
+          - research
+          description: Job kind to submit when the watch detects a change
+        request:
+          type: object
+          description: Operator-facing request payload matching the selected job kind
     WatchList:
       type: object
       required:
@@ -5359,6 +5379,11 @@ components:
           type: number
           format: float
           description: Similarity score between screenshots (0-1)
+        triggeredJobs:
+          type: array
+          items:
+            type: string
+          description: Job IDs created from the optional watch trigger during this check
     WebhookPayload:
       type: object
       description: |
@@ -7245,7 +7270,7 @@ components:
       required:
       - id
       - kind
-      - spec
+      - request
       properties:
         id:
           type: string
@@ -7257,9 +7282,9 @@ components:
           - crawl
           - research
           description: Type of job
-        spec:
+        request:
           type: object
-          description: Typed job specification template
+          description: Operator-facing request payload matching the selected job kind
         metadata:
           "$ref": "#/components/schemas/ChainMetadata"
     ChainEdge:
@@ -7317,7 +7342,7 @@ components:
       properties:
         overrides:
           type: object
-          description: Parameter overrides by node ID
+          description: Operator-facing request overrides by node ID
           additionalProperties:
             type: object
     ChainSubmitResponse:

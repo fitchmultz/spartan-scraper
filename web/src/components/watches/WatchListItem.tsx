@@ -44,6 +44,17 @@ export function WatchListItem({
             Selector: {watch.selector}
           </div>
         )}
+        {watch.jobTrigger && (
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--muted)",
+              marginTop: 2,
+            }}
+          >
+            Trigger: {watch.jobTrigger.kind}
+          </div>
+        )}
       </td>
       <td style={{ padding: "12px" }}>
         <StatusPill

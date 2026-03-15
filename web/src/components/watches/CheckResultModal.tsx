@@ -87,6 +87,19 @@ export function CheckResultModal({ result, onClose }: CheckResultModalProps) {
               <strong>Error:</strong> {result.error}
             </div>
           )}
+          {result.triggeredJobs && result.triggeredJobs.length > 0 && (
+            <div
+              style={{
+                padding: 12,
+                backgroundColor: "rgba(34, 197, 94, 0.1)",
+                borderRadius: 8,
+                color: "#22c55e",
+                marginTop: 8,
+              }}
+            >
+              <strong>Triggered Jobs:</strong> {result.triggeredJobs.join(", ")}
+            </div>
+          )}
         </div>
 
         {result.diffText && (

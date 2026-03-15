@@ -34,6 +34,14 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
+// CreateJobOptions controls optional persisted metadata when creating a new job record.
+type CreateJobOptions struct {
+	ID               string
+	DependsOn        []string
+	DependencyStatus model.DependencyStatus
+	ChainID          string
+}
+
 func buildExecutionSpec(spec JobSpec) model.ExecutionSpec {
 	exec := model.ExecutionSpec{
 		RequestID:        spec.RequestID,
@@ -115,8 +123,7 @@ func TypedSpecFromJobSpec(spec JobSpec) (int, any, error) {
 	return persistedSpecFromCreateSpec(spec)
 }
 
-// CreateJob creates and persists a new job from a unified JobSpec.
-func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error) {
+func (m *Manager) createJobWithOptions(ctx context.Context, spec JobSpec, opts CreateJobOptions) (model.Job, error) {
 	if err := spec.Validate(); err != nil {
 		return model.Job{}, fmt.Errorf("invalid job spec: %w", err)
 	}
@@ -126,25 +133,45 @@ func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error
 		return model.Job{}, err
 	}
 
+	jobID := opts.ID
+	if jobID == "" {
+		jobID = uuid.NewString()
+	}
+	dependencyStatus := opts.DependencyStatus
+	if dependencyStatus == "" {
+		dependencyStatus = model.DependencyStatusReady
+	}
+
 	now := time.Now()
 	job := model.Job{
-		ID:               uuid.NewString(),
+		ID:               jobID,
 		Kind:             spec.Kind,
 		Status:           model.StatusQueued,
 		CreatedAt:        now,
 		UpdatedAt:        now,
 		SpecVersion:      specVersion,
 		Spec:             persistedSpec,
-		DependencyStatus: model.DependencyStatusReady,
-		ResultPath:       filepath.Join(m.DataDir, "jobs", uuid.Nil.String(), "results.jsonl"),
+		DependsOn:        append([]string(nil), opts.DependsOn...),
+		DependencyStatus: dependencyStatus,
+		ChainID:          opts.ChainID,
+		ResultPath:       filepath.Join(m.DataDir, "jobs", jobID, "results.jsonl"),
 	}
-	job.ResultPath = filepath.Join(m.DataDir, "jobs", job.ID, "results.jsonl")
 
 	if err := m.store.Create(ctx, job); err != nil {
 		return model.Job{}, err
 	}
 
 	return job, nil
+}
+
+// CreateJob creates and persists a new job from a unified JobSpec.
+func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error) {
+	return m.createJobWithOptions(ctx, spec, CreateJobOptions{})
+}
+
+// CreateJobWithOptions creates and persists a job with additional dependency or chain metadata.
+func (m *Manager) CreateJobWithOptions(ctx context.Context, spec JobSpec, opts CreateJobOptions) (model.Job, error) {
+	return m.createJobWithOptions(ctx, spec, opts)
 }
 
 func legacyScrapeSpec(args []any) (JobSpec, error) {

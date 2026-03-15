@@ -91,6 +91,8 @@ Artifacts are designed to be inspectable on disk. Result files remain the source
 
 Recurring schedules are a hard cutover too: legacy `schedules.json` files that still carry `params` are rejected, and the operator-facing HTTP contract now uses `kind` + `intervalSeconds` + `request` while persisted storage continues to normalize into typed V1 schedule specs.
 
+Chains and watch-triggered jobs now follow that same operator-facing request model: chain nodes persist `request` payloads instead of typed specs, and watch automation stores an optional `{ kind, request }` trigger so every automation surface feeds the same request-to-typed-spec conversion path before jobs are created.
+
 ## Storage compatibility policy
 
 Balanced 1.0 is a hard cutover.

@@ -16,10 +16,13 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 // ChainCreateRequest represents a request to create a new chain.
@@ -75,6 +78,28 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 	if len(req.Definition.Nodes) == 0 {
 		writeError(w, r, apperrors.Validation("chain must have at least one node"))
 		return
+	}
+
+	for i := range req.Definition.Nodes {
+		node := &req.Definition.Nodes[i]
+		if len(node.Request) == 0 {
+			writeError(w, r, apperrors.Validation(fmt.Sprintf("definition.nodes[%d].request is required", i)))
+			return
+		}
+		if _, _, err := submission.JobSpecFromRawRequest(s.cfg, submission.Defaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           false,
+		}, node.Kind, node.Request); err != nil {
+			writeError(w, r, apperrors.Validation("invalid chain node request for "+node.ID+": "+err.Error()))
+			return
+		}
+		normalizedRequest, err := submission.NormalizeRawRequest(node.Kind, node.Request)
+		if err != nil {
+			writeError(w, r, apperrors.Validation("invalid chain node request for "+node.ID+": "+err.Error()))
+			return
+		}
+		node.Request = normalizedRequest
 	}
 
 	chain, err := s.manager.CreateChain(r.Context(), req.Name, req.Description, req.Definition)
@@ -145,7 +170,14 @@ func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jobs, err := s.manager.SubmitChain(r.Context(), chainID, req.Overrides)
+	jobs, err := s.manager.SubmitChain(r.Context(), chainID, req.Overrides, func(kind model.Kind, rawRequest json.RawMessage) (jobs.JobSpec, error) {
+		spec, _, err := submission.JobSpecFromRawRequest(s.cfg, submission.Defaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           true,
+		}, kind, rawRequest)
+		return spec, err
+	})
 	if err != nil {
 		writeError(w, r, err)
 		return

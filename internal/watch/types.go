@@ -18,11 +18,18 @@
 package watch
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
+
+// JobTrigger defines an optional job submission to launch after a watch detects change.
+type JobTrigger struct {
+	Kind    model.Kind      `json:"kind"`
+	Request json.RawMessage `json:"request"`
+}
 
 // Watch represents a content monitoring configuration.
 type Watch struct {
@@ -54,6 +61,7 @@ type Watch struct {
 	ScreenshotConfig    *fetch.ScreenshotConfig `json:"screenshotConfig,omitempty"`    // Screenshot capture options
 	ScreenshotEnabled   bool                    `json:"screenshotEnabled"`             // Enable visual change detection
 	VisualDiffThreshold float64                 `json:"visualDiffThreshold,omitempty"` // Pixel difference threshold (0-1, default 0.1 = 10%)
+	JobTrigger          *JobTrigger             `json:"jobTrigger,omitempty"`          // Optional shared job request to submit on change
 }
 
 // WatchCheckResult contains the outcome of a watch check.
@@ -70,13 +78,14 @@ type WatchCheckResult struct {
 	Selector     string    `json:"selector,omitempty"`
 
 	// Visual change detection fields
-	ScreenshotPath         string  `json:"screenshotPath,omitempty"`         // Path to current screenshot
-	PreviousScreenshotPath string  `json:"previousScreenshotPath,omitempty"` // Path to previous screenshot
-	VisualDiffPath         string  `json:"visualDiffPath,omitempty"`         // Path to generated visual diff image
-	VisualHash             string  `json:"visualHash,omitempty"`             // Perceptual hash of current screenshot
-	PreviousVisualHash     string  `json:"previousVisualHash,omitempty"`     // Perceptual hash of previous screenshot
-	VisualChanged          bool    `json:"visualChanged"`                    // True if visual change detected
-	VisualSimilarity       float64 `json:"visualSimilarity,omitempty"`       // Similarity score (0-1)
+	ScreenshotPath         string   `json:"screenshotPath,omitempty"`         // Path to current screenshot
+	PreviousScreenshotPath string   `json:"previousScreenshotPath,omitempty"` // Path to previous screenshot
+	VisualDiffPath         string   `json:"visualDiffPath,omitempty"`         // Path to generated visual diff image
+	VisualHash             string   `json:"visualHash,omitempty"`             // Perceptual hash of current screenshot
+	PreviousVisualHash     string   `json:"previousVisualHash,omitempty"`     // Perceptual hash of previous screenshot
+	VisualChanged          bool     `json:"visualChanged"`                    // True if visual change detected
+	VisualSimilarity       float64  `json:"visualSimilarity,omitempty"`       // Similarity score (0-1)
+	TriggeredJobs          []string `json:"triggeredJobs,omitempty"`          // Job IDs created from the optional watch trigger
 }
 
 // IsDue returns true if the watch is due for a check based on its interval.

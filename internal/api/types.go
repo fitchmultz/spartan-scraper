@@ -10,6 +10,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 // ComponentStatus represents the health of a single system component.
@@ -39,77 +40,16 @@ type StatusResponse struct {
 }
 
 // WebhookConfig represents webhook configuration for job notifications.
-type WebhookConfig struct {
-	URL    string   `json:"url,omitempty"`
-	Events []string `json:"events,omitempty"`
-	Secret string   `json:"secret,omitempty"`
-}
+type WebhookConfig = submission.WebhookConfig
 
 // ScrapeRequest represents a request to scrape a single page.
-type ScrapeRequest struct {
-	URL              string                        `json:"url"`
-	Method           string                        `json:"method,omitempty"`      // HTTP method, default GET
-	Body             string                        `json:"body,omitempty"`        // Request body (base64 for binary data)
-	ContentType      string                        `json:"contentType,omitempty"` // Content-Type header for request body
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth"`
-	Extract          *extract.ExtractOptions       `json:"extract"`
-	Pipeline         *pipeline.Options             `json:"pipeline"`
-	Incremental      *bool                         `json:"incremental"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type ScrapeRequest = submission.ScrapeRequest
 
 // CrawlRequest represents a request to crawl a website.
-type CrawlRequest struct {
-	URL              string                        `json:"url"`
-	MaxDepth         int                           `json:"maxDepth"`
-	MaxPages         int                           `json:"maxPages"`
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth"`
-	Extract          *extract.ExtractOptions       `json:"extract"`
-	Pipeline         *pipeline.Options             `json:"pipeline"`
-	Incremental      *bool                         `json:"incremental"`
-	SitemapURL       string                        `json:"sitemapURL,omitempty"`
-	SitemapOnly      *bool                         `json:"sitemapOnly,omitempty"`
-	IncludePatterns  []string                      `json:"includePatterns,omitempty"`
-	ExcludePatterns  []string                      `json:"excludePatterns,omitempty"`
-	RespectRobotsTxt *bool                         `json:"respectRobotsTxt,omitempty"`
-	SkipDuplicates   *bool                         `json:"skipDuplicates,omitempty"`
-	SimHashThreshold *int                          `json:"simHashThreshold,omitempty"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type CrawlRequest = submission.CrawlRequest
 
 // ResearchRequest represents a request to perform deep research across multiple URLs.
-type ResearchRequest struct {
-	Query            string                        `json:"query"`
-	URLs             []string                      `json:"urls"`
-	MaxDepth         int                           `json:"maxDepth"`
-	MaxPages         int                           `json:"maxPages"`
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth"`
-	Extract          *extract.ExtractOptions       `json:"extract"`
-	Pipeline         *pipeline.Options             `json:"pipeline"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
-}
+type ResearchRequest = submission.ResearchRequest
 
 // ScheduleRequest represents a request to add a scheduled job.
 type ScheduleRequest struct {

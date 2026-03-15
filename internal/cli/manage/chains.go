@@ -450,7 +450,7 @@ Chain Definition JSON Format:
         {
           "id": "step1",
           "kind": "scrape",
-          "spec": { "url": "https://example.com" },
+          "request": { "url": "https://example.com" },
           "metadata": { "name": "Homepage" }
         }
       ],

@@ -25,9 +25,11 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
 )
 
@@ -48,6 +50,7 @@ type WatchRequest struct {
 	ScreenshotEnabled   bool                    `json:"screenshotEnabled,omitempty"`
 	ScreenshotConfig    *fetch.ScreenshotConfig `json:"screenshotConfig,omitempty"`
 	VisualDiffThreshold *float64                `json:"visualDiffThreshold,omitempty"`
+	JobTrigger          *watch.JobTrigger       `json:"jobTrigger,omitempty"`
 }
 
 // WatchResponse represents a watch in API responses.
@@ -73,6 +76,7 @@ type WatchResponse struct {
 	ScreenshotEnabled   bool                    `json:"screenshotEnabled,omitempty"`
 	ScreenshotConfig    *fetch.ScreenshotConfig `json:"screenshotConfig,omitempty"`
 	VisualDiffThreshold float64                 `json:"visualDiffThreshold,omitempty"`
+	JobTrigger          *watch.JobTrigger       `json:"jobTrigger,omitempty"`
 }
 
 // WatchCheckResponse represents the result of a watch check.
@@ -94,6 +98,7 @@ type WatchCheckResponse struct {
 	PreviousVisualHash     string    `json:"previousVisualHash,omitempty"`
 	VisualChanged          bool      `json:"visualChanged"`
 	VisualSimilarity       float64   `json:"visualSimilarity,omitempty"`
+	TriggeredJobs          []string  `json:"triggeredJobs,omitempty"`
 }
 
 // toWatchResponse converts a watch.Watch to WatchResponse.
@@ -124,6 +129,7 @@ func toWatchResponse(w watch.Watch) WatchResponse {
 		ScreenshotEnabled:   w.ScreenshotEnabled,
 		ScreenshotConfig:    w.ScreenshotConfig,
 		VisualDiffThreshold: w.VisualDiffThreshold,
+		JobTrigger:          w.JobTrigger,
 	}
 }
 
@@ -152,7 +158,30 @@ func buildWatchFromRequest(req WatchRequest) *watch.Watch {
 		ScreenshotEnabled:   req.ScreenshotEnabled,
 		ScreenshotConfig:    req.ScreenshotConfig,
 		VisualDiffThreshold: threshold,
+		JobTrigger:          req.JobTrigger,
 	}
+}
+
+func validateWatchJobTrigger(cfg config.Config, defaultTimeoutSeconds int, defaultUsePlaywright bool, trigger *watch.JobTrigger) error {
+	if trigger == nil {
+		return nil
+	}
+	if len(trigger.Request) == 0 {
+		return apperrors.Validation("jobTrigger.request is required when jobTrigger is set")
+	}
+	normalizedRequest, err := submission.NormalizeRawRequest(trigger.Kind, trigger.Request)
+	if err != nil {
+		return err
+	}
+	if _, _, err := submission.JobSpecFromRawRequest(cfg, submission.Defaults{
+		DefaultTimeoutSeconds: defaultTimeoutSeconds,
+		DefaultUsePlaywright:  defaultUsePlaywright,
+		ResolveAuth:           false,
+	}, trigger.Kind, normalizedRequest); err != nil {
+		return err
+	}
+	trigger.Request = normalizedRequest
+	return nil
 }
 
 func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
@@ -179,6 +208,7 @@ func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
 	if req.VisualDiffThreshold != nil {
 		existing.VisualDiffThreshold = *req.VisualDiffThreshold
 	}
+	existing.JobTrigger = req.JobTrigger
 }
 
 // handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
@@ -221,6 +251,10 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newWatch := buildWatchFromRequest(req)
+	if err := validateWatchJobTrigger(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), newWatch.JobTrigger); err != nil {
+		writeError(w, r, err)
+		return
+	}
 
 	if err := newWatch.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -282,6 +316,10 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 	}
 
 	applyWatchRequest(existing, req)
+	if err := validateWatchJobTrigger(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), existing.JobTrigger); err != nil {
+		writeError(w, r, err)
+		return
+	}
 
 	if err := existing.Validate(); err != nil {
 		writeError(w, r, apperrors.Validation(err.Error()))
@@ -331,8 +369,11 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stateStore.Close()
 
-	// Create watcher with optional webhook dispatcher
-	watcher := watch.NewWatcher(storage, stateStore, s.cfg.DataDir, s.webhookDispatcher)
+	// Create watcher with optional webhook dispatcher and shared job-trigger runtime
+	watcher := watch.NewWatcher(storage, stateStore, s.cfg.DataDir, s.webhookDispatcher, &watch.TriggerRuntime{
+		Config:  s.cfg,
+		Manager: s.manager,
+	})
 
 	// Perform check
 	result, err := watcher.Check(r.Context(), watchItem)
@@ -366,5 +407,6 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 		PreviousVisualHash:     result.PreviousVisualHash,
 		VisualChanged:          result.VisualChanged,
 		VisualSimilarity:       result.VisualSimilarity,
+		TriggeredJobs:          result.TriggeredJobs,
 	})
 }

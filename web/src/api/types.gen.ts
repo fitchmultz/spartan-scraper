@@ -1501,6 +1501,7 @@ export type Watch = {
      * Visual diff threshold (0-1) for detecting changes
      */
     visualDiffThreshold?: number;
+    jobTrigger?: JobTrigger;
 };
 
 export type WatchInput = {
@@ -1558,6 +1559,20 @@ export type WatchInput = {
      * Visual diff threshold (0-1) for detecting changes
      */
     visualDiffThreshold?: number;
+    jobTrigger?: JobTrigger;
+};
+
+export type JobTrigger = {
+    /**
+     * Job kind to submit when the watch detects a change
+     */
+    kind: 'scrape' | 'crawl' | 'research';
+    /**
+     * Operator-facing request payload matching the selected job kind
+     */
+    request: {
+        [key: string]: unknown;
+    };
 };
 
 export type WatchList = {
@@ -1636,6 +1651,10 @@ export type WatchCheckResult = {
      * Similarity score between screenshots (0-1)
      */
     visualSimilarity?: number;
+    /**
+     * Job IDs created from the optional watch trigger during this check
+     */
+    triggeredJobs?: Array<string>;
 };
 
 /**
@@ -3087,9 +3106,9 @@ export type ChainNode = {
      */
     kind: 'scrape' | 'crawl' | 'research';
     /**
-     * Typed job specification template
+     * Operator-facing request payload matching the selected job kind
      */
-    spec: {
+    request: {
         [key: string]: unknown;
     };
     metadata?: ChainMetadata;
@@ -3150,7 +3169,7 @@ export type ChainCreateRequest = {
  */
 export type ChainSubmitRequest = {
     /**
-     * Parameter overrides by node ID
+     * Operator-facing request overrides by node ID
      */
     overrides?: {
         [key: string]: {

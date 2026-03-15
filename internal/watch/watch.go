@@ -33,12 +33,21 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/diff"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
+
+// TriggerRuntime provides the shared job-submission runtime for optional watch-triggered jobs.
+type TriggerRuntime struct {
+	Config  config.Config
+	Manager *jobs.Manager
+}
 
 // Watcher executes watch checks and detects content changes.
 type Watcher struct {
@@ -46,15 +55,17 @@ type Watcher struct {
 	stateStore *store.Store
 	dataDir    string
 	dispatcher *webhook.Dispatcher
+	runtime    *TriggerRuntime
 }
 
 // NewWatcher creates a new watcher instance.
-func NewWatcher(storage Storage, stateStore *store.Store, dataDir string, dispatcher *webhook.Dispatcher) *Watcher {
+func NewWatcher(storage Storage, stateStore *store.Store, dataDir string, dispatcher *webhook.Dispatcher, runtime *TriggerRuntime) *Watcher {
 	return &Watcher{
 		storage:    storage,
 		stateStore: stateStore,
 		dataDir:    dataDir,
 		dispatcher: dispatcher,
+		runtime:    runtime,
 	}
 }
 
@@ -180,6 +191,16 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 	}
 	w.updateWatchCheckTime(watch)
 
+	if result.Changed {
+		triggeredJobs, err := w.triggerJobs(ctx, watch)
+		if err != nil {
+			slog.Error("failed to trigger watch jobs", "watchID", watch.ID, "error", err)
+			result.Error = err.Error()
+		} else if len(triggeredJobs) > 0 {
+			result.TriggeredJobs = triggeredJobs
+		}
+	}
+
 	// Dispatch webhook if configured
 	if watch.NotifyOnChange && w.dispatcher != nil && watch.WebhookConfig != nil {
 		if contentChanged {
@@ -243,6 +264,30 @@ func (w *Watcher) updateWatchCheckTime(watch *Watch) {
 	if err := w.storage.Update(watch); err != nil {
 		slog.Error("failed to update watch check time", "watchID", watch.ID, "error", err)
 	}
+}
+
+func (w *Watcher) triggerJobs(ctx context.Context, watch *Watch) ([]string, error) {
+	if watch.JobTrigger == nil || w.runtime == nil || w.runtime.Manager == nil {
+		return nil, nil
+	}
+
+	spec, _, err := submission.JobSpecFromRawRequest(w.runtime.Config, submission.Defaults{
+		DefaultTimeoutSeconds: w.runtime.Manager.DefaultTimeoutSeconds(),
+		DefaultUsePlaywright:  w.runtime.Manager.DefaultUsePlaywright(),
+		ResolveAuth:           true,
+	}, watch.JobTrigger.Kind, watch.JobTrigger.Request)
+	if err != nil {
+		return nil, err
+	}
+
+	job, err := w.runtime.Manager.CreateJob(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+	if err := w.runtime.Manager.Enqueue(job); err != nil {
+		return nil, err
+	}
+	return []string{job.ID}, nil
 }
 
 // dispatchWebhook sends a webhook notification for a content or visual change.

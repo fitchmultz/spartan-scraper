@@ -29,7 +29,9 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/runtime"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
@@ -49,6 +51,7 @@ Examples:
   spartan watch add --url https://example.com --interval 3600
   spartan watch add --url https://example.com --selector "#price" --interval 300
   spartan watch add --url https://example.com --webhook https://hooks.slack.com/... --webhook-secret mysecret
+  spartan watch add --url https://example.com/pricing --trigger-kind scrape --trigger-request-file ./pricing-job.json
   spartan watch list
   spartan watch check <watch-id>
   spartan watch start
@@ -85,6 +88,44 @@ func RunWatch(ctx context.Context, cfg config.Config, args []string) int {
 	}
 }
 
+func loadWatchJobTrigger(cfg config.Config, kind string, requestFile string, requestJSON string) (*watch.JobTrigger, error) {
+	trimmedKind := strings.TrimSpace(kind)
+	if trimmedKind == "" && strings.TrimSpace(requestFile) == "" && strings.TrimSpace(requestJSON) == "" {
+		return nil, nil
+	}
+	if trimmedKind == "" {
+		return nil, fmt.Errorf("--trigger-kind is required when providing a watch trigger request")
+	}
+	if strings.TrimSpace(requestFile) != "" && strings.TrimSpace(requestJSON) != "" {
+		return nil, fmt.Errorf("--trigger-request-file and --trigger-request-json are mutually exclusive")
+	}
+	if strings.TrimSpace(requestFile) == "" && strings.TrimSpace(requestJSON) == "" {
+		return nil, fmt.Errorf("--trigger-request-file or --trigger-request-json is required when --trigger-kind is set")
+	}
+	var raw []byte
+	if strings.TrimSpace(requestFile) != "" {
+		data, err := os.ReadFile(requestFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read trigger request file: %w", err)
+		}
+		raw = data
+	} else {
+		raw = []byte(requestJSON)
+	}
+	normalizedRequest, err := submission.NormalizeRawRequest(model.Kind(trimmedKind), raw)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := submission.JobSpecFromRawRequest(cfg, submission.Defaults{
+		DefaultTimeoutSeconds: cfg.RequestTimeoutSecs,
+		DefaultUsePlaywright:  cfg.UsePlaywright,
+		ResolveAuth:           false,
+	}, model.Kind(trimmedKind), normalizedRequest); err != nil {
+		return nil, err
+	}
+	return &watch.JobTrigger{Kind: model.Kind(trimmedKind), Request: normalizedRequest}, nil
+}
+
 func runWatchAdd(cfg config.Config, args []string) int {
 	fs := flag.NewFlagSet("watch add", flag.ExitOnError)
 	url := fs.String("url", "", "URL to watch (required)")
@@ -96,6 +137,9 @@ func runWatchAdd(cfg config.Config, args []string) int {
 	headless := fs.Bool("headless", false, "Use headless browser")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of chromedp")
 	extractMode := fs.String("extract", "html", "Extraction mode: html, text")
+	triggerKind := fs.String("trigger-kind", "", "Job kind to submit on detected change (scrape|crawl|research)")
+	triggerRequestFile := fs.String("trigger-request-file", "", "Path to JSON file containing the operator-facing request payload to submit on change")
+	triggerRequestJSON := fs.String("trigger-request-json", "", "Inline JSON operator-facing request payload to submit on change")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -104,6 +148,12 @@ func runWatchAdd(cfg config.Config, args []string) int {
 
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "Error: --url is required")
+		return 1
+	}
+
+	trigger, err := loadWatchJobTrigger(cfg, *triggerKind, *triggerRequestFile, *triggerRequestJSON)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid watch trigger: %v\n", err)
 		return 1
 	}
 
@@ -120,6 +170,7 @@ func runWatchAdd(cfg config.Config, args []string) int {
 		Headless:        *headless,
 		UsePlaywright:   *playwright,
 		ExtractMode:     *extractMode,
+		JobTrigger:      trigger,
 	}
 
 	if *webhookURL != "" {
@@ -147,6 +198,9 @@ func runWatchAdd(cfg config.Config, args []string) int {
 	fmt.Printf("  Selector: %s\n", result.Selector)
 	fmt.Printf("  Interval: %d seconds\n", result.IntervalSeconds)
 	fmt.Printf("  Status:   %s\n", result.GetStatus())
+	if result.JobTrigger != nil {
+		fmt.Printf("  Trigger:  %s\n", result.JobTrigger.Kind)
+	}
 
 	return 0
 }
@@ -197,6 +251,9 @@ func runWatchList(cfg config.Config, args []string) int {
 		if w.Selector != "" {
 			fmt.Printf("  Selector: %s\n", w.Selector)
 		}
+		if w.JobTrigger != nil {
+			fmt.Printf("  Trigger: %s\n", w.JobTrigger.Kind)
+		}
 	}
 
 	return 0
@@ -237,7 +294,7 @@ func runWatchCheck(ctx context.Context, cfg config.Config, args []string) int {
 		return 1
 	}
 
-	// Open store for crawl state
+	// Open store for crawl state and optional triggered job creation.
 	stateStore, err := store.Open(cfg.DataDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to open store: %v\n", err)
@@ -245,7 +302,16 @@ func runWatchCheck(ctx context.Context, cfg config.Config, args []string) int {
 	}
 	defer stateStore.Close()
 
-	watcher := watch.NewWatcher(storage, stateStore, cfg.DataDir, nil)
+	manager, err := runtime.InitJobManager(ctx, cfg, stateStore)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to initialize job manager: %v\n", err)
+		return 1
+	}
+
+	watcher := watch.NewWatcher(storage, stateStore, cfg.DataDir, nil, &watch.TriggerRuntime{
+		Config:  cfg,
+		Manager: manager,
+	})
 
 	fmt.Printf("Checking watch %s (%s)...\n", w.ID, w.URL)
 	result, err := watcher.Check(ctx, w)
@@ -258,6 +324,9 @@ func runWatchCheck(ctx context.Context, cfg config.Config, args []string) int {
 		fmt.Println("Content changed!")
 		fmt.Printf("  Previous hash: %s\n", result.PreviousHash[:8])
 		fmt.Printf("  Current hash:  %s\n", result.CurrentHash[:8])
+		if len(result.TriggeredJobs) > 0 {
+			fmt.Printf("  Triggered jobs: %s\n", strings.Join(result.TriggeredJobs, ", "))
+		}
 		if result.DiffText != "" {
 			fmt.Println("\nDiff:")
 			fmt.Println(result.DiffText)
@@ -289,10 +358,19 @@ func runWatchStart(ctx context.Context, cfg config.Config, args []string) int {
 	}
 	defer stateStore.Close()
 
+	manager, err := runtime.InitJobManager(ctx, cfg, stateStore)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to initialize job manager: %v\n", err)
+		return 1
+	}
+
 	// Create dispatcher
 	dispatcher := webhook.NewDispatcher(webhook.Config{})
 
-	watcher := watch.NewWatcher(storage, stateStore, cfg.DataDir, dispatcher)
+	watcher := watch.NewWatcher(storage, stateStore, cfg.DataDir, dispatcher, &watch.TriggerRuntime{
+		Config:  cfg,
+		Manager: manager,
+	})
 	scheduler := watch.NewScheduler(watcher, storage, watch.SchedulerConfig{
 		Interval:      *pollInterval,
 		MaxConcurrent: *maxConcurrent,

@@ -83,8 +83,31 @@ export function useWatchForm(): UseWatchFormReturn {
       return false;
     }
 
+    if (formData.jobTriggerKind && !formData.jobTriggerRequest.trim()) {
+      setFormError(
+        "Watch job trigger request JSON is required when a trigger kind is selected",
+      );
+      return false;
+    }
+
+    if (formData.jobTriggerRequest.trim()) {
+      try {
+        JSON.parse(formData.jobTriggerRequest);
+      } catch (error) {
+        setFormError(
+          `Watch job trigger request must be valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return false;
+      }
+    }
+
     return true;
-  }, [formData.url, formData.intervalSeconds]);
+  }, [
+    formData.url,
+    formData.intervalSeconds,
+    formData.jobTriggerKind,
+    formData.jobTriggerRequest,
+  ]);
 
   const submitForm = useCallback(
     async (

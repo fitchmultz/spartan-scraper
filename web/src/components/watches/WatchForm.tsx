@@ -430,6 +430,74 @@ export function WatchForm({
             </div>
           )}
 
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 16,
+              backgroundColor: "var(--bg-alt)",
+              borderRadius: 8,
+            }}
+          >
+            <h4 style={{ margin: "0 0 12px 0" }}>Optional Job Trigger</h4>
+            <p style={{ color: "var(--muted)", marginTop: 0, fontSize: 13 }}>
+              When this watch detects a change, Spartan can immediately submit a
+              scrape, crawl, or research job using the same operator-facing
+              request contract as the live job forms and schedules.
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label
+                htmlFor="watch-job-trigger-kind"
+                style={{ display: "block", marginBottom: 4 }}
+              >
+                Trigger Job Kind
+              </label>
+              <select
+                id="watch-job-trigger-kind"
+                value={formData.jobTriggerKind}
+                onChange={(e) =>
+                  onChange({
+                    jobTriggerKind: e.target
+                      .value as typeof formData.jobTriggerKind,
+                  })
+                }
+                style={{ width: "100%" }}
+              >
+                <option value="">No triggered job</option>
+                <option value="scrape">Scrape</option>
+                <option value="crawl">Crawl</option>
+                <option value="research">Research</option>
+              </select>
+            </div>
+            {formData.jobTriggerKind && (
+              <div>
+                <label
+                  htmlFor="watch-job-trigger-request"
+                  style={{ display: "block", marginBottom: 4 }}
+                >
+                  Trigger Request JSON
+                </label>
+                <textarea
+                  id="watch-job-trigger-request"
+                  value={formData.jobTriggerRequest}
+                  onChange={(e) =>
+                    onChange({ jobTriggerRequest: e.target.value })
+                  }
+                  placeholder={`{\n  "url": "https://example.com",\n  "headless": true\n}`}
+                  rows={10}
+                  style={{
+                    width: "100%",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
+                />
+                <small style={{ color: "var(--muted)" }}>
+                  Use the same JSON body you would send to the matching live job
+                  endpoint.
+                </small>
+              </div>
+            )}
+          </div>
+
           <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
             <button
               type="button"

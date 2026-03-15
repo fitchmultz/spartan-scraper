@@ -37,6 +37,8 @@ export const defaultFormData: WatchFormData = {
   screenshotFullPage: true,
   screenshotFormat: "png",
   visualDiffThreshold: "0.1",
+  jobTriggerKind: "",
+  jobTriggerRequest: "",
 };
 
 /**
@@ -64,6 +66,11 @@ export function watchToFormData(watch: Watch): WatchFormData {
     screenshotFormat:
       (watch.screenshotConfig?.format as "png" | "jpeg") || "png",
     visualDiffThreshold: watch.visualDiffThreshold?.toString() || "0.1",
+    jobTriggerKind:
+      (watch.jobTrigger?.kind as WatchFormData["jobTriggerKind"]) || "",
+    jobTriggerRequest: watch.jobTrigger
+      ? JSON.stringify(watch.jobTrigger.request, null, 2)
+      : "",
   };
 }
 
@@ -105,6 +112,13 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
     if (data.visualDiffThreshold) {
       input.visualDiffThreshold = parseFloat(data.visualDiffThreshold);
     }
+  }
+
+  if (data.jobTriggerKind && data.jobTriggerRequest.trim()) {
+    input.jobTrigger = {
+      kind: data.jobTriggerKind,
+      request: JSON.parse(data.jobTriggerRequest) as Record<string, unknown>,
+    };
   }
 
   return input;

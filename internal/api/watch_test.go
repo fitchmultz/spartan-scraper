@@ -20,6 +20,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
 )
 
@@ -179,6 +181,103 @@ func TestHandleCreateWatch(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("Expected status 400 for invalid JSON, got %d", rr.Code)
+	}
+}
+
+func TestHandleCreateWatchRejectsInvalidJobTrigger(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	reqBody := WatchRequest{
+		URL:             "https://example.com/watch",
+		IntervalSeconds: 1800,
+		JobTrigger: &watch.JobTrigger{
+			Kind:    model.KindScrape,
+			Request: json.RawMessage(`{"url":"https://example.com","unknown":true}`),
+		},
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleWatchCheckTriggersConfiguredJob(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	currentContent := "before"
+	site := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body><main>" + currentContent + "</main></body></html>"))
+	}))
+	defer site.Close()
+
+	reqBody := WatchRequest{
+		URL:             site.URL,
+		IntervalSeconds: 1800,
+		JobTrigger: &watch.JobTrigger{
+			Kind:    model.KindScrape,
+			Request: json.RawMessage(`{"url":"` + site.URL + `","timeoutSeconds":15}`),
+		},
+	}
+	body, _ := json.Marshal(reqBody)
+	createReq := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(body))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(createRR, createReq)
+	if createRR.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d: %s", createRR.Code, createRR.Body.String())
+	}
+
+	var created WatchResponse
+	if err := json.Unmarshal(createRR.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Failed to parse create response: %v", err)
+	}
+
+	firstReq := httptest.NewRequest(http.MethodPost, "/v1/watch/"+created.ID+"/check", nil)
+	firstRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(firstRR, firstReq)
+	if firstRR.Code != http.StatusOK {
+		t.Fatalf("Expected first check status 200, got %d: %s", firstRR.Code, firstRR.Body.String())
+	}
+
+	currentContent = "after"
+	secondReq := httptest.NewRequest(http.MethodPost, "/v1/watch/"+created.ID+"/check", nil)
+	secondRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(secondRR, secondReq)
+	if secondRR.Code != http.StatusOK {
+		t.Fatalf("Expected second check status 200, got %d: %s", secondRR.Code, secondRR.Body.String())
+	}
+
+	var checkResp WatchCheckResponse
+	if err := json.Unmarshal(secondRR.Body.Bytes(), &checkResp); err != nil {
+		t.Fatalf("Failed to parse check response: %v", err)
+	}
+	if !checkResp.Changed {
+		t.Fatalf("expected changed=true on second check")
+	}
+	if len(checkResp.TriggeredJobs) != 1 {
+		t.Fatalf("expected one triggered job, got %#v", checkResp.TriggeredJobs)
+	}
+
+	jobs, err := srv.store.List(context.Background())
+	if err != nil {
+		t.Fatalf("failed to list jobs: %v", err)
+	}
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 triggered job, got %d", len(jobs))
+	}
+	if jobs[0].ID != checkResp.TriggeredJobs[0] {
+		t.Fatalf("expected triggered job ID %s, got %s", jobs[0].ID, checkResp.TriggeredJobs[0])
+	}
+	if jobs[0].Kind != model.KindScrape {
+		t.Fatalf("expected triggered scrape job, got %s", jobs[0].Kind)
 	}
 }
 

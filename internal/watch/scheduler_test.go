@@ -13,7 +13,7 @@ func TestSchedulerStop(t *testing.T) {
 	tmpDir := t.TempDir()
 	storage := NewFileStorage(tmpDir)
 
-	watcher := NewWatcher(storage, nil, tmpDir, nil)
+	watcher := NewWatcher(storage, nil, tmpDir, nil, nil)
 	scheduler := NewScheduler(watcher, storage, DefaultSchedulerConfig())
 
 	// Test that Stop can be called multiple times without panic
@@ -49,7 +49,7 @@ func TestSchedulerRunAndStop(t *testing.T) {
 		t.Fatalf("Failed to add watch: %v", err)
 	}
 
-	watcher := NewWatcher(storage, nil, tmpDir, nil)
+	watcher := NewWatcher(storage, nil, tmpDir, nil, nil)
 	scheduler := NewScheduler(watcher, storage, SchedulerConfig{
 		Interval:      100 * time.Millisecond,
 		MaxConcurrent: 1,
@@ -96,7 +96,7 @@ func TestDefaultSchedulerConfig(t *testing.T) {
 func TestNewSchedulerDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	storage := NewFileStorage(tmpDir)
-	watcher := NewWatcher(storage, nil, tmpDir, nil)
+	watcher := NewWatcher(storage, nil, tmpDir, nil, nil)
 
 	// Test with zero values - should use defaults
 	scheduler := NewScheduler(watcher, storage, SchedulerConfig{
@@ -117,7 +117,7 @@ func TestSchedulerRunOnce(t *testing.T) {
 	tmpDir := t.TempDir()
 	storage := NewFileStorage(tmpDir)
 
-	watcher := NewWatcher(storage, nil, tmpDir, nil)
+	watcher := NewWatcher(storage, nil, tmpDir, nil, nil)
 	scheduler := NewScheduler(watcher, storage, DefaultSchedulerConfig())
 
 	ctx := context.Background()

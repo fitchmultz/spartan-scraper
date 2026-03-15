@@ -16,8 +16,8 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "valid simple chain",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/2"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/2"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -29,10 +29,10 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "valid diamond chain",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/2"}`)},
-					{ID: "c", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/3"}`)},
-					{ID: "d", Kind: KindCrawl, Spec: []byte(`{"url":"http://example.com/4"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/2"}`)},
+					{ID: "c", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/3"}`)},
+					{ID: "d", Kind: KindCrawl, Request: []byte(`{"url":"http://example.com/4"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -47,7 +47,7 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "empty node ID",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
+					{ID: "", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
 				},
 				Edges: []ChainEdge{},
 			},
@@ -58,8 +58,8 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "duplicate node ID",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
-					{ID: "a", Kind: KindCrawl, Spec: []byte(`{"url":"http://example.com/2"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
+					{ID: "a", Kind: KindCrawl, Request: []byte(`{"url":"http://example.com/2"}`)},
 				},
 				Edges: []ChainEdge{},
 			},
@@ -70,7 +70,7 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "edge references unknown node (from)",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "x", To: "a"},
@@ -83,7 +83,7 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "edge references unknown node (to)",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "y"},
@@ -96,7 +96,7 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "self-referencing edge",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "a"},
@@ -109,8 +109,8 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "simple cycle",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/2"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/2"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -124,9 +124,9 @@ func TestValidateChainDefinition(t *testing.T) {
 			name: "indirect cycle",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com"}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/2"}`)},
-					{ID: "c", Kind: KindScrape, Spec: []byte(`{"url":"http://example.com/3"}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{"url":"http://example.com"}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/2"}`)},
+					{ID: "c", Kind: KindScrape, Request: []byte(`{"url":"http://example.com/3"}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -177,9 +177,9 @@ func TestChainDefinitionGetRootNodes(t *testing.T) {
 			name: "linear chain",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "c", Kind: KindScrape, Spec: []byte(`{}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "c", Kind: KindScrape, Request: []byte(`{}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -192,10 +192,10 @@ func TestChainDefinitionGetRootNodes(t *testing.T) {
 			name: "diamond chain",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "c", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "d", Kind: KindCrawl, Spec: []byte(`{}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "c", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "d", Kind: KindCrawl, Request: []byte(`{}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "b"},
@@ -210,9 +210,9 @@ func TestChainDefinitionGetRootNodes(t *testing.T) {
 			name: "multiple roots",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "c", Kind: KindCrawl, Spec: []byte(`{}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "c", Kind: KindCrawl, Request: []byte(`{}`)},
 				},
 				Edges: []ChainEdge{
 					{From: "a", To: "c"},
@@ -225,8 +225,8 @@ func TestChainDefinitionGetRootNodes(t *testing.T) {
 			name: "all isolated nodes",
 			def: ChainDefinition{
 				Nodes: []ChainNode{
-					{ID: "a", Kind: KindScrape, Spec: []byte(`{}`)},
-					{ID: "b", Kind: KindScrape, Spec: []byte(`{}`)},
+					{ID: "a", Kind: KindScrape, Request: []byte(`{}`)},
+					{ID: "b", Kind: KindScrape, Request: []byte(`{}`)},
 				},
 				Edges: []ChainEdge{},
 			},
@@ -273,9 +273,9 @@ func TestChainDefinitionGetRootNodes(t *testing.T) {
 func TestChainDefinitionGetDependencies(t *testing.T) {
 	def := ChainDefinition{
 		Nodes: []ChainNode{
-			{ID: "a", Kind: KindScrape, Spec: []byte(`{}`)},
-			{ID: "b", Kind: KindScrape, Spec: []byte(`{}`)},
-			{ID: "c", Kind: KindCrawl, Spec: []byte(`{}`)},
+			{ID: "a", Kind: KindScrape, Request: []byte(`{}`)},
+			{ID: "b", Kind: KindScrape, Request: []byte(`{}`)},
+			{ID: "c", Kind: KindCrawl, Request: []byte(`{}`)},
 		},
 		Edges: []ChainEdge{
 			{From: "a", To: "c"},

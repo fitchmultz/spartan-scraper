@@ -50,6 +50,8 @@ export interface WatchFormData {
   screenshotFullPage: boolean;
   screenshotFormat: "png" | "jpeg";
   visualDiffThreshold: string;
+  jobTriggerKind: "" | "scrape" | "crawl" | "research";
+  jobTriggerRequest: string;
 }
 
 /**

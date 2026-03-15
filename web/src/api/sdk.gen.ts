@@ -1016,7 +1016,7 @@ export const getChain = <ThrowOnError extends boolean = false>(options: Options<
 /**
  * Submit/instantiate a chain
  *
- * Creates jobs from a chain definition with optional parameter overrides
+ * Creates jobs from a chain definition with optional per-node request overrides
  */
 export const submitChain = <ThrowOnError extends boolean = false>(options: Options<SubmitChainData, ThrowOnError>) => (options.client ?? client).post<SubmitChainResponses, SubmitChainErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],
