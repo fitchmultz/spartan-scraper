@@ -107,6 +107,14 @@ func persistedSpecFromCreateSpec(spec JobSpec) (int, any, error) {
 	}
 }
 
+// TypedSpecFromJobSpec converts a create-time JobSpec into the persisted typed spec envelope.
+func TypedSpecFromJobSpec(spec JobSpec) (int, any, error) {
+	if err := spec.Validate(); err != nil {
+		return 0, nil, fmt.Errorf("invalid job spec: %w", err)
+	}
+	return persistedSpecFromCreateSpec(spec)
+}
+
 // CreateJob creates and persists a new job from a unified JobSpec.
 func (m *Manager) CreateJob(ctx context.Context, spec JobSpec) (model.Job, error) {
 	if err := spec.Validate(); err != nil {

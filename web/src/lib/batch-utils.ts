@@ -17,8 +17,10 @@ import type {
   BatchScrapeRequest,
   DeviceEmulation,
   ExtractOptions,
+  NetworkInterceptConfig,
   PipelineOptions,
   ResearchAgenticConfig,
+  ScreenshotConfig,
   WebhookConfig,
 } from "../api";
 import { splitAndTrim } from "./input-parsing";
@@ -191,7 +193,9 @@ export function buildBatchScrapeRequest(
   pipeline: PipelineOptions | undefined,
   incremental: boolean,
   webhook: WebhookConfig | undefined,
+  screenshot: ScreenshotConfig | undefined,
   device: DeviceEmulation | undefined,
+  networkIntercept: NetworkInterceptConfig | undefined,
   aiExtract?: AiExtractOptions,
 ): BatchScrapeRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
@@ -214,7 +218,9 @@ export function buildBatchScrapeRequest(
     pipeline,
     incremental: incremental || undefined,
     webhook,
+    screenshot,
     device,
+    networkIntercept,
   };
 }
 
@@ -234,7 +240,9 @@ export function buildBatchCrawlRequest(
   pipeline: PipelineOptions | undefined,
   incremental: boolean,
   webhook: WebhookConfig | undefined,
+  screenshot: ScreenshotConfig | undefined,
   device: DeviceEmulation | undefined,
+  networkIntercept: NetworkInterceptConfig | undefined,
   aiExtract?: AiExtractOptions,
 ): BatchCrawlRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
@@ -259,7 +267,9 @@ export function buildBatchCrawlRequest(
     pipeline,
     incremental: incremental || undefined,
     webhook,
+    screenshot,
     device,
+    networkIntercept,
   };
 }
 
@@ -279,7 +289,9 @@ export function buildBatchResearchRequest(
   extract: ExtractOptions | undefined,
   pipeline: PipelineOptions | undefined,
   webhook: WebhookConfig | undefined,
+  screenshot: ScreenshotConfig | undefined,
   device: DeviceEmulation | undefined,
+  networkIntercept: NetworkInterceptConfig | undefined,
   aiExtract?: AiExtractOptions,
   agentic?: ResearchAgenticConfig,
 ): BatchResearchRequest {
@@ -305,7 +317,9 @@ export function buildBatchResearchRequest(
     extract: mergedExtract,
     pipeline,
     webhook,
+    screenshot,
     device,
+    networkIntercept,
     agentic,
   };
 }

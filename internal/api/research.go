@@ -22,57 +22,16 @@ package api
 import (
 	"net/http"
 
-	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	handleSingleJobSubmission(s, w, r, singleJobSubmission[ResearchRequest]{
-		kind: model.KindResearch,
-		validate: func(req ResearchRequest) error {
-			if req.Query == "" || len(req.URLs) == 0 {
-				return apperrors.Validation("query and urls are required")
-			}
-			if err := model.ValidateResearchAgenticConfig(req.Agentic); err != nil {
-				return err
-			}
-			return validate.ValidateJob(validate.JobValidationOpts{
-				Query:       req.Query,
-				URLs:        req.URLs,
-				MaxDepth:    req.MaxDepth,
-				MaxPages:    req.MaxPages,
-				Timeout:     req.TimeoutSeconds,
-				AuthProfile: req.AuthProfile,
-			}, model.KindResearch)
-		},
-		buildSpec: func(req ResearchRequest) jobs.JobSpec {
-			return jobs.JobSpec{
-				Kind:     model.KindResearch,
-				Query:    req.Query,
-				URLs:     req.URLs,
-				MaxDepth: req.MaxDepth,
-				MaxPages: req.MaxPages,
-				Headless: req.Headless,
-				Agentic:  req.Agentic,
-			}
-		},
+		kind:      model.KindResearch,
+		validate:  validateResearchRequest,
+		buildSpec: researchJobSpecFromRequest,
 		requestOptions: func(r *http.Request, req ResearchRequest) jobRequestOptions {
-			return jobRequestOptions{
-				authURL:          req.URLs[0],
-				authProfile:      req.AuthProfile,
-				auth:             req.Auth,
-				extract:          req.Extract,
-				pipeline:         req.Pipeline,
-				webhook:          req.Webhook,
-				screenshot:       req.Screenshot,
-				device:           req.Device,
-				networkIntercept: req.NetworkIntercept,
-				playwright:       req.Playwright,
-				timeoutSeconds:   req.TimeoutSeconds,
-				requestID:        contextRequestID(r.Context()),
-			}
+			return researchJobRequestOptions(contextRequestID(r.Context()), req)
 		},
 	})
 }

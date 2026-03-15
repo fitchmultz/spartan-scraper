@@ -28,7 +28,7 @@ func TestHandleSchedulesList(t *testing.T) {
 		t.Errorf("expected Content-Type application/json, got %v", ct)
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Errorf("failed to parse JSON response: %v", err)
 	}
@@ -42,83 +42,103 @@ func TestHandleSchedulesAdd(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name           string
-		body           string
-		expectedStatus int
+		name            string
+		body            string
+		expectedStatus  int
+		expectedKind    string
+		expectedRequest map[string]any
 	}{
 		{
 			name:           "valid scrape schedule",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusCreated,
+			expectedKind:   "scrape",
+			expectedRequest: map[string]any{
+				"url":            "https://example.com",
+				"headless":       false,
+				"timeoutSeconds": float64(30),
+			},
 		},
 		{
 			name:           "valid crawl schedule",
-			body:           `{"kind":"crawl","intervalSeconds":7200,"specVersion":1,"spec":{"version":1,"url":"https://example.com","maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"crawl","intervalSeconds":7200,"request":{"url":"https://example.com","maxDepth":2,"maxPages":200,"headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusCreated,
+			expectedKind:   "crawl",
+			expectedRequest: map[string]any{
+				"url":            "https://example.com",
+				"maxDepth":       float64(2),
+				"maxPages":       float64(200),
+				"headless":       false,
+				"timeoutSeconds": float64(30),
+			},
 		},
 		{
 			name:           "valid research schedule",
-			body:           `{"kind":"research","intervalSeconds":86400,"specVersion":1,"spec":{"version":1,"query":"test query","urls":["https://example.com"],"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"research","intervalSeconds":86400,"request":{"query":"test query","urls":["https://example.com"],"maxDepth":2,"maxPages":200,"headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusCreated,
+			expectedKind:   "research",
+			expectedRequest: map[string]any{
+				"query":          "test query",
+				"urls":           []any{"https://example.com"},
+				"maxDepth":       float64(2),
+				"maxPages":       float64(200),
+				"headless":       false,
+				"timeoutSeconds": float64(30),
+			},
 		},
 		{
 			name:           "missing kind",
-			body:           `{"intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			body:           `{"intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid interval (negative)",
-			body:           `{"kind":"scrape","intervalSeconds":-1,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":-1,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid kind value",
-			body:           `{"kind":"invalid","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"invalid","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing content-type",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusUnsupportedMediaType,
 		},
 		{
 			name:           "trailing json payload is rejected",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}{"extra":true}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}{"extra":true}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing url for scrape",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing url for crawl",
-			body:           `{"kind":"crawl","intervalSeconds":7200,"specVersion":1,"spec":{"version":1,"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"crawl","intervalSeconds":7200,"request":{"maxDepth":2,"maxPages":200,"headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "missing query and urls for research",
-			body:           `{"kind":"research","intervalSeconds":86400,"specVersion":1,"spec":{"version":1,"maxDepth":2,"maxPages":200,"execution":{"timeoutSeconds":30}}}`,
+			body:           `{"kind":"research","intervalSeconds":86400,"request":{"maxDepth":2,"maxPages":200,"headless":false,"timeoutSeconds":30}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid timeout too low",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":1}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":1}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "invalid timeout too high",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":600}}}`,
+			body:           `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":600}}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "missing specVersion",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "missing spec",
-			body:           `{"kind":"scrape","intervalSeconds":3600,"specVersion":1}`,
+			name:           "missing request",
+			body:           `{"kind":"scrape","intervalSeconds":3600}`,
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -136,37 +156,41 @@ func TestHandleSchedulesAdd(t *testing.T) {
 				t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, tt.expectedStatus, rr.Body.String())
 			}
 
+			var resp map[string]any
+			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+				t.Errorf("failed to parse JSON response: %v", err)
+			}
+
 			if tt.expectedStatus == http.StatusCreated {
-				var resp map[string]interface{}
-				if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
-					t.Errorf("failed to parse JSON response: %v", err)
-				}
 				if _, ok := resp["id"]; !ok {
 					t.Errorf("expected 'id' field in schedule response, got: %v", resp)
 				}
-				if _, ok := resp["kind"]; !ok {
-					t.Errorf("expected 'kind' field in schedule response, got: %v", resp)
+				if gotKind, _ := resp["kind"].(string); gotKind != tt.expectedKind {
+					t.Errorf("kind = %q, want %q", gotKind, tt.expectedKind)
 				}
-				if _, ok := resp["intervalSeconds"]; !ok {
-					t.Errorf("expected 'intervalSeconds' field in schedule response, got: %v", resp)
+				if gotInterval, _ := resp["intervalSeconds"].(float64); gotInterval <= 0 {
+					t.Errorf("expected positive intervalSeconds in schedule response, got: %v", resp["intervalSeconds"])
 				}
 				if _, ok := resp["nextRun"]; !ok {
 					t.Errorf("expected 'nextRun' field in schedule response, got: %v", resp)
 				}
-				if _, ok := resp["specVersion"]; !ok {
-					t.Errorf("expected 'specVersion' field in schedule response, got: %v", resp)
+				request, ok := resp["request"].(map[string]any)
+				if !ok {
+					t.Fatalf("expected 'request' object in schedule response, got: %T (%v)", resp["request"], resp["request"])
 				}
-				if _, ok := resp["spec"]; !ok {
-					t.Errorf("expected 'spec' field in schedule response, got: %v", resp)
+				for key, want := range tt.expectedRequest {
+					if got := request[key]; !jsonValueEqual(got, want) {
+						t.Errorf("request[%q] = %#v, want %#v", key, got, want)
+					}
 				}
-			} else {
-				var resp map[string]interface{}
-				if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
-					t.Errorf("failed to parse JSON response: %v", err)
+				if _, ok := resp["specVersion"]; ok {
+					t.Errorf("did not expect legacy 'specVersion' field in schedule response: %v", resp)
 				}
-				if _, ok := resp["error"]; !ok {
-					t.Errorf("expected 'error' field in error response, got: %v", resp)
+				if _, ok := resp["spec"]; ok {
+					t.Errorf("did not expect legacy 'spec' field in schedule response: %v", resp)
 				}
+			} else if _, ok := resp["error"]; !ok {
+				t.Errorf("expected 'error' field in error response, got: %v", resp)
 			}
 		})
 	}
@@ -176,7 +200,7 @@ func TestHandleScheduleDelete(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
 
-	addBody := `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"headless":false,"timeoutSeconds":30}}}`
+	addBody := `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`
 	req := httptest.NewRequest("POST", "/v1/schedules", strings.NewReader(addBody))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -186,7 +210,7 @@ func TestHandleScheduleDelete(t *testing.T) {
 		t.Fatalf("failed to add schedule: got status %v, body: %s", status, rr.Body.String())
 	}
 
-	var addResp map[string]interface{}
+	var addResp map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &addResp); err != nil {
 		t.Fatalf("failed to parse add response: %v, body: %s", err, rr.Body.String())
 	}
@@ -206,7 +230,7 @@ func TestHandleScheduleDelete(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v, body: %s", status, http.StatusOK, rr.Body.String())
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Errorf("failed to parse delete response: %v", err)
 	}
@@ -261,4 +285,13 @@ func TestHandleScheduleDeleteInvalidID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func jsonValueEqual(got any, want any) bool {
+	gotJSON, gotErr := json.Marshal(got)
+	wantJSON, wantErr := json.Marshal(want)
+	if gotErr != nil || wantErr != nil {
+		return false
+	}
+	return string(gotJSON) == string(wantJSON)
 }

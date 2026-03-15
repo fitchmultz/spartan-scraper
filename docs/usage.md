@@ -552,7 +552,7 @@ spartan schedule add --kind scrape --interval 3600 --url https://example.com
 
 API note:
 
-- `/v1/schedules` accepts `kind`, `intervalSeconds`, `specVersion`, and typed `spec`.
+- `/v1/schedules` accepts `kind`, `intervalSeconds`, and a `request` object that matches the live scrape/crawl/research submission contract for the selected kind.
 
 ### Export
 
@@ -807,30 +807,20 @@ Core tools:
 - `export_schedule_delete`
 - `export_schedule_history`
 
-`scrape_page`, `crawl_site`, and `research` accept AI extraction arguments in addition to the normal execution controls:
+`scrape_page`, `crawl_site`, and `research` now accept the same request bodies as the REST job-submission endpoints for their respective kinds.
 
-- `aiExtract: boolean`
-- `aiMode: "natural_language" | "schema_guided"`
-- `aiPrompt: string` for natural-language mode
-- `aiSchema: object` for schema-guided mode
-- `aiFields: string[]`
+Use the same top-level fields you would send to `/v1/scrape`, `/v1/crawl`, or `/v1/research`, including nested execution objects such as:
 
-Those same MCP execution tools also accept request-scoped proxy transport controls:
+- `auth`
+- `extract`
+- `pipeline`
+- `webhook`
+- `screenshot`
+- `device`
+- `networkIntercept`
+- `agentic` on `research`
 
-- `proxy: string`
-- `proxyUsername: string` / `proxyPassword: string` with `proxy`
-- `proxyRegion: string`
-- `proxyTags: string[]`
-- `excludeProxyIds: string[]`
-
-Direct `proxy` settings and proxy-pool selection hints are mutually exclusive.
-
-`research` also accepts bounded agentic controls:
-
-- `agentic: boolean`
-- `agenticInstructions: string`
-- `agenticMaxRounds: number`
-- `agenticMaxFollowUpUrls: number`
+That means AI extraction rides inside `extract.ai.*`, proxy transport rides inside `auth.proxy` / `auth.proxyHints`, and screenshot / interception options use the same object shape as REST and the Web UI.
 
 `job_export` accepts the same direct export contract as `spartan export` / `POST /v1/jobs/{id}/export`:
 

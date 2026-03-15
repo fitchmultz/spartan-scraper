@@ -25,17 +25,46 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 				"name": "scrape_page",
 				"arguments": map[string]interface{}{
 					"url":            "https://example.com",
-					"headless":       false,
-					"playwright":     false,
+					"headless":       true,
+					"playwright":     true,
 					"timeoutSeconds": 30,
-					"aiExtract":      true,
-					"aiMode":         "natural_language",
-					"aiPrompt":       "Extract the title and price",
-					"aiFields":       []string{"title", "price"},
-					"preProcessors":  []string{"prep1", "prep2"},
-					"postProcessors": []string{"post1"},
-					"transformers":   []string{"trans1", "trans2"},
 					"incremental":    true,
+					"extract": map[string]interface{}{
+						"ai": map[string]interface{}{
+							"enabled": true,
+							"mode":    "natural_language",
+							"prompt":  "Extract the title and price",
+							"fields":  []string{"title", "price"},
+						},
+					},
+					"pipeline": map[string]interface{}{
+						"preProcessors":  []string{"prep1", "prep2"},
+						"postProcessors": []string{"post1"},
+						"transformers":   []string{"trans1", "trans2"},
+					},
+					"auth": map[string]interface{}{
+						"proxyHints": map[string]interface{}{
+							"preferred_region": "us-east",
+							"required_tags":    []string{"residential"},
+						},
+					},
+					"screenshot": map[string]interface{}{
+						"enabled":  true,
+						"fullPage": true,
+						"format":   "png",
+					},
+					"device": map[string]interface{}{
+						"name": "iPhone 15",
+					},
+					"networkIntercept": map[string]interface{}{
+						"enabled":             true,
+						"urlPatterns":         []string{"**/api/**"},
+						"resourceTypes":       []string{"xhr", "fetch"},
+						"captureRequestBody":  true,
+						"captureResponseBody": true,
+						"maxBodySize":         1024,
+						"maxEntries":          10,
+					},
 				},
 			}),
 		}
@@ -105,6 +134,32 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		if prompt, _ := aiMap["prompt"].(string); prompt != "Extract the title and price" {
 			t.Errorf("ai.prompt: got %q", prompt)
 		}
+		if screenshotMap, ok := job.SpecMap()["screenshot"].(map[string]interface{}); !ok {
+			t.Fatal("screenshot config not found or wrong type")
+		} else if enabled, _ := screenshotMap["enabled"].(bool); !enabled {
+			t.Errorf("screenshot.enabled: got %v, want true", enabled)
+		}
+		if deviceMap, ok := job.SpecMap()["device"].(map[string]interface{}); !ok {
+			t.Fatal("device config not found or wrong type")
+		} else if name, _ := deviceMap["name"].(string); name != "iPhone 15" {
+			t.Errorf("device.name: got %q, want iPhone 15", name)
+		}
+		if interceptMap, ok := job.SpecMap()["networkIntercept"].(map[string]interface{}); !ok {
+			t.Fatal("networkIntercept config not found or wrong type")
+		} else if enabled, _ := interceptMap["enabled"].(bool); !enabled {
+			t.Errorf("networkIntercept.enabled: got %v, want true", enabled)
+		}
+		authMap, ok := job.SpecMap()["auth"].(map[string]interface{})
+		if !ok {
+			t.Fatal("auth config not found or wrong type")
+		}
+		proxyHintsMap, ok := authMap["proxyHints"].(map[string]interface{})
+		if !ok {
+			t.Fatal("auth.proxyHints not found or wrong type")
+		}
+		if preferredRegion, _ := proxyHintsMap["preferred_region"].(string); preferredRegion != "us-east" {
+			t.Errorf("auth.proxyHints.preferred_region: got %q, want us-east", preferredRegion)
+		}
 	})
 
 	t.Run("crawl_site with partial pipeline options", func(t *testing.T) {
@@ -112,18 +167,24 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			"params": mustMarshalJSON(map[string]interface{}{
 				"name": "crawl_site",
 				"arguments": map[string]interface{}{
-					"url":       "https://example.com",
-					"maxDepth":  2,
-					"maxPages":  10,
-					"aiExtract": true,
-					"aiMode":    "schema_guided",
-					"aiSchema": map[string]interface{}{
-						"title": "Example",
-						"price": "$19.99",
+					"url":      "https://example.com",
+					"maxDepth": 2,
+					"maxPages": 10,
+					"extract": map[string]interface{}{
+						"ai": map[string]interface{}{
+							"enabled": true,
+							"mode":    "schema_guided",
+							"schema": map[string]interface{}{
+								"title": "Example",
+								"price": "$19.99",
+							},
+							"fields": []string{"title", "price"},
+						},
 					},
-					"aiFields":      []string{"title", "price"},
-					"preProcessors": []string{"only-prep"},
-					"incremental":   false,
+					"pipeline": map[string]interface{}{
+						"preProcessors": []string{"only-prep"},
+					},
+					"incremental": false,
 				},
 			}),
 		}
@@ -180,11 +241,15 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			"params": mustMarshalJSON(map[string]interface{}{
 				"name": "crawl_site",
 				"arguments": map[string]interface{}{
-					"url":       "https://example.com",
-					"maxDepth":  2,
-					"maxPages":  10,
-					"aiExtract": true,
-					"aiMode":    "schema_guided",
+					"url":      "https://example.com",
+					"maxDepth": 2,
+					"maxPages": 10,
+					"extract": map[string]interface{}{
+						"ai": map[string]interface{}{
+							"enabled": true,
+							"mode":    "schema_guided",
+						},
+					},
 				},
 			}),
 		}
@@ -193,7 +258,7 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected validation error")
 		}
-		if err.Error() != "aiSchema is required when aiMode is schema_guided" {
+		if err.Error() != "extract.ai.schema is required when extract.ai.mode is schema_guided" {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
@@ -203,13 +268,19 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			"params": mustMarshalJSON(map[string]interface{}{
 				"name": "research",
 				"arguments": map[string]interface{}{
-					"query":         "pricing model",
-					"urls":          []string{"https://example.com"},
-					"aiExtract":     true,
-					"aiMode":        "natural_language",
-					"aiPrompt":      "Extract the pricing model and contract terms",
-					"aiFields":      []string{"pricing_model", "contract_terms"},
-					"preProcessors": []string{"prep1"},
+					"query": "pricing model",
+					"urls":  []string{"https://example.com"},
+					"extract": map[string]interface{}{
+						"ai": map[string]interface{}{
+							"enabled": true,
+							"mode":    "natural_language",
+							"prompt":  "Extract the pricing model and contract terms",
+							"fields":  []string{"pricing_model", "contract_terms"},
+						},
+					},
+					"pipeline": map[string]interface{}{
+						"preProcessors": []string{"prep1"},
+					},
 				},
 			}),
 		}
@@ -242,12 +313,14 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			"params": mustMarshalJSON(map[string]interface{}{
 				"name": "research",
 				"arguments": map[string]interface{}{
-					"query":                  "pricing model",
-					"urls":                   []string{"https://example.com"},
-					"agentic":                true,
-					"agenticInstructions":    "Prioritize pricing and support commitments",
-					"agenticMaxRounds":       2,
-					"agenticMaxFollowUpUrls": 4,
+					"query": "pricing model",
+					"urls":  []string{"https://example.com"},
+					"agentic": map[string]interface{}{
+						"enabled":         true,
+						"instructions":    "Prioritize pricing and support commitments",
+						"maxRounds":       2,
+						"maxFollowUpUrls": 4,
+					},
 				},
 			}),
 		}
@@ -276,10 +349,14 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 			"params": mustMarshalJSON(map[string]interface{}{
 				"name": "research",
 				"arguments": map[string]interface{}{
-					"query":     "pricing model",
-					"urls":      []string{"https://example.com"},
-					"aiExtract": true,
-					"aiMode":    "schema_guided",
+					"query": "pricing model",
+					"urls":  []string{"https://example.com"},
+					"extract": map[string]interface{}{
+						"ai": map[string]interface{}{
+							"enabled": true,
+							"mode":    "schema_guided",
+						},
+					},
 				},
 			}),
 		}
@@ -288,7 +365,7 @@ func TestHandleToolCallWithPipelineAndIncremental(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected validation error")
 		}
-		if err.Error() != "aiSchema is required when aiMode is schema_guided" {
+		if err.Error() != "extract.ai.schema is required when extract.ai.mode is schema_guided" {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})

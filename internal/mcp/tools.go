@@ -71,18 +71,18 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "scrape_page",
-			Description: "Scrape a single page (static or headless) with optional AI extraction controls and direct proxy/pool selection overrides",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
+			Description: "Scrape a single page using the same request contract as POST /v1/scrape",
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"method": "string", "body": "string", "contentType": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "incremental": "boolean", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object"}),
 		},
 		{
 			Name:        "crawl_site",
-			Description: "Crawl a site with depth and page limits plus optional AI extraction controls and direct proxy/pool selection overrides",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
+			Description: "Crawl a site using the same request contract as POST /v1/crawl",
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "incremental": "boolean", "sitemapURL": "string", "sitemapOnly": "boolean", "includePatterns": "array", "excludePatterns": "array", "respectRobotsTxt": "boolean", "skipDuplicates": "boolean", "simHashThreshold": "number", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object"}),
 		},
 		{
 			Name:        "research",
-			Description: "Deep research across multiple sources with optional AI extraction controls, direct proxy/pool selection overrides, and bounded pi-powered follow-up synthesis",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "agentic": "boolean", "agenticInstructions": "string", "agenticMaxRounds": "number", "agenticMaxFollowUpUrls": "number", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
+			Description: "Run research using the same request contract as POST /v1/research",
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object", "agentic": "object"}),
 		},
 		{
 			Name:        "job_status",

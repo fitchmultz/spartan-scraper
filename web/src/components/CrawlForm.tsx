@@ -28,6 +28,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
+import { ScreenshotConfig } from "./ScreenshotConfig";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { AiExtractOptions, DeviceEmulation } from "../api";
@@ -124,6 +125,18 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
+      screenshotEnabled,
+      setScreenshotEnabled,
+      screenshotFullPage,
+      setScreenshotFullPage,
+      screenshotFormat,
+      setScreenshotFormat,
+      screenshotQuality,
+      setScreenshotQuality,
+      screenshotWidth,
+      setScreenshotWidth,
+      screenshotHeight,
+      setScreenshotHeight,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -136,6 +149,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
+      interceptMaxEntries,
+      setInterceptMaxEntries,
     } = form;
 
     const [crawlUrl, setCrawlUrl] = useState("");
@@ -188,6 +203,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         shared.webhook,
         parsePatternList(includePatterns),
         parsePatternList(excludePatterns),
+        shared.screenshot,
         device || undefined,
         shared.networkIntercept,
         aiExtractOptions,
@@ -257,6 +273,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         includePatterns,
         excludePatterns,
         device: device || undefined,
@@ -266,6 +288,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       }),
       [
         crawlUrl,
@@ -307,6 +330,12 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         includePatterns,
         excludePatterns,
         device,
@@ -316,6 +345,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       ],
     );
 
@@ -455,8 +485,24 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
 
         <JobFormAdvancedSection
           title="Browser and capture controls"
-          description="Device emulation, network interception, and browser-only diagnostics."
+          description="Screenshot capture, device emulation, network interception, and browser-only diagnostics."
         >
+          <ScreenshotConfig
+            enabled={screenshotEnabled}
+            setEnabled={setScreenshotEnabled}
+            fullPage={screenshotFullPage}
+            setFullPage={setScreenshotFullPage}
+            format={screenshotFormat}
+            setFormat={setScreenshotFormat}
+            quality={screenshotQuality}
+            setQuality={setScreenshotQuality}
+            width={screenshotWidth}
+            setWidth={setScreenshotWidth}
+            height={screenshotHeight}
+            setHeight={setScreenshotHeight}
+            disabled={!headless}
+            inputPrefix="crawl"
+          />
           <DeviceSelector
             device={device}
             onChange={setDevice}
@@ -475,6 +521,8 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
             setCaptureResponseBody={setInterceptCaptureResponseBody}
             maxBodySize={interceptMaxBodySize}
             setMaxBodySize={setInterceptMaxBodySize}
+            maxEntries={interceptMaxEntries}
+            setMaxEntries={setInterceptMaxEntries}
             disabled={!headless}
             inputPrefix="crawl"
           />

@@ -84,6 +84,13 @@ export interface PresetConfig {
   excludePatterns?: string;
   // Device emulation
   device?: DeviceEmulation;
+  // Screenshot options
+  screenshotEnabled?: boolean;
+  screenshotFullPage?: boolean;
+  screenshotFormat?: "png" | "jpeg";
+  screenshotQuality?: number;
+  screenshotWidth?: number;
+  screenshotHeight?: number;
   // Network interception options
   interceptEnabled?: boolean;
   interceptURLPatterns?: string;

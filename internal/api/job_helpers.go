@@ -26,6 +26,7 @@ import (
 	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -63,12 +64,12 @@ type batchJobSubmission[T any] struct {
 	buildSpecs func(*http.Request, T) ([]jobs.JobSpec, error)
 }
 
-func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
+func applyJobDefaultsWithConfig(cfg config.Config, defaultTimeoutSeconds int, defaultUsePlaywright bool, spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
 	spec.TimeoutSeconds = opts.timeoutSeconds
 	if spec.TimeoutSeconds <= 0 {
-		spec.TimeoutSeconds = s.manager.DefaultTimeoutSeconds()
+		spec.TimeoutSeconds = defaultTimeoutSeconds
 	}
-	spec.UsePlaywright = valueOr(opts.playwright, s.manager.DefaultUsePlaywright())
+	spec.UsePlaywright = valueOr(opts.playwright, defaultUsePlaywright)
 	spec.AuthProfile = opts.authProfile
 	spec.Extract = valueOr(opts.extract, extract.ExtractOptions{})
 	spec.Pipeline = valueOr(opts.pipeline, pipeline.Options{})
@@ -80,15 +81,24 @@ func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, re
 	applyWebhookConfig(spec, opts.webhook)
 
 	if !resolveAuth {
+		spec.Auth = valueOr(opts.auth, fetch.AuthOptions{})
+		spec.Auth.NormalizeTransport()
+		if err := spec.Auth.ValidateTransport(); err != nil {
+			return err
+		}
 		return nil
 	}
 
-	authOptions, err := resolveAuthForRequest(s.cfg, opts.authURL, opts.authProfile, opts.auth)
+	authOptions, err := resolveAuthForRequest(cfg, opts.authURL, opts.authProfile, opts.auth)
 	if err != nil {
 		return err
 	}
 	spec.Auth = authOptions
 	return nil
+}
+
+func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
+	return applyJobDefaultsWithConfig(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), spec, opts, resolveAuth)
 }
 
 func applyWebhookConfig(spec *jobs.JobSpec, webhook *WebhookConfig) {

@@ -175,14 +175,10 @@ func TestScheduleExportAndWebSocketCoreFlow(t *testing.T) {
 	postSchedule(t, client, port, map[string]any{
 		"kind":            "scrape",
 		"intervalSeconds": 1,
-		"specVersion":     1,
-		"spec": map[string]any{
-			"version": 1,
-			"url":     site.ScrapeURL(),
-			"execution": map[string]any{
-				"headless":       false,
-				"timeoutSeconds": 30,
-			},
+		"request": map[string]any{
+			"url":            site.ScrapeURL(),
+			"headless":       false,
+			"timeoutSeconds": 30,
 		},
 	})
 	waitForJobs(t, client, port, 2)
@@ -390,9 +386,15 @@ func postSchedule(t *testing.T, client *http.Client, port int, body map[string]a
 	if _, hasParams := payload["params"]; hasParams {
 		t.Fatalf("schedule response unexpectedly exposed legacy params")
 	}
-	specVersion, _ := payload["specVersion"].(float64)
-	if int(specVersion) != 1 {
-		t.Fatalf("schedule response specVersion = %v, want 1", payload["specVersion"])
+	if _, hasSpecVersion := payload["specVersion"]; hasSpecVersion {
+		t.Fatalf("schedule response unexpectedly exposed legacy specVersion")
+	}
+	request, ok := payload["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("schedule response missing request object: %#v", payload)
+	}
+	if request["url"] == nil {
+		t.Fatalf("schedule response request missing url: %#v", request)
 	}
 	return id
 }

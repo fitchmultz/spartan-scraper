@@ -18,6 +18,7 @@ import type {
   ResearchAgenticConfig,
   ResearchRequest,
   ScrapeRequest,
+  ScreenshotConfig,
   WebhookConfig,
 } from "../api";
 import type { FormController } from "../hooks/useFormState";
@@ -181,6 +182,27 @@ export function buildWebhookConfig(
   };
 }
 
+export function buildScreenshotConfig(
+  enabled: boolean,
+  fullPage: boolean,
+  format: "png" | "jpeg",
+  quality: number,
+  width: number,
+  height: number,
+): ScreenshotConfig | undefined {
+  if (!enabled) {
+    return undefined;
+  }
+  return {
+    enabled: true,
+    fullPage,
+    format,
+    quality: format === "jpeg" ? quality : undefined,
+    width: width > 0 ? width : undefined,
+    height: height > 0 ? height : undefined,
+  };
+}
+
 export function buildNetworkInterceptConfig(
   enabled: boolean,
   urlPatternsRaw: string,
@@ -268,6 +290,7 @@ export function buildResearchAgenticOptions(
 
 type SharedFormFields = Pick<
   FormController,
+  | "headless"
   | "authProfile"
   | "authBasic"
   | "headersRaw"
@@ -293,12 +316,19 @@ type SharedFormFields = Pick<
   | "webhookUrl"
   | "webhookEvents"
   | "webhookSecret"
+  | "screenshotEnabled"
+  | "screenshotFullPage"
+  | "screenshotFormat"
+  | "screenshotQuality"
+  | "screenshotWidth"
+  | "screenshotHeight"
   | "interceptEnabled"
   | "interceptURLPatterns"
   | "interceptResourceTypes"
   | "interceptCaptureRequestBody"
   | "interceptCaptureResponseBody"
   | "interceptMaxBodySize"
+  | "interceptMaxEntries"
 >;
 
 export type SharedRequestConfig = {
@@ -310,6 +340,7 @@ export type SharedRequestConfig = {
   postProcessors: string;
   transformers: string;
   webhook?: WebhookConfig;
+  screenshot?: ScreenshotConfig;
   networkIntercept?: NetworkInterceptConfig;
 };
 
@@ -354,14 +385,22 @@ export function buildSharedRequestConfig(
       form.webhookEvents,
       form.webhookSecret,
     ),
+    screenshot: buildScreenshotConfig(
+      form.headless && form.screenshotEnabled,
+      form.screenshotFullPage,
+      form.screenshotFormat,
+      form.screenshotQuality,
+      form.screenshotWidth,
+      form.screenshotHeight,
+    ),
     networkIntercept: buildNetworkInterceptConfig(
-      form.interceptEnabled,
+      form.headless && form.interceptEnabled,
       form.interceptURLPatterns,
       form.interceptResourceTypes,
       form.interceptCaptureRequestBody,
       form.interceptCaptureResponseBody,
       form.interceptMaxBodySize,
-      interceptMaxEntries,
+      form.interceptMaxEntries || interceptMaxEntries,
     ),
   };
 }
@@ -379,6 +418,7 @@ export function buildScrapeRequest(
   transformers: string,
   incremental: boolean,
   webhook?: WebhookConfig,
+  screenshot?: ScreenshotConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
@@ -403,6 +443,7 @@ export function buildScrapeRequest(
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     webhook,
+    screenshot,
     device,
     networkIntercept,
   };
@@ -427,6 +468,7 @@ export function buildCrawlRequest(
   webhook?: WebhookConfig,
   includePatterns?: string[],
   excludePatterns?: string[],
+  screenshot?: ScreenshotConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
@@ -456,6 +498,7 @@ export function buildCrawlRequest(
     webhook,
     includePatterns,
     excludePatterns,
+    screenshot,
     device,
     networkIntercept,
   };
@@ -476,6 +519,7 @@ export function buildResearchRequest(
   postProcessors: string,
   transformers: string,
   webhook?: WebhookConfig,
+  screenshot?: ScreenshotConfig,
   device?: import("../api").DeviceEmulation,
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
@@ -502,6 +546,7 @@ export function buildResearchRequest(
     extract: mergedExtract,
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
+    screenshot,
     device,
     networkIntercept,
     agentic,

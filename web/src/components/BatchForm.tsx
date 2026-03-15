@@ -28,6 +28,8 @@ import type { FormController, ProfileOption } from "../hooks/useFormState";
 import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
+import { ScreenshotConfig } from "./ScreenshotConfig";
+import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import type { DeviceEmulation } from "../api";
 import type {
   BatchScrapeRequest,
@@ -192,6 +194,32 @@ export function BatchForm({
     setWebhookEvents,
     webhookSecret,
     setWebhookSecret,
+    screenshotEnabled,
+    setScreenshotEnabled,
+    screenshotFullPage,
+    setScreenshotFullPage,
+    screenshotFormat,
+    setScreenshotFormat,
+    screenshotQuality,
+    setScreenshotQuality,
+    screenshotWidth,
+    setScreenshotWidth,
+    screenshotHeight,
+    setScreenshotHeight,
+    interceptEnabled,
+    setInterceptEnabled,
+    interceptURLPatterns,
+    setInterceptURLPatterns,
+    interceptResourceTypes,
+    setInterceptResourceTypes,
+    interceptCaptureRequestBody,
+    setInterceptCaptureRequestBody,
+    interceptCaptureResponseBody,
+    setInterceptCaptureResponseBody,
+    interceptMaxBodySize,
+    setInterceptMaxBodySize,
+    interceptMaxEntries,
+    setInterceptMaxEntries,
   } = form;
 
   const [device, setDevice] = useState<DeviceEmulation | null>(null);
@@ -363,7 +391,9 @@ export function BatchForm({
       shared.pipeline,
       incremental,
       shared.webhook,
+      shared.screenshot,
       device || undefined,
+      shared.networkIntercept,
       aiExtractOptions,
     );
 
@@ -408,7 +438,9 @@ export function BatchForm({
       shared.pipeline,
       incremental,
       shared.webhook,
+      shared.screenshot,
       device || undefined,
+      shared.networkIntercept,
       aiExtractOptions,
     );
 
@@ -460,7 +492,9 @@ export function BatchForm({
       shared.extract,
       shared.pipeline,
       shared.webhook,
+      shared.screenshot,
       device || undefined,
+      shared.networkIntercept,
       aiExtractOptions,
       agenticOptions,
     );
@@ -701,10 +735,46 @@ export function BatchForm({
         setTimeoutSeconds={setTimeoutSeconds}
       />
 
+      <ScreenshotConfig
+        enabled={screenshotEnabled}
+        setEnabled={setScreenshotEnabled}
+        fullPage={screenshotFullPage}
+        setFullPage={setScreenshotFullPage}
+        format={screenshotFormat}
+        setFormat={setScreenshotFormat}
+        quality={screenshotQuality}
+        setQuality={setScreenshotQuality}
+        width={screenshotWidth}
+        setWidth={setScreenshotWidth}
+        height={screenshotHeight}
+        setHeight={setScreenshotHeight}
+        disabled={!headless}
+        inputPrefix="batch"
+      />
+
       <DeviceSelector
         device={device}
         onChange={setDevice}
         disabled={!headless}
+      />
+
+      <NetworkInterceptConfig
+        enabled={interceptEnabled}
+        setEnabled={setInterceptEnabled}
+        urlPatterns={interceptURLPatterns}
+        setURLPatterns={setInterceptURLPatterns}
+        resourceTypes={interceptResourceTypes}
+        setResourceTypes={setInterceptResourceTypes}
+        captureRequestBody={interceptCaptureRequestBody}
+        setCaptureRequestBody={setInterceptCaptureRequestBody}
+        captureResponseBody={interceptCaptureResponseBody}
+        setCaptureResponseBody={setInterceptCaptureResponseBody}
+        maxBodySize={interceptMaxBodySize}
+        setMaxBodySize={setInterceptMaxBodySize}
+        maxEntries={interceptMaxEntries}
+        setMaxEntries={setInterceptMaxEntries}
+        disabled={!headless}
+        inputPrefix="batch"
       />
 
       <AuthConfig

@@ -310,6 +310,7 @@ describe("buildCrawlRequest with pipeline options", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       {
         enabled: true,
         mode: "natural_language",
@@ -400,6 +401,7 @@ describe("buildResearchRequest with pipeline options", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       {
         enabled: true,
         mode: "natural_language",
@@ -435,6 +437,7 @@ describe("buildResearchRequest with pipeline options", () => {
       "",
       "",
       "",
+      undefined,
       undefined,
       undefined,
       undefined,

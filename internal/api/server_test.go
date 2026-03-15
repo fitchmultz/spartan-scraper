@@ -141,8 +141,8 @@ func TestRejectUnknownFields(t *testing.T) {
 			method:       http.MethodPost,
 			endpoint:     "/v1/schedules",
 			validStatus:  http.StatusCreated,
-			validBody:    `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}}}`,
-			invalidBody:  `{"kind":"scrape","intervalSeconds":3600,"specVersion":1,"spec":{"version":1,"url":"https://example.com","execution":{"timeoutSeconds":30}},"unknownField":"test"}`,
+			validBody:    `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30}}`,
+			invalidBody:  `{"kind":"scrape","intervalSeconds":3600,"request":{"url":"https://example.com","headless":false,"timeoutSeconds":30},"unknownField":"test"}`,
 			unknownField: "unknownField",
 		},
 	}

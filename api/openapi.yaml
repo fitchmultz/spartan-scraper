@@ -5991,26 +5991,24 @@ components:
           type: string
           format: date-time
           description: Next scheduled run time (RFC3339)
-        specVersion:
-          type: integer
-          description: Persisted typed schedule spec version.
-        spec:
-          type: object
-          description: Persisted typed schedule spec.
+        request:
+          description: Operator-facing job request matching the selected kind.
+          oneOf:
+          - "$ref": "#/components/schemas/ScrapeRequest"
+          - "$ref": "#/components/schemas/CrawlRequest"
+          - "$ref": "#/components/schemas/ResearchRequest"
       required:
       - id
       - kind
       - intervalSeconds
       - nextRun
-      - specVersion
-      - spec
+      - request
     ScheduleRequest:
       type: object
       required:
       - kind
       - intervalSeconds
-      - specVersion
-      - spec
+      - request
       properties:
         kind:
           type: string
@@ -6022,12 +6020,12 @@ components:
           type: integer
           minimum: 1
           description: Interval between runs in seconds
-        specVersion:
-          type: integer
-          description: Typed schedule spec version.
-        spec:
-          type: object
-          description: Typed schedule spec matching the selected kind.
+        request:
+          description: Job request matching the selected kind.
+          oneOf:
+          - "$ref": "#/components/schemas/ScrapeRequest"
+          - "$ref": "#/components/schemas/CrawlRequest"
+          - "$ref": "#/components/schemas/ResearchRequest"
     ScheduleListResponse:
       type: object
       properties:
@@ -6899,6 +6897,8 @@ components:
           "$ref": "#/components/schemas/ScreenshotConfig"
         device:
           "$ref": "#/components/schemas/DeviceEmulation"
+        networkIntercept:
+          "$ref": "#/components/schemas/NetworkInterceptConfig"
     BatchCrawlRequest:
       type: object
       description: Request to create multiple crawl jobs
@@ -6960,12 +6960,37 @@ components:
           type: boolean
           default: false
           description: Only crawl sitemap URLs
+        includePatterns:
+          type: array
+          items:
+            type: string
+          description: Optional URL path patterns to include during crawl discovery
+        excludePatterns:
+          type: array
+          items:
+            type: string
+          description: Optional URL path patterns to exclude during crawl discovery
+        respectRobotsTxt:
+          type: boolean
+          default: false
+          description: Respect robots.txt rules during crawling
+        skipDuplicates:
+          type: boolean
+          default: false
+          description: Skip near-duplicate pages during crawling
+        simHashThreshold:
+          type: integer
+          minimum: 0
+          maximum: 64
+          description: Hamming distance threshold for duplicate detection
         webhook:
           "$ref": "#/components/schemas/WebhookConfig"
         screenshot:
           "$ref": "#/components/schemas/ScreenshotConfig"
         device:
           "$ref": "#/components/schemas/DeviceEmulation"
+        networkIntercept:
+          "$ref": "#/components/schemas/NetworkInterceptConfig"
     BatchResearchRequest:
       type: object
       description: Request to create multiple research jobs
@@ -7025,6 +7050,8 @@ components:
           "$ref": "#/components/schemas/ScreenshotConfig"
         device:
           "$ref": "#/components/schemas/DeviceEmulation"
+        networkIntercept:
+          "$ref": "#/components/schemas/NetworkInterceptConfig"
         agentic:
           "$ref": "#/components/schemas/ResearchAgenticConfig"
     BatchResponse:

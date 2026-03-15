@@ -89,7 +89,7 @@ The canonical runtime model is:
 
 Artifacts are designed to be inspectable on disk. Result files remain the source for exports and downstream tooling.
 
-Recurring schedules are a hard cutover too: legacy `schedules.json` files that still carry `params` are rejected and must be replaced with fresh `specVersion` + `spec` schedule records.
+Recurring schedules are a hard cutover too: legacy `schedules.json` files that still carry `params` are rejected, and the operator-facing HTTP contract now uses `kind` + `intervalSeconds` + `request` while persisted storage continues to normalize into typed V1 schedule specs.
 
 ## Storage compatibility policy
 

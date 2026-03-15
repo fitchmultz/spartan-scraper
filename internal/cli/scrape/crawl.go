@@ -13,7 +13,6 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
@@ -115,33 +114,32 @@ Options:
 		return 1
 	}
 
-	// Resolve device preset if specified
-	var device *fetch.DeviceEmulation
-	if *cf.Device != "" {
-		device = fetch.GetDevicePreset(*cf.Device)
-		if device == nil {
-			fmt.Fprintf(os.Stderr, "Unknown device preset: %s\n", *cf.Device)
-			return 1
-		}
+	device, err := common.ResolveDevicePreset(*cf.Device)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
 	}
-
-	// Build network intercept config if enabled
-	var networkIntercept *fetch.NetworkInterceptConfig
-	if *cf.InterceptEnabled {
-		resourceTypes := make([]fetch.InterceptedResourceType, 0, len(cf.InterceptResourceTypes))
-		for _, rt := range cf.InterceptResourceTypes {
-			resourceTypes = append(resourceTypes, fetch.InterceptedResourceType(rt))
-		}
-		networkIntercept = &fetch.NetworkInterceptConfig{
-			Enabled:             true,
-			URLPatterns:         []string(cf.InterceptURLPatterns),
-			ResourceTypes:       resourceTypes,
-			CaptureRequestBody:  *cf.InterceptCaptureRequest,
-			CaptureResponseBody: *cf.InterceptCaptureResponse,
-			MaxBodySize:         int64(*cf.InterceptMaxBodySize),
-			MaxEntries:          *cf.InterceptMaxEntries,
-		}
+	screenshot, err := common.BuildScreenshotConfig(
+		*cf.ScreenshotEnabled,
+		*cf.ScreenshotFullPage,
+		*cf.ScreenshotFormat,
+		*cf.ScreenshotQuality,
+		*cf.ScreenshotWidth,
+		*cf.ScreenshotHeight,
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
 	}
+	networkIntercept := common.BuildNetworkInterceptConfig(
+		*cf.InterceptEnabled,
+		[]string(cf.InterceptURLPatterns),
+		[]string(cf.InterceptResourceTypes),
+		*cf.InterceptCaptureRequest,
+		*cf.InterceptCaptureResponse,
+		*cf.InterceptMaxBodySize,
+		*cf.InterceptMaxEntries,
+	)
 
 	spec := jobs.JobSpec{
 		Kind:             model.KindCrawl,
@@ -160,6 +158,7 @@ Options:
 		SitemapOnly:      *sitemapOnly,
 		IncludePatterns:  parsePatternList(*include),
 		ExcludePatterns:  parsePatternList(*exclude),
+		Screenshot:       screenshot,
 		Device:           device,
 		RespectRobotsTxt: *respectRobots,
 		SkipDuplicates:   *skipDuplicates,

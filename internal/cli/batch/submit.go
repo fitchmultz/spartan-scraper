@@ -182,15 +182,45 @@ func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string)
 		return 1
 	}
 
+	device, err := common.ResolveDevicePreset(*cf.Device)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving device preset: %v\n", err)
+		return 1
+	}
+	screenshot, err := common.BuildScreenshotConfig(
+		*cf.ScreenshotEnabled,
+		*cf.ScreenshotFullPage,
+		*cf.ScreenshotFormat,
+		*cf.ScreenshotQuality,
+		*cf.ScreenshotWidth,
+		*cf.ScreenshotHeight,
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building screenshot config: %v\n", err)
+		return 1
+	}
+	networkIntercept := common.BuildNetworkInterceptConfig(
+		*cf.InterceptEnabled,
+		[]string(cf.InterceptURLPatterns),
+		[]string(cf.InterceptResourceTypes),
+		*cf.InterceptCaptureRequest,
+		*cf.InterceptCaptureResponse,
+		*cf.InterceptMaxBodySize,
+		*cf.InterceptMaxEntries,
+	)
+
 	// Build request
 	req := BatchScrapeRequest{
-		Jobs:           jobReqs,
-		Headless:       *cf.Headless,
-		TimeoutSeconds: *cf.Timeout,
-		AuthProfile:    *cf.ProfileName,
-		Auth:           &authOptions,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
+		Jobs:             jobReqs,
+		Headless:         *cf.Headless,
+		TimeoutSeconds:   *cf.Timeout,
+		AuthProfile:      *cf.ProfileName,
+		Auth:             &authOptions,
+		Extract:          extractOpts,
+		Pipeline:         pipelineOpts,
+		Screenshot:       screenshot,
+		Device:           device,
+		NetworkIntercept: networkIntercept,
 	}
 
 	if *cf.Playwright != cfg.UsePlaywright {
@@ -281,18 +311,48 @@ func runBatchSubmitCrawl(ctx context.Context, cfg config.Config, args []string) 
 		return 1
 	}
 
+	device, err := common.ResolveDevicePreset(*cf.Device)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving device preset: %v\n", err)
+		return 1
+	}
+	screenshot, err := common.BuildScreenshotConfig(
+		*cf.ScreenshotEnabled,
+		*cf.ScreenshotFullPage,
+		*cf.ScreenshotFormat,
+		*cf.ScreenshotQuality,
+		*cf.ScreenshotWidth,
+		*cf.ScreenshotHeight,
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building screenshot config: %v\n", err)
+		return 1
+	}
+	networkIntercept := common.BuildNetworkInterceptConfig(
+		*cf.InterceptEnabled,
+		[]string(cf.InterceptURLPatterns),
+		[]string(cf.InterceptResourceTypes),
+		*cf.InterceptCaptureRequest,
+		*cf.InterceptCaptureResponse,
+		*cf.InterceptMaxBodySize,
+		*cf.InterceptMaxEntries,
+	)
+
 	// Build request
 	req := BatchCrawlRequest{
-		Jobs:           jobReqs,
-		MaxDepth:       *maxDepth,
-		MaxPages:       *maxPages,
-		Headless:       *cf.Headless,
-		TimeoutSeconds: *cf.Timeout,
-		AuthProfile:    *cf.ProfileName,
-		SitemapURL:     *sitemapURL,
-		Auth:           &authOptions,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
+		Jobs:             jobReqs,
+		MaxDepth:         *maxDepth,
+		MaxPages:         *maxPages,
+		Headless:         *cf.Headless,
+		TimeoutSeconds:   *cf.Timeout,
+		AuthProfile:      *cf.ProfileName,
+		SitemapURL:       *sitemapURL,
+		Auth:             &authOptions,
+		Extract:          extractOpts,
+		Pipeline:         pipelineOpts,
+		Screenshot:       screenshot,
+		Device:           device,
+		NetworkIntercept: networkIntercept,
 	}
 
 	if *cf.Playwright != cfg.UsePlaywright {
@@ -396,19 +456,49 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		return 1
 	}
 
+	device, err := common.ResolveDevicePreset(*cf.Device)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving device preset: %v\n", err)
+		return 1
+	}
+	screenshot, err := common.BuildScreenshotConfig(
+		*cf.ScreenshotEnabled,
+		*cf.ScreenshotFullPage,
+		*cf.ScreenshotFormat,
+		*cf.ScreenshotQuality,
+		*cf.ScreenshotWidth,
+		*cf.ScreenshotHeight,
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error building screenshot config: %v\n", err)
+		return 1
+	}
+	networkIntercept := common.BuildNetworkInterceptConfig(
+		*cf.InterceptEnabled,
+		[]string(cf.InterceptURLPatterns),
+		[]string(cf.InterceptResourceTypes),
+		*cf.InterceptCaptureRequest,
+		*cf.InterceptCaptureResponse,
+		*cf.InterceptMaxBodySize,
+		*cf.InterceptMaxEntries,
+	)
+
 	// Build request
 	req := BatchResearchRequest{
-		Jobs:           jobReqs,
-		Query:          *query,
-		MaxDepth:       *maxDepth,
-		MaxPages:       *maxPages,
-		Headless:       *cf.Headless,
-		TimeoutSeconds: *cf.Timeout,
-		AuthProfile:    *cf.ProfileName,
-		Auth:           &authOptions,
-		Extract:        extractOpts,
-		Pipeline:       pipelineOpts,
-		Agentic:        agenticConfig,
+		Jobs:             jobReqs,
+		Query:            *query,
+		MaxDepth:         *maxDepth,
+		MaxPages:         *maxPages,
+		Headless:         *cf.Headless,
+		TimeoutSeconds:   *cf.Timeout,
+		AuthProfile:      *cf.ProfileName,
+		Auth:             &authOptions,
+		Extract:          extractOpts,
+		Pipeline:         pipelineOpts,
+		Screenshot:       screenshot,
+		Device:           device,
+		NetworkIntercept: networkIntercept,
+		Agentic:          agenticConfig,
 	}
 
 	if *cf.Playwright != cfg.UsePlaywright {

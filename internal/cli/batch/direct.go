@@ -41,18 +41,21 @@ func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchSc
 	specs := make([]jobs.JobSpec, len(req.Jobs))
 	for i, job := range req.Jobs {
 		specs[i] = jobs.JobSpec{
-			Kind:           model.KindScrape,
-			URL:            job.URL,
-			Method:         job.Method,
-			Body:           []byte(job.Body),
-			ContentType:    job.ContentType,
-			Headless:       req.Headless,
-			UsePlaywright:  req.Playwright != nil && *req.Playwright,
-			TimeoutSeconds: req.TimeoutSeconds,
-			Auth:           *req.Auth,
-			Extract:        *req.Extract,
-			Pipeline:       *req.Pipeline,
-			Incremental:    req.Incremental != nil && *req.Incremental,
+			Kind:             model.KindScrape,
+			URL:              job.URL,
+			Method:           job.Method,
+			Body:             []byte(job.Body),
+			ContentType:      job.ContentType,
+			Headless:         req.Headless,
+			UsePlaywright:    req.Playwright != nil && *req.Playwright,
+			TimeoutSeconds:   req.TimeoutSeconds,
+			Auth:             *req.Auth,
+			Extract:          *req.Extract,
+			Pipeline:         *req.Pipeline,
+			Incremental:      req.Incremental != nil && *req.Incremental,
+			Screenshot:       req.Screenshot,
+			Device:           req.Device,
+			NetworkIntercept: req.NetworkIntercept,
 		}
 	}
 
@@ -92,20 +95,32 @@ func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCra
 	// Build job specs
 	specs := make([]jobs.JobSpec, len(req.Jobs))
 	for i, job := range req.Jobs {
+		simHashThreshold := 0
+		if req.SimHashThreshold != nil {
+			simHashThreshold = *req.SimHashThreshold
+		}
 		specs[i] = jobs.JobSpec{
-			Kind:           model.KindCrawl,
-			URL:            job.URL,
-			MaxDepth:       req.MaxDepth,
-			MaxPages:       req.MaxPages,
-			Headless:       req.Headless,
-			UsePlaywright:  req.Playwright != nil && *req.Playwright,
-			TimeoutSeconds: req.TimeoutSeconds,
-			SitemapURL:     req.SitemapURL,
-			SitemapOnly:    req.SitemapOnly != nil && *req.SitemapOnly,
-			Auth:           *req.Auth,
-			Extract:        *req.Extract,
-			Pipeline:       *req.Pipeline,
-			Incremental:    req.Incremental != nil && *req.Incremental,
+			Kind:             model.KindCrawl,
+			URL:              job.URL,
+			MaxDepth:         req.MaxDepth,
+			MaxPages:         req.MaxPages,
+			Headless:         req.Headless,
+			UsePlaywright:    req.Playwright != nil && *req.Playwright,
+			TimeoutSeconds:   req.TimeoutSeconds,
+			SitemapURL:       req.SitemapURL,
+			SitemapOnly:      req.SitemapOnly != nil && *req.SitemapOnly,
+			IncludePatterns:  req.IncludePatterns,
+			ExcludePatterns:  req.ExcludePatterns,
+			RespectRobotsTxt: req.RespectRobotsTxt != nil && *req.RespectRobotsTxt,
+			SkipDuplicates:   req.SkipDuplicates != nil && *req.SkipDuplicates,
+			SimHashThreshold: simHashThreshold,
+			Auth:             *req.Auth,
+			Extract:          *req.Extract,
+			Pipeline:         *req.Pipeline,
+			Incremental:      req.Incremental != nil && *req.Incremental,
+			Screenshot:       req.Screenshot,
+			Device:           req.Device,
+			NetworkIntercept: req.NetworkIntercept,
 		}
 	}
 
@@ -150,18 +165,21 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 
 	// Research jobs only need one job with all URLs
 	spec := jobs.JobSpec{
-		Kind:           model.KindResearch,
-		Query:          req.Query,
-		URLs:           urls,
-		MaxDepth:       req.MaxDepth,
-		MaxPages:       req.MaxPages,
-		Headless:       req.Headless,
-		UsePlaywright:  req.Playwright != nil && *req.Playwright,
-		TimeoutSeconds: req.TimeoutSeconds,
-		Auth:           *req.Auth,
-		Extract:        *req.Extract,
-		Pipeline:       *req.Pipeline,
-		Agentic:        req.Agentic,
+		Kind:             model.KindResearch,
+		Query:            req.Query,
+		URLs:             urls,
+		MaxDepth:         req.MaxDepth,
+		MaxPages:         req.MaxPages,
+		Headless:         req.Headless,
+		UsePlaywright:    req.Playwright != nil && *req.Playwright,
+		TimeoutSeconds:   req.TimeoutSeconds,
+		Auth:             *req.Auth,
+		Extract:          *req.Extract,
+		Pipeline:         *req.Pipeline,
+		Screenshot:       req.Screenshot,
+		Device:           req.Device,
+		NetworkIntercept: req.NetworkIntercept,
+		Agentic:          req.Agentic,
 	}
 
 	// Create batch

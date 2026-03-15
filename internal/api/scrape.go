@@ -22,55 +22,16 @@ package api
 import (
 	"net/http"
 
-	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
 func (s *Server) handleScrape(w http.ResponseWriter, r *http.Request) {
 	handleSingleJobSubmission(s, w, r, singleJobSubmission[ScrapeRequest]{
-		kind: model.KindScrape,
-		validate: func(req ScrapeRequest) error {
-			if req.URL == "" {
-				return apperrors.Validation("url is required")
-			}
-			return validate.ValidateJob(validate.JobValidationOpts{
-				URL:         req.URL,
-				Timeout:     req.TimeoutSeconds,
-				AuthProfile: req.AuthProfile,
-			}, model.KindScrape)
-		},
-		buildSpec: func(req ScrapeRequest) jobs.JobSpec {
-			spec := jobs.JobSpec{
-				Kind:        model.KindScrape,
-				URL:         req.URL,
-				Method:      req.Method,
-				Body:        []byte(req.Body),
-				ContentType: req.ContentType,
-				Headless:    req.Headless,
-			}
-			if spec.Method == "" {
-				spec.Method = http.MethodGet
-			}
-			return spec
-		},
+		kind:      model.KindScrape,
+		validate:  validateScrapeRequest,
+		buildSpec: scrapeJobSpecFromRequest,
 		requestOptions: func(r *http.Request, req ScrapeRequest) jobRequestOptions {
-			return jobRequestOptions{
-				authURL:          req.URL,
-				authProfile:      req.AuthProfile,
-				auth:             req.Auth,
-				extract:          req.Extract,
-				pipeline:         req.Pipeline,
-				webhook:          req.Webhook,
-				screenshot:       req.Screenshot,
-				device:           req.Device,
-				networkIntercept: req.NetworkIntercept,
-				incremental:      req.Incremental,
-				playwright:       req.Playwright,
-				timeoutSeconds:   req.TimeoutSeconds,
-				requestID:        contextRequestID(r.Context()),
-			}
+			return scrapeJobRequestOptions(contextRequestID(r.Context()), req)
 		},
 	})
 }

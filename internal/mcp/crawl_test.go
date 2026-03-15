@@ -73,7 +73,7 @@ func TestCrawlSiteSchema(t *testing.T) {
 	}
 	schema := crawlTool.InputSchema
 	props, _ := schema["properties"].(map[string]interface{})
-	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental", "proxy", "proxyUsername", "proxyPassword", "proxyRegion", "proxyTags", "excludeProxyIds"} {
+	for _, field := range []string{"maxDepth", "maxPages", "headless", "playwright", "timeoutSeconds", "authProfile", "auth", "extract", "pipeline", "incremental", "sitemapURL", "sitemapOnly", "includePatterns", "excludePatterns", "respectRobotsTxt", "skipDuplicates", "simHashThreshold", "webhook", "screenshot", "device", "networkIntercept"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}

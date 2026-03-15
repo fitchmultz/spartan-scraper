@@ -62,14 +62,10 @@ curl -sS http://127.0.0.1:8741/v1/schedules \
   -d '{
     "kind": "scrape",
     "intervalSeconds": 3600,
-    "specVersion": 1,
-    "spec": {
-      "version": 1,
+    "request": {
       "url": "https://example.com",
-      "execution": {
-        "headless": false,
-        "timeoutSeconds": 30
-      }
+      "headless": false,
+      "timeoutSeconds": 30
     }
   }'
 ```

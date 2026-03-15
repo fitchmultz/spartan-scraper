@@ -2078,15 +2078,9 @@ export type Schedule = {
      */
     nextRun: string;
     /**
-     * Persisted typed schedule spec version.
+     * Operator-facing job request matching the selected kind.
      */
-    specVersion: number;
-    /**
-     * Persisted typed schedule spec.
-     */
-    spec: {
-        [key: string]: unknown;
-    };
+    request: ScrapeRequest | CrawlRequest | ResearchRequest;
 };
 
 export type ScheduleRequest = {
@@ -2096,15 +2090,9 @@ export type ScheduleRequest = {
      */
     intervalSeconds: number;
     /**
-     * Typed schedule spec version.
+     * Job request matching the selected kind.
      */
-    specVersion: number;
-    /**
-     * Typed schedule spec matching the selected kind.
-     */
-    spec: {
-        [key: string]: unknown;
-    };
+    request: ScrapeRequest | CrawlRequest | ResearchRequest;
 };
 
 export type ScheduleListResponse = {
@@ -2811,6 +2799,7 @@ export type BatchScrapeRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
 };
 
 /**
@@ -2860,9 +2849,30 @@ export type BatchCrawlRequest = {
      * Only crawl sitemap URLs
      */
     sitemapOnly?: boolean;
+    /**
+     * Optional URL path patterns to include during crawl discovery
+     */
+    includePatterns?: Array<string>;
+    /**
+     * Optional URL path patterns to exclude during crawl discovery
+     */
+    excludePatterns?: Array<string>;
+    /**
+     * Respect robots.txt rules during crawling
+     */
+    respectRobotsTxt?: boolean;
+    /**
+     * Skip near-duplicate pages during crawling
+     */
+    skipDuplicates?: boolean;
+    /**
+     * Hamming distance threshold for duplicate detection
+     */
+    simHashThreshold?: number;
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
 };
 
 /**
@@ -2907,6 +2917,7 @@ export type BatchResearchRequest = {
     webhook?: WebhookConfig;
     screenshot?: ScreenshotConfig;
     device?: DeviceEmulation;
+    networkIntercept?: NetworkInterceptConfig;
     agentic?: ResearchAgenticConfig;
 };
 

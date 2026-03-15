@@ -94,10 +94,16 @@ type CommonFlags struct {
 	LoginAutoDetect     *bool
 
 	// Browser flags
-	Headless   *bool
-	Playwright *bool
-	Timeout    *int
-	Device     *string // Device preset for mobile emulation
+	Headless           *bool
+	Playwright         *bool
+	Timeout            *int
+	Device             *string // Device preset for mobile emulation
+	ScreenshotEnabled  *bool
+	ScreenshotFullPage *bool
+	ScreenshotFormat   *string
+	ScreenshotQuality  *int
+	ScreenshotWidth    *int
+	ScreenshotHeight   *int
 
 	// Output flags
 	Out         *string
@@ -141,9 +147,23 @@ type CommonFlags struct {
 
 // BrowserFlags are used by schedule add.
 type BrowserFlags struct {
-	Headless   *bool
-	Playwright *bool
-	Timeout    *int
+	Headless                 *bool
+	Playwright               *bool
+	Timeout                  *int
+	Device                   *string
+	ScreenshotEnabled        *bool
+	ScreenshotFullPage       *bool
+	ScreenshotFormat         *string
+	ScreenshotQuality        *int
+	ScreenshotWidth          *int
+	ScreenshotHeight         *int
+	InterceptEnabled         *bool
+	InterceptURLPatterns     StringSliceFlag
+	InterceptResourceTypes   StringSliceFlag
+	InterceptCaptureRequest  *bool
+	InterceptCaptureResponse *bool
+	InterceptMaxBodySize     *int
+	InterceptMaxEntries      *int
 }
 
 // PipelineFlags are used by schedule add.
@@ -216,10 +236,16 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		LoginPass:           fs.String("login-pass", "", "Password for login"),
 		LoginAutoDetect:     fs.Bool("login-auto-detect", false, "Auto-detect login form fields (requires --login-url)"),
 
-		Headless:   fs.Bool("headless", false, "Use headless browser"),
-		Playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
-		Timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
-		Device:     fs.String("device", "", "Device preset for mobile emulation (iphone15, iphone15pro, iphone15promax, iphone15plus, iphone16, iphone16pro, iphone16promax, iphone16plus, iphone14, iphonemax, pixel7, pixel8, pixel8pro, pixel9, pixel9pro, galaxys23, galaxys24, galaxys24plus, galaxys24ultra, ipad, ipadpro, ipadair, ipadmini, galaxytabs9, desktop, laptop)"),
+		Headless:           fs.Bool("headless", false, "Use headless browser"),
+		Playwright:         fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
+		Timeout:            fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+		Device:             fs.String("device", "", "Device preset for mobile emulation (iphone15, iphone15pro, iphone15promax, iphone15plus, iphone16, iphone16pro, iphone16promax, iphone16plus, iphone14, iphonemax, pixel7, pixel8, pixel8pro, pixel9, pixel9pro, galaxys23, galaxys24, galaxys24plus, galaxys24ultra, ipad, ipadpro, ipadair, ipadmini, galaxytabs9, desktop, laptop)"),
+		ScreenshotEnabled:  fs.Bool("screenshot", false, "Capture a screenshot with headless fetchers"),
+		ScreenshotFullPage: fs.Bool("screenshot-full-page", true, "Capture the full page instead of the viewport"),
+		ScreenshotFormat:   fs.String("screenshot-format", "png", "Screenshot format: png|jpeg"),
+		ScreenshotQuality:  fs.Int("screenshot-quality", 90, "JPEG screenshot quality (1-100, ignored for png)"),
+		ScreenshotWidth:    fs.Int("screenshot-width", 0, "Viewport width override for screenshots (0 = default/device)"),
+		ScreenshotHeight:   fs.Int("screenshot-height", 0, "Viewport height override for screenshots (0 = default/device)"),
 
 		Out:         fs.String("out", "", "Output file (JSON)"),
 		Wait:        fs.Bool("wait", false, "Wait for completion and write output"),
@@ -288,11 +314,28 @@ func RegisterResearchAgenticFlags(fs *flag.FlagSet, cf *CommonFlags) {
 }
 
 func RegisterBrowserFlags(fs *flag.FlagSet, cfg config.Config) *BrowserFlags {
-	return &BrowserFlags{
-		Headless:   fs.Bool("headless", false, "Use headless browser"),
-		Playwright: fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
-		Timeout:    fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+	bf := &BrowserFlags{
+		Headless:                 fs.Bool("headless", false, "Use headless browser"),
+		Playwright:               fs.Bool("playwright", cfg.UsePlaywright, "Use Playwright for headless pages"),
+		Timeout:                  fs.Int("timeout", cfg.RequestTimeoutSecs, "Request timeout in seconds"),
+		Device:                   fs.String("device", "", "Device preset for mobile emulation (iphone15, iphone15pro, iphone15promax, iphone15plus, iphone16, iphone16pro, iphone16promax, iphone16plus, iphone14, iphonemax, pixel7, pixel8, pixel8pro, pixel9, pixel9pro, galaxys23, galaxys24, galaxys24plus, galaxys24ultra, ipad, ipadpro, ipadair, ipadmini, galaxytabs9, desktop, laptop)"),
+		ScreenshotEnabled:        fs.Bool("screenshot", false, "Capture a screenshot with headless fetchers"),
+		ScreenshotFullPage:       fs.Bool("screenshot-full-page", true, "Capture the full page instead of the viewport"),
+		ScreenshotFormat:         fs.String("screenshot-format", "png", "Screenshot format: png|jpeg"),
+		ScreenshotQuality:        fs.Int("screenshot-quality", 90, "JPEG screenshot quality (1-100, ignored for png)"),
+		ScreenshotWidth:          fs.Int("screenshot-width", 0, "Viewport width override for screenshots (0 = default/device)"),
+		ScreenshotHeight:         fs.Int("screenshot-height", 0, "Viewport height override for screenshots (0 = default/device)"),
+		InterceptEnabled:         fs.Bool("intercept-enabled", false, "Enable network interception (requires --headless)"),
+		InterceptCaptureRequest:  fs.Bool("intercept-request-body", true, "Capture request bodies during interception"),
+		InterceptCaptureResponse: fs.Bool("intercept-response-body", true, "Capture response bodies during interception"),
+		InterceptMaxBodySize:     fs.Int("intercept-max-body-size", 1048576, "Maximum bytes to capture per body (default 1MB)"),
+		InterceptMaxEntries:      fs.Int("intercept-max-entries", 1000, "Maximum number of entries to capture (default 1000)"),
+		InterceptURLPatterns:     StringSliceFlag{},
+		InterceptResourceTypes:   StringSliceFlag{},
 	}
+	fs.Var(&bf.InterceptURLPatterns, "intercept-pattern", "URL pattern to intercept (repeatable, glob syntax, e.g., '**/api/**')")
+	fs.Var(&bf.InterceptResourceTypes, "intercept-resource-type", "Resource type to intercept (repeatable: xhr,fetch,document,script,stylesheet,image,media,font,websocket,other)")
+	return bf
 }
 
 func RegisterPipelineFlags(fs *flag.FlagSet) *PipelineFlags {

@@ -47,4 +47,4 @@ The manifest is the canonical local index for a finished job’s files, spec has
 - If startup reports a legacy storage schema, stop the server and run `spartan reset-data`.
 - That command archives the full existing data directory to `output/cutover/` by default and recreates `DATA_DIR`.
 - Start the server again after the reset completes.
-- The same rule now applies to `schedules.json`: the retained 1.0 build only accepts `specVersion` plus typed `spec`, not legacy `params`.
+- The same rule now applies to `schedules.json`: the retained 1.0 build only accepts typed V1 schedule specs on disk, not legacy `params`. The operator-facing API request shape is `kind` + `intervalSeconds` + `request`.

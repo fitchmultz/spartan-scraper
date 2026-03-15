@@ -123,7 +123,7 @@ func TestScrapePageSchema(t *testing.T) {
 		requiredSet[f.(string)] = true
 	}
 
-	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental", "proxy", "proxyUsername", "proxyPassword", "proxyRegion", "proxyTags", "excludeProxyIds"} {
+	for _, field := range []string{"method", "body", "contentType", "headless", "playwright", "timeoutSeconds", "authProfile", "auth", "extract", "pipeline", "incremental", "webhook", "screenshot", "device", "networkIntercept"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}
@@ -132,33 +132,29 @@ func TestScrapePageSchema(t *testing.T) {
 		}
 	}
 
-	preProcessorsType, ok := props["preProcessors"].(map[string]string)
-	if !ok || preProcessorsType["type"] != "array" {
-		t.Error("preProcessors should be array type")
+	authType, ok := props["auth"].(map[string]string)
+	if !ok || authType["type"] != "object" {
+		t.Error("auth should be object type")
 	}
-	postProcessorsType, ok := props["postProcessors"].(map[string]string)
-	if !ok || postProcessorsType["type"] != "array" {
-		t.Error("postProcessors should be array type")
+	extractType, ok := props["extract"].(map[string]string)
+	if !ok || extractType["type"] != "object" {
+		t.Error("extract should be object type")
 	}
-	transformersType, ok := props["transformers"].(map[string]string)
-	if !ok || transformersType["type"] != "array" {
-		t.Error("transformers should be array type")
+	pipelineType, ok := props["pipeline"].(map[string]string)
+	if !ok || pipelineType["type"] != "object" {
+		t.Error("pipeline should be object type")
 	}
-	aiExtractType, ok := props["aiExtract"].(map[string]string)
-	if !ok || aiExtractType["type"] != "boolean" {
-		t.Error("aiExtract should be boolean type")
+	screenshotType, ok := props["screenshot"].(map[string]string)
+	if !ok || screenshotType["type"] != "object" {
+		t.Error("screenshot should be object type")
 	}
-	aiModeType, ok := props["aiMode"].(map[string]string)
-	if !ok || aiModeType["type"] != "string" {
-		t.Error("aiMode should be string type")
+	deviceType, ok := props["device"].(map[string]string)
+	if !ok || deviceType["type"] != "object" {
+		t.Error("device should be object type")
 	}
-	aiSchemaType, ok := props["aiSchema"].(map[string]string)
-	if !ok || aiSchemaType["type"] != "object" {
-		t.Error("aiSchema should be object type")
-	}
-	aiFieldsType, ok := props["aiFields"].(map[string]string)
-	if !ok || aiFieldsType["type"] != "array" {
-		t.Error("aiFields should be array type")
+	networkInterceptType, ok := props["networkIntercept"].(map[string]string)
+	if !ok || networkInterceptType["type"] != "object" {
+		t.Error("networkIntercept should be object type")
 	}
 	incrementalType, ok := props["incremental"].(map[string]string)
 	if !ok || incrementalType["type"] != "boolean" {

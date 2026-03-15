@@ -54,6 +54,12 @@ export interface FormState {
   webhookUrl: string;
   webhookEvents: string[];
   webhookSecret: string;
+  screenshotEnabled: boolean;
+  screenshotFullPage: boolean;
+  screenshotFormat: "png" | "jpeg";
+  screenshotQuality: number;
+  screenshotWidth: number;
+  screenshotHeight: number;
   // Network interception state
   interceptEnabled: boolean;
   interceptURLPatterns: string;
@@ -61,6 +67,7 @@ export interface FormState {
   interceptCaptureRequestBody: boolean;
   interceptCaptureResponseBody: boolean;
   interceptMaxBodySize: number;
+  interceptMaxEntries: number;
 }
 
 export interface FormActions {
@@ -104,6 +111,12 @@ export interface FormActions {
   setWebhookUrl: (value: string) => void;
   setWebhookEvents: (value: string[]) => void;
   setWebhookSecret: (value: string) => void;
+  setScreenshotEnabled: (value: boolean) => void;
+  setScreenshotFullPage: (value: boolean) => void;
+  setScreenshotFormat: (value: "png" | "jpeg") => void;
+  setScreenshotQuality: (value: number) => void;
+  setScreenshotWidth: (value: number) => void;
+  setScreenshotHeight: (value: number) => void;
   // Network interception actions
   setInterceptEnabled: (value: boolean) => void;
   setInterceptURLPatterns: (value: string) => void;
@@ -111,6 +124,7 @@ export interface FormActions {
   setInterceptCaptureRequestBody: (value: boolean) => void;
   setInterceptCaptureResponseBody: (value: boolean) => void;
   setInterceptMaxBodySize: (value: number) => void;
+  setInterceptMaxEntries: (value: number) => void;
   /** Apply a preset configuration to the form state */
   applyPreset: (config: PresetConfig) => void;
 }
@@ -159,6 +173,12 @@ const INITIAL_STATE: FormState = {
   webhookUrl: "",
   webhookEvents: ["completed"],
   webhookSecret: "",
+  screenshotEnabled: false,
+  screenshotFullPage: true,
+  screenshotFormat: "png",
+  screenshotQuality: 90,
+  screenshotWidth: 0,
+  screenshotHeight: 0,
   // Network interception defaults
   interceptEnabled: false,
   interceptURLPatterns: "",
@@ -166,6 +186,7 @@ const INITIAL_STATE: FormState = {
   interceptCaptureRequestBody: true,
   interceptCaptureResponseBody: true,
   interceptMaxBodySize: 1048576,
+  interceptMaxEntries: 1000,
 };
 
 export function useFormState(): FormController {
@@ -334,6 +355,30 @@ export function useFormState(): FormController {
     setState((prev) => ({ ...prev, webhookSecret: value }));
   }, []);
 
+  const setScreenshotEnabled = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, screenshotEnabled: value }));
+  }, []);
+
+  const setScreenshotFullPage = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, screenshotFullPage: value }));
+  }, []);
+
+  const setScreenshotFormat = useCallback((value: "png" | "jpeg") => {
+    setState((prev) => ({ ...prev, screenshotFormat: value }));
+  }, []);
+
+  const setScreenshotQuality = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, screenshotQuality: value }));
+  }, []);
+
+  const setScreenshotWidth = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, screenshotWidth: value }));
+  }, []);
+
+  const setScreenshotHeight = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, screenshotHeight: value }));
+  }, []);
+
   const setInterceptEnabled = useCallback((value: boolean) => {
     setState((prev) => ({ ...prev, interceptEnabled: value }));
   }, []);
@@ -356,6 +401,10 @@ export function useFormState(): FormController {
 
   const setInterceptMaxBodySize = useCallback((value: number) => {
     setState((prev) => ({ ...prev, interceptMaxBodySize: value }));
+  }, []);
+
+  const setInterceptMaxEntries = useCallback((value: number) => {
+    setState((prev) => ({ ...prev, interceptMaxEntries: value }));
   }, []);
 
   useEffect(() => {
@@ -463,6 +512,24 @@ export function useFormState(): FormController {
       ...(config.webhookSecret !== undefined && {
         webhookSecret: config.webhookSecret,
       }),
+      ...(config.screenshotEnabled !== undefined && {
+        screenshotEnabled: config.screenshotEnabled,
+      }),
+      ...(config.screenshotFullPage !== undefined && {
+        screenshotFullPage: config.screenshotFullPage,
+      }),
+      ...(config.screenshotFormat !== undefined && {
+        screenshotFormat: config.screenshotFormat,
+      }),
+      ...(config.screenshotQuality !== undefined && {
+        screenshotQuality: config.screenshotQuality,
+      }),
+      ...(config.screenshotWidth !== undefined && {
+        screenshotWidth: config.screenshotWidth,
+      }),
+      ...(config.screenshotHeight !== undefined && {
+        screenshotHeight: config.screenshotHeight,
+      }),
       ...(config.interceptEnabled !== undefined && {
         interceptEnabled: config.interceptEnabled,
       }),
@@ -480,6 +547,9 @@ export function useFormState(): FormController {
       }),
       ...(config.interceptMaxBodySize !== undefined && {
         interceptMaxBodySize: config.interceptMaxBodySize,
+      }),
+      ...(config.interceptMaxEntries !== undefined && {
+        interceptMaxEntries: config.interceptMaxEntries,
       }),
     }));
   }, []);
@@ -526,12 +596,19 @@ export function useFormState(): FormController {
     setWebhookUrl,
     setWebhookEvents,
     setWebhookSecret,
+    setScreenshotEnabled,
+    setScreenshotFullPage,
+    setScreenshotFormat,
+    setScreenshotQuality,
+    setScreenshotWidth,
+    setScreenshotHeight,
     setInterceptEnabled,
     setInterceptURLPatterns,
     setInterceptResourceTypes,
     setInterceptCaptureRequestBody,
     setInterceptCaptureResponseBody,
     setInterceptMaxBodySize,
+    setInterceptMaxEntries,
     applyPreset,
   };
 }

@@ -55,6 +55,10 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 		pf := common.RegisterPipelineFlags(fs)
 		ef := common.RegisterExtractFlags(fs)
 		af := common.RegisterAuthFlags(fs)
+		agentic := fs.Bool("agentic", false, "Enable bounded pi-powered follow-up and synthesis for research schedules")
+		agenticInstructions := fs.String("agentic-instructions", "", "Additional instructions for agentic research")
+		agenticMaxRounds := fs.Int("agentic-max-rounds", 1, "Maximum bounded follow-up rounds for agentic research (1-3)")
+		agenticMaxFollowUps := fs.Int("agentic-max-follow-up-urls", 3, "Maximum follow-up URLs selected per agentic research round (1-10)")
 
 		_ = fs.Parse(args[1:])
 
@@ -69,11 +73,41 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 			return 1
 		}
 
+		device, err := common.ResolveDevicePreset(*bf.Device)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		screenshot, err := common.BuildScreenshotConfig(
+			*bf.ScreenshotEnabled,
+			*bf.ScreenshotFullPage,
+			*bf.ScreenshotFormat,
+			*bf.ScreenshotQuality,
+			*bf.ScreenshotWidth,
+			*bf.ScreenshotHeight,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		networkIntercept := common.BuildNetworkInterceptConfig(
+			*bf.InterceptEnabled,
+			[]string(bf.InterceptURLPatterns),
+			[]string(bf.InterceptResourceTypes),
+			*bf.InterceptCaptureRequest,
+			*bf.InterceptCaptureResponse,
+			*bf.InterceptMaxBodySize,
+			*bf.InterceptMaxEntries,
+		)
+
 		exec := model.ExecutionSpec{
-			Headless:       *bf.Headless,
-			UsePlaywright:  *bf.Playwright,
-			TimeoutSeconds: *bf.Timeout,
-			AuthProfile:    *authProfile,
+			Headless:         *bf.Headless,
+			UsePlaywright:    *bf.Playwright,
+			TimeoutSeconds:   *bf.Timeout,
+			AuthProfile:      *authProfile,
+			Screenshot:       screenshot,
+			NetworkIntercept: networkIntercept,
+			Device:           device,
 			Auth: fetch.AuthOptions{
 				Basic:   *af.AuthBasic,
 				Headers: af.Headers.ToMap(),
@@ -179,12 +213,26 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 				fmt.Fprintln(os.Stderr, "--urls must contain at least one valid URL")
 				return 1
 			}
+			agenticConfig := &model.ResearchAgenticConfig{
+				Enabled:         *agentic,
+				Instructions:    *agenticInstructions,
+				MaxRounds:       *agenticMaxRounds,
+				MaxFollowUpURLs: *agenticMaxFollowUps,
+			}
+			if !agenticConfig.Enabled {
+				agenticConfig = nil
+			}
+			if err := model.ValidateResearchAgenticConfig(agenticConfig); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
 			spec = model.ResearchSpecV1{
 				Version:   model.JobSpecVersion1,
 				Query:     *query,
 				URLs:      urlList,
 				MaxDepth:  *maxDepth,
 				MaxPages:  *maxPages,
+				Agentic:   agenticConfig,
 				Execution: exec,
 			}
 		default:

@@ -126,32 +126,28 @@ These tools return structured authoring results immediately and do not create jo
 
 Direct `job_export` calls and recurring export schedules can persist either `transform` / `export.transform` or `shape` / `export.shape`, but not both. Spartan enforces that mutual exclusion so ad hoc and recurring exports keep one deterministic projection contract.
 
-## AI extraction arguments
+## Job submission arguments
 
-`scrape_page`, `crawl_site`, and `research` support the same AI extraction controls as the direct job-submission surfaces:
+`scrape_page`, `crawl_site`, and `research` now take the same request objects as `/v1/scrape`, `/v1/crawl`, and `/v1/research`.
 
-- `aiExtract: true`
-- `aiMode: "natural_language" | "schema_guided"`
-- `aiPrompt: "..."` for natural-language mode
-- `aiSchema: { ... }` for schema-guided mode
-- `aiFields: ["field1", "field2"]`
+That means:
 
-Those same execution tools also accept request-scoped proxy transport controls:
+- AI extraction lives under `extract.ai.*`
+- proxy transport lives under `auth.proxy` / `auth.proxyHints`
+- screenshot capture uses `screenshot`
+- device emulation uses `device`
+- network interception uses `networkIntercept`
+- bounded research follow-up uses `agentic` on `research`
 
-- `proxy: "http://proxy.example:8080"`
-- `proxyUsername: "user"` / `proxyPassword: "pass"` with `proxy`
-- `proxyRegion: "us-east"`
-- `proxyTags: ["residential", "sticky"]`
-- `excludeProxyIds: ["proxy-west"]`
+Example nested fields:
 
-Direct `proxy` settings and proxy-pool selection hints are mutually exclusive.
-
-`research` also supports bounded agentic follow-up controls:
-
-- `agentic: true`
-- `agenticInstructions: "..."`
-- `agenticMaxRounds: 1..3`
-- `agenticMaxFollowUpUrls: 1..10`
+- `extract.ai.enabled`
+- `extract.ai.mode`
+- `extract.ai.prompt` or `extract.ai.schema`
+- `pipeline.preProcessors` / `pipeline.postProcessors` / `pipeline.transformers`
+- `auth.proxy.url` or `auth.proxyHints.preferred_region`
+- `screenshot.enabled`
+- `networkIntercept.enabled`
 
 ## Examples
 
@@ -166,7 +162,7 @@ Direct `proxy` settings and proxy-pool selection hints are mutually exclusive.
 {"id":8,"method":"tools/call","params":{"name":"ai_pipeline_js_debug","arguments":{"url":"https://example.com/app","script":{"name":"example-app","hostPatterns":["example.com"],"selectors":[".missing"]},"instructions":"Prefer selector waits over post-nav JS","visual":true}}}
 {"id":9,"method":"tools/call","params":{"name":"ai_research_refine","arguments":{"result":{"query":"pricing model","summary":"Original research summary","evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into an operator-ready brief"}}}
 {"id":10,"method":"tools/call","params":{"name":"ai_export_shape","arguments":{"jobId":"<job-id>","format":"md","instructions":"Prioritize summary and pricing fields for operator handoff"}}}
-{"id":11,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"proxyRegion":"us-east","proxyTags":["residential"],"aiExtract":true,"aiMode":"natural_language","aiPrompt":"Extract the pricing model, contract terms, and support commitments","aiFields":["pricing_model","contract_terms","support_commitments"],"agentic":true,"agenticInstructions":"Prioritize pricing and support commitments","agenticMaxRounds":2,"agenticMaxFollowUpUrls":4}}}
+{"id":11,"method":"tools/call","params":{"name":"research","arguments":{"query":"pricing model","urls":["https://example.com/pricing","https://example.com/support"],"auth":{"proxyHints":{"preferred_region":"us-east","required_tags":["residential"]}},"extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract the pricing model, contract terms, and support commitments","fields":["pricing_model","contract_terms","support_commitments"]}},"agentic":{"enabled":true,"instructions":"Prioritize pricing and support commitments","maxRounds":2,"maxFollowUpUrls":4}}}}
 {"id":12,"method":"tools/call","params":{"name":"job_export","arguments":{"id":"<job-id>","format":"json","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}
 {"id":13,"method":"tools/call","params":{"name":"export_schedule_create","arguments":{"name":"Projected Export","filters":{"job_kinds":["scrape"]},"export":{"format":"csv","destination_type":"local","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}}
 {"id":14,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}

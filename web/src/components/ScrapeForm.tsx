@@ -27,6 +27,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
+import { ScreenshotConfig } from "./ScreenshotConfig";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { AiExtractOptions, DeviceEmulation } from "../api";
@@ -123,6 +124,18 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
+      screenshotEnabled,
+      setScreenshotEnabled,
+      screenshotFullPage,
+      setScreenshotFullPage,
+      screenshotFormat,
+      setScreenshotFormat,
+      screenshotQuality,
+      setScreenshotQuality,
+      screenshotWidth,
+      setScreenshotWidth,
+      screenshotHeight,
+      setScreenshotHeight,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -135,6 +148,8 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
+      interceptMaxEntries,
+      setInterceptMaxEntries,
     } = form;
 
     const [scrapeUrl, setScrapeUrl] = useState("");
@@ -175,6 +190,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         shared.transformers,
         incremental,
         shared.webhook,
+        shared.screenshot,
         device || undefined,
         shared.networkIntercept,
         aiExtractOptions,
@@ -235,12 +251,19 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookEvents,
         webhookSecret,
         device: device || undefined,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         interceptEnabled,
         interceptURLPatterns,
         interceptResourceTypes,
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       }),
       [
         scrapeUrl,
@@ -279,12 +302,19 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         webhookEvents,
         webhookSecret,
         device,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         interceptEnabled,
         interceptURLPatterns,
         interceptResourceTypes,
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       ],
     );
 
@@ -340,8 +370,24 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
 
         <JobFormAdvancedSection
           title="Browser and capture controls"
-          description="Device emulation, network interception, and browser-only diagnostics."
+          description="Screenshot capture, device emulation, network interception, and browser-only diagnostics."
         >
+          <ScreenshotConfig
+            enabled={screenshotEnabled}
+            setEnabled={setScreenshotEnabled}
+            fullPage={screenshotFullPage}
+            setFullPage={setScreenshotFullPage}
+            format={screenshotFormat}
+            setFormat={setScreenshotFormat}
+            quality={screenshotQuality}
+            setQuality={setScreenshotQuality}
+            width={screenshotWidth}
+            setWidth={setScreenshotWidth}
+            height={screenshotHeight}
+            setHeight={setScreenshotHeight}
+            disabled={!headless}
+            inputPrefix="scrape"
+          />
           <DeviceSelector
             device={device}
             onChange={setDevice}
@@ -360,6 +406,8 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
             setCaptureResponseBody={setInterceptCaptureResponseBody}
             maxBodySize={interceptMaxBodySize}
             setMaxBodySize={setInterceptMaxBodySize}
+            maxEntries={interceptMaxEntries}
+            setMaxEntries={setInterceptMaxEntries}
             disabled={!headless}
             inputPrefix="scrape"
           />

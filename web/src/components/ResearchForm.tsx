@@ -29,6 +29,7 @@ import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { DeviceSelector } from "./DeviceSelector";
+import { ScreenshotConfig } from "./ScreenshotConfig";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { AIExtractSection } from "./AIExtractSection";
 import { ResearchAgenticSection } from "./ResearchAgenticSection";
@@ -141,6 +142,18 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setWebhookEvents,
       webhookSecret,
       setWebhookSecret,
+      screenshotEnabled,
+      setScreenshotEnabled,
+      screenshotFullPage,
+      setScreenshotFullPage,
+      screenshotFormat,
+      setScreenshotFormat,
+      screenshotQuality,
+      setScreenshotQuality,
+      screenshotWidth,
+      setScreenshotWidth,
+      screenshotHeight,
+      setScreenshotHeight,
       interceptEnabled,
       setInterceptEnabled,
       interceptURLPatterns,
@@ -153,6 +166,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setInterceptCaptureResponseBody,
       interceptMaxBodySize,
       setInterceptMaxBodySize,
+      interceptMaxEntries,
+      setInterceptMaxEntries,
     } = form;
 
     const [researchQuery, setResearchQuery] = useState("");
@@ -203,6 +218,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         shared.postProcessors,
         shared.transformers,
         shared.webhook,
+        shared.screenshot,
         device || undefined,
         shared.networkIntercept,
         aiExtractOptions,
@@ -275,6 +291,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         device: device || undefined,
         interceptEnabled,
         interceptURLPatterns,
@@ -282,6 +304,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       }),
       [
         researchQuery,
@@ -325,6 +348,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         webhookUrl,
         webhookEvents,
         webhookSecret,
+        screenshotEnabled,
+        screenshotFullPage,
+        screenshotFormat,
+        screenshotQuality,
+        screenshotWidth,
+        screenshotHeight,
         device,
         interceptEnabled,
         interceptURLPatterns,
@@ -332,6 +361,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         interceptCaptureRequestBody,
         interceptCaptureResponseBody,
         interceptMaxBodySize,
+        interceptMaxEntries,
       ],
     );
 
@@ -431,8 +461,24 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
 
         <JobFormAdvancedSection
           title="Browser and capture controls"
-          description="Device emulation, network interception, and browser-only diagnostics."
+          description="Screenshot capture, device emulation, network interception, and browser-only diagnostics."
         >
+          <ScreenshotConfig
+            enabled={screenshotEnabled}
+            setEnabled={setScreenshotEnabled}
+            fullPage={screenshotFullPage}
+            setFullPage={setScreenshotFullPage}
+            format={screenshotFormat}
+            setFormat={setScreenshotFormat}
+            quality={screenshotQuality}
+            setQuality={setScreenshotQuality}
+            width={screenshotWidth}
+            setWidth={setScreenshotWidth}
+            height={screenshotHeight}
+            setHeight={setScreenshotHeight}
+            disabled={!headless}
+            inputPrefix="research"
+          />
           <DeviceSelector
             device={device}
             onChange={setDevice}
@@ -451,6 +497,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             setCaptureResponseBody={setInterceptCaptureResponseBody}
             maxBodySize={interceptMaxBodySize}
             setMaxBodySize={setInterceptMaxBodySize}
+            maxEntries={interceptMaxEntries}
+            setMaxEntries={setInterceptMaxEntries}
             disabled={!headless}
             inputPrefix="research"
           />

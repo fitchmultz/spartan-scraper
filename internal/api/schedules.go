@@ -5,7 +5,7 @@
 //
 // Responsibilities:
 // - Validate schedule creation inputs.
-// - Translate API requests into scheduler storage records.
+// - Translate operator-facing job requests into scheduler storage records.
 // - Return consistent JSON responses for list/create/delete operations.
 //
 // Scope:
@@ -20,7 +20,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -60,7 +59,16 @@ func (s *Server) handleListSchedules(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	writeCollectionJSON(w, "schedules", mapSlice(schedules, toScheduleResponse))
+	responses := make([]ScheduleResponse, 0, len(schedules))
+	for _, item := range schedules {
+		resp, err := toScheduleResponse(item)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		responses = append(responses, resp)
+	}
+	writeCollectionJSON(w, "schedules", responses)
 }
 
 func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +78,7 @@ func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schedule, err := scheduleFromRequest(req)
+	schedule, err := s.scheduleFromRequest(req)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -82,32 +90,37 @@ func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeCreatedJSON(w, toScheduleResponse(*addedSchedule))
+	resp, err := toScheduleResponse(*addedSchedule)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeCreatedJSON(w, resp)
 }
 
-func toScheduleResponse(schedule scheduler.Schedule) ScheduleResponse {
+func toScheduleResponse(schedule scheduler.Schedule) (ScheduleResponse, error) {
+	request, err := requestFromSchedule(schedule)
+	if err != nil {
+		return ScheduleResponse{}, err
+	}
 	return ScheduleResponse{
 		ID:              schedule.ID,
 		Kind:            string(schedule.Kind),
 		IntervalSeconds: schedule.IntervalSeconds,
 		NextRun:         schedule.NextRun.Format(time.RFC3339),
-		SpecVersion:     schedule.SpecVersion,
-		Spec:            schedule.Spec,
-	}
+		Request:         request,
+	}, nil
 }
 
-func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
+func (s *Server) scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
 	if req.Kind == "" {
 		return scheduler.Schedule{}, apperrors.Validation("kind is required")
 	}
 	if req.IntervalSeconds <= 0 {
 		return scheduler.Schedule{}, apperrors.Validation("intervalSeconds must be positive")
 	}
-	if req.SpecVersion == 0 {
-		return scheduler.Schedule{}, apperrors.Validation("specVersion is required")
-	}
-	if len(req.Spec) == 0 {
-		return scheduler.Schedule{}, apperrors.Validation("spec is required")
+	if len(req.Request) == 0 {
+		return scheduler.Schedule{}, apperrors.Validation("request is required")
 	}
 	kind := model.Kind(req.Kind)
 	switch kind {
@@ -116,15 +129,7 @@ func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
 		return scheduler.Schedule{}, apperrors.Validation("kind must be scrape, crawl, or research")
 	}
 
-	spec, err := model.DecodeJobSpec(kind, req.SpecVersion, req.Spec)
-	if err != nil {
-		return scheduler.Schedule{}, err
-	}
-	raw, err := json.Marshal(spec)
-	if err != nil {
-		return scheduler.Schedule{}, apperrors.Wrap(apperrors.KindInternal, "failed to normalize schedule spec", err)
-	}
-	normalizedSpec, err := model.DecodeJobSpec(kind, req.SpecVersion, raw)
+	_, specVersion, typedSpec, err := convertScheduleRequestToTypedSpec(s, kind, req.Request)
 	if err != nil {
 		return scheduler.Schedule{}, err
 	}
@@ -132,7 +137,7 @@ func scheduleFromRequest(req ScheduleRequest) (scheduler.Schedule, error) {
 	return scheduler.Schedule{
 		Kind:            kind,
 		IntervalSeconds: req.IntervalSeconds,
-		SpecVersion:     req.SpecVersion,
-		Spec:            normalizedSpec,
+		SpecVersion:     specVersion,
+		Spec:            typedSpec,
 	}, nil
 }

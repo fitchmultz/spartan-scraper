@@ -16,10 +16,12 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -31,15 +33,33 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
-	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
-	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
+
+func decodeToolArguments(args map[string]interface{}, dst any) error {
+	payload, err := json.Marshal(args)
+	if err != nil {
+		return apperrors.Wrap(apperrors.KindValidation, "invalid tool arguments", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return apperrors.Validation("invalid tool arguments: " + err.Error())
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return apperrors.Validation("invalid tool arguments: " + err.Error())
+	}
+	return apperrors.Validation("invalid tool arguments: expected a single JSON object")
+}
 
 func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMessage) (interface{}, error) {
 	var params callParams
@@ -240,47 +260,17 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return result, nil
 	case "scrape_page":
-		url := paramdecode.String(params.Arguments, "url")
-		if url == "" {
-			return nil, apperrors.Validation("url is required")
-		}
-		authProfile := paramdecode.String(params.Arguments, "authProfile")
-		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		opts := validate.JobValidationOpts{
-			URL:         url,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
-		}
-		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
+		var req api.ScrapeRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
 			return nil, err
 		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile, decodeTransportOverrides(params.Arguments))
+		spec, err := api.JobSpecFromScrapeRequest(s.cfg, api.JobSubmissionDefaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           true,
+		}, req)
 		if err != nil {
 			return nil, err
-		}
-		extractOpts := extract.ExtractOptions{
-			Template: paramdecode.String(params.Arguments, "extractTemplate"),
-			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
-		}
-		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
-		if err != nil {
-			return nil, apperrors.Validation(err.Error())
-		}
-		if aiExtractOpts != nil {
-			extractOpts.AI = aiExtractOpts
-		}
-		pipelineOpts := getPipelineOptions(params.Arguments)
-		spec := jobs.JobSpec{
-			Kind:           model.KindScrape,
-			URL:            url,
-			Headless:       paramdecode.Bool(params.Arguments, "headless"),
-			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
-			AuthProfile:    authProfile,
-			Auth:           resolvedAuth,
-			TimeoutSeconds: timeout,
-			Extract:        extractOpts,
-			Pipeline:       pipelineOpts,
-			Incremental:    paramdecode.BoolDefault(params.Arguments, "incremental", false),
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
@@ -289,58 +279,22 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, spec.TimeoutSeconds); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "crawl_site":
-		url := paramdecode.String(params.Arguments, "url")
-		if url == "" {
-			return nil, apperrors.Validation("url is required")
-		}
-		authProfile := paramdecode.String(params.Arguments, "authProfile")
-		maxDepth := paramdecode.PositiveInt(params.Arguments, "maxDepth", 2)
-		maxPages := paramdecode.PositiveInt(params.Arguments, "maxPages", 200)
-		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		opts := validate.JobValidationOpts{
-			URL:         url,
-			MaxDepth:    maxDepth,
-			MaxPages:    maxPages,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
-		}
-		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
+		var req api.CrawlRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
 			return nil, err
 		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile, decodeTransportOverrides(params.Arguments))
+		spec, err := api.JobSpecFromCrawlRequest(s.cfg, api.JobSubmissionDefaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           true,
+		}, req)
 		if err != nil {
 			return nil, err
-		}
-		extractOpts := extract.ExtractOptions{
-			Template: paramdecode.String(params.Arguments, "extractTemplate"),
-			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
-		}
-		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
-		if err != nil {
-			return nil, apperrors.Validation(err.Error())
-		}
-		if aiExtractOpts != nil {
-			extractOpts.AI = aiExtractOpts
-		}
-		pipelineOpts := getPipelineOptions(params.Arguments)
-		spec := jobs.JobSpec{
-			Kind:           model.KindCrawl,
-			URL:            url,
-			MaxDepth:       maxDepth,
-			MaxPages:       maxPages,
-			Headless:       paramdecode.Bool(params.Arguments, "headless"),
-			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
-			AuthProfile:    authProfile,
-			Auth:           resolvedAuth,
-			TimeoutSeconds: timeout,
-			Extract:        extractOpts,
-			Pipeline:       pipelineOpts,
-			Incremental:    paramdecode.BoolDefault(params.Arguments, "incremental", false),
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
@@ -349,67 +303,22 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, spec.TimeoutSeconds); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "research":
-		query := paramdecode.String(params.Arguments, "query")
-		urls := paramdecode.StringSlice(params.Arguments, "urls")
-		if query == "" || len(urls) == 0 {
-			return nil, apperrors.Validation("query and urls are required")
-		}
-		authProfile := paramdecode.String(params.Arguments, "authProfile")
-		maxDepth := paramdecode.PositiveInt(params.Arguments, "maxDepth", 2)
-		maxPages := paramdecode.PositiveInt(params.Arguments, "maxPages", 200)
-		timeout := paramdecode.PositiveInt(params.Arguments, "timeoutSeconds", s.cfg.RequestTimeoutSecs)
-		opts := validate.JobValidationOpts{
-			Query:       query,
-			URLs:        urls,
-			MaxDepth:    maxDepth,
-			MaxPages:    maxPages,
-			Timeout:     timeout,
-			AuthProfile: authProfile,
-		}
-		if err := validate.ValidateJob(opts, model.KindResearch); err != nil {
+		var req api.ResearchRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
 			return nil, err
 		}
-		targetURL := ""
-		if len(urls) > 0 {
-			targetURL = urls[0]
-		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, targetURL, authProfile, decodeTransportOverrides(params.Arguments))
+		spec, err := api.JobSpecFromResearchRequest(s.cfg, api.JobSubmissionDefaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           true,
+		}, req)
 		if err != nil {
 			return nil, err
-		}
-		aiExtractOpts, err := decodeAIExtractOptions(params.Arguments)
-		if err != nil {
-			return nil, err
-		}
-		agenticOpts, err := decodeResearchAgenticOptions(params.Arguments)
-		if err != nil {
-			return nil, apperrors.Validation(err.Error())
-		}
-		extractOpts := extract.ExtractOptions{
-			Template: paramdecode.String(params.Arguments, "extractTemplate"),
-			Validate: paramdecode.Bool(params.Arguments, "extractValidate"),
-			AI:       aiExtractOpts,
-		}
-		pipelineOpts := getPipelineOptions(params.Arguments)
-		spec := jobs.JobSpec{
-			Kind:           model.KindResearch,
-			Query:          query,
-			URLs:           urls,
-			MaxDepth:       maxDepth,
-			MaxPages:       maxPages,
-			Headless:       paramdecode.Bool(params.Arguments, "headless"),
-			UsePlaywright:  paramdecode.BoolDefault(params.Arguments, "playwright", s.cfg.UsePlaywright),
-			AuthProfile:    authProfile,
-			Auth:           resolvedAuth,
-			TimeoutSeconds: timeout,
-			Extract:        extractOpts,
-			Pipeline:       pipelineOpts,
-			Agentic:        agenticOpts,
 		}
 		job, err := s.manager.CreateJob(ctx, spec)
 		if err != nil {
@@ -418,7 +327,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.Enqueue(job); err != nil {
 			return nil, err
 		}
-		if err := waitForJob(ctx, s.store, job.ID, timeout); err != nil {
+		if err := waitForJob(ctx, s.store, job.ID, spec.TimeoutSeconds); err != nil {
 			return nil, err
 		}
 		return loadResult(ctx, s.store, job.ID)
