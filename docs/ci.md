@@ -32,6 +32,7 @@ Runs:
 verify-clean-tree
 → verify-toolchain
 → audit-public
+→ audit-deps
 → install
 → generate
 → format
@@ -52,7 +53,7 @@ make verify-toolchain
 make ci
 ```
 
-Runs the full deterministic pipeline but does **not** enforce clean-tree checks before/after.
+Runs the full deterministic pipeline (including the managed Go transitive override audit) but does **not** enforce clean-tree checks before/after.
 Useful during active development before commit.
 
 ### Heavy checks (`make ci-slow`)

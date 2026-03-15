@@ -11,7 +11,7 @@
 
 ### Local CI Gate
 
-`make ci` runs: `audit-public → install → generate → format → type-check → lint → build → test-ci`
+`make ci` runs: `audit-public → audit-deps → install → generate → format → type-check → lint → build → test-ci`
 `make ci-pr` runs the same pipeline with `verify-clean-tree` before and after (clean git state required).
 GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-pr.yml`; heavy nightly/manual checks in `.github/workflows/ci-slow.yml`, and `make ci-slow` now provisions Playwright so clean machines/runners exercise the same auth/browser path.
 
@@ -21,6 +21,7 @@ GitHub Actions split mirrors this: PR-required checks in `.github/workflows/ci-p
 
 ```bash
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
+make audit-deps       # Audit managed Go transitive overrides and fail on stale/unmanaged module drift
 make secret-scan      # Deep git-history secret scan (manual/nightly release-tier)
 make install          # Download Go deps + install pnpm deps (lockfile-strict)
 make update           # Update all Go/pnpm deps to latest (review before committing)
@@ -33,7 +34,7 @@ make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e but including PR-safe internal/system coverage) + web tests (Vitest capped by CI_VITEST_MAX_WORKERS, localstorage path pinned for warning-free Node runs)
 make ci-pr            # PR-equivalent deterministic gate (requires clean git state)
-make ci               # Full CI pipeline: audit-public, install, generate, format, type-check, lint, build, test-ci
+make ci               # Full CI pipeline: audit-public, audit-deps, install, generate, format, type-check, lint, build, test-ci
 make ci-slow          # Deterministic heavy stress + e2e checks (local fixture; provisions Playwright)
 make ci-network       # Optional live-Internet smoke validation
 make ci-manual        # Manual full heavy profile (ci-slow + ci-network)
@@ -54,6 +55,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - API handlers should use `decodeJSONBody`, `writeJSONStatus`/`writeCreatedJSON`, and the shared current-user helpers instead of hand-rolled JSON decoding or `WriteHeader` + `writeJSON` sequences. That keeps `Content-Type`, body limits, unknown-field rejection, and auth checks consistent.
 - When upgrading Biome, update `web/biome.json`'s `$schema` URL in the same change. Newer Biome releases hard-fail lint if the config schema version lags the CLI.
 - Keep `go.mod`'s `toolchain` line aligned with the pinned Go patch version in `.tool-versions`; current Go docs treat it as the suggested reproducible main-module toolchain.
+- Temporary transitive `go.mod` overrides are guarded by `make audit-deps`; when parent modules catch up, remove the override and update `scripts/go_transitive_override_audit.mjs` in the same change.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.
 
 ### Testing Guidelines

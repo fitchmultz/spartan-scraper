@@ -94,10 +94,11 @@ Expected:
 - API-backed sections render expected empty/loading states
 - batch forms submit successfully in all three modes (`Batch scrape`, `Batch crawl`, `Batch research`) without runtime crashes
 
-## 6) Public-release hygiene check
+## 6) Release-hygiene and dependency drift checks
 
 ```bash
 make audit-public
+make audit-deps
 ```
 
 Expected:
@@ -107,6 +108,8 @@ Expected:
 - no high-confidence secret patterns
 - no tracked local/build/cache artifacts
 - no branch-history residue for blocked artifact paths
+- every temporary Go transitive override is still justified by upstream parent modules
+- no unmanaged stale Go modules remain in the selected build list
 
 ## 7) Optional deep history secret scan
 
