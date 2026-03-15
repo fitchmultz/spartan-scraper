@@ -66,6 +66,12 @@ func TestProxyPoolStatusTool_ReturnsLoadedPoolStats(t *testing.T) {
 	if status.Strategy != "round_robin" || status.TotalProxies != 1 || status.HealthyProxies != 1 || len(status.Proxies) != 1 {
 		t.Fatalf("unexpected proxy-pool summary: %#v", status)
 	}
+	if len(status.Regions) != 1 || status.Regions[0] != "us-east" {
+		t.Fatalf("unexpected regions: %#v", status.Regions)
+	}
+	if len(status.Tags) != 1 || status.Tags[0] != "residential" {
+		t.Fatalf("unexpected tags: %#v", status.Tags)
+	}
 	if status.Proxies[0].ID != "proxy-1" || status.Proxies[0].SuccessCount != 1 || status.Proxies[0].AvgLatencyMs != 90 {
 		t.Fatalf("unexpected proxy status: %#v", status.Proxies[0])
 	}

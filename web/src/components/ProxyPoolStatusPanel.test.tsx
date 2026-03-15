@@ -32,6 +32,8 @@ describe("ProxyPoolStatusPanel", () => {
         strategy: "round_robin",
         total_proxies: 2,
         healthy_proxies: 1,
+        regions: ["us-east", "us-west"],
+        tags: ["datacenter", "residential"],
         proxies: [
           {
             id: "proxy-east",
@@ -60,6 +62,8 @@ describe("ProxyPoolStatusPanel", () => {
     expect(screen.getByText("Loaded")).toBeInTheDocument();
     expect(screen.getByText("proxy-east")).toBeInTheDocument();
     expect(screen.getByText("residential")).toBeInTheDocument();
+    expect(screen.getByText("Available regions:")).toBeInTheDocument();
+    expect(screen.getByText(/datacenter, residential/i)).toBeInTheDocument();
     expect(screen.getByText("66.67%")).toBeInTheDocument();
   });
 
@@ -69,6 +73,8 @@ describe("ProxyPoolStatusPanel", () => {
         strategy: "none",
         total_proxies: 0,
         healthy_proxies: 0,
+        regions: [],
+        tags: [],
         proxies: [],
       },
       request: new Request("http://localhost:8741/v1/proxy-pool/status"),

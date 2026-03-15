@@ -71,18 +71,18 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "scrape_page",
-			Description: "Scrape a single page (static or headless) with optional AI extraction controls",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
+			Description: "Scrape a single page (static or headless) with optional AI extraction controls and direct proxy/pool selection overrides",
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
 		},
 		{
 			Name:        "crawl_site",
-			Description: "Crawl a site with depth and page limits plus optional AI extraction controls",
-			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean"}),
+			Description: "Crawl a site with depth and page limits plus optional AI extraction controls and direct proxy/pool selection overrides",
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "incremental": "boolean", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
 		},
 		{
 			Name:        "research",
-			Description: "Deep research across multiple sources with optional AI extraction controls and bounded pi-powered follow-up synthesis",
-			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "agentic": "boolean", "agenticInstructions": "string", "agenticMaxRounds": "number", "agenticMaxFollowUpUrls": "number", "preProcessors": "array", "postProcessors": "array", "transformers": "array"}),
+			Description: "Deep research across multiple sources with optional AI extraction controls, direct proxy/pool selection overrides, and bounded pi-powered follow-up synthesis",
+			InputSchema: schema(map[string]string{"query": "string", "urls": "array"}, map[string]string{"authProfile": "string", "maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "extractTemplate": "string", "extractValidate": "boolean", "aiExtract": "boolean", "aiMode": "string", "aiPrompt": "string", "aiSchema": "object", "aiFields": "array", "agentic": "boolean", "agenticInstructions": "string", "agenticMaxRounds": "number", "agenticMaxFollowUpUrls": "number", "preProcessors": "array", "postProcessors": "array", "transformers": "array", "proxy": "string", "proxyUsername": "string", "proxyPassword": "string", "proxyRegion": "string", "proxyTags": "array", "excludeProxyIds": "array"}),
 		},
 		{
 			Name:        "job_status",

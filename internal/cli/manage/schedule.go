@@ -130,6 +130,17 @@ func RunSchedule(_ context.Context, cfg config.Config, args []string) int {
 				}
 			}
 		}
+		if err := common.ApplyProxyOverrides(&exec.Auth, common.ProxyFlagConfig{
+			ProxyURL:        *af.ProxyURL,
+			ProxyUsername:   *af.ProxyUsername,
+			ProxyPassword:   *af.ProxyPassword,
+			PreferredRegion: *af.ProxyRegion,
+			RequiredTags:    []string(af.ProxyRequiredTags),
+			ExcludeProxyIDs: []string(af.ProxyExcludeProxyID),
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 
 		var spec any
 

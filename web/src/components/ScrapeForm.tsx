@@ -71,6 +71,18 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       setCookiesRaw,
       queryRaw,
       setQueryRaw,
+      proxyUrl,
+      setProxyUrl,
+      proxyUsername,
+      setProxyUsername,
+      proxyPassword,
+      setProxyPassword,
+      proxyRegion,
+      setProxyRegion,
+      proxyRequiredTags,
+      setProxyRequiredTags,
+      proxyExcludeProxyIds,
+      setProxyExcludeProxyIds,
       loginUrl,
       setLoginUrl,
       loginUserSelector,
@@ -133,10 +145,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         alert("Scrape URL is required.");
         return;
       }
-      const shared = buildSharedRequestConfig(form);
 
+      let shared: ReturnType<typeof buildSharedRequestConfig>;
       let aiExtractOptions: AiExtractOptions | undefined;
       try {
+        shared = buildSharedRequestConfig(form);
         aiExtractOptions = buildAIExtractOptions(
           aiExtractEnabled,
           aiExtractMode,
@@ -195,6 +208,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         headersRaw,
         cookiesRaw,
         queryRaw,
+        proxyUrl,
+        proxyUsername,
+        proxyPassword,
+        proxyRegion,
+        proxyRequiredTags,
+        proxyExcludeProxyIds,
         loginUrl,
         loginUserSelector,
         loginPassSelector,
@@ -233,6 +252,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         headersRaw,
         cookiesRaw,
         queryRaw,
+        proxyUrl,
+        proxyUsername,
+        proxyPassword,
+        proxyRegion,
+        proxyRequiredTags,
+        proxyExcludeProxyIds,
         loginUrl,
         loginUserSelector,
         loginPassSelector,
@@ -355,6 +380,18 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
             setCookiesRaw={setCookiesRaw}
             queryRaw={queryRaw}
             setQueryRaw={setQueryRaw}
+            proxyUrl={proxyUrl}
+            setProxyUrl={setProxyUrl}
+            proxyUsername={proxyUsername}
+            setProxyUsername={setProxyUsername}
+            proxyPassword={proxyPassword}
+            setProxyPassword={setProxyPassword}
+            proxyRegion={proxyRegion}
+            setProxyRegion={setProxyRegion}
+            proxyRequiredTags={proxyRequiredTags}
+            setProxyRequiredTags={setProxyRequiredTags}
+            proxyExcludeProxyIds={proxyExcludeProxyIds}
+            setProxyExcludeProxyIds={setProxyExcludeProxyIds}
             loginUrl={loginUrl}
             setLoginUrl={setLoginUrl}
             loginUserSelector={loginUserSelector}

@@ -39,6 +39,12 @@ export interface PresetConfig {
   headersRaw?: string;
   cookiesRaw?: string;
   queryRaw?: string;
+  proxyUrl?: string;
+  proxyUsername?: string;
+  proxyPassword?: string;
+  proxyRegion?: string;
+  proxyRequiredTags?: string;
+  proxyExcludeProxyIds?: string;
   loginUrl?: string;
   loginUserSelector?: string;
   loginPassSelector?: string;

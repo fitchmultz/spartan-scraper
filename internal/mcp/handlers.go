@@ -254,7 +254,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := validate.ValidateJob(opts, model.KindScrape); err != nil {
 			return nil, err
 		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
+		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile, decodeTransportOverrides(params.Arguments))
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +312,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := validate.ValidateJob(opts, model.KindCrawl); err != nil {
 			return nil, err
 		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile)
+		resolvedAuth, err := resolveAuthForTool(s.cfg, url, authProfile, decodeTransportOverrides(params.Arguments))
 		if err != nil {
 			return nil, err
 		}
@@ -378,7 +378,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if len(urls) > 0 {
 			targetURL = urls[0]
 		}
-		resolvedAuth, err := resolveAuthForTool(s.cfg, targetURL, authProfile)
+		resolvedAuth, err := resolveAuthForTool(s.cfg, targetURL, authProfile, decodeTransportOverrides(params.Arguments))
 		if err != nil {
 			return nil, err
 		}
@@ -578,43 +578,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return map[string]interface{}{"records": records, "total": total}, nil
 	case "proxy_pool_status":
-		pool := s.manager.GetProxyPool()
-		if pool == nil {
-			return api.ProxyPoolStatusResponse{
-				Strategy:       "none",
-				TotalProxies:   0,
-				HealthyProxies: 0,
-				Proxies:        []api.ProxyStatus{},
-			}, nil
-		}
-		stats := pool.GetStats()
-		entries := pool.GetEntries()
-		entryByID := make(map[string]fetch.ProxyEntry, len(entries))
-		for _, entry := range entries {
-			entryByID[entry.ID] = entry
-		}
-		proxies := make([]api.ProxyStatus, 0, len(stats))
-		for id, stat := range stats {
-			entry := entryByID[id]
-			proxies = append(proxies, api.ProxyStatus{
-				ID:               id,
-				Region:           entry.Region,
-				Tags:             entry.Tags,
-				IsHealthy:        stat.IsHealthy,
-				RequestCount:     stat.RequestCount,
-				SuccessCount:     stat.SuccessCount,
-				FailureCount:     stat.FailureCount,
-				SuccessRate:      stat.SuccessRate(),
-				AvgLatencyMs:     stat.AvgLatencyMs,
-				ConsecutiveFails: stat.ConsecutiveFails,
-			})
-		}
-		return api.ProxyPoolStatusResponse{
-			Strategy:       pool.GetStrategy().String(),
-			TotalProxies:   pool.GetTotalProxyCount(),
-			HealthyProxies: pool.GetHealthyProxyCount(),
-			Proxies:        proxies,
-		}, nil
+		return api.BuildProxyPoolStatusResponse(s.manager.GetProxyPool()), nil
 	default:
 		return nil, apperrors.Validation(fmt.Sprintf("unknown tool: %s", params.Name))
 	}
@@ -635,7 +599,7 @@ func loadResult(ctx context.Context, store *store.Store, id string) (string, err
 	return string(data), nil
 }
 
-func resolveAuthForTool(cfg config.Config, url string, profile string) (fetch.AuthOptions, error) {
+func resolveAuthForTool(cfg config.Config, url string, profile string, override fetch.AuthOptions) (fetch.AuthOptions, error) {
 	input := auth.ResolveInput{
 		ProfileName: profile,
 		URL:         url,
@@ -645,7 +609,40 @@ func resolveAuthForTool(cfg config.Config, url string, profile string) (fetch.Au
 	if err != nil {
 		return fetch.AuthOptions{}, err
 	}
-	return auth.ToFetchOptions(resolved), nil
+	authOptions := auth.ToFetchOptions(resolved)
+	if override.Proxy != nil {
+		authOptions.Proxy = override.Proxy
+	}
+	if override.ProxyHints != nil {
+		authOptions.ProxyHints = fetch.NormalizeProxySelectionHints(override.ProxyHints)
+	}
+	authOptions.NormalizeTransport()
+	if err := authOptions.ValidateTransport(); err != nil {
+		return fetch.AuthOptions{}, err
+	}
+	return authOptions, nil
+}
+
+func decodeTransportOverrides(args map[string]interface{}) fetch.AuthOptions {
+	proxyURL := strings.TrimSpace(paramdecode.String(args, "proxy"))
+	proxyUsername := strings.TrimSpace(paramdecode.String(args, "proxyUsername"))
+	proxyPassword := strings.TrimSpace(paramdecode.String(args, "proxyPassword"))
+	var proxy *fetch.ProxyConfig
+	if proxyURL != "" || proxyUsername != "" || proxyPassword != "" {
+		proxy = &fetch.ProxyConfig{
+			URL:      proxyURL,
+			Username: proxyUsername,
+			Password: proxyPassword,
+		}
+	}
+	return fetch.AuthOptions{
+		Proxy: proxy,
+		ProxyHints: fetch.NormalizeProxySelectionHints(&fetch.ProxySelectionHints{
+			PreferredRegion: strings.TrimSpace(paramdecode.String(args, "proxyRegion")),
+			RequiredTags:    paramdecode.StringSlice(args, "proxyTags"),
+			ExcludeProxyIDs: paramdecode.StringSlice(args, "excludeProxyIds"),
+		}),
+	}
 }
 
 func encodeBase64(value []byte) string {

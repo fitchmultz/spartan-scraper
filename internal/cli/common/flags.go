@@ -111,9 +111,12 @@ type CommonFlags struct {
 	Incremental *bool
 
 	// Proxy flags
-	ProxyURL      *string
-	ProxyUsername *string
-	ProxyPassword *string
+	ProxyURL            *string
+	ProxyUsername       *string
+	ProxyPassword       *string
+	ProxyRegion         *string
+	ProxyRequiredTags   StringSliceFlag
+	ProxyExcludeProxyID StringSliceFlag
 
 	// HTTP method and body flags
 	Method      *string // HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
@@ -176,6 +179,14 @@ type AuthFlags struct {
 	LoginUser           *string
 	LoginPass           *string
 	LoginAutoDetect     *bool
+
+	// Proxy flags
+	ProxyURL            *string
+	ProxyUsername       *string
+	ProxyPassword       *string
+	ProxyRegion         *string
+	ProxyRequiredTags   StringSliceFlag
+	ProxyExcludeProxyID StringSliceFlag
 }
 
 func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
@@ -219,9 +230,12 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 		Incremental: fs.Bool("incremental", false, "Use incremental crawling (ETag/Hash)"),
 
 		// Proxy flags
-		ProxyURL:      fs.String("proxy", "", "Proxy URL (http://, https://, socks5://)"),
-		ProxyUsername: fs.String("proxy-username", "", "Proxy username"),
-		ProxyPassword: fs.String("proxy-password", "", "Proxy password"),
+		ProxyURL:            fs.String("proxy", "", "Proxy URL (http://, https://, socks5://)"),
+		ProxyUsername:       fs.String("proxy-username", "", "Proxy username"),
+		ProxyPassword:       fs.String("proxy-password", "", "Proxy password"),
+		ProxyRegion:         fs.String("proxy-region", "", "Preferred region when selecting from the loaded proxy pool"),
+		ProxyRequiredTags:   StringSliceFlag{},
+		ProxyExcludeProxyID: StringSliceFlag{},
 
 		// HTTP method and body flags
 		Method:      fs.String("method", "GET", "HTTP method (GET, POST, PUT, DELETE, PATCH)"),
@@ -255,6 +269,8 @@ func RegisterCommonFlags(fs *flag.FlagSet, cfg config.Config) *CommonFlags {
 	fs.Var(&cf.TokenValues, "token", "Token value (repeatable)")
 	fs.Var(&cf.Headers, "header", "Extra header (repeatable, Key: Value)")
 	fs.Var(&cf.Cookies, "cookie", "Cookie value (repeatable, name=value)")
+	fs.Var(&cf.ProxyRequiredTags, "proxy-tag", "Required proxy tag when selecting from the loaded proxy pool (repeatable)")
+	fs.Var(&cf.ProxyExcludeProxyID, "exclude-proxy-id", "Proxy ID to exclude from proxy-pool selection (repeatable)")
 	fs.Var(&cf.InterceptURLPatterns, "intercept-pattern", "URL pattern to intercept (repeatable, glob syntax, e.g., '**/api/**')")
 	fs.Var(&cf.InterceptResourceTypes, "intercept-resource-type", "Resource type to intercept (repeatable: xhr,fetch,document,script,stylesheet,image,media,font,websocket,other)")
 
@@ -317,11 +333,19 @@ func RegisterAuthFlags(fs *flag.FlagSet) *AuthFlags {
 		LoginUser:           fs.String("login-user", "", "Username for login"),
 		LoginPass:           fs.String("login-pass", "", "Password for login"),
 		LoginAutoDetect:     fs.Bool("login-auto-detect", false, "Auto-detect login form fields (requires --login-url)"),
+		ProxyURL:            fs.String("proxy", "", "Proxy URL (http://, https://, socks5://)"),
+		ProxyUsername:       fs.String("proxy-username", "", "Proxy username"),
+		ProxyPassword:       fs.String("proxy-password", "", "Proxy password"),
+		ProxyRegion:         fs.String("proxy-region", "", "Preferred region when selecting from the loaded proxy pool"),
+		ProxyRequiredTags:   StringSliceFlag{},
+		ProxyExcludeProxyID: StringSliceFlag{},
 	}
 
 	fs.Var(&af.TokenValues, "token", "Token value (repeatable)")
 	fs.Var(&af.Headers, "header", "Extra header (repeatable, Key: Value)")
 	fs.Var(&af.Cookies, "cookie", "Cookie value (repeatable, name=value)")
+	fs.Var(&af.ProxyRequiredTags, "proxy-tag", "Required proxy tag when selecting from the loaded proxy pool (repeatable)")
+	fs.Var(&af.ProxyExcludeProxyID, "exclude-proxy-id", "Proxy ID to exclude from proxy-pool selection (repeatable)")
 
 	return af
 }

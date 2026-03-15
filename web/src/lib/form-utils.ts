@@ -61,7 +61,42 @@ export function buildAuth(
   loginSubmitSelector?: string,
   loginUser?: string,
   loginPass?: string,
+  proxyUrl?: string,
+  proxyUsername?: string,
+  proxyPassword?: string,
+  proxyRegion?: string,
+  proxyRequiredTags?: string[],
+  proxyExcludeProxyIds?: string[],
 ): AuthOptions | undefined {
+  const trimmedProxyUrl = proxyUrl?.trim();
+  const trimmedProxyUsername = proxyUsername?.trim();
+  const trimmedProxyPassword = proxyPassword?.trim();
+  const normalizedProxyRequiredTags =
+    proxyRequiredTags && proxyRequiredTags.length > 0
+      ? proxyRequiredTags
+      : undefined;
+  const normalizedProxyExcludeProxyIds =
+    proxyExcludeProxyIds && proxyExcludeProxyIds.length > 0
+      ? proxyExcludeProxyIds
+      : undefined;
+  const normalizedProxyRegion = proxyRegion?.trim() || undefined;
+  const hasProxyHints =
+    !!normalizedProxyRegion ||
+    !!normalizedProxyRequiredTags ||
+    !!normalizedProxyExcludeProxyIds;
+
+  if (
+    (trimmedProxyUrl || trimmedProxyUsername || trimmedProxyPassword) &&
+    hasProxyHints
+  ) {
+    throw new Error(
+      "Direct proxy settings and proxy-pool selection hints are mutually exclusive.",
+    );
+  }
+  if (!trimmedProxyUrl && (trimmedProxyUsername || trimmedProxyPassword)) {
+    throw new Error("Proxy username/password require a proxy URL.");
+  }
+
   if (
     !basic &&
     !headers &&
@@ -72,7 +107,9 @@ export function buildAuth(
     !loginPassSelector &&
     !loginSubmitSelector &&
     !loginUser &&
-    !loginPass
+    !loginPass &&
+    !trimmedProxyUrl &&
+    !hasProxyHints
   ) {
     return undefined;
   }
@@ -87,6 +124,20 @@ export function buildAuth(
     loginSubmitSelector: loginSubmitSelector || undefined,
     loginUser: loginUser || undefined,
     loginPass: loginPass || undefined,
+    proxy: trimmedProxyUrl
+      ? {
+          url: trimmedProxyUrl,
+          username: trimmedProxyUsername || undefined,
+          password: trimmedProxyPassword || undefined,
+        }
+      : undefined,
+    proxyHints: hasProxyHints
+      ? {
+          preferred_region: normalizedProxyRegion,
+          required_tags: normalizedProxyRequiredTags,
+          exclude_proxy_ids: normalizedProxyExcludeProxyIds,
+        }
+      : undefined,
   };
 }
 
@@ -222,6 +273,12 @@ type SharedFormFields = Pick<
   | "headersRaw"
   | "cookiesRaw"
   | "queryRaw"
+  | "proxyUrl"
+  | "proxyUsername"
+  | "proxyPassword"
+  | "proxyRegion"
+  | "proxyRequiredTags"
+  | "proxyExcludeProxyIds"
   | "loginUrl"
   | "loginUserSelector"
   | "loginPassSelector"
@@ -273,6 +330,12 @@ export function buildSharedRequestConfig(
       form.loginSubmitSelector,
       form.loginUser,
       form.loginPass,
+      form.proxyUrl,
+      form.proxyUsername,
+      form.proxyPassword,
+      form.proxyRegion,
+      parseOptionalList(form.proxyRequiredTags, ","),
+      parseOptionalList(form.proxyExcludeProxyIds, ","),
     ),
     extract: {
       template: form.extractTemplate || undefined,

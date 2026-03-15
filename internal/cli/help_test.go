@@ -35,6 +35,7 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 		"  export       Export job results (jsonl, json, md, csv, xlsx)",
 		"  export-schedule Manage automated export schedules",
 		"  spartan ai preview --url https://example.com --prompt \"Extract the main product facts\"",
+		"  spartan scrape --url https://example.com --proxy-region us-east --proxy-tag residential --out ./out/example.json",
 		"  spartan export --job-id <id> --format md --out ./out/report.md",
 		"  spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv",
 		"  spartan export-schedule list",

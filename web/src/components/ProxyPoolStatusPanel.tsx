@@ -101,7 +101,30 @@ export function ProxyPoolStatusPanel() {
                 {status.healthy_proxies}
               </div>
             </div>
+            <div className="retention-status-card retention-status-card--normal">
+              <div className="retention-status-card__label">Regions</div>
+              <div className="retention-status-card__value">
+                {status.regions.length}
+              </div>
+            </div>
+            <div className="retention-status-card retention-status-card--normal">
+              <div className="retention-status-card__label">Tags</div>
+              <div className="retention-status-card__value">
+                {status.tags.length}
+              </div>
+            </div>
           </div>
+
+          {(status.regions.length > 0 || status.tags.length > 0) && (
+            <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
+              <div>
+                <strong>Available regions:</strong> {formatTags(status.regions)}
+              </div>
+              <div>
+                <strong>Available tags:</strong> {formatTags(status.tags)}
+              </div>
+            </div>
+          )}
 
           {status.proxies.length === 0 ? (
             <p style={{ marginTop: 16 }}>

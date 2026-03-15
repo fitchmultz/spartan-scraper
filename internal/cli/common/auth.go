@@ -124,7 +124,51 @@ func ResolveAuthForRequest(cfg config.Config, url string, profile string, overri
 	if err != nil {
 		return fetch.AuthOptions{}, err
 	}
-	return auth.ToFetchOptions(resolved), nil
+	authOptions := auth.ToFetchOptions(resolved)
+	authOptions.NormalizeTransport()
+	if err := authOptions.ValidateTransport(); err != nil {
+		return fetch.AuthOptions{}, err
+	}
+	return authOptions, nil
+}
+
+type ProxyFlagConfig struct {
+	ProxyURL        string
+	ProxyUsername   string
+	ProxyPassword   string
+	PreferredRegion string
+	RequiredTags    []string
+	ExcludeProxyIDs []string
+}
+
+func ApplyProxyOverrides(authOptions *fetch.AuthOptions, cfg ProxyFlagConfig) error {
+	if authOptions == nil {
+		return nil
+	}
+	proxyURL := strings.TrimSpace(cfg.ProxyURL)
+	if proxyURL != "" {
+		authOptions.Proxy = &fetch.ProxyConfig{
+			URL:      proxyURL,
+			Username: strings.TrimSpace(cfg.ProxyUsername),
+			Password: strings.TrimSpace(cfg.ProxyPassword),
+		}
+	}
+	authOptions.ProxyHints = fetch.NormalizeProxySelectionHints(&fetch.ProxySelectionHints{
+		PreferredRegion: cfg.PreferredRegion,
+		RequiredTags:    cfg.RequiredTags,
+		ExcludeProxyIDs: cfg.ExcludeProxyIDs,
+	})
+	authOptions.NormalizeTransport()
+	return authOptions.ValidateTransport()
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func ResolveAuthFromCommonFlags(cfg config.Config, url string, cf *CommonFlags) (fetch.AuthOptions, error) {
@@ -149,29 +193,15 @@ func ResolveAuthFromCommonFlags(cfg config.Config, url string, cf *CommonFlags) 
 		return fetch.AuthOptions{}, err
 	}
 
-	// Add proxy configuration from CLI flags or environment variables
-	// CLI flags take precedence over env vars
-	proxyURL := *cf.ProxyURL
-	if proxyURL == "" {
-		proxyURL = cfg.ProxyURL
-	}
-
-	if proxyURL != "" {
-		proxyUsername := *cf.ProxyUsername
-		if proxyUsername == "" {
-			proxyUsername = cfg.ProxyUsername
-		}
-
-		proxyPassword := *cf.ProxyPassword
-		if proxyPassword == "" {
-			proxyPassword = cfg.ProxyPassword
-		}
-
-		authOptions.Proxy = &fetch.ProxyConfig{
-			URL:      proxyURL,
-			Username: proxyUsername,
-			Password: proxyPassword,
-		}
+	if err := ApplyProxyOverrides(&authOptions, ProxyFlagConfig{
+		ProxyURL:        firstNonEmpty(*cf.ProxyURL, cfg.ProxyURL),
+		ProxyUsername:   firstNonEmpty(*cf.ProxyUsername, cfg.ProxyUsername),
+		ProxyPassword:   firstNonEmpty(*cf.ProxyPassword, cfg.ProxyPassword),
+		PreferredRegion: *cf.ProxyRegion,
+		RequiredTags:    []string(cf.ProxyRequiredTags),
+		ExcludeProxyIDs: []string(cf.ProxyExcludeProxyID),
+	}); err != nil {
+		return fetch.AuthOptions{}, err
 	}
 
 	return authOptions, nil

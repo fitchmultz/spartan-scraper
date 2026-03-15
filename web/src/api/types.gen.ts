@@ -1368,10 +1368,6 @@ export type AuthOptions = {
     loginUser?: string;
     loginPass?: string;
     proxy?: ProxyConfig;
-    /**
-     * Named proxy-pool selection hint for future-compatible clients; the currently loaded local pool is applied automatically when present.
-     */
-    proxyPool?: string;
     proxyHints?: ProxySelectionHints;
     oauth2?: OAuth2AuthConfig;
 };
@@ -2062,6 +2058,8 @@ export type ProxyPoolStatusResponse = {
     strategy: string;
     total_proxies: number;
     healthy_proxies: number;
+    regions: Array<string>;
+    tags: Array<string>;
     proxies: Array<ProxyStatus>;
 };
 

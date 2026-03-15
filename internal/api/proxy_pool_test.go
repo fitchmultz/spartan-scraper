@@ -74,6 +74,12 @@ func TestHandleProxyPoolStatus_ReturnsProxyStats(t *testing.T) {
 	if got.TotalProxies != 2 || got.HealthyProxies != 2 || len(got.Proxies) != 2 {
 		t.Fatalf("unexpected proxy pool summary: %#v", got)
 	}
+	if len(got.Regions) != 2 || got.Regions[0] != "us-east" || got.Regions[1] != "us-west" {
+		t.Fatalf("unexpected regions: %#v", got.Regions)
+	}
+	if len(got.Tags) != 2 || got.Tags[0] != "datacenter" || got.Tags[1] != "residential" {
+		t.Fatalf("unexpected tags: %#v", got.Tags)
+	}
 
 	statusByID := map[string]ProxyStatus{}
 	for _, proxy := range got.Proxies {

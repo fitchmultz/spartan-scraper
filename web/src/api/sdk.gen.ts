@@ -492,7 +492,7 @@ export const getRetentionStatus = <ThrowOnError extends boolean = false>(options
 /**
  * Get proxy pool status
  *
- * Returns the currently loaded proxy pool strategy, aggregate counts, and per-proxy stats.
+ * Returns the currently loaded proxy pool strategy, aggregate counts, available regions/tags, and per-proxy stats.
  */
 export const getProxyPoolStatus = <ThrowOnError extends boolean = false>(options?: Options<GetProxyPoolStatusData, ThrowOnError>) => (options?.client ?? client).get<GetProxyPoolStatusResponses, GetProxyPoolStatusErrors, ThrowOnError>({
     security: [{ name: 'X-API-Key', type: 'apiKey' }],

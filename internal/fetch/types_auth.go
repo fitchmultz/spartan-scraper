@@ -2,7 +2,12 @@
 // Authentication and proxy configuration types.
 package fetch
 
-import "net/url"
+import (
+	"net/url"
+	"strings"
+
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+)
 
 // ProxyConfig defines proxy settings for fetch operations.
 type ProxyConfig struct {
@@ -25,10 +30,7 @@ type AuthOptions struct {
 	LoginPass           string            `json:"loginPass,omitempty"`
 	LoginAutoDetect     bool              `json:"loginAutoDetect,omitempty"`
 	Proxy               *ProxyConfig      `json:"proxy,omitempty"`
-	// ProxyPool enables proxy pool selection. When set, the pool will be used
-	// to select a proxy based on the configured rotation strategy.
-	ProxyPool string `json:"proxyPool,omitempty"`
-	// ProxyHints provides hints for proxy selection when using a proxy pool.
+	// ProxyHints provides hints for proxy selection when using the loaded proxy pool.
 	ProxyHints *ProxySelectionHints `json:"proxyHints,omitempty"`
 	// OAuth2 contains OAuth 2.0 configuration for automatic token management.
 	// When set, the fetcher will use OAuth transport with automatic token refresh.
@@ -43,6 +45,77 @@ type OAuth2AuthConfig struct {
 	AccessToken string `json:"accessToken,omitempty"`
 	// TokenType is the token type (e.g., "Bearer"). Defaults to "Bearer" if not set.
 	TokenType string `json:"tokenType,omitempty"`
+}
+
+// NormalizeProxySelectionHints trims and deduplicates proxy selection hints.
+func NormalizeProxySelectionHints(hints *ProxySelectionHints) *ProxySelectionHints {
+	if hints == nil {
+		return nil
+	}
+	out := &ProxySelectionHints{
+		PreferredRegion: strings.TrimSpace(hints.PreferredRegion),
+		RequiredTags:    normalizeStringSlice(hints.RequiredTags),
+		ExcludeProxyIDs: normalizeStringSlice(hints.ExcludeProxyIDs),
+	}
+	if out.PreferredRegion == "" && len(out.RequiredTags) == 0 && len(out.ExcludeProxyIDs) == 0 {
+		return nil
+	}
+	return out
+}
+
+// NormalizeTransport trims proxy-related transport overrides in place.
+func (a *AuthOptions) NormalizeTransport() {
+	if a == nil {
+		return
+	}
+	if a.Proxy != nil {
+		a.Proxy.URL = strings.TrimSpace(a.Proxy.URL)
+		a.Proxy.Username = strings.TrimSpace(a.Proxy.Username)
+		a.Proxy.Password = strings.TrimSpace(a.Proxy.Password)
+		if a.Proxy.URL == "" && a.Proxy.Username == "" && a.Proxy.Password == "" {
+			a.Proxy = nil
+		}
+	}
+	a.ProxyHints = NormalizeProxySelectionHints(a.ProxyHints)
+}
+
+// ValidateTransport rejects ambiguous or malformed proxy overrides.
+func (a *AuthOptions) ValidateTransport() error {
+	if a == nil {
+		return nil
+	}
+	a.NormalizeTransport()
+	hasDirectProxy := a.Proxy != nil && a.Proxy.URL != ""
+	if a.Proxy != nil && a.Proxy.URL == "" && (a.Proxy.Username != "" || a.Proxy.Password != "") {
+		return apperrors.Validation("proxy username/password require --proxy or auth.proxy.url")
+	}
+	if hasDirectProxy && a.ProxyHints != nil {
+		return apperrors.Validation("direct proxy and proxy selection hints are mutually exclusive")
+	}
+	return nil
+}
+
+func normalizeStringSlice(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		out = append(out, trimmed)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // ApplyAuthQuery applies authentication query parameters to a URL.

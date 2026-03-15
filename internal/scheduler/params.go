@@ -100,9 +100,12 @@ func resolveScheduleAuth(schedule Schedule, dataDir string, env auth.EnvOverride
 	}
 	options := auth.ToFetchOptions(resolved)
 	options.Proxy = exec.Auth.Proxy
-	options.ProxyPool = exec.Auth.ProxyPool
-	options.ProxyHints = exec.Auth.ProxyHints
+	options.ProxyHints = fetch.NormalizeProxySelectionHints(exec.Auth.ProxyHints)
 	options.OAuth2 = exec.Auth.OAuth2
+	options.NormalizeTransport()
+	if err := options.ValidateTransport(); err != nil {
+		return fetch.AuthOptions{}, err
+	}
 	return options, nil
 }
 

@@ -33,6 +33,18 @@ interface AuthConfigProps {
   setCookiesRaw: (value: string) => void;
   queryRaw: string;
   setQueryRaw: (value: string) => void;
+  proxyUrl: string;
+  setProxyUrl: (value: string) => void;
+  proxyUsername: string;
+  setProxyUsername: (value: string) => void;
+  proxyPassword: string;
+  setProxyPassword: (value: string) => void;
+  proxyRegion: string;
+  setProxyRegion: (value: string) => void;
+  proxyRequiredTags: string;
+  setProxyRequiredTags: (value: string) => void;
+  proxyExcludeProxyIds: string;
+  setProxyExcludeProxyIds: (value: string) => void;
   loginUrl: string;
   setLoginUrl: (value: string) => void;
   loginUserSelector: string;
@@ -119,6 +131,18 @@ export function AuthConfig({
   setCookiesRaw,
   queryRaw,
   setQueryRaw,
+  proxyUrl,
+  setProxyUrl,
+  proxyUsername,
+  setProxyUsername,
+  proxyPassword,
+  setProxyPassword,
+  proxyRegion,
+  setProxyRegion,
+  proxyRequiredTags,
+  setProxyRequiredTags,
+  proxyExcludeProxyIds,
+  setProxyExcludeProxyIds,
   loginUrl,
   setLoginUrl,
   loginUserSelector,
@@ -253,6 +277,78 @@ export function AuthConfig({
         onChange={(event) => setQueryRaw(event.target.value)}
         placeholder="api_key=your_key&#10;version=v1"
       />
+      <label htmlFor="proxy-url" style={{ marginTop: 12 }}>
+        Direct proxy URL
+      </label>
+      <input
+        id="proxy-url"
+        autoComplete="off"
+        value={proxyUrl}
+        onChange={(event) => setProxyUrl(event.target.value)}
+        placeholder="http://proxy.example:8080"
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label htmlFor="proxy-username" style={{ marginTop: 12 }}>
+            Proxy username
+          </label>
+          <input
+            id="proxy-username"
+            autoComplete="off"
+            value={proxyUsername}
+            onChange={(event) => setProxyUsername(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="proxy-password" style={{ marginTop: 12 }}>
+            Proxy password
+          </label>
+          <input
+            id="proxy-password"
+            type="password"
+            autoComplete="off"
+            value={proxyPassword}
+            onChange={(event) => setProxyPassword(event.target.value)}
+          />
+        </div>
+      </div>
+      <p style={{ margin: "8px 0 0", opacity: 0.8, fontSize: 12 }}>
+        Direct proxy settings bypass the loaded proxy pool for this request.
+      </p>
+      <label htmlFor="proxy-region" style={{ marginTop: 12 }}>
+        Preferred proxy region
+      </label>
+      <input
+        id="proxy-region"
+        autoComplete="off"
+        value={proxyRegion}
+        onChange={(event) => setProxyRegion(event.target.value)}
+        placeholder="us-east"
+      />
+      <label htmlFor="proxy-required-tags" style={{ marginTop: 12 }}>
+        Required proxy tags (comma-separated)
+      </label>
+      <input
+        id="proxy-required-tags"
+        autoComplete="off"
+        value={proxyRequiredTags}
+        onChange={(event) => setProxyRequiredTags(event.target.value)}
+        placeholder="residential, sticky"
+      />
+      <label htmlFor="proxy-exclude-proxy-ids" style={{ marginTop: 12 }}>
+        Excluded proxy IDs (comma-separated)
+      </label>
+      <input
+        id="proxy-exclude-proxy-ids"
+        autoComplete="off"
+        value={proxyExcludeProxyIds}
+        onChange={(event) => setProxyExcludeProxyIds(event.target.value)}
+        placeholder="proxy-east, proxy-west"
+      />
+      <p style={{ margin: "8px 0 0", opacity: 0.8, fontSize: 12 }}>
+        Proxy-pool selection hints require the loaded global pool and cannot be
+        combined with a direct proxy override.
+      </p>
 
       {hasOAuth && (
         <details style={{ marginTop: 12 }}>

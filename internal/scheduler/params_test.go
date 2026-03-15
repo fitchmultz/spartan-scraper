@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/auth"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
@@ -64,6 +65,24 @@ func TestResolveScheduleAuthWithoutProfile(t *testing.T) {
 	}
 	if authOptions.Headers["X-Test"] != "value" {
 		t.Fatalf("header X-Test = %q, want value", authOptions.Headers["X-Test"])
+	}
+}
+
+func TestResolveScheduleAuth_PreservesProxyHints(t *testing.T) {
+	schedule := testScrapeSchedule("https://example.com")
+	spec := schedule.Spec.(model.ScrapeSpecV1)
+	spec.Execution.Auth.ProxyHints = &fetch.ProxySelectionHints{
+		PreferredRegion: "us-east",
+		RequiredTags:    []string{"residential"},
+	}
+	schedule.Spec = spec
+
+	authOptions, err := resolveScheduleAuth(schedule, t.TempDir(), auth.EnvOverrides{})
+	if err != nil {
+		t.Fatalf("resolveScheduleAuth() error = %v", err)
+	}
+	if authOptions.ProxyHints == nil || authOptions.ProxyHints.PreferredRegion != "us-east" || len(authOptions.ProxyHints.RequiredTags) != 1 || authOptions.ProxyHints.RequiredTags[0] != "residential" {
+		t.Fatalf("unexpected proxy hints: %#v", authOptions.ProxyHints)
 	}
 }
 

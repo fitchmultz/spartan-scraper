@@ -261,6 +261,10 @@ func resolveAuthForRequest(cfg config.Config, url string, profile string, overri
 	}
 	authOptions := auth.ToFetchOptions(resolved)
 	mergeAuthTransportOverrides(&authOptions, override)
+	authOptions.NormalizeTransport()
+	if err := authOptions.ValidateTransport(); err != nil {
+		return fetch.AuthOptions{}, err
+	}
 
 	return authOptions, nil
 }
@@ -272,11 +276,8 @@ func mergeAuthTransportOverrides(dst *fetch.AuthOptions, override *fetch.AuthOpt
 	if override.Proxy != nil {
 		dst.Proxy = override.Proxy
 	}
-	if strings.TrimSpace(override.ProxyPool) != "" {
-		dst.ProxyPool = strings.TrimSpace(override.ProxyPool)
-	}
 	if override.ProxyHints != nil {
-		dst.ProxyHints = override.ProxyHints
+		dst.ProxyHints = fetch.NormalizeProxySelectionHints(override.ProxyHints)
 	}
 	if override.OAuth2 != nil {
 		dst.OAuth2 = override.OAuth2

@@ -170,6 +170,13 @@ make install-bin
   --urls https://example.com,https://example.com/docs \
   --out ./out/research.jsonl
 
+# Prefer residential us-east proxies from the loaded proxy pool for one request
+./bin/spartan scrape \
+  --url https://example.com \
+  --proxy-region us-east \
+  --proxy-tag residential \
+  --out ./out/example.json
+
 # MCP server (stdio)
 ./bin/spartan mcp
 

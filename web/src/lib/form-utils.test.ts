@@ -131,6 +131,84 @@ describe("AI extract helpers", () => {
   });
 });
 
+describe("buildAuth", () => {
+  it("builds direct proxy auth overrides", () => {
+    expect(
+      buildAuth(
+        "",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "http://proxy.example:8080",
+        "user",
+        "pass",
+      ),
+    ).toEqual({
+      proxy: {
+        url: "http://proxy.example:8080",
+        username: "user",
+        password: "pass",
+      },
+    });
+  });
+
+  it("builds proxy-pool selection hints", () => {
+    expect(
+      buildAuth(
+        "",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "us-east",
+        ["residential", "sticky"],
+        ["proxy-2"],
+      ),
+    ).toEqual({
+      proxyHints: {
+        preferred_region: "us-east",
+        required_tags: ["residential", "sticky"],
+        exclude_proxy_ids: ["proxy-2"],
+      },
+    });
+  });
+
+  it("rejects conflicting direct proxy and proxy-pool hints", () => {
+    expect(() =>
+      buildAuth(
+        "",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "http://proxy.example:8080",
+        undefined,
+        undefined,
+        "us-east",
+      ),
+    ).toThrow(/mutually exclusive/i);
+  });
+});
+
 describe("buildScrapeRequest with pipeline options", () => {
   it("should include pipeline options in request", () => {
     const request = buildScrapeRequest(

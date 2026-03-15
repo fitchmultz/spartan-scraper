@@ -77,47 +77,7 @@ func runProxyPoolStatus(ctx context.Context, cfg config.Config, args []string) i
 		manager.Wait()
 	}()
 
-	status := api.ProxyPoolStatusResponse{
-		Strategy:       "none",
-		TotalProxies:   0,
-		HealthyProxies: 0,
-		Proxies:        []api.ProxyStatus{},
-	}
-
-	if pool := manager.GetProxyPool(); pool != nil {
-		status.Strategy = pool.GetStrategy().String()
-		status.TotalProxies = pool.GetTotalProxyCount()
-		status.HealthyProxies = pool.GetHealthyProxyCount()
-		stats := pool.GetStats()
-		entries := pool.GetEntries()
-		entryByID := make(map[string]struct {
-			region string
-			tags   []string
-		})
-		for _, entry := range entries {
-			entryByID[entry.ID] = struct {
-				region string
-				tags   []string
-			}{region: entry.Region, tags: entry.Tags}
-		}
-		status.Proxies = make([]api.ProxyStatus, 0, len(stats))
-		for id, stat := range stats {
-			entry := entryByID[id]
-			status.Proxies = append(status.Proxies, api.ProxyStatus{
-				ID:               id,
-				Region:           entry.region,
-				Tags:             entry.tags,
-				IsHealthy:        stat.IsHealthy,
-				RequestCount:     stat.RequestCount,
-				SuccessCount:     stat.SuccessCount,
-				FailureCount:     stat.FailureCount,
-				SuccessRate:      stat.SuccessRate(),
-				AvgLatencyMs:     stat.AvgLatencyMs,
-				ConsecutiveFails: stat.ConsecutiveFails,
-			})
-		}
-	}
-
+	status := api.BuildProxyPoolStatusResponse(manager.GetProxyPool())
 	printProxyPoolStatus(status, false, cfg.ProxyPoolFile)
 	return 0
 }
@@ -151,6 +111,8 @@ func printProxyPoolStatus(status api.ProxyPoolStatusResponse, fromServer bool, c
 	fmt.Printf("  Strategy:         %s\n", status.Strategy)
 	fmt.Printf("  Total Proxies:    %d\n", status.TotalProxies)
 	fmt.Printf("  Healthy Proxies:  %d\n", status.HealthyProxies)
+	fmt.Printf("  Regions:          %s\n", displaySlice(status.Regions))
+	fmt.Printf("  Tags:             %s\n", displaySlice(status.Tags))
 	if len(status.Proxies) == 0 {
 		fmt.Println()
 		fmt.Println("No proxy pool is currently loaded.")

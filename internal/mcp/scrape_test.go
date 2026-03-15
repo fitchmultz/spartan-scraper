@@ -80,6 +80,22 @@ func TestScrapePageWithPipelineAndIncremental(t *testing.T) {
 	}
 }
 
+func TestResolveAuthForTool_RejectsConflictingProxyOverrides(t *testing.T) {
+	srv, tmpDir := testServer()
+	defer os.RemoveAll(tmpDir)
+	defer srv.Close()
+
+	_, err := resolveAuthForTool(srv.cfg, "https://example.com", "", fetch.AuthOptions{
+		Proxy: &fetch.ProxyConfig{URL: "http://proxy.example:8080"},
+		ProxyHints: &fetch.ProxySelectionHints{
+			PreferredRegion: "us-east",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected conflicting proxy overrides to fail")
+	}
+}
+
 func TestScrapePageSchema(t *testing.T) {
 	srv, tmpDir := testServer()
 	defer os.RemoveAll(tmpDir)
@@ -107,7 +123,7 @@ func TestScrapePageSchema(t *testing.T) {
 		requiredSet[f.(string)] = true
 	}
 
-	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental"} {
+	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "preProcessors", "postProcessors", "transformers", "incremental", "proxy", "proxyUsername", "proxyPassword", "proxyRegion", "proxyTags", "excludeProxyIds"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}

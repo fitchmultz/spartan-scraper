@@ -69,11 +69,16 @@ Common flags:
 - `--proxy <url>`
 - `--proxy-username <value>`
 - `--proxy-password <value>`
+- `--proxy-region <value>`
+- `--proxy-tag <value>` repeatable
+- `--exclude-proxy-id <value>` repeatable
 - `--ai-extract`
 - `--ai-mode natural_language|schema_guided`
 - `--ai-prompt "<instructions>"` for natural-language mode
 - `--ai-schema '{"field":"example"}'` for schema-guided mode
 - `--ai-fields "field1,field2"`
+
+Direct `--proxy ...` overrides and proxy-pool selection hints are mutually exclusive.
 
 Headless login flags:
 
@@ -120,6 +125,12 @@ Key flags:
 - `--headless`
 - `--playwright`
 - `--auth-profile <name>`
+- `--proxy <url>`
+- `--proxy-username <value>`
+- `--proxy-password <value>`
+- `--proxy-region <value>`
+- `--proxy-tag <value>` repeatable
+- `--exclude-proxy-id <value>` repeatable
 - `--ai-extract`
 - `--ai-mode natural_language|schema_guided`
 - `--ai-prompt "<instructions>"` for natural-language mode
@@ -162,6 +173,9 @@ Key flags:
 - `--proxy <url>`
 - `--proxy-username <value>`
 - `--proxy-password <value>`
+- `--proxy-region <value>`
+- `--proxy-tag <value>` repeatable
+- `--exclude-proxy-id <value>` repeatable
 - `--ai-extract`
 - `--ai-mode natural_language|schema_guided`
 - `--ai-prompt "<instructions>"` for natural-language mode
@@ -683,7 +697,7 @@ Balanced 1.0 routes:
 - `/automation`
 - `/settings`
 
-The Settings route includes read-only proxy-pool status inspection alongside render profiles, pipeline JS, retention, and other runtime inventory panels.
+The Settings route includes proxy-pool status inspection plus per-request proxy override/selection controls on the job forms, alongside render profiles, pipeline JS, retention, and other runtime inventory panels.
 
 The UI only exposes retained product areas. Deleted surfaces are not available behind feature flags.
 
@@ -800,6 +814,16 @@ Core tools:
 - `aiPrompt: string` for natural-language mode
 - `aiSchema: object` for schema-guided mode
 - `aiFields: string[]`
+
+Those same MCP execution tools also accept request-scoped proxy transport controls:
+
+- `proxy: string`
+- `proxyUsername: string` / `proxyPassword: string` with `proxy`
+- `proxyRegion: string`
+- `proxyTags: string[]`
+- `excludeProxyIds: string[]`
+
+Direct `proxy` settings and proxy-pool selection hints are mutually exclusive.
 
 `research` also accepts bounded agentic controls:
 

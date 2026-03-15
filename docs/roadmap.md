@@ -11,4 +11,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Deepen operator-facing proxy selection controls only if a concrete runtime need remains after the current global proxy-pool contract and verification coverage prove sufficient in day-to-day use.
+- Converge live job-submission request contracts across REST, Web UI, CLI, MCP, and schedules so scrape/crawl/research/batch surfaces share one operator-facing model for auth, proxy transport, device/screenshot, network interception, and pipeline defaults.

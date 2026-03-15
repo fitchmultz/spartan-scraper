@@ -15,7 +15,7 @@
 - REST is the canonical machine surface for bounded AI authoring and job-integrated AI extraction.
 - Web UI is the primary interactive AI surface.
 - CLI and MCP expose both job-launching AI controls and dedicated AI preview, template generation, template debugging, render-profile generation, render-profile debugging, pipeline-JS generation, pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, direct saved-result export contracts, and recurring export-contract workflows.
-- Optional proxy-pool execution is a supported runtime path with read-only status inspection across REST, Web UI, CLI, and MCP.
+- Optional proxy-pool execution is a supported runtime path with shared status inspection plus per-request direct-proxy or proxy-hint selection controls across REST, Web UI, CLI, and MCP.
 - Explicit `PROXY_POOL_FILE` misconfiguration is treated as a startup error rather than silently disabling proxy-backed execution.
 - Request-scoped multimodal image context for AI authoring is supported on REST, Web, CLI, and MCP: operators can attach bounded uploaded/pasted images directly, and URL-based flows can additionally capture screenshots when an image-capable pi route is available.
 - TUI is an operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, or agent-session workflows.

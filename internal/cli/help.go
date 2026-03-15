@@ -54,6 +54,7 @@ Examples:
   spartan scrape --url https://example.com --out ./out/example.json
   spartan crawl --url https://example.com --max-depth 2 --max-pages 200
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs
+  spartan scrape --url https://example.com --proxy-region us-east --proxy-tag residential --out ./out/example.json
   spartan research --query "pricing model" --urls https://example.com --ai-extract --ai-prompt "Extract the pricing model and support terms"
   spartan research --query "pricing model" --urls https://example.com,https://example.com/docs --agentic --agentic-instructions "Prioritize pricing and support commitments"
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"

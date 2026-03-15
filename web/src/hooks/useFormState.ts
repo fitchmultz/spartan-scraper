@@ -22,6 +22,12 @@ export interface FormState {
   headersRaw: string;
   cookiesRaw: string;
   queryRaw: string;
+  proxyUrl: string;
+  proxyUsername: string;
+  proxyPassword: string;
+  proxyRegion: string;
+  proxyRequiredTags: string;
+  proxyExcludeProxyIds: string;
   loginUrl: string;
   loginUserSelector: string;
   loginPassSelector: string;
@@ -66,6 +72,12 @@ export interface FormActions {
   setHeadersRaw: (value: string) => void;
   setCookiesRaw: (value: string) => void;
   setQueryRaw: (value: string) => void;
+  setProxyUrl: (value: string) => void;
+  setProxyUsername: (value: string) => void;
+  setProxyPassword: (value: string) => void;
+  setProxyRegion: (value: string) => void;
+  setProxyRequiredTags: (value: string) => void;
+  setProxyExcludeProxyIds: (value: string) => void;
   setLoginUrl: (value: string) => void;
   setLoginUserSelector: (value: string) => void;
   setLoginPassSelector: (value: string) => void;
@@ -115,6 +127,12 @@ const INITIAL_STATE: FormState = {
   headersRaw: DEFAULT_HEADERS,
   cookiesRaw: "",
   queryRaw: "",
+  proxyUrl: "",
+  proxyUsername: "",
+  proxyPassword: "",
+  proxyRegion: "",
+  proxyRequiredTags: "",
+  proxyExcludeProxyIds: "",
   loginUrl: "",
   loginUserSelector: "",
   loginPassSelector: "",
@@ -183,6 +201,30 @@ export function useFormState(): FormController {
 
   const setQueryRaw = useCallback((value: string) => {
     setState((prev) => ({ ...prev, queryRaw: value }));
+  }, []);
+
+  const setProxyUrl = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyUrl: value }));
+  }, []);
+
+  const setProxyUsername = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyUsername: value }));
+  }, []);
+
+  const setProxyPassword = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyPassword: value }));
+  }, []);
+
+  const setProxyRegion = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyRegion: value }));
+  }, []);
+
+  const setProxyRequiredTags = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyRequiredTags: value }));
+  }, []);
+
+  const setProxyExcludeProxyIds = useCallback((value: string) => {
+    setState((prev) => ({ ...prev, proxyExcludeProxyIds: value }));
   }, []);
 
   const setLoginUrl = useCallback((value: string) => {
@@ -339,6 +381,22 @@ export function useFormState(): FormController {
       ...(config.headersRaw !== undefined && { headersRaw: config.headersRaw }),
       ...(config.cookiesRaw !== undefined && { cookiesRaw: config.cookiesRaw }),
       ...(config.queryRaw !== undefined && { queryRaw: config.queryRaw }),
+      ...(config.proxyUrl !== undefined && { proxyUrl: config.proxyUrl }),
+      ...(config.proxyUsername !== undefined && {
+        proxyUsername: config.proxyUsername,
+      }),
+      ...(config.proxyPassword !== undefined && {
+        proxyPassword: config.proxyPassword,
+      }),
+      ...(config.proxyRegion !== undefined && {
+        proxyRegion: config.proxyRegion,
+      }),
+      ...(config.proxyRequiredTags !== undefined && {
+        proxyRequiredTags: config.proxyRequiredTags,
+      }),
+      ...(config.proxyExcludeProxyIds !== undefined && {
+        proxyExcludeProxyIds: config.proxyExcludeProxyIds,
+      }),
       ...(config.loginUrl !== undefined && { loginUrl: config.loginUrl }),
       ...(config.loginUserSelector !== undefined && {
         loginUserSelector: config.loginUserSelector,
@@ -436,6 +494,12 @@ export function useFormState(): FormController {
     setHeadersRaw,
     setCookiesRaw,
     setQueryRaw,
+    setProxyUrl,
+    setProxyUsername,
+    setProxyPassword,
+    setProxyRegion,
+    setProxyRequiredTags,
+    setProxyExcludeProxyIds,
     setLoginUrl,
     setLoginUserSelector,
     setLoginPassSelector,

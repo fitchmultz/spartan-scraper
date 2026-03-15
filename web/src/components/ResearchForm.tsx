@@ -83,6 +83,18 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       setCookiesRaw,
       queryRaw,
       setQueryRaw,
+      proxyUrl,
+      setProxyUrl,
+      proxyUsername,
+      setProxyUsername,
+      proxyPassword,
+      setProxyPassword,
+      proxyRegion,
+      setProxyRegion,
+      proxyRequiredTags,
+      setProxyRequiredTags,
+      proxyExcludeProxyIds,
+      setProxyExcludeProxyIds,
       loginUrl,
       setLoginUrl,
       loginUserSelector,
@@ -152,11 +164,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         alert("Research query and URLs are required.");
         return;
       }
-      const shared = buildSharedRequestConfig(form);
 
+      let shared: ReturnType<typeof buildSharedRequestConfig>;
       let aiExtractOptions: AiExtractOptions | undefined;
       let agenticOptions: ResearchAgenticConfig | undefined;
       try {
+        shared = buildSharedRequestConfig(form);
         aiExtractOptions = buildAIExtractOptions(
           aiExtractEnabled,
           aiExtractMode,
@@ -231,6 +244,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         headersRaw,
         cookiesRaw,
         queryRaw,
+        proxyUrl,
+        proxyUsername,
+        proxyPassword,
+        proxyRegion,
+        proxyRequiredTags,
+        proxyExcludeProxyIds,
         loginUrl,
         loginUserSelector,
         loginPassSelector,
@@ -275,6 +294,12 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         headersRaw,
         cookiesRaw,
         queryRaw,
+        proxyUrl,
+        proxyUsername,
+        proxyPassword,
+        proxyRegion,
+        proxyRequiredTags,
+        proxyExcludeProxyIds,
         loginUrl,
         loginUserSelector,
         loginPassSelector,
@@ -446,6 +471,18 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             setCookiesRaw={setCookiesRaw}
             queryRaw={queryRaw}
             setQueryRaw={setQueryRaw}
+            proxyUrl={proxyUrl}
+            setProxyUrl={setProxyUrl}
+            proxyUsername={proxyUsername}
+            setProxyUsername={setProxyUsername}
+            proxyPassword={proxyPassword}
+            setProxyPassword={setProxyPassword}
+            proxyRegion={proxyRegion}
+            setProxyRegion={setProxyRegion}
+            proxyRequiredTags={proxyRequiredTags}
+            setProxyRequiredTags={setProxyRequiredTags}
+            proxyExcludeProxyIds={proxyExcludeProxyIds}
+            setProxyExcludeProxyIds={setProxyExcludeProxyIds}
             loginUrl={loginUrl}
             setLoginUrl={setLoginUrl}
             loginUserSelector={loginUserSelector}

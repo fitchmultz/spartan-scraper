@@ -9,6 +9,42 @@ import (
 	"testing"
 )
 
+func TestAuthOptionsValidateTransport(t *testing.T) {
+	t.Run("normalizes proxy hints", func(t *testing.T) {
+		auth := AuthOptions{
+			ProxyHints: &ProxySelectionHints{
+				PreferredRegion: " us-east ",
+				RequiredTags:    []string{" residential ", "residential", "sticky"},
+				ExcludeProxyIDs: []string{" proxy-1 ", "proxy-1", "proxy-2"},
+			},
+		}
+		if err := auth.ValidateTransport(); err != nil {
+			t.Fatalf("ValidateTransport() error = %v", err)
+		}
+		if auth.ProxyHints == nil || auth.ProxyHints.PreferredRegion != "us-east" {
+			t.Fatalf("expected normalized proxy hints, got %#v", auth.ProxyHints)
+		}
+		if len(auth.ProxyHints.RequiredTags) != 2 || auth.ProxyHints.RequiredTags[0] != "residential" || auth.ProxyHints.RequiredTags[1] != "sticky" {
+			t.Fatalf("unexpected required tags: %#v", auth.ProxyHints.RequiredTags)
+		}
+		if len(auth.ProxyHints.ExcludeProxyIDs) != 2 || auth.ProxyHints.ExcludeProxyIDs[0] != "proxy-1" || auth.ProxyHints.ExcludeProxyIDs[1] != "proxy-2" {
+			t.Fatalf("unexpected excluded proxy ids: %#v", auth.ProxyHints.ExcludeProxyIDs)
+		}
+	})
+
+	t.Run("rejects conflicting proxy config", func(t *testing.T) {
+		auth := AuthOptions{
+			Proxy: &ProxyConfig{URL: "http://proxy.example:8080"},
+			ProxyHints: &ProxySelectionHints{
+				PreferredRegion: "us-east",
+			},
+		}
+		if err := auth.ValidateTransport(); err == nil {
+			t.Fatal("expected conflicting proxy config to fail")
+		}
+	})
+}
+
 func TestApplyAuthQuery(t *testing.T) {
 	tests := []struct {
 		name     string

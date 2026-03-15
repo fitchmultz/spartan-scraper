@@ -69,7 +69,7 @@ func TestResearchSchema(t *testing.T) {
 	}
 	schema := researchTool.InputSchema
 	props, _ := schema["properties"].(map[string]interface{})
-	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "agentic", "agenticInstructions", "agenticMaxRounds", "agenticMaxFollowUpUrls", "preProcessors", "postProcessors", "transformers"} {
+	for _, field := range []string{"aiExtract", "aiMode", "aiPrompt", "aiSchema", "aiFields", "agentic", "agenticInstructions", "agenticMaxRounds", "agenticMaxFollowUpUrls", "preProcessors", "postProcessors", "transformers", "proxy", "proxyUsername", "proxyPassword", "proxyRegion", "proxyTags", "excludeProxyIds"} {
 		if _, ok := props[field]; !ok {
 			t.Errorf("expected %s in properties", field)
 		}

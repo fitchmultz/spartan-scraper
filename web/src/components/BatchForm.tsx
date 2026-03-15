@@ -132,6 +132,18 @@ export function BatchForm({
     setCookiesRaw,
     queryRaw,
     setQueryRaw,
+    proxyUrl,
+    setProxyUrl,
+    proxyUsername,
+    setProxyUsername,
+    proxyPassword,
+    setProxyPassword,
+    proxyRegion,
+    setProxyRegion,
+    proxyRequiredTags,
+    setProxyRequiredTags,
+    proxyExcludeProxyIds,
+    setProxyExcludeProxyIds,
     loginUrl,
     setLoginUrl,
     loginUserSelector,
@@ -330,10 +342,10 @@ export function BatchForm({
   const handleSubmitScrape = useCallback(async () => {
     if (!validateUrls()) return;
 
-    const shared = buildSharedRequestConfig(form);
-
+    let shared: ReturnType<typeof buildSharedRequestConfig>;
     let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
     try {
+      shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
@@ -373,10 +385,10 @@ export function BatchForm({
   const handleSubmitCrawl = useCallback(async () => {
     if (!validateUrls()) return;
 
-    const shared = buildSharedRequestConfig(form);
-
+    let shared: ReturnType<typeof buildSharedRequestConfig>;
     let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
     try {
+      shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
@@ -424,11 +436,11 @@ export function BatchForm({
       return;
     }
 
-    const shared = buildSharedRequestConfig(form);
-
+    let shared: ReturnType<typeof buildSharedRequestConfig>;
     let aiExtractOptions: ReturnType<typeof buildAIExtractOptions>;
     const agenticOptions = resolveAgenticOptions();
     try {
+      shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
@@ -706,6 +718,18 @@ export function BatchForm({
         setCookiesRaw={setCookiesRaw}
         queryRaw={queryRaw}
         setQueryRaw={setQueryRaw}
+        proxyUrl={proxyUrl}
+        setProxyUrl={setProxyUrl}
+        proxyUsername={proxyUsername}
+        setProxyUsername={setProxyUsername}
+        proxyPassword={proxyPassword}
+        setProxyPassword={setProxyPassword}
+        proxyRegion={proxyRegion}
+        setProxyRegion={setProxyRegion}
+        proxyRequiredTags={proxyRequiredTags}
+        setProxyRequiredTags={setProxyRequiredTags}
+        proxyExcludeProxyIds={proxyExcludeProxyIds}
+        setProxyExcludeProxyIds={setProxyExcludeProxyIds}
         loginUrl={loginUrl}
         setLoginUrl={setLoginUrl}
         loginUserSelector={loginUserSelector}
