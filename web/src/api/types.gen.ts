@@ -1408,7 +1408,12 @@ export type WebhookConfig = {
      */
     url?: string;
     /**
-     * Events to subscribe to (default: ['completed'])
+     * Events to subscribe to (default: ['completed']).
+     *
+     * `export_completed` deliveries use the multipart export contract:
+     * the request body is `multipart/form-data` with a JSON `metadata`
+     * part and an `export` file part containing the rendered bytes.
+     *
      */
     events?: Array<'completed' | 'failed' | 'canceled' | 'started' | 'created' | 'succeeded' | 'content_changed' | 'page_crawled' | 'retry_attempted' | 'export_completed' | 'all'>;
     /**
@@ -1634,7 +1639,13 @@ export type WatchCheckResult = {
 };
 
 /**
- * Payload sent to webhook endpoints on job events
+ * Webhook event metadata.
+ *
+ * Non-export events are delivered as a JSON request body matching this schema.
+ * `export.completed` deliveries use `multipart/form-data` with a `metadata`
+ * part containing this schema and an `export` file part containing the
+ * rendered export bytes.
+ *
  */
 export type WebhookPayload = {
     /**
@@ -1670,9 +1681,9 @@ export type WebhookPayload = {
      */
     error?: string;
     /**
-     * Path to job results file
+     * Relative API URL for retrieving persisted job results
      */
-    resultPath?: string;
+    resultUrl?: string;
     /**
      * Timestamp when job completed (for completed events)
      */
@@ -1701,14 +1712,6 @@ export type WebhookPayload = {
      * CSS selector for tracked element
      */
     selector?: string;
-    /**
-     * Path to current screenshot
-     */
-    screenshotPath?: string;
-    /**
-     * Path to visual diff image
-     */
-    visualDiffPath?: string;
     /**
      * Perceptual hash of current screenshot
      */
@@ -1770,9 +1773,13 @@ export type WebhookPayload = {
      */
     exportFormat?: string;
     /**
-     * Path to exported file
+     * Delivered export filename (for export.completed)
      */
-    exportPath?: string;
+    filename?: string;
+    /**
+     * Delivered export content type (for export.completed)
+     */
+    contentType?: string;
     /**
      * Number of records exported
      */
@@ -1781,6 +1788,20 @@ export type WebhookPayload = {
      * Size of exported file in bytes
      */
     exportSize?: number;
+};
+
+/**
+ * Multipart webhook delivery used when `eventType` is `export.completed`.
+ * The `metadata` part is JSON matching `WebhookPayload`; the `export` part
+ * contains the rendered export bytes.
+ *
+ */
+export type WebhookExportDelivery = {
+    metadata?: WebhookPayload;
+    /**
+     * Rendered export bytes
+     */
+    export?: Blob | File;
 };
 
 export type ScrapeRequest = {

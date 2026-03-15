@@ -130,6 +130,7 @@ func (s *ExportHistoryStore) MarkSuccess(recordID string, exportSize int64, reco
 		if history.Records[i].ID == recordID {
 			history.Records[i].Status = "success"
 			history.Records[i].CompletedAt = &now
+			history.Records[i].ErrorMessage = ""
 			history.Records[i].ExportSize = exportSize
 			history.Records[i].RecordCount = recordCount
 			return s.saveUnsafe(history)

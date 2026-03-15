@@ -58,6 +58,10 @@ type Request struct {
 	ExcludePatterns []string
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// Device emulation for responsive/mobile content.
+	Device *fetch.DeviceEmulation
+	// NetworkIntercept captures matching browser requests/responses during headless execution.
+	NetworkIntercept *fetch.NetworkInterceptConfig
 	// RobotsCache is an optional cache for robots.txt compliance checking.
 	// If nil, robots.txt is not checked.
 	RobotsCache *Cache

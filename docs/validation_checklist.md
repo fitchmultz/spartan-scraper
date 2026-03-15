@@ -7,6 +7,7 @@ This checklist is designed for a quick, high-confidence validation pass.
 ```bash
 git clone <repo-url>
 cd spartan-scraper
+make verify-toolchain
 make ci-pr
 ```
 

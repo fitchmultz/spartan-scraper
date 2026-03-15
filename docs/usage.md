@@ -743,6 +743,12 @@ Important endpoint groups:
 
 `GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls.
 
+Webhook contract notes:
+
+- Non-export webhook events are delivered as JSON bodies matching the `WebhookPayload` schema in `api/openapi.yaml`.
+- `export_completed` deliveries now use one explicit multipart contract everywhere direct/scheduled exports emit them: the request body is `multipart/form-data` with a JSON `metadata` part and an `export` file part containing the rendered export bytes.
+- Export/job webhook metadata no longer exposes host-local filesystem paths; consumers should use `resultUrl` when they need to fetch persisted job results.
+
 Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts:
 
 - `/v1/ai/extract-preview`
@@ -882,12 +888,14 @@ Repo-local AI defaults live in `.env` and `config/pi-routes.json`.
 Required local gate:
 
 ```bash
+make verify-toolchain
 make ci
 ```
 
 Useful commands:
 
 ```bash
+make verify-toolchain
 make install
 make generate
 make build

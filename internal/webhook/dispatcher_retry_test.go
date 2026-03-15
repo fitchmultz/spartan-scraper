@@ -48,8 +48,12 @@ func TestDispatch_RetryOnFailure(t *testing.T) {
 	})
 
 	payload := testPayload()
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
+	}
 
-	err := d.dispatchWithRetry(context.Background(), server.URL, payload, "")
+	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
 
 	if err != nil {
 		t.Errorf("expected success after retries, got error: %v", err)
@@ -76,8 +80,12 @@ func TestDispatch_ExhaustedRetries(t *testing.T) {
 	})
 
 	payload := testPayload()
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
+	}
 
-	err := d.dispatchWithRetry(context.Background(), server.URL, payload, "")
+	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
 
 	if err == nil {
 		t.Error("expected error after exhausted retries")
@@ -105,8 +113,12 @@ func TestDispatch_Timeout(t *testing.T) {
 	})
 
 	payload := testPayload()
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
+	}
 
-	err := d.dispatchWithRetry(context.Background(), server.URL, payload, "")
+	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
 
 	if err == nil {
 		t.Error("expected timeout error")
@@ -130,6 +142,10 @@ func TestDispatch_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	payload := testPayload()
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
+	}
 
 	// Cancel context after a short delay
 	go func() {
@@ -137,7 +153,7 @@ func TestDispatch_ContextCancellation(t *testing.T) {
 		cancel()
 	}()
 
-	err := d.dispatchWithRetry(ctx, server.URL, payload, "")
+	err = d.dispatchWithRetry(ctx, server.URL, request, "")
 
 	if err == nil {
 		t.Error("expected context cancellation error")

@@ -27,7 +27,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"sync/atomic"
 	"time"
 
@@ -58,7 +60,11 @@ const (
 	EventVisualChanged   EventType = "visual.changed"
 )
 
-// Payload represents the webhook notification body.
+// Payload represents webhook event metadata.
+//
+// Non-export events are delivered as a JSON body containing this payload.
+// Export-completed events are delivered as multipart/form-data with this payload
+// serialized in the `metadata` part and the rendered export bytes in the `export` part.
 type Payload struct {
 	EventID     string     `json:"eventId"`
 	EventType   EventType  `json:"eventType"`
@@ -68,7 +74,7 @@ type Payload struct {
 	Status      string     `json:"status"`
 	PrevStatus  string     `json:"prevStatus,omitempty"`
 	Error       string     `json:"error,omitempty"`
-	ResultPath  string     `json:"resultPath,omitempty"`
+	ResultURL   string     `json:"resultUrl,omitempty"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
 
 	// Content change fields (populated when EventType is EventContentChanged)
@@ -80,8 +86,6 @@ type Payload struct {
 	Selector     string `json:"selector,omitempty"`
 
 	// Visual change fields (populated when EventType is EventVisualChanged)
-	ScreenshotPath     string  `json:"screenshotPath,omitempty"`
-	VisualDiffPath     string  `json:"visualDiffPath,omitempty"`
 	VisualHash         string  `json:"visualHash,omitempty"`
 	PreviousVisualHash string  `json:"previousVisualHash,omitempty"`
 	VisualSimilarity   float64 `json:"visualSimilarity,omitempty"`
@@ -103,9 +107,19 @@ type Payload struct {
 
 	// Export completed fields (populated when EventType is EventExportCompleted)
 	ExportFormat string `json:"exportFormat,omitempty"`
-	ExportPath   string `json:"exportPath,omitempty"`
+	Filename     string `json:"filename,omitempty"`
+	ContentType  string `json:"contentType,omitempty"`
 	RecordCount  int    `json:"recordCount,omitempty"`
 	ExportSize   int64  `json:"exportSize,omitempty"`
+}
+
+type deliveryRequest struct {
+	EventID     string
+	EventType   EventType
+	JobID       string
+	ContentType string
+	Body        []byte
+	Headers     map[string]string
 }
 
 // Config for webhook dispatcher.
@@ -205,42 +219,163 @@ func (d *Dispatcher) Store() *Store {
 	return d.store
 }
 
-// Dispatch sends a webhook notification asynchronously.
+// Dispatch sends a JSON webhook notification asynchronously.
 // It executes in a goroutine and returns immediately.
 // The secret parameter overrides the dispatcher's default secret if non-empty.
 // URLs are validated against SSRF attacks before dispatching.
 // When the concurrency limit is reached, dispatches are dropped after a timeout.
 func (d *Dispatcher) Dispatch(ctx context.Context, url string, payload Payload, secret string) {
-	// Validate URL against SSRF before dispatching (keeps invalid URLs from consuming resources)
+	go func() {
+		_ = d.Deliver(ctx, url, payload, secret)
+	}()
+}
+
+// Deliver sends a JSON webhook notification synchronously and returns the delivery result.
+// The secret parameter overrides the dispatcher's default secret if non-empty.
+// URLs are validated against SSRF attacks before dispatching.
+// When the concurrency limit is reached, delivery fails after a timeout.
+func (d *Dispatcher) Deliver(ctx context.Context, url string, payload Payload, secret string) error {
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		return err
+	}
+	return d.deliverRequest(ctx, url, request, secret)
+}
+
+// DispatchExport sends an export-completed webhook asynchronously using the shared
+// multipart export-delivery contract.
+func (d *Dispatcher) DispatchExport(ctx context.Context, url string, payload Payload, content []byte, secret string) {
+	go func() {
+		_ = d.DeliverExport(ctx, url, payload, content, secret)
+	}()
+}
+
+// DeliverExport sends an export-completed webhook synchronously using the shared
+// multipart export-delivery contract.
+func (d *Dispatcher) DeliverExport(ctx context.Context, url string, payload Payload, content []byte, secret string) error {
+	request, err := exportDeliveryRequest(payload, content)
+	if err != nil {
+		return err
+	}
+	return d.deliverRequest(ctx, url, request, secret)
+}
+
+func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request deliveryRequest, secret string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	if err := ValidateURL(url, d.allowInternal); err != nil {
 		slog.Error("webhook URL failed SSRF validation",
 			"url", SanitizeURL(url),
-			"jobID", payload.JobID,
+			"jobID", request.JobID,
 			"error", apperrors.SafeMessage(err))
-		return
+		return err
 	}
 
-	// Try to acquire semaphore with timeout
+	release, err := d.acquireDispatchSlot(ctx, request, url)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	return d.dispatchWithRetry(ctx, url, request, secret)
+}
+
+func (d *Dispatcher) acquireDispatchSlot(ctx context.Context, request deliveryRequest, url string) (func(), error) {
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+
 	select {
 	case d.sem <- struct{}{}:
-		// Acquired slot, proceed with dispatch
-		go func() {
-			defer func() { <-d.sem }() // Release slot when done
-			d.dispatchWithRetry(ctx, url, payload, secret)
-		}()
+		return func() { <-d.sem }, nil
 	case <-ctx.Done():
-		// Context cancelled before acquiring
 		slog.Warn("webhook dispatch canceled - context done",
-			"jobID", payload.JobID,
-			"eventType", payload.EventType)
-	case <-time.After(5 * time.Second):
-		// Could not acquire semaphore in time
+			"jobID", request.JobID,
+			"eventType", request.EventType)
+		return nil, ctx.Err()
+	case <-timer.C:
 		d.droppedCount.Add(1)
+		err := apperrors.Internal("webhook dispatch concurrency limit reached")
 		slog.Error("webhook dispatch dropped - concurrency limit reached",
-			"jobID", payload.JobID,
-			"eventType", payload.EventType,
+			"jobID", request.JobID,
+			"eventType", request.EventType,
 			"url", SanitizeURL(url))
+		return nil, err
 	}
+}
+
+func jsonDeliveryRequest(payload Payload) (deliveryRequest, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return deliveryRequest{}, fmt.Errorf("marshal payload: %w", err)
+	}
+	return deliveryRequest{
+		EventID:     payload.EventID,
+		EventType:   payload.EventType,
+		JobID:       payload.JobID,
+		ContentType: "application/json",
+		Body:        body,
+		Headers: map[string]string{
+			"X-Spartan-Webhook-Payload-Type": "event-json",
+			"X-Spartan-Webhook-Event-Type":   string(payload.EventType),
+		},
+	}, nil
+}
+
+func exportDeliveryRequest(payload Payload, content []byte) (deliveryRequest, error) {
+	if payload.EventType != EventExportCompleted {
+		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires eventType export.completed")
+	}
+	if payload.Filename == "" {
+		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires filename metadata")
+	}
+	if payload.ContentType == "" {
+		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires contentType metadata")
+	}
+	if payload.ExportSize == 0 {
+		payload.ExportSize = int64(len(content))
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	metadataHeaders := textproto.MIMEHeader{}
+	metadataHeaders.Set("Content-Disposition", `form-data; name="metadata"`)
+	metadataHeaders.Set("Content-Type", "application/json")
+	metadataPart, err := writer.CreatePart(metadataHeaders)
+	if err != nil {
+		return deliveryRequest{}, fmt.Errorf("create metadata part: %w", err)
+	}
+	if err := json.NewEncoder(metadataPart).Encode(payload); err != nil {
+		return deliveryRequest{}, fmt.Errorf("encode metadata part: %w", err)
+	}
+
+	exportHeaders := textproto.MIMEHeader{}
+	exportHeaders.Set("Content-Disposition", fmt.Sprintf(`form-data; name="export"; filename=%q`, payload.Filename))
+	exportHeaders.Set("Content-Type", payload.ContentType)
+	exportPart, err := writer.CreatePart(exportHeaders)
+	if err != nil {
+		return deliveryRequest{}, fmt.Errorf("create export part: %w", err)
+	}
+	if _, err := exportPart.Write(content); err != nil {
+		return deliveryRequest{}, fmt.Errorf("write export part: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return deliveryRequest{}, fmt.Errorf("close multipart writer: %w", err)
+	}
+
+	return deliveryRequest{
+		EventID:     payload.EventID,
+		EventType:   payload.EventType,
+		JobID:       payload.JobID,
+		ContentType: writer.FormDataContentType(),
+		Body:        body.Bytes(),
+		Headers: map[string]string{
+			"X-Spartan-Webhook-Payload-Type": "export-multipart",
+			"X-Spartan-Webhook-Event-Type":   string(payload.EventType),
+		},
+	}, nil
 }
 
 // DroppedCount returns the number of webhooks dropped due to concurrency limit.
@@ -250,13 +385,7 @@ func (d *Dispatcher) DroppedCount() int64 {
 
 // dispatchWithRetry attempts delivery with exponential backoff.
 // This method should be called in a goroutine as it blocks during retries.
-func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload Payload, secret string) error {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("failed to marshal webhook payload", "error", err, "jobID", payload.JobID)
-		return fmt.Errorf("marshal payload: %w", err)
-	}
-
+func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, request deliveryRequest, secret string) error {
 	// Use per-dispatch secret if provided, otherwise fall back to dispatcher secret
 	useSecret := secret
 	if useSecret == "" {
@@ -270,37 +399,40 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 		if err != nil {
 			slog.Error("failed to generate delivery record ID, continuing without tracking",
 				"error", err,
-				"jobID", payload.JobID,
-				"eventType", payload.EventType)
+				"jobID", request.JobID,
+				"eventType", request.EventType)
 		} else {
 			record = &DeliveryRecord{
 				ID:        id,
-				EventID:   payload.EventID,
-				EventType: payload.EventType,
-				JobID:     payload.JobID,
+				EventID:   request.EventID,
+				EventType: request.EventType,
+				JobID:     request.JobID,
 				URL:       url,
 				Status:    DeliveryStatusPending,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			}
 			if err := d.store.CreateRecord(ctx, record); err != nil {
-				slog.Warn("failed to create delivery record", "error", err, "jobID", payload.JobID)
+				slog.Warn("failed to create delivery record", "error", err, "jobID", request.JobID)
 				// Continue without tracking
 				record = nil
 			}
 		}
 	}
 
-	var lastErr error
+	var (
+		lastErr      error
+		err          error
+		responseCode int
+	)
 	delay := d.baseDelay
-	var responseCode int
 
 	for attempt := 1; attempt <= d.maxRetries; attempt++ {
-		err, responseCode = d.attemptDelivery(ctx, url, body, useSecret)
+		err, responseCode = d.attemptDelivery(ctx, url, request, useSecret)
 		if err == nil {
 			slog.Debug("webhook delivered successfully",
-				"jobID", payload.JobID,
-				"eventType", payload.EventType,
+				"jobID", request.JobID,
+				"eventType", request.EventType,
 				"attempt", attempt,
 				"url", url,
 			)
@@ -312,7 +444,7 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 				record.Attempts = attempt
 				record.ResponseCode = responseCode
 				if err := d.store.UpdateRecord(ctx, record); err != nil {
-					slog.Warn("failed to update delivery record", "error", err, "jobID", payload.JobID)
+					slog.Warn("failed to update delivery record", "error", err, "jobID", request.JobID)
 				}
 			}
 			return nil
@@ -320,8 +452,8 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 
 		lastErr = err
 		slog.Warn("webhook delivery failed",
-			"jobID", payload.JobID,
-			"eventType", payload.EventType,
+			"jobID", request.JobID,
+			"eventType", request.EventType,
 			"attempt", attempt,
 			"maxRetries", d.maxRetries,
 			"error", err,
@@ -333,20 +465,20 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 			record.Attempts = attempt
 			record.LastError = err.Error()
 			if err := d.store.UpdateRecord(ctx, record); err != nil {
-				slog.Warn("failed to update delivery record", "error", err, "jobID", payload.JobID)
+				slog.Warn("failed to update delivery record", "error", err, "jobID", request.JobID)
 			}
 		}
 
 		if attempt < d.maxRetries {
 			select {
 			case <-ctx.Done():
-				slog.Debug("webhook delivery canceled", "jobID", payload.JobID, "attempt", attempt)
+				slog.Debug("webhook delivery canceled", "jobID", request.JobID, "attempt", attempt)
 				// Update record on cancellation
 				if record != nil {
 					record.Status = DeliveryStatusFailed
 					record.LastError = ctx.Err().Error()
 					if err := d.store.UpdateRecord(ctx, record); err != nil {
-						slog.Warn("failed to update delivery record", "error", err, "jobID", payload.JobID)
+						slog.Warn("failed to update delivery record", "error", err, "jobID", request.JobID)
 					}
 				}
 				return ctx.Err()
@@ -361,8 +493,8 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 	}
 
 	slog.Error("webhook delivery exhausted all retries",
-		"jobID", payload.JobID,
-		"eventType", payload.EventType,
+		"jobID", request.JobID,
+		"eventType", request.EventType,
 		"attempts", d.maxRetries,
 		"lastError", lastErr,
 		"url", url,
@@ -374,7 +506,7 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 		record.LastError = lastErr.Error()
 		record.Attempts = d.maxRetries
 		if err := d.store.UpdateRecord(ctx, record); err != nil {
-			slog.Warn("failed to update delivery record", "error", err, "jobID", payload.JobID)
+			slog.Warn("failed to update delivery record", "error", err, "jobID", request.JobID)
 		}
 	}
 
@@ -383,20 +515,23 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, payload 
 
 // attemptDelivery makes a single HTTP POST attempt.
 // Returns the error (if any) and the HTTP response code.
-func (d *Dispatcher) attemptDelivery(ctx context.Context, url string, body []byte, secret string) (error, int) {
+func (d *Dispatcher) attemptDelivery(ctx context.Context, url string, request deliveryRequest, secret string) (error, int) {
 	reqCtx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, bytes.NewReader(request.Body))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err), 0
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", request.ContentType)
 	req.Header.Set("User-Agent", "SpartanScraper-Webhook/1.0")
+	for key, value := range request.Headers {
+		req.Header.Set(key, value)
+	}
 
 	if secret != "" {
-		sig := d.signPayload(body, secret)
+		sig := d.signPayload(request.Body, secret)
 		req.Header.Set("X-Webhook-Signature", sig)
 	}
 

@@ -7,15 +7,17 @@ Thank you for your interest in contributing! This document provides guidelines a
 ### Prerequisites
 
 - Go 1.26.1
-- Node 24.14.0
-- pnpm 10.30.3
+- Node 25.8.1
+- pnpm 10.32.1
+- A `.tool-versions`-compatible version manager (for example `mise`) or those exact versions already active on `PATH`
 
 ### Quick Setup
 
 ```bash
-make install          # Download Go deps + install pnpm deps
+make verify-toolchain # Print and enforce the exact Go/Node/pnpm contract from .tool-versions
+make install          # Download Go deps + install pnpm deps for web + pi-bridge
 make generate         # Generate TS API client from openapi.yaml
-make build            # Build Go binary + web + extension assets
+make build            # Build Go binary + web + pi-bridge assets
 make install-bin      # Optional: install built binary to ~/.local/bin
 ```
 
@@ -32,15 +34,16 @@ After setup, verify the installation:
 The Makefile is the canonical interface for all development tasks:
 
 ```bash
+make verify-toolchain # Print and enforce the exact Go/Node/pnpm contract from .tool-versions
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
 make secret-scan      # Deep git-history secret scan (manual/release-tier)
-make install          # Download Go deps + install pnpm deps
-make update           # Update all Go/pnpm deps to latest (review before committing)
+make install          # Download Go deps + install pnpm deps for web + pi-bridge
+make update           # Update all Go deps + pnpm deps (web + pi-bridge) to latest, majors included
 make generate         # Generate TS API client from openapi.yaml
 make format           # Format Go (gofmt) and TS (biome)
-make type-check       # Type-check web + extension TS
+make type-check       # Type-check web TS
 make lint             # Lint Go (go vet) and TS (biome)
-make build            # Build Go binary + web + extension assets (no install side effects)
+make build            # Build Go binary + web + pi-bridge assets (no install side effects)
 make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest workers capped by CI_VITEST_MAX_WORKERS)

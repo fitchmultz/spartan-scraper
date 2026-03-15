@@ -261,8 +261,6 @@ func (w *Watcher) dispatchWebhook(watch *Watch, result *WatchCheckResult, eventT
 		DiffText:           result.DiffText,
 		DiffHTML:           result.DiffHTML,
 		Selector:           result.Selector,
-		ScreenshotPath:     result.ScreenshotPath,
-		VisualDiffPath:     result.VisualDiffPath,
 		VisualHash:         result.VisualHash,
 		PreviousVisualHash: result.PreviousVisualHash,
 		VisualSimilarity:   result.VisualSimilarity,

@@ -234,19 +234,22 @@ func (et *ExportTrigger) matchSchedule(job *model.Job, schedule *ExportSchedule)
 
 // executeExport performs the actual export.
 func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, schedule *ExportSchedule) error {
-	// Create history record
 	record, err := et.historyStore.CreateRecord(schedule.ID, job.ID, schedule.Export.DestinationType)
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to create export record", err)
 	}
+	return et.executeExportAttempt(ctx, job, schedule, record)
+}
 
+func (et *ExportTrigger) executeExportAttempt(ctx context.Context, job *model.Job, schedule *ExportSchedule, record *ExportRecord) error {
 	slog.Info("starting automated export",
 		"scheduleID", schedule.ID,
 		"jobID", job.ID,
+		"recordID", record.ID,
 		"destination", schedule.Export.DestinationType,
-		"format", schedule.Export.Format)
+		"format", schedule.Export.Format,
+		"retryCount", record.RetryCount)
 
-	// Perform export based on destination type
 	var exportErr error
 	switch schedule.Export.DestinationType {
 	case "local":
@@ -258,12 +261,10 @@ func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, sche
 	}
 
 	if exportErr != nil {
-		// Mark as failed and potentially retry
 		if err := et.historyStore.MarkFailed(record.ID, exportErr.Error()); err != nil {
 			slog.Error("failed to mark export as failed", "recordID", record.ID, "error", err)
 		}
 
-		// Retry if under max retries
 		if record.RetryCount < schedule.Retry.GetMaxRetries() {
 			return et.retryExport(ctx, job, schedule, record)
 		}
@@ -339,47 +340,55 @@ func (et *ExportTrigger) exportToWebhook(ctx context.Context, job *model.Job, sc
 	if schedule.Export.WebhookURL == "" {
 		return apperrors.Validation("webhook URL is required for webhook export")
 	}
+	if et.webhookDispatcher == nil {
+		return apperrors.Internal("webhook delivery unavailable: dispatcher is not configured")
+	}
 
-	// Read job results
 	resultData, err := et.readJobResults(job)
 	if err != nil {
 		return err
 	}
 
-	// Export to buffer to get formatted output
-	var buf bytes.Buffer
-	if err := exporter.ExportStreamWithShapeAndTransform(*job, bytes.NewReader(resultData), schedule.Export.Format, schedule.Export.Shape, schedule.Export.Transform, &buf); err != nil {
+	rendered, err := exporter.RenderResultExport(*job, resultData, exporter.ResultExportConfig{
+		Format:    schedule.Export.Format,
+		Shape:     schedule.Export.Shape,
+		Transform: schedule.Export.Transform,
+	})
+	if err != nil {
 		return err
 	}
 
-	// Send webhook if dispatcher is available
-	if et.webhookDispatcher != nil {
-		webhookPayload := webhook.Payload{
-			EventID:      record.ID,
-			EventType:    webhook.EventExportCompleted,
-			Timestamp:    time.Now(),
-			JobID:        job.ID,
-			JobKind:      string(job.Kind),
-			Status:       string(job.Status),
-			ExportFormat: schedule.Export.Format,
-			ExportPath:   schedule.Export.WebhookURL,
-		}
-		et.webhookDispatcher.Dispatch(ctx, schedule.Export.WebhookURL, webhookPayload, "")
+	webhookPayload := webhook.Payload{
+		EventID:      record.ID,
+		EventType:    webhook.EventExportCompleted,
+		Timestamp:    time.Now(),
+		JobID:        job.ID,
+		JobKind:      string(job.Kind),
+		Status:       string(job.Status),
+		ResultURL:    "/v1/jobs/" + job.ID + "/results",
+		ExportFormat: rendered.Format,
+		Filename:     rendered.Filename,
+		ContentType:  rendered.ContentType,
+		RecordCount:  rendered.RecordCount,
+		ExportSize:   rendered.Size,
+	}
+	if err := et.webhookDispatcher.DeliverExport(ctx, schedule.Export.WebhookURL, webhookPayload, rendered.Content, ""); err != nil {
+		return err
 	}
 
-	// Mark as successful
-	return et.historyStore.MarkSuccess(record.ID, int64(buf.Len()), 0)
+	// Mark as successful only after delivery completes.
+	return et.historyStore.MarkSuccess(record.ID, rendered.Size, rendered.RecordCount)
 }
 
 // retryExport retries a failed export with exponential backoff.
 func (et *ExportTrigger) retryExport(ctx context.Context, job *model.Job, schedule *ExportSchedule, record *ExportRecord) error {
-	// Increment retry count
+	nextRetryCount := record.RetryCount + 1
+	record.RetryCount = nextRetryCount
 	if err := et.historyStore.IncrementRetry(record.ID); err != nil {
 		slog.Error("failed to increment retry count", "recordID", record.ID, "error", err)
 	}
 
-	// Calculate delay with exponential backoff
-	delay := schedule.Retry.GetBaseDelay() * time.Duration(1<<record.RetryCount)
+	delay := schedule.Retry.GetBaseDelay() * time.Duration(1<<(nextRetryCount-1))
 	if delay > 30*time.Second {
 		delay = 30 * time.Second
 	}
@@ -388,14 +397,13 @@ func (et *ExportTrigger) retryExport(ctx context.Context, job *model.Job, schedu
 		"scheduleID", schedule.ID,
 		"jobID", job.ID,
 		"recordID", record.ID,
-		"retryCount", record.RetryCount+1,
+		"retryCount", nextRetryCount,
 		"maxRetries", schedule.Retry.GetMaxRetries(),
 		"delay", delay)
 
-	// Wait and retry
 	select {
 	case <-time.After(delay):
-		return et.executeExport(ctx, job, schedule)
+		return et.executeExportAttempt(ctx, job, schedule, record)
 	case <-ctx.Done():
 		return ctx.Err()
 	}

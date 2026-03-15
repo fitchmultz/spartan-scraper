@@ -9,8 +9,9 @@ Start the local server, open the UI, run one scrape, and confirm that Spartan Sc
 ## Prerequisites
 
 - Go `1.26.1`
-- Node `24.14.0`
-- pnpm `10.30.3`
+- Node `25.8.1`
+- pnpm `10.32.1`
+- A `.tool-versions`-compatible version manager installed or the exact versions already present on `PATH`
 
 ## Steps
 
@@ -18,6 +19,7 @@ Start the local server, open the UI, run one scrape, and confirm that Spartan Sc
 git clone <repo-url>
 cd spartan-scraper
 
+make verify-toolchain
 make install
 make generate
 make build

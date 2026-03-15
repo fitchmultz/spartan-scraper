@@ -5090,7 +5090,12 @@ components:
           description: Webhook URL to receive job notifications
         events:
           type: array
-          description: 'Events to subscribe to (default: [''completed''])'
+          description: |
+            Events to subscribe to (default: ['completed']).
+
+            `export_completed` deliveries use the multipart export contract:
+            the request body is `multipart/form-data` with a JSON `metadata`
+            part and an `export` file part containing the rendered bytes.
           items:
             type: string
             enum:
@@ -5356,7 +5361,13 @@ components:
           description: Similarity score between screenshots (0-1)
     WebhookPayload:
       type: object
-      description: Payload sent to webhook endpoints on job events
+      description: |
+        Webhook event metadata.
+
+        Non-export events are delivered as a JSON request body matching this schema.
+        `export.completed` deliveries use `multipart/form-data` with a `metadata`
+        part containing this schema and an `export` file part containing the
+        rendered export bytes.
       properties:
         eventId:
           type: string
@@ -5402,9 +5413,9 @@ components:
         error:
           type: string
           description: Error message if job failed
-        resultPath:
+        resultUrl:
           type: string
-          description: Path to job results file
+          description: Relative API URL for retrieving persisted job results
         completedAt:
           type: string
           format: date-time
@@ -5427,12 +5438,6 @@ components:
         selector:
           type: string
           description: CSS selector for tracked element
-        screenshotPath:
-          type: string
-          description: Path to current screenshot
-        visualDiffPath:
-          type: string
-          description: Path to visual diff image
         visualHash:
           type: string
           description: Perceptual hash of current screenshot
@@ -5479,9 +5484,12 @@ components:
         exportFormat:
           type: string
           description: Export format (json, csv, etc.)
-        exportPath:
+        filename:
           type: string
-          description: Path to exported file
+          description: Delivered export filename (for export.completed)
+        contentType:
+          type: string
+          description: Delivered export content type (for export.completed)
         recordCount:
           type: integer
           description: Number of records exported
@@ -5489,6 +5497,19 @@ components:
           type: integer
           format: int64
           description: Size of exported file in bytes
+    WebhookExportDelivery:
+      type: object
+      description: |
+        Multipart webhook delivery used when `eventType` is `export.completed`.
+        The `metadata` part is JSON matching `WebhookPayload`; the `export` part
+        contains the rendered export bytes.
+      properties:
+        metadata:
+          "$ref": "#/components/schemas/WebhookPayload"
+        export:
+          type: string
+          format: binary
+          description: Rendered export bytes
     ScrapeRequest:
       type: object
       required:

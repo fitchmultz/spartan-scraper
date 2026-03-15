@@ -47,6 +47,10 @@ type Request struct {
 	MetricsCallback fetch.MetricsCallback
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// Device emulation for responsive/mobile content.
+	Device *fetch.DeviceEmulation
+	// NetworkIntercept captures matching browser requests/responses during headless execution.
+	NetworkIntercept *fetch.NetworkInterceptConfig
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
 	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
@@ -135,6 +139,8 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		IfNoneMatch:      ifNoneMatch,
 		IfModifiedSince:  ifModifiedSince,
 		Screenshot:       req.Screenshot,
+		Device:           req.Device,
+		NetworkIntercept: req.NetworkIntercept,
 	}
 
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindScrape))

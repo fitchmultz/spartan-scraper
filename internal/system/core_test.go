@@ -183,6 +183,7 @@ func TestScheduleExportAndWebSocketCoreFlow(t *testing.T) {
 	})
 	waitForJobs(t, client, port, 2)
 	latestID := latestJobID(t, client, port)
+	waitForJob(t, client, port, latestID)
 	assertManifestExists(t, dataDir, latestID)
 
 	cancel()

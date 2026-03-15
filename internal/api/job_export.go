@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -47,6 +48,27 @@ func (s *Server) handleJobExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	webhookCfg, shouldDispatchWebhook := s.exportCompletedWebhookConfig(job)
+	if shouldDispatchWebhook {
+		raw, err := os.ReadFile(job.ResultPath)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		rendered, err := exporter.RenderResultExport(job, raw, req)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", rendered.ContentType)
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, rendered.Filename))
+		if _, err := w.Write(rendered.Content); err != nil {
+			return
+		}
+		s.dispatchExportCompletedWebhook(job, webhookCfg, rendered)
+		return
+	}
+
 	f, err := os.Open(job.ResultPath)
 	if err != nil {
 		writeError(w, r, err)
@@ -60,27 +82,33 @@ func (s *Server) handleJobExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-
-	s.dispatchExportCompletedWebhook(r, job, req)
 }
 
-func (s *Server) dispatchExportCompletedWebhook(r *http.Request, job model.Job, exportConfig exporter.ResultExportConfig) {
+func (s *Server) exportCompletedWebhookConfig(job model.Job) (*model.WebhookSpec, bool) {
 	if s.webhookDispatcher == nil {
-		return
+		return nil, false
 	}
 	webhookCfg := job.ExtractWebhookConfig()
 	if webhookCfg == nil || !webhook.ShouldSendEvent(webhook.EventExportCompleted, "", webhookCfg.Events) {
-		return
+		return nil, false
 	}
+	return webhookCfg, true
+}
+
+func (s *Server) dispatchExportCompletedWebhook(job model.Job, webhookCfg *model.WebhookSpec, rendered exporter.RenderedResultExport) {
 	payload := webhook.Payload{
-		EventID:      fmt.Sprintf("%s-export-%s", job.ID, exportConfig.Format),
+		EventID:      fmt.Sprintf("%s-export-%s", job.ID, rendered.Format),
 		EventType:    webhook.EventExportCompleted,
 		Timestamp:    time.Now(),
 		JobID:        job.ID,
 		JobKind:      string(job.Kind),
 		Status:       string(job.Status),
-		ExportFormat: exportConfig.Format,
-		ExportPath:   job.ResultPath,
+		ResultURL:    fmt.Sprintf("/v1/jobs/%s/results", job.ID),
+		ExportFormat: rendered.Format,
+		Filename:     rendered.Filename,
+		ContentType:  rendered.ContentType,
+		RecordCount:  rendered.RecordCount,
+		ExportSize:   rendered.Size,
 	}
-	s.webhookDispatcher.Dispatch(r.Context(), webhookCfg.URL, payload, webhookCfg.Secret)
+	s.webhookDispatcher.DispatchExport(context.Background(), webhookCfg.URL, payload, rendered.Content, webhookCfg.Secret)
 }

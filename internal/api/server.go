@@ -15,24 +15,32 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 	"github.com/gobwas/ws"
 )
 
+type ExportScheduleRuntime interface {
+	AddSchedule(schedule *scheduler.ExportSchedule)
+	UpdateSchedule(schedule *scheduler.ExportSchedule)
+	RemoveSchedule(scheduleID string)
+}
+
 type Server struct {
-	manager            *jobs.Manager
-	store              *store.Store
-	cfg                config.Config
-	wsHub              *Hub
-	metricsCollector   *MetricsCollector
-	webhookDispatcher  *webhook.Dispatcher
-	analyticsCollector *analytics.Collector
-	analyticsService   *analytics.Service
-	aiExtractor        *extract.AIExtractor
-	aiAuthoring        *aiauthoring.Service
-	ctx                context.Context
-	cancel             context.CancelFunc
+	manager               *jobs.Manager
+	store                 *store.Store
+	cfg                   config.Config
+	wsHub                 *Hub
+	metricsCollector      *MetricsCollector
+	webhookDispatcher     *webhook.Dispatcher
+	exportScheduleRuntime ExportScheduleRuntime
+	analyticsCollector    *analytics.Collector
+	analyticsService      *analytics.Service
+	aiExtractor           *extract.AIExtractor
+	aiAuthoring           *aiauthoring.Service
+	ctx                   context.Context
+	cancel                context.CancelFunc
 }
 
 func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Server {
@@ -133,6 +141,16 @@ func (a *metricsCollectorAdapter) GetSnapshot() analytics.MetricsSnapshot {
 // GetMetricsCollector returns the server's metrics collector for external registration
 func (s *Server) GetMetricsCollector() *MetricsCollector {
 	return s.metricsCollector
+}
+
+// WebhookDispatcher returns the server's shared webhook dispatcher.
+func (s *Server) WebhookDispatcher() *webhook.Dispatcher {
+	return s.webhookDispatcher
+}
+
+// SetExportScheduleRuntime connects the HTTP handlers to the live export-schedule runtime.
+func (s *Server) SetExportScheduleRuntime(runtime ExportScheduleRuntime) {
+	s.exportScheduleRuntime = runtime
 }
 
 // Stop gracefully shuts down the server's background services.

@@ -10,7 +10,7 @@ This document describes the local release process for Spartan Scraper.
 
 ## Prerequisites
 
-- Toolchain installed per `.tool-versions`.
+- Toolchain installed per `.tool-versions` and verified with `make verify-toolchain`.
 - Clean working tree (`git status` shows no unstaged/uncommitted changes).
 - Local CI is green (`make ci-pr`, `make ci`, and `make ci-slow`).
 - `docs/validation_checklist.md` has been walked on a fresh data directory.
@@ -24,6 +24,7 @@ This document describes the local release process for Spartan Scraper.
 2. **Run full local verification**
 
    ```bash
+   make verify-toolchain
    make ci-pr
    make ci
    make ci-slow          # provisions Playwright for clean-machine heavy validation

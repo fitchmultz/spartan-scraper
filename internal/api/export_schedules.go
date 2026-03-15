@@ -195,9 +195,8 @@ func (s *Server) createExportSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Notify export trigger if running
-	if s.manager != nil {
-		// The export trigger will be notified via reload
+	if s.exportScheduleRuntime != nil {
+		s.exportScheduleRuntime.AddSchedule(created)
 	}
 
 	writeCreatedJSON(w, toExportScheduleResponse(*created))
@@ -259,6 +258,10 @@ func (s *Server) updateExportSchedule(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 
+	if s.exportScheduleRuntime != nil {
+		s.exportScheduleRuntime.UpdateSchedule(updated)
+	}
+
 	writeJSON(w, toExportScheduleResponse(*updated))
 }
 
@@ -271,6 +274,10 @@ func (s *Server) deleteExportSchedule(w http.ResponseWriter, r *http.Request, id
 		}
 		writeError(w, r, err)
 		return
+	}
+
+	if s.exportScheduleRuntime != nil {
+		s.exportScheduleRuntime.RemoveSchedule(id)
 	}
 
 	writeNoContent(w)

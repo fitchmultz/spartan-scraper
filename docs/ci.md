@@ -2,6 +2,8 @@
 
 This repository uses **local CI as the source of truth** through Makefile targets.
 
+`.tool-versions` is the authoritative Go/Node/pnpm contract for both local runs and GitHub workflows.
+
 ## Why this structure
 
 - Keep PR checks deterministic and resource-aware.
@@ -20,6 +22,7 @@ This repository uses **local CI as the source of truth** through Makefile target
 Use from a **clean git state**.
 
 ```bash
+make verify-toolchain
 make ci-pr
 ```
 
@@ -27,6 +30,7 @@ Runs:
 
 ```text
 verify-clean-tree
+→ verify-toolchain
 → audit-public
 → install
 → generate
@@ -39,11 +43,12 @@ verify-clean-tree
 ```
 
 Use this to ensure generation/format steps do not create uncommitted drift.
-`install` uses lockfile-strict dependency resolution (`pnpm install --frozen-lockfile`) for deterministic results.
+`install` uses lockfile-strict dependency resolution (`pnpm install --frozen-lockfile`) for deterministic results across both JavaScript packages (`web` and `tools/pi-bridge`).
 
 ### Full local gate (`make ci`)
 
 ```bash
+make verify-toolchain
 make ci
 ```
 

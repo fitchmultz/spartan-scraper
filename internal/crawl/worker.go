@@ -60,6 +60,8 @@ func processPage(
 		IfNoneMatch:      ifNoneMatch,
 		IfModifiedSince:  ifModifiedSince,
 		Screenshot:       req.Screenshot,
+		Device:           req.Device,
+		NetworkIntercept: req.NetworkIntercept,
 	}
 
 	target := pipeline.NewTarget(fetchReq.URL, string(model.KindCrawl))

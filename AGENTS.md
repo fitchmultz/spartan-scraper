@@ -170,8 +170,8 @@ See `internal/apperrors/README.md` for detailed usage patterns and examples.
 Pinned in `.tool-versions`:
 
 - Go `1.26.1`
-- Node `24.14.0`
-- pnpm `10.30.3`
+- Node `25.8.1`
+- pnpm `10.32.1`
 
 ## Commit & Pull Request Guidelines
 

@@ -39,6 +39,10 @@ type Request struct {
 	TemplateRegistry *extract.TemplateRegistry
 	// Screenshot config for headless fetchers (chromedp, playwright).
 	Screenshot *fetch.ScreenshotConfig
+	// Device emulation for responsive/mobile content.
+	Device *fetch.DeviceEmulation
+	// NetworkIntercept captures matching browser requests/responses during headless execution.
+	NetworkIntercept *fetch.NetworkInterceptConfig
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
 	// AIExtractor enables optional AI-assisted extraction during evidence gathering.

@@ -28,6 +28,7 @@ Planning and future work live in [docs/roadmap.md](docs/roadmap.md). That docume
 git clone <repo-url>
 cd spartan-scraper
 
+make verify-toolchain
 make install
 make generate
 make build
@@ -65,6 +66,7 @@ For a more guided version with expected checkpoints, see [docs/demo.md](docs/dem
 - Unified interfaces: CLI, TUI, and Web UI.
 - Clean API contract (OpenAPI) with generated TS client.
 - Local, self‑hosted, no SaaS dependencies.
+- Webhook integrations that now distinguish JSON job events from multipart export deliveries, so downstream receivers get actual exported bytes on `export.completed` instead of placeholder path metadata.
 
 ## Project Status
 
@@ -79,6 +81,7 @@ go install github.com/fitchmultz/spartan-scraper/cmd/spartan@latest
 # Full local setup (recommended for contributors and operators)
 git clone <repo-url>
 cd spartan-scraper
+make verify-toolchain
 make install
 make generate
 make build
@@ -264,8 +267,10 @@ Repo-local AI defaults live in `.env` and `config/pi-routes.json`. By default Sp
 Pinned in `.tool-versions`:
 
 - Go `1.26.1`
-- Node `24.14.0`
-- pnpm `10.30.3`
+- Node `25.8.1`
+- pnpm `10.32.1`
+
+Use a `.tool-versions`-compatible version manager (for example `mise install`) to provision those exact versions, then run `make verify-toolchain` before build/test work.
 
 ## Local CI
 
@@ -275,12 +280,13 @@ GitHub workflow split:
 - **Nightly/manual heavy checks:** `.github/workflows/ci-slow.yml` (`make ci-slow`, deterministic local-fixture heavy lane that provisions Playwright browsers)
 
 ```bash
-make audit-public  # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
-make secret-scan   # Deep git-history secret scan (manual/nightly release-tier check)
-make ci-pr         # PR-equivalent deterministic gate (requires clean git state)
-make ci            # Full local gate (Go + web install/build/tests)
-make ci-slow       # Deterministic heavy stress/e2e checks (local fixture; provisions Playwright)
-make ci-network     # Optional live-Internet smoke validation
+make verify-toolchain  # Print and enforce the exact Go/Node/pnpm contract from .tool-versions
+make audit-public      # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
+make secret-scan       # Deep git-history secret scan (manual/nightly release-tier check)
+make ci-pr             # PR-equivalent deterministic gate (requires clean git state)
+make ci                # Full local gate (Go + web + pi-bridge install/build/tests)
+make ci-slow           # Deterministic heavy stress/e2e checks (local fixture; provisions Playwright)
+make ci-network        # Optional live-Internet smoke validation
 CI_VITEST_MAX_WORKERS=2 make ci-pr  # Optional local worker cap override
-make ci-manual      # Manual full heavy sweep (ci-slow + ci-network)
+make ci-manual         # Manual full heavy sweep (ci-slow + ci-network)
 ```

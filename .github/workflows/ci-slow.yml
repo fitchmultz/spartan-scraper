@@ -24,25 +24,48 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Read toolchain contract
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          go_version=$(awk '$1=="golang" { print $2 }' .tool-versions)
+          node_version=$(awk '$1=="nodejs" { print $2 }' .tool-versions)
+          pnpm_version=$(awk '$1=="pnpm" { print $2 }' .tool-versions)
+
+          if [[ -z "$go_version" || -z "$node_version" || -z "$pnpm_version" ]]; then
+            echo "Failed to parse .tool-versions" >&2
+            exit 1
+          fi
+
+          {
+            echo "go=$go_version"
+            echo "node=$node_version"
+            echo "pnpm=$pnpm_version"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.6"
+          go-version: ${{ steps.toolchain.outputs.go }}
           cache: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: "10.28.0"
+          version: ${{ steps.toolchain.outputs.pnpm }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "24.13.0"
+          node-version: ${{ steps.toolchain.outputs.node }}
           cache: "pnpm"
           cache-dependency-path: |
             web/pnpm-lock.yaml
-            extensions/pnpm-lock.yaml
+            tools/pi-bridge/pnpm-lock.yaml
+
+      - name: Assert toolchain contract
+        run: make verify-toolchain
 
       - name: Run heavy profile
         run: make ci-slow

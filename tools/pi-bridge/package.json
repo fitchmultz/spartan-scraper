@@ -4,16 +4,17 @@
   "type": "module",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/**/*.test.js"
+    "test": "pnpm run build && node --test dist/**/*.test.js"
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "0.57.1",
-    "@mariozechner/pi-coding-agent": "0.57.1"
+    "@mariozechner/pi-ai": "0.58.3",
+    "@mariozechner/pi-coding-agent": "0.58.3"
   },
   "devDependencies": {
-    "@types/node": "24.3.0",
-    "typescript": "5.9.2"
+    "@types/node": "25.5.0",
+    "typescript": "5.9.3"
   }
 }

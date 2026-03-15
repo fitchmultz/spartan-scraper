@@ -58,17 +58,20 @@ Notes:
 		return 1
 	}
 
-	// Initialize export trigger for automated export scheduling
+	apiServer := api.NewServer(manager, st, cfg)
+
+	// Initialize export trigger for automated export scheduling.
 	exportStorage := scheduler.NewExportStorage(cfg.DataDir)
 	exportHistoryStore := scheduler.NewExportHistoryStore(cfg.DataDir)
-	exportTrigger := scheduler.NewExportTrigger(cfg.DataDir, exportStorage, exportHistoryStore, manager, nil)
+	exportTrigger := scheduler.NewExportTrigger(cfg.DataDir, exportStorage, exportHistoryStore, manager, apiServer.WebhookDispatcher())
+	apiServer.SetExportScheduleRuntime(exportTrigger)
 	if err := exportTrigger.Start(); err != nil {
 		slog.Error("failed to start export trigger", "error", err)
+		apiServer.Stop()
 		return 1
 	}
 	defer exportTrigger.Stop()
 
-	// Connect export trigger to job manager
 	manager.SetExportTrigger(exportTrigger)
 
 	go func() {
@@ -77,7 +80,6 @@ Notes:
 		}
 	}()
 
-	apiServer := api.NewServer(manager, st, cfg)
 	httpServer := newHTTPServer(cfg, apiServer.Routes())
 
 	go func() {

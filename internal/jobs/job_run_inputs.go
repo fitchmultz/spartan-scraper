@@ -29,15 +29,17 @@ import (
 )
 
 type executionConfig struct {
-	RequestID      string
-	Headless       bool
-	UsePlaywright  bool
-	AuthProfile    string
-	Auth           fetch.AuthOptions
-	Extract        extract.ExtractOptions
-	Pipeline       pipeline.Options
-	TimeoutSeconds int
-	Screenshot     *fetch.ScreenshotConfig
+	RequestID        string
+	Headless         bool
+	UsePlaywright    bool
+	AuthProfile      string
+	Auth             fetch.AuthOptions
+	Extract          extract.ExtractOptions
+	Pipeline         pipeline.Options
+	TimeoutSeconds   int
+	Screenshot       *fetch.ScreenshotConfig
+	Device           *fetch.DeviceEmulation
+	NetworkIntercept *fetch.NetworkInterceptConfig
 }
 
 type scrapeExecutionInput struct {
@@ -81,15 +83,17 @@ func decodeExecutionConfig(spec model.ExecutionSpec, requestID string, manager *
 		timeoutSeconds = int(manager.requestTimeout.Seconds())
 	}
 	return executionConfig{
-		RequestID:      requestID,
-		Headless:       spec.Headless,
-		UsePlaywright:  spec.UsePlaywright,
-		AuthProfile:    spec.AuthProfile,
-		Auth:           spec.Auth,
-		Extract:        spec.Extract,
-		Pipeline:       spec.Pipeline,
-		TimeoutSeconds: timeoutSeconds,
-		Screenshot:     spec.Screenshot,
+		RequestID:        requestID,
+		Headless:         spec.Headless,
+		UsePlaywright:    spec.UsePlaywright,
+		AuthProfile:      spec.AuthProfile,
+		Auth:             spec.Auth,
+		Extract:          spec.Extract,
+		Pipeline:         spec.Pipeline,
+		TimeoutSeconds:   timeoutSeconds,
+		Screenshot:       spec.Screenshot,
+		Device:           spec.Device,
+		NetworkIntercept: spec.NetworkIntercept,
 	}
 }
 
@@ -110,21 +114,23 @@ func decodeScrapeExecutionInput(job model.Job, manager *Manager) (scrapeExecutio
 		input.Method = "GET"
 	}
 	createSpec := JobSpec{
-		Kind:           model.KindScrape,
-		URL:            input.URL,
-		Method:         input.Method,
-		Body:           input.Body,
-		ContentType:    input.ContentType,
-		Headless:       input.Config.Headless,
-		UsePlaywright:  input.Config.UsePlaywright,
-		AuthProfile:    input.Config.AuthProfile,
-		Auth:           input.Config.Auth,
-		TimeoutSeconds: input.Config.TimeoutSeconds,
-		Extract:        input.Config.Extract,
-		Pipeline:       input.Config.Pipeline,
-		Incremental:    input.Incremental,
-		RequestID:      input.Config.RequestID,
-		Screenshot:     input.Config.Screenshot,
+		Kind:             model.KindScrape,
+		URL:              input.URL,
+		Method:           input.Method,
+		Body:             input.Body,
+		ContentType:      input.ContentType,
+		Headless:         input.Config.Headless,
+		UsePlaywright:    input.Config.UsePlaywright,
+		AuthProfile:      input.Config.AuthProfile,
+		Auth:             input.Config.Auth,
+		TimeoutSeconds:   input.Config.TimeoutSeconds,
+		Extract:          input.Config.Extract,
+		Pipeline:         input.Config.Pipeline,
+		Incremental:      input.Incremental,
+		RequestID:        input.Config.RequestID,
+		Screenshot:       input.Config.Screenshot,
+		Device:           input.Config.Device,
+		NetworkIntercept: input.Config.NetworkIntercept,
 	}
 	if err := createSpec.Validate(); err != nil {
 		return scrapeExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid scrape job parameters", err)
@@ -172,6 +178,8 @@ func decodeCrawlExecutionInput(job model.Job, manager *Manager) (crawlExecutionI
 		IncludePatterns:  input.IncludePatterns,
 		ExcludePatterns:  input.ExcludePatterns,
 		Screenshot:       input.Config.Screenshot,
+		Device:           input.Config.Device,
+		NetworkIntercept: input.Config.NetworkIntercept,
 		RespectRobotsTxt: input.RespectRobotsTxt,
 		SkipDuplicates:   input.SkipDuplicates,
 		SimHashThreshold: input.SimHashThreshold,
@@ -196,21 +204,23 @@ func decodeResearchExecutionInput(job model.Job, manager *Manager) (researchExec
 		Agentic:  model.NormalizeResearchAgenticConfig(spec.Agentic),
 	}
 	createSpec := JobSpec{
-		Kind:           model.KindResearch,
-		Query:          input.Query,
-		URLs:           input.URLs,
-		MaxDepth:       input.MaxDepth,
-		MaxPages:       input.MaxPages,
-		Headless:       input.Config.Headless,
-		UsePlaywright:  input.Config.UsePlaywright,
-		AuthProfile:    input.Config.AuthProfile,
-		Auth:           input.Config.Auth,
-		TimeoutSeconds: input.Config.TimeoutSeconds,
-		Extract:        input.Config.Extract,
-		Pipeline:       input.Config.Pipeline,
-		RequestID:      input.Config.RequestID,
-		Screenshot:     input.Config.Screenshot,
-		Agentic:        input.Agentic,
+		Kind:             model.KindResearch,
+		Query:            input.Query,
+		URLs:             input.URLs,
+		MaxDepth:         input.MaxDepth,
+		MaxPages:         input.MaxPages,
+		Headless:         input.Config.Headless,
+		UsePlaywright:    input.Config.UsePlaywright,
+		AuthProfile:      input.Config.AuthProfile,
+		Auth:             input.Config.Auth,
+		TimeoutSeconds:   input.Config.TimeoutSeconds,
+		Extract:          input.Config.Extract,
+		Pipeline:         input.Config.Pipeline,
+		RequestID:        input.Config.RequestID,
+		Screenshot:       input.Config.Screenshot,
+		Device:           input.Config.Device,
+		NetworkIntercept: input.Config.NetworkIntercept,
+		Agentic:          input.Agentic,
 	}
 	if err := createSpec.Validate(); err != nil {
 		return researchExecutionInput{}, apperrors.Wrap(apperrors.KindValidation, "invalid research job parameters", err)

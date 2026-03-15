@@ -336,7 +336,9 @@ func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookSpec) {
 		Status:     string(event.Job.Status),
 		PrevStatus: string(event.PrevStatus),
 		Error:      event.Job.Error,
-		ResultPath: event.Job.ResultPath,
+	}
+	if event.Job.ResultPath != "" {
+		payload.ResultURL = "/v1/jobs/" + event.Job.ID + "/results"
 	}
 
 	m.webhookDispatcher.Dispatch(context.Background(), cfg.URL, payload, cfg.Secret)

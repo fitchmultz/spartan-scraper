@@ -24,6 +24,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -128,6 +130,118 @@ func TestDispatch_Headers(t *testing.T) {
 	}
 	if !strings.HasPrefix(receivedHeaders.Get("User-Agent"), "SpartanScraper-Webhook") {
 		t.Errorf("expected User-Agent to start with 'SpartanScraper-Webhook', got %q", receivedHeaders.Get("User-Agent"))
+	}
+}
+
+func TestDeliverExport_MultipartContract(t *testing.T) {
+	payload := Payload{
+		EventID:      "evt-export-123",
+		EventType:    EventExportCompleted,
+		Timestamp:    time.Now(),
+		JobID:        "job-export-456",
+		JobKind:      "scrape",
+		Status:       "succeeded",
+		ResultURL:    "/v1/jobs/job-export-456/results",
+		ExportFormat: "csv",
+		Filename:     "job-export-456.csv",
+		ContentType:  "text/csv; charset=utf-8",
+		RecordCount:  1,
+		ExportSize:   int64(len("title\nExample Domain\n")),
+	}
+	exportBody := []byte("title\nExample Domain\n")
+	received := make(chan struct {
+		payload           Payload
+		exportBody        []byte
+		exportFilename    string
+		exportContentType string
+		headerContentType string
+		payloadType       string
+	}, 1)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mediaType, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			t.Errorf("ParseMediaType() failed: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if mediaType != "multipart/form-data" {
+			t.Errorf("unexpected media type: %q", mediaType)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		reader := multipart.NewReader(r.Body, params["boundary"])
+		var request struct {
+			payload           Payload
+			exportBody        []byte
+			exportFilename    string
+			exportContentType string
+			headerContentType string
+			payloadType       string
+		}
+		request.headerContentType = r.Header.Get("Content-Type")
+		request.payloadType = r.Header.Get("X-Spartan-Webhook-Payload-Type")
+		for {
+			part, err := reader.NextPart()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Errorf("NextPart() failed: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			body, err := io.ReadAll(part)
+			if err != nil {
+				t.Errorf("ReadAll(part) failed: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			switch part.FormName() {
+			case "metadata":
+				if err := json.Unmarshal(body, &request.payload); err != nil {
+					t.Errorf("json.Unmarshal(metadata) failed: %v", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			case "export":
+				request.exportBody = body
+				request.exportFilename = part.FileName()
+				request.exportContentType = part.Header.Get("Content-Type")
+			}
+		}
+		received <- request
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	d := NewDispatcher(Config{AllowInternal: true})
+	if err := d.DeliverExport(context.Background(), server.URL, payload, exportBody, ""); err != nil {
+		t.Fatalf("DeliverExport() failed: %v", err)
+	}
+
+	select {
+	case request := <-received:
+		if request.payload.EventType != EventExportCompleted {
+			t.Fatalf("unexpected metadata payload: %#v", request.payload)
+		}
+		if request.payload.ResultURL != payload.ResultURL {
+			t.Fatalf("unexpected result URL: %#v", request.payload)
+		}
+		if request.payload.Filename != payload.Filename || request.exportFilename != payload.Filename {
+			t.Fatalf("unexpected export filename metadata=%q part=%q", request.payload.Filename, request.exportFilename)
+		}
+		if request.payload.ContentType != payload.ContentType || request.exportContentType != payload.ContentType {
+			t.Fatalf("unexpected export content type metadata=%q part=%q", request.payload.ContentType, request.exportContentType)
+		}
+		if string(request.exportBody) != string(exportBody) {
+			t.Fatalf("unexpected export body: %q", string(request.exportBody))
+		}
+		if request.payloadType != "export-multipart" {
+			t.Fatalf("expected export-multipart payload type header, got %q", request.payloadType)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for multipart export delivery")
 	}
 }
 
