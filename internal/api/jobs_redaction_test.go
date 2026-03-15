@@ -141,9 +141,13 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var jobResponse map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &jobResponse); err != nil {
+	var envelope map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+	jobResponse, ok := envelope["job"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected job envelope, got %#v", envelope)
 	}
 
 	// Verify resultPath is not present
@@ -317,9 +321,13 @@ func TestHandleJob_HeadersRedacted(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+	var envelope map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+	response, ok := envelope["job"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected job envelope, got %#v", envelope)
 	}
 
 	params := response["spec"].(map[string]interface{})

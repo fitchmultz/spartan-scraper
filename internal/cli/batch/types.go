@@ -13,8 +13,7 @@
 package batch
 
 import (
-	"time"
-
+	spartanapi "github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -95,33 +94,11 @@ type BatchResearchRequest struct {
 	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
 }
 
-// BatchResponse represents a batch creation response.
-type BatchResponse struct {
-	ID        string    `json:"id"`
-	Kind      string    `json:"kind"`
-	Status    string    `json:"status"`
-	JobCount  int       `json:"jobCount"`
-	Jobs      []JobInfo `json:"jobs,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
-}
+// BatchSummary aliases the stable aggregate batch metadata used across surfaces.
+type BatchSummary = spartanapi.BatchSummary
 
-// BatchStatusResponse represents batch status with statistics.
-type BatchStatusResponse struct {
-	ID        string              `json:"id"`
-	Kind      string              `json:"kind"`
-	Status    string              `json:"status"`
-	JobCount  int                 `json:"jobCount"`
-	Stats     model.BatchJobStats `json:"stats"`
-	Jobs      []JobInfo           `json:"jobs,omitempty"`
-	CreatedAt time.Time           `json:"createdAt"`
-	UpdatedAt time.Time           `json:"updatedAt"`
-}
+// BatchResponse represents the stable batch envelope used by API and direct CLI flows.
+type BatchResponse = spartanapi.BatchResponse
 
-// JobInfo represents a job in the batch response.
-type JobInfo struct {
-	ID        string    `json:"id"`
-	Kind      string    `json:"kind"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
+// BatchStatusResponse aliases the same stable batch envelope for legacy CLI call sites.
+type BatchStatusResponse = spartanapi.BatchResponse

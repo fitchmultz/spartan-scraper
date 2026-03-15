@@ -89,29 +89,34 @@ Examples:
 
 	batchID := fs.Arg(0)
 
-	if err := cancelBatch(ctx, cfg, batchID); err != nil {
+	status, err := cancelBatch(ctx, cfg, batchID)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error canceling batch: %v\n", err)
 		return 1
 	}
 
-	fmt.Printf("Batch %s canceled successfully\n", batchID)
+	printBatchStatus(status)
 	return 0
 }
 
 func printBatchStatus(status *BatchStatusResponse) {
-	fmt.Printf("Batch: %s\n", status.ID)
-	fmt.Printf("Kind: %s\n", status.Kind)
-	fmt.Printf("Status: %s\n", status.Status)
-	fmt.Printf("Jobs: %d total\n", status.JobCount)
+	fmt.Printf("Batch: %s\n", status.Batch.ID)
+	fmt.Printf("Kind: %s\n", status.Batch.Kind)
+	fmt.Printf("Status: %s\n", status.Batch.Status)
+	fmt.Printf("Jobs: %d total\n", status.Batch.JobCount)
 	fmt.Printf("Stats: %d queued, %d running, %d succeeded, %d failed, %d canceled\n",
-		status.Stats.Queued, status.Stats.Running, status.Stats.Succeeded,
-		status.Stats.Failed, status.Stats.Canceled)
+		status.Batch.Stats.Queued, status.Batch.Stats.Running, status.Batch.Stats.Succeeded,
+		status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
 
 	if len(status.Jobs) > 0 {
 		fmt.Println("\nJobs:")
 		for _, job := range status.Jobs {
 			fmt.Printf("  %s (%s): %s\n", job.ID, job.Kind, job.Status)
 		}
+		return
+	}
+	if status.Total > 0 && status.Limit == 0 {
+		fmt.Println("\nJobs: omitted (re-run with --include-jobs to load individual job entries)")
 	}
 }
 
@@ -129,20 +134,20 @@ func watchBatchStatus(ctx context.Context, cfg config.Config, batchID string, in
 		}
 
 		// Clear previous line and print status
-		completed := status.Stats.Succeeded + status.Stats.Failed + status.Stats.Canceled
+		completed := status.Batch.Stats.Succeeded + status.Batch.Stats.Failed + status.Batch.Stats.Canceled
 		fmt.Printf("\rStatus: %s | Progress: %d/%d (%d%%)",
-			status.Status,
+			status.Batch.Status,
 			completed,
-			status.JobCount,
-			(completed*100)/status.JobCount,
+			status.Batch.JobCount,
+			(completed*100)/status.Batch.JobCount,
 		)
 
 		// Check if batch is in terminal state
-		if isTerminalStatus(status.Status) {
+		if isTerminalStatus(status.Batch.Status) {
 			fmt.Println() // New line after progress
-			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Status)
+			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Batch.Status)
 			fmt.Printf("Final stats: %d succeeded, %d failed, %d canceled\n",
-				status.Stats.Succeeded, status.Stats.Failed, status.Stats.Canceled)
+				status.Batch.Stats.Succeeded, status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
 			return 0
 		}
 
@@ -186,17 +191,17 @@ func waitForBatch(ctx context.Context, cfg config.Config, batchID string, timeou
 		}
 
 		// Print progress
-		completed := status.Stats.Succeeded + status.Stats.Failed + status.Stats.Canceled
+		completed := status.Batch.Stats.Succeeded + status.Batch.Stats.Failed + status.Batch.Stats.Canceled
 		fmt.Printf("\rProgress: %d/%d jobs complete (%d%%) - Status: %s",
-			completed, status.JobCount, (completed*100)/status.JobCount, status.Status)
+			completed, status.Batch.JobCount, (completed*100)/status.Batch.JobCount, status.Batch.Status)
 
 		// Check if batch is in terminal state
-		if isTerminalStatus(status.Status) {
+		if isTerminalStatus(status.Batch.Status) {
 			fmt.Println() // New line after progress
-			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Status)
+			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Batch.Status)
 			fmt.Printf("Results: %d succeeded, %d failed, %d canceled\n",
-				status.Stats.Succeeded, status.Stats.Failed, status.Stats.Canceled)
-			if status.Status == "completed" {
+				status.Batch.Stats.Succeeded, status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
+			if status.Batch.Status == "completed" {
 				return 0
 			}
 			return 1
@@ -216,10 +221,10 @@ func getBatchStatus(ctx context.Context, cfg config.Config, batchID string, incl
 	if isServerRunning(ctx, cfg.Port) {
 		return getBatchStatusViaAPI(ctx, cfg.Port, batchID, includeJobs)
 	}
-	return getBatchStatusDirect(ctx, cfg, batchID)
+	return getBatchStatusDirect(ctx, cfg, batchID, includeJobs)
 }
 
-func cancelBatch(ctx context.Context, cfg config.Config, batchID string) error {
+func cancelBatch(ctx context.Context, cfg config.Config, batchID string) (*BatchResponse, error) {
 	if isServerRunning(ctx, cfg.Port) {
 		return cancelBatchViaAPI(ctx, cfg.Port, batchID)
 	}

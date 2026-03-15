@@ -1515,12 +1515,12 @@ paths:
             schema:
               "$ref": "#/components/schemas/ScrapeRequest"
       responses:
-        '200':
+        '201':
           description: Job created
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/Job"
+                "$ref": "#/components/schemas/JobResponse"
         '400':
           description: Bad Request
           content:
@@ -1561,12 +1561,12 @@ paths:
             schema:
               "$ref": "#/components/schemas/CrawlRequest"
       responses:
-        '200':
+        '201':
           description: Job created
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/Job"
+                "$ref": "#/components/schemas/JobResponse"
         '400':
           description: Bad Request
           content:
@@ -1607,12 +1607,12 @@ paths:
             schema:
               "$ref": "#/components/schemas/ResearchRequest"
       responses:
-        '200':
+        '201':
           description: Job created
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/Job"
+                "$ref": "#/components/schemas/JobResponse"
         '400':
           description: Bad Request
           content:
@@ -1714,11 +1714,11 @@ paths:
           type: string
       responses:
         '200':
-          description: Job
+          description: Job envelope
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/Job"
+                "$ref": "#/components/schemas/JobResponse"
         '400':
           description: Bad Request
           content:
@@ -1757,11 +1757,13 @@ paths:
           jobs.
       responses:
         '200':
-          description: Operation succeeded
+          description: Cancel returned the updated job envelope, or deleted status for force=true
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/StatusResponse"
+                oneOf:
+                - "$ref": "#/components/schemas/JobResponse"
+                - "$ref": "#/components/schemas/StatusResponse"
         '400':
           description: Bad Request
           content:
@@ -2133,11 +2135,11 @@ paths:
         description: Number of jobs to skip (when include_jobs=true)
       responses:
         '200':
-          description: Batch status retrieved successfully
+          description: Batch envelope retrieved successfully
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/BatchStatusResponse"
+                "$ref": "#/components/schemas/BatchResponse"
         '400':
           description: Bad Request
           content:
@@ -2173,8 +2175,12 @@ paths:
           type: string
         description: Batch ID
       responses:
-        '204':
+        '200':
           description: Batch canceled successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BatchResponse"
         '400':
           description: Bad Request
           content:
@@ -5811,13 +5817,34 @@ components:
         chainId:
           type: string
           description: ID of the job chain this job belongs to, if any
+    JobResponse:
+      type: object
+      required:
+      - job
+      properties:
+        job:
+          "$ref": "#/components/schemas/Job"
     JobList:
       type: object
+      required:
+      - jobs
+      - total
+      - limit
+      - offset
       properties:
         jobs:
           type: array
           items:
             "$ref": "#/components/schemas/Job"
+        total:
+          type: integer
+          description: Total number of jobs matching the filter.
+        limit:
+          type: integer
+          description: Page size used for this response.
+        offset:
+          type: integer
+          description: Pagination offset used for this response.
     HealthResponse:
       type: object
       properties:
@@ -7100,77 +7127,9 @@ components:
           "$ref": "#/components/schemas/NetworkInterceptConfig"
         agentic:
           "$ref": "#/components/schemas/ResearchAgenticConfig"
-    BatchResponse:
+    BatchSummary:
       type: object
-      description: Response after creating a batch
-      required:
-      - id
-      - kind
-      - status
-      - jobCount
-      - jobs
-      - createdAt
-      properties:
-        id:
-          type: string
-          description: Unique batch identifier
-        kind:
-          type: string
-          enum:
-          - scrape
-          - crawl
-          - research
-          description: Type of jobs in the batch
-        status:
-          type: string
-          enum:
-          - pending
-          - processing
-          - completed
-          - failed
-          - partial
-          - canceled
-          description: Current batch status
-        jobCount:
-          type: integer
-          description: Number of jobs in the batch
-        jobs:
-          type: array
-          items:
-            "$ref": "#/components/schemas/Job"
-          description: Jobs created in this batch
-        createdAt:
-          type: string
-          format: date-time
-          description: When the batch was created
-    BatchJobStats:
-      type: object
-      description: Aggregated job statistics for a batch
-      required:
-      - queued
-      - running
-      - succeeded
-      - failed
-      - canceled
-      properties:
-        queued:
-          type: integer
-          description: Number of queued jobs
-        running:
-          type: integer
-          description: Number of running jobs
-        succeeded:
-          type: integer
-          description: Number of succeeded jobs
-        failed:
-          type: integer
-          description: Number of failed jobs
-        canceled:
-          type: integer
-          description: Number of canceled jobs
-    BatchStatusResponse:
-      type: object
-      description: Detailed batch status with statistics
+      description: Aggregate batch metadata and status.
       required:
       - id
       - kind
@@ -7205,11 +7164,6 @@ components:
           description: Number of jobs in the batch
         stats:
           "$ref": "#/components/schemas/BatchJobStats"
-        jobs:
-          type: array
-          items:
-            "$ref": "#/components/schemas/Job"
-          description: Individual jobs (included when include_jobs=true)
         createdAt:
           type: string
           format: date-time
@@ -7218,6 +7172,57 @@ components:
           type: string
           format: date-time
           description: When the batch was last updated
+    BatchResponse:
+      type: object
+      description: Stable batch envelope shared by create, get, and cancel responses.
+      required:
+      - batch
+      - jobs
+      - total
+      - limit
+      - offset
+      properties:
+        batch:
+          "$ref": "#/components/schemas/BatchSummary"
+        jobs:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Job"
+          description: Included jobs for this response page.
+        total:
+          type: integer
+          description: Total number of jobs in the batch.
+        limit:
+          type: integer
+          description: Included job page size. Zero means jobs were not requested.
+        offset:
+          type: integer
+          description: Included job page offset.
+    BatchJobStats:
+      type: object
+      description: Aggregated job statistics for a batch
+      required:
+      - queued
+      - running
+      - succeeded
+      - failed
+      - canceled
+      properties:
+        queued:
+          type: integer
+          description: Number of queued jobs
+        running:
+          type: integer
+          description: Number of running jobs
+        succeeded:
+          type: integer
+          description: Number of succeeded jobs
+        failed:
+          type: integer
+          description: Number of failed jobs
+        canceled:
+          type: integer
+          description: Number of canceled jobs
     JobChain:
       type: object
       description: A named, reusable workflow definition

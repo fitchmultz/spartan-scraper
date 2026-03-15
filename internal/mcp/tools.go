@@ -86,7 +86,7 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_status",
-			Description: "Get job status by id",
+			Description: "Get a single job envelope by id",
 			InputSchema: schema(map[string]string{"id": "string"}, nil),
 		},
 		{
@@ -96,13 +96,23 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_list",
-			Description: "List all jobs with pagination",
+			Description: "List job envelopes with pagination metadata",
 			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{
 			Name:        "job_cancel",
-			Description: "Cancel a running or queued job by id",
+			Description: "Cancel a running or queued job and return the updated job envelope",
 			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "batch_status",
+			Description: "Get a batch envelope by id with optional included jobs",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"includeJobs": "boolean", "limit": "number", "offset": "number"}),
+		},
+		{
+			Name:        "batch_cancel",
+			Description: "Cancel a batch and return the updated batch envelope",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"includeJobs": "boolean", "limit": "number", "offset": "number"}),
 		},
 		{
 			Name:        "job_export",

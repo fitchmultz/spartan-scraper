@@ -8,7 +8,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BatchResponse, BatchStatusResponse, Job } from "../api";
+import type { BatchResponse, Job } from "../api";
 import {
   getV1JobsBatchById,
   postV1JobsBatchCrawl,
@@ -18,8 +18,7 @@ import {
 import {
   createEmptyBatchStats,
   deriveBatchStatsFromJobs,
-  mapBatchCreateResponse,
-  mapBatchStatusResponse,
+  mapBatchResponse,
   normalizeBatchStats,
   normalizeStoredBatchEntries,
   useBatches,
@@ -153,17 +152,30 @@ describe("useBatches helpers", () => {
     });
   });
 
-  it("mapBatchCreateResponse always returns safe stats for BatchList", () => {
+  it("mapBatchResponse always returns safe stats for BatchList", () => {
     const response: BatchResponse = {
-      id: "batch-create-1",
-      kind: "scrape",
-      status: "pending",
-      jobCount: 2,
+      batch: {
+        id: "batch-create-1",
+        kind: "scrape",
+        status: "pending",
+        jobCount: 2,
+        stats: {
+          queued: 2,
+          running: 0,
+          succeeded: 0,
+          failed: 0,
+          canceled: 0,
+        },
+        createdAt: "2026-03-05T10:00:00.000Z",
+        updatedAt: "2026-03-05T10:00:00.000Z",
+      },
       jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-      createdAt: "2026-03-05T10:00:00.000Z",
+      total: 2,
+      limit: 2,
+      offset: 0,
     };
 
-    expect(mapBatchCreateResponse(response)).toEqual({
+    expect(mapBatchResponse(response)).toEqual({
       id: "batch-create-1",
       kind: "scrape",
       status: "pending",
@@ -180,24 +192,30 @@ describe("useBatches helpers", () => {
     });
   });
 
-  it("mapBatchStatusResponse normalizes API stats before UI consumption", () => {
-    const response: BatchStatusResponse = {
-      id: "batch-status-1",
-      kind: "crawl",
-      status: "processing",
-      jobCount: 4,
-      stats: {
-        queued: 1,
-        running: 2,
-        succeeded: 1,
-        failed: 0,
-        canceled: 0,
+  it("mapBatchResponse normalizes API stats before UI consumption", () => {
+    const response: BatchResponse = {
+      batch: {
+        id: "batch-status-1",
+        kind: "crawl",
+        status: "processing",
+        jobCount: 4,
+        stats: {
+          queued: 1,
+          running: 2,
+          succeeded: 1,
+          failed: 0,
+          canceled: 0,
+        },
+        createdAt: "2026-03-05T10:00:00.000Z",
+        updatedAt: "2026-03-05T10:01:00.000Z",
       },
-      createdAt: "2026-03-05T10:00:00.000Z",
-      updatedAt: "2026-03-05T10:01:00.000Z",
+      jobs: [],
+      total: 4,
+      limit: 0,
+      offset: 0,
     };
 
-    expect(mapBatchStatusResponse(response)).toEqual({
+    expect(mapBatchResponse(response)).toEqual({
       id: "batch-status-1",
       kind: "crawl",
       status: "processing",
@@ -214,15 +232,28 @@ describe("useBatches helpers", () => {
     });
   });
 
-  it("mapBatchCreateResponse falls back to jobCount when jobs are omitted", () => {
+  it("mapBatchResponse falls back to jobCount when jobs are omitted", () => {
     expect(
-      mapBatchCreateResponse({
-        id: "batch-create-2",
-        kind: "research",
-        status: "pending",
-        jobCount: 3,
+      mapBatchResponse({
+        batch: {
+          id: "batch-create-2",
+          kind: "research",
+          status: "pending",
+          jobCount: 3,
+          stats: {
+            queued: 3,
+            running: 0,
+            succeeded: 0,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T12:00:00.000Z",
+          updatedAt: "2026-03-05T12:00:00.000Z",
+        },
         jobs: [],
-        createdAt: "2026-03-05T12:00:00.000Z",
+        total: 3,
+        limit: 0,
+        offset: 0,
       }),
     ).toEqual({
       id: "batch-create-2",
@@ -358,20 +389,25 @@ describe("useBatches persistence", () => {
   it("persists the submitted batch summary and clears it when requested", async () => {
     vi.mocked(getV1JobsBatchById).mockResolvedValue({
       data: {
-        id: "batch-submit-1",
-        kind: "scrape",
-        status: "pending",
-        jobCount: 2,
-        stats: {
-          queued: 2,
-          running: 0,
-          succeeded: 0,
-          failed: 0,
-          canceled: 0,
+        batch: {
+          id: "batch-submit-1",
+          kind: "scrape",
+          status: "pending",
+          jobCount: 2,
+          stats: {
+            queued: 2,
+            running: 0,
+            succeeded: 0,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T10:00:00.000Z",
+          updatedAt: "2026-03-05T10:00:00.000Z",
         },
         jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-        createdAt: "2026-03-05T10:00:00.000Z",
-        updatedAt: "2026-03-05T10:00:00.000Z",
+        total: 2,
+        limit: 2,
+        offset: 0,
       },
       request: new Request(
         "http://127.0.0.1:8741/v1/jobs/batch/batch-submit-1",
@@ -380,12 +416,25 @@ describe("useBatches persistence", () => {
     } as never);
     vi.mocked(postV1JobsBatchScrape).mockResolvedValue({
       data: {
-        id: "batch-submit-1",
-        kind: "scrape",
-        status: "pending",
-        jobCount: 2,
+        batch: {
+          id: "batch-submit-1",
+          kind: "scrape",
+          status: "pending",
+          jobCount: 2,
+          stats: {
+            queued: 2,
+            running: 0,
+            succeeded: 0,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T10:00:00.000Z",
+          updatedAt: "2026-03-05T10:00:00.000Z",
+        },
         jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-        createdAt: "2026-03-05T10:00:00.000Z",
+        total: 2,
+        limit: 2,
+        offset: 0,
       },
       request: new Request("http://127.0.0.1:8741/v1/jobs/batch/scrape"),
       response: new Response(null, { status: 202 }),

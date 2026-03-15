@@ -33,7 +33,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
-	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
@@ -340,7 +339,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return model.SanitizeJob(job), nil
+		return api.BuildJobResponse(job), nil
 	case "job_results":
 		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
@@ -354,7 +353,11 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"jobs": model.SanitizeJobs(jobs)}, nil
+		total, err := s.store.CountJobs(ctx, "")
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildJobListResponse(jobs, total, limit, offset), nil
 	case "job_cancel":
 		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
@@ -363,7 +366,54 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err := s.manager.CancelJob(ctx, id); err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"status": "canceled", "id": id}, nil
+		job, err := s.store.Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildJobResponse(job), nil
+	case "batch_status":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		batch, stats, err := s.manager.GetBatchStatus(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		includeJobs := paramdecode.Bool(params.Arguments, "includeJobs")
+		if !includeJobs {
+			return api.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0), nil
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		jobs, err := s.store.ListJobsByBatch(ctx, id, store.ListOptions{Limit: limit, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildBatchResponse(batch, stats, jobs, batch.JobCount, limit, offset), nil
+	case "batch_cancel":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		if _, err := s.manager.CancelBatch(ctx, id); err != nil {
+			return nil, err
+		}
+		batch, stats, err := s.manager.GetBatchStatus(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		includeJobs := paramdecode.Bool(params.Arguments, "includeJobs")
+		if !includeJobs {
+			return api.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0), nil
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		jobs, err := s.store.ListJobsByBatch(ctx, id, store.ListOptions{Limit: limit, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildBatchResponse(batch, stats, jobs, batch.JobCount, limit, offset), nil
 	case "job_export":
 		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {

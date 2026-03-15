@@ -46,18 +46,18 @@ func TestHandleScrapePlaywright(t *testing.T) {
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
 
-			if status := rr.Code; status != http.StatusOK {
-				t.Fatalf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+			if status := rr.Code; status != http.StatusCreated {
+				t.Fatalf("handler returned wrong status code: got %v want %v", status, http.StatusCreated)
 			}
 
-			var resp map[string]interface{}
+			var resp JobResponse
 			if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 				t.Fatalf("failed to parse JSON response: %v", err)
 			}
 
-			jobID, ok := resp["id"].(string)
-			if !ok {
-				t.Fatalf("expected job ID in response, got: %v", resp)
+			jobID := resp.Job.ID
+			if jobID == "" {
+				t.Fatalf("expected job ID in response, got: %+v", resp)
 			}
 
 			job, err := srv.store.Get(context.Background(), jobID)

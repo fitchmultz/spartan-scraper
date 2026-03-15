@@ -1965,8 +1965,24 @@ export type Job = {
     chainId?: string;
 };
 
+export type JobResponse = {
+    job: Job;
+};
+
 export type JobList = {
-    jobs?: Array<Job>;
+    jobs: Array<Job>;
+    /**
+     * Total number of jobs matching the filter.
+     */
+    total: number;
+    /**
+     * Page size used for this response.
+     */
+    limit: number;
+    /**
+     * Pagination offset used for this response.
+     */
+    offset: number;
 };
 
 export type HealthResponse = {
@@ -2962,9 +2978,9 @@ export type BatchResearchRequest = {
 };
 
 /**
- * Response after creating a batch
+ * Aggregate batch metadata and status.
  */
-export type BatchResponse = {
+export type BatchSummary = {
     /**
      * Unique batch identifier
      */
@@ -2981,14 +2997,38 @@ export type BatchResponse = {
      * Number of jobs in the batch
      */
     jobCount: number;
-    /**
-     * Jobs created in this batch
-     */
-    jobs: Array<Job>;
+    stats: BatchJobStats;
     /**
      * When the batch was created
      */
     createdAt: string;
+    /**
+     * When the batch was last updated
+     */
+    updatedAt: string;
+};
+
+/**
+ * Stable batch envelope shared by create, get, and cancel responses.
+ */
+export type BatchResponse = {
+    batch: BatchSummary;
+    /**
+     * Included jobs for this response page.
+     */
+    jobs: Array<Job>;
+    /**
+     * Total number of jobs in the batch.
+     */
+    total: number;
+    /**
+     * Included job page size. Zero means jobs were not requested.
+     */
+    limit: number;
+    /**
+     * Included job page offset.
+     */
+    offset: number;
 };
 
 /**
@@ -3015,41 +3055,6 @@ export type BatchJobStats = {
      * Number of canceled jobs
      */
     canceled: number;
-};
-
-/**
- * Detailed batch status with statistics
- */
-export type BatchStatusResponse = {
-    /**
-     * Unique batch identifier
-     */
-    id: string;
-    /**
-     * Type of jobs in the batch
-     */
-    kind: 'scrape' | 'crawl' | 'research';
-    /**
-     * Current batch status
-     */
-    status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial' | 'canceled';
-    /**
-     * Number of jobs in the batch
-     */
-    jobCount: number;
-    stats: BatchJobStats;
-    /**
-     * Individual jobs (included when include_jobs=true)
-     */
-    jobs?: Array<Job>;
-    /**
-     * When the batch was created
-     */
-    createdAt: string;
-    /**
-     * When the batch was last updated
-     */
-    updatedAt: string;
 };
 
 /**
@@ -5034,7 +5039,7 @@ export type PostV1ScrapeResponses = {
     /**
      * Job created
      */
-    200: Job;
+    201: JobResponse;
 };
 
 export type PostV1ScrapeResponse = PostV1ScrapeResponses[keyof PostV1ScrapeResponses];
@@ -5075,7 +5080,7 @@ export type PostV1CrawlResponses = {
     /**
      * Job created
      */
-    200: Job;
+    201: JobResponse;
 };
 
 export type PostV1CrawlResponse = PostV1CrawlResponses[keyof PostV1CrawlResponses];
@@ -5116,7 +5121,7 @@ export type PostV1ResearchResponses = {
     /**
      * Job created
      */
-    200: Job;
+    201: JobResponse;
 };
 
 export type PostV1ResearchResponse = PostV1ResearchResponses[keyof PostV1ResearchResponses];
@@ -5200,9 +5205,9 @@ export type DeleteV1JobsByIdError = DeleteV1JobsByIdErrors[keyof DeleteV1JobsByI
 
 export type DeleteV1JobsByIdResponses = {
     /**
-     * Operation succeeded
+     * Cancel returned the updated job envelope, or deleted status for force=true
      */
-    200: StatusResponse;
+    200: JobResponse | StatusResponse;
 };
 
 export type DeleteV1JobsByIdResponse = DeleteV1JobsByIdResponses[keyof DeleteV1JobsByIdResponses];
@@ -5235,9 +5240,9 @@ export type GetV1JobsByIdError = GetV1JobsByIdErrors[keyof GetV1JobsByIdErrors];
 
 export type GetV1JobsByIdResponses = {
     /**
-     * Job
+     * Job envelope
      */
-    200: Job;
+    200: JobResponse;
 };
 
 export type GetV1JobsByIdResponse = GetV1JobsByIdResponses[keyof GetV1JobsByIdResponses];
@@ -5541,7 +5546,7 @@ export type DeleteV1JobsBatchByIdResponses = {
     /**
      * Batch canceled successfully
      */
-    204: void;
+    200: BatchResponse;
 };
 
 export type DeleteV1JobsBatchByIdResponse = DeleteV1JobsBatchByIdResponses[keyof DeleteV1JobsBatchByIdResponses];
@@ -5594,9 +5599,9 @@ export type GetV1JobsBatchByIdError = GetV1JobsBatchByIdErrors[keyof GetV1JobsBa
 
 export type GetV1JobsBatchByIdResponses = {
     /**
-     * Batch status retrieved successfully
+     * Batch envelope retrieved successfully
      */
-    200: BatchStatusResponse;
+    200: BatchResponse;
 };
 
 export type GetV1JobsBatchByIdResponse = GetV1JobsBatchByIdResponses[keyof GetV1JobsBatchByIdResponses];

@@ -216,15 +216,7 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := BatchStatusResponse{
-		ID:        batch.ID,
-		Kind:      string(batch.Kind),
-		Status:    string(batch.Status),
-		JobCount:  batch.JobCount,
-		Stats:     stats,
-		CreatedAt: batch.CreatedAt,
-		UpdatedAt: batch.UpdatedAt,
-	}
+	resp := BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
 
 	if r.URL.Query().Get("include_jobs") == "true" {
 		page, err := parsePageParams(r, 50, 0)
@@ -240,7 +232,7 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		resp.Jobs = model.SanitizeJobs(jobsByBatch)
+		resp = BuildBatchResponse(batch, stats, jobsByBatch, batch.JobCount, page.Limit, page.Offset)
 	}
 
 	writeJSON(w, resp)
@@ -258,7 +250,14 @@ func (s *Server) handleBatchCancel(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+
+	batch, stats, err := s.manager.GetBatchStatus(r.Context(), batchID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0))
 }
 
 // validateBatchSize validates that the batch size is within limits.

@@ -16,8 +16,8 @@ package batch
 
 import (
 	"context"
-	"time"
 
+	spartanapi "github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -71,13 +71,8 @@ func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchSc
 		return nil, err
 	}
 
-	return &BatchResponse{
-		ID:        batchID,
-		Kind:      string(model.KindScrape),
-		Status:    string(model.BatchStatusPending),
-		JobCount:  len(createdJobs),
-		CreatedAt: time.Now(),
-	}, nil
+	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindScrape, createdJobs)
+	return &response, nil
 }
 
 func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCrawlRequest) (*BatchResponse, error) {
@@ -136,13 +131,8 @@ func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCra
 		return nil, err
 	}
 
-	return &BatchResponse{
-		ID:        batchID,
-		Kind:      string(model.KindCrawl),
-		Status:    string(model.BatchStatusPending),
-		JobCount:  len(createdJobs),
-		CreatedAt: time.Now(),
-	}, nil
+	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindCrawl, createdJobs)
+	return &response, nil
 }
 
 func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req BatchResearchRequest) (*BatchResponse, error) {
@@ -194,16 +184,11 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 		return nil, err
 	}
 
-	return &BatchResponse{
-		ID:        batchID,
-		Kind:      string(model.KindResearch),
-		Status:    string(model.BatchStatusPending),
-		JobCount:  len(createdJobs),
-		CreatedAt: time.Now(),
-	}, nil
+	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindResearch, createdJobs)
+	return &response, nil
 }
 
-func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string) (*BatchStatusResponse, error) {
+func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string, includeJobs bool) (*BatchStatusResponse, error) {
 	st, err := store.Open(cfg.DataDir)
 	if err != nil {
 		return nil, err
@@ -223,28 +208,37 @@ func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string
 	// Calculate current batch status
 	batch.Status = model.CalculateBatchStatus(stats, batch.JobCount)
 
-	return &BatchStatusResponse{
-		ID:        batch.ID,
-		Kind:      string(batch.Kind),
-		Status:    string(batch.Status),
-		JobCount:  batch.JobCount,
-		Stats:     stats,
-		CreatedAt: batch.CreatedAt,
-		UpdatedAt: batch.UpdatedAt,
-	}, nil
+	if !includeJobs {
+		response := spartanapi.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
+		return &response, nil
+	}
+
+	jobsByBatch, err := st.ListJobsByBatch(ctx, batchID, store.ListOptions{Limit: batch.JobCount, Offset: 0})
+	if err != nil {
+		return nil, err
+	}
+	response := spartanapi.BuildBatchResponse(batch, stats, jobsByBatch, batch.JobCount, batch.JobCount, 0)
+	return &response, nil
 }
 
-func cancelBatchDirect(ctx context.Context, cfg config.Config, batchID string) error {
+func cancelBatchDirect(ctx context.Context, cfg config.Config, batchID string) (*BatchResponse, error) {
 	st, err := store.Open(cfg.DataDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer st.Close()
 
 	manager, err := common.InitJobManager(ctx, cfg, st)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = manager.CancelBatch(ctx, batchID)
-	return err
+	if _, err := manager.CancelBatch(ctx, batchID); err != nil {
+		return nil, err
+	}
+	batch, stats, err := manager.GetBatchStatus(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+	response := spartanapi.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
+	return &response, nil
 }

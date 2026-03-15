@@ -4,12 +4,12 @@
 
 - REST is the canonical integration API.
 - WebSocket is the live event channel.
-- Job responses expose typed `spec` plus `specVersion`.
+- Job and batch control-plane responses use stable envelopes: single-job endpoints return `{ job }`, job listings return `{ jobs, total, limit, offset }`, and batch create/get/cancel endpoints return `{ batch, jobs, total, limit, offset }`.
 
 ## Core Workflow
 
 1. Submit `scrape`, `crawl`, or `research`.
-2. Poll `/v1/jobs/:id` or subscribe to `/v1/ws`.
+2. Read the returned `{ job }` envelope, then poll `/v1/jobs/:id` or subscribe to `/v1/ws`.
 3. Read `/v1/jobs/:id/results`.
 4. Inspect `.data/jobs/<job-id>/manifest.json` for artifact metadata.
 

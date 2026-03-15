@@ -131,9 +131,13 @@ export function useAppData(): AppDataState & AppDataActions {
           return;
         }
         setJobs(data?.jobs ?? []);
-        const total = response.headers.get("X-Total-Count");
-        if (total) {
-          setJobsTotal(parseInt(total, 10));
+        if (typeof data?.total === "number") {
+          setJobsTotal(data.total);
+        } else {
+          const total = response.headers.get("X-Total-Count");
+          if (total) {
+            setJobsTotal(parseInt(total, 10));
+          }
         }
         setError(null);
       } catch (err) {

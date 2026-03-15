@@ -55,7 +55,7 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeCollectionJSON(w, "jobs", model.SanitizeJobs(jobsList))
+	writeJSON(w, BuildJobListResponse(jobsList, total, page.Limit, page.Offset))
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +86,7 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, model.SanitizeJob(job))
+		writeJSON(w, BuildJobResponse(job))
 	case http.MethodDelete:
 		if r.URL.Query().Get("force") == "true" {
 			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
@@ -99,7 +99,12 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 				writeError(w, r, err)
 				return
 			}
-			writeStatusJSON(w, "canceled")
+			job, err := s.store.Get(r.Context(), id)
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			writeJSON(w, BuildJobResponse(job))
 		}
 	default:
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))

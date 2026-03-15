@@ -165,7 +165,7 @@ func handleSingleJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.
 		return
 	}
 
-	writeJSON(w, model.SanitizeJob(job))
+	writeCreatedJSON(w, BuildJobResponse(job))
 }
 
 func handleBatchJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.Request, submission batchJobSubmission[T]) {
@@ -205,12 +205,5 @@ func (s *Server) createAndEnqueueBatch(ctx context.Context, kind model.Kind, spe
 		return BatchResponse{}, err
 	}
 
-	return BatchResponse{
-		ID:        batchID,
-		Kind:      string(kind),
-		Status:    string(model.BatchStatusPending),
-		JobCount:  len(createdJobs),
-		Jobs:      model.SanitizeJobs(createdJobs),
-		CreatedAt: createdJobs[0].CreatedAt,
-	}, nil
+	return BuildCreatedBatchResponse(batchID, kind, createdJobs), nil
 }

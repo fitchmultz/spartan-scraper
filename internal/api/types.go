@@ -1,5 +1,22 @@
 // Package api provides HTTP request and response types for the Spartan Scraper API.
 // These types are used for JSON encoding/decoding of API requests and responses.
+//
+// Purpose:
+// - Define stable request and response contracts shared across REST handlers and MCP adapters.
+//
+// Responsibilities:
+// - Hold operator-facing request payload types for scrape, crawl, research, schedules, and batches.
+// - Hold stable job and batch response envelope types used across transports.
+//
+// Scope:
+// - JSON contracts only; handler logic and response construction live elsewhere in this package.
+//
+// Usage:
+// - Imported by REST handlers, MCP handlers, tests, and generated OpenAPI maintenance work.
+//
+// Invariants/Assumptions:
+// - Job and batch automation surfaces should reuse the same response envelope shapes.
+// - Response envelopes expose sanitized jobs rather than persisted raw records.
 package api
 
 import (
@@ -142,26 +159,37 @@ type BatchResearchRequest struct {
 	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
 }
 
-// BatchResponse represents a created batch.
-type BatchResponse struct {
-	ID        string      `json:"id"`
-	Kind      string      `json:"kind"`
-	Status    string      `json:"status"`
-	JobCount  int         `json:"jobCount"`
-	Jobs      []model.Job `json:"jobs"`
-	CreatedAt time.Time   `json:"createdAt"`
+// JobResponse represents a single sanitized job envelope.
+type JobResponse struct {
+	Job model.Job `json:"job"`
 }
 
-// BatchStatusResponse represents batch status with aggregated stats.
-type BatchStatusResponse struct {
+// JobListResponse represents a paginated collection of sanitized jobs.
+type JobListResponse struct {
+	Jobs   []model.Job `json:"jobs"`
+	Total  int         `json:"total"`
+	Limit  int         `json:"limit"`
+	Offset int         `json:"offset"`
+}
+
+// BatchSummary represents aggregate batch metadata and status.
+type BatchSummary struct {
 	ID        string              `json:"id"`
 	Kind      string              `json:"kind"`
 	Status    string              `json:"status"`
 	JobCount  int                 `json:"jobCount"`
 	Stats     model.BatchJobStats `json:"stats"`
-	Jobs      []model.Job         `json:"jobs,omitempty"`
 	CreatedAt time.Time           `json:"createdAt"`
 	UpdatedAt time.Time           `json:"updatedAt"`
+}
+
+// BatchResponse represents a stable batch envelope shared by create/get/cancel flows.
+type BatchResponse struct {
+	Batch  BatchSummary `json:"batch"`
+	Jobs   []model.Job  `json:"jobs"`
+	Total  int          `json:"total"`
+	Limit  int          `json:"limit"`
+	Offset int          `json:"offset"`
 }
 
 // RetentionStatusResponse represents the retention system status.

@@ -167,7 +167,10 @@ Example nested fields:
 {"id":13,"method":"tools/call","params":{"name":"export_schedule_create","arguments":{"name":"Projected Export","filters":{"job_kinds":["scrape"]},"export":{"format":"csv","destination_type":"local","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}}
 {"id":14,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
 {"id":15,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
-{"id":16,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":16,"method":"tools/call","params":{"name":"batch_status","arguments":{"id":"<batch-id>","includeJobs":true,"limit":50,"offset":0}}}
+{"id":17,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
 ```
 
-The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` tools when you need persisted scrape/crawl/research execution that can be polled and exported later, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.
+`job_status` and `job_cancel` now return the same `{ job }` envelope shape as REST job detail. `job_list` returns `{ jobs, total, limit, offset }`. `batch_status` and `batch_cancel` return the same `{ batch, jobs, total, limit, offset }` envelope shape as REST batch create/get/cancel, including `batch.stats` on every response.
+
+The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` and `batch_*` tools when you need persisted scrape/crawl/research execution that can be polled or canceled later, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.

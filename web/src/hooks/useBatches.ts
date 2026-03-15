@@ -14,7 +14,6 @@ import {
   postV1JobsBatchResearch,
   type BatchResponse,
   type BatchScrapeRequest,
-  type BatchStatusResponse,
   type BatchCrawlRequest,
   type BatchResearchRequest,
   type Job,
@@ -178,7 +177,7 @@ function toJobSummary(job: Partial<Job>): Job | null {
 }
 
 function readBatchJobs(
-  jobs: BatchResponse["jobs"] | BatchStatusResponse["jobs"] | undefined,
+  jobs: BatchResponse["jobs"] | undefined,
 ): Job[] | undefined {
   return jobs
     ?.map((job) => toJobSummary(job))
@@ -245,40 +244,36 @@ export function deriveBatchStatsFromJobs(
   return stats;
 }
 
-export function mapBatchStatusResponse(
-  response: BatchStatusResponse,
-): BatchEntry {
-  const createdAt = readIsoDate(response.createdAt, new Date(0).toISOString());
-  return {
-    id: response.id,
-    kind: isBatchKind(response.kind) ? response.kind : "scrape",
-    status: isBatchStatus(response.status) ? response.status : "pending",
-    jobCount: toNonNegativeNumber(response.jobCount),
-    stats: normalizeBatchStats(response.stats),
-    createdAt,
-    updatedAt: readIsoDate(response.updatedAt, createdAt),
-  };
-}
-
-export function mapBatchCreateResponse(response: BatchResponse): BatchEntry {
-  const createdAt = readIsoDate(response.createdAt, new Date(0).toISOString());
+export function mapBatchResponse(response: BatchResponse): BatchEntry {
+  const batch = response.batch;
+  const createdAt = readIsoDate(batch.createdAt, new Date(0).toISOString());
   const jobs = readBatchJobs(response.jobs);
-  const reportedJobCount = toNonNegativeNumber(response.jobCount);
+  const reportedJobCount = toNonNegativeNumber(batch.jobCount);
   const jobCount =
     reportedJobCount > 0
       ? reportedJobCount
       : jobs && jobs.length > 0
         ? jobs.length
         : 0;
+  const normalizedStats = normalizeBatchStats(batch.stats);
+  const hasReportedStats =
+    normalizedStats.queued +
+      normalizedStats.running +
+      normalizedStats.succeeded +
+      normalizedStats.failed +
+      normalizedStats.canceled >
+    0;
 
   return {
-    id: response.id,
-    kind: isBatchKind(response.kind) ? response.kind : "scrape",
-    status: isBatchStatus(response.status) ? response.status : "pending",
+    id: batch.id,
+    kind: isBatchKind(batch.kind) ? batch.kind : "scrape",
+    status: isBatchStatus(batch.status) ? batch.status : "pending",
     jobCount,
-    stats: deriveBatchStatsFromJobs(jobs, jobCount),
+    stats: hasReportedStats
+      ? normalizedStats
+      : deriveBatchStatsFromJobs(jobs, jobCount),
     createdAt,
-    updatedAt: createdAt,
+    updatedAt: readIsoDate(batch.updatedAt, createdAt),
   };
 }
 
@@ -430,7 +425,7 @@ export function useBatches() {
     async (batchId: string) => {
       try {
         const response = await getBatchStatus(batchId, true);
-        const updated = mapBatchStatusResponse(response);
+        const updated = mapBatchResponse(response);
 
         setBatches((current) => {
           const existing = current.find((b) => b.id === batchId);
@@ -486,7 +481,7 @@ export function useBatches() {
   // Cancel a batch
   const cancelBatch = useCallback(
     async (batchId: string) => {
-      const { error: apiError } = await deleteV1JobsBatchById({
+      const { data, error: apiError } = await deleteV1JobsBatchById({
         baseUrl: getApiBaseUrl(),
         path: { id: batchId },
       });
@@ -494,11 +489,29 @@ export function useBatches() {
       if (apiError) {
         throw new Error(formatApiError(apiError));
       }
+      if (!data) {
+        throw new Error("No data returned");
+      }
 
-      // Refresh to get updated status
-      await refreshBatch(batchId);
+      const updated = mapBatchResponse(data);
+      setBatches((current) => {
+        const newBatches = current.map((batch) =>
+          batch.id === batchId ? updated : batch,
+        );
+        saveBatches(newBatches);
+        return newBatches;
+      });
+
+      const jobs = readBatchJobs(data.jobs);
+      if (jobs) {
+        setBatchJobs((current) => {
+          const next = new Map(current);
+          next.set(batchId, jobs);
+          return next;
+        });
+      }
     },
-    [refreshBatch],
+    [saveBatches],
   );
 
   const submitBatch = useCallback(
@@ -518,7 +531,7 @@ export function useBatches() {
         throw new Error("No response from server");
       }
 
-      const entry = mapBatchCreateResponse(data);
+      const entry = mapBatchResponse(data);
       const submittedUrls = extractSubmittedUrls(request);
       const submissionRecord =
         submittedUrls.length > 0

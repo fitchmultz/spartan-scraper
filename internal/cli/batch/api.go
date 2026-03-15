@@ -107,28 +107,33 @@ func getBatchStatusViaAPI(ctx context.Context, port, batchID string, includeJobs
 	return &result, nil
 }
 
-func cancelBatchViaAPI(ctx context.Context, port, batchID string) error {
+func cancelBatchViaAPI(ctx context.Context, port, batchID string) (*BatchResponse, error) {
 	url := fmt.Sprintf("http://localhost:%s/v1/jobs/batch/%s", port, batchID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("batch %s not found", batchID)
+		return nil, fmt.Errorf("batch %s not found", batchID)
 	}
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
 	}
 
-	return nil
+	var result BatchResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
 }

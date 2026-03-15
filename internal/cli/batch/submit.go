@@ -243,13 +243,13 @@ func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string)
 		return 1
 	}
 
-	fmt.Printf("Batch submitted: %s\n", resp.ID)
-	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Kind, resp.JobCount, resp.Status)
+	fmt.Printf("Batch submitted: %s\n", resp.Batch.ID)
+	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Batch.Kind, resp.Batch.JobCount, resp.Batch.Status)
 
 	// Wait for completion if requested
 	if *waitFlag {
 		timeout := time.Duration(*waitTimeout) * time.Second
-		return waitForBatch(ctx, cfg, resp.ID, timeout)
+		return waitForBatch(ctx, cfg, resp.Batch.ID, timeout)
 	}
 
 	return 0
@@ -378,13 +378,13 @@ func runBatchSubmitCrawl(ctx context.Context, cfg config.Config, args []string) 
 		return 1
 	}
 
-	fmt.Printf("Batch submitted: %s\n", resp.ID)
-	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Kind, resp.JobCount, resp.Status)
+	fmt.Printf("Batch submitted: %s\n", resp.Batch.ID)
+	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Batch.Kind, resp.Batch.JobCount, resp.Batch.Status)
 
 	// Wait for completion if requested
 	if *waitFlag {
 		timeout := time.Duration(*waitTimeout) * time.Second
-		return waitForBatch(ctx, cfg, resp.ID, timeout)
+		return waitForBatch(ctx, cfg, resp.Batch.ID, timeout)
 	}
 
 	return 0
@@ -518,13 +518,13 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		return 1
 	}
 
-	fmt.Printf("Batch submitted: %s\n", resp.ID)
-	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Kind, resp.JobCount, resp.Status)
+	fmt.Printf("Batch submitted: %s\n", resp.Batch.ID)
+	fmt.Printf("Kind: %s, Jobs: %d, Status: %s\n", resp.Batch.Kind, resp.Batch.JobCount, resp.Batch.Status)
 
 	// Wait for completion if requested
 	if *waitFlag {
 		timeout := time.Duration(*waitTimeout) * time.Second
-		return waitForBatch(ctx, cfg, resp.ID, timeout)
+		return waitForBatch(ctx, cfg, resp.Batch.ID, timeout)
 	}
 
 	return 0

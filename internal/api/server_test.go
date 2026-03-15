@@ -50,8 +50,8 @@ func TestZeroValuesAllowed(t *testing.T) {
 			rr := httptest.NewRecorder()
 			srv.Routes().ServeHTTP(rr, req)
 
-			if status := rr.Code; status != http.StatusOK {
-				t.Errorf("handler returned wrong status code for %s: got %v want %v, body: %s", tt.name, status, http.StatusOK, rr.Body.String())
+			if status := rr.Code; status != http.StatusCreated {
+				t.Errorf("handler returned wrong status code for %s: got %v want %v, body: %s", tt.name, status, http.StatusCreated, rr.Body.String())
 			}
 		})
 	}
@@ -77,7 +77,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "scrape rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/scrape",
-			validStatus:  http.StatusOK,
+			validStatus:  http.StatusCreated,
 			validBody:    `{"url": "https://example.com"}`,
 			invalidBody:  `{"url": "https://example.com", "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -86,7 +86,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "crawl rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/crawl",
-			validStatus:  http.StatusOK,
+			validStatus:  http.StatusCreated,
 			validBody:    `{"url": "https://example.com", "maxDepth": 1, "maxPages": 1}`,
 			invalidBody:  `{"url": "https://example.com", "maxDepth": 1, "maxPages": 1, "unknownField": "test"}`,
 			unknownField: "unknownField",
@@ -95,7 +95,7 @@ func TestRejectUnknownFields(t *testing.T) {
 			name:         "research rejects unknown field",
 			method:       http.MethodPost,
 			endpoint:     "/v1/research",
-			validStatus:  http.StatusOK,
+			validStatus:  http.StatusCreated,
 			validBody:    `{"query": "test query", "urls": ["https://example.com"]}`,
 			invalidBody:  `{"query": "test query", "urls": ["https://example.com"], "unknownField": "test"}`,
 			unknownField: "unknownField",

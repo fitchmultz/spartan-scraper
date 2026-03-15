@@ -301,17 +301,17 @@ func TestHandleJobForceDelete(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Fatalf("failed to create job: got status %v, body: %s", status, rr.Body.String())
 	}
 
-	var job map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+	var jobResp JobResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &jobResp); err != nil {
 		t.Fatalf("failed to parse job response: %v", err)
 	}
 
-	jobID, ok := job["id"].(string)
-	if !ok {
+	jobID := jobResp.Job.ID
+	if jobID == "" {
 		t.Fatalf("job response missing id field")
 	}
 
@@ -374,17 +374,17 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Fatalf("failed to create job: got status %v", status)
 	}
 
-	var job map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+	var jobResp JobResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &jobResp); err != nil {
 		t.Fatalf("failed to parse job response: %v", err)
 	}
 
-	jobID, ok := job["id"].(string)
-	if !ok {
+	jobID := jobResp.Job.ID
+	if jobID == "" {
 		t.Fatalf("job response missing id field")
 	}
 
@@ -414,13 +414,13 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 		t.Fatalf("cancel failed: got status %v", status)
 	}
 
-	var resp map[string]interface{}
+	var resp JobResponse
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse delete response: %v", err)
 	}
 
-	if status, ok := resp["status"].(string); !ok || status != "canceled" {
-		t.Errorf("expected status 'canceled', got %v", resp["status"])
+	if resp.Job.Status != model.StatusCanceled {
+		t.Errorf("expected status 'canceled', got %v", resp.Job.Status)
 	}
 
 	gotJob, err := st.Get(ctx, jobID)

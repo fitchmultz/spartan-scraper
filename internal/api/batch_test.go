@@ -56,11 +56,11 @@ func TestHandleBatchScrapeDefaultsMethodToGET(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if resp.JobCount != 1 {
-		t.Fatalf("expected 1 created job, got %d", resp.JobCount)
+	if resp.Batch.JobCount != 1 {
+		t.Fatalf("expected 1 created job, got %d", resp.Batch.JobCount)
 	}
 
-	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.ID, store.ListOptions{})
+	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.Batch.ID, store.ListOptions{})
 	if err != nil {
 		t.Fatalf("list jobs by batch: %v", err)
 	}
@@ -100,14 +100,14 @@ func TestHandleBatchResearchCreatesSingleResearchJob(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if resp.JobCount != 1 {
-		t.Fatalf("expected one research job for the batch, got %d", resp.JobCount)
+	if resp.Batch.JobCount != 1 {
+		t.Fatalf("expected one research job for the batch, got %d", resp.Batch.JobCount)
 	}
 	if len(resp.Jobs) != 1 {
 		t.Fatalf("expected one sanitized job in response, got %d", len(resp.Jobs))
 	}
 
-	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.ID, store.ListOptions{})
+	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.Batch.ID, store.ListOptions{})
 	if err != nil {
 		t.Fatalf("list jobs by batch: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestHandleBatchResearchStoresAgenticConfig(t *testing.T) {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 
-	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.ID, store.ListOptions{})
+	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.Batch.ID, store.ListOptions{})
 	if err != nil {
 		t.Fatalf("list jobs by batch: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestHandleBatchGetRejectsInvalidPaginationWhenIncludingJobs(t *testing.T) {
 		t.Fatalf("unmarshal batch response: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/batch/"+created.ID+"?include_jobs=true&limit=abc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/batch/"+created.Batch.ID+"?include_jobs=true&limit=abc", nil)
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 

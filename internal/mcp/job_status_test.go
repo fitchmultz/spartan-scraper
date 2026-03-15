@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
@@ -30,8 +31,8 @@ func TestJobStatusToolInToolsList(t *testing.T) {
 	if !ok {
 		t.Fatal("job_status tool not found in toolsList")
 	}
-	if jobStatusTool.Description != "Get job status by id" {
-		t.Errorf("expected description 'Get job status by id', got '%s'", jobStatusTool.Description)
+	if jobStatusTool.Description != "Get a single job envelope by id" {
+		t.Errorf("expected description 'Get a single job envelope by id', got '%s'", jobStatusTool.Description)
 	}
 	schema := jobStatusTool.InputSchema
 	props, ok := schema["properties"].(map[string]interface{})
@@ -72,15 +73,15 @@ func TestHandleJobStatus(t *testing.T) {
 			t.Fatalf("handleToolCall failed: %v", err)
 		}
 
-		resultJob, ok := result.(model.Job)
+		response, ok := result.(api.JobResponse)
 		if !ok {
-			t.Fatalf("result is not a model.Job, type is %T", result)
+			t.Fatalf("result is not an api.JobResponse, type is %T", result)
 		}
-		if resultJob.ID != job.ID {
-			t.Errorf("expected id '%s', got '%s'", job.ID, resultJob.ID)
+		if response.Job.ID != job.ID {
+			t.Errorf("expected id '%s', got '%s'", job.ID, response.Job.ID)
 		}
-		if resultJob.Kind != model.KindScrape {
-			t.Errorf("expected kind '%s', got '%s'", model.KindScrape, resultJob.Kind)
+		if response.Job.Kind != model.KindScrape {
+			t.Errorf("expected kind '%s', got '%s'", model.KindScrape, response.Job.Kind)
 		}
 	})
 

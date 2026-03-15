@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
@@ -57,10 +58,11 @@ func TestJobStatus_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("handleToolCall failed: %v", err)
 	}
 
-	resultJob, ok := result.(model.Job)
+	response, ok := result.(api.JobResponse)
 	if !ok {
-		t.Fatalf("Expected model.Job, got %T", result)
+		t.Fatalf("Expected api.JobResponse, got %T", result)
 	}
+	resultJob := response.Job
 
 	// Verify ResultPath is empty
 	if resultJob.ResultPath != "" {
@@ -144,15 +146,12 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("handleToolCall failed: %v", err)
 	}
 
-	resultMap, ok := result.(map[string]interface{})
+	response, ok := result.(api.JobListResponse)
 	if !ok {
-		t.Fatalf("Expected map[string]interface{}, got %T", result)
+		t.Fatalf("Expected api.JobListResponse, got %T", result)
 	}
 
-	jobs, ok := resultMap["jobs"].([]model.Job)
-	if !ok {
-		t.Fatalf("Expected []model.Job, got %T", resultMap["jobs"])
-	}
+	jobs := response.Jobs
 
 	if len(jobs) != 2 {
 		t.Fatalf("Expected 2 jobs, got %d", len(jobs))
@@ -235,7 +234,11 @@ func TestJobStatus_ErrorWithPath_Redacted(t *testing.T) {
 		t.Fatalf("handleToolCall failed: %v", err)
 	}
 
-	resultJob := result.(model.Job)
+	response, ok := result.(api.JobResponse)
+	if !ok {
+		t.Fatalf("Expected api.JobResponse, got %T", result)
+	}
+	resultJob := response.Job
 
 	// Verify error has paths redacted
 	if strings.Contains(resultJob.Error, "/Users/admin/.data") {

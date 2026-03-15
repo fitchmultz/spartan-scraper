@@ -45,17 +45,17 @@ func TestHandleJobResultsNoResults(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Fatalf("failed to create job: got status %v", status)
 	}
 
-	var job map[string]interface{}
-	if err := json.Unmarshal(rr.Body.Bytes(), &job); err != nil {
+	var jobResp JobResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &jobResp); err != nil {
 		t.Fatalf("failed to parse job response: %v", err)
 	}
 
-	jobID, ok := job["id"].(string)
-	if !ok {
+	jobID := jobResp.Job.ID
+	if jobID == "" {
 		t.Fatalf("job response missing id field")
 	}
 

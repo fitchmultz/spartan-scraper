@@ -588,7 +588,7 @@ func postJobPayload(t *testing.T, client *http.Client, port int, path string, bo
 		t.Fatalf("post job: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusCreated {
 		payload, _ := io.ReadAll(resp.Body)
 		t.Fatalf("post job status: %d body=%s", resp.StatusCode, string(payload))
 	}
@@ -596,7 +596,11 @@ func postJobPayload(t *testing.T, client *http.Client, port int, path string, bo
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode job: %v", err)
 	}
-	id, _ := payload["id"].(string)
+	jobPayload, ok := payload["job"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing job envelope: %#v", payload)
+	}
+	id, _ := jobPayload["id"].(string)
 	if id == "" {
 		t.Fatalf("missing job id")
 	}

@@ -301,19 +301,22 @@ func TestIsTerminalStatus(t *testing.T) {
 
 func TestPrintBatchStatus(t *testing.T) {
 	status := &BatchStatusResponse{
-		ID:       "test-batch-123",
-		Kind:     "scrape",
-		Status:   "completed",
-		JobCount: 5,
-		Stats: model.BatchJobStats{
-			Queued:    0,
-			Running:   0,
-			Succeeded: 5,
-			Failed:    0,
-			Canceled:  0,
+		Batch: BatchSummary{
+			ID:       "test-batch-123",
+			Kind:     "scrape",
+			Status:   "completed",
+			JobCount: 5,
+			Stats: model.BatchJobStats{
+				Queued:    0,
+				Running:   0,
+				Succeeded: 5,
+				Failed:    0,
+				Canceled:  0,
+			},
+			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			UpdatedAt: time.Date(2024, 1, 1, 0, 1, 0, 0, time.UTC),
 		},
-		CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-		UpdatedAt: time.Date(2024, 1, 1, 0, 1, 0, 0, time.UTC),
+		Jobs: []model.Job{},
 	}
 
 	old := os.Stdout
@@ -345,14 +348,16 @@ func TestPrintBatchStatus(t *testing.T) {
 
 func TestPrintBatchStatusWithJobs(t *testing.T) {
 	status := &BatchStatusResponse{
-		ID:       "test-batch-123",
-		Kind:     "scrape",
-		Status:   "completed",
-		JobCount: 1,
-		Stats: model.BatchJobStats{
-			Succeeded: 1,
+		Batch: BatchSummary{
+			ID:       "test-batch-123",
+			Kind:     "scrape",
+			Status:   "completed",
+			JobCount: 1,
+			Stats: model.BatchJobStats{
+				Succeeded: 1,
+			},
 		},
-		Jobs: []JobInfo{
+		Jobs: []model.Job{
 			{ID: "job-1", Kind: "scrape", Status: "succeeded"},
 		},
 	}

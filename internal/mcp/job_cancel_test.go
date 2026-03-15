@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
@@ -28,8 +29,8 @@ func TestJobCancelToolInToolsList(t *testing.T) {
 	if !ok {
 		t.Fatal("job_cancel tool not found in toolsList")
 	}
-	if jobCancelTool.Description != "Cancel a running or queued job by id" {
-		t.Errorf("expected description 'Cancel a running or queued job by id', got '%s'", jobCancelTool.Description)
+	if jobCancelTool.Description != "Cancel a running or queued job and return the updated job envelope" {
+		t.Errorf("expected description 'Cancel a running or queued job and return the updated job envelope', got '%s'", jobCancelTool.Description)
 	}
 	schema := jobCancelTool.InputSchema
 	props, ok := schema["properties"].(map[string]interface{})
@@ -70,15 +71,15 @@ func TestHandleJobCancel(t *testing.T) {
 			t.Fatalf("handleToolCall failed: %v", err)
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		response, ok := result.(api.JobResponse)
 		if !ok {
-			t.Fatal("result is not a map")
+			t.Fatalf("result is not an api.JobResponse: %T", result)
 		}
-		if resultMap["status"] != "canceled" {
-			t.Errorf("expected status 'canceled', got '%v'", resultMap["status"])
+		if response.Job.Status != "canceled" {
+			t.Errorf("expected status 'canceled', got '%v'", response.Job.Status)
 		}
-		if resultMap["id"] != job.ID {
-			t.Errorf("expected id '%s', got '%v'", job.ID, resultMap["id"])
+		if response.Job.ID != job.ID {
+			t.Errorf("expected id '%s', got '%v'", job.ID, response.Job.ID)
 		}
 
 		updatedJob, err := srv.store.Get(ctx, job.ID)

@@ -346,7 +346,7 @@ func postJob(t *testing.T, client *http.Client, port int, path string, body map[
 		t.Fatalf("post job: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusCreated {
 		payload, _ := io.ReadAll(resp.Body)
 		t.Fatalf("post job status: %d body=%s", resp.StatusCode, string(payload))
 	}
@@ -354,7 +354,11 @@ func postJob(t *testing.T, client *http.Client, port int, path string, body map[
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode job: %v", err)
 	}
-	id, _ := payload["id"].(string)
+	jobPayload, ok := payload["job"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing job envelope: %#v", payload)
+	}
+	id, _ := jobPayload["id"].(string)
 	if id == "" {
 		t.Fatalf("missing job id")
 	}
@@ -412,7 +416,8 @@ func waitForJob(t *testing.T, client *http.Client, port int, id string) {
 		var payload map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
 		_ = resp.Body.Close()
-		switch payload["status"] {
+		jobPayload, _ := payload["job"].(map[string]any)
+		switch jobPayload["status"] {
 		case "succeeded":
 			return
 		case "failed":

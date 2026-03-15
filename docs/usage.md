@@ -748,6 +748,8 @@ Important endpoint groups:
 - `/v1/auth/oauth/*`
 - `/v1/ws`
 
+Single-job create/get/cancel flows now share one envelope: create/get return `{ job }`, cancel returns the updated `{ job }` envelope unless `force=true` deletes the record and returns `{ status: "deleted" }`. Job listings return `{ jobs, total, limit, offset }`. Batch create/get/cancel flows now share `{ batch, jobs, total, limit, offset }`, where `batch.stats` is always present and `limit: 0` means individual jobs were not requested.
+
 `GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls.
 
 Webhook contract notes:
@@ -812,6 +814,8 @@ Core tools:
 - `job_results`
 - `job_list`
 - `job_cancel`
+- `batch_status`
+- `batch_cancel`
 - `job_export`
 - `export_schedule_list`
 - `export_schedule_get`
@@ -834,6 +838,8 @@ Use the same top-level fields you would send to `/v1/scrape`, `/v1/crawl`, or `/
 - `agentic` on `research`
 
 That means AI extraction rides inside `extract.ai.*`, proxy transport rides inside `auth.proxy` / `auth.proxyHints`, and screenshot / interception options use the same object shape as REST and the Web UI.
+
+`job_status` and `job_cancel` return the same `{ job }` envelope shape as `GET /v1/jobs/{id}`. `job_list` returns `{ jobs, total, limit, offset }`. `batch_status` and `batch_cancel` now mirror the REST batch envelope `{ batch, jobs, total, limit, offset }`, with optional `includeJobs`, `limit`, and `offset` arguments on the batch tools.
 
 `job_export` accepts the same direct export contract as `spartan export` / `POST /v1/jobs/{id}/export`:
 

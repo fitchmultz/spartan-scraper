@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
@@ -30,8 +30,8 @@ func TestJobListToolInToolsList(t *testing.T) {
 	if !ok {
 		t.Fatal("job_list tool not found in toolsList")
 	}
-	if jobListTool.Description != "List all jobs with pagination" {
-		t.Errorf("expected description 'List all jobs with pagination', got '%s'", jobListTool.Description)
+	if jobListTool.Description != "List job envelopes with pagination metadata" {
+		t.Errorf("expected description 'List job envelopes with pagination metadata', got '%s'", jobListTool.Description)
 	}
 	schema := jobListTool.InputSchema
 	props, ok := schema["properties"].(map[string]interface{})
@@ -79,18 +79,15 @@ func TestHandleJobList(t *testing.T) {
 			t.Fatalf("handleToolCall failed: %v", err)
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		response, ok := result.(api.JobListResponse)
 		if !ok {
-			t.Fatal("result is not a map")
+			t.Fatalf("result is not an api.JobListResponse: %T", result)
 		}
-		jobs := resultMap["jobs"]
-		if jobs == nil {
-			t.Fatal("jobs not found in result")
+		if len(response.Jobs) != 2 {
+			t.Errorf("expected 2 jobs, got %d", len(response.Jobs))
 		}
-
-		jobCount := reflect.ValueOf(jobs).Len()
-		if jobCount != 2 {
-			t.Errorf("expected 2 jobs, got %d", jobCount)
+		if response.Total != 2 {
+			t.Errorf("expected total 2, got %d", response.Total)
 		}
 	})
 
@@ -114,17 +111,18 @@ func TestHandleJobList(t *testing.T) {
 			t.Fatalf("handleToolCall failed: %v", err)
 		}
 
-		resultMap, ok := result.(map[string]interface{})
+		response, ok := result.(api.JobListResponse)
 		if !ok {
-			t.Fatal("result is not a map")
+			t.Fatalf("result is not an api.JobListResponse: %T", result)
 		}
-		jobs := resultMap["jobs"]
-		if jobs == nil {
-			t.Fatal("jobs not found in result")
+		if len(response.Jobs) != 2 {
+			t.Errorf("expected 2 jobs (offset 2, limit 2), got %d", len(response.Jobs))
 		}
-		jobCount := reflect.ValueOf(jobs).Len()
-		if jobCount != 2 {
-			t.Errorf("expected 2 jobs (offset 2, limit 2), got %d", jobCount)
+		if response.Total != 7 {
+			t.Errorf("expected total 7, got %d", response.Total)
+		}
+		if response.Limit != 2 || response.Offset != 2 {
+			t.Errorf("expected limit/offset 2/2, got %d/%d", response.Limit, response.Offset)
 		}
 	})
 }
