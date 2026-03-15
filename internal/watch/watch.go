@@ -5,6 +5,7 @@
 // - Fetching and extracting content
 // - Computing content hashes and detecting changes
 // - Capturing screenshots and detecting visual changes
+// - Persisting deterministic watch-owned screenshot artifacts
 // - Generating diffs (text and visual) when changes occur
 // - Updating crawl states with snapshots
 // - Dispatching webhooks on content/visual changes
@@ -28,7 +29,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -88,8 +88,12 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 			previousContent = state.ContentSnapshot
 			result.PreviousHash = state.ContentHash
 			result.PreviousVisualHash = state.VisualHash
-			result.PreviousScreenshotPath = state.ScreenshotPath
 		}
+	}
+
+	artifactStore := NewArtifactStore(w.dataDir)
+	if err := artifactStore.ClearVisualDiff(watch.ID); err != nil {
+		slog.Warn("failed to clear stale visual diff", "watchID", watch.ID, "error", err)
 	}
 
 	// Fetch content (with screenshot if enabled)
@@ -99,7 +103,27 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 		return result, fetchErr
 	}
 
-	result.ScreenshotPath = screenshotPath
+	var previousScreenshotPath string
+	if screenshotPath != "" {
+		transientScreenshotPath := screenshotPath
+		currentArtifact, previousArtifact, err := artifactStore.ReplaceCurrent(watch.ID, transientScreenshotPath)
+		if err != nil {
+			slog.Warn("failed to persist watch screenshot artifact", "watchID", watch.ID, "sourcePath", transientScreenshotPath, "error", err)
+			screenshotPath = ""
+		} else {
+			result.Artifacts = append(result.Artifacts, currentArtifact)
+			screenshotPath = currentArtifact.Path
+			if previousArtifact != nil {
+				result.Artifacts = append(result.Artifacts, *previousArtifact)
+				previousScreenshotPath = previousArtifact.Path
+			}
+		}
+		if transientScreenshotPath != screenshotPath {
+			if err := os.Remove(transientScreenshotPath); err != nil && !os.IsNotExist(err) {
+				slog.Warn("failed to remove transient screenshot", "path", transientScreenshotPath, "error", err)
+			}
+		}
+	}
 
 	// Compute content hash
 	hash := sha256.Sum256([]byte(content))
@@ -130,20 +154,21 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 		result.PreviousVisualHash = previousState.VisualHash
 
 		// Generate visual diff if visual change detected
-		if visualChanged && screenshotPath != "" && previousState.ScreenshotPath != "" {
+		if visualChanged && screenshotPath != "" && previousScreenshotPath != "" {
 			threshold := watch.VisualDiffThreshold
 			if threshold == 0 {
 				threshold = 0.1 // Default 10% threshold
 			}
-			diffPath, similarity, err := w.generateVisualDiff(
+			diffArtifact, similarity, err := w.generateVisualDiff(
+				watch.ID,
 				screenshotPath,
-				previousState.ScreenshotPath,
+				previousScreenshotPath,
 				threshold,
 			)
 			if err != nil {
-				slog.Warn("failed to generate visual diff", "error", err)
-			} else {
-				result.VisualDiffPath = diffPath
+				slog.Warn("failed to generate visual diff", "watchID", watch.ID, "error", err)
+			} else if diffArtifact != nil {
+				result.Artifacts = append(result.Artifacts, *diffArtifact)
 				result.VisualSimilarity = similarity
 			}
 		}
@@ -209,11 +234,6 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 		if visualChanged {
 			w.dispatchWebhook(watch, result, webhook.EventVisualChanged)
 		}
-	}
-
-	// Cleanup old screenshots periodically (best effort)
-	if watch.ScreenshotEnabled {
-		_ = w.cleanupOldScreenshots(watch.ID, 30*24*time.Hour) // 30 day retention
 	}
 
 	return result, nil
@@ -393,28 +413,28 @@ func computeVisualHash(imagePath string) (string, error) {
 }
 
 // generateVisualDiff creates a visual diff between two screenshots.
-// Returns the path to the generated diff image and similarity score.
-func (w *Watcher) generateVisualDiff(currentPath, previousPath string, threshold float64) (string, float64, error) {
+// Returns the persisted diff artifact and similarity score.
+func (w *Watcher) generateVisualDiff(watchID, currentPath, previousPath string, threshold float64) (*Artifact, float64, error) {
 	if currentPath == "" || previousPath == "" {
-		return "", 0, nil
+		return nil, 0, nil
 	}
 
 	// Check if both files exist
 	if _, err := os.Stat(currentPath); os.IsNotExist(err) {
-		return "", 0, fmt.Errorf("current screenshot not found: %s", currentPath)
+		return nil, 0, fmt.Errorf("current screenshot not found")
 	}
 	if _, err := os.Stat(previousPath); os.IsNotExist(err) {
-		return "", 0, fmt.Errorf("previous screenshot not found: %s", previousPath)
+		return nil, 0, fmt.Errorf("previous screenshot not found")
 	}
 
 	// Read both files for comparison
 	currentData, err := os.ReadFile(currentPath)
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to read current screenshot: %w", err)
+		return nil, 0, fmt.Errorf("failed to read current screenshot: %w", err)
 	}
 	previousData, err := os.ReadFile(previousPath)
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to read previous screenshot: %w", err)
+		return nil, 0, fmt.Errorf("failed to read previous screenshot: %w", err)
 	}
 
 	// Compute similarity based on content comparison
@@ -447,57 +467,9 @@ func (w *Watcher) generateVisualDiff(currentPath, previousPath string, threshold
 		}
 	}
 
-	// Generate diff path
-	screenshotDir := filepath.Join(w.dataDir, "screenshots")
-	if err := os.MkdirAll(screenshotDir, 0o700); err != nil {
-		return "", similarity, fmt.Errorf("failed to create screenshots directory: %w", err)
-	}
-
-	timestamp := time.Now().UnixMilli()
-	diffPath := filepath.Join(screenshotDir, fmt.Sprintf("visual_diff_%d.png", timestamp))
-
-	// Create diff by writing current screenshot
-	// In production, this would overlay both images with diff highlighting
-	if err := os.WriteFile(diffPath, currentData, 0o644); err != nil {
-		return "", similarity, fmt.Errorf("failed to write diff: %w", err)
-	}
-
-	return diffPath, similarity, nil
-}
-
-// cleanupOldScreenshots removes old screenshot files based on retention policy.
-func (w *Watcher) cleanupOldScreenshots(watchID string, maxAge time.Duration) error {
-	screenshotDir := filepath.Join(w.dataDir, "screenshots")
-	entries, err := os.ReadDir(screenshotDir)
+	artifact, err := NewArtifactStore(w.dataDir).ReplaceVisualDiff(watchID, currentPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
+		return nil, similarity, fmt.Errorf("failed to write visual diff artifact: %w", err)
 	}
-
-	cutoff := time.Now().Add(-maxAge)
-	removed := 0
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		if info.ModTime().Before(cutoff) {
-			path := filepath.Join(screenshotDir, entry.Name())
-			if err := os.Remove(path); err != nil {
-				slog.Warn("failed to cleanup old screenshot", "path", path, "error", err)
-			} else {
-				removed++
-			}
-		}
-	}
-
-	if removed > 0 {
-		slog.Debug("cleaned up old screenshots", "count", removed, "watchID", watchID)
-	}
-	return nil
+	return &artifact, similarity, nil
 }

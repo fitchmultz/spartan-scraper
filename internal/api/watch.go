@@ -81,24 +81,22 @@ type WatchResponse struct {
 
 // WatchCheckResponse represents the result of a watch check.
 type WatchCheckResponse struct {
-	WatchID                string    `json:"watchId"`
-	URL                    string    `json:"url"`
-	CheckedAt              time.Time `json:"checkedAt"`
-	Changed                bool      `json:"changed"`
-	PreviousHash           string    `json:"previousHash,omitempty"`
-	CurrentHash            string    `json:"currentHash,omitempty"`
-	DiffText               string    `json:"diffText,omitempty"`
-	DiffHTML               string    `json:"diffHtml,omitempty"`
-	Error                  string    `json:"error,omitempty"`
-	Selector               string    `json:"selector,omitempty"`
-	ScreenshotPath         string    `json:"screenshotPath,omitempty"`
-	PreviousScreenshotPath string    `json:"previousScreenshotPath,omitempty"`
-	VisualDiffPath         string    `json:"visualDiffPath,omitempty"`
-	VisualHash             string    `json:"visualHash,omitempty"`
-	PreviousVisualHash     string    `json:"previousVisualHash,omitempty"`
-	VisualChanged          bool      `json:"visualChanged"`
-	VisualSimilarity       float64   `json:"visualSimilarity,omitempty"`
-	TriggeredJobs          []string  `json:"triggeredJobs,omitempty"`
+	WatchID            string                  `json:"watchId"`
+	URL                string                  `json:"url"`
+	CheckedAt          time.Time               `json:"checkedAt"`
+	Changed            bool                    `json:"changed"`
+	PreviousHash       string                  `json:"previousHash,omitempty"`
+	CurrentHash        string                  `json:"currentHash,omitempty"`
+	DiffText           string                  `json:"diffText,omitempty"`
+	DiffHTML           string                  `json:"diffHtml,omitempty"`
+	Error              string                  `json:"error,omitempty"`
+	Selector           string                  `json:"selector,omitempty"`
+	Artifacts          []WatchArtifactResponse `json:"artifacts,omitempty"`
+	VisualHash         string                  `json:"visualHash,omitempty"`
+	PreviousVisualHash string                  `json:"previousVisualHash,omitempty"`
+	VisualChanged      bool                    `json:"visualChanged"`
+	VisualSimilarity   float64                 `json:"visualSimilarity,omitempty"`
+	TriggeredJobs      []string                `json:"triggeredJobs,omitempty"`
 }
 
 // toWatchResponse converts a watch.Watch to WatchResponse.
@@ -211,8 +209,12 @@ func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
 	existing.JobTrigger = req.JobTrigger
 }
 
-// handleWatchCheckWrapper routes to handleWatch or handleWatchCheck based on path
+// handleWatchCheckWrapper routes nested watch detail paths.
 func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(strings.TrimSuffix(r.URL.Path, "/"), "/artifacts/") {
+		s.handleWatchArtifact(w, r)
+		return
+	}
 	if handlePathSuffix(r.URL.Path, "/check", func() {
 		s.handleWatchCheck(w, r)
 	}) {
@@ -379,34 +381,9 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 	result, err := watcher.Check(r.Context(), watchItem)
 	if err != nil {
 		// Return result even on error (error is in result.Error)
-		writeJSON(w, WatchCheckResponse{
-			WatchID:   result.WatchID,
-			URL:       result.URL,
-			CheckedAt: result.CheckedAt,
-			Changed:   result.Changed,
-			Error:     result.Error,
-			Selector:  result.Selector,
-		})
+		writeJSON(w, toWatchCheckResponse(result))
 		return
 	}
 
-	writeJSON(w, WatchCheckResponse{
-		WatchID:                result.WatchID,
-		URL:                    result.URL,
-		CheckedAt:              result.CheckedAt,
-		Changed:                result.Changed,
-		PreviousHash:           result.PreviousHash,
-		CurrentHash:            result.CurrentHash,
-		DiffText:               result.DiffText,
-		DiffHTML:               result.DiffHTML,
-		Selector:               result.Selector,
-		ScreenshotPath:         result.ScreenshotPath,
-		PreviousScreenshotPath: result.PreviousScreenshotPath,
-		VisualDiffPath:         result.VisualDiffPath,
-		VisualHash:             result.VisualHash,
-		PreviousVisualHash:     result.PreviousVisualHash,
-		VisualChanged:          result.VisualChanged,
-		VisualSimilarity:       result.VisualSimilarity,
-		TriggeredJobs:          result.TriggeredJobs,
-	})
+	writeJSON(w, toWatchCheckResponse(result))
 }

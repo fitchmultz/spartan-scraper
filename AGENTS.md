@@ -58,6 +58,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Temporary transitive `go.mod` overrides are guarded by `make audit-deps`; when parent modules catch up, remove the override and update `scripts/go_transitive_override_audit.mjs` in the same change.
 - Chains and watch-triggered jobs must persist operator-facing `request` payloads, not typed job specs, so automation surfaces reuse the same request-to-job conversion path as live jobs and schedules.
 - Job and batch control-plane responses should use the shared envelopes: `{ job }`, `{ jobs, total, limit, offset }`, and `{ batch, jobs, total, limit, offset }` across REST, Web, CLI, and MCP.
+- Watch and crawl-state APIs must never expose host-local screenshot or diff paths; return explicit artifact download URLs from `/v1/watch/{id}/artifacts/{kind}` and keep crawl-state responses sanitized to the documented fields.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.
 
 ### Testing Guidelines

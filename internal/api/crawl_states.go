@@ -6,10 +6,35 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
+
+// CrawlStateResponse exposes the public crawl-state contract.
+type CrawlStateResponse struct {
+	URL          string    `json:"url"`
+	ETag         string    `json:"etag"`
+	LastModified string    `json:"lastModified"`
+	ContentHash  string    `json:"contentHash"`
+	LastScraped  time.Time `json:"lastScraped"`
+	Depth        int       `json:"depth,omitempty"`
+	JobID        string    `json:"jobId,omitempty"`
+}
+
+func toCrawlStateResponse(state model.CrawlState) CrawlStateResponse {
+	return CrawlStateResponse{
+		URL:          state.URL,
+		ETag:         state.ETag,
+		LastModified: state.LastModified,
+		ContentHash:  state.ContentHash,
+		LastScraped:  state.LastScraped,
+		Depth:        state.Depth,
+		JobID:        state.JobID,
+	}
+}
 
 func (s *Server) handleCrawlStates(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -42,8 +67,10 @@ func (s *Server) handleCrawlStatesList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	responses := mapSlice(states, toCrawlStateResponse)
+
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeCollectionJSON(w, "crawlStates", states)
+	writeCollectionJSON(w, "crawlStates", responses)
 }
 
 func (s *Server) handleCrawlStatesDelete(w http.ResponseWriter, r *http.Request) {

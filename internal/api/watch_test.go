@@ -442,6 +442,18 @@ func TestHandleDeleteWatch(t *testing.T) {
 		t.Fatal("Expected 1 watch before deletion")
 	}
 
+	sourcePath := filepath.Join(t.TempDir(), "current.png")
+	if err := os.WriteFile(sourcePath, append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, []byte("watch-delete")...), 0o600); err != nil {
+		t.Fatalf("write test artifact: %v", err)
+	}
+	if _, _, err := watch.NewArtifactStore(srv.cfg.DataDir).ReplaceCurrent(created.ID, sourcePath); err != nil {
+		t.Fatalf("persist watch artifact: %v", err)
+	}
+	artifactDir := filepath.Join(srv.cfg.DataDir, "watch_artifacts", created.ID)
+	if _, err := os.Stat(artifactDir); err != nil {
+		t.Fatalf("expected artifact directory before deletion: %v", err)
+	}
+
 	// Test successful delete
 	req := httptest.NewRequest(http.MethodDelete, "/v1/watch/"+created.ID, nil)
 	rr := httptest.NewRecorder()
@@ -455,6 +467,9 @@ func TestHandleDeleteWatch(t *testing.T) {
 	watches, _ = storage.List()
 	if len(watches) != 0 {
 		t.Errorf("Expected 0 watches after deletion, got %d", len(watches))
+	}
+	if _, err := os.Stat(artifactDir); !os.IsNotExist(err) {
+		t.Fatalf("expected artifact directory removal, got err=%v", err)
 	}
 
 	// Test not found (deleting already deleted watch)

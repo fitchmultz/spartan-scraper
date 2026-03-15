@@ -1582,6 +1582,29 @@ export type WatchList = {
     watches: Array<Watch>;
 };
 
+export type WatchArtifact = {
+    /**
+     * Persisted artifact kind from the completed watch check
+     */
+    kind: 'current-screenshot' | 'previous-screenshot' | 'visual-diff';
+    /**
+     * Suggested download filename for the artifact
+     */
+    filename: string;
+    /**
+     * MIME type served by the artifact download endpoint
+     */
+    contentType: string;
+    /**
+     * Persisted artifact size in bytes
+     */
+    byteSize?: number;
+    /**
+     * Relative API URL for downloading the artifact bytes
+     */
+    downloadUrl: string;
+};
+
 export type WatchCheckResult = {
     /**
      * ID of the watch that was checked
@@ -1624,17 +1647,9 @@ export type WatchCheckResult = {
      */
     selector?: string;
     /**
-     * Path to captured screenshot
+     * Persisted watch screenshot and diff artifacts for this check, exposed through explicit download URLs instead of host-local paths
      */
-    screenshotPath?: string;
-    /**
-     * Path to previous screenshot for comparison
-     */
-    previousScreenshotPath?: string;
-    /**
-     * Path to generated visual diff image
-     */
-    visualDiffPath?: string;
+    artifacts?: Array<WatchArtifact>;
     /**
      * Perceptual hash of current screenshot
      */
@@ -1943,10 +1958,6 @@ export type Job = {
      * Error message if job failed. Secrets and filesystem paths are redacted.
      */
     error?: string;
-    /**
-     * Path to the screenshot file if screenshot capture was enabled
-     */
-    screenshotPath?: string;
     /**
      * Captured network activity if network interception was enabled
      */
@@ -6153,6 +6164,52 @@ export type CheckWatchResponses = {
 };
 
 export type CheckWatchResponse = CheckWatchResponses[keyof CheckWatchResponses];
+
+export type GetWatchArtifactData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+        /**
+         * Persisted watch artifact kind
+         */
+        artifactKind: 'current-screenshot' | 'previous-screenshot' | 'visual-diff';
+    };
+    query?: never;
+    url: '/v1/watch/{id}/artifacts/{artifactKind}';
+};
+
+export type GetWatchArtifactErrors = {
+    /**
+     * Invalid artifact kind
+     */
+    400: ErrorResponse;
+    /**
+     * Watch or artifact not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetWatchArtifactError = GetWatchArtifactErrors[keyof GetWatchArtifactErrors];
+
+export type GetWatchArtifactResponses = {
+    /**
+     * Artifact bytes
+     */
+    200: Blob | File;
+};
+
+export type GetWatchArtifactResponse = GetWatchArtifactResponses[keyof GetWatchArtifactResponses];
 
 export type GetMetricsData = {
     body?: never;

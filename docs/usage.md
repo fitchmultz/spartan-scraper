@@ -750,7 +750,7 @@ Important endpoint groups:
 
 Single-job create/get/cancel flows now share one envelope: create/get return `{ job }`, cancel returns the updated `{ job }` envelope unless `force=true` deletes the record and returns `{ status: "deleted" }`. Job listings return `{ jobs, total, limit, offset }`. Batch create/get/cancel flows now share `{ batch, jobs, total, limit, offset }`, where `batch.stats` is always present and `limit: 0` means individual jobs were not requested.
 
-`GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls.
+`GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls. `POST /v1/watch/{id}/check` now returns screenshot and visual-diff artifacts as `artifacts[]` descriptors with relative `downloadUrl` values, and `GET /v1/watch/{id}/artifacts/{artifactKind}` is the canonical way to fetch those bytes without exposing host-local paths.
 
 Webhook contract notes:
 

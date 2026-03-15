@@ -5,6 +5,7 @@
 - REST is the canonical integration API.
 - WebSocket is the live event channel.
 - Job and batch control-plane responses use stable envelopes: single-job endpoints return `{ job }`, job listings return `{ jobs, total, limit, offset }`, and batch create/get/cancel endpoints return `{ batch, jobs, total, limit, offset }`.
+- Watch check responses expose persisted screenshot and diff artifacts through explicit `artifacts[].downloadUrl` links; public watch and crawl-state responses do not advertise host-local filesystem paths.
 
 ## Core Workflow
 

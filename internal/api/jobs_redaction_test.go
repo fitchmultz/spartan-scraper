@@ -73,10 +73,13 @@ func TestHandleJobs_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("Expected 2 jobs, got %d", len(response.Jobs))
 	}
 
-	// Check that resultPath is not present in any job
+	// Check that local filesystem fields are not present in any job
 	for _, job := range response.Jobs {
 		if _, ok := job["resultPath"]; ok {
 			t.Errorf("resultPath should not be present in job %v", job["id"])
+		}
+		if _, ok := job["screenshotPath"]; ok {
+			t.Errorf("screenshotPath should not be present in job %v", job["id"])
 		}
 	}
 
@@ -150,9 +153,12 @@ func TestHandleJob_Get_RedactsSensitiveData(t *testing.T) {
 		t.Fatalf("expected job envelope, got %#v", envelope)
 	}
 
-	// Verify resultPath is not present
+	// Verify local filesystem fields are not present
 	if _, ok := jobResponse["resultPath"]; ok {
 		t.Error("resultPath should not be present in response")
+	}
+	if _, ok := jobResponse["screenshotPath"]; ok {
+		t.Error("screenshotPath should not be present in response")
 	}
 
 	// Verify auth params are redacted
@@ -275,9 +281,12 @@ func TestHandleJob_JSONOmitsResultPath(t *testing.T) {
 
 	body := w.Body.String()
 
-	// Verify resultPath is not in the JSON at all (due to omitempty)
+	// Verify local filesystem fields are not in the JSON at all (due to omitempty)
 	if strings.Contains(body, "resultPath") {
 		t.Errorf("JSON response should not contain resultPath field, got: %s", body)
+	}
+	if strings.Contains(body, "screenshotPath") {
+		t.Errorf("JSON response should not contain screenshotPath field, got: %s", body)
 	}
 
 	// Verify the path itself is not in the response

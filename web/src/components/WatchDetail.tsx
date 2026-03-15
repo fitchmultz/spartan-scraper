@@ -11,6 +11,11 @@ import { useState } from "react";
 import type { Watch, WatchCheckResult } from "../api";
 import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
 import { getWatchStatusTone } from "../lib/status-display";
+import {
+  getWatchArtifact,
+  getWatchArtifactLabel,
+  getWatchArtifactUrl,
+} from "../lib/watch-utils";
 import { StatusPill } from "./StatusPill";
 
 interface WatchDetailProps {
@@ -78,6 +83,16 @@ export function WatchDetail({
       );
     }
 
+    const currentScreenshot = getWatchArtifact(
+      checkResult,
+      "current-screenshot",
+    );
+    const previousScreenshot = getWatchArtifact(
+      checkResult,
+      "previous-screenshot",
+    );
+    const visualDiff = getWatchArtifact(checkResult, "visual-diff");
+
     if (!checkResult.changed) {
       return (
         <div
@@ -89,9 +104,15 @@ export function WatchDetail({
         >
           <p style={{ fontSize: 18, marginBottom: 8 }}>✓ No Changes Detected</p>
           <p>Content hash matches the previous snapshot.</p>
-          {checkResult.screenshotPath && (
+          {currentScreenshot && (
             <p style={{ fontSize: 12, marginTop: 8 }}>
-              Screenshot captured: <code>{checkResult.screenshotPath}</code>
+              <a
+                href={getWatchArtifactUrl(currentScreenshot)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open current screenshot
+              </a>
             </p>
           )}
           <p style={{ fontSize: 12, marginTop: 16 }}>
@@ -152,21 +173,20 @@ export function WatchDetail({
                   {Math.round(checkResult.visualSimilarity * 100)}%
                 </span>
               )}
-              {checkResult.screenshotPath && (
-                <span>
-                  <strong>Screenshot:</strong>{" "}
-                  <code style={{ fontSize: 12 }}>
-                    {checkResult.screenshotPath}
-                  </code>
-                </span>
-              )}
-              {checkResult.visualDiffPath && (
-                <span>
-                  <strong>Diff:</strong>{" "}
-                  <code style={{ fontSize: 12 }}>
-                    {checkResult.visualDiffPath}
-                  </code>
-                </span>
+              {[currentScreenshot, previousScreenshot, visualDiff].flatMap(
+                (artifact) =>
+                  artifact
+                    ? [
+                        <a
+                          key={artifact.kind}
+                          href={getWatchArtifactUrl(artifact)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {getWatchArtifactLabel(artifact.kind)}
+                        </a>,
+                      ]
+                    : [],
               )}
             </div>
           </div>

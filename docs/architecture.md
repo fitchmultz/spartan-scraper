@@ -81,6 +81,7 @@ The canonical runtime model is:
 
 - SQLite database: `DATA_DIR/jobs.db`
 - Job artifacts: `DATA_DIR/jobs/<job-id>/`
+- Watch artifacts: `DATA_DIR/watch_artifacts/<watch-id>/`
 - Auth vault: `DATA_DIR/auth_vault.json`
 - Render profiles: `DATA_DIR/render_profiles.json`
 - Templates: `DATA_DIR/extract_templates.json`

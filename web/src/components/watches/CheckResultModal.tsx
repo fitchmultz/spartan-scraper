@@ -15,6 +15,10 @@
 
 import type { CheckResultModalProps } from "../../types/watch";
 import { formatDateTime } from "../../lib/formatting";
+import {
+  getWatchArtifactLabel,
+  getWatchArtifactUrl,
+} from "../../lib/watch-utils";
 
 /**
  * Modal component for displaying watch check results
@@ -101,6 +105,69 @@ export function CheckResultModal({ result, onClose }: CheckResultModalProps) {
             </div>
           )}
         </div>
+
+        {result.artifacts && result.artifacts.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <h4 style={{ marginBottom: 8 }}>Artifacts</h4>
+            <div
+              style={{
+                display: "grid",
+                gap: 12,
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              }}
+            >
+              {result.artifacts.map((artifact) => {
+                const downloadUrl = getWatchArtifactUrl(artifact);
+                return (
+                  <div
+                    key={artifact.kind}
+                    style={{
+                      backgroundColor: "var(--bg-alt)",
+                      borderRadius: 8,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                      {getWatchArtifactLabel(artifact.kind)}
+                    </div>
+                    {artifact.contentType.startsWith("image/") &&
+                      downloadUrl && (
+                        <img
+                          src={downloadUrl}
+                          alt={getWatchArtifactLabel(artifact.kind)}
+                          style={{
+                            width: "100%",
+                            maxHeight: 180,
+                            objectFit: "contain",
+                            borderRadius: 6,
+                            marginBottom: 8,
+                            backgroundColor: "rgba(255,255,255,0.04)",
+                          }}
+                        />
+                      )}
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                      {artifact.filename}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                      {artifact.contentType}
+                      {artifact.byteSize ? ` · ${artifact.byteSize} bytes` : ""}
+                    </div>
+                    {downloadUrl && (
+                      <a
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: "inline-block", marginTop: 8 }}
+                      >
+                        Open artifact
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {result.diffText && (
           <div>

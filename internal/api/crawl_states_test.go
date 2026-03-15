@@ -22,11 +22,15 @@ func TestHandleCrawlStates(t *testing.T) {
 	defer cleanup()
 
 	state := model.CrawlState{
-		URL:          "https://example.com/test",
-		ETag:         "test-etag",
-		LastModified: "test-modified",
-		ContentHash:  "test-hash",
-		LastScraped:  time.Now(),
+		URL:             "https://example.com/test",
+		ETag:            "test-etag",
+		LastModified:    "test-modified",
+		ContentHash:     "test-hash",
+		LastScraped:     time.Now(),
+		PreviousContent: "before",
+		ContentSnapshot: "after",
+		ScreenshotPath:  "/private/watch/current.png",
+		VisualHash:      "visual-hash",
 	}
 	err := srv.store.UpsertCrawlState(ctx, state)
 	if err != nil {
@@ -53,6 +57,15 @@ func TestHandleCrawlStates(t *testing.T) {
 
 	if len(crawlStates) != 1 {
 		t.Errorf("expected 1 crawl state, got %d", len(crawlStates))
+	}
+	statePayload, ok := crawlStates[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected crawl state object, got %#v", crawlStates[0])
+	}
+	for _, field := range []string{"previousContent", "contentSnapshot", "screenshotPath", "visualHash"} {
+		if _, exists := statePayload[field]; exists {
+			t.Fatalf("crawl state response leaked internal field %q: %#v", field, statePayload)
+		}
 	}
 }
 

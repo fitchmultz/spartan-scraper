@@ -2759,6 +2759,71 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/watch/{id}/artifacts/{artifactKind}":
+    get:
+      summary: Download a persisted watch artifact
+      operationId: getWatchArtifact
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: Watch ID
+      - in: path
+        name: artifactKind
+        required: true
+        schema:
+          type: string
+          enum:
+          - current-screenshot
+          - previous-screenshot
+          - visual-diff
+        description: Persisted watch artifact kind
+      responses:
+        '200':
+          description: Artifact bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid artifact kind
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: Watch or artifact not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/metrics":
     get:
       summary: Get performance metrics
@@ -5323,6 +5388,34 @@ components:
           items:
             "$ref": "#/components/schemas/Watch"
           description: List of all watches
+    WatchArtifact:
+      type: object
+      required:
+      - kind
+      - filename
+      - contentType
+      - downloadUrl
+      properties:
+        kind:
+          type: string
+          enum:
+          - current-screenshot
+          - previous-screenshot
+          - visual-diff
+          description: Persisted artifact kind from the completed watch check
+        filename:
+          type: string
+          description: Suggested download filename for the artifact
+        contentType:
+          type: string
+          description: MIME type served by the artifact download endpoint
+        byteSize:
+          type: integer
+          format: int64
+          description: Persisted artifact size in bytes
+        downloadUrl:
+          type: string
+          description: Relative API URL for downloading the artifact bytes
     WatchCheckResult:
       type: object
       required:
@@ -5363,15 +5456,11 @@ components:
         selector:
           type: string
           description: CSS selector used for extraction
-        screenshotPath:
-          type: string
-          description: Path to captured screenshot
-        previousScreenshotPath:
-          type: string
-          description: Path to previous screenshot for comparison
-        visualDiffPath:
-          type: string
-          description: Path to generated visual diff image
+        artifacts:
+          type: array
+          items:
+            "$ref": "#/components/schemas/WatchArtifact"
+          description: Persisted watch screenshot and diff artifacts for this check, exposed through explicit download URLs instead of host-local paths
         visualHash:
           type: string
           description: Perceptual hash of current screenshot
@@ -5794,9 +5883,6 @@ components:
           type: string
           description: Error message if job failed. Secrets and filesystem paths are
             redacted.
-        screenshotPath:
-          type: string
-          description: Path to the screenshot file if screenshot capture was enabled
         interceptedData:
           type: array
           items:

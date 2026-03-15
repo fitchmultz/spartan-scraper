@@ -12,7 +12,13 @@
  * @module lib/watch-utils
  */
 
-import type { Watch, WatchInput } from "../api";
+import type {
+  Watch,
+  WatchArtifact,
+  WatchCheckResult,
+  WatchInput,
+} from "../api";
+import { buildApiUrl } from "./api-config";
 import { parseOptionalList } from "./input-parsing";
 import type { WatchFormData } from "../types/watch";
 
@@ -122,4 +128,33 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
   }
 
   return input;
+}
+
+export function getWatchArtifact(
+  result: Pick<WatchCheckResult, "artifacts"> | null | undefined,
+  kind: WatchArtifact["kind"],
+): WatchArtifact | undefined {
+  return result?.artifacts?.find((artifact) => artifact.kind === kind);
+}
+
+export function getWatchArtifactUrl(
+  artifact: Pick<WatchArtifact, "downloadUrl"> | null | undefined,
+): string {
+  if (!artifact?.downloadUrl) {
+    return "";
+  }
+  return buildApiUrl(artifact.downloadUrl);
+}
+
+export function getWatchArtifactLabel(kind: WatchArtifact["kind"]): string {
+  switch (kind) {
+    case "current-screenshot":
+      return "Current Screenshot";
+    case "previous-screenshot":
+      return "Previous Screenshot";
+    case "visual-diff":
+      return "Visual Diff";
+    default:
+      return kind;
+  }
 }
