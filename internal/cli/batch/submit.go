@@ -1,16 +1,22 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// This file contains submission command handlers for batch operations.
+// Purpose:
+// - Parse and run CLI batch submission commands for scrape, crawl, and research jobs.
 //
 // Responsibilities:
-// - Run batch submit commands (scrape, crawl, research)
-// - Parse command-line flags for batch submission
-// - Build and validate batch requests
+// - Register batch submit flags and build canonical batch requests from CLI input.
+// - Run shared preflight validation through internal/submission before transport selection.
+// - Dispatch validated requests through the API or direct execution paths.
 //
-// Does NOT handle:
-// - File parsing (delegates to parse.go)
-// - API calls (delegates to api.go)
-// - Direct execution (delegates to direct.go)
+// Scope:
+// - Batch submit command handling only.
+//
+// Usage:
+// - Invoked by `spartan batch submit <kind> ...`.
+//
+// Invariants/Assumptions:
+// - CLI batch preflight errors should match canonical submission-layer validation.
+// - File parsing, API transport, and direct execution are delegated to sibling files.
 package batch
 
 import (
@@ -23,9 +29,8 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
-	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
-	"github.com/fitchmultz/spartan-scraper/internal/validate"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 func runBatchSubmit(ctx context.Context, cfg config.Config, args []string) int {
@@ -130,6 +135,23 @@ func buildBatchExtractAndPipelineOptions(cf *common.CommonFlags) (*extract.Extra
 	return &extractOpts, pipelineOpts, nil
 }
 
+func printBatchValidationError(err error) int {
+	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	return 1
+}
+
+func validateBatchScrapeRequestForCLI(cfg config.Config, req BatchScrapeRequest) error {
+	return submission.ValidateBatchScrapeRequest(req, cfg.MaxBatchSize)
+}
+
+func validateBatchCrawlRequestForCLI(cfg config.Config, req BatchCrawlRequest) error {
+	return submission.ValidateBatchCrawlRequest(req, cfg.MaxBatchSize)
+}
+
+func validateBatchResearchRequestForCLI(cfg config.Config, req BatchResearchRequest) error {
+	return submission.ValidateBatchResearchRequest(req, cfg.MaxBatchSize)
+}
+
 func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string) int {
 	fs := flag.NewFlagSet("batch-submit-scrape", flag.ContinueOnError)
 	filePath := fs.String("file", "", "Path to CSV or JSON file containing URLs")
@@ -150,22 +172,8 @@ func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string)
 		return 1
 	}
 
-	if len(jobReqs) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: no URLs provided (use --file or --urls)")
-		return 1
-	}
-
-	if len(jobReqs) > maxBatchSize {
-		fmt.Fprintf(os.Stderr, "Error: batch size %d exceeds maximum of %d\n", len(jobReqs), maxBatchSize)
-		return 1
-	}
-
-	// Validate URLs
-	for i, job := range jobReqs {
-		if err := validate.ValidateURL(job.URL); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: invalid URL at index %d: %v\n", i, err)
-			return 1
-		}
+	if err := validateBatchScrapeRequestForCLI(cfg, BatchScrapeRequest{Jobs: jobReqs}); err != nil {
+		return printBatchValidationError(err)
 	}
 
 	// Build auth options
@@ -229,6 +237,9 @@ func runBatchSubmitScrape(ctx context.Context, cfg config.Config, args []string)
 	if *cf.Incremental {
 		req.Incremental = cf.Incremental
 	}
+	if err := validateBatchScrapeRequestForCLI(cfg, req); err != nil {
+		return printBatchValidationError(err)
+	}
 
 	// Submit batch
 	var resp *BatchResponse
@@ -279,22 +290,12 @@ func runBatchSubmitCrawl(ctx context.Context, cfg config.Config, args []string) 
 		return 1
 	}
 
-	if len(jobReqs) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: no URLs provided (use --file or --urls)")
-		return 1
-	}
-
-	if len(jobReqs) > maxBatchSize {
-		fmt.Fprintf(os.Stderr, "Error: batch size %d exceeds maximum of %d\n", len(jobReqs), maxBatchSize)
-		return 1
-	}
-
-	// Validate URLs
-	for i, job := range jobReqs {
-		if err := validate.ValidateURL(job.URL); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: invalid URL at index %d: %v\n", i, err)
-			return 1
-		}
+	if err := validateBatchCrawlRequestForCLI(cfg, BatchCrawlRequest{
+		Jobs:     jobReqs,
+		MaxDepth: *maxDepth,
+		MaxPages: *maxPages,
+	}); err != nil {
+		return printBatchValidationError(err)
 	}
 
 	// Build auth options
@@ -364,6 +365,9 @@ func runBatchSubmitCrawl(ctx context.Context, cfg config.Config, args []string) 
 	if *sitemapOnly {
 		req.SitemapOnly = sitemapOnly
 	}
+	if err := validateBatchCrawlRequestForCLI(cfg, req); err != nil {
+		return printBatchValidationError(err)
+	}
 
 	// Submit batch
 	var resp *BatchResponse
@@ -407,11 +411,6 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 	}
 	_ = fs.Parse(args)
 
-	if *query == "" {
-		fmt.Fprintln(os.Stderr, "Error: --query is required for research jobs")
-		return 1
-	}
-
 	// Parse jobs from file or URLs
 	jobReqs, err := parseBatchJobs(*filePath, *urlsList, "GET", "", "")
 	if err != nil {
@@ -419,22 +418,13 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		return 1
 	}
 
-	if len(jobReqs) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: no URLs provided (use --file or --urls)")
-		return 1
-	}
-
-	if len(jobReqs) > maxBatchSize {
-		fmt.Fprintf(os.Stderr, "Error: batch size %d exceeds maximum of %d\n", len(jobReqs), maxBatchSize)
-		return 1
-	}
-
-	// Validate URLs
-	for i, job := range jobReqs {
-		if err := validate.ValidateURL(job.URL); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: invalid URL at index %d: %v\n", i, err)
-			return 1
-		}
+	if err := validateBatchResearchRequestForCLI(cfg, BatchResearchRequest{
+		Jobs:     jobReqs,
+		Query:    *query,
+		MaxDepth: *maxDepth,
+		MaxPages: *maxPages,
+	}); err != nil {
+		return printBatchValidationError(err)
 	}
 
 	// Build auth options
@@ -451,10 +441,6 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 		return 1
 	}
 	agenticConfig := common.BuildResearchAgenticConfig(cf)
-	if err := model.ValidateResearchAgenticConfig(agenticConfig); err != nil {
-		fmt.Fprintf(os.Stderr, "Error validating agentic research options: %v\n", err)
-		return 1
-	}
 
 	device, err := common.ResolveDevicePreset(*cf.Device)
 	if err != nil {
@@ -503,6 +489,9 @@ func runBatchSubmitResearch(ctx context.Context, cfg config.Config, args []strin
 
 	if *cf.Playwright != cfg.UsePlaywright {
 		req.Playwright = cf.Playwright
+	}
+	if err := validateBatchResearchRequestForCLI(cfg, req); err != nil {
+		return printBatchValidationError(err)
 	}
 
 	// Submit batch

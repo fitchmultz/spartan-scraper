@@ -38,7 +38,7 @@ type BatchDefaults struct {
 
 // JobSpecsFromBatchScrapeRequest converts a batch scrape request into validated scrape job specs.
 func JobSpecsFromBatchScrapeRequest(cfg config.Config, defaults BatchDefaults, req BatchScrapeRequest) ([]jobs.JobSpec, error) {
-	if err := validateBatchScrapeRequest(req, defaults.MaxBatchSize); err != nil {
+	if err := ValidateBatchScrapeRequest(req, defaults.MaxBatchSize); err != nil {
 		return nil, err
 	}
 	requests := makeBatchScrapeRequests(req)
@@ -55,7 +55,7 @@ func JobSpecsFromBatchScrapeRequest(cfg config.Config, defaults BatchDefaults, r
 
 // JobSpecsFromBatchCrawlRequest converts a batch crawl request into validated crawl job specs.
 func JobSpecsFromBatchCrawlRequest(cfg config.Config, defaults BatchDefaults, req BatchCrawlRequest) ([]jobs.JobSpec, error) {
-	if err := validateBatchCrawlRequest(req, defaults.MaxBatchSize); err != nil {
+	if err := ValidateBatchCrawlRequest(req, defaults.MaxBatchSize); err != nil {
 		return nil, err
 	}
 	requests := makeBatchCrawlRequests(req)
@@ -72,7 +72,7 @@ func JobSpecsFromBatchCrawlRequest(cfg config.Config, defaults BatchDefaults, re
 
 // JobSpecsFromBatchResearchRequest converts a batch research request into a validated research job spec slice.
 func JobSpecsFromBatchResearchRequest(cfg config.Config, defaults BatchDefaults, req BatchResearchRequest) ([]jobs.JobSpec, error) {
-	if err := validateBatchResearchRequest(req, defaults.MaxBatchSize); err != nil {
+	if err := ValidateBatchResearchRequest(req, defaults.MaxBatchSize); err != nil {
 		return nil, err
 	}
 	spec, err := JobSpecFromResearchRequest(cfg, defaults.Defaults, makeBatchResearchRequest(req))
@@ -82,21 +82,24 @@ func JobSpecsFromBatchResearchRequest(cfg config.Config, defaults BatchDefaults,
 	return []jobs.JobSpec{spec}, nil
 }
 
-func validateBatchScrapeRequest(req BatchScrapeRequest, maxBatchSize int) error {
+// ValidateBatchScrapeRequest validates a batch scrape request before job creation.
+func ValidateBatchScrapeRequest(req BatchScrapeRequest, maxBatchSize int) error {
 	if err := validateBatchJobs(req.Jobs, maxBatchSize); err != nil {
 		return err
 	}
 	return ValidateScrapeRequest(makeBatchScrapeRequest(req, req.Jobs[0]))
 }
 
-func validateBatchCrawlRequest(req BatchCrawlRequest, maxBatchSize int) error {
+// ValidateBatchCrawlRequest validates a batch crawl request before job creation.
+func ValidateBatchCrawlRequest(req BatchCrawlRequest, maxBatchSize int) error {
 	if err := validateBatchJobs(req.Jobs, maxBatchSize); err != nil {
 		return err
 	}
 	return ValidateCrawlRequest(makeBatchCrawlRequest(req, req.Jobs[0]))
 }
 
-func validateBatchResearchRequest(req BatchResearchRequest, maxBatchSize int) error {
+// ValidateBatchResearchRequest validates a batch research request before job creation.
+func ValidateBatchResearchRequest(req BatchResearchRequest, maxBatchSize int) error {
 	if err := validateBatchJobs(req.Jobs, maxBatchSize); err != nil {
 		return err
 	}

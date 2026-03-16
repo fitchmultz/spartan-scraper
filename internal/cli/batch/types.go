@@ -24,8 +24,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
-const maxBatchSize = 100
-
 // BatchJobRequest represents a single job in a batch.
 type BatchJobRequest = submission.BatchJobRequest
 

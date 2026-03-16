@@ -11,23 +11,23 @@ toolchain go1.26.1
 replace (
 	// github.com/playwright-community/playwright-go v0.5700.1 still pins older transport/query deps.
 	github.com/coder/websocket => github.com/coder/websocket v1.8.14
-	github.com/tidwall/gjson => github.com/tidwall/gjson v1.18.0
-	github.com/tidwall/match => github.com/tidwall/match v1.2.0
 
 	// gopkg.in/check.v1 -> github.com/kr/pretty/kr/text and github.com/kr/text itself still pin old pty tags.
 	github.com/creack/pty => github.com/creack/pty v1.1.24
-	github.com/kr/pty => github.com/kr/pty v1.1.8
 
 	// golang.org/x/tools v0.43.0 and its x/mod backchain still lag these versions.
 	github.com/google/go-cmp => github.com/google/go-cmp v0.7.0
-	github.com/yuin/goldmark => github.com/yuin/goldmark v1.7.16
-	golang.org/x/telemetry => golang.org/x/telemetry v0.0.0-20260312161427-1546bf4b83fe
-	golang.org/x/xerrors => golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 
 	// Other latest parent modules still pin older leaf tags.
 	github.com/ianlancetaylor/demangle => github.com/ianlancetaylor/demangle v0.0.0-20251118225945-96ee0021ea0f
+	github.com/kr/pty => github.com/kr/pty v1.1.8
 	github.com/stretchr/objx => github.com/stretchr/objx v0.5.3
+	github.com/tidwall/gjson => github.com/tidwall/gjson v1.18.0
+	github.com/tidwall/match => github.com/tidwall/match v1.2.0
+	github.com/yuin/goldmark => github.com/yuin/goldmark v1.7.16
 	github.com/zeebo/assert => github.com/zeebo/assert v1.3.1
+	golang.org/x/telemetry => golang.org/x/telemetry v0.0.0-20260312161427-1546bf4b83fe
+	golang.org/x/xerrors => golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260128011058-8636f8732409
 )
@@ -65,7 +65,7 @@ require (
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
-	github.com/charmbracelet/x/exp/golden v0.0.0-20260315003922-bbd79dac4a98 // indirect
+	github.com/charmbracelet/x/exp/golden v0.0.0-20260316093931-f2fb44ab3145 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect

@@ -60,7 +60,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Job and batch control-plane responses should use the shared envelopes: `{ job }`, `{ jobs, total, limit, offset }`, and `{ batch, jobs, total, limit, offset }` across REST, Web, CLI, and MCP.
 - Watch and crawl-state APIs must never expose host-local screenshot or diff paths; return explicit artifact download URLs from `/v1/watch/{id}/artifacts/{kind}` and keep crawl-state responses sanitized to the documented fields.
 - Webhook validation is split intentionally: use `webhook.ValidateConfigURL` for create-time syntax checks, and keep SSRF/private-target enforcement in dispatch-time delivery planning (`ValidateURL` / pinned dialing). `WEBHOOK_ALLOW_INTERNAL=true` is a trusted-environment escape hatch only.
-- `internal/submission` is the canonical operator-facing request-to-spec layer for single and batch scrape/crawl/research flows. API handlers and direct batch execution should delegate there instead of rebuilding `jobs.JobSpec` defaults locally.
+- `internal/submission` is the canonical operator-facing request-to-spec and validation layer for single and batch scrape/crawl/research flows. API handlers, CLI batch preflight, and direct batch execution should delegate there instead of rebuilding `jobs.JobSpec` defaults or validation locally.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.
 
 ### Testing Guidelines

@@ -528,8 +528,8 @@ func TestRunBatchSubmitScrape_NoURLs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "no URLs provided") {
-		t.Errorf("expected error about missing URLs, got %q", stderr)
+	if !strings.Contains(stderr, "batch must contain at least one job") {
+		t.Errorf("expected canonical batch-size validation error, got %q", stderr)
 	}
 }
 
@@ -553,8 +553,8 @@ func TestRunBatchSubmitCrawl_NoURLs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "no URLs provided") {
-		t.Errorf("expected error about missing URLs, got %q", stderr)
+	if !strings.Contains(stderr, "batch must contain at least one job") {
+		t.Errorf("expected canonical batch-size validation error, got %q", stderr)
 	}
 }
 
@@ -578,8 +578,39 @@ func TestRunBatchSubmitResearch_NoQuery(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "query is required") {
-		t.Errorf("expected error about missing query, got %q", stderr)
+	if !strings.Contains(stderr, "query and urls are required") {
+		t.Errorf("expected canonical research validation error, got %q", stderr)
+	}
+}
+
+func TestRunBatchSubmitResearch_InvalidAgenticOptions(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.Config{DataDir: t.TempDir()}
+
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	exitCode := RunBatch(ctx, cfg, []string{
+		"submit", "research",
+		"--urls", "https://example.com",
+		"--query", "pricing model",
+		"--agentic",
+		"--agentic-max-rounds", "5",
+	})
+
+	w.Close()
+	os.Stderr = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	stderr := buf.String()
+
+	if exitCode != 1 {
+		t.Errorf("expected exit code 1, got %d", exitCode)
+	}
+	if !strings.Contains(stderr, "agentic.maxRounds must be between 1 and 3") {
+		t.Errorf("expected canonical agentic validation error, got %q", stderr)
 	}
 }
 
@@ -603,8 +634,8 @@ func TestRunBatchSubmitResearch_NoURLs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "no URLs provided") {
-		t.Errorf("expected error about missing URLs, got %q", stderr)
+	if !strings.Contains(stderr, "batch must contain at least one job") {
+		t.Errorf("expected canonical batch-size validation error, got %q", stderr)
 	}
 }
 
@@ -715,12 +746,12 @@ func TestRunBatchSubmitResearch_StoresAIExtractOptions(t *testing.T) {
 
 func TestRunBatchSubmitScrape_TooManyURLs(t *testing.T) {
 	ctx := context.Background()
-	cfg := config.Config{DataDir: t.TempDir()}
+	cfg := config.Config{DataDir: t.TempDir(), MaxBatchSize: 2}
 
-	// Create URLs list with more than maxBatchSize
-	urls := make([]string, maxBatchSize+1)
-	for i := range urls {
-		urls[i] = "https://example" + string(rune('a'+i%26)) + ".com"
+	urls := []string{
+		"https://example-a.com",
+		"https://example-b.com",
+		"https://example-c.com",
 	}
 
 	old := os.Stderr
@@ -739,8 +770,8 @@ func TestRunBatchSubmitScrape_TooManyURLs(t *testing.T) {
 	if exitCode != 1 {
 		t.Errorf("expected exit code 1, got %d", exitCode)
 	}
-	if !strings.Contains(stderr, "exceeds maximum") {
-		t.Errorf("expected error about batch size, got %q", stderr)
+	if !strings.Contains(stderr, "batch size 3 exceeds maximum of 2") {
+		t.Errorf("expected config-driven batch-size error, got %q", stderr)
 	}
 }
 
