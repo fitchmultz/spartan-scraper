@@ -62,6 +62,8 @@ This boundary is deliberate to avoid building a second interactive AI workbench 
   - Derived multi-source workflow built on scrape/crawl primitives, with optional AI-assisted field extraction plus bounded pi-guided follow-up/synthesis flowing through the same evidence-gathering path rather than a separate free-form agent loop.
 - `internal/scheduler`
   - Interval schedules and export schedules.
+- `internal/webhook`
+  - Outbound webhook dispatch with signing, retries, delivery tracking, SSRF validation, and delivery-time IP pinning.
 - `internal/exporter`
   - Artifact export for `json`, `jsonl`, `csv`, `md`, and `xlsx`, including bounded shape configs for recurring human-readable/tabular exports.
 - `internal/auth`

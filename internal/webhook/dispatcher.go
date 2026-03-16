@@ -1,19 +1,25 @@
-// Package webhook provides webhook dispatch functionality for job notifications.
-// It handles HTTP delivery with HMAC-SHA256 signatures and exponential backoff retry.
+// Package webhook dispatches webhook notifications for jobs, watches, crawls, and exports.
 //
-// The dispatcher is designed to be non-blocking - webhook deliveries happen
-// asynchronously in goroutines to avoid delaying job status updates.
+// Purpose:
+// - Send outbound webhook deliveries with signing, retry, tracking, and transport hardening.
 //
-// Security considerations:
-//   - Webhook secrets are passed per-dispatch (from job params), not stored in the dispatcher
-//   - HMAC-SHA256 signatures are generated when a secret is provided
-//   - Timeouts prevent hanging connections from blocking the system
-//   - Retries use exponential backoff to avoid overwhelming receiving endpoints
-//   - SSRF validation is performed automatically on all webhook URLs
+// Responsibilities:
+// - Serialize JSON and multipart export webhook payloads.
+// - Apply HMAC signatures when secrets are configured.
+// - Retry failed deliveries with exponential backoff.
+// - Validate webhook URLs, pin dialing to the validated IP set, and disable redirect hops.
+// - Optionally persist delivery tracking records.
 //
-// This package does NOT:
-//   - Store webhook delivery state persistently
-//   - Guarantee exactly-once delivery (at-least-once is attempted)
+// Scope:
+// - Outbound webhook dispatch only.
+//
+// Usage:
+// - Construct one shared Dispatcher and pass it to managers that emit webhook side effects.
+//
+// Invariants/Assumptions:
+// - Deliveries are best-effort and at-least-once, not exactly-once.
+// - Webhook secrets are supplied per dispatch or by dispatcher default configuration.
+// - Redirects are treated as non-success responses so validated targets cannot pivot hosts.
 package webhook
 
 import (
@@ -22,12 +28,14 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
 	"sync/atomic"
@@ -141,7 +149,8 @@ type Config struct {
 	Timeout time.Duration
 
 	// AllowInternal allows webhooks to internal/private addresses (default: false).
-	// When false, SSRF protection blocks private IPs, localhost, and link-local addresses.
+	// When false, delivery resolves once, pins dialing to the validated IP set, blocks
+	// private IPs/localhost/link-local answers, and refuses redirect hops.
 	// WARNING: Only enable in trusted environments.
 	AllowInternal bool
 
@@ -152,7 +161,6 @@ type Config struct {
 
 // Dispatcher manages webhook delivery with retry logic.
 type Dispatcher struct {
-	client        *http.Client
 	secret        string
 	maxRetries    int
 	baseDelay     time.Duration
@@ -160,6 +168,9 @@ type Dispatcher struct {
 	timeout       time.Duration
 	allowInternal bool
 	store         *Store
+	resolver      ipResolver
+	dialContext   dialContextFunc
+	tlsConfig     *tls.Config
 	sem           chan struct{} // Semaphore channel for concurrency control
 	droppedCount  atomic.Int64  // Counter for dropped webhooks due to concurrency limit
 }
@@ -192,8 +203,9 @@ func NewDispatcher(cfg Config) *Dispatcher {
 		maxConcurrent = 100
 	}
 
+	baseDialer := &net.Dialer{Timeout: timeout}
+
 	return &Dispatcher{
-		client:        &http.Client{Timeout: timeout},
 		secret:        cfg.Secret,
 		maxRetries:    maxRetries,
 		baseDelay:     baseDelay,
@@ -201,6 +213,9 @@ func NewDispatcher(cfg Config) *Dispatcher {
 		timeout:       timeout,
 		allowInternal: cfg.AllowInternal,
 		store:         nil,
+		resolver:      systemIPResolver{resolver: net.DefaultResolver},
+		dialContext:   baseDialer.DialContext,
+		tlsConfig:     nil,
 		sem:           make(chan struct{}, maxConcurrent),
 	}
 }
@@ -265,8 +280,9 @@ func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request del
 		ctx = context.Background()
 	}
 
-	if err := ValidateURL(url, d.allowInternal); err != nil {
-		slog.Error("webhook URL failed SSRF validation",
+	target, err := resolveDeliveryTarget(ctx, url, d.allowInternal, d.resolver)
+	if err != nil {
+		slog.Error("webhook URL failed validation",
 			"url", SanitizeURL(url),
 			"jobID", request.JobID,
 			"error", apperrors.SafeMessage(err))
@@ -279,7 +295,14 @@ func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request del
 	}
 	defer release()
 
-	return d.dispatchWithRetry(ctx, url, request, secret)
+	client, closeClient := d.clientForTarget(target)
+	defer closeClient()
+
+	return d.dispatchWithRetry(ctx, client, url, request, secret)
+}
+
+func (d *Dispatcher) clientForTarget(target deliveryTarget) (*http.Client, func()) {
+	return newPinnedHTTPClient(d.timeout, target, d.dialContext, d.tlsConfig)
 }
 
 func (d *Dispatcher) acquireDispatchSlot(ctx context.Context, request deliveryRequest, url string) (func(), error) {
@@ -385,7 +408,7 @@ func (d *Dispatcher) DroppedCount() int64 {
 
 // dispatchWithRetry attempts delivery with exponential backoff.
 // This method should be called in a goroutine as it blocks during retries.
-func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, request deliveryRequest, secret string) error {
+func (d *Dispatcher) dispatchWithRetry(ctx context.Context, client *http.Client, url string, request deliveryRequest, secret string) error {
 	// Use per-dispatch secret if provided, otherwise fall back to dispatcher secret
 	useSecret := secret
 	if useSecret == "" {
@@ -428,7 +451,7 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, request 
 	delay := d.baseDelay
 
 	for attempt := 1; attempt <= d.maxRetries; attempt++ {
-		err, responseCode = d.attemptDelivery(ctx, url, request, useSecret)
+		err, responseCode = d.attemptDelivery(ctx, client, url, request, useSecret)
 		if err == nil {
 			slog.Debug("webhook delivered successfully",
 				"jobID", request.JobID,
@@ -515,7 +538,7 @@ func (d *Dispatcher) dispatchWithRetry(ctx context.Context, url string, request 
 
 // attemptDelivery makes a single HTTP POST attempt.
 // Returns the error (if any) and the HTTP response code.
-func (d *Dispatcher) attemptDelivery(ctx context.Context, url string, request deliveryRequest, secret string) (error, int) {
+func (d *Dispatcher) attemptDelivery(ctx context.Context, client *http.Client, url string, request deliveryRequest, secret string) (error, int) {
 	reqCtx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
@@ -535,7 +558,7 @@ func (d *Dispatcher) attemptDelivery(ctx context.Context, url string, request de
 		req.Header.Set("X-Webhook-Signature", sig)
 	}
 
-	resp, err := d.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http request failed: %w", err), 0
 	}

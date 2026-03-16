@@ -11,5 +11,5 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Either pin webhook connections to the prevalidated IP set during dialing or narrow the SSRF / DNS-rebinding claim everywhere it appears; add resolver-controlled integration coverage for whichever guarantee the product actually intends to make.
+- Centralize create-time webhook URL validation across watch, job, and export-schedule entry points so operators get the same early syntax errors everywhere, while runtime delivery remains the enforcement boundary for SSRF checks and delivery-time IP pinning.
 - Remove the temporary transitive Go dependency overrides in `go.mod` as soon as upstream parent modules absorb those newer tags; keep `make audit-deps` green so override cleanup happens immediately once the parent graph catches up.

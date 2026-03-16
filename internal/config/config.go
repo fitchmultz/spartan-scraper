@@ -44,7 +44,7 @@ type WebhookConfig struct {
 	BaseDelay               time.Duration
 	MaxDelay                time.Duration
 	Timeout                 time.Duration
-	AllowInternal           bool // Allow webhooks to internal/private addresses (default: false for security)
+	AllowInternal           bool // Allow webhooks to internal/private addresses; bypasses the default dispatch-time private-target guardrail
 	MaxConcurrentDispatches int  // Maximum concurrent webhook dispatches (default: 100)
 }
 

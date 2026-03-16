@@ -59,6 +59,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Chains and watch-triggered jobs must persist operator-facing `request` payloads, not typed job specs, so automation surfaces reuse the same request-to-job conversion path as live jobs and schedules.
 - Job and batch control-plane responses should use the shared envelopes: `{ job }`, `{ jobs, total, limit, offset }`, and `{ batch, jobs, total, limit, offset }` across REST, Web, CLI, and MCP.
 - Watch and crawl-state APIs must never expose host-local screenshot or diff paths; return explicit artifact download URLs from `/v1/watch/{id}/artifacts/{kind}` and keep crawl-state responses sanitized to the documented fields.
+- Webhook delivery hardening is enforced at dispatch time: resolve once per request, pin dialing to the validated IP set, disable redirects, and treat `WEBHOOK_ALLOW_INTERNAL=true` as a trusted-environment escape hatch only.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.
 
 ### Testing Guidelines

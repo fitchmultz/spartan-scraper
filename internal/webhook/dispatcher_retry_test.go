@@ -1,20 +1,22 @@
-// Package webhook provides tests for dispatcher retry logic and failure handling.
+// Package webhook verifies retry behavior and failure handling for webhook delivery.
 //
-// Tests cover:
-// - Retry on failure with exponential backoff
-// - Exhausted retries error handling
-// - Timeout handling for slow endpoints
-// - Context cancellation propagation
+// Purpose:
+// - Prove delivery retries, timeout handling, and context cancellation remain intact.
 //
-// Does NOT test:
-// - Successful dispatch (see dispatcher_success_test.go)
-// - Concurrency limits (see dispatcher_concurrency_test.go)
-// - SSRF protection (see dispatcher_ssrf_test.go)
+// Responsibilities:
+// - Verify retries stop after success or exhaustion.
+// - Verify per-request timeouts are enforced.
+// - Verify context cancellation aborts retry loops.
 //
-// Assumes:
-// - Retries use exponential backoff with configurable limits
-// - Timeouts are enforced per-request
-// - Context cancellation stops retry attempts
+// Scope:
+// - Dispatcher retry logic only.
+//
+// Usage:
+// - Run with `go test ./internal/webhook`.
+//
+// Invariants/Assumptions:
+// - Tests use AllowInternal=true because httptest listeners bind loopback addresses.
+// - Each retry test resolves a pinned client once so all attempts share the same dial plan.
 package webhook
 
 import (
@@ -26,6 +28,15 @@ import (
 	"testing"
 	"time"
 )
+
+func retryTestClient(t *testing.T, d *Dispatcher, rawURL string) (*http.Client, func()) {
+	t.Helper()
+	target, err := resolveDeliveryTarget(context.Background(), rawURL, d.allowInternal, d.resolver)
+	if err != nil {
+		t.Fatalf("resolveDeliveryTarget() failed: %v", err)
+	}
+	return d.clientForTarget(target)
+}
 
 func TestDispatch_RetryOnFailure(t *testing.T) {
 	var attempts atomic.Int32
@@ -39,7 +50,6 @@ func TestDispatch_RetryOnFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
 		MaxRetries:    3,
 		BaseDelay:     10 * time.Millisecond,
@@ -52,9 +62,10 @@ func TestDispatch_RetryOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
 	}
+	client, closeClient := retryTestClient(t, d, server.URL)
+	defer closeClient()
 
-	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
-
+	err = d.dispatchWithRetry(context.Background(), client, server.URL, request, "")
 	if err != nil {
 		t.Errorf("expected success after retries, got error: %v", err)
 	}
@@ -71,7 +82,6 @@ func TestDispatch_ExhaustedRetries(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
 		MaxRetries:    2,
 		BaseDelay:     10 * time.Millisecond,
@@ -84,9 +94,10 @@ func TestDispatch_ExhaustedRetries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
 	}
+	client, closeClient := retryTestClient(t, d, server.URL)
+	defer closeClient()
 
-	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
-
+	err = d.dispatchWithRetry(context.Background(), client, server.URL, request, "")
 	if err == nil {
 		t.Error("expected error after exhausted retries")
 	}
@@ -105,7 +116,6 @@ func TestDispatch_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
 		MaxRetries:    1,
 		Timeout:       50 * time.Millisecond,
@@ -117,9 +127,10 @@ func TestDispatch_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
 	}
+	client, closeClient := retryTestClient(t, d, server.URL)
+	defer closeClient()
 
-	err = d.dispatchWithRetry(context.Background(), server.URL, request, "")
-
+	err = d.dispatchWithRetry(context.Background(), client, server.URL, request, "")
 	if err == nil {
 		t.Error("expected timeout error")
 	}
@@ -132,7 +143,6 @@ func TestDispatch_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Use AllowInternal=true for tests using httptest (which uses 127.0.0.1)
 	d := NewDispatcher(Config{
 		MaxRetries:    3,
 		BaseDelay:     50 * time.Millisecond,
@@ -146,15 +156,15 @@ func TestDispatch_ContextCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("jsonDeliveryRequest() failed: %v", err)
 	}
+	client, closeClient := retryTestClient(t, d, server.URL)
+	defer closeClient()
 
-	// Cancel context after a short delay
 	go func() {
 		time.Sleep(25 * time.Millisecond)
 		cancel()
 	}()
 
-	err = d.dispatchWithRetry(ctx, server.URL, request, "")
-
+	err = d.dispatchWithRetry(ctx, client, server.URL, request, "")
 	if err == nil {
 		t.Error("expected context cancellation error")
 	}

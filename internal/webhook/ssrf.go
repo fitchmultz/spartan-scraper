@@ -1,20 +1,28 @@
-// Package webhook provides SSRF (Server-Side Request Forgery) protection for webhook URLs.
+// Package webhook classifies and validates webhook URLs for SSRF-safe delivery.
 //
-// This file implements URL validation to prevent attackers from using the webhook
-// dispatcher to make requests to internal services, metadata endpoints, or other
-// restricted addresses.
+// Purpose:
+// - Provide shared SSRF validation helpers for webhook-target configuration and delivery.
 //
-// Protection includes:
-//   - Private IP range blocking (RFC1918, link-local, loopback)
-//   - DNS rebinding protection (resolve then validate)
-//   - Localhost variant detection
-//   - IPv6 private address blocking
+// Responsibilities:
+// - Block localhost, private, link-local, and loopback IP ranges by default.
+// - Resolve hostname targets before delivery planning so unsafe answers are rejected.
+// - Sanitize webhook URLs for safe logging.
+// - Classify SSRF validation failures with a stable sentinel error.
 //
-// The AllowInternal flag can be used in trusted environments to bypass these
-// restrictions (use with caution).
+// Scope:
+// - Webhook URL validation and IP-range classification only.
+//
+// Usage:
+// - Dispatcher calls ValidateURL/resolveDeliveryTarget before making outbound webhook requests.
+// - Other packages may reuse ValidateURL when they need the same webhook URL safety policy.
+//
+// Invariants/Assumptions:
+// - Hostname validation is fail-closed when DNS resolution fails.
+// - DNS-rebinding protection requires delivery-time IP pinning in addition to preflight validation.
 package webhook
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/netip"
@@ -66,73 +74,15 @@ var localhostNames = []string{
 	"ip6-loopback",
 }
 
-// ValidateURL checks if a webhook URL is safe to request (SSRF protection).
+// ValidateURL checks if a webhook URL is safe to request.
 //
 // If allowInternal is true, private IP ranges and localhost are allowed.
-// This should only be enabled in trusted testing environments.
+// This should only be enabled in trusted environments.
 //
 // Returns an apperrors.KindValidation error if the URL is blocked.
 func ValidateURL(rawURL string, allowInternal bool) error {
-	if allowInternal {
-		// Still perform basic URL validation even when allowing internal
-		u, err := url.Parse(rawURL)
-		if err != nil {
-			return apperrors.Wrap(apperrors.KindValidation, "invalid webhook URL", err)
-		}
-		if u.Scheme != "http" && u.Scheme != "https" {
-			return apperrors.Validation("webhook URL must use http or https scheme")
-		}
-		return nil
-	}
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return apperrors.Wrap(apperrors.KindValidation, "invalid webhook URL", err)
-	}
-
-	// Validate scheme
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return apperrors.Validation("webhook URL must use http or https scheme")
-	}
-
-	host := u.Hostname()
-	if host == "" {
-		return apperrors.Validation("webhook URL must have a host")
-	}
-
-	// Check for localhost hostnames first (fast path)
-	if isLocalhost(host) {
-		return SSRFError
-	}
-
-	// Check if host is a literal IP address
-	if ip, err := netip.ParseAddr(host); err == nil {
-		if isPrivateIP(ip) {
-			return SSRFError
-		}
-		return nil
-	}
-
-	// DNS rebinding protection: resolve the hostname and check all IPs
-	// This prevents attacks where a hostname resolves to a safe IP initially
-	// but later resolves to an internal IP.
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		// If we can't resolve, we should fail closed (block) for security
-		// but return a different error to distinguish from SSRF
-		return apperrors.Wrap(apperrors.KindValidation, "failed to resolve webhook URL hostname", err)
-	}
-
-	for _, ip := range ips {
-		// Convert to netip.Addr for consistent handling
-		if addr, ok := netip.AddrFromSlice(ip); ok {
-			if isPrivateIP(addr) {
-				return SSRFError
-			}
-		}
-	}
-
-	return nil
+	_, err := resolveDeliveryTarget(context.Background(), rawURL, allowInternal, systemIPResolver{resolver: net.DefaultResolver})
+	return err
 }
 
 // isLocalhost checks if the hostname is a localhost variant.
