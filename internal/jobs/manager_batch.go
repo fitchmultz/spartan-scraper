@@ -1,18 +1,25 @@
 // Package jobs provides batch job creation and management for the job manager.
 //
-// This file is responsible for:
-// - Creating batches of jobs (scrape, crawl, research)
-// - Managing batch status aggregation
-// - Batch job enqueueing with queue capacity checks
+// Purpose:
+// - Coordinate batch creation, enqueueing, listing, cancellation, and aggregate status inspection.
 //
-// This file does NOT handle:
-// - Individual job execution (see job_run.go)
-// - Batch persistence (see store package)
+// Responsibilities:
+// - Create batches of scrape, crawl, and research jobs.
+// - Enqueue all jobs belonging to a batch.
+// - List persisted batches with computed aggregate status and pagination metadata.
+// - Aggregate current batch status from constituent job statuses.
+// - Cancel all jobs belonging to a batch.
 //
-// Invariants:
-// - Batch size is validated against MaxBatchSize before creation
-// - All jobs in a batch are created in a single transaction
-// - Batch status is calculated from constituent job statuses
+// Scope:
+// - Batch orchestration only; individual job execution lives in other files in this package.
+//
+// Usage:
+// - Called by REST handlers, CLI direct-mode helpers, and MCP tool handlers.
+//
+// Invariants/Assumptions:
+// - Batch size is validated against MaxBatchSize before creation.
+// - All jobs in a batch are created before the batch record is persisted.
+// - Batch status exposed to callers is derived from current job counts.
 package jobs
 
 import (
@@ -25,6 +32,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
 
 // MaxBatchSize is the default maximum number of jobs allowed in a single batch.
@@ -94,6 +102,19 @@ func (m *Manager) EnqueueBatch(jobs []model.Job) error {
 		}
 	}
 	return nil
+}
+
+// ListBatchStatuses returns a page of batches with their current aggregate stats and total count.
+func (m *Manager) ListBatchStatuses(ctx context.Context, opts store.ListOptions) ([]model.Batch, []model.BatchJobStats, int, error) {
+	batches, stats, err := m.store.ListBatchesWithStats(ctx, opts)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	total, err := m.store.CountBatches(ctx)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return batches, stats, total, nil
 }
 
 // GetBatchStatus retrieves the current status of a batch including job statistics.

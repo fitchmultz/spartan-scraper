@@ -208,16 +208,18 @@ Example nested fields:
 {"id":13,"method":"tools/call","params":{"name":"export_schedule_create","arguments":{"name":"Projected Export","filters":{"job_kinds":["scrape"]},"export":{"format":"csv","destination_type":"local","transform":{"expression":"{title: title, url: url}","language":"jmespath"}}}}}
 {"id":14,"method":"tools/call","params":{"name":"proxy_pool_status","arguments":{}}}
 {"id":15,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
-{"id":16,"method":"tools/call","params":{"name":"batch_status","arguments":{"id":"<batch-id>","includeJobs":true,"limit":50,"offset":0}}}
-{"id":17,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
-{"id":18,"method":"tools/call","params":{"name":"watch_create","arguments":{"url":"https://example.com/pricing","selector":"main","intervalSeconds":300,"notifyOnChange":true}}}
-{"id":19,"method":"tools/call","params":{"name":"watch_update","arguments":{"id":"<watch-id>","enabled":true,"jobTrigger":{"kind":"scrape","request":{"url":"https://example.com/pricing","extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract current pricing and packaging changes","fields":["plans","pricing","packaging_notes"]}}}}}}}
-{"id":20,"method":"tools/call","params":{"name":"watch_check","arguments":{"id":"<watch-id>"}}}
-{"id":21,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
-{"id":22,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
-{"id":23,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
+{"id":16,"method":"tools/call","params":{"name":"batch_scrape","arguments":{"jobs":[{"url":"https://example.com/a"},{"url":"https://example.com/b"}],"extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract title and price","fields":["title","price"]}}}}}
+{"id":17,"method":"tools/call","params":{"name":"batch_list","arguments":{"limit":25,"offset":0}}}
+{"id":18,"method":"tools/call","params":{"name":"batch_status","arguments":{"id":"<batch-id>","includeJobs":true,"limit":50,"offset":0}}}
+{"id":19,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":20,"method":"tools/call","params":{"name":"watch_create","arguments":{"url":"https://example.com/pricing","selector":"main","intervalSeconds":300,"notifyOnChange":true}}}
+{"id":21,"method":"tools/call","params":{"name":"watch_update","arguments":{"id":"<watch-id>","enabled":true,"jobTrigger":{"kind":"scrape","request":{"url":"https://example.com/pricing","extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract current pricing and packaging changes","fields":["plans","pricing","packaging_notes"]}}}}}}}
+{"id":22,"method":"tools/call","params":{"name":"watch_check","arguments":{"id":"<watch-id>"}}}
+{"id":23,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
+{"id":24,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
+{"id":25,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
 ```
 
-`job_status` and `job_cancel` now return the same `{ job }` envelope shape as REST job detail. `job_list` returns `{ jobs, total, limit, offset }`. `batch_status` and `batch_cancel` return the same `{ batch, jobs, total, limit, offset }` envelope shape as REST batch create/get/cancel, including `batch.stats` on every response.
+`job_status` and `job_cancel` now return the same `{ job }` envelope shape as REST job detail. `job_list` returns `{ jobs, total, limit, offset }`. `batch_list` returns `{ batches, total, limit, offset }`. `batch_scrape`, `batch_crawl`, and `batch_research` accept the same request bodies as the REST batch-submit endpoints. `batch_status` and `batch_cancel` return the same `{ batch, jobs, total, limit, offset }` envelope shape as REST batch create/get/cancel, including `batch.stats` on every response.
 
 The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` and `batch_*` tools when you need persisted scrape/crawl/research execution that can be polled or canceled later, use `watch_*` tools when you want to manage stored content monitoring workflows, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.

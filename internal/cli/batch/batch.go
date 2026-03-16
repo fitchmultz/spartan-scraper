@@ -1,13 +1,21 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// Responsibilities:
-// - Submit batch jobs from CSV/JSON input files
-// - Check batch status with aggregated statistics
-// - Cancel batches and their constituent jobs
+// Purpose:
+// - Route operator-facing batch list, submit, status, and cancel subcommands.
 //
-// Does NOT handle:
-// - Individual job operations (see manage/jobs.go)
-// - Batch execution logic (see jobs package)
+// Responsibilities:
+// - Dispatch batch CLI subcommands and render top-level help text.
+// - Keep the batch command surface discoverable from one entrypoint.
+//
+// Scope:
+// - Command routing only; individual subcommand implementations live in sibling files.
+//
+// Usage:
+// - Invoked from `spartan batch ...`.
+//
+// Invariants/Assumptions:
+// - Unknown subcommands print help and exit non-zero.
+// - Batch subcommands prefer the local API when available and fall back to direct mode where supported.
 package batch
 
 import (
@@ -28,6 +36,8 @@ func RunBatch(ctx context.Context, cfg config.Config, args []string) int {
 	}
 
 	switch args[0] {
+	case "list":
+		return runBatchList(ctx, cfg, args[1:])
 	case "submit":
 		return runBatchSubmit(ctx, cfg, args[1:])
 	case "status":
@@ -48,11 +58,13 @@ func printBatchHelp() {
 	fmt.Print(`Usage: spartan batch <subcommand> [options]
 
 Subcommands:
+  list         List persisted batches with aggregate status
   submit       Submit a batch of jobs (scrape, crawl, or research)
   status       Get the status of a batch
   cancel       Cancel a batch and all its jobs
 
 Examples:
+  spartan batch list --limit 25 --offset 0
   spartan batch submit scrape --file urls.csv --headless
   spartan batch submit crawl --file sites.json --max-depth 2
   spartan batch submit research --urls https://a.com,https://b.com --query "pricing"

@@ -126,6 +126,14 @@ type BatchResponse struct {
 	Offset int          `json:"offset"`
 }
 
+// BatchListResponse represents a paginated collection of aggregate batch summaries.
+type BatchListResponse struct {
+	Batches []BatchSummary `json:"batches"`
+	Total   int            `json:"total"`
+	Limit   int            `json:"limit"`
+	Offset  int            `json:"offset"`
+}
+
 // RetentionStatusResponse represents the retention system status.
 type RetentionStatusResponse struct {
 	Enabled          bool  `json:"enabled"`

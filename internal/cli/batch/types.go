@@ -44,3 +44,6 @@ type BatchResponse = spartanapi.BatchResponse
 
 // BatchStatusResponse aliases the same stable batch envelope for legacy CLI call sites.
 type BatchStatusResponse = spartanapi.BatchResponse
+
+// BatchListResponse aliases the stable paginated batch-summary collection envelope.
+type BatchListResponse = spartanapi.BatchListResponse

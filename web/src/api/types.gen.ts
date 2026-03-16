@@ -3043,6 +3043,25 @@ export type BatchResponse = {
 };
 
 /**
+ * Paginated collection of aggregate batch summaries.
+ */
+export type BatchListResponse = {
+    batches: Array<BatchSummary>;
+    /**
+     * Total number of persisted batches.
+     */
+    total: number;
+    /**
+     * Requested page size.
+     */
+    limit: number;
+    /**
+     * Requested page offset.
+     */
+    offset: number;
+};
+
+/**
  * Aggregated job statistics for a batch
  */
 export type BatchJobStats = {
@@ -5408,6 +5427,48 @@ export type PostV1TransformValidateResponses = {
 };
 
 export type PostV1TransformValidateResponse = PostV1TransformValidateResponses[keyof PostV1TransformValidateResponses];
+
+export type GetV1JobsBatchData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Maximum number of batches to return
+         */
+        limit?: number;
+        /**
+         * Number of batches to skip
+         */
+        offset?: number;
+    };
+    url: '/v1/jobs/batch';
+};
+
+export type GetV1JobsBatchErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1JobsBatchError = GetV1JobsBatchErrors[keyof GetV1JobsBatchErrors];
+
+export type GetV1JobsBatchResponses = {
+    /**
+     * Batch summaries retrieved successfully
+     */
+    200: BatchListResponse;
+};
+
+export type GetV1JobsBatchResponse = GetV1JobsBatchResponses[keyof GetV1JobsBatchResponses];
 
 export type PostV1JobsBatchScrapeData = {
     body: BatchScrapeRequest;

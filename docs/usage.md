@@ -499,6 +499,7 @@ Render profile commands:
 
 ### Batch jobs
 
+- `spartan batch list [--limit N] [--offset N]`
 - `spartan batch submit scrape --file <csv-or-json>`
 - `spartan batch submit crawl --file <csv-or-json>`
 - `spartan batch submit research --file <json>`
@@ -750,7 +751,7 @@ Important endpoint groups:
 - `/v1/jobs/{id}`
 - `/v1/jobs/{id}/results`
 - `/v1/jobs/{id}/export`
-- `/v1/jobs/batch/*`
+- `/v1/jobs/batch*`
 - `/v1/chains*`
 - `/v1/watch*`
 - `/v1/schedules*`
@@ -766,7 +767,7 @@ Important endpoint groups:
 - `/v1/auth/oauth/*`
 - `/v1/ws`
 
-Single-job create/get/cancel flows now share one envelope: create/get return `{ job }`, cancel returns the updated `{ job }` envelope unless `force=true` deletes the record and returns `{ status: "deleted" }`. Job listings return `{ jobs, total, limit, offset }`. Batch create/get/cancel flows now share `{ batch, jobs, total, limit, offset }`, where `batch.stats` is always present and `limit: 0` means individual jobs were not requested.
+Single-job create/get/cancel flows now share one envelope: create/get return `{ job }`, cancel returns the updated `{ job }` envelope unless `force=true` deletes the record and returns `{ status: "deleted" }`. Job listings return `{ jobs, total, limit, offset }`. Batch listings return `{ batches, total, limit, offset }`. Batch create/get/cancel flows share `{ batch, jobs, total, limit, offset }`, where `batch.stats` is always present and `limit: 0` means individual jobs were not requested.
 
 `GET /v1/jobs/{id}/results` is the raw persisted-results inspection surface (`jsonl`/`json` plus jsonl pagination). `POST /v1/jobs/{id}/export` is the canonical direct export/download surface for `json`, `jsonl`, `md`, `csv`, and `xlsx` with optional bounded `shape` or `transform` controls. `POST /v1/watch/{id}/check` now returns screenshot and visual-diff artifacts as `artifacts[]` descriptors with relative `downloadUrl` values, and `GET /v1/watch/{id}/artifacts/{artifactKind}` is the canonical way to fetch those bytes without exposing host-local paths.
 
@@ -833,6 +834,10 @@ Core tools:
 - `job_results`
 - `job_list`
 - `job_cancel`
+- `batch_scrape`
+- `batch_crawl`
+- `batch_research`
+- `batch_list`
 - `batch_status`
 - `batch_cancel`
 - `job_export`
@@ -866,7 +871,7 @@ Use the same top-level fields you would send to `/v1/scrape`, `/v1/crawl`, or `/
 
 That means AI extraction rides inside `extract.ai.*`, proxy transport rides inside `auth.proxy` / `auth.proxyHints`, and screenshot / interception options use the same object shape as REST and the Web UI.
 
-`job_status` and `job_cancel` return the same `{ job }` envelope shape as `GET /v1/jobs/{id}`. `job_list` returns `{ jobs, total, limit, offset }`. `batch_status` and `batch_cancel` now mirror the REST batch envelope `{ batch, jobs, total, limit, offset }`, with optional `includeJobs`, `limit`, and `offset` arguments on the batch tools.
+`job_status` and `job_cancel` return the same `{ job }` envelope shape as `GET /v1/jobs/{id}`. `job_list` returns `{ jobs, total, limit, offset }`. `batch_list` returns `{ batches, total, limit, offset }`. `batch_scrape`, `batch_crawl`, and `batch_research` accept the same request bodies as the REST batch-submit endpoints. `batch_status` and `batch_cancel` mirror the REST batch envelope `{ batch, jobs, total, limit, offset }`, with optional `includeJobs`, `limit`, and `offset` arguments on the batch tools.
 
 `job_export` accepts the same direct export contract as `spartan export` / `POST /v1/jobs/{id}/export`:
 

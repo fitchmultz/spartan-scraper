@@ -1,6 +1,22 @@
 // Package api implements the REST API server for Spartan Scraper.
-// It provides endpoints for enqueuing jobs, managing auth profiles,
-// and retrieving job status and results.
+//
+// Purpose:
+// - Wire runtime services into the canonical HTTP surface for operator and browser clients.
+//
+// Responsibilities:
+// - Construct the API server with its backing store, manager, scheduler, and optional webhook dispatcher.
+// - Register all HTTP routes exposed by the application.
+// - Own server lifecycle concerns such as startup, shutdown, and HTTP listener configuration.
+//
+// Scope:
+// - Server assembly and route registration only; individual handler behavior lives in sibling files.
+//
+// Usage:
+// - Created by CLI/server entrypoints and exercised by API/system tests.
+//
+// Invariants/Assumptions:
+// - Route registration is the canonical REST surface for the product.
+// - Long-running runtime dependencies are initialized before the server begins handling requests.
 package api
 
 import (
@@ -245,6 +261,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/research", s.handleResearch)
 	mux.HandleFunc("/v1/jobs", s.handleJobs)
 	mux.HandleFunc("/v1/jobs/", s.handleJob)
+	mux.HandleFunc("/v1/jobs/batch", s.handleBatches)
 	mux.HandleFunc("/v1/jobs/batch/scrape", s.handleBatchScrape)
 	mux.HandleFunc("/v1/jobs/batch/crawl", s.handleBatchCrawl)
 	mux.HandleFunc("/v1/jobs/batch/research", s.handleBatchResearch)

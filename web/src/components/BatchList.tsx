@@ -1,10 +1,9 @@
 /**
- * Batch List Component
- *
- * Displays batch jobs with their status and aggregated statistics.
- * Provides actions to view details, cancel running batches.
- *
- * @module BatchList
+ * Purpose: Render paginated batch summaries and on-demand batch detail rows for the Web UI.
+ * Responsibilities: Display aggregate batch status, highlight recent submissions, expose refresh/cancel/detail actions, and provide pagination controls.
+ * Scope: Presentation only; data fetching and state management stay in the batches container/hook.
+ * Usage: Render from the batch route container with authoritative batch summaries and optional cached job details.
+ * Invariants/Assumptions: Batch rows show summary data immediately; job tables appear only after details are loaded for a batch.
  */
 import { useState, useCallback, useEffect } from "react";
 import type { BatchJobStats, Job } from "../api";
@@ -17,11 +16,15 @@ import { formatDateTime } from "../lib/formatting";
 
 interface BatchListProps {
   batches: BatchEntry[];
-  jobs?: Map<string, Job[]>; // batch ID -> jobs
+  jobs?: Map<string, Job[]>;
+  total: number;
+  limit: number;
+  offset: number;
   highlightedBatchId?: string | null;
-  onViewStatus: (batchId: string) => void;
+  onViewStatus: (batchId: string) => void | Promise<void>;
   onCancel: (batchId: string) => void;
   onRefresh: () => void;
+  onPageChange: (offset: number) => void;
   loading: boolean;
 }
 
@@ -44,10 +47,14 @@ export type BatchEntry = {
 export function BatchList({
   batches,
   jobs,
+  total,
+  limit,
+  offset,
   highlightedBatchId,
   onViewStatus,
   onCancel,
   onRefresh,
+  onPageChange,
   loading,
 }: BatchListProps) {
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
@@ -61,6 +68,11 @@ export function BatchList({
   const toggleExpand = useCallback((batchId: string) => {
     setExpandedBatch((current) => (current === batchId ? null : batchId));
   }, []);
+
+  const hasMore = offset + limit < total;
+  const hasPrev = offset > 0;
+  const currentPage = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+  const totalPages = limit > 0 ? Math.max(1, Math.ceil(total / limit)) : 1;
 
   if (batches.length === 0) {
     return (
@@ -106,7 +118,7 @@ export function BatchList({
           marginBottom: 16,
         }}
       >
-        <h2>Batch Jobs ({batches.length})</h2>
+        <h2>Batch Jobs ({total})</h2>
         <button
           type="button"
           className="secondary"
@@ -144,7 +156,6 @@ export function BatchList({
                   : undefined,
               }}
             >
-              {/* Header */}
               <button
                 type="button"
                 style={{
@@ -199,7 +210,6 @@ export function BatchList({
                 </div>
               </button>
 
-              {/* Progress bar */}
               <div
                 style={{
                   marginTop: 12,
@@ -226,7 +236,6 @@ export function BatchList({
                 />
               </div>
 
-              {/* Stats */}
               <div
                 style={{
                   marginTop: 12,
@@ -247,7 +256,6 @@ export function BatchList({
                 <span>Canceled: {batch.stats.canceled}</span>
               </div>
 
-              {/* Expanded details */}
               {isExpanded && (
                 <div
                   style={{
@@ -285,16 +293,17 @@ export function BatchList({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onViewStatus(batch.id);
+                          void onViewStatus(batch.id);
                         }}
                       >
-                        View Details
+                        {batchJobs.length > 0
+                          ? "Refresh Details"
+                          : "View Details"}
                       </button>
                     </div>
                   </div>
 
-                  {/* Job list */}
-                  {batchJobs.length > 0 && (
+                  {batchJobs.length > 0 ? (
                     <div style={{ marginTop: 12 }}>
                       <h4 style={{ fontSize: 14, marginBottom: 8 }}>Jobs</h4>
                       <div
@@ -335,6 +344,16 @@ export function BatchList({
                         </table>
                       </div>
                     </div>
+                  ) : (
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "var(--text-muted)",
+                        fontSize: 13,
+                      }}
+                    >
+                      Load batch details to inspect individual jobs.
+                    </p>
                   )}
                 </div>
               )}
@@ -342,6 +361,51 @@ export function BatchList({
           );
         })}
       </div>
+
+      {total > 0 && (
+        <div
+          className="row"
+          style={{
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 16,
+            paddingTop: 16,
+            borderTop: "1px solid var(--stroke)",
+          }}
+        >
+          <div style={{ fontSize: 14, color: "var(--muted)" }}>
+            Showing {offset + 1}-{Math.min(offset + batches.length, total)} of{" "}
+            {total}
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.max(0, offset - limit))}
+              disabled={!hasPrev || loading}
+              className="secondary"
+            >
+              Previous
+            </button>
+            <span
+              style={{
+                fontSize: 14,
+                padding: "8px 12px",
+                color: "var(--muted)",
+              }}
+            >
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => onPageChange(offset + limit)}
+              disabled={!hasMore || loading}
+              className="secondary"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

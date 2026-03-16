@@ -1,18 +1,9 @@
 /**
- * BatchContainer - Container component for batch job management
- *
- * This component encapsulates all batch-related state and operations:
- * - Managing batch form state (tab, URLs, query)
- * - Handling batch submissions (scrape, crawl, research)
- * - Displaying batch list with status
- * - Canceling batches
- *
- * It does NOT handle:
- * - Individual job submission
- * - Watch or chain management
- * - Results viewing
- *
- * @module BatchContainer
+ * Purpose: Coordinate the Web batch route's form state, submission actions, detail refreshes, and paginated list rendering.
+ * Responsibilities: Bind the batch form to hook actions, preserve submission notices, and wire list/detail/pagination callbacks into presentational components.
+ * Scope: Batch route container behavior only; presentational layout lives in BatchForm/BatchList and data access lives in useBatches.
+ * Usage: Render from the main app shell wherever the batch operator workflow should appear.
+ * Invariants/Assumptions: Submission notices only highlight batches visible in the current page and detail loading is triggered on demand for a selected batch.
  */
 
 import { useState, useCallback } from "react";
@@ -48,6 +39,10 @@ export function BatchContainer(props: BatchContainerProps) {
     batchJobs,
     lastSubmittedBatch,
     loading: batchesLoading,
+    total,
+    limit,
+    offset,
+    refreshBatch,
     refreshBatches,
     cancelBatch,
     submitBatchScrape,
@@ -99,7 +94,7 @@ export function BatchContainer(props: BatchContainerProps) {
   );
 
   const showSubmissionFeedback = useCallback(async () => {
-    await refreshBatches();
+    await refreshBatches(0);
     document.getElementById("batch-forms")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -160,6 +155,18 @@ export function BatchContainer(props: BatchContainerProps) {
     [showSubmissionFeedback, submitBatchResearch],
   );
 
+  const handleViewBatchStatus = useCallback(
+    async (batchId: string) => {
+      try {
+        await refreshBatch(batchId);
+      } catch (err) {
+        console.error("Failed to load batch details:", err);
+        alert(`Failed to load batch details: ${String(err)}`);
+      }
+    },
+    [refreshBatch],
+  );
+
   const handleCancelBatch = useCallback(
     async (batchId: string) => {
       try {
@@ -201,10 +208,14 @@ export function BatchContainer(props: BatchContainerProps) {
         <BatchList
           batches={batches}
           jobs={batchJobs}
+          total={total}
+          limit={limit}
+          offset={offset}
           highlightedBatchId={highlightedBatchId}
-          onViewStatus={refreshBatches}
+          onViewStatus={handleViewBatchStatus}
           onCancel={handleCancelBatch}
-          onRefresh={refreshBatches}
+          onRefresh={() => void refreshBatches()}
+          onPageChange={(nextOffset) => void refreshBatches(nextOffset)}
           loading={batchesLoading}
         />
       </section>

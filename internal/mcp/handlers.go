@@ -1,18 +1,23 @@
-// MCP tool call handlers.
+// Package mcp routes MCP tool calls onto Spartan runtime operations.
+//
+// Purpose:
+// - Execute MCP tool requests for AI authoring, jobs, batches, watches, exports, and observability workflows.
 //
 // Responsibilities:
-// - Process and route MCP tool calls to appropriate handlers
-// - Create and enqueue jobs for scrape, crawl, and research tools
-// - Handle job management tools (status, results, list, cancel, export)
+// - Decode tool arguments and validate required fields.
+// - Reuse canonical submission and response-building paths shared with REST where possible.
+// - Return stable transport-safe envelopes for persisted runtime entities.
 //
-// Does NOT handle:
-// - Server lifecycle or protocol-level routing (handled by server.go)
-// - Job execution or worker pool management
+// Scope:
+// - Tool execution only; protocol handling lives in server.go and long-running job execution lives elsewhere.
 //
-// Invariants:
-// - All handlers validate required parameters before execution
-// - Jobs are created, enqueued, and waited for synchronously
-// - Error responses use apperrors for consistent classification
+// Usage:
+// - Called by the MCP server when handling `tools/call` JSON-RPC messages.
+//
+// Invariants/Assumptions:
+// - All handlers validate required parameters before execution.
+// - Synchronous scrape/crawl/research tools wait for completion, while persisted job/batch tools return stored envelopes.
+// - Error responses use apperrors for consistent classification.
 package mcp
 
 import (
@@ -33,11 +38,14 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/paramdecode"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
@@ -60,6 +68,29 @@ func decodeToolArguments(args map[string]interface{}, dst any) error {
 		return apperrors.Validation("invalid tool arguments: " + err.Error())
 	}
 	return apperrors.Validation("invalid tool arguments: expected a single JSON object")
+}
+
+func (s *Server) batchSubmissionDefaults() submission.BatchDefaults {
+	return submission.BatchDefaults{
+		Defaults: submission.Defaults{
+			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+			ResolveAuth:           true,
+		},
+		MaxBatchSize: s.cfg.MaxBatchSize,
+	}
+}
+
+func (s *Server) createAndEnqueueBatch(ctx context.Context, kind model.Kind, specs []jobs.JobSpec) (api.BatchResponse, error) {
+	batchID := jobs.GenerateBatchID()
+	createdJobs, err := s.manager.CreateBatchJobs(ctx, kind, specs, batchID)
+	if err != nil {
+		return api.BatchResponse{}, err
+	}
+	if err := s.manager.EnqueueBatch(createdJobs); err != nil {
+		return api.BatchResponse{}, err
+	}
+	return api.BuildCreatedBatchResponse(batchID, kind, createdJobs), nil
 }
 
 func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMessage) (interface{}, error) {
@@ -373,6 +404,44 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return api.BuildJobResponse(job), nil
+	case "batch_scrape":
+		var req api.BatchScrapeRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
+			return nil, err
+		}
+		specs, err := submission.JobSpecsFromBatchScrapeRequest(s.cfg, s.batchSubmissionDefaults(), req)
+		if err != nil {
+			return nil, err
+		}
+		return s.createAndEnqueueBatch(ctx, model.KindScrape, specs)
+	case "batch_crawl":
+		var req api.BatchCrawlRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
+			return nil, err
+		}
+		specs, err := submission.JobSpecsFromBatchCrawlRequest(s.cfg, s.batchSubmissionDefaults(), req)
+		if err != nil {
+			return nil, err
+		}
+		return s.createAndEnqueueBatch(ctx, model.KindCrawl, specs)
+	case "batch_research":
+		var req api.BatchResearchRequest
+		if err := decodeToolArguments(params.Arguments, &req); err != nil {
+			return nil, err
+		}
+		specs, err := submission.JobSpecsFromBatchResearchRequest(s.cfg, s.batchSubmissionDefaults(), req)
+		if err != nil {
+			return nil, err
+		}
+		return s.createAndEnqueueBatch(ctx, model.KindResearch, specs)
+	case "batch_list":
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 100)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		batches, stats, total, err := s.manager.ListBatchStatuses(ctx, store.ListOptions{Limit: limit, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildBatchListResponse(batches, stats, total, limit, offset), nil
 	case "batch_status":
 		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {

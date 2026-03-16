@@ -14,9 +14,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 - Watch management now spans API, Web UI, CLI, and MCP with `watch_list`, `watch_get`, `watch_create`, `watch_update`, `watch_delete`, and `watch_check`, so operators and agents can manage stored watches and run manual checks without falling back to REST-only flows.
 - Webhook delivery inspection now spans API, Web UI, CLI, and MCP with sanitized URL/error output, so operators can debug retries and failures from `spartan webhook deliveries ...` and `webhook_delivery_list` / `webhook_delivery_get` without reading host-local files.
+- Batch management now spans API, Web UI, CLI, and MCP with authoritative list/detail/cancel flows plus MCP batch submission tools, so operators and agents can create, enumerate, inspect, and stop persisted batches without falling back to REST-only workflows or browser-local tracking.
 
 ## Now
 
-- Close the remaining highest-value operator-surface gaps across API, Web UI, CLI, and MCP for batches.
-- Expand operator observability so run history, export outcomes, watch outcomes, and delivery failures are actionable without digging through host-local files or internal state.
+- Expand operator observability around run history first so recent executions, queue outcomes, and terminal failure context are visible without digging through host-local files or internal state.
+- Add export outcome inspection next so direct and scheduled export successes/failures can be audited consistently across API, Web UI, CLI, and MCP.
+- Add watch outcome and check-history inspection after run/export history so stored monitoring workflows surface recent results, diffs, and failures coherently across the primary operator surfaces.
 - Keep the TUI scope frozen as a lightweight local inspector unless a future roadmap item justifies re-investing in it as a first-class surface.

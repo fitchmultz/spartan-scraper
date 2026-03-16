@@ -1,16 +1,22 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// This file contains API client functions for batch operations.
+// Purpose:
+// - Talk to the local REST API for batch list, submit, status, and cancel flows.
 //
 // Responsibilities:
-// - Submit batch jobs via HTTP API
-// - Get batch status via HTTP API
-// - Cancel batches via HTTP API
+// - Marshal batch requests for HTTP submission.
+// - Fetch batch list pages and individual batch envelopes.
+// - Cancel persisted batches through the API.
 //
-// Does NOT handle:
-// - Direct execution (when server is not running)
-// - CLI command parsing
-// - File parsing
+// Scope:
+// - HTTP transport only; direct-mode execution and CLI parsing live elsewhere.
+//
+// Usage:
+// - Called by batch CLI subcommands when the local API server is available.
+//
+// Invariants/Assumptions:
+// - API responses use the stable shared batch envelopes.
+// - Non-2xx HTTP responses are surfaced as user-facing errors.
 package batch
 
 import (
@@ -65,6 +71,34 @@ func submitBatchViaAPI(ctx context.Context, url string, req interface{}) (*Batch
 	}
 
 	var result BatchResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func listBatchesViaAPI(ctx context.Context, port string, limit, offset int) (*BatchListResponse, error) {
+	url := fmt.Sprintf("http://localhost:%s/v1/jobs/batch?limit=%d&offset=%d", port, limit, offset)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result BatchListResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}

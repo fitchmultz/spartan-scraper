@@ -1,18 +1,23 @@
 // Package batch contains tests for the batch subcommand.
 //
+// Purpose:
+// - Verify batch CLI parsing, routing, output formatting, and direct-mode validation behavior.
+//
 // Responsibilities:
-// - Testing batch job parsing from CSV/JSON
-// - Testing batch command validation (URL limits, required fields)
-// - Testing batch status display and watching
+// - Test batch job parsing from CSV/JSON inputs.
+// - Test batch command validation, help output, listing, and status rendering.
+// - Guard canonical batch validation messages exposed to operators.
 //
-// Non-goals:
-// - Testing actual batch execution or HTTP requests
-// - Testing API server behavior
+// Scope:
+// - CLI behavior only; API server behavior and live HTTP flows are covered elsewhere.
 //
-// Assumptions:
-// - Tests use temporary directories for file operations
-// - Tests capture stdout/stderr for validation
-// - No external network access required
+// Usage:
+// - Run with `go test ./internal/cli/batch`.
+//
+// Invariants/Assumptions:
+// - Tests use temporary directories for file operations.
+// - Tests capture stdout/stderr for validation.
+// - No external network access is required.
 package batch
 
 import (
@@ -383,6 +388,48 @@ func TestPrintBatchStatusWithJobs(t *testing.T) {
 	}
 }
 
+func TestPrintBatchList(t *testing.T) {
+	result := &BatchListResponse{
+		Batches: []BatchSummary{{
+			ID:       "test-batch-123",
+			Kind:     "scrape",
+			Status:   "processing",
+			JobCount: 3,
+			Stats: model.BatchJobStats{
+				Queued:    1,
+				Running:   1,
+				Succeeded: 1,
+			},
+		}},
+		Total:  1,
+		Limit:  100,
+		Offset: 0,
+	}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printBatchList(result)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if !strings.Contains(output, "test-batch-123") {
+		t.Errorf("expected output to contain batch ID, got %q", output)
+	}
+	if !strings.Contains(output, "processing") {
+		t.Errorf("expected output to contain batch status, got %q", output)
+	}
+	if !strings.Contains(output, "showing 1 of 1") {
+		t.Errorf("expected output to contain pagination summary, got %q", output)
+	}
+}
+
 func TestRunBatch_NoSubcommand(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.Config{}
@@ -431,6 +478,9 @@ func TestRunBatch_Help(t *testing.T) {
 	if !strings.Contains(output, "submit") {
 		t.Errorf("expected help to mention submit subcommand, got %q", output)
 	}
+	if !strings.Contains(output, "list") {
+		t.Errorf("expected help to mention list subcommand, got %q", output)
+	}
 }
 
 func TestRunBatch_UnknownSubcommand(t *testing.T) {
@@ -455,6 +505,31 @@ func TestRunBatch_UnknownSubcommand(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "unknown batch subcommand") {
 		t.Errorf("expected error about unknown subcommand, got %q", stderr)
+	}
+}
+
+func TestRunBatchList_NoBatches(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.Config{DataDir: t.TempDir()}
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	exitCode := RunBatch(ctx, cfg, []string{"list"})
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if exitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", exitCode)
+	}
+	if !strings.Contains(output, "No batches found.") {
+		t.Errorf("expected empty-state output, got %q", output)
 	}
 }
 

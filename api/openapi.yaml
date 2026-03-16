@@ -1978,6 +1978,51 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/jobs/batch":
+    get:
+      summary: List batches
+      description: Retrieve paginated batch summaries with aggregate job statistics
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 100
+          minimum: 1
+          maximum: 1000
+        description: Maximum number of batches to return
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+        description: Number of batches to skip
+      responses:
+        '200':
+          description: Batch summaries retrieved successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BatchListResponse"
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/jobs/batch/scrape":
     post:
       summary: Create a batch of scrape jobs
@@ -7284,6 +7329,28 @@ components:
         offset:
           type: integer
           description: Included job page offset.
+    BatchListResponse:
+      type: object
+      description: Paginated collection of aggregate batch summaries.
+      required:
+      - batches
+      - total
+      - limit
+      - offset
+      properties:
+        batches:
+          type: array
+          items:
+            "$ref": "#/components/schemas/BatchSummary"
+        total:
+          type: integer
+          description: Total number of persisted batches.
+        limit:
+          type: integer
+          description: Requested page size.
+        offset:
+          type: integer
+          description: Requested page offset.
     BatchJobStats:
       type: object
       description: Aggregated job statistics for a batch

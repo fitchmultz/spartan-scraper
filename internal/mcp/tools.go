@@ -1,16 +1,21 @@
-// MCP tool definitions and schema builder.
+// Package mcp defines tool metadata and schemas for the Spartan MCP surface.
+//
+// Purpose:
+// - Describe every MCP tool exposed by the server in one deterministic list.
 //
 // Responsibilities:
-// - Define all available MCP tools (scrape_page, crawl_site, research, job_*)
-// - Generate JSON Schema for tool input validation
+// - Define tool names, descriptions, and JSON Schemas.
+// - Keep MCP batch, job, watch, export, and AI authoring tool contracts aligned with other operator surfaces.
 //
-// Does NOT handle:
-// - Tool execution logic (handled by handlers.go)
-// - Request parsing or validation
+// Scope:
+// - Tool metadata only; handler execution lives in handlers.go.
 //
-// Invariants:
-// - Tool names match MCP tool/call method names
-// - Schema is deterministic (sorted keys for consistent output)
+// Usage:
+// - Returned from `tools/list` and used by tests to verify parity.
+//
+// Invariants/Assumptions:
+// - Tool names match MCP `tools/call` method names.
+// - Schema generation is deterministic for stable snapshots and docs.
 package mcp
 
 import (
@@ -103,6 +108,26 @@ func (s *Server) toolsList() []tool {
 			Name:        "job_cancel",
 			Description: "Cancel a running or queued job and return the updated job envelope",
 			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "batch_scrape",
+			Description: "Create a batch of scrape jobs using the same request contract as POST /v1/jobs/batch/scrape",
+			InputSchema: schema(map[string]string{"jobs": "array"}, map[string]string{"outputFormat": "string", "extractionName": "string", "extractionMode": "string", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "incremental": "boolean", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object"}),
+		},
+		{
+			Name:        "batch_crawl",
+			Description: "Create a batch of crawl jobs using the same request contract as POST /v1/jobs/batch/crawl",
+			InputSchema: schema(map[string]string{"jobs": "array"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "incremental": "boolean", "sitemapURL": "string", "sitemapOnly": "boolean", "includePatterns": "array", "excludePatterns": "array", "respectRobotsTxt": "boolean", "skipDuplicates": "boolean", "simHashThreshold": "number", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object"}),
+		},
+		{
+			Name:        "batch_research",
+			Description: "Create a batch of research jobs using the same request contract as POST /v1/jobs/batch/research",
+			InputSchema: schema(map[string]string{"jobs": "array", "query": "string"}, map[string]string{"maxDepth": "number", "maxPages": "number", "headless": "boolean", "playwright": "boolean", "timeoutSeconds": "number", "authProfile": "string", "auth": "object", "extract": "object", "pipeline": "object", "webhook": "object", "screenshot": "object", "device": "object", "networkIntercept": "object", "agentic": "object"}),
+		},
+		{
+			Name:        "batch_list",
+			Description: "List batch summaries with pagination metadata",
+			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{
 			Name:        "batch_status",

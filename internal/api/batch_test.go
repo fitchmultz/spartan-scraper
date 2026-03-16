@@ -234,6 +234,63 @@ func TestHandleBatchScrapeRejectsInvalidWebhookURL(t *testing.T) {
 	}
 }
 
+func TestHandleBatchListReturnsSummaries(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	createBatch := func(url string) BatchResponse {
+		t.Helper()
+		body, err := json.Marshal(BatchScrapeRequest{Jobs: []BatchJobRequest{{URL: url}}})
+		if err != nil {
+			t.Fatalf("marshal request: %v", err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/scrape", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		srv.Routes().ServeHTTP(rr, req)
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("expected create status 201, got %d: %s", rr.Code, rr.Body.String())
+		}
+		var resp BatchResponse
+		if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal create response: %v", err)
+		}
+		return resp
+	}
+
+	older := createBatch("https://example.com/articles/1")
+	newer := createBatch("https://example.com/articles/2")
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/batch?limit=10&offset=0", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Total-Count"); got != "2" {
+		t.Fatalf("expected X-Total-Count header 2, got %q", got)
+	}
+
+	var resp BatchListResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal list response: %v", err)
+	}
+	if resp.Total != 2 || resp.Limit != 10 || resp.Offset != 0 {
+		t.Fatalf("unexpected pagination metadata: %+v", resp)
+	}
+	if len(resp.Batches) != 2 {
+		t.Fatalf("expected 2 batch summaries, got %d", len(resp.Batches))
+	}
+	if resp.Batches[0].ID != newer.Batch.ID || resp.Batches[1].ID != older.Batch.ID {
+		t.Fatalf("expected newest batch first, got %+v", resp.Batches)
+	}
+	if resp.Batches[0].Stats.Queued+resp.Batches[0].Stats.Running != 1 ||
+		resp.Batches[1].Stats.Queued+resp.Batches[1].Stats.Running != 1 {
+		t.Fatalf("expected active-job stats on list response, got %+v", resp.Batches)
+	}
+}
+
 func TestHandleBatchGetRejectsInvalidPaginationWhenIncludingJobs(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

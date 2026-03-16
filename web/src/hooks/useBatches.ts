@@ -1,17 +1,19 @@
 /**
  * Purpose: Manage batch job lifecycle state for the web UI.
- * Responsibilities: Persist tracked batches, submit batch jobs, refresh status/jobs, and expose polling-driven updates.
+ * Responsibilities: Submit batches, fetch authoritative batch pages, refresh batch details/jobs, and expose polling-driven updates.
  * Scope: Client-side batch state and API orchestration for scrape/crawl/research batches only.
  * Usage: Call `useBatches()` from UI containers that render batch forms/lists and wire returned actions to controls.
- * Invariants/Assumptions: Batch entries always include normalized non-negative stats; localStorage data may be malformed and must be sanitized.
+ * Invariants/Assumptions: Batch entries always include normalized non-negative stats; persisted browser state is limited to the last submitted batch notice.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
+  getV1JobsBatch,
   getV1JobsBatchById,
   deleteV1JobsBatchById,
   postV1JobsBatchScrape,
   postV1JobsBatchCrawl,
   postV1JobsBatchResearch,
+  type BatchListResponse,
   type BatchResponse,
   type BatchScrapeRequest,
   type BatchCrawlRequest,
@@ -21,7 +23,7 @@ import {
 import { getApiBaseUrl } from "../lib/api-config";
 
 const POLL_INTERVAL_MS = 5000;
-const BATCHES_STORAGE_KEY = "spartan_batches";
+const DEFAULT_BATCH_PAGE_SIZE = 25;
 const LAST_SUBMITTED_BATCH_STORAGE_KEY = "spartan_last_submitted_batch";
 
 export type BatchEntry = {
@@ -244,6 +246,21 @@ export function deriveBatchStatsFromJobs(
   return stats;
 }
 
+function mapBatchSummary(
+  summary: BatchListResponse["batches"][number],
+): BatchEntry {
+  const createdAt = readIsoDate(summary.createdAt, new Date(0).toISOString());
+  return {
+    id: summary.id,
+    kind: isBatchKind(summary.kind) ? summary.kind : "scrape",
+    status: isBatchStatus(summary.status) ? summary.status : "pending",
+    jobCount: toNonNegativeNumber(summary.jobCount),
+    stats: normalizeBatchStats(summary.stats),
+    createdAt,
+    updatedAt: readIsoDate(summary.updatedAt, createdAt),
+  };
+}
+
 export function mapBatchResponse(response: BatchResponse): BatchEntry {
   const batch = response.batch;
   const createdAt = readIsoDate(batch.createdAt, new Date(0).toISOString());
@@ -282,53 +299,6 @@ type BatchSubmitter<TRequest> = (params: {
   body: TRequest;
 }) => Promise<{ data?: BatchResponse; error?: unknown }>;
 
-export function normalizeStoredBatchEntries(input: unknown): BatchEntry[] {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-
-  const normalized: BatchEntry[] = [];
-  for (const entry of input) {
-    if (!isRecord(entry)) {
-      continue;
-    }
-
-    const id = typeof entry.id === "string" ? entry.id : "";
-    if (!id) {
-      continue;
-    }
-
-    const createdAt =
-      typeof entry.createdAt === "string"
-        ? entry.createdAt
-        : new Date(0).toISOString();
-    const updatedAt =
-      typeof entry.updatedAt === "string" ? entry.updatedAt : createdAt;
-
-    const rawStats = isRecord(entry.stats)
-      ? {
-          queued: entry.stats.queued,
-          running: entry.stats.running,
-          succeeded: entry.stats.succeeded,
-          failed: entry.stats.failed,
-          canceled: entry.stats.canceled,
-        }
-      : undefined;
-
-    normalized.push({
-      id,
-      kind: isBatchKind(entry.kind) ? entry.kind : "scrape",
-      status: isBatchStatus(entry.status) ? entry.status : "pending",
-      jobCount: toNonNegativeNumber(entry.jobCount),
-      stats: normalizeBatchStats(rawStats),
-      createdAt,
-      updatedAt,
-    });
-  }
-
-  return normalized;
-}
-
 export function useBatches() {
   const [batches, setBatches] = useState<BatchEntry[]>([]);
   const [batchJobs, setBatchJobs] = useState<Map<string, Job[]>>(new Map());
@@ -336,44 +306,11 @@ export function useBatches() {
     useState<BatchSubmissionRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [limit, setLimit] = useState(DEFAULT_BATCH_PAGE_SIZE);
+  const [offset, setOffset] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Load batches from localStorage (persisted across sessions)
-  const loadBatches = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(BATCHES_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown;
-        const normalized = normalizeStoredBatchEntries(parsed);
-        setBatches(normalized);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
-  // Save batches to localStorage
-  const saveBatches = useCallback((newBatches: BatchEntry[]) => {
-    try {
-      localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(newBatches));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
-
-  const loadLastSubmittedBatch = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
-      if (!stored) {
-        return;
-      }
-
-      const parsed = JSON.parse(stored) as unknown;
-      setLastSubmittedBatch(normalizeStoredBatchSubmission(parsed));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+  const initializedRef = useRef(false);
 
   const saveLastSubmittedBatch = useCallback(
     (entry: BatchSubmissionRecord | null) => {
@@ -394,12 +331,44 @@ export function useBatches() {
     [],
   );
 
+  const loadLastSubmittedBatch = useCallback(() => {
+    try {
+      const stored = localStorage.getItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as unknown;
+      setLastSubmittedBatch(normalizeStoredBatchSubmission(parsed));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
   const clearLastSubmittedBatch = useCallback(() => {
     setLastSubmittedBatch(null);
     saveLastSubmittedBatch(null);
   }, [saveLastSubmittedBatch]);
 
-  // Get batch status from API
+  const getBatchList = useCallback(async (pageOffset = 0) => {
+    const { data, error: apiError } = await getV1JobsBatch({
+      baseUrl: getApiBaseUrl(),
+      query: {
+        limit: DEFAULT_BATCH_PAGE_SIZE,
+        offset: pageOffset,
+      },
+    });
+
+    if (apiError) {
+      throw new Error(formatApiError(apiError));
+    }
+    if (!data) {
+      throw new Error("No data returned");
+    }
+
+    return data;
+  }, []);
+
   const getBatchStatus = useCallback(
     async (batchId: string, includeJobs = false) => {
       const { data, error: apiError } = await getV1JobsBatchById({
@@ -420,7 +389,6 @@ export function useBatches() {
     [],
   );
 
-  // Refresh single batch
   const refreshBatch = useCallback(
     async (batchId: string) => {
       try {
@@ -428,20 +396,18 @@ export function useBatches() {
         const updated = mapBatchResponse(response);
 
         setBatches((current) => {
-          const existing = current.find((b) => b.id === batchId);
-          if (!existing) {
-            const newBatches = [updated, ...current];
-            saveBatches(newBatches);
-            return newBatches;
+          const existing = current.find((batch) => batch.id === batchId);
+          if (existing) {
+            return current.map((batch) =>
+              batch.id === batchId ? updated : batch,
+            );
           }
-          const newBatches = current.map((b) =>
-            b.id === batchId ? updated : b,
-          );
-          saveBatches(newBatches);
-          return newBatches;
+          if (offset === 0) {
+            return [updated, ...current].slice(0, limit);
+          }
+          return current;
         });
 
-        // Store jobs if included
         const jobs = readBatchJobs(response.jobs);
         if (jobs) {
           setBatchJobs((current) => {
@@ -457,28 +423,49 @@ export function useBatches() {
         throw err;
       }
     },
-    [getBatchStatus, saveBatches],
+    [getBatchStatus, limit, offset],
   );
 
-  // Refresh all batches
-  const refreshBatches = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const refreshBatches = useCallback(
+    async (nextOffset = offset) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      // Refresh all known batches
-      const promises = batches.map((b) => refreshBatch(b.id).catch(() => null));
-      await Promise.all(promises);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to refresh batches",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [batches, refreshBatch]);
+      try {
+        const response = await getBatchList(nextOffset);
+        const nextBatches = response.batches.map((batch) =>
+          mapBatchSummary(batch),
+        );
+        const resolvedLimit =
+          toNonNegativeNumber(response.limit) || DEFAULT_BATCH_PAGE_SIZE;
+        const resolvedOffset = toNonNegativeNumber(response.offset);
+        const resolvedTotal = toNonNegativeNumber(response.total);
+        const visibleBatchIDs = new Set(nextBatches.map((batch) => batch.id));
 
-  // Cancel a batch
+        setBatches(nextBatches);
+        setLimit(resolvedLimit);
+        setOffset(resolvedOffset);
+        setTotal(resolvedTotal);
+        setBatchJobs((current) => {
+          const next = new Map<string, Job[]>();
+          for (const [batchId, jobs] of current.entries()) {
+            if (visibleBatchIDs.has(batchId)) {
+              next.set(batchId, jobs);
+            }
+          }
+          return next;
+        });
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to refresh batches",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getBatchList, offset],
+  );
+
   const cancelBatch = useCallback(
     async (batchId: string) => {
       const { data, error: apiError } = await deleteV1JobsBatchById({
@@ -494,24 +481,17 @@ export function useBatches() {
       }
 
       const updated = mapBatchResponse(data);
-      setBatches((current) => {
-        const newBatches = current.map((batch) =>
-          batch.id === batchId ? updated : batch,
-        );
-        saveBatches(newBatches);
-        return newBatches;
-      });
+      setBatches((current) =>
+        current.map((batch) => (batch.id === batchId ? updated : batch)),
+      );
 
-      const jobs = readBatchJobs(data.jobs);
-      if (jobs) {
-        setBatchJobs((current) => {
-          const next = new Map(current);
-          next.set(batchId, jobs);
-          return next;
+      if (batchJobs.has(batchId)) {
+        void refreshBatch(batchId).catch(() => {
+          // Best-effort detail refresh so any loaded job rows reflect cancellation.
         });
       }
     },
-    [saveBatches],
+    [batchJobs, refreshBatch],
   );
 
   const submitBatch = useCallback(
@@ -543,19 +523,29 @@ export function useBatches() {
             }
           : null;
 
-      setBatches((current) => {
-        const newBatches = [entry, ...current];
-        saveBatches(newBatches);
-        return newBatches;
-      });
+      setBatches((current) =>
+        [entry, ...current.filter((batch) => batch.id !== entry.id)].slice(
+          0,
+          limit,
+        ),
+      );
+      setOffset(0);
+
+      const jobs = readBatchJobs(data.jobs);
+      if (jobs) {
+        setBatchJobs((current) => {
+          const next = new Map(current);
+          next.set(entry.id, jobs);
+          return next;
+        });
+      }
+
       setLastSubmittedBatch(submissionRecord);
       saveLastSubmittedBatch(submissionRecord);
-      void refreshBatch(entry.id).catch(() => {
-        // Best-effort refresh to hydrate authoritative stats.
-      });
+      await refreshBatches(0);
       return entry;
     },
-    [refreshBatch, saveBatches, saveLastSubmittedBatch],
+    [limit, refreshBatches, saveLastSubmittedBatch],
   );
 
   const submitBatchScrape = useCallback(
@@ -575,53 +565,28 @@ export function useBatches() {
     [submitBatch],
   );
 
-  // Remove a batch from tracking
-  const removeBatch = useCallback(
-    (batchId: string) => {
-      setBatches((current) => {
-        const newBatches = current.filter((b) => b.id !== batchId);
-        saveBatches(newBatches);
-        return newBatches;
-      });
-      setBatchJobs((current) => {
-        const next = new Map(current);
-        next.delete(batchId);
-        return next;
-      });
-      setLastSubmittedBatch((current) => {
-        if (!current || current.batchId !== batchId) {
-          return current;
-        }
-
-        saveLastSubmittedBatch(null);
-        return null;
-      });
-    },
-    [saveBatches, saveLastSubmittedBatch],
-  );
-
-  // Check if any batches are processing
   const hasProcessing = batches.some(
-    (b) => b.status === "pending" || b.status === "processing",
+    (batch) => batch.status === "pending" || batch.status === "processing",
   );
 
-  // Setup polling
   useEffect(() => {
-    loadBatches();
-  }, [loadBatches]);
+    if (initializedRef.current) {
+      return;
+    }
+    initializedRef.current = true;
+    void refreshBatches(0);
+  }, [refreshBatches]);
 
   useEffect(() => {
     loadLastSubmittedBatch();
   }, [loadLastSubmittedBatch]);
 
   useEffect(() => {
-    // Clear existing interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
 
-    // Only poll if there are processing batches
     if (hasProcessing) {
       intervalRef.current = setInterval(() => {
         void refreshBatches();
@@ -641,13 +606,15 @@ export function useBatches() {
     lastSubmittedBatch,
     loading,
     error,
+    total,
+    limit,
+    offset,
     refreshBatch,
     refreshBatches,
     cancelBatch,
     submitBatchScrape,
     submitBatchCrawl,
     submitBatchResearch,
-    removeBatch,
     clearLastSubmittedBatch,
     hasProcessing,
   };

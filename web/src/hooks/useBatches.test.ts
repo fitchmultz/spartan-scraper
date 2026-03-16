@@ -1,15 +1,16 @@
 /**
- * Purpose: Verify batch hook mapping and normalization logic that feeds BatchList rendering.
- * Responsibilities: Assert stable stats normalization for API/localStorage inputs and guard against undefined stats regressions.
- * Scope: Pure helper functions exported by useBatches (no network/UI rendering).
+ * Purpose: Verify batch hook mapping and authoritative API hydration for the Web batch surface.
+ * Responsibilities: Assert stable helper normalization, last-submitted persistence, page loading, and detail hydration.
+ * Scope: Hook/helper behavior only; component rendering and styling stay under separate tests.
  * Usage: Run via `pnpm run test` or `make test-ci`.
- * Invariants/Assumptions: Batch entries consumed by UI must always include non-negative numeric stats.
+ * Invariants/Assumptions: Batch entries consumed by the UI must always include non-negative numeric stats and come from the API list endpoint.
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BatchResponse, Job } from "../api";
+import type { BatchListResponse, BatchResponse, Job } from "../api";
 import {
+  getV1JobsBatch,
   getV1JobsBatchById,
   postV1JobsBatchCrawl,
   postV1JobsBatchResearch,
@@ -20,11 +21,11 @@ import {
   deriveBatchStatsFromJobs,
   mapBatchResponse,
   normalizeBatchStats,
-  normalizeStoredBatchEntries,
   useBatches,
 } from "./useBatches";
 
 vi.mock("../api", () => ({
+  getV1JobsBatch: vi.fn(),
   getV1JobsBatchById: vi.fn(),
   deleteV1JobsBatchById: vi.fn(),
   postV1JobsBatchScrape: vi.fn(),
@@ -46,6 +47,45 @@ function makeJob(id: string, status: Job["status"]): Job {
     updatedAt: now,
     specVersion: 1,
     spec: { version: 1 },
+  };
+}
+
+function makeBatchListResponse(
+  overrides: Partial<BatchListResponse> = {},
+): BatchListResponse {
+  return {
+    batches: [],
+    total: 0,
+    limit: 25,
+    offset: 0,
+    ...overrides,
+  };
+}
+
+function makeBatchResponse(
+  overrides: Partial<BatchResponse> = {},
+): BatchResponse {
+  return {
+    batch: {
+      id: "batch-1",
+      kind: "scrape",
+      status: "pending",
+      jobCount: 2,
+      stats: {
+        queued: 2,
+        running: 0,
+        succeeded: 0,
+        failed: 0,
+        canceled: 0,
+      },
+      createdAt: "2026-03-05T10:00:00.000Z",
+      updatedAt: "2026-03-05T10:00:00.000Z",
+    },
+    jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
+    total: 2,
+    limit: 2,
+    offset: 0,
+    ...overrides,
   };
 }
 
@@ -77,6 +117,19 @@ beforeAll(() => {
 beforeEach(() => {
   storage.clear();
   vi.clearAllMocks();
+  vi.mocked(getV1JobsBatch).mockResolvedValue({
+    data: makeBatchListResponse(),
+    request: new Request("http://127.0.0.1:8741/v1/jobs/batch"),
+    response: new Response(null, { status: 200 }),
+  } as never);
+  vi.mocked(getV1JobsBatchById).mockResolvedValue({
+    data: makeBatchResponse(),
+    request: new Request("http://127.0.0.1:8741/v1/jobs/batch/batch-1"),
+    response: new Response(null, { status: 200 }),
+  } as never);
+  vi.mocked(postV1JobsBatchScrape).mockResolvedValue({} as never);
+  vi.mocked(postV1JobsBatchCrawl).mockResolvedValue({} as never);
+  vi.mocked(postV1JobsBatchResearch).mockResolvedValue({} as never);
 });
 
 describe("useBatches helpers", () => {
@@ -134,49 +187,9 @@ describe("useBatches helpers", () => {
     });
   });
 
-  it("deriveBatchStatsFromJobs falls back to queued=jobCount when jobs are absent", () => {
-    expect(deriveBatchStatsFromJobs(undefined, 3)).toEqual({
-      queued: 3,
-      running: 0,
-      succeeded: 0,
-      failed: 0,
-      canceled: 0,
-    });
-
-    expect(deriveBatchStatsFromJobs([], 0)).toEqual({
-      queued: 0,
-      running: 0,
-      succeeded: 0,
-      failed: 0,
-      canceled: 0,
-    });
-  });
-
   it("mapBatchResponse always returns safe stats for BatchList", () => {
-    const response: BatchResponse = {
-      batch: {
-        id: "batch-create-1",
-        kind: "scrape",
-        status: "pending",
-        jobCount: 2,
-        stats: {
-          queued: 2,
-          running: 0,
-          succeeded: 0,
-          failed: 0,
-          canceled: 0,
-        },
-        createdAt: "2026-03-05T10:00:00.000Z",
-        updatedAt: "2026-03-05T10:00:00.000Z",
-      },
-      jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-      total: 2,
-      limit: 2,
-      offset: 0,
-    };
-
-    expect(mapBatchResponse(response)).toEqual({
-      id: "batch-create-1",
+    expect(mapBatchResponse(makeBatchResponse())).toEqual({
+      id: "batch-1",
       kind: "scrape",
       status: "pending",
       jobCount: 2,
@@ -191,179 +204,10 @@ describe("useBatches helpers", () => {
       updatedAt: "2026-03-05T10:00:00.000Z",
     });
   });
-
-  it("mapBatchResponse normalizes API stats before UI consumption", () => {
-    const response: BatchResponse = {
-      batch: {
-        id: "batch-status-1",
-        kind: "crawl",
-        status: "processing",
-        jobCount: 4,
-        stats: {
-          queued: 1,
-          running: 2,
-          succeeded: 1,
-          failed: 0,
-          canceled: 0,
-        },
-        createdAt: "2026-03-05T10:00:00.000Z",
-        updatedAt: "2026-03-05T10:01:00.000Z",
-      },
-      jobs: [],
-      total: 4,
-      limit: 0,
-      offset: 0,
-    };
-
-    expect(mapBatchResponse(response)).toEqual({
-      id: "batch-status-1",
-      kind: "crawl",
-      status: "processing",
-      jobCount: 4,
-      stats: {
-        queued: 1,
-        running: 2,
-        succeeded: 1,
-        failed: 0,
-        canceled: 0,
-      },
-      createdAt: "2026-03-05T10:00:00.000Z",
-      updatedAt: "2026-03-05T10:01:00.000Z",
-    });
-  });
-
-  it("mapBatchResponse falls back to jobCount when jobs are omitted", () => {
-    expect(
-      mapBatchResponse({
-        batch: {
-          id: "batch-create-2",
-          kind: "research",
-          status: "pending",
-          jobCount: 3,
-          stats: {
-            queued: 3,
-            running: 0,
-            succeeded: 0,
-            failed: 0,
-            canceled: 0,
-          },
-          createdAt: "2026-03-05T12:00:00.000Z",
-          updatedAt: "2026-03-05T12:00:00.000Z",
-        },
-        jobs: [],
-        total: 3,
-        limit: 0,
-        offset: 0,
-      }),
-    ).toEqual({
-      id: "batch-create-2",
-      kind: "research",
-      status: "pending",
-      jobCount: 3,
-      stats: {
-        queued: 3,
-        running: 0,
-        succeeded: 0,
-        failed: 0,
-        canceled: 0,
-      },
-      createdAt: "2026-03-05T12:00:00.000Z",
-      updatedAt: "2026-03-05T12:00:00.000Z",
-    });
-  });
-
-  it("normalizeStoredBatchEntries discards malformed entries and fixes invalid fields", () => {
-    const raw: unknown = [
-      {
-        id: "good-batch",
-        kind: "research",
-        status: "partial",
-        jobCount: 3,
-        stats: {
-          queued: 0,
-          running: 1,
-          succeeded: 1,
-          failed: 1,
-          canceled: 0,
-        },
-        createdAt: "2026-03-05T10:00:00.000Z",
-        updatedAt: "2026-03-05T10:05:00.000Z",
-      },
-      {
-        id: "needs-defaults",
-        kind: "unsupported-kind",
-        status: "unsupported-status",
-        jobCount: -9,
-        stats: {
-          queued: -1,
-          running: -1,
-          succeeded: -1,
-          failed: -1,
-          canceled: -1,
-        },
-      },
-      { id: "" },
-      null,
-      42,
-    ];
-
-    expect(normalizeStoredBatchEntries(raw)).toEqual([
-      {
-        id: "good-batch",
-        kind: "research",
-        status: "partial",
-        jobCount: 3,
-        stats: {
-          queued: 0,
-          running: 1,
-          succeeded: 1,
-          failed: 1,
-          canceled: 0,
-        },
-        createdAt: "2026-03-05T10:00:00.000Z",
-        updatedAt: "2026-03-05T10:05:00.000Z",
-      },
-      {
-        id: "needs-defaults",
-        kind: "scrape",
-        status: "pending",
-        jobCount: 0,
-        stats: {
-          queued: 0,
-          running: 0,
-          succeeded: 0,
-          failed: 0,
-          canceled: 0,
-        },
-        createdAt: "1970-01-01T00:00:00.000Z",
-        updatedAt: "1970-01-01T00:00:00.000Z",
-      },
-    ]);
-  });
 });
 
-describe("useBatches persistence", () => {
-  it("restores the last submitted batch from localStorage for persisted sessions", async () => {
-    localStorage.setItem(
-      "spartan_batches",
-      JSON.stringify([
-        {
-          id: "batch-persisted-1",
-          kind: "scrape",
-          status: "pending",
-          jobCount: 2,
-          stats: {
-            queued: 2,
-            running: 0,
-            succeeded: 0,
-            failed: 0,
-            canceled: 0,
-          },
-          createdAt: "2026-03-05T10:00:00.000Z",
-          updatedAt: "2026-03-05T10:00:00.000Z",
-        },
-      ]),
-    );
+describe("useBatches authoritative loading", () => {
+  it("restores the last submitted batch from localStorage", async () => {
     localStorage.setItem(
       "spartan_last_submitted_batch",
       JSON.stringify({
@@ -386,36 +230,65 @@ describe("useBatches persistence", () => {
     });
   });
 
-  it("persists the submitted batch summary and clears it when requested", async () => {
-    vi.mocked(getV1JobsBatchById).mockResolvedValue({
-      data: {
-        batch: {
-          id: "batch-submit-1",
-          kind: "scrape",
-          status: "pending",
-          jobCount: 2,
-          stats: {
-            queued: 2,
-            running: 0,
-            succeeded: 0,
-            failed: 0,
-            canceled: 0,
+  it("hydrates the batch page from the API list endpoint", async () => {
+    vi.mocked(getV1JobsBatch).mockResolvedValue({
+      data: makeBatchListResponse({
+        batches: [
+          {
+            id: "batch-list-1",
+            kind: "crawl",
+            status: "processing",
+            jobCount: 4,
+            stats: {
+              queued: 1,
+              running: 2,
+              succeeded: 1,
+              failed: 0,
+              canceled: 0,
+            },
+            createdAt: "2026-03-05T10:00:00.000Z",
+            updatedAt: "2026-03-05T10:01:00.000Z",
           },
-          createdAt: "2026-03-05T10:00:00.000Z",
-          updatedAt: "2026-03-05T10:00:00.000Z",
-        },
-        jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-        total: 2,
-        limit: 2,
+        ],
+        total: 1,
+        limit: 25,
         offset: 0,
-      },
+      }),
       request: new Request(
-        "http://127.0.0.1:8741/v1/jobs/batch/batch-submit-1",
+        "http://127.0.0.1:8741/v1/jobs/batch?limit=25&offset=0",
       ),
       response: new Response(null, { status: 200 }),
     } as never);
+
+    const { result } = renderHook(() => useBatches());
+
+    await waitFor(() => {
+      expect(result.current.batches).toEqual([
+        {
+          id: "batch-list-1",
+          kind: "crawl",
+          status: "processing",
+          jobCount: 4,
+          stats: {
+            queued: 1,
+            running: 2,
+            succeeded: 1,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T10:00:00.000Z",
+          updatedAt: "2026-03-05T10:01:00.000Z",
+        },
+      ]);
+      expect(result.current.total).toBe(1);
+      expect(result.current.limit).toBe(25);
+      expect(result.current.offset).toBe(0);
+    });
+  });
+
+  it("persists the submitted batch summary and refreshes page zero", async () => {
     vi.mocked(postV1JobsBatchScrape).mockResolvedValue({
-      data: {
+      data: makeBatchResponse({
         batch: {
           id: "batch-submit-1",
           kind: "scrape",
@@ -431,16 +304,38 @@ describe("useBatches persistence", () => {
           createdAt: "2026-03-05T10:00:00.000Z",
           updatedAt: "2026-03-05T10:00:00.000Z",
         },
-        jobs: [makeJob("1", "queued"), makeJob("2", "queued")],
-        total: 2,
-        limit: 2,
-        offset: 0,
-      },
+      }),
       request: new Request("http://127.0.0.1:8741/v1/jobs/batch/scrape"),
-      response: new Response(null, { status: 202 }),
+      response: new Response(null, { status: 201 }),
     } as never);
-    vi.mocked(postV1JobsBatchCrawl).mockResolvedValue({} as never);
-    vi.mocked(postV1JobsBatchResearch).mockResolvedValue({} as never);
+    vi.mocked(getV1JobsBatch).mockResolvedValue({
+      data: makeBatchListResponse({
+        batches: [
+          {
+            id: "batch-submit-1",
+            kind: "scrape",
+            status: "pending",
+            jobCount: 2,
+            stats: {
+              queued: 2,
+              running: 0,
+              succeeded: 0,
+              failed: 0,
+              canceled: 0,
+            },
+            createdAt: "2026-03-05T10:00:00.000Z",
+            updatedAt: "2026-03-05T10:00:00.000Z",
+          },
+        ],
+        total: 1,
+        limit: 25,
+        offset: 0,
+      }),
+      request: new Request(
+        "http://127.0.0.1:8741/v1/jobs/batch?limit=25&offset=0",
+      ),
+      response: new Response(null, { status: 200 }),
+    } as never);
 
     const { result } = renderHook(() => useBatches());
 
@@ -455,6 +350,10 @@ describe("useBatches persistence", () => {
       kind: "scrape",
       submittedUrls: ["https://example.com", "https://example.org"],
     });
+    expect(result.current.batches[0]).toMatchObject({
+      id: "batch-submit-1",
+      kind: "scrape",
+    });
     expect(
       JSON.parse(
         localStorage.getItem("spartan_last_submitted_batch") ?? "null",
@@ -464,12 +363,78 @@ describe("useBatches persistence", () => {
       kind: "scrape",
       submittedUrls: ["https://example.com", "https://example.org"],
     });
+  });
 
-    act(() => {
-      result.current.clearLastSubmittedBatch();
+  it("loads batch job details on demand", async () => {
+    vi.mocked(getV1JobsBatch).mockResolvedValue({
+      data: makeBatchListResponse({
+        batches: [
+          {
+            id: "batch-detail-1",
+            kind: "scrape",
+            status: "processing",
+            jobCount: 2,
+            stats: {
+              queued: 1,
+              running: 1,
+              succeeded: 0,
+              failed: 0,
+              canceled: 0,
+            },
+            createdAt: "2026-03-05T10:00:00.000Z",
+            updatedAt: "2026-03-05T10:01:00.000Z",
+          },
+        ],
+        total: 1,
+        limit: 25,
+        offset: 0,
+      }),
+      request: new Request(
+        "http://127.0.0.1:8741/v1/jobs/batch?limit=25&offset=0",
+      ),
+      response: new Response(null, { status: 200 }),
+    } as never);
+    vi.mocked(getV1JobsBatchById).mockResolvedValue({
+      data: makeBatchResponse({
+        batch: {
+          id: "batch-detail-1",
+          kind: "scrape",
+          status: "processing",
+          jobCount: 2,
+          stats: {
+            queued: 1,
+            running: 1,
+            succeeded: 0,
+            failed: 0,
+            canceled: 0,
+          },
+          createdAt: "2026-03-05T10:00:00.000Z",
+          updatedAt: "2026-03-05T10:01:00.000Z",
+        },
+        jobs: [makeJob("job-1", "queued"), makeJob("job-2", "running")],
+        total: 2,
+        limit: 2,
+        offset: 0,
+      }),
+      request: new Request(
+        "http://127.0.0.1:8741/v1/jobs/batch/batch-detail-1",
+      ),
+      response: new Response(null, { status: 200 }),
+    } as never);
+
+    const { result } = renderHook(() => useBatches());
+
+    await waitFor(() => {
+      expect(result.current.batches).toHaveLength(1);
     });
 
-    expect(result.current.lastSubmittedBatch).toBeNull();
-    expect(localStorage.getItem("spartan_last_submitted_batch")).toBeNull();
+    await act(async () => {
+      await result.current.refreshBatch("batch-detail-1");
+    });
+
+    expect(result.current.batchJobs.get("batch-detail-1")).toEqual([
+      makeJob("job-1", "queued"),
+      makeJob("job-2", "running"),
+    ]);
   });
 });

@@ -4,6 +4,7 @@
 // - Accept batch submissions and batch-status operations over the API.
 //
 // Responsibilities:
+// - List persisted batches with pagination metadata.
 // - Validate and submit scrape, crawl, and research batches.
 // - Return aggregate batch status and optionally paginated jobs.
 // - Cancel batches and their constituent jobs.
@@ -12,15 +13,17 @@
 // - API request handling only; persistence and job execution live in internal/store and internal/jobs.
 //
 // Usage:
-// - Registered for /v1/jobs/batch/* routes.
+// - Registered for /v1/jobs/batch and /v1/jobs/batch/* routes.
 //
 // Invariants/Assumptions:
 // - All batch requests are JSON and validated before any jobs are created.
+// - Batch list responses expose aggregate summaries only; batch detail loads individual jobs separately.
 // - Research batches create a single research job containing all submitted URLs.
 package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
@@ -28,6 +31,31 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
+
+// handleBatches handles GET /v1/jobs/batch.
+func (s *Server) handleBatches(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
+	page, err := parsePageParams(r, 100, 0)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	batches, stats, total, err := s.manager.ListBatchStatuses(r.Context(), store.ListOptions{
+		Limit:  page.Limit,
+		Offset: page.Offset,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
+	writeJSON(w, BuildBatchListResponse(batches, stats, total, page.Limit, page.Offset))
+}
 
 // handleBatchScrape handles POST /v1/jobs/batch/scrape.
 func (s *Server) handleBatchScrape(w http.ResponseWriter, r *http.Request) {

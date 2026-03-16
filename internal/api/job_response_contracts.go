@@ -73,6 +73,27 @@ func BuildBatchResponse(batch model.Batch, stats model.BatchJobStats, jobs []mod
 	}
 }
 
+// BuildBatchListResponse returns the canonical paginated batch-summary collection envelope.
+func BuildBatchListResponse(batches []model.Batch, stats []model.BatchJobStats, total int, limit int, offset int) BatchListResponse {
+	summaries := make([]BatchSummary, 0, len(batches))
+	for i, batch := range batches {
+		var batchStats model.BatchJobStats
+		if i < len(stats) {
+			batchStats = stats[i]
+		}
+		summaries = append(summaries, BuildBatchSummary(batch, batchStats))
+	}
+	if summaries == nil {
+		summaries = []BatchSummary{}
+	}
+	return BatchListResponse{
+		Batches: summaries,
+		Total:   total,
+		Limit:   limit,
+		Offset:  offset,
+	}
+}
+
 // BuildCreatedBatchResponse returns the canonical batch envelope immediately after submission.
 func BuildCreatedBatchResponse(batchID string, kind model.Kind, createdJobs []model.Job) BatchResponse {
 	jobCount := len(createdJobs)

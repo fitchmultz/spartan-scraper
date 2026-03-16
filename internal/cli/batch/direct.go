@@ -132,6 +132,26 @@ func directBatchDefaults(cfg config.Config, manager *jobs.Manager) submission.Ba
 	}
 }
 
+func listBatchesDirect(ctx context.Context, cfg config.Config, limit, offset int) (*BatchListResponse, error) {
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		return nil, err
+	}
+	defer st.Close()
+
+	opts := store.ListOptions{Limit: limit, Offset: offset}.Defaults()
+	batches, stats, err := st.ListBatchesWithStats(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	total, err := st.CountBatches(ctx)
+	if err != nil {
+		return nil, err
+	}
+	response := spartanapi.BuildBatchListResponse(batches, stats, total, opts.Limit, opts.Offset)
+	return &response, nil
+}
+
 func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string, includeJobs bool) (*BatchStatusResponse, error) {
 	st, err := store.Open(cfg.DataDir)
 	if err != nil {
