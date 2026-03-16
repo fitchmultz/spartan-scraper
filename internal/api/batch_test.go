@@ -1,11 +1,12 @@
 // Package api provides regression tests for batch API handlers.
 //
 // Purpose:
-// - Verify standardized batch submission behavior after handler consolidation.
+// - Verify canonical batch submission and inspection behavior after handler consolidation.
 //
 // Responsibilities:
 // - Assert shared defaults are applied consistently.
 // - Assert research batches create a single research job for all submitted URLs.
+// - Assert batch responses expose explicit progress and inspectable included jobs.
 //
 // Scope:
 // - API handler behavior only; job execution is not under test here.
@@ -16,6 +17,7 @@
 // Invariants/Assumptions:
 // - Batch responses are returned before workers complete execution.
 // - Store reads reflect the jobs created for the batch request.
+// - Included job rows reuse the canonical inspectable run contract.
 package api
 
 import (
@@ -323,5 +325,57 @@ func TestHandleBatchGetRejectsInvalidPaginationWhenIncludingJobs(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleBatchStatusIncludesProgressAndJobRunContext(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body, err := json.Marshal(BatchScrapeRequest{
+		Jobs: []BatchJobRequest{{URL: "https://example.com/articles/1"}, {URL: "https://example.com/articles/2"}},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	createReq := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/scrape", bytes.NewReader(body))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(createRes, createReq)
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("expected create status 201, got %d: %s", createRes.Code, createRes.Body.String())
+	}
+
+	var created BatchResponse
+	if err := json.Unmarshal(createRes.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create response: %v", err)
+	}
+	if created.Batch.Progress.Percent != 0 {
+		t.Fatalf("expected initial progress percent 0, got %d", created.Batch.Progress.Percent)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/v1/jobs/batch/"+created.Batch.ID+"?include_jobs=true", nil)
+	statusRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(statusRes, statusReq)
+	if statusRes.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", statusRes.Code, statusRes.Body.String())
+	}
+
+	var status BatchResponse
+	if err := json.Unmarshal(statusRes.Body.Bytes(), &status); err != nil {
+		t.Fatalf("unmarshal status response: %v", err)
+	}
+	if status.Batch.Progress.Remaining != 2 {
+		t.Fatalf("expected 2 remaining jobs, got %d", status.Batch.Progress.Remaining)
+	}
+	if len(status.Jobs) != 2 {
+		t.Fatalf("expected 2 jobs, got %d", len(status.Jobs))
+	}
+	if status.Jobs[0].Run.Queue == nil {
+		t.Fatal("expected queue context on included batch job")
+	}
+	if status.Jobs[0].Run.Queue.Total != 2 {
+		t.Fatalf("expected queue total 2, got %d", status.Jobs[0].Run.Queue.Total)
 	}
 }

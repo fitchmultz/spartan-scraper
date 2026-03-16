@@ -1,22 +1,23 @@
 // Package api provides HTTP request and response types for the Spartan Scraper API.
-// These types are used for JSON encoding/decoding of API requests and responses.
 //
 // Purpose:
-// - Define stable request and response contracts shared across REST handlers and MCP adapters.
+// - Define stable request and response contracts shared across REST handlers, MCP adapters, and CLI direct-mode helpers.
 //
 // Responsibilities:
 // - Hold operator-facing request payload types for scrape, crawl, research, schedules, and batches.
 // - Hold stable job and batch response envelope types used across transports.
+// - Define derived observability payloads for recent runs, queue progression, and failure context.
 //
 // Scope:
 // - JSON contracts only; handler logic and response construction live elsewhere in this package.
 //
 // Usage:
-// - Imported by REST handlers, MCP handlers, tests, and generated OpenAPI maintenance work.
+// - Imported by REST handlers, MCP handlers, CLI direct-mode helpers, tests, and OpenAPI maintenance work.
 //
 // Invariants/Assumptions:
 // - Job and batch automation surfaces should reuse the same response envelope shapes.
 // - Response envelopes expose sanitized jobs rather than persisted raw records.
+// - Derived run-history fields are transport-safe and never reveal host-local artifact paths.
 package api
 
 import (
@@ -93,17 +94,59 @@ type BatchCrawlRequest = submission.BatchCrawlRequest
 // BatchResearchRequest creates multiple research jobs.
 type BatchResearchRequest = submission.BatchResearchRequest
 
-// JobResponse represents a single sanitized job envelope.
-type JobResponse struct {
-	Job model.Job `json:"job"`
+// JobFailureContext summarizes operator-meaningful terminal failure details.
+type JobFailureContext struct {
+	Category  string `json:"category"`
+	Summary   string `json:"summary"`
+	Retryable bool   `json:"retryable"`
+	Terminal  bool   `json:"terminal"`
 }
 
-// JobListResponse represents a paginated collection of sanitized jobs.
+// JobQueueProgress summarizes a job's position within a persisted batch queue.
+type JobQueueProgress struct {
+	BatchID   string `json:"batchId,omitempty"`
+	Index     int    `json:"index,omitempty"`
+	Total     int    `json:"total,omitempty"`
+	Completed int    `json:"completed,omitempty"`
+	Remaining int    `json:"remaining,omitempty"`
+	Queued    int    `json:"queued,omitempty"`
+	Running   int    `json:"running,omitempty"`
+	Percent   int    `json:"percent,omitempty"`
+}
+
+// JobRunSummary exposes derived lifecycle timing, queue, and failure details for a job.
+type JobRunSummary struct {
+	WaitMs  int64              `json:"waitMs"`
+	RunMs   int64              `json:"runMs"`
+	TotalMs int64              `json:"totalMs"`
+	Queue   *JobQueueProgress  `json:"queue,omitempty"`
+	Failure *JobFailureContext `json:"failure,omitempty"`
+}
+
+// InspectableJob represents a sanitized job with derived observability fields.
+type InspectableJob struct {
+	model.Job
+	Run JobRunSummary `json:"run"`
+}
+
+// JobResponse represents a single sanitized inspectable job envelope.
+type JobResponse struct {
+	Job InspectableJob `json:"job"`
+}
+
+// JobListResponse represents a paginated collection of sanitized inspectable jobs.
 type JobListResponse struct {
-	Jobs   []model.Job `json:"jobs"`
-	Total  int         `json:"total"`
-	Limit  int         `json:"limit"`
-	Offset int         `json:"offset"`
+	Jobs   []InspectableJob `json:"jobs"`
+	Total  int              `json:"total"`
+	Limit  int              `json:"limit"`
+	Offset int              `json:"offset"`
+}
+
+// BatchProgress exposes explicit queue progress for a batch.
+type BatchProgress struct {
+	Completed int `json:"completed"`
+	Remaining int `json:"remaining"`
+	Percent   int `json:"percent"`
 }
 
 // BatchSummary represents aggregate batch metadata and status.
@@ -113,17 +156,18 @@ type BatchSummary struct {
 	Status    string              `json:"status"`
 	JobCount  int                 `json:"jobCount"`
 	Stats     model.BatchJobStats `json:"stats"`
+	Progress  BatchProgress       `json:"progress"`
 	CreatedAt time.Time           `json:"createdAt"`
 	UpdatedAt time.Time           `json:"updatedAt"`
 }
 
 // BatchResponse represents a stable batch envelope shared by create/get/cancel flows.
 type BatchResponse struct {
-	Batch  BatchSummary `json:"batch"`
-	Jobs   []model.Job  `json:"jobs"`
-	Total  int          `json:"total"`
-	Limit  int          `json:"limit"`
-	Offset int          `json:"offset"`
+	Batch  BatchSummary     `json:"batch"`
+	Jobs   []InspectableJob `json:"jobs"`
+	Total  int              `json:"total"`
+	Limit  int              `json:"limit"`
+	Offset int              `json:"offset"`
 }
 
 // BatchListResponse represents a paginated collection of aggregate batch summaries.

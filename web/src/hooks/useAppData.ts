@@ -1,17 +1,15 @@
 /**
- * Application Data Hook
- *
- * Custom React hook for managing all application-wide data fetching.
- * Handles loading and refreshing of jobs, profiles, schedules, templates,
- * crawl states, and manager status. Uses WebSocket for real-time updates
- * with graceful fallback to polling.
- *
- * @module useAppData
+ * Purpose: Manage authoritative application-wide operator data for the web UI.
+ * Responsibilities: Fetch recent runs, failed runs, manager health, metrics, profiles, schedules, templates, and crawl states; keep job data fresh via WebSocket and polling fallbacks; expose pagination and run-filter controls.
+ * Scope: Client-side data orchestration only; presentation stays in React components and transport contracts come from the generated API client.
+ * Usage: Call `useAppData()` from the application shell and pass the returned state/actions into route-level components.
+ * Invariants/Assumptions: Jobs are loaded from the API as recent-run envelopes, failedJobs is a lightweight failure-focused subset, and polling only activates when the WebSocket connection is unavailable.
  */
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getV1Jobs,
+  getV1JobsFailures,
   getHealthz,
   getMetrics,
   listTemplates,
@@ -23,6 +21,15 @@ import {
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
 import { useWebSocket, type WSMessage } from "./useWebSocket";
+
+type JobEntry = import("../types").JobEntry;
+export type JobStatusFilter =
+  | ""
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "canceled";
 
 export interface ManagerStatus {
   queued: number;
@@ -42,7 +49,9 @@ export interface Schedule {
 }
 
 export interface AppDataState {
-  jobs: import("../types").JobEntry[];
+  jobs: JobEntry[];
+  failedJobs: JobEntry[];
+  jobStatusFilter: JobStatusFilter;
   profiles: Profile[];
   schedules: Schedule[];
   templates: string[];
@@ -60,15 +69,18 @@ export interface AppDataState {
 
 export interface AppDataActions {
   refreshJobs: (page?: number) => Promise<void>;
+  refreshJobFailures: () => Promise<void>;
   refreshProfiles: () => Promise<void>;
   refreshSchedules: () => Promise<void>;
   refreshTemplates: () => Promise<void>;
   refreshCrawlStates: (page?: number) => Promise<void>;
   setJobsPage: (page: number) => void;
   setCrawlStatesPage: (page: number) => void;
+  setJobStatusFilter: (status: JobStatusFilter) => void;
 }
 
 const JOBS_PER_PAGE = 100;
+const FAILED_JOBS_PER_PAGE = 10;
 const CRAWL_STATES_PER_PAGE = 100;
 const POLL_INTERVAL = 4000;
 
@@ -77,11 +89,9 @@ function getWebSocketUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
   if (!baseUrl) {
-    // Relative path - use current host
     return `${protocol}//${window.location.host}/v1/ws`;
   }
 
-  // Convert http/https to ws/wss
   if (baseUrl.startsWith("http://")) {
     return `${baseUrl.replace("http://", "ws://")}/v1/ws`;
   }
@@ -89,12 +99,12 @@ function getWebSocketUrl(): string {
     return `${baseUrl.replace("https://", "wss://")}/v1/ws`;
   }
 
-  // Assume it's a host:port without protocol
   return `${protocol}//${baseUrl}/v1/ws`;
 }
 
 export function useAppData(): AppDataState & AppDataActions {
-  const [jobs, setJobs] = useState<import("../types").JobEntry[]>([]);
+  const [jobs, setJobs] = useState<JobEntry[]>([]);
+  const [failedJobs, setFailedJobs] = useState<JobEntry[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [templates, setTemplates] = useState<string[]>([]);
@@ -107,6 +117,8 @@ export function useAppData(): AppDataState & AppDataActions {
   const [loading, setLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
   const [jobsTotal, setJobsTotal] = useState(0);
+  const [jobStatusFilter, setJobStatusFilterState] =
+    useState<JobStatusFilter>("");
   const [crawlStatesPage, setCrawlStatesPage] = useState(1);
   const [crawlStatesTotal, setCrawlStatesTotal] = useState(0);
   const [usePolling, setUsePolling] = useState(false);
@@ -124,6 +136,7 @@ export function useAppData(): AppDataState & AppDataActions {
           query: {
             limit: JOBS_PER_PAGE,
             offset: (page - 1) * JOBS_PER_PAGE,
+            ...(jobStatusFilter ? { status: jobStatusFilter } : {}),
           },
         });
         if (apiError) {
@@ -146,8 +159,27 @@ export function useAppData(): AppDataState & AppDataActions {
         setLoading(false);
       }
     },
-    [jobsPage],
+    [jobStatusFilter, jobsPage],
   );
+
+  const refreshJobFailures = useCallback(async () => {
+    try {
+      const { data, error: apiError } = await getV1JobsFailures({
+        baseUrl: getApiBaseUrl(),
+        query: {
+          limit: FAILED_JOBS_PER_PAGE,
+          offset: 0,
+        },
+      });
+      if (apiError) {
+        console.error("Failed to fetch job failures:", apiError);
+        return;
+      }
+      setFailedJobs(data?.jobs ?? []);
+    } catch (err) {
+      console.error("Failed to fetch job failures:", err);
+    }
+  }, []);
 
   const refreshManagerStatus = useCallback(async () => {
     try {
@@ -267,7 +299,11 @@ export function useAppData(): AppDataState & AppDataActions {
     [crawlStatesPage],
   );
 
-  // Handle WebSocket messages
+  const setJobStatusFilter = useCallback((status: JobStatusFilter) => {
+    setJobsPage(1);
+    setJobStatusFilterState(status);
+  }, []);
+
   const handleWebSocketMessage = useCallback(
     (msg: WSMessage) => {
       switch (msg.type) {
@@ -275,8 +311,7 @@ export function useAppData(): AppDataState & AppDataActions {
         case "job_started":
         case "job_status_changed":
         case "job_completed":
-          // Refresh jobs list when job state changes
-          void refreshJobs();
+          void Promise.all([refreshJobs(), refreshJobFailures()]);
           break;
         case "manager_status": {
           const payload = msg.payload as {
@@ -298,10 +333,9 @@ export function useAppData(): AppDataState & AppDataActions {
           break;
       }
     },
-    [refreshJobs],
+    [refreshJobFailures, refreshJobs],
   );
 
-  // WebSocket connection
   const wsUrl = useMemo(() => getWebSocketUrl(), []);
   const { state: wsState } = useWebSocket({
     url: wsUrl,
@@ -314,17 +348,16 @@ export function useAppData(): AppDataState & AppDataActions {
     },
   });
 
-  // Determine connection state for UI
   const connectionState = useMemo(() => {
     if (wsState === "connected") return "connected";
     if (wsState === "reconnecting") return "reconnecting";
     if (usePolling) return "polling";
     return "disconnected";
-  }, [wsState, usePolling]);
+  }, [usePolling, wsState]);
 
-  // Initial data load
   useEffect(() => {
     void refreshJobs();
+    void refreshJobFailures();
     void refreshManagerStatus();
     void refreshMetrics();
     void refreshProfiles();
@@ -332,30 +365,39 @@ export function useAppData(): AppDataState & AppDataActions {
     void refreshTemplates();
     void refreshCrawlStates();
   }, [
+    refreshCrawlStates,
+    refreshJobFailures,
     refreshJobs,
     refreshManagerStatus,
     refreshMetrics,
     refreshProfiles,
     refreshSchedules,
     refreshTemplates,
-    refreshCrawlStates,
   ]);
 
-  // Polling fallback (only when WebSocket is not connected)
   useEffect(() => {
     if (!usePolling) return;
 
     const handle = window.setInterval(() => {
       void refreshJobs();
+      void refreshJobFailures();
       void refreshManagerStatus();
       void refreshMetrics();
     }, POLL_INTERVAL);
 
     return () => window.clearInterval(handle);
-  }, [usePolling, refreshJobs, refreshManagerStatus, refreshMetrics]);
+  }, [
+    refreshJobFailures,
+    refreshJobs,
+    refreshManagerStatus,
+    refreshMetrics,
+    usePolling,
+  ]);
 
   return {
     jobs,
+    failedJobs,
+    jobStatusFilter,
     profiles,
     schedules,
     templates,
@@ -370,11 +412,13 @@ export function useAppData(): AppDataState & AppDataActions {
     loading,
     connectionState,
     refreshJobs,
+    refreshJobFailures,
     refreshProfiles,
     refreshSchedules,
     refreshTemplates,
     refreshCrawlStates,
     setJobsPage,
     setCrawlStatesPage,
+    setJobStatusFilter,
   };
 }

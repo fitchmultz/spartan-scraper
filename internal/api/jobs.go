@@ -1,6 +1,24 @@
 // Package api provides HTTP handlers for job listing and management endpoints.
-// Job handlers support listing jobs with filters, retrieving job details,
-// canceling jobs, and force-deleting jobs with their artifacts.
+//
+// Purpose:
+// - Expose canonical recent-run inspection and job control routes over HTTP.
+//
+// Responsibilities:
+// - List persisted jobs with pagination and optional status filtering.
+// - List recent failed jobs with operator-meaningful failure context.
+// - Retrieve single job details and cancel or force-delete jobs.
+// - Route all job responses through the shared sanitized observability builders.
+//
+// Scope:
+// - Job transport handling only; persistence and execution stay in internal/store and internal/jobs.
+//
+// Usage:
+// - Registered for /v1/jobs, /v1/jobs/failures, and /v1/jobs/* routes.
+//
+// Invariants/Assumptions:
+// - Job list responses always return paginated envelopes.
+// - Failure inspection is a filtered view over persisted failed jobs, not a separate history store.
+// - Force delete permanently removes persisted job data and artifacts.
 package api
 
 import (
@@ -18,17 +36,20 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))
 		return
 	}
+
 	query := r.URL.Query()
 	page, err := parsePageParams(r, 100, 0)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	statusParam := query.Get("status")
 
-	var jobsList []model.Job
-	var total int
-	var status model.Status
+	statusParam := query.Get("status")
+	var (
+		jobsList []model.Job
+		total    int
+		status   model.Status
+	)
 
 	if statusParam != "" {
 		status = model.Status(statusParam)
@@ -36,13 +57,16 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, apperrors.Validation(fmt.Sprintf("invalid status: %s (must be queued, running, succeeded, failed, or canceled)", statusParam)))
 			return
 		}
-		opts := store.ListByStatusOptions{Limit: page.Limit, Offset: page.Offset}
-		jobsList, err = s.store.ListByStatus(r.Context(), status, opts)
+		jobsList, err = s.store.ListByStatus(r.Context(), status, store.ListByStatusOptions{
+			Limit:  page.Limit,
+			Offset: page.Offset,
+		})
 	} else {
-		opts := store.ListOptions{Limit: page.Limit, Offset: page.Offset}
-		jobsList, err = s.store.ListOpts(r.Context(), opts)
+		jobsList, err = s.store.ListOpts(r.Context(), store.ListOptions{
+			Limit:  page.Limit,
+			Offset: page.Offset,
+		})
 	}
-
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -54,8 +78,50 @@ func (s *Server) handleJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp, err := BuildStoreBackedJobListResponse(r.Context(), s.store, jobsList, total, page.Limit, page.Offset)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeJSON(w, BuildJobListResponse(jobsList, total, page.Limit, page.Offset))
+	writeJSON(w, resp)
+}
+
+func (s *Server) handleJobFailures(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
+	page, err := parsePageParams(r, 50, 0)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	jobsList, err := s.store.ListByStatus(r.Context(), model.StatusFailed, store.ListByStatusOptions{
+		Limit:  page.Limit,
+		Offset: page.Offset,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	total, err := s.store.CountJobs(r.Context(), model.StatusFailed)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	resp, err := BuildStoreBackedJobListResponse(r.Context(), s.store, jobsList, total, page.Limit, page.Offset)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
+	writeJSON(w, resp)
 }
 
 func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +152,12 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		writeJSON(w, BuildJobResponse(job))
+		resp, err := BuildStoreBackedJobResponse(r.Context(), s.store, job)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeJSON(w, resp)
 	case http.MethodDelete:
 		if r.URL.Query().Get("force") == "true" {
 			if err := s.store.DeleteWithArtifacts(r.Context(), id); err != nil {
@@ -104,7 +175,12 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 				writeError(w, r, err)
 				return
 			}
-			writeJSON(w, BuildJobResponse(job))
+			resp, err := BuildStoreBackedJobResponse(r.Context(), s.store, job)
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			writeJSON(w, resp)
 		}
 	default:
 		writeError(w, r, apperrors.MethodNotAllowed("method not allowed"))

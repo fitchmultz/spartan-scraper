@@ -113,7 +113,11 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
+	resp, err := BuildStoreBackedBatchResponse(r.Context(), s.store, batch, stats, nil, batch.JobCount, 0, 0)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 
 	if r.URL.Query().Get("include_jobs") == "true" {
 		page, err := parsePageParams(r, 50, 0)
@@ -129,7 +133,11 @@ func (s *Server) handleBatchGetStatus(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, err)
 			return
 		}
-		resp = BuildBatchResponse(batch, stats, jobsByBatch, batch.JobCount, page.Limit, page.Offset)
+		resp, err = BuildStoreBackedBatchResponse(r.Context(), s.store, batch, stats, jobsByBatch, batch.JobCount, page.Limit, page.Offset)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
 	}
 
 	writeJSON(w, resp)
@@ -154,5 +162,10 @@ func (s *Server) handleBatchCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0))
+	resp, err := BuildStoreBackedBatchResponse(r.Context(), s.store, batch, stats, nil, batch.JobCount, 0, 0)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, resp)
 }

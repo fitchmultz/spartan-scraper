@@ -1,6 +1,22 @@
 // Package api provides integration tests for jobs endpoints (/v1/jobs).
-// Tests cover job listing, filtering by status, deletion, and cancellation.
-// Does NOT test individual job creation, execution, or result retrieval handlers.
+//
+// Purpose:
+// - Verify recent-run API behavior for listing, failure inspection, retrieval, deletion, and cancellation.
+//
+// Responsibilities:
+// - Assert job list filtering, pagination, and run-history enrichment.
+// - Assert dedicated failed-run inspection behavior.
+// - Assert delete/cancel edge cases and invalid-path handling.
+//
+// Scope:
+// - REST handler behavior only; worker execution internals and result retrieval live in other tests.
+//
+// Usage:
+// - Run with `go test ./internal/api/...`.
+//
+// Invariants/Assumptions:
+// - Test jobs are persisted in isolated temporary stores.
+// - Responses use the canonical job envelope and list shapes.
 package api
 
 import (
@@ -568,5 +584,101 @@ func TestHandleJobGetPathTraversal(t *testing.T) {
 				t.Errorf("expected status 400 for path traversal id %q, got %v", invalidID, status)
 			}
 		})
+	}
+}
+
+func TestHandleJobFailures(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	failedAt := time.Now().Add(-time.Minute)
+	failedJob := model.Job{
+		ID:          "11111111-1111-4111-8111-111111111111",
+		Kind:        model.KindScrape,
+		Status:      model.StatusFailed,
+		SpecVersion: -1,
+		CreatedAt:   failedAt.Add(-30 * time.Second),
+		UpdatedAt:   failedAt,
+		FinishedAt:  &failedAt,
+		Error:       "browser timeout while waiting for selector",
+		Spec:        map[string]interface{}{"url": "https://failed.example.com"},
+	}
+	if err := srv.store.Create(context.Background(), failedJob); err != nil {
+		t.Fatalf("failed to create failed job: %v", err)
+	}
+	queuedJob := model.Job{
+		ID:          "22222222-2222-4222-8222-222222222222",
+		Kind:        model.KindScrape,
+		Status:      model.StatusQueued,
+		SpecVersion: -1,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Spec:        map[string]interface{}{"url": "https://queued.example.com"},
+	}
+	if err := srv.store.Create(context.Background(), queuedJob); err != nil {
+		t.Fatalf("failed to create queued job: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/jobs/failures?limit=10&offset=0", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Total-Count"); got != "1" {
+		t.Fatalf("expected X-Total-Count header 1, got %q", got)
+	}
+
+	var resp JobListResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(resp.Jobs) != 1 {
+		t.Fatalf("expected 1 failed job, got %d", len(resp.Jobs))
+	}
+	if resp.Jobs[0].ID != failedJob.ID {
+		t.Fatalf("expected failed job %q, got %q", failedJob.ID, resp.Jobs[0].ID)
+	}
+	if resp.Jobs[0].Run.Failure == nil {
+		t.Fatal("expected failure context in response")
+	}
+	if resp.Jobs[0].Run.Failure.Category != "timeout" {
+		t.Fatalf("expected timeout failure category, got %q", resp.Jobs[0].Run.Failure.Category)
+	}
+}
+
+func TestHandleJobListIncludesBatchQueueContext(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{"jobs":[{"url":"https://example.com/one"},{"url":"https://example.com/two"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected create status 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/v1/jobs?limit=10&offset=0", nil)
+	listRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(listRes, listReq)
+	if listRes.Code != http.StatusOK {
+		t.Fatalf("expected list status 200, got %d: %s", listRes.Code, listRes.Body.String())
+	}
+
+	var resp JobListResponse
+	if err := json.Unmarshal(listRes.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse list response: %v", err)
+	}
+	if len(resp.Jobs) < 2 {
+		t.Fatalf("expected at least 2 jobs, got %d", len(resp.Jobs))
+	}
+	if resp.Jobs[0].Run.Queue == nil {
+		t.Fatal("expected batch queue context on listed batch job")
+	}
+	if resp.Jobs[0].Run.Queue.Total != 2 {
+		t.Fatalf("expected batch queue total 2, got %d", resp.Jobs[0].Run.Queue.Total)
 	}
 }

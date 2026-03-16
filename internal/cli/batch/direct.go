@@ -57,7 +57,14 @@ func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchSc
 		return nil, err
 	}
 
-	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindScrape, createdJobs)
+	batch, stats, err := manager.GetBatchStatus(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+	response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, createdJobs, len(createdJobs), len(createdJobs), 0)
+	if err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 
@@ -87,7 +94,14 @@ func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCra
 		return nil, err
 	}
 
-	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindCrawl, createdJobs)
+	batch, stats, err := manager.GetBatchStatus(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+	response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, createdJobs, len(createdJobs), len(createdJobs), 0)
+	if err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 
@@ -117,7 +131,14 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 		return nil, err
 	}
 
-	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindResearch, createdJobs)
+	batch, stats, err := manager.GetBatchStatus(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+	response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, createdJobs, len(createdJobs), len(createdJobs), 0)
+	if err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 
@@ -173,7 +194,10 @@ func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string
 	batch.Status = model.CalculateBatchStatus(stats, batch.JobCount)
 
 	if !includeJobs {
-		response := spartanapi.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
+		response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, nil, batch.JobCount, 0, 0)
+		if err != nil {
+			return nil, err
+		}
 		return &response, nil
 	}
 
@@ -181,7 +205,10 @@ func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string
 	if err != nil {
 		return nil, err
 	}
-	response := spartanapi.BuildBatchResponse(batch, stats, jobsByBatch, batch.JobCount, batch.JobCount, 0)
+	response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, jobsByBatch, batch.JobCount, batch.JobCount, 0)
+	if err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 
@@ -203,6 +230,9 @@ func cancelBatchDirect(ctx context.Context, cfg config.Config, batchID string) (
 	if err != nil {
 		return nil, err
 	}
-	response := spartanapi.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0)
+	response, err := spartanapi.BuildStoreBackedBatchResponse(ctx, st, batch, stats, nil, batch.JobCount, 0, 0)
+	if err != nil {
+		return nil, err
+	}
 	return &response, nil
 }

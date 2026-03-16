@@ -1,6 +1,20 @@
 // Package mcp provides tests for sensitive data redaction in MCP tool responses.
-// Tests cover password, apiKey, token, Authorization header, and filesystem path redaction.
-// Does NOT test encryption or secure storage of credentials.
+//
+// Purpose:
+// - Verify MCP job inspection tools never leak secrets or host-local paths.
+//
+// Responsibilities:
+// - Assert password, API key, token, Authorization header, and filesystem path redaction.
+// - Assert redaction still holds for paginated job-list responses and enriched job envelopes.
+//
+// Scope:
+// - Response redaction only; credential storage and encryption are out of scope here.
+//
+// Usage:
+// - Run with `go test ./internal/mcp/...`.
+//
+// Invariants/Assumptions:
+// - MCP job responses use the same sanitized job builders as REST and CLI direct-mode.
 package mcp
 
 import (
@@ -165,7 +179,7 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 	}
 
 	// Find job-1 and verify secrets are redacted
-	var foundJob1 *model.Job
+	var foundJob1 *api.InspectableJob
 	for i := range jobs {
 		if jobs[i].ID == "job-1" {
 			foundJob1 = &jobs[i]
@@ -182,7 +196,7 @@ func TestJobList_RedactsSensitiveData(t *testing.T) {
 	}
 
 	// Find job-2 and verify token is redacted
-	var foundJob2 *model.Job
+	var foundJob2 *api.InspectableJob
 	for i := range jobs {
 		if jobs[i].ID == "job-2" {
 			foundJob2 = &jobs[i]

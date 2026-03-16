@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	spartanapi "github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -318,10 +319,11 @@ func TestPrintBatchStatus(t *testing.T) {
 				Failed:    0,
 				Canceled:  0,
 			},
+			Progress:  spartanapi.BatchProgress{Completed: 5, Remaining: 0, Percent: 100},
 			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 			UpdatedAt: time.Date(2024, 1, 1, 0, 1, 0, 0, time.UTC),
 		},
-		Jobs: []model.Job{},
+		Jobs: []spartanapi.InspectableJob{},
 	}
 
 	old := os.Stdout
@@ -361,9 +363,10 @@ func TestPrintBatchStatusWithJobs(t *testing.T) {
 			Stats: model.BatchJobStats{
 				Succeeded: 1,
 			},
+			Progress: spartanapi.BatchProgress{Completed: 1, Remaining: 0, Percent: 100},
 		},
-		Jobs: []model.Job{
-			{ID: "job-1", Kind: "scrape", Status: "succeeded"},
+		Jobs: []spartanapi.InspectableJob{
+			{Job: model.Job{ID: "job-1", Kind: "scrape", Status: "succeeded"}},
 		},
 	}
 
@@ -400,6 +403,7 @@ func TestPrintBatchList(t *testing.T) {
 				Running:   1,
 				Succeeded: 1,
 			},
+			Progress: spartanapi.BatchProgress{Completed: 1, Remaining: 2, Percent: 33},
 		}},
 		Total:  1,
 		Limit:  100,

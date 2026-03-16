@@ -492,7 +492,8 @@ Render profile commands:
 
 ### Jobs
 
-- `spartan jobs list`
+- `spartan jobs list [--status queued|running|succeeded|failed|canceled]`
+- `spartan jobs failures`
 - `spartan jobs get <id>`
 - `spartan jobs cancel <id>`
 - `spartan jobs delete <id>`
@@ -833,6 +834,7 @@ Core tools:
 - `job_status`
 - `job_results`
 - `job_list`
+- `job_failure_list`
 - `job_cancel`
 - `batch_scrape`
 - `batch_crawl`
@@ -871,7 +873,7 @@ Use the same top-level fields you would send to `/v1/scrape`, `/v1/crawl`, or `/
 
 That means AI extraction rides inside `extract.ai.*`, proxy transport rides inside `auth.proxy` / `auth.proxyHints`, and screenshot / interception options use the same object shape as REST and the Web UI.
 
-`job_status` and `job_cancel` return the same `{ job }` envelope shape as `GET /v1/jobs/{id}`. `job_list` returns `{ jobs, total, limit, offset }`. `batch_list` returns `{ batches, total, limit, offset }`. `batch_scrape`, `batch_crawl`, and `batch_research` accept the same request bodies as the REST batch-submit endpoints. `batch_status` and `batch_cancel` mirror the REST batch envelope `{ batch, jobs, total, limit, offset }`, with optional `includeJobs`, `limit`, and `offset` arguments on the batch tools.
+`job_status` and `job_cancel` return the same `{ job }` envelope shape as `GET /v1/jobs/{id}`. `job_list` returns `{ jobs, total, limit, offset }` and accepts an optional `status` filter. `job_failure_list` returns the same paginated envelope filtered to recent failed runs. Jobs and batch-included jobs now carry derived `run` timing, queue, and failure context, while `batch_list` returns `{ batches, total, limit, offset }` with explicit `batch.progress`. `batch_scrape`, `batch_crawl`, and `batch_research` accept the same request bodies as the REST batch-submit endpoints. `batch_status` and `batch_cancel` mirror the REST batch envelope `{ batch, jobs, total, limit, offset }`, with optional `includeJobs`, `limit`, and `offset` arguments on the batch tools.
 
 `job_export` accepts the same direct export contract as `spartan export` / `POST /v1/jobs/{id}/export`:
 

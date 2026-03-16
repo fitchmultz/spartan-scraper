@@ -101,7 +101,12 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_list",
-			Description: "List job envelopes with pagination metadata",
+			Description: "List recent job run envelopes with pagination metadata and optional status filtering",
+			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number", "status": "string"}),
+		},
+		{
+			Name:        "job_failure_list",
+			Description: "List recent failed job runs with derived failure context",
 			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{

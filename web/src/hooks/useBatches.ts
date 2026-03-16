@@ -44,6 +44,11 @@ export type BatchEntry = {
     failed: number;
     canceled: number;
   };
+  progress: {
+    completed: number;
+    remaining: number;
+    percent: number;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -175,7 +180,12 @@ function toJobSummary(job: Partial<Job>): Job | null {
         ? job.specVersion
         : 1,
     spec: job.spec && typeof job.spec === "object" ? job.spec : { version: 1 },
-  };
+    error: typeof job.error === "string" ? job.error : "",
+    run:
+      job.run && typeof job.run === "object"
+        ? job.run
+        : { waitMs: 0, runMs: 0, totalMs: 0 },
+  } as Job;
 }
 
 function readBatchJobs(
@@ -196,6 +206,14 @@ export function createEmptyBatchStats(): BatchEntry["stats"] {
   };
 }
 
+export function createEmptyBatchProgress(): BatchEntry["progress"] {
+  return {
+    completed: 0,
+    remaining: 0,
+    percent: 0,
+  };
+}
+
 export function normalizeBatchStats(
   stats: Partial<Record<keyof BatchEntry["stats"], unknown>> | undefined,
 ): BatchEntry["stats"] {
@@ -205,6 +223,30 @@ export function normalizeBatchStats(
     succeeded: toNonNegativeNumber(stats?.succeeded),
     failed: toNonNegativeNumber(stats?.failed),
     canceled: toNonNegativeNumber(stats?.canceled),
+  };
+}
+
+export function normalizeBatchProgress(
+  progress: Partial<Record<keyof BatchEntry["progress"], unknown>> | undefined,
+): BatchEntry["progress"] {
+  return {
+    completed: toNonNegativeNumber(progress?.completed),
+    remaining: toNonNegativeNumber(progress?.remaining),
+    percent: toNonNegativeNumber(progress?.percent),
+  };
+}
+
+export function deriveBatchProgressFromStats(
+  stats: BatchEntry["stats"],
+  jobCount: number,
+): BatchEntry["progress"] {
+  const completed = stats.succeeded + stats.failed + stats.canceled;
+  const remaining = Math.max(0, jobCount - completed);
+  const percent = jobCount > 0 ? Math.round((completed / jobCount) * 100) : 0;
+  return {
+    completed,
+    remaining,
+    percent,
   };
 }
 
@@ -250,12 +292,23 @@ function mapBatchSummary(
   summary: BatchListResponse["batches"][number],
 ): BatchEntry {
   const createdAt = readIsoDate(summary.createdAt, new Date(0).toISOString());
+  const jobCount = toNonNegativeNumber(summary.jobCount);
+  const stats = normalizeBatchStats(summary.stats);
+  const reportedProgress = normalizeBatchProgress(summary.progress);
+  const hasReportedProgress =
+    reportedProgress.completed +
+      reportedProgress.remaining +
+      reportedProgress.percent >
+    0;
   return {
     id: summary.id,
     kind: isBatchKind(summary.kind) ? summary.kind : "scrape",
     status: isBatchStatus(summary.status) ? summary.status : "pending",
-    jobCount: toNonNegativeNumber(summary.jobCount),
-    stats: normalizeBatchStats(summary.stats),
+    jobCount,
+    stats,
+    progress: hasReportedProgress
+      ? reportedProgress
+      : deriveBatchProgressFromStats(stats, jobCount),
     createdAt,
     updatedAt: readIsoDate(summary.updatedAt, createdAt),
   };
@@ -280,15 +333,25 @@ export function mapBatchResponse(response: BatchResponse): BatchEntry {
       normalizedStats.failed +
       normalizedStats.canceled >
     0;
+  const stats = hasReportedStats
+    ? normalizedStats
+    : deriveBatchStatsFromJobs(jobs, jobCount);
+  const reportedProgress = normalizeBatchProgress(batch.progress);
+  const hasReportedProgress =
+    reportedProgress.completed +
+      reportedProgress.remaining +
+      reportedProgress.percent >
+    0;
 
   return {
     id: batch.id,
     kind: isBatchKind(batch.kind) ? batch.kind : "scrape",
     status: isBatchStatus(batch.status) ? batch.status : "pending",
     jobCount,
-    stats: hasReportedStats
-      ? normalizedStats
-      : deriveBatchStatsFromJobs(jobs, jobCount),
+    stats,
+    progress: hasReportedProgress
+      ? reportedProgress
+      : deriveBatchProgressFromStats(stats, jobCount),
     createdAt,
     updatedAt: readIsoDate(batch.updatedAt, createdAt),
   };

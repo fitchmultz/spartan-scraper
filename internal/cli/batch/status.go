@@ -1,17 +1,23 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// This file contains status checking, display, watching, and cancellation logic.
+// Purpose:
+// - Expose batch detail, progress watching, and cancellation for terminal operators.
 //
 // Responsibilities:
-// - Run batch status and cancel commands
-// - Display batch status to stdout
-// - Watch batch progress until completion
-// - Wait for batch completion with timeout
+// - Parse `spartan batch status` and `spartan batch cancel` arguments.
+// - Display canonical batch progress, aggregate stats, and optional enriched job rows.
+// - Poll batch status until completion when watch/wait flows are requested.
 //
-// Does NOT handle:
-// - Batch submission
-// - File parsing
-// - Direct API client calls (uses api.go and direct.go)
+// Scope:
+// - Batch detail/status presentation only; submission and transport helpers live in sibling files.
+//
+// Usage:
+// - Run `spartan batch status <batch-id> [--watch] [--include-jobs]` or `spartan batch cancel <batch-id>`.
+//
+// Invariants/Assumptions:
+// - Batch responses already include explicit progress summaries.
+// - Included jobs use the same inspectable run contract as the API and MCP surfaces.
+// - Terminal batch statuses are completed, failed, partial, and canceled.
 package batch
 
 import (
@@ -53,7 +59,6 @@ Examples:
 	}
 
 	batchID := fs.Arg(0)
-
 	if *watch {
 		return watchBatchStatus(ctx, cfg, batchID, time.Duration(*pollInterval)*time.Second)
 	}
@@ -69,9 +74,7 @@ Examples:
 }
 
 func runBatchCancel(ctx context.Context, cfg config.Config, args []string) int {
-	_ = ctx // Context not used in cancel, but kept for interface consistency
 	fs := flag.NewFlagSet("batch-cancel", flag.ContinueOnError)
-
 	fs.Usage = func() {
 		fmt.Print(`Usage: spartan batch cancel <batch-id>
 
@@ -88,7 +91,6 @@ Examples:
 	}
 
 	batchID := fs.Arg(0)
-
 	status, err := cancelBatch(ctx, cfg, batchID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error canceling batch: %v\n", err)
@@ -105,13 +107,29 @@ func printBatchStatus(status *BatchStatusResponse) {
 	fmt.Printf("Status: %s\n", status.Batch.Status)
 	fmt.Printf("Jobs: %d total\n", status.Batch.JobCount)
 	fmt.Printf("Stats: %d queued, %d running, %d succeeded, %d failed, %d canceled\n",
-		status.Batch.Stats.Queued, status.Batch.Stats.Running, status.Batch.Stats.Succeeded,
-		status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
+		status.Batch.Stats.Queued,
+		status.Batch.Stats.Running,
+		status.Batch.Stats.Succeeded,
+		status.Batch.Stats.Failed,
+		status.Batch.Stats.Canceled,
+	)
+	fmt.Printf("Progress: %d complete, %d remaining (%d%%)\n",
+		status.Batch.Progress.Completed,
+		status.Batch.Progress.Remaining,
+		status.Batch.Progress.Percent,
+	)
 
 	if len(status.Jobs) > 0 {
 		fmt.Println("\nJobs:")
 		for _, job := range status.Jobs {
-			fmt.Printf("  %s (%s): %s\n", job.ID, job.Kind, job.Status)
+			line := fmt.Sprintf("  %s (%s): %s", job.ID, job.Kind, job.Status)
+			if job.Run.Queue != nil {
+				line += fmt.Sprintf(" [batch %d/%d, %d%% complete]", job.Run.Queue.Index, job.Run.Queue.Total, job.Run.Queue.Percent)
+			}
+			if job.Run.Failure != nil {
+				line += fmt.Sprintf(" [%s: %s]", job.Run.Failure.Category, job.Run.Failure.Summary)
+			}
+			fmt.Println(line)
 		}
 		return
 	}
@@ -133,21 +151,21 @@ func watchBatchStatus(ctx context.Context, cfg config.Config, batchID string, in
 			return 1
 		}
 
-		// Clear previous line and print status
-		completed := status.Batch.Stats.Succeeded + status.Batch.Stats.Failed + status.Batch.Stats.Canceled
 		fmt.Printf("\rStatus: %s | Progress: %d/%d (%d%%)",
 			status.Batch.Status,
-			completed,
+			status.Batch.Progress.Completed,
 			status.Batch.JobCount,
-			(completed*100)/status.Batch.JobCount,
+			status.Batch.Progress.Percent,
 		)
 
-		// Check if batch is in terminal state
 		if isTerminalStatus(status.Batch.Status) {
-			fmt.Println() // New line after progress
+			fmt.Println()
 			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Batch.Status)
 			fmt.Printf("Final stats: %d succeeded, %d failed, %d canceled\n",
-				status.Batch.Stats.Succeeded, status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
+				status.Batch.Stats.Succeeded,
+				status.Batch.Stats.Failed,
+				status.Batch.Stats.Canceled,
+			)
 			return 0
 		}
 
@@ -156,7 +174,6 @@ func watchBatchStatus(ctx context.Context, cfg config.Config, batchID string, in
 			fmt.Println("\n\nStopped watching")
 			return 0
 		case <-ticker.C:
-			// Continue to next poll
 		}
 	}
 }
@@ -184,23 +201,26 @@ func waitForBatch(ctx context.Context, cfg config.Config, batchID string, timeou
 			return 1
 		}
 
-		// Check timeout
 		if timeout > 0 && time.Since(start) > timeout {
 			fmt.Printf("\nTimeout waiting for batch %s\n", batchID)
 			return 1
 		}
 
-		// Print progress
-		completed := status.Batch.Stats.Succeeded + status.Batch.Stats.Failed + status.Batch.Stats.Canceled
 		fmt.Printf("\rProgress: %d/%d jobs complete (%d%%) - Status: %s",
-			completed, status.Batch.JobCount, (completed*100)/status.Batch.JobCount, status.Batch.Status)
+			status.Batch.Progress.Completed,
+			status.Batch.JobCount,
+			status.Batch.Progress.Percent,
+			status.Batch.Status,
+		)
 
-		// Check if batch is in terminal state
 		if isTerminalStatus(status.Batch.Status) {
-			fmt.Println() // New line after progress
+			fmt.Println()
 			fmt.Printf("\nBatch %s finished with status: %s\n", batchID, status.Batch.Status)
 			fmt.Printf("Results: %d succeeded, %d failed, %d canceled\n",
-				status.Batch.Stats.Succeeded, status.Batch.Stats.Failed, status.Batch.Stats.Canceled)
+				status.Batch.Stats.Succeeded,
+				status.Batch.Stats.Failed,
+				status.Batch.Stats.Canceled,
+			)
 			if status.Batch.Status == "completed" {
 				return 0
 			}
@@ -212,7 +232,6 @@ func waitForBatch(ctx context.Context, cfg config.Config, batchID string, timeou
 			fmt.Println("\n\nCanceled")
 			return 1
 		case <-ticker.C:
-			// Continue to next poll
 		}
 	}
 }

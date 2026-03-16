@@ -61,6 +61,7 @@ const jobs: Job[] = [
     updatedAt: "2026-03-10T00:01:00Z",
     specVersion: 1,
     spec: { version: 1 },
+    run: { waitMs: 0, runMs: 1000, totalMs: 1000 },
   },
   {
     id: "job-2",
@@ -70,6 +71,7 @@ const jobs: Job[] = [
     updatedAt: "2026-03-10T00:03:00Z",
     specVersion: 1,
     spec: { version: 1 },
+    run: { waitMs: 500, runMs: 250, totalMs: 750 },
   },
 ];
 

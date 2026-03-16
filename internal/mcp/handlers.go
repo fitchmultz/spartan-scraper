@@ -90,7 +90,11 @@ func (s *Server) createAndEnqueueBatch(ctx context.Context, kind model.Kind, spe
 	if err := s.manager.EnqueueBatch(createdJobs); err != nil {
 		return api.BatchResponse{}, err
 	}
-	return api.BuildCreatedBatchResponse(batchID, kind, createdJobs), nil
+	batch, stats, err := s.manager.GetBatchStatus(ctx, batchID)
+	if err != nil {
+		return api.BatchResponse{}, err
+	}
+	return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, createdJobs, len(createdJobs), len(createdJobs), 0)
 }
 
 func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMessage) (interface{}, error) {
@@ -364,7 +368,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return loadResult(ctx, s.store, job.ID)
 	case "job_status":
-		id := paramdecode.String(params.Arguments, "id")
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
@@ -372,7 +376,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return api.BuildJobResponse(job), nil
+		return api.BuildStoreBackedJobResponse(ctx, s.store, job)
 	case "job_results":
 		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {
@@ -382,17 +386,51 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 	case "job_list":
 		limit := paramdecode.PositiveInt(params.Arguments, "limit", 100)
 		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
-		jobs, err := s.store.ListOpts(ctx, store.ListOptions{Limit: limit, Offset: offset})
+		statusArg := strings.TrimSpace(paramdecode.String(params.Arguments, "status"))
+
+		var (
+			jobs  []model.Job
+			total int
+			err   error
+		)
+		if statusArg != "" {
+			status := model.Status(statusArg)
+			if !status.IsValid() {
+				return nil, apperrors.Validation("status must be one of queued, running, succeeded, failed, or canceled")
+			}
+			jobs, err = s.store.ListByStatus(ctx, status, store.ListByStatusOptions{Limit: limit, Offset: offset})
+			if err != nil {
+				return nil, err
+			}
+			total, err = s.store.CountJobs(ctx, status)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			jobs, err = s.store.ListOpts(ctx, store.ListOptions{Limit: limit, Offset: offset})
+			if err != nil {
+				return nil, err
+			}
+			total, err = s.store.CountJobs(ctx, "")
+			if err != nil {
+				return nil, err
+			}
+		}
+		return api.BuildStoreBackedJobListResponse(ctx, s.store, jobs, total, limit, offset)
+	case "job_failure_list":
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		jobs, err := s.store.ListByStatus(ctx, model.StatusFailed, store.ListByStatusOptions{Limit: limit, Offset: offset})
 		if err != nil {
 			return nil, err
 		}
-		total, err := s.store.CountJobs(ctx, "")
+		total, err := s.store.CountJobs(ctx, model.StatusFailed)
 		if err != nil {
 			return nil, err
 		}
-		return api.BuildJobListResponse(jobs, total, limit, offset), nil
+		return api.BuildStoreBackedJobListResponse(ctx, s.store, jobs, total, limit, offset)
 	case "job_cancel":
-		id := paramdecode.String(params.Arguments, "id")
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
@@ -403,7 +441,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return api.BuildJobResponse(job), nil
+		return api.BuildStoreBackedJobResponse(ctx, s.store, job)
 	case "batch_scrape":
 		var req api.BatchScrapeRequest
 		if err := decodeToolArguments(params.Arguments, &req); err != nil {
@@ -453,7 +491,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		includeJobs := paramdecode.Bool(params.Arguments, "includeJobs")
 		if !includeJobs {
-			return api.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0), nil
+			return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, nil, batch.JobCount, 0, 0)
 		}
 		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
 		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
@@ -461,7 +499,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return api.BuildBatchResponse(batch, stats, jobs, batch.JobCount, limit, offset), nil
+		return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, jobs, batch.JobCount, limit, offset)
 	case "batch_cancel":
 		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
@@ -476,7 +514,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		includeJobs := paramdecode.Bool(params.Arguments, "includeJobs")
 		if !includeJobs {
-			return api.BuildBatchResponse(batch, stats, nil, batch.JobCount, 0, 0), nil
+			return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, nil, batch.JobCount, 0, 0)
 		}
 		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
 		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
@@ -484,7 +522,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return api.BuildBatchResponse(batch, stats, jobs, batch.JobCount, limit, offset), nil
+		return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, jobs, batch.JobCount, limit, offset)
 	case "job_export":
 		id := paramdecode.String(params.Arguments, "id")
 		if id == "" {

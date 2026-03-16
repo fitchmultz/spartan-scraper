@@ -329,6 +329,8 @@ export function App() {
 
   const {
     jobs,
+    failedJobs,
+    jobStatusFilter,
     profiles,
     schedules,
     templates,
@@ -346,6 +348,7 @@ export function App() {
     refreshTemplates,
     setJobsPage,
     setCrawlStatesPage,
+    setJobStatusFilter,
   } = appData;
 
   const { selectedJobId, loadResults } = resultsState;
@@ -913,7 +916,10 @@ export function App() {
                 <section id="jobs">
                   <JobList
                     jobs={jobs}
-                    error={null}
+                    failedJobs={failedJobs}
+                    error={error}
+                    statusFilter={jobStatusFilter}
+                    onStatusFilterChange={setJobStatusFilter}
                     onViewResults={handleViewResults}
                     onCancel={cancelJob}
                     onDelete={deleteJob}
@@ -933,7 +939,10 @@ export function App() {
                 <section id="jobs">
                   <JobList
                     jobs={jobs}
-                    error={null}
+                    failedJobs={failedJobs}
+                    error={error}
+                    statusFilter={jobStatusFilter}
+                    onStatusFilterChange={setJobStatusFilter}
                     onViewResults={handleViewResults}
                     onCancel={cancelJob}
                     onDelete={deleteJob}

@@ -1,15 +1,22 @@
 // Package cli provides the top-level help text and documentation for Spartan Scraper.
 //
+// Purpose:
+// - Present the canonical top-level command help for terminal operators.
+//
 // Responsibilities:
 // - Print top-level help text to stdout.
-// - List available commands and provide usage examples.
+// - List available commands and representative usage examples.
+// - Keep operator-facing examples aligned with the currently supported command surface.
 //
-// Does NOT handle:
-// - Command routing or execution logic.
-// - Help text for individual subcommands.
+// Scope:
+// - Static top-level help text only; command routing and subcommand-specific help live elsewhere.
+//
+// Usage:
+// - Called when users run `spartan help`, `spartan --help`, or provide invalid top-level arguments.
 //
 // Invariants/Assumptions:
 // - Help text is static and intended for terminal output.
+// - Examples should highlight meaningful operator workflows before lower-priority maintenance tasks.
 package cli
 
 import (
@@ -103,7 +110,9 @@ Examples:
   spartan batch submit research --urls https://a.com,https://b.com --query "pricing"
   spartan batch status <batch-id> --watch
   spartan batch cancel <batch-id>
-  spartan jobs list
+  spartan jobs list --status failed
+  spartan jobs failures
+  spartan jobs get <job-id>
   spartan jobs cancel <id>
   spartan chains list
   spartan chains get <chain-id>

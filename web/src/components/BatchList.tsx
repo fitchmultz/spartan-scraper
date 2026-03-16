@@ -1,17 +1,13 @@
 /**
  * Purpose: Render paginated batch summaries and on-demand batch detail rows for the Web UI.
- * Responsibilities: Display aggregate batch status, highlight recent submissions, expose refresh/cancel/detail actions, and provide pagination controls.
- * Scope: Presentation only; data fetching and state management stay in the batches container/hook.
- * Usage: Render from the batch route container with authoritative batch summaries and optional cached job details.
- * Invariants/Assumptions: Batch rows show summary data immediately; job tables appear only after details are loaded for a batch.
+ * Responsibilities: Display aggregate batch status, explicit progress, enriched per-job detail rows, refresh/cancel/detail actions, and pagination controls.
+ * Scope: Presentation only; data fetching and state management stay in the batches container and hook.
+ * Usage: Render from the batch route with authoritative batch summaries and optional cached inspectable job details.
+ * Invariants/Assumptions: Batch rows show progress immediately, detail rows reuse the same inspectable job contract as the jobs surface, and job tables appear only after details are loaded.
  */
-import { useState, useCallback, useEffect } from "react";
-import type { BatchJobStats, Job } from "../api";
-import {
-  calculateBatchProgress,
-  getStatusClass,
-  isTerminalStatus,
-} from "../lib/batch-utils";
+import { useCallback, useEffect, useState } from "react";
+import type { Job } from "../api";
+import { getStatusClass, isTerminalStatus } from "../lib/batch-utils";
 import { formatDateTime } from "../lib/formatting";
 
 interface BatchListProps {
@@ -39,7 +35,18 @@ export type BatchEntry = {
     | "partial"
     | "canceled";
   jobCount: number;
-  stats: BatchJobStats;
+  stats: {
+    queued: number;
+    running: number;
+    succeeded: number;
+    failed: number;
+    canceled: number;
+  };
+  progress: {
+    completed: number;
+    remaining: number;
+    percent: number;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -134,7 +141,7 @@ export function BatchList({
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
         {batches.map((batch) => {
-          const progress = calculateBatchProgress(batch.stats, batch.jobCount);
+          const progress = batch.progress.percent;
           const isExpanded = expandedBatch === batch.id;
           const batchJobs = jobs?.get(batch.id) || [];
           const isHighlighted = batch.id === highlightedBatchId;
@@ -204,7 +211,8 @@ export function BatchList({
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ color: "var(--text-muted)", fontSize: 14 }}>
-                    {batch.stats.succeeded}/{batch.jobCount} done
+                    {batch.progress.completed}/{batch.jobCount} complete ·{" "}
+                    {progress}%
                   </span>
                   <span style={{ fontSize: 12 }}>{isExpanded ? "▼" : "▶"}</span>
                 </div>
@@ -243,10 +251,12 @@ export function BatchList({
                   gap: 16,
                   fontSize: 13,
                   color: "var(--text-muted)",
+                  flexWrap: "wrap",
                 }}
               >
                 <span>Queued: {batch.stats.queued}</span>
                 <span>Running: {batch.stats.running}</span>
+                <span>Remaining: {batch.progress.remaining}</span>
                 <span style={{ color: "var(--success)" }}>
                   Succeeded: {batch.stats.succeeded}
                 </span>
@@ -270,6 +280,8 @@ export function BatchList({
                       justifyContent: "space-between",
                       alignItems: "center",
                       marginBottom: 12,
+                      gap: 12,
+                      flexWrap: "wrap",
                     }}
                   >
                     <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -308,7 +320,7 @@ export function BatchList({
                       <h4 style={{ fontSize: 14, marginBottom: 8 }}>Jobs</h4>
                       <div
                         style={{
-                          maxHeight: 200,
+                          maxHeight: 260,
                           overflow: "auto",
                           border: "1px solid var(--border)",
                           borderRadius: 4,
@@ -322,6 +334,12 @@ export function BatchList({
                               </th>
                               <th style={{ textAlign: "left", padding: 8 }}>
                                 Status
+                              </th>
+                              <th style={{ textAlign: "left", padding: 8 }}>
+                                Queue
+                              </th>
+                              <th style={{ textAlign: "left", padding: 8 }}>
+                                Failure
                               </th>
                             </tr>
                           </thead>
@@ -337,6 +355,16 @@ export function BatchList({
                                   >
                                     {job.status}
                                   </span>
+                                </td>
+                                <td style={{ padding: 8 }}>
+                                  {job.run?.queue
+                                    ? `${job.run.queue.index}/${job.run.queue.total} · ${job.run.queue.percent}%`
+                                    : "—"}
+                                </td>
+                                <td style={{ padding: 8 }}>
+                                  {job.run?.failure
+                                    ? `${job.run.failure.category}: ${job.run.failure.summary}`
+                                    : "—"}
                                 </td>
                               </tr>
                             ))}

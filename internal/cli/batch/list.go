@@ -92,13 +92,15 @@ func printBatchList(result *BatchListResponse) {
 	}
 
 	fmt.Printf("Batches (showing %d of %d, limit=%d, offset=%d):\n", len(result.Batches), result.Total, result.Limit, result.Offset)
-	fmt.Printf("%-36s %-10s %-12s %-6s %-7s %-8s %-9s %-10s %-10s\n", "ID", "KIND", "STATUS", "JOBS", "QUEUED", "RUNNING", "SUCCESS", "FAILED", "CANCELED")
-	fmt.Println(strings.Repeat("-", 120))
+	fmt.Printf("%-36s %-10s %-12s %-10s %-6s %-7s %-8s %-9s %-10s %-10s\n", "ID", "KIND", "STATUS", "PROGRESS", "JOBS", "QUEUED", "RUNNING", "SUCCESS", "FAILED", "CANCELED")
+	fmt.Println(strings.Repeat("-", 138))
 	for _, batch := range result.Batches {
-		fmt.Printf("%-36s %-10s %-12s %-6d %-7d %-8d %-9d %-10d %-10d\n",
+		progress := fmt.Sprintf("%d%%", batch.Progress.Percent)
+		fmt.Printf("%-36s %-10s %-12s %-10s %-6d %-7d %-8d %-9d %-10d %-10d\n",
 			batch.ID,
 			batch.Kind,
 			batch.Status,
+			progress,
 			batch.JobCount,
 			batch.Stats.Queued,
 			batch.Stats.Running,

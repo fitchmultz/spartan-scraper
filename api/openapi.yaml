@@ -1703,6 +1703,49 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/jobs/failures":
+    get:
+      summary: List failed jobs
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 1000
+        description: Maximum number of failed jobs to return
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+        description: Number of failed jobs to skip
+      responses:
+        '200':
+          description: Failed job list
+          headers:
+            X-Total-Count:
+              description: Total number of failed jobs
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/JobList"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/jobs/{id}":
     get:
       summary: Get a job
@@ -5895,6 +5938,7 @@ components:
       - updatedAt
       - specVersion
       - spec
+      - run
       properties:
         id:
           type: string
@@ -5918,6 +5962,14 @@ components:
         updatedAt:
           type: string
           format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          description: When the job first started running.
+        finishedAt:
+          type: string
+          format: date-time
+          description: When the job reached a terminal state.
         specVersion:
           type: integer
           description: Persisted typed job spec version.
@@ -5948,6 +6000,80 @@ components:
         chainId:
           type: string
           description: ID of the job chain this job belongs to, if any
+        selectedEngine:
+          type: string
+          description: Execution engine chosen for the job.
+        run:
+          "$ref": "#/components/schemas/JobRunSummary"
+    JobRunSummary:
+      type: object
+      required:
+      - waitMs
+      - runMs
+      - totalMs
+      properties:
+        waitMs:
+          type: integer
+          format: int64
+          description: Time spent waiting in the queue before the run started or ended.
+        runMs:
+          type: integer
+          format: int64
+          description: Time spent actively running.
+        totalMs:
+          type: integer
+          format: int64
+          description: Total elapsed time from creation to the current or finished state.
+        queue:
+          "$ref": "#/components/schemas/JobQueueProgress"
+        failure:
+          "$ref": "#/components/schemas/JobFailureContext"
+    JobQueueProgress:
+      type: object
+      properties:
+        batchId:
+          type: string
+        index:
+          type: integer
+          description: One-based position of the job inside the persisted batch.
+        total:
+          type: integer
+          description: Total number of jobs in the batch.
+        completed:
+          type: integer
+          description: Number of terminal jobs in the batch.
+        remaining:
+          type: integer
+          description: Number of jobs not yet terminal in the batch.
+        queued:
+          type: integer
+          description: Number of queued jobs in the batch.
+        running:
+          type: integer
+          description: Number of running jobs in the batch.
+        percent:
+          type: integer
+          description: Batch completion percent based on terminal jobs.
+    JobFailureContext:
+      type: object
+      required:
+      - category
+      - summary
+      - retryable
+      - terminal
+      properties:
+        category:
+          type: string
+          description: Derived failure classification for operator triage.
+        summary:
+          type: string
+          description: Sanitized terminal failure summary.
+        retryable:
+          type: boolean
+          description: Whether the failure looks transient enough to retry.
+        terminal:
+          type: boolean
+          description: Whether the reported failure is terminal for the recorded run.
     JobResponse:
       type: object
       required:
@@ -7267,6 +7393,7 @@ components:
       - status
       - jobCount
       - stats
+      - progress
       - createdAt
       - updatedAt
       properties:
@@ -7295,6 +7422,8 @@ components:
           description: Number of jobs in the batch
         stats:
           "$ref": "#/components/schemas/BatchJobStats"
+        progress:
+          "$ref": "#/components/schemas/BatchProgress"
         createdAt:
           type: string
           format: date-time
@@ -7303,6 +7432,22 @@ components:
           type: string
           format: date-time
           description: When the batch was last updated
+    BatchProgress:
+      type: object
+      required:
+      - completed
+      - remaining
+      - percent
+      properties:
+        completed:
+          type: integer
+          description: Number of terminal jobs in the batch.
+        remaining:
+          type: integer
+          description: Number of jobs not yet terminal in the batch.
+        percent:
+          type: integer
+          description: Completion percent based on terminal jobs.
     BatchResponse:
       type: object
       description: Stable batch envelope shared by create, get, and cancel responses.

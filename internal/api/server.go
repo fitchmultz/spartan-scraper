@@ -260,6 +260,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/crawl", s.handleCrawl)
 	mux.HandleFunc("/v1/research", s.handleResearch)
 	mux.HandleFunc("/v1/jobs", s.handleJobs)
+	mux.HandleFunc("/v1/jobs/failures", s.handleJobFailures)
 	mux.HandleFunc("/v1/jobs/", s.handleJob)
 	mux.HandleFunc("/v1/jobs/batch", s.handleBatches)
 	mux.HandleFunc("/v1/jobs/batch/scrape", s.handleBatchScrape)

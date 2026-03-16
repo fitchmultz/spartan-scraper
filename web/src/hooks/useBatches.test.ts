@@ -47,6 +47,23 @@ function makeJob(id: string, status: Job["status"]): Job {
     updatedAt: now,
     specVersion: 1,
     spec: { version: 1 },
+    error: "",
+    run: {
+      waitMs: 0,
+      runMs: 0,
+      totalMs: 0,
+    },
+  };
+}
+
+function makeBatchProgress(
+  overrides: Partial<BatchResponse["batch"]["progress"]> = {},
+) {
+  return {
+    completed: 0,
+    remaining: 2,
+    percent: 0,
+    ...overrides,
   };
 }
 
@@ -78,6 +95,7 @@ function makeBatchResponse(
         failed: 0,
         canceled: 0,
       },
+      progress: makeBatchProgress(),
       createdAt: "2026-03-05T10:00:00.000Z",
       updatedAt: "2026-03-05T10:00:00.000Z",
     },
@@ -200,6 +218,11 @@ describe("useBatches helpers", () => {
         failed: 0,
         canceled: 0,
       },
+      progress: {
+        completed: 0,
+        remaining: 2,
+        percent: 0,
+      },
       createdAt: "2026-03-05T10:00:00.000Z",
       updatedAt: "2026-03-05T10:00:00.000Z",
     });
@@ -246,6 +269,11 @@ describe("useBatches authoritative loading", () => {
               failed: 0,
               canceled: 0,
             },
+            progress: makeBatchProgress({
+              completed: 1,
+              remaining: 3,
+              percent: 25,
+            }),
             createdAt: "2026-03-05T10:00:00.000Z",
             updatedAt: "2026-03-05T10:01:00.000Z",
           },
@@ -276,6 +304,11 @@ describe("useBatches authoritative loading", () => {
             failed: 0,
             canceled: 0,
           },
+          progress: {
+            completed: 1,
+            remaining: 3,
+            percent: 25,
+          },
           createdAt: "2026-03-05T10:00:00.000Z",
           updatedAt: "2026-03-05T10:01:00.000Z",
         },
@@ -301,6 +334,7 @@ describe("useBatches authoritative loading", () => {
             failed: 0,
             canceled: 0,
           },
+          progress: makeBatchProgress(),
           createdAt: "2026-03-05T10:00:00.000Z",
           updatedAt: "2026-03-05T10:00:00.000Z",
         },
@@ -323,6 +357,7 @@ describe("useBatches authoritative loading", () => {
               failed: 0,
               canceled: 0,
             },
+            progress: makeBatchProgress(),
             createdAt: "2026-03-05T10:00:00.000Z",
             updatedAt: "2026-03-05T10:00:00.000Z",
           },
@@ -381,6 +416,7 @@ describe("useBatches authoritative loading", () => {
               failed: 0,
               canceled: 0,
             },
+            progress: makeBatchProgress({ remaining: 2 }),
             createdAt: "2026-03-05T10:00:00.000Z",
             updatedAt: "2026-03-05T10:01:00.000Z",
           },
@@ -408,6 +444,7 @@ describe("useBatches authoritative loading", () => {
             failed: 0,
             canceled: 0,
           },
+          progress: makeBatchProgress({ remaining: 2 }),
           createdAt: "2026-03-05T10:00:00.000Z",
           updatedAt: "2026-03-05T10:01:00.000Z",
         },

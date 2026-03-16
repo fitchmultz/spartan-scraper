@@ -1,20 +1,20 @@
 /**
- * Job List Component
- *
- * Displays the list of active/completed jobs with their status, kind, timestamps,
- * and error messages. Provides action buttons for viewing results, canceling running
- * jobs, and deleting completed jobs. Supports refresh to update job states.
- * Includes connection status indicator for WebSocket/polling state.
- *
- * @module JobList
+ * Purpose: Render recent-run inspection for the web UI.
+ * Responsibilities: Show recent runs with pagination, status filters, queue/failure context, recent failed-run callouts, and action buttons; surface transport connection state and manual refresh controls.
+ * Scope: Presentation only; data fetching and mutation handlers are supplied by the parent container.
+ * Usage: Render from the jobs route or job-detail sidebar with authoritative job envelopes from `useAppData()`.
+ * Invariants/Assumptions: Jobs already include derived `run` fields, failedJobs is a small recent-failure subset, and pagination is controlled by the parent component.
  */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getJobStatusBadgeClass } from "../lib/job-status";
 import type { JobEntry } from "../types";
 
 interface JobListProps {
   jobs: JobEntry[];
+  failedJobs: JobEntry[];
   error: string | null;
+  statusFilter: "" | "queued" | "running" | "succeeded" | "failed" | "canceled";
+  onStatusFilterChange: (value: JobListProps["statusFilter"]) => void;
   onViewResults: (jobId: string, format: string, page: number) => void;
   onCancel: (jobId: string) => void;
   onDelete: (jobId: string) => void;
@@ -98,9 +98,21 @@ function ConnectionIndicator({
   }
 }
 
+function formatDuration(ms?: number): string {
+  if (!ms || ms <= 0) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = Math.round(ms / 100) / 10;
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${Math.round(seconds % 60)}s`;
+}
+
 export function JobList({
   jobs,
+  failedJobs,
   error,
+  statusFilter,
+  onStatusFilterChange,
   onViewResults,
   onCancel,
   onDelete,
@@ -117,7 +129,7 @@ export function JobList({
     setJumpInputValue(currentPage.toString());
   }, [currentPage]);
 
-  const maxPage = Math.ceil(totalJobs / jobsPerPage);
+  const maxPage = Math.max(1, Math.ceil(totalJobs / jobsPerPage));
 
   return (
     <section className="panel">
@@ -126,9 +138,17 @@ export function JobList({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
         }}
       >
-        <h2>Active Jobs</h2>
+        <div>
+          <h2>Recent Runs</h2>
+          <div style={{ fontSize: 13, color: "#666" }}>
+            Inspect recent executions, queue progression, and terminal failure
+            context from one place.
+          </div>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ConnectionIndicator state={connectionState} />
           <button type="button" className="secondary" onClick={onRefresh}>
@@ -137,6 +157,49 @@ export function JobList({
         </div>
       </div>
       {error ? <p className="error">{error}</p> : null}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        {[
+          { value: "", label: "All" },
+          { value: "queued", label: "Queued" },
+          { value: "running", label: "Running" },
+          { value: "failed", label: "Failed" },
+          { value: "succeeded", label: "Succeeded" },
+          { value: "canceled", label: "Canceled" },
+        ].map((filter) => (
+          <button
+            key={filter.label}
+            type="button"
+            className={statusFilter === filter.value ? "" : "secondary"}
+            onClick={() =>
+              onStatusFilterChange(filter.value as JobListProps["statusFilter"])
+            }
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {failedJobs.length > 0 ? (
+        <div className="panel" style={{ marginTop: 12, background: "#fff7f7" }}>
+          <strong>Recent Failures</strong>
+          <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+            {failedJobs.slice(0, 5).map((job) => (
+              <li key={job.id}>
+                <code>{job.id}</code>{" "}
+                {job.run?.failure ? (
+                  <>
+                    <strong>{job.run.failure.category}</strong>:{" "}
+                    {job.run.failure.summary}
+                  </>
+                ) : (
+                  job.error
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {totalJobs > jobsPerPage ? (
         <div className="pagination-controls" style={{ marginTop: 12 }}>
@@ -149,7 +212,7 @@ export function JobList({
           </button>
 
           <span className="pagination-info">
-            Page {currentPage} of {maxPage} ({totalJobs} total jobs)
+            Page {currentPage} of {maxPage} ({totalJobs} total runs)
           </span>
 
           <button
@@ -190,7 +253,7 @@ export function JobList({
 
       <div className="job-list" style={{ marginTop: 12 }}>
         {jobs.length === 0 ? (
-          <div>No jobs yet. Submit a scrape or crawl.</div>
+          <div>No runs found for the current filter.</div>
         ) : (
           jobs.map((job) => (
             <div key={job.id} className="job-item">
@@ -235,8 +298,28 @@ export function JobList({
                     : ""}
                 </div>
               ) : null}
-              <div>Updated: {job.updatedAt}</div>
-              {job.error ? <div>Error: {job.error}</div> : null}
+              <div style={{ fontSize: 12, color: "#666" }}>
+                Wait: {formatDuration(job.run?.waitMs)} · Run:{" "}
+                {formatDuration(job.run?.runMs)} · Total:{" "}
+                {formatDuration(job.run?.totalMs)}
+              </div>
+              {job.run?.queue ? (
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  Batch {job.run.queue.index}/{job.run.queue.total} ·{" "}
+                  {job.run.queue.completed} complete · {job.run.queue.percent}%
+                </div>
+              ) : null}
+              <div style={{ fontSize: 12, color: "#666" }}>
+                Updated: {job.updatedAt}
+              </div>
+              {job.run?.failure ? (
+                <div style={{ fontSize: 12, color: "#b91c1c" }}>
+                  <strong>{job.run.failure.category}</strong>:{" "}
+                  {job.run.failure.summary}
+                </div>
+              ) : job.error ? (
+                <div>Error: {job.error}</div>
+              ) : null}
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {job.status === "succeeded" ? (
                   <button

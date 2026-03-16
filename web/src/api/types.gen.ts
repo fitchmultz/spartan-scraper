@@ -1945,6 +1945,14 @@ export type Job = {
     createdAt: string;
     updatedAt: string;
     /**
+     * When the job first started running.
+     */
+    startedAt?: string;
+    /**
+     * When the job reached a terminal state.
+     */
+    finishedAt?: string;
+    /**
      * Persisted typed job spec version.
      */
     specVersion: number;
@@ -1974,6 +1982,79 @@ export type Job = {
      * ID of the job chain this job belongs to, if any
      */
     chainId?: string;
+    /**
+     * Execution engine chosen for the job.
+     */
+    selectedEngine?: string;
+    run: JobRunSummary;
+};
+
+export type JobRunSummary = {
+    /**
+     * Time spent waiting in the queue before the run started or ended.
+     */
+    waitMs: number;
+    /**
+     * Time spent actively running.
+     */
+    runMs: number;
+    /**
+     * Total elapsed time from creation to the current or finished state.
+     */
+    totalMs: number;
+    queue?: JobQueueProgress;
+    failure?: JobFailureContext;
+};
+
+export type JobQueueProgress = {
+    batchId?: string;
+    /**
+     * One-based position of the job inside the persisted batch.
+     */
+    index?: number;
+    /**
+     * Total number of jobs in the batch.
+     */
+    total?: number;
+    /**
+     * Number of terminal jobs in the batch.
+     */
+    completed?: number;
+    /**
+     * Number of jobs not yet terminal in the batch.
+     */
+    remaining?: number;
+    /**
+     * Number of queued jobs in the batch.
+     */
+    queued?: number;
+    /**
+     * Number of running jobs in the batch.
+     */
+    running?: number;
+    /**
+     * Batch completion percent based on terminal jobs.
+     */
+    percent?: number;
+};
+
+export type JobFailureContext = {
+    /**
+     * Derived failure classification for operator triage.
+     */
+    category: string;
+    /**
+     * Sanitized terminal failure summary.
+     */
+    summary: string;
+    /**
+     * Whether the failure looks transient enough to retry.
+     */
+    retryable: boolean;
+    /**
+     * Whether the reported failure is terminal for the recorded run.
+     */
+    terminal: boolean;
 };
 
 export type JobResponse = {
@@ -3009,6 +3090,7 @@ export type BatchSummary = {
      */
     jobCount: number;
     stats: BatchJobStats;
+    progress: BatchProgress;
     /**
      * When the batch was created
      */
@@ -3017,6 +3099,21 @@ export type BatchSummary = {
      * When the batch was last updated
      */
     updatedAt: string;
+};
+
+export type BatchProgress = {
+    /**
+     * Number of terminal jobs in the batch.
+     */
+    completed: number;
+    /**
+     * Number of jobs not yet terminal in the batch.
+     */
+    remaining: number;
+    /**
+     * Completion percent based on terminal jobs.
+     */
+    percent: number;
 };
 
 /**
@@ -5201,6 +5298,44 @@ export type GetV1JobsResponses = {
 };
 
 export type GetV1JobsResponse = GetV1JobsResponses[keyof GetV1JobsResponses];
+
+export type GetV1JobsFailuresData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Maximum number of failed jobs to return
+         */
+        limit?: number;
+        /**
+         * Number of failed jobs to skip
+         */
+        offset?: number;
+    };
+    url: '/v1/jobs/failures';
+};
+
+export type GetV1JobsFailuresErrors = {
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetV1JobsFailuresError = GetV1JobsFailuresErrors[keyof GetV1JobsFailuresErrors];
+
+export type GetV1JobsFailuresResponses = {
+    /**
+     * Failed job list
+     */
+    200: JobList;
+};
+
+export type GetV1JobsFailuresResponse = GetV1JobsFailuresResponses[keyof GetV1JobsFailuresResponses];
 
 export type DeleteV1JobsByIdData = {
     body?: never;
