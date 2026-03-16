@@ -35,7 +35,7 @@ GITLEAKS_VERSION ?= v8.30.1
 PLAYWRIGHT_GO_VERSION ?= v0.5700.1
 PLAYWRIGHT_INSTALL_CMD := go run github.com/playwright-community/playwright-go/cmd/playwright@$(PLAYWRIGHT_GO_VERSION) install --with-deps
 
-.PHONY: audit-public audit-deps secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree verify-toolchain web-dev
+.PHONY: audit-public secret-scan install update lint type-check format clean test test-ci generate build install-bin install-playwright ci ci-pr ci-slow ci-network ci-manual verify-clean-tree verify-toolchain web-dev
 
 verify-toolchain:
 	@set -euo pipefail; \
@@ -78,9 +78,6 @@ verify-toolchain:
 audit-public: verify-toolchain
 	node $(CURDIR)/scripts/public_audit.mjs
 
-audit-deps: verify-toolchain
-	node $(CURDIR)/scripts/go_transitive_override_audit.mjs
-
 secret-scan: verify-toolchain
 	go run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) detect --source $(CURDIR) --log-opts="--all" --gitleaks-ignore-path $(CURDIR)/.gitleaksignore --redact --no-banner
 
@@ -97,8 +94,6 @@ update: verify-toolchain
 	cd $(PI_BRIDGE_DIR) && pnpm update --latest
 	@echo "Updating pnpm dependencies in $(WEB_DIR)..."
 	cd $(WEB_DIR) && pnpm update --latest
-	@echo "Auditing managed Go transitive overrides..."
-	@$(MAKE) audit-deps
 	@echo "Dependency update complete. Review changes before committing."
 
 lint: verify-toolchain
@@ -134,7 +129,6 @@ test-ci: verify-toolchain
 	CI=1 go test $$(go list ./... | grep -v /e2e) -p=1 -timeout 5m
 	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	node $(CURDIR)/scripts/public_audit.test.mjs
-	node $(CURDIR)/scripts/go_transitive_override_audit.test.mjs
 	cd $(PI_BRIDGE_DIR) && pnpm test
 	cd $(WEB_DIR) && CI=1 NODE_OPTIONS=--localstorage-file=.vitest-localstorage pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
 
@@ -158,7 +152,7 @@ install-playwright: verify-toolchain
 	$(PLAYWRIGHT_INSTALL_CMD)
 
 # Full local CI profile (developer-friendly; no clean-tree precondition)
-ci: audit-public audit-deps install generate format type-check lint build test-ci
+ci: audit-public install generate format type-check lint build test-ci
 
 verify-clean-tree:
 	@if ! git diff --quiet --ignore-submodules --; then \
@@ -178,7 +172,7 @@ verify-clean-tree:
 	fi
 
 # PR-equivalent deterministic gate (must run from clean git state)
-ci-pr: verify-clean-tree audit-public audit-deps install generate format type-check lint build test-ci verify-clean-tree
+ci-pr: verify-clean-tree audit-public install generate format type-check lint build test-ci verify-clean-tree
 
 ci-slow: install install-playwright build
 	./scripts/stress_test.sh

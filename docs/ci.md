@@ -32,7 +32,6 @@ Runs:
 verify-clean-tree
 → verify-toolchain
 → audit-public
-→ audit-deps
 → install
 → generate
 → format
@@ -53,8 +52,10 @@ make verify-toolchain
 make ci
 ```
 
-Runs the full deterministic pipeline (including the managed Go transitive override audit) but does **not** enforce clean-tree checks before/after.
+Runs the full deterministic pipeline but does **not** enforce clean-tree checks before/after.
 Useful during active development before commit.
+
+Go transitive overrides are **not** proactively audited in CI. If a root `go.mod` `replace` is ever needed, it should be a rare, temporary response to a high-severity security or correctness emergency rather than routine dependency-freshness maintenance.
 
 ### Heavy checks (`make ci-slow`)
 
@@ -123,6 +124,18 @@ Recommended usage:
 - **Nightly confidence sweep**: `make ci-slow`
 - **Optional live smoke**: `make ci-network`
 - **Manual pre-release sweep**: `make ci-manual` + `make secret-scan`
+
+## Convenience wrapper
+
+Use `run_ci.sh` when you want profile-based invocation:
+
+```bash
+./run_ci.sh --profile pr
+./run_ci.sh --profile full
+./run_ci.sh --profile slow
+./run_ci.sh --profile network
+```
+e secret-scan`
 
 ## Convenience wrapper
 

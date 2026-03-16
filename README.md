@@ -282,7 +282,6 @@ GitHub workflow split:
 ```bash
 make verify-toolchain  # Print and enforce the exact Go/Node/pnpm contract from .tool-versions
 make audit-public      # Scan tracked files + branch history for public-readiness leaks/secrets/placeholders
-make audit-deps        # Audit managed Go transitive overrides and fail on stale/unmanaged module drift
 make secret-scan       # Deep git-history secret scan (manual/nightly release-tier check)
 make ci-pr             # PR-equivalent deterministic gate (requires clean git state)
 make ci                # Full local gate (Go + web + pi-bridge install/build/tests)

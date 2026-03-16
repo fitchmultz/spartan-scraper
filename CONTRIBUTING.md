@@ -36,7 +36,6 @@ The Makefile is the canonical interface for all development tasks:
 ```bash
 make verify-toolchain # Print and enforce the exact Go/Node/pnpm contract from .tool-versions
 make audit-public     # Scan tracked files + branch history for public-readiness leaks/placeholders
-make audit-deps       # Audit managed Go transitive overrides and fail on stale/unmanaged module drift
 make secret-scan      # Deep git-history secret scan (manual/release-tier)
 make install          # Download Go deps + install pnpm deps for web + pi-bridge
 make update           # Update all Go deps + pnpm deps (web + pi-bridge) to latest, majors included
@@ -49,7 +48,7 @@ make install-bin      # Install built binary to ~/.local/bin (or $XDG_BIN_HOME)
 make test             # Run Go tests (including e2e)
 make test-ci          # Run Go tests (excluding e2e) + web tests (Vitest workers capped by CI_VITEST_MAX_WORKERS)
 make ci-pr            # PR-equivalent deterministic gate (clean git state required)
-make ci               # Full local CI pipeline (audit-public, audit-deps, install, generate, format, type-check, lint, build, test-ci)
+make ci               # Full local CI pipeline (audit-public, install, generate, format, type-check, lint, build, test-ci)
 make ci-slow          # Deterministic heavy stress + e2e checks (local fixture; provisions Playwright)
 make ci-network       # Optional live-Internet smoke validation
 make ci-manual        # Manual full heavy CI profile (ci-slow + ci-network)
@@ -74,10 +73,12 @@ Use CI profiles intentionally based on scope (mirrors GitHub workflows):
 `make ci-pr` and `make ci` run:
 
 ```
-audit-public → audit-deps → install → generate → format → type-check → lint → build → test-ci
+audit-public → install → generate → format → type-check → lint → build → test-ci
 ```
 
 `make ci-pr` adds clean-tree assertions before and after the pipeline, so generation/format drift cannot pass silently.
+
+Do not proactively add root `go.mod` overrides for transitive dependency freshness. Reserve `replace` directives for rare, temporary high-severity security or correctness emergencies only.
 
 ### Branch and Commit Workflow
 
@@ -226,6 +227,14 @@ go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 in
 ```
 
 ## Questions?
+
+If you have questions about contributing or need help getting started, open a discussion or issue in this repository (for non-security topics).
+
+---
+
+Thank you for contributing to Spartan Scraper!
+r!
+ns?
 
 If you have questions about contributing or need help getting started, open a discussion or issue in this repository (for non-security topics).
 

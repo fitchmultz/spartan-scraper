@@ -11,4 +11,5 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Keep the remaining managed transitive Go overrides synchronized between `go.mod` and `scripts/go_transitive_override_audit.mjs`, and remove entries immediately as upstream parent modules absorb those newer tags.
+- Close the highest-value remaining operator-surface gaps across API, Web UI, CLI, MCP, and TUI for batches, watches, export schedules, and webhook inspection.
+- Expand operator observability so run history, export outcomes, and webhook delivery failures are actionable without digging through host-local files or internal state.
