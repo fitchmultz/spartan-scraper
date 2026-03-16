@@ -8,6 +8,11 @@ This index helps contributors, operators, and maintainers navigate documentation
 - [5-Minute Demo](demo.md) — fastest path from clone to a visible scrape result.
 - [Validation Checklist](validation_checklist.md) — copy/paste validation steps for setup, runtime checks, and public-readiness smoke tests.
 
+## Product Planning
+
+- [Roadmap](roadmap.md) — canonical sequencing for product work and cutovers.
+- [Specs Index](specs/README.md) — implementation-grade product specs and audit notes for upcoming Web UI/UX work.
+
 ## Core Docs
 
 - [Usage Guide](usage.md) — CLI/API/Web/MCP commands, flags, and workflows.

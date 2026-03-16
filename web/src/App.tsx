@@ -18,7 +18,7 @@
  *
  * Invariants/Assumptions:
  * - Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`,
- *   `/automation`, and `/settings`.
+ *   `/automation`, `/automation/:section`, and `/settings`.
  * - Results detail routes load job results directly from the canonical REST API.
  * - Deleted feature areas stay out of navigation and render tree entirely.
  */
@@ -48,6 +48,15 @@ import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { OnboardingFlow } from "./components/OnboardingFlow";
+import { AutomationLayout } from "./components/automation/AutomationLayout";
+import { AutomationSubnav } from "./components/automation/AutomationSubnav";
+import {
+  DEFAULT_AUTOMATION_SECTION,
+  getAutomationPath,
+  getAutomationSectionFromHash,
+  getAutomationSectionFromPath,
+  type AutomationSection,
+} from "./components/automation/automationSections";
 import { WatchContainer } from "./components/watches/WatchContainer";
 import { ExportScheduleContainer } from "./components/export-schedules/ExportScheduleContainer";
 import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
@@ -100,6 +109,7 @@ interface AppRoute {
   kind: RouteKind;
   path: string;
   jobId?: string;
+  automationSection?: AutomationSection;
 }
 
 interface NavItem {
@@ -109,16 +119,10 @@ interface NavItem {
   description: string;
 }
 
-interface RouteMetaItem {
-  label: string;
-  value: string;
-}
-
 interface RouteMeta {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  description: string;
-  meta: RouteMetaItem[];
+  description?: string;
 }
 
 const NAV_ITEMS = [
@@ -144,7 +148,7 @@ const NAV_ITEMS = [
   {
     kind: "automation",
     label: "Automation",
-    path: "/automation",
+    path: "/automation/batches",
     description:
       "Batches, chains, watches, export schedules, and webhook delivery history.",
   },
@@ -181,8 +185,13 @@ function parseRoute(pathname: string): AppRoute {
   if (path === "/templates") {
     return { kind: "templates", path };
   }
-  if (path === "/automation") {
-    return { kind: "automation", path };
+  if (path === "/automation" || path.startsWith("/automation/")) {
+    return {
+      kind: "automation",
+      path,
+      automationSection:
+        getAutomationSectionFromPath(path) ?? DEFAULT_AUTOMATION_SECTION,
+    };
   }
   if (path === "/settings") {
     return { kind: "settings", path };
@@ -222,40 +231,33 @@ function AppNavigation({
   );
 }
 
-function PageIntro({
+function RouteHeader({
   eyebrow,
   title,
   description,
   actions,
-  meta,
+  subnav,
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: ReactNode;
-  meta?: RouteMetaItem[];
+  subnav?: ReactNode;
 }) {
   return (
-    <section className="panel route-intro">
-      <div className="route-intro__content">
-        <div className="route-intro__copy">
-          {eyebrow ? (
-            <div className="route-intro__eyebrow">{eyebrow}</div>
-          ) : null}
+    <section className="route-header" aria-label={`${title} overview`}>
+      <div className="route-header__copy">
+        {eyebrow ? (
+          <div className="route-header__eyebrow">{eyebrow}</div>
+        ) : null}
+        <div className="route-header__title-row">
           <h2>{title}</h2>
-          <p>{description}</p>
-          {meta && meta.length > 0 ? (
-            <div className="route-intro__meta">
-              {meta.map((item) => (
-                <div key={item.label} className="route-intro__meta-item">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              ))}
-            </div>
+          {actions ? (
+            <div className="route-header__actions">{actions}</div>
           ) : null}
         </div>
-        {actions ? <div className="route-intro__actions">{actions}</div> : null}
+        {description ? <p>{description}</p> : null}
+        {subnav ? <div className="route-header__subnav">{subnav}</div> : null}
       </div>
     </section>
   );
@@ -375,6 +377,27 @@ export function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (route.kind !== "automation") {
+      return;
+    }
+
+    const nextSection =
+      pathname === "/automation"
+        ? (getAutomationSectionFromHash(window.location.hash) ??
+          route.automationSection ??
+          DEFAULT_AUTOMATION_SECTION)
+        : (route.automationSection ?? DEFAULT_AUTOMATION_SECTION);
+    const canonicalPath = getAutomationPath(nextSection);
+
+    if (pathname === canonicalPath) {
+      return;
+    }
+
+    window.history.replaceState({}, "", canonicalPath);
+    setPathname(canonicalPath);
+  }, [pathname, route.automationSection, route.kind]);
 
   useEffect(() => {
     if (route.kind === "job-detail" && route.jobId) {
@@ -657,42 +680,52 @@ export function App() {
     void submit();
   }, [activeTab, pendingSubmission, route.kind]);
 
+  const activeAutomationSection =
+    route.kind === "automation"
+      ? (route.automationSection ?? DEFAULT_AUTOMATION_SECTION)
+      : DEFAULT_AUTOMATION_SECTION;
+
+  const renderAutomationSection = useCallback(
+    (section: AutomationSection): ReactNode => {
+      switch (section) {
+        case "batches":
+          return (
+            <BatchContainer
+              formState={formState}
+              profiles={profiles}
+              loading={loading}
+            />
+          );
+        case "chains":
+          return <ChainContainer onChainSubmit={refreshJobs} />;
+        case "watches":
+          return <WatchContainer />;
+        case "exports":
+          return <ExportScheduleContainer />;
+        case "webhooks":
+          return <WebhookDeliveryContainer />;
+      }
+    },
+    [formState, loading, profiles, refreshJobs],
+  );
+
   const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
 
   const routeMeta = useMemo<RouteMeta>(() => {
-    const queuedItems = managerStatus?.queued ?? 0;
-    const activeItems = managerStatus?.active ?? 0;
-
     switch (route.kind) {
       case "jobs":
         return {
           eyebrow: "Operations",
           title: "Jobs",
           description:
-            "Queue new work, monitor live execution, and jump directly into the latest results.",
-          meta: [
-            { label: "Tracked Jobs", value: jobsTotal.toString() },
-            { label: "Queued", value: queuedItems.toString() },
-            { label: "Active", value: activeItems.toString() },
-          ],
+            "Monitor live execution and jump directly into the latest results.",
         };
       case "job-detail":
         return {
-          eyebrow: "Results Explorer",
-          title: route.jobId ? `Job Results: ${route.jobId}` : "Job Results",
+          eyebrow: route.jobId ? `Job ${route.jobId}` : "Results Explorer",
+          title: "Results",
           description:
-            "Inspect extracted output first, then use the jobs index only when you need broader queue context.",
-          meta: [
-            {
-              label: "Format",
-              value: resultsState.resultFormat.toUpperCase(),
-            },
-            {
-              label: "Results",
-              value: resultsState.totalResults.toString(),
-            },
-            { label: "Queued", value: queuedItems.toString() },
-          ],
+            "Inspect extracted output first and return to the jobs index only when you need broader queue context.",
         };
       case "new-job":
         return {
@@ -700,88 +733,51 @@ export function App() {
           title: "Create Job",
           description:
             "Launch a scrape, crawl, or research run from one focused workflow.",
-          meta: [
-            { label: "Profiles", value: profiles.length.toString() },
-            { label: "Templates", value: templates.length.toString() },
-            { label: "Connection", value: connectionState },
-          ],
         };
       case "templates":
         return {
           eyebrow: "Extraction",
           title: "Templates",
           description:
-            "Open the template workspace directly, with creation, AI preview, and AI-assisted generation available without scrolling through dashboard chrome.",
-          meta: [
-            { label: "Templates", value: templates.length.toString() },
-            { label: "Built-in", value: "3" },
-          ],
+            "Manage extraction templates and AI-assisted creation without extra dashboard framing.",
         };
       case "automation":
         return {
           eyebrow: "Workflow Orchestration",
           title: "Automation",
           description:
-            "Start with the batch runner, then branch into chains, watches, exports, and webhook delivery from a lighter route shell.",
-          meta: [
-            { label: "Queued", value: queuedItems.toString() },
-            { label: "Active", value: activeItems.toString() },
-            { label: "Connection", value: connectionState },
-          ],
+            "Move between batches, chains, watches, exports, and webhook deliveries from one focused automation hub.",
         };
       case "settings":
         return {
           eyebrow: "Runtime Control",
           title: "Settings",
           description:
-            "Profiles, schedules, retention, crawl-state inventory, and pipeline tools live here without hiding behind the global dashboard stack.",
-          meta: [
-            { label: "Profiles", value: profiles.length.toString() },
-            { label: "Schedules", value: schedules.length.toString() },
-            { label: "Crawl States", value: crawlStatesTotal.toString() },
-          ],
+            "Profiles, schedules, crawl-state inventory, retention, and pipeline tools.",
         };
     }
-  }, [
-    connectionState,
-    crawlStatesTotal,
-    jobsTotal,
-    managerStatus,
-    profiles.length,
-    resultsState.resultFormat,
-    resultsState.totalResults,
-    route,
-    schedules.length,
-    templates.length,
-  ]);
+  }, [route.jobId, route.kind]);
+
+  const showShellSignals =
+    route.kind === "jobs" ||
+    route.kind === "job-detail" ||
+    route.kind === "automation";
 
   return (
     <div className={`app app--${route.kind}`}>
       <header className="app-shell">
-        <div className="app-shell__masthead">
+        <div className="app-shell__topbar">
           <div className="app-shell__brand">
             <div className="app-shell__eyebrow">Operation Spartan</div>
             <h1>Spartan Scraper</h1>
-            <p>{routeMeta.description}</p>
+            <p>Local-first scraping and automation workbench.</p>
           </div>
-          {route.kind !== "new-job" ? (
-            <div className="app-shell__signals">
-              <SignalPill label="Jobs" value={jobsTotal} />
-              <SignalPill label="Queued" value={managerStatus?.queued ?? 0} />
-              <SignalPill label="Active" value={managerStatus?.active ?? 0} />
-              <SignalPill
-                label="Fetcher"
-                value={formState.usePlaywright ? "Playwright" : "HTTP"}
-              />
-              <SignalPill label="Theme" value={resolvedTheme} />
-            </div>
-          ) : null}
-        </div>
-        <div className="app-shell__controls">
+
           <AppNavigation
             activeRoute={activeRouteForNav}
             onNavigate={navigate}
           />
+
           <div className="app-shell__toolbar">
             {route.kind !== "new-job" ? (
               <button type="button" onClick={() => navigate("/jobs/new")}>
@@ -796,6 +792,17 @@ export function App() {
             />
           </div>
         </div>
+
+        {showShellSignals ? (
+          <section
+            className="app-shell__signals"
+            aria-label="Live system signals"
+          >
+            <SignalPill label="Jobs" value={jobsTotal} />
+            <SignalPill label="Queued" value={managerStatus?.queued ?? 0} />
+            <SignalPill label="Active" value={managerStatus?.active ?? 0} />
+          </section>
+        ) : null}
       </header>
 
       <CommandPalette
@@ -835,183 +842,147 @@ export function App() {
 
       <ErrorBanner message={error} />
 
-      {(route.kind === "jobs" || route.kind === "job-detail") && (
+      {route.kind === "jobs" && (
         <>
-          <PageIntro
+          <RouteHeader
             eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
-            meta={routeMeta.meta}
+          />
+
+          <div className="route-grid route-grid--jobs">
+            <div className="route-primary">
+              <section id="jobs">
+                <JobList
+                  jobs={jobs}
+                  failedJobs={failedJobs}
+                  error={error}
+                  statusFilter={jobStatusFilter}
+                  onStatusFilterChange={setJobStatusFilter}
+                  onViewResults={handleViewResults}
+                  onCancel={cancelJob}
+                  onDelete={deleteJob}
+                  onRefresh={refreshJobs}
+                  currentPage={jobsPage}
+                  totalJobs={jobsTotal}
+                  jobsPerPage={100}
+                  onPageChange={setJobsPage}
+                  connectionState={connectionState}
+                />
+              </section>
+            </div>
+            <aside className="route-sidebar">
+              <section className="panel route-sidebar-panel">
+                <div className="route-sidebar-panel__eyebrow">Focus</div>
+                <h3>Recent jobs stay primary</h3>
+                <p>
+                  This route should land directly on the monitoring surface. Use
+                  the global create action to queue new work, then reopen a
+                  result when you need to drill deeper.
+                </p>
+                {selectedJobId ? (
+                  <div className="route-sidebar-panel__actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => navigate(`/jobs/${selectedJobId}`)}
+                    >
+                      Open Last Results
+                    </button>
+                  </div>
+                ) : null}
+              </section>
+              <section className="panel route-sidebar-panel">
+                <div className="route-sidebar-panel__eyebrow">Live Signals</div>
+                <div className="route-sidebar-panel__stats">
+                  <SignalPill
+                    label="Loading"
+                    value={loading ? "Refreshing" : "Ready"}
+                  />
+                  <SignalPill
+                    label="Headless"
+                    value={formState.headless ? "On" : "Off"}
+                  />
+                  <SignalPill label="Connection" value={connectionState} />
+                </div>
+              </section>
+              <Suspense
+                fallback={
+                  <div className="loading-placeholder panel">
+                    Loading metrics...
+                  </div>
+                }
+              >
+                <MetricsDashboard
+                  metrics={metrics}
+                  connectionState={connectionState}
+                />
+              </Suspense>
+            </aside>
+          </div>
+        </>
+      )}
+
+      {route.kind === "job-detail" && (
+        <>
+          <RouteHeader
+            eyebrow={routeMeta.eyebrow}
+            title={routeMeta.title}
+            description={routeMeta.description}
             actions={
-              route.kind === "job-detail" ? (
-                <>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => navigate("/jobs")}
-                  >
-                    Back to Jobs
-                  </button>
-                  <button type="button" onClick={() => navigate("/jobs/new")}>
-                    Create Job
-                  </button>
-                </>
-              ) : undefined
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => navigate("/jobs")}
+              >
+                Back to Jobs
+              </button>
             }
           />
 
-          {route.kind === "job-detail" ? (
-            <>
-              <div className="route-grid route-grid--job-detail">
-                <div className="route-primary">
-                  <ResultsContainer resultsState={resultsState} jobs={jobs} />
-                </div>
-                <aside className="route-sidebar">
-                  <section className="panel route-sidebar-panel">
-                    <div className="route-sidebar-panel__eyebrow">
-                      Job Context
-                    </div>
-                    <h3>Stay on the result you opened</h3>
-                    <p>
-                      The result explorer is the primary surface here. Use the
-                      jobs index below only when you want to compare runs or
-                      pivot to another job.
-                    </p>
-                    <div className="route-sidebar-panel__stats">
-                      <SignalPill
-                        label="Result Items"
-                        value={resultsState.totalResults}
-                      />
-                      <SignalPill
-                        label="Page"
-                        value={resultsState.currentPage}
-                      />
-                      <SignalPill
-                        label="Format"
-                        value={resultsState.resultFormat.toUpperCase()}
-                      />
-                    </div>
-                  </section>
-                  <section className="panel route-sidebar-panel">
-                    <div className="route-sidebar-panel__eyebrow">
-                      Queue Signals
-                    </div>
-                    <div className="route-sidebar-panel__stats">
-                      <SignalPill label="Connection" value={connectionState} />
-                      <SignalPill
-                        label="Queued"
-                        value={managerStatus?.queued ?? 0}
-                      />
-                      <SignalPill
-                        label="Active"
-                        value={managerStatus?.active ?? 0}
-                      />
-                    </div>
-                  </section>
-                </aside>
-              </div>
-
-              <section className="route-lower-section">
-                <div className="route-section-label">Recent jobs</div>
-                <section id="jobs">
-                  <JobList
-                    jobs={jobs}
-                    failedJobs={failedJobs}
-                    error={error}
-                    statusFilter={jobStatusFilter}
-                    onStatusFilterChange={setJobStatusFilter}
-                    onViewResults={handleViewResults}
-                    onCancel={cancelJob}
-                    onDelete={deleteJob}
-                    onRefresh={refreshJobs}
-                    currentPage={jobsPage}
-                    totalJobs={jobsTotal}
-                    jobsPerPage={100}
-                    onPageChange={setJobsPage}
-                    connectionState={connectionState}
-                  />
-                </section>
-              </section>
-            </>
-          ) : (
-            <div className="route-grid route-grid--jobs">
-              <div className="route-primary">
-                <section id="jobs">
-                  <JobList
-                    jobs={jobs}
-                    failedJobs={failedJobs}
-                    error={error}
-                    statusFilter={jobStatusFilter}
-                    onStatusFilterChange={setJobStatusFilter}
-                    onViewResults={handleViewResults}
-                    onCancel={cancelJob}
-                    onDelete={deleteJob}
-                    onRefresh={refreshJobs}
-                    currentPage={jobsPage}
-                    totalJobs={jobsTotal}
-                    jobsPerPage={100}
-                    onPageChange={setJobsPage}
-                    connectionState={connectionState}
-                  />
-                </section>
-              </div>
-              <aside className="route-sidebar">
-                <section className="panel route-sidebar-panel">
-                  <div className="route-sidebar-panel__eyebrow">
-                    Above The Fold
-                  </div>
-                  <h3>Launch or resume work fast</h3>
-                  <p>
-                    Recent jobs stay dominant on this route, with the primary
-                    creation action and live queue state kept nearby instead of
-                    hidden behind a shared landing stack.
-                  </p>
-                  <div className="route-sidebar-panel__actions">
-                    <button type="button" onClick={() => navigate("/jobs/new")}>
-                      Create Job
-                    </button>
-                    {selectedJobId ? (
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => navigate(`/jobs/${selectedJobId}`)}
-                      >
-                        Open Last Results
-                      </button>
-                    ) : null}
-                  </div>
-                </section>
-                <section className="panel route-sidebar-panel">
-                  <div className="route-sidebar-panel__eyebrow">
-                    Live Signals
-                  </div>
-                  <div className="route-sidebar-panel__stats">
-                    <SignalPill
-                      label="Loading"
-                      value={loading ? "Refreshing" : "Ready"}
-                    />
-                    <SignalPill
-                      label="Headless"
-                      value={formState.headless ? "On" : "Off"}
-                    />
-                    <SignalPill label="Connection" value={connectionState} />
-                  </div>
-                </section>
-                <Suspense
-                  fallback={
-                    <div className="loading-placeholder panel">
-                      Loading metrics...
-                    </div>
-                  }
-                >
-                  <MetricsDashboard
-                    metrics={metrics}
-                    connectionState={connectionState}
-                  />
-                </Suspense>
-              </aside>
+          <div className="route-grid route-grid--job-detail">
+            <div className="route-primary">
+              <ResultsContainer resultsState={resultsState} jobs={jobs} />
             </div>
-          )}
+            <aside className="route-sidebar">
+              <section className="panel route-sidebar-panel">
+                <div className="route-sidebar-panel__eyebrow">Job Context</div>
+                <h3>Stay with this result set</h3>
+                <p>
+                  Keep the default layout focused on the selected run. Return to
+                  the jobs index only when you want to compare runs or pivot to
+                  another job.
+                </p>
+                <div className="route-sidebar-panel__stats">
+                  <SignalPill
+                    label="Result Items"
+                    value={resultsState.totalResults}
+                  />
+                  <SignalPill label="Page" value={resultsState.currentPage} />
+                  <SignalPill
+                    label="Format"
+                    value={resultsState.resultFormat.toUpperCase()}
+                  />
+                </div>
+              </section>
+              <section className="panel route-sidebar-panel">
+                <div className="route-sidebar-panel__eyebrow">
+                  Queue Signals
+                </div>
+                <div className="route-sidebar-panel__stats">
+                  <SignalPill label="Connection" value={connectionState} />
+                  <SignalPill
+                    label="Queued"
+                    value={managerStatus?.queued ?? 0}
+                  />
+                  <SignalPill
+                    label="Active"
+                    value={managerStatus?.active ?? 0}
+                  />
+                </div>
+              </section>
+            </aside>
+          </div>
         </>
       )}
 
@@ -1049,11 +1020,10 @@ export function App() {
 
       {route.kind === "templates" && (
         <>
-          <PageIntro
+          <RouteHeader
             eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
-            meta={routeMeta.meta}
             actions={
               <>
                 <button
@@ -1086,75 +1056,32 @@ export function App() {
 
       {route.kind === "automation" && (
         <>
-          <PageIntro
+          <RouteHeader
             eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
-            meta={routeMeta.meta}
-          />
-          <div className="route-grid route-grid--automation">
-            <div className="route-primary">
-              <BatchContainer
-                formState={formState}
-                profiles={profiles}
-                loading={loading}
+            subnav={
+              <AutomationSubnav
+                activeSection={activeAutomationSection}
+                onSectionChange={(section) =>
+                  navigate(getAutomationPath(section))
+                }
               />
-            </div>
-            <aside className="route-sidebar">
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">
-                  Automation Map
-                </div>
-                <h3>Start with batches</h3>
-                <p>
-                  The batch runner is the first action on this route. The other
-                  automation surfaces remain one scroll away instead of pushing
-                  the entry point down the page.
-                </p>
-                <div className="route-sidebar-panel__actions">
-                  <a href="#batch-forms" className="route-sidebar-link">
-                    Batch Runner
-                  </a>
-                  <a href="#chains" className="route-sidebar-link">
-                    Chains
-                  </a>
-                  <a href="#watches" className="route-sidebar-link">
-                    Watches
-                  </a>
-                  <a href="#export-schedules" className="route-sidebar-link">
-                    Exports
-                  </a>
-                </div>
-              </section>
-            </aside>
-          </div>
-          <section className="route-lower-section">
-            <div className="route-section-label">
-              Additional automation surfaces
-            </div>
-            <div className="route-stack">
-              <div id="chains">
-                <ChainContainer onChainSubmit={refreshJobs} />
-              </div>
-              <div id="watches">
-                <WatchContainer />
-              </div>
-              <div id="export-schedules">
-                <ExportScheduleContainer />
-              </div>
-              <WebhookDeliveryContainer />
-            </div>
-          </section>
+            }
+          />
+          <AutomationLayout
+            activeSection={activeAutomationSection}
+            renderSection={renderAutomationSection}
+          />
         </>
       )}
 
       {route.kind === "settings" && (
         <>
-          <PageIntro
+          <RouteHeader
             eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
-            meta={routeMeta.meta}
           />
           <div className="route-grid route-grid--settings">
             <div className="route-primary route-stack">
