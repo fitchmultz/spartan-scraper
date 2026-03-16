@@ -161,6 +161,44 @@ func TestJobSpec_Validate_Scrape(t *testing.T) {
 	})
 }
 
+func TestJobSpec_Validate_WebhookURL(t *testing.T) {
+	t.Run("Valid webhook URL passes validation", func(t *testing.T) {
+		spec := JobSpec{
+			Kind:           model.KindScrape,
+			URL:            "https://example.com",
+			TimeoutSeconds: 30,
+			WebhookURL:     "https://hooks.example.com/job",
+		}
+		if err := spec.Validate(); err != nil {
+			t.Fatalf("expected valid webhook URL, got %v", err)
+		}
+	})
+
+	t.Run("Invalid webhook URL scheme fails validation", func(t *testing.T) {
+		spec := JobSpec{
+			Kind:           model.KindScrape,
+			URL:            "https://example.com",
+			TimeoutSeconds: 30,
+			WebhookURL:     "ftp://hooks.example.com/job",
+		}
+		if err := spec.Validate(); err == nil {
+			t.Fatal("expected invalid webhook URL to fail validation")
+		}
+	})
+
+	t.Run("Webhook secret without URL fails validation", func(t *testing.T) {
+		spec := JobSpec{
+			Kind:           model.KindScrape,
+			URL:            "https://example.com",
+			TimeoutSeconds: 30,
+			WebhookSecret:  "top-secret",
+		}
+		if err := spec.Validate(); err == nil {
+			t.Fatal("expected missing webhook URL to fail validation when webhook fields are present")
+		}
+	})
+}
+
 func TestJobSpec_Validate_Crawl(t *testing.T) {
 	t.Run("Valid crawl spec passes validation", func(t *testing.T) {
 		spec := JobSpec{

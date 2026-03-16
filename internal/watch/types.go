@@ -23,6 +23,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
+	webhookvalidate "github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // JobTrigger defines an optional job submission to launch after a watch detects change.
@@ -118,6 +119,11 @@ func (w *Watch) Validate() error {
 	}
 	if w.VisualDiffThreshold < 0 || w.VisualDiffThreshold > 1 {
 		return &ValidationError{Field: "visualDiffThreshold", Message: "visual diff threshold must be between 0 and 1"}
+	}
+	if w.WebhookConfig != nil {
+		if err := webhookvalidate.ValidateConfigURL(w.WebhookConfig.URL); err != nil {
+			return err
+		}
 	}
 	return nil
 }

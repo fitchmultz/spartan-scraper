@@ -28,6 +28,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
+	webhookvalidate "github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // JobSpec defines all parameters for creating any kind of job.
@@ -121,6 +122,15 @@ func (s JobSpec) Validate() error {
 		}
 	default:
 		return apperrors.Validation(fmt.Sprintf("unknown job kind: %s", s.Kind))
+	}
+	if s.WebhookURL == "" {
+		if len(s.WebhookEvents) > 0 || s.WebhookSecret != "" {
+			return apperrors.Validation("webhook URL is required")
+		}
+		return nil
+	}
+	if err := webhookvalidate.ValidateConfigURL(s.WebhookURL); err != nil {
+		return err
 	}
 	return nil
 }

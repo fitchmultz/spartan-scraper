@@ -11,5 +11,5 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Centralize create-time webhook URL validation across watch, job, and export-schedule entry points so operators get the same early syntax errors everywhere, while runtime delivery remains the enforcement boundary for SSRF checks and delivery-time IP pinning.
+- Collapse the duplicated operator-facing job submission glue between `internal/api` and `internal/submission` so webhook/defaulting/request-to-spec behavior changes land in one place instead of two.
 - Remove the temporary transitive Go dependency overrides in `go.mod` as soon as upstream parent modules absorb those newer tags; keep `make audit-deps` green so override cleanup happens immediately once the parent graph catches up.

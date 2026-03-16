@@ -184,6 +184,29 @@ func TestHandleCreateWatch(t *testing.T) {
 	}
 }
 
+func TestHandleCreateWatchRejectsInvalidWebhookURL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	reqBody := WatchRequest{
+		URL:             "https://example.com/watch",
+		IntervalSeconds: 1800,
+		WebhookConfig:   &model.WebhookSpec{URL: "ftp://hooks.example.com/watch"},
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("webhook URL must use http or https scheme")) {
+		t.Fatalf("expected webhook URL validation error, got %s", rr.Body.String())
+	}
+}
+
 func TestHandleCreateWatchRejectsInvalidJobTrigger(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -379,6 +402,31 @@ func TestHandleUpdateWatch(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("Expected status 400 for validation error, got %d", rr.Code)
+	}
+}
+
+func TestHandleUpdateWatchRejectsInvalidWebhookURL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	storage := watch.NewFileStorage(srv.cfg.DataDir)
+	created := createTestWatch(t, storage, "https://example.com/update-webhook")
+
+	body, _ := json.Marshal(WatchRequest{
+		URL:             "https://example.com/update-webhook",
+		IntervalSeconds: 3600,
+		WebhookConfig:   &model.WebhookSpec{URL: "ftp://hooks.example.com/watch"},
+	})
+	req := httptest.NewRequest(http.MethodPut, "/v1/watch/"+created.ID, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("Expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("webhook URL must use http or https scheme")) {
+		t.Fatalf("expected webhook URL validation error, got %s", rr.Body.String())
 	}
 }
 

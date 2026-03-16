@@ -6,7 +6,7 @@
 - WebSocket is the live event channel.
 - Job and batch control-plane responses use stable envelopes: single-job endpoints return `{ job }`, job listings return `{ jobs, total, limit, offset }`, and batch create/get/cancel endpoints return `{ batch, jobs, total, limit, offset }`.
 - Watch check responses expose persisted screenshot and diff artifacts through explicit `artifacts[].downloadUrl` links; public watch and crawl-state responses do not advertise host-local filesystem paths.
-- Outbound webhook delivery resolves the target host once per request, pins dialing to that validated IP set, and treats redirect responses as failures instead of following them to a new host.
+- Webhook URLs are syntax-validated on create/update. Outbound delivery then resolves the target host once per request, pins dialing to that validated IP set, and treats redirect responses as failures instead of following them to a new host.
 
 ## Core Workflow
 

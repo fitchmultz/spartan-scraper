@@ -27,6 +27,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
 )
 
@@ -38,7 +39,10 @@ func (s *Server) handleBatchScrape(w http.ResponseWriter, r *http.Request) {
 			if err := validateBatchSize(len(req.Jobs), s.cfg.MaxBatchSize); err != nil {
 				return err
 			}
-			return validateBatchURLs(req.Jobs)
+			if err := validateBatchURLs(req.Jobs); err != nil {
+				return err
+			}
+			return submission.ValidateWebhookConfig(req.Webhook)
 		},
 		buildSpecs: func(r *http.Request, req BatchScrapeRequest) ([]jobs.JobSpec, error) {
 			specs := make([]jobs.JobSpec, len(req.Jobs))
@@ -91,7 +95,10 @@ func (s *Server) handleBatchCrawl(w http.ResponseWriter, r *http.Request) {
 			if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
 				return err
 			}
-			return validate.ValidateMaxPages(req.MaxPages)
+			if err := validate.ValidateMaxPages(req.MaxPages); err != nil {
+				return err
+			}
+			return submission.ValidateWebhookConfig(req.Webhook)
 		},
 		buildSpecs: func(r *http.Request, req BatchCrawlRequest) ([]jobs.JobSpec, error) {
 			specs := make([]jobs.JobSpec, len(req.Jobs))
@@ -153,7 +160,10 @@ func (s *Server) handleBatchResearch(w http.ResponseWriter, r *http.Request) {
 			if err := validate.ValidateMaxDepth(req.MaxDepth); err != nil {
 				return err
 			}
-			return validate.ValidateMaxPages(req.MaxPages)
+			if err := validate.ValidateMaxPages(req.MaxPages); err != nil {
+				return err
+			}
+			return submission.ValidateWebhookConfig(req.Webhook)
 		},
 		buildSpecs: func(r *http.Request, req BatchResearchRequest) ([]jobs.JobSpec, error) {
 			researchURLs := make([]string, len(req.Jobs))

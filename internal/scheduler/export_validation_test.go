@@ -330,7 +330,7 @@ func TestValidateExportConfig(t *testing.T) {
 	}
 }
 
-func TestValidateWebhookURL(t *testing.T) {
+func TestValidateExportConfig_WebhookURLValidation(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
@@ -346,15 +346,19 @@ func TestValidateWebhookURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateWebhookURL(tt.url)
+			err := ValidateExportConfig(ExportConfig{
+				Format:          "json",
+				DestinationType: "webhook",
+				WebhookURL:      tt.url,
+			})
 			if tt.wantError {
 				if err == nil {
-					t.Errorf("validateWebhookURL() error = nil, want error")
+					t.Fatalf("ValidateExportConfig() error = nil, want error")
 				}
-			} else {
-				if err != nil {
-					t.Errorf("validateWebhookURL() error = %v, want nil", err)
-				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateExportConfig() error = %v, want nil", err)
 			}
 		})
 	}

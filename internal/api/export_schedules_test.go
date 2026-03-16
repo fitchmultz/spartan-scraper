@@ -221,6 +221,33 @@ func TestExportScheduleHistoryRejectsInvalidPagination(t *testing.T) {
 	}
 }
 
+func TestExportScheduleCreateRejectsInvalidWebhookURL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{
+		"name": "invalid webhook export",
+		"filters": {"job_kinds": ["scrape"]},
+		"export": {
+			"format": "json",
+			"destination_type": "webhook",
+			"webhook_url": "ftp://example.com/webhook"
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", res.Code, res.Body.String())
+	}
+	if !strings.Contains(res.Body.String(), "webhook URL must use http or https scheme") {
+		t.Fatalf("expected webhook URL validation error, got %s", res.Body.String())
+	}
+}
+
 func TestExportScheduleHandlersSynchronizeLiveRuntime(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

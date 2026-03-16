@@ -756,7 +756,7 @@ Webhook contract notes:
 
 - Non-export webhook events are delivered as JSON bodies matching the `WebhookPayload` schema in `api/openapi.yaml`.
 - `export_completed` deliveries now use one explicit multipart contract everywhere direct/scheduled exports emit them: the request body is `multipart/form-data` with a JSON `metadata` part and an `export` file part containing the rendered export bytes.
-- The webhook dispatcher resolves the destination hostname once per request, pins outbound dialing to that validated IP set, and refuses redirect hops to a different host.
+- Create/update flows syntax-validate webhook URLs early; runtime delivery separately re-validates the destination, pins outbound dialing to the validated IP set, and refuses redirect hops to a different host.
 - Export/job webhook metadata no longer exposes host-local filesystem paths; consumers should use `resultUrl` when they need to fetch persisted job results.
 
 Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts:

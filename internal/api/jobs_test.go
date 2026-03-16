@@ -291,6 +291,24 @@ func TestHandleJobRouting(t *testing.T) {
 	}
 }
 
+func TestHandleCreateJobRejectsInvalidWebhookURL(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{"url":"https://example.com","webhook":{"url":"ftp://hooks.example.com/job"}}`
+	req := httptest.NewRequest("POST", "/v1/scrape", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "webhook URL must use http or https scheme") {
+		t.Fatalf("expected webhook URL validation error, got %s", rr.Body.String())
+	}
+}
+
 func TestHandleJobForceDelete(t *testing.T) {
 	srv, cleanup := setupTestServerWithConcurrency(t, 0)
 	defer cleanup()

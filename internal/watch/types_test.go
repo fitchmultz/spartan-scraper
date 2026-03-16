@@ -6,6 +6,8 @@ package watch
 import (
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
 
 func TestWatchIsDue(t *testing.T) {
@@ -153,6 +155,33 @@ func TestWatchValidate(t *testing.T) {
 				IntervalSeconds: 60,
 			},
 			wantErr: false,
+		},
+		{
+			name: "valid webhook url",
+			watch: Watch{
+				URL:             "https://example.com",
+				IntervalSeconds: 3600,
+				WebhookConfig:   &model.WebhookSpec{URL: "https://hooks.example.com/watch"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid webhook url scheme",
+			watch: Watch{
+				URL:             "https://example.com",
+				IntervalSeconds: 3600,
+				WebhookConfig:   &model.WebhookSpec{URL: "ftp://hooks.example.com/watch"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "present webhook config requires url",
+			watch: Watch{
+				URL:             "https://example.com",
+				IntervalSeconds: 3600,
+				WebhookConfig:   &model.WebhookSpec{},
+			},
+			wantErr: true,
 		},
 	}
 

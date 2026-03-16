@@ -13,8 +13,8 @@
 // - Webhook URL validation and IP-range classification only.
 //
 // Usage:
+// - Other packages should use ValidateConfigURL for create-time syntax checks.
 // - Dispatcher calls ValidateURL/resolveDeliveryTarget before making outbound webhook requests.
-// - Other packages may reuse ValidateURL when they need the same webhook URL safety policy.
 //
 // Invariants/Assumptions:
 // - Hostname validation is fail-closed when DNS resolution fails.
@@ -72,6 +72,18 @@ var localhostNames = []string{
 	"localhost.localdomain",
 	"ip6-localhost",
 	"ip6-loopback",
+}
+
+// ValidateConfigURL validates create-time webhook URL syntax only.
+//
+// It checks that the URL parses and uses an http/https scheme with a host.
+// SSRF and private-target enforcement remain a dispatch-time responsibility.
+func ValidateConfigURL(rawURL string) error {
+	if strings.TrimSpace(rawURL) == "" {
+		return apperrors.Validation("webhook URL is required")
+	}
+	_, err := parseWebhookURL(rawURL)
+	return err
 }
 
 // ValidateURL checks if a webhook URL is safe to request.

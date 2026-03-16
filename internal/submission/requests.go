@@ -38,6 +38,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/validate"
+	webhookvalidate "github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // Defaults defines the shared runtime defaults used when turning a request into a job spec.
@@ -81,6 +82,13 @@ func ValidateExtractOptions(opts *extract.ExtractOptions) error {
 	}
 }
 
+func ValidateWebhookConfig(cfg *WebhookConfig) error {
+	if cfg == nil {
+		return nil
+	}
+	return webhookvalidate.ValidateConfigURL(cfg.URL)
+}
+
 func ValidateScrapeRequest(req ScrapeRequest) error {
 	if req.URL == "" {
 		return apperrors.Validation("url is required")
@@ -88,11 +96,14 @@ func ValidateScrapeRequest(req ScrapeRequest) error {
 	if err := ValidateExtractOptions(req.Extract); err != nil {
 		return err
 	}
-	return validate.ValidateJob(validate.JobValidationOpts{
+	if err := validate.ValidateJob(validate.JobValidationOpts{
 		URL:         req.URL,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
-	}, model.KindScrape)
+	}, model.KindScrape); err != nil {
+		return err
+	}
+	return ValidateWebhookConfig(req.Webhook)
 }
 
 func ValidateCrawlRequest(req CrawlRequest) error {
@@ -102,13 +113,16 @@ func ValidateCrawlRequest(req CrawlRequest) error {
 	if err := ValidateExtractOptions(req.Extract); err != nil {
 		return err
 	}
-	return validate.ValidateJob(validate.JobValidationOpts{
+	if err := validate.ValidateJob(validate.JobValidationOpts{
 		URL:         req.URL,
 		MaxDepth:    req.MaxDepth,
 		MaxPages:    req.MaxPages,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
-	}, model.KindCrawl)
+	}, model.KindCrawl); err != nil {
+		return err
+	}
+	return ValidateWebhookConfig(req.Webhook)
 }
 
 func ValidateResearchRequest(req ResearchRequest) error {
@@ -121,14 +135,17 @@ func ValidateResearchRequest(req ResearchRequest) error {
 	if err := model.ValidateResearchAgenticConfig(req.Agentic); err != nil {
 		return err
 	}
-	return validate.ValidateJob(validate.JobValidationOpts{
+	if err := validate.ValidateJob(validate.JobValidationOpts{
 		Query:       req.Query,
 		URLs:        req.URLs,
 		MaxDepth:    req.MaxDepth,
 		MaxPages:    req.MaxPages,
 		Timeout:     req.TimeoutSeconds,
 		AuthProfile: req.AuthProfile,
-	}, model.KindResearch)
+	}, model.KindResearch); err != nil {
+		return err
+	}
+	return ValidateWebhookConfig(req.Webhook)
 }
 
 func JobSpecFromScrapeRequest(cfg config.Config, defaults Defaults, req ScrapeRequest) (jobs.JobSpec, error) {
@@ -404,7 +421,7 @@ func applyDefaultsWithConfig(cfg config.Config, defaults Defaults, spec *jobs.Jo
 		if err := spec.Auth.ValidateTransport(); err != nil {
 			return err
 		}
-		return nil
+		return spec.Validate()
 	}
 
 	authOptions, err := resolveAuthForRequest(cfg, opts.authURL, opts.authProfile, opts.auth)
@@ -412,7 +429,7 @@ func applyDefaultsWithConfig(cfg config.Config, defaults Defaults, spec *jobs.Jo
 		return err
 	}
 	spec.Auth = authOptions
-	return nil
+	return spec.Validate()
 }
 
 func applyWebhookConfig(spec *jobs.JobSpec, webhook *WebhookConfig) {

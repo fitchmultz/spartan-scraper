@@ -86,7 +86,7 @@ func applyJobDefaultsWithConfig(cfg config.Config, defaultTimeoutSeconds int, de
 		if err := spec.Auth.ValidateTransport(); err != nil {
 			return err
 		}
-		return nil
+		return spec.Validate()
 	}
 
 	authOptions, err := resolveAuthForRequest(cfg, opts.authURL, opts.authProfile, opts.auth)
@@ -94,7 +94,7 @@ func applyJobDefaultsWithConfig(cfg config.Config, defaultTimeoutSeconds int, de
 		return err
 	}
 	spec.Auth = authOptions
-	return nil
+	return spec.Validate()
 }
 
 func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {

@@ -204,6 +204,32 @@ func TestValidateURL_InvalidURLs(t *testing.T) {
 	}
 }
 
+func TestValidateConfigURL_SyntaxOnly(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{name: "valid public url", url: "https://example.com/webhook", wantErr: false},
+		{name: "valid private target still allowed at config time", url: "http://127.0.0.1/webhook", wantErr: false},
+		{name: "invalid scheme", url: "ftp://example.com/webhook", wantErr: true},
+		{name: "missing host", url: "https:///webhook", wantErr: true},
+		{name: "empty", url: "", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateConfigURL(tt.url)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected validation error for %q", tt.url)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected %q to be valid at config time, got %v", tt.url, err)
+			}
+		})
+	}
+}
+
 func TestValidateURL_AllowInternal(t *testing.T) {
 	// Test that allowInternal=true bypasses SSRF checks
 	privateURLs := []string{

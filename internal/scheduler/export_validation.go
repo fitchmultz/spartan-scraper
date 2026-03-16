@@ -22,11 +22,11 @@ package scheduler
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 // ValidateExportSchedule validates an export schedule.
@@ -119,27 +119,9 @@ func ValidateExportConfig(config ExportConfig) error {
 		if strings.TrimSpace(config.WebhookURL) == "" {
 			return apperrors.Validation("webhook_url is required for webhook destination")
 		}
-		if err := validateWebhookURL(config.WebhookURL); err != nil {
+		if err := webhook.ValidateConfigURL(config.WebhookURL); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// validateWebhookURL validates a webhook URL.
-func validateWebhookURL(webhookURL string) error {
-	u, err := url.Parse(webhookURL)
-	if err != nil {
-		return apperrors.Validation(fmt.Sprintf("invalid webhook URL: %v", err))
-	}
-
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return apperrors.Validation("webhook URL must use http or https scheme")
-	}
-
-	if u.Host == "" {
-		return apperrors.Validation("webhook URL must have a host")
 	}
 
 	return nil
