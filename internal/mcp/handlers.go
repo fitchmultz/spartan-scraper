@@ -38,6 +38,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/watch"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
@@ -456,6 +457,103 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			result["content"] = string(exported)
 		}
 		return result, nil
+	case "watch_list":
+		watches, err := watch.NewFileStorage(s.cfg.DataDir).List()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"watches": watches}, nil
+	case "watch_get":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		watchItem, err := watch.NewFileStorage(s.cfg.DataDir).Get(id)
+		if err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		return watchItem, nil
+	case "watch_create":
+		var args watchCreateArgs
+		if err := decodeToolArguments(params.Arguments, &args); err != nil {
+			return nil, err
+		}
+		watchItem, err := s.buildWatchCreate(args)
+		if err != nil {
+			return nil, err
+		}
+		created, err := watch.NewFileStorage(s.cfg.DataDir).Add(watchItem)
+		if err != nil {
+			return nil, err
+		}
+		return created, nil
+	case "watch_update":
+		var args watchUpdateArgs
+		if err := decodeToolArguments(params.Arguments, &args); err != nil {
+			return nil, err
+		}
+		id := strings.TrimSpace(args.ID)
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		watchStore := watch.NewFileStorage(s.cfg.DataDir)
+		existing, err := watchStore.Get(id)
+		if err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		if err := s.applyWatchUpdate(existing, args); err != nil {
+			return nil, err
+		}
+		if err := watchStore.Update(existing); err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		return existing, nil
+	case "watch_delete":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		if err := watch.NewFileStorage(s.cfg.DataDir).Delete(id); err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		return map[string]interface{}{"deleted": true, "id": id}, nil
+	case "watch_check":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		watchStore := watch.NewFileStorage(s.cfg.DataDir)
+		watchItem, err := watchStore.Get(id)
+		if err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		watcher := watch.NewWatcher(watchStore, s.store, s.cfg.DataDir, nil, &watch.TriggerRuntime{
+			Config:  s.cfg,
+			Manager: s.manager,
+		})
+		result, err := watcher.Check(ctx, watchItem)
+		if result != nil {
+			return result, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return nil, apperrors.Internal("watch check returned no result")
 	case "export_schedule_list":
 		schedules, err := scheduler.NewExportStorage(s.cfg.DataDir).List()
 		if err != nil {

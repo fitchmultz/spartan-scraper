@@ -4,7 +4,7 @@
 
 - MCP remains the agent-facing control plane for the 1.0 core.
 - Submit scrape, crawl, and research jobs.
-- Poll status, fetch results, export supported text formats, and manage export schedules.
+- Poll status, fetch results, export supported text formats, inspect webhook deliveries, manage export schedules, and manage watches.
 
 ## Long-Running Jobs
 
@@ -126,6 +126,47 @@ These tools return structured authoring results immediately and do not create jo
 
 Direct `job_export` calls and recurring export schedules can persist either `transform` / `export.transform` or `shape` / `export.shape`, but not both. Spartan enforces that mutual exclusion so ad hoc and recurring exports keep one deterministic projection contract.
 
+## Watch tools
+
+MCP exposes the full stored-watch management workflow used by the other primary operator surfaces.
+
+- `watch_list`
+  - no arguments
+  - returns `{ "watches": [...] }`
+- `watch_get`
+  - `id: "..."`
+  - returns a single persisted `Watch`
+- `watch_create`
+  - `url: "..."` required
+  - `selector: "..."` optional
+  - `intervalSeconds: number` optional, defaults to `3600`
+  - `enabled: true|false` optional, defaults to `true`
+  - `diffFormat: "unified" | "html-side-by-side" | "html-inline"` optional
+  - `webhookConfig: { ... }` optional `WebhookSpec`
+  - `notifyOnChange: true|false` optional
+  - `minChangeSize: number` optional
+  - `ignorePatterns: ["..."]` optional
+  - `headless: true|false` optional
+  - `usePlaywright: true|false` optional
+  - `extractMode: "html" | "text"` optional
+  - `screenshotEnabled: true|false` optional
+  - `screenshotConfig: { ... }` optional
+  - `visualDiffThreshold: number` optional
+  - `jobTrigger: { "kind": "scrape" | "crawl" | "research", "request": { ... } }` optional
+- `watch_update`
+  - `id: "..."` required
+  - any `watch_create` field may also be supplied to update that part of the watch
+  - omitted fields are preserved
+- `watch_delete`
+  - `id: "..."`
+  - returns `{ "deleted": true, "id": "..." }`
+- `watch_check`
+  - `id: "..."`
+  - returns a `WatchCheckResult`
+  - if the underlying fetch/check fails, the tool still returns the check result object with `error` populated instead of turning the entire MCP call into a protocol-level failure
+
+`jobTrigger.request` uses the same operator-facing request contract as the normal scrape/crawl/research submission surfaces and is normalized and validated before persistence.
+
 ## Job submission arguments
 
 `scrape_page`, `crawl_site`, and `research` now take the same request objects as `/v1/scrape`, `/v1/crawl`, and `/v1/research`.
@@ -169,8 +210,14 @@ Example nested fields:
 {"id":15,"method":"tools/call","params":{"name":"job_status","arguments":{"id":"<job-id>"}}}
 {"id":16,"method":"tools/call","params":{"name":"batch_status","arguments":{"id":"<batch-id>","includeJobs":true,"limit":50,"offset":0}}}
 {"id":17,"method":"tools/call","params":{"name":"job_results","arguments":{"id":"<job-id>"}}}
+{"id":18,"method":"tools/call","params":{"name":"watch_create","arguments":{"url":"https://example.com/pricing","selector":"main","intervalSeconds":300,"notifyOnChange":true}}}
+{"id":19,"method":"tools/call","params":{"name":"watch_update","arguments":{"id":"<watch-id>","enabled":true,"jobTrigger":{"kind":"scrape","request":{"url":"https://example.com/pricing","extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract current pricing and packaging changes","fields":["plans","pricing","packaging_notes"]}}}}}}}
+{"id":20,"method":"tools/call","params":{"name":"watch_check","arguments":{"id":"<watch-id>"}}}
+{"id":21,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
+{"id":22,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
+{"id":23,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
 ```
 
 `job_status` and `job_cancel` now return the same `{ job }` envelope shape as REST job detail. `job_list` returns `{ jobs, total, limit, offset }`. `batch_status` and `batch_cancel` return the same `{ batch, jobs, total, limit, offset }` envelope shape as REST batch create/get/cancel, including `batch.stats` on every response.
 
-The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` and `batch_*` tools when you need persisted scrape/crawl/research execution that can be polled or canceled later, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.
+The expected pattern is: use the dedicated AI authoring tools when you want immediate preview/template/configuration/refinement/export-shape/transform output, use `job_*` and `batch_*` tools when you need persisted scrape/crawl/research execution that can be polled or canceled later, use `watch_*` tools when you want to manage stored content monitoring workflows, and use `export_schedule_*` tools when you want recurring export contracts persisted alongside the rest of the runtime control plane.

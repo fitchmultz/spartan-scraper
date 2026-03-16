@@ -836,6 +836,12 @@ Core tools:
 - `batch_status`
 - `batch_cancel`
 - `job_export`
+- `watch_list`
+- `watch_get`
+- `watch_create`
+- `watch_update`
+- `watch_delete`
+- `watch_check`
 - `export_schedule_list`
 - `export_schedule_get`
 - `export_schedule_create`
@@ -877,6 +883,8 @@ That means AI extraction rides inside `extract.ai.*`, proxy transport rides insi
 - `contentType`
 - `encoding: "utf8" | "base64"`
 - `content`
+
+The watch tools expose the stored watch-management workflow already available in the other primary operator surfaces: `watch_list`, `watch_get`, `watch_create`, `watch_update`, `watch_delete`, and `watch_check`. `watch_check` returns the recorded `WatchCheckResult` even when the underlying check fails, with `error` populated in the result payload.
 
 The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive).
 

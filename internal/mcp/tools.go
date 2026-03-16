@@ -120,6 +120,36 @@ func (s *Server) toolsList() []tool {
 			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string", "shape": "object", "transform": "object"}),
 		},
 		{
+			Name:        "watch_list",
+			Description: "List configured watches",
+			InputSchema: schema(nil, nil),
+		},
+		{
+			Name:        "watch_get",
+			Description: "Get a single watch by id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "watch_create",
+			Description: "Create a new watch for content change monitoring",
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"selector": "string", "intervalSeconds": "number", "enabled": "boolean", "diffFormat": "string", "webhookConfig": "object", "notifyOnChange": "boolean", "minChangeSize": "number", "ignorePatterns": "array", "headless": "boolean", "usePlaywright": "boolean", "extractMode": "string", "screenshotEnabled": "boolean", "screenshotConfig": "object", "visualDiffThreshold": "number", "jobTrigger": "object"}),
+		},
+		{
+			Name:        "watch_update",
+			Description: "Update an existing watch",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"url": "string", "selector": "string", "intervalSeconds": "number", "enabled": "boolean", "diffFormat": "string", "webhookConfig": "object", "notifyOnChange": "boolean", "minChangeSize": "number", "ignorePatterns": "array", "headless": "boolean", "usePlaywright": "boolean", "extractMode": "string", "screenshotEnabled": "boolean", "screenshotConfig": "object", "visualDiffThreshold": "number", "jobTrigger": "object"}),
+		},
+		{
+			Name:        "watch_delete",
+			Description: "Delete a watch by id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "watch_check",
+			Description: "Run a manual check for a watch and return the check result",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
 			Name:        "export_schedule_list",
 			Description: "List automated export schedules",
 			InputSchema: schema(nil, nil),
