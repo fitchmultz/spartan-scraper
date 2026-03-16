@@ -22,16 +22,14 @@ package api
 import (
 	"net/http"
 
-	"github.com/fitchmultz/spartan-scraper/internal/model"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 func (s *Server) handleResearch(w http.ResponseWriter, r *http.Request) {
 	handleSingleJobSubmission(s, w, r, singleJobSubmission[ResearchRequest]{
-		kind:      model.KindResearch,
-		validate:  validateResearchRequest,
-		buildSpec: researchJobSpecFromRequest,
-		requestOptions: func(r *http.Request, req ResearchRequest) jobRequestOptions {
-			return researchJobRequestOptions(contextRequestID(r.Context()), req)
+		buildSpec: func(r *http.Request, req ResearchRequest) (jobs.JobSpec, error) {
+			return submission.JobSpecFromResearchRequest(s.cfg, s.requestSubmissionDefaults(r), req)
 		},
 	})
 }

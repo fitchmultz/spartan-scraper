@@ -1,6 +1,22 @@
-// Package api provides utility functions for the Spartan Scraper HTTP API.
-// These include JSON encoding helpers, parameter parsing, auth resolution,
-// and content type detection.
+// Package api provides shared HTTP utility functions for the Spartan Scraper API.
+//
+// Purpose:
+// - Centralize low-level HTTP helpers that are reused across API handlers.
+//
+// Responsibilities:
+// - Decode and encode JSON payloads consistently.
+// - Parse common request parameters and normalize response metadata.
+// - Provide shared error writing, request ID, and content-type helpers.
+//
+// Scope:
+// - Transport-level API utilities only.
+//
+// Usage:
+// - Imported implicitly across the api package by request handlers and tests.
+//
+// Invariants/Assumptions:
+// - Error responses use the shared request ID envelope.
+// - JSON decoding should reject malformed or oversized request bodies consistently.
 package api
 
 import (
@@ -19,9 +35,6 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/auth"
-	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/google/uuid"
 )
 
@@ -239,108 +252,6 @@ func parseIntParamStrict(s string, paramName string) (int, error) {
 		return 0, apperrors.Validation(fmt.Sprintf("invalid %s: cannot be negative", paramName))
 	}
 	return val, nil
-}
-
-func resolveAuthForRequest(cfg config.Config, url string, profile string, override *fetch.AuthOptions) (fetch.AuthOptions, error) {
-	input := auth.ResolveInput{
-		ProfileName: profile,
-		URL:         url,
-		Env:         &cfg.AuthOverrides,
-	}
-	if override != nil {
-		input.Headers = toHeaderKVs(override.Headers)
-		input.Cookies = toCookies(override.Cookies)
-		input.Tokens = tokensFromOverride(*override)
-		if login := loginFromOverride(*override); login != nil {
-			input.Login = login
-		}
-	}
-	resolved, err := auth.Resolve(cfg.DataDir, input)
-	if err != nil {
-		return fetch.AuthOptions{}, err
-	}
-	authOptions := auth.ToFetchOptions(resolved)
-	mergeAuthTransportOverrides(&authOptions, override)
-	authOptions.NormalizeTransport()
-	if err := authOptions.ValidateTransport(); err != nil {
-		return fetch.AuthOptions{}, err
-	}
-
-	return authOptions, nil
-}
-
-func mergeAuthTransportOverrides(dst *fetch.AuthOptions, override *fetch.AuthOptions) {
-	if dst == nil || override == nil {
-		return
-	}
-	if override.Proxy != nil {
-		dst.Proxy = override.Proxy
-	}
-	if override.ProxyHints != nil {
-		dst.ProxyHints = fetch.NormalizeProxySelectionHints(override.ProxyHints)
-	}
-	if override.OAuth2 != nil {
-		dst.OAuth2 = override.OAuth2
-	}
-}
-
-func toHeaderKVs(headers map[string]string) []auth.HeaderKV {
-	if len(headers) == 0 {
-		return nil
-	}
-	out := make([]auth.HeaderKV, 0, len(headers))
-	for key, value := range headers {
-		if strings.TrimSpace(key) == "" {
-			continue
-		}
-		out = append(out, auth.HeaderKV{Key: key, Value: value})
-	}
-	return out
-}
-
-func toCookies(cookies []string) []auth.Cookie {
-	if len(cookies) == 0 {
-		return nil
-	}
-	out := make([]auth.Cookie, 0, len(cookies))
-	for _, raw := range cookies {
-		parts := strings.SplitN(strings.TrimSpace(raw), "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		name := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		if name == "" {
-			continue
-		}
-		out = append(out, auth.Cookie{Name: name, Value: value})
-	}
-	return out
-}
-
-func tokensFromOverride(override fetch.AuthOptions) []auth.Token {
-	out := []auth.Token{}
-	if override.Basic != "" {
-		out = append(out, auth.Token{Kind: auth.TokenBasic, Value: override.Basic})
-	}
-	for key, value := range override.Query {
-		out = append(out, auth.Token{Kind: auth.TokenApiKey, Value: value, Query: key})
-	}
-	return out
-}
-
-func loginFromOverride(override fetch.AuthOptions) *auth.LoginFlow {
-	if override.LoginURL == "" && override.LoginUserSelector == "" && override.LoginPassSelector == "" && override.LoginSubmitSelector == "" && override.LoginUser == "" && override.LoginPass == "" {
-		return nil
-	}
-	return &auth.LoginFlow{
-		URL:            override.LoginURL,
-		UserSelector:   override.LoginUserSelector,
-		PassSelector:   override.LoginPassSelector,
-		SubmitSelector: override.LoginSubmitSelector,
-		Username:       override.LoginUser,
-		Password:       override.LoginPass,
-	}
 }
 
 func contentTypeForExtension(ext string) string {

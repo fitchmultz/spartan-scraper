@@ -1,98 +1,42 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// This file contains type definitions for batch requests and responses.
+// Purpose:
+// - Reuse the canonical operator-facing batch request and response contracts in the CLI.
 //
 // Responsibilities:
-// - Define request/response structs for batch operations
-// - Define shared constants for batch operations
+// - Alias the shared batch request payloads used by API and direct CLI execution.
+// - Alias the stable batch response envelopes returned across transports.
+// - Keep CLI batch request shapes aligned with the shared submission contract.
 //
-// Does NOT handle:
-// - Business logic or parsing
-// - API client implementations
-// - Direct execution logic
+// Scope:
+// - Batch CLI request and response contract aliases only.
+//
+// Usage:
+// - Imported by CLI batch parsing, submission, direct execution, and tests.
+//
+// Invariants/Assumptions:
+// - CLI batch requests should stay wire-compatible with the REST batch API.
+// - Batch request-to-spec conversion lives outside this file.
 package batch
 
 import (
 	spartanapi "github.com/fitchmultz/spartan-scraper/internal/api"
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
-	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 const maxBatchSize = 100
 
 // BatchJobRequest represents a single job in a batch.
-type BatchJobRequest struct {
-	URL         string            `json:"url"`
-	Method      string            `json:"method,omitempty"`
-	Body        string            `json:"body,omitempty"`
-	ContentType string            `json:"contentType,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
-}
+type BatchJobRequest = submission.BatchJobRequest
 
 // BatchScrapeRequest represents a batch scrape request.
-type BatchScrapeRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	Headless         bool                          `json:"headless,omitempty"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds,omitempty"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Incremental      *bool                         `json:"incremental,omitempty"`
-	Webhook          *model.WebhookSpec            `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type BatchScrapeRequest = submission.BatchScrapeRequest
 
 // BatchCrawlRequest represents a batch crawl request.
-type BatchCrawlRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	MaxDepth         int                           `json:"maxDepth,omitempty"`
-	MaxPages         int                           `json:"maxPages,omitempty"`
-	Headless         bool                          `json:"headless,omitempty"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds,omitempty"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Incremental      *bool                         `json:"incremental,omitempty"`
-	SitemapURL       string                        `json:"sitemapURL,omitempty"`
-	SitemapOnly      *bool                         `json:"sitemapOnly,omitempty"`
-	IncludePatterns  []string                      `json:"includePatterns,omitempty"`
-	ExcludePatterns  []string                      `json:"excludePatterns,omitempty"`
-	RespectRobotsTxt *bool                         `json:"respectRobotsTxt,omitempty"`
-	SkipDuplicates   *bool                         `json:"skipDuplicates,omitempty"`
-	SimHashThreshold *int                          `json:"simHashThreshold,omitempty"`
-	Webhook          *model.WebhookSpec            `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type BatchCrawlRequest = submission.BatchCrawlRequest
 
 // BatchResearchRequest represents a batch research request.
-type BatchResearchRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	Query            string                        `json:"query"`
-	MaxDepth         int                           `json:"maxDepth,omitempty"`
-	MaxPages         int                           `json:"maxPages,omitempty"`
-	Headless         bool                          `json:"headless,omitempty"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds,omitempty"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Webhook          *model.WebhookSpec            `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
-}
+type BatchResearchRequest = submission.BatchResearchRequest
 
 // BatchSummary aliases the stable aggregate batch metadata used across surfaces.
 type BatchSummary = spartanapi.BatchSummary

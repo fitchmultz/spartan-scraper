@@ -1,4 +1,22 @@
-package api
+// Package submission verifies shared auth resolution helpers used during request conversion.
+//
+// Purpose:
+//   - Prove submission-layer auth resolution preserves transport overrides while still
+//     validating the final fetch auth configuration.
+//
+// Responsibilities:
+// - Assert proxy and OAuth2 transport overrides survive canonical auth resolution.
+// - Assert conflicting proxy transport overrides fail fast.
+//
+// Scope:
+// - Submission-layer auth resolution only.
+//
+// Usage:
+// - Run with `go test ./internal/submission`.
+//
+// Invariants/Assumptions:
+// - Request conversion should not silently drop transport overrides.
+package submission
 
 import (
 	"testing"

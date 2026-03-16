@@ -11,5 +11,5 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Collapse the duplicated operator-facing job submission glue between `internal/api` and `internal/submission` so webhook/defaulting/request-to-spec behavior changes land in one place instead of two.
+- Collapse the remaining CLI batch preflight validation duplication onto `internal/submission` so API-backed and direct batch submissions surface the same request-count, URL, and shared-option errors before execution.
 - Remove the temporary transitive Go dependency overrides in `go.mod` as soon as upstream parent modules absorb those newer tags; keep `make audit-deps` green so override cleanup happens immediately once the parent graph catches up.

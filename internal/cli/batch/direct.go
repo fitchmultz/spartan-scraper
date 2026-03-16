@@ -1,17 +1,22 @@
 // Package batch provides CLI commands for batch job operations.
 //
-// This file contains direct execution functions for batch operations
-// when the API server is not running.
+// Purpose:
+// - Execute batch submissions directly when the API server is not running.
 //
 // Responsibilities:
-// - Submit batch jobs directly using the jobs package
-// - Get batch status directly from the store
-// - Cancel batches directly using the job manager
+// - Convert canonical batch requests into job specs for direct execution.
+// - Create, enqueue, inspect, and cancel batches through local manager/store access.
+// - Reuse the shared batch request-to-spec conversion from internal/submission.
 //
-// Does NOT handle:
-// - HTTP API calls
-// - CLI command parsing
-// - File parsing
+// Scope:
+// - Direct CLI batch execution only.
+//
+// Usage:
+// - Called by CLI batch submit/status/cancel flows when local direct mode is selected.
+//
+// Invariants/Assumptions:
+// - Direct execution should persist the same specs as equivalent API batch submissions.
+// - Auth is already resolved by CLI flag handling before direct batch conversion runs.
 package batch
 
 import (
@@ -23,6 +28,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
 func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchScrapeRequest) (*BatchResponse, error) {
@@ -37,36 +43,16 @@ func submitBatchScrapeDirect(ctx context.Context, cfg config.Config, req BatchSc
 		return nil, err
 	}
 
-	// Build job specs
-	specs := make([]jobs.JobSpec, len(req.Jobs))
-	for i, job := range req.Jobs {
-		specs[i] = jobs.JobSpec{
-			Kind:             model.KindScrape,
-			URL:              job.URL,
-			Method:           job.Method,
-			Body:             []byte(job.Body),
-			ContentType:      job.ContentType,
-			Headless:         req.Headless,
-			UsePlaywright:    req.Playwright != nil && *req.Playwright,
-			TimeoutSeconds:   req.TimeoutSeconds,
-			Auth:             *req.Auth,
-			Extract:          *req.Extract,
-			Pipeline:         *req.Pipeline,
-			Incremental:      req.Incremental != nil && *req.Incremental,
-			Screenshot:       req.Screenshot,
-			Device:           req.Device,
-			NetworkIntercept: req.NetworkIntercept,
-		}
+	specs, err := submission.JobSpecsFromBatchScrapeRequest(cfg, directBatchDefaults(cfg, manager), req)
+	if err != nil {
+		return nil, err
 	}
 
-	// Create batch
 	batchID := jobs.GenerateBatchID()
 	createdJobs, err := manager.CreateBatchJobs(ctx, model.KindScrape, specs, batchID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Enqueue all jobs
 	if err := manager.EnqueueBatch(createdJobs); err != nil {
 		return nil, err
 	}
@@ -87,46 +73,16 @@ func submitBatchCrawlDirect(ctx context.Context, cfg config.Config, req BatchCra
 		return nil, err
 	}
 
-	// Build job specs
-	specs := make([]jobs.JobSpec, len(req.Jobs))
-	for i, job := range req.Jobs {
-		simHashThreshold := 0
-		if req.SimHashThreshold != nil {
-			simHashThreshold = *req.SimHashThreshold
-		}
-		specs[i] = jobs.JobSpec{
-			Kind:             model.KindCrawl,
-			URL:              job.URL,
-			MaxDepth:         req.MaxDepth,
-			MaxPages:         req.MaxPages,
-			Headless:         req.Headless,
-			UsePlaywright:    req.Playwright != nil && *req.Playwright,
-			TimeoutSeconds:   req.TimeoutSeconds,
-			SitemapURL:       req.SitemapURL,
-			SitemapOnly:      req.SitemapOnly != nil && *req.SitemapOnly,
-			IncludePatterns:  req.IncludePatterns,
-			ExcludePatterns:  req.ExcludePatterns,
-			RespectRobotsTxt: req.RespectRobotsTxt != nil && *req.RespectRobotsTxt,
-			SkipDuplicates:   req.SkipDuplicates != nil && *req.SkipDuplicates,
-			SimHashThreshold: simHashThreshold,
-			Auth:             *req.Auth,
-			Extract:          *req.Extract,
-			Pipeline:         *req.Pipeline,
-			Incremental:      req.Incremental != nil && *req.Incremental,
-			Screenshot:       req.Screenshot,
-			Device:           req.Device,
-			NetworkIntercept: req.NetworkIntercept,
-		}
+	specs, err := submission.JobSpecsFromBatchCrawlRequest(cfg, directBatchDefaults(cfg, manager), req)
+	if err != nil {
+		return nil, err
 	}
 
-	// Create batch
 	batchID := jobs.GenerateBatchID()
 	createdJobs, err := manager.CreateBatchJobs(ctx, model.KindCrawl, specs, batchID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Enqueue all jobs
 	if err := manager.EnqueueBatch(createdJobs); err != nil {
 		return nil, err
 	}
@@ -147,45 +103,33 @@ func submitBatchResearchDirect(ctx context.Context, cfg config.Config, req Batch
 		return nil, err
 	}
 
-	// Collect URLs from jobs
-	urls := make([]string, len(req.Jobs))
-	for i, job := range req.Jobs {
-		urls[i] = job.URL
-	}
-
-	// Research jobs only need one job with all URLs
-	spec := jobs.JobSpec{
-		Kind:             model.KindResearch,
-		Query:            req.Query,
-		URLs:             urls,
-		MaxDepth:         req.MaxDepth,
-		MaxPages:         req.MaxPages,
-		Headless:         req.Headless,
-		UsePlaywright:    req.Playwright != nil && *req.Playwright,
-		TimeoutSeconds:   req.TimeoutSeconds,
-		Auth:             *req.Auth,
-		Extract:          *req.Extract,
-		Pipeline:         *req.Pipeline,
-		Screenshot:       req.Screenshot,
-		Device:           req.Device,
-		NetworkIntercept: req.NetworkIntercept,
-		Agentic:          req.Agentic,
-	}
-
-	// Create batch
-	batchID := jobs.GenerateBatchID()
-	createdJobs, err := manager.CreateBatchJobs(ctx, model.KindResearch, []jobs.JobSpec{spec}, batchID)
+	specs, err := submission.JobSpecsFromBatchResearchRequest(cfg, directBatchDefaults(cfg, manager), req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Enqueue all jobs
+	batchID := jobs.GenerateBatchID()
+	createdJobs, err := manager.CreateBatchJobs(ctx, model.KindResearch, specs, batchID)
+	if err != nil {
+		return nil, err
+	}
 	if err := manager.EnqueueBatch(createdJobs); err != nil {
 		return nil, err
 	}
 
 	response := spartanapi.BuildCreatedBatchResponse(batchID, model.KindResearch, createdJobs)
 	return &response, nil
+}
+
+func directBatchDefaults(cfg config.Config, manager *jobs.Manager) submission.BatchDefaults {
+	return submission.BatchDefaults{
+		Defaults: submission.Defaults{
+			DefaultTimeoutSeconds: manager.DefaultTimeoutSeconds(),
+			DefaultUsePlaywright:  manager.DefaultUsePlaywright(),
+			ResolveAuth:           false,
+		},
+		MaxBatchSize: cfg.MaxBatchSize,
+	}
 }
 
 func getBatchStatusDirect(ctx context.Context, cfg config.Config, batchID string, includeJobs bool) (*BatchStatusResponse, error) {

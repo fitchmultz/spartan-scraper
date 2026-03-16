@@ -160,7 +160,7 @@ func buildWatchFromRequest(req WatchRequest) *watch.Watch {
 	}
 }
 
-func validateWatchJobTrigger(cfg config.Config, defaultTimeoutSeconds int, defaultUsePlaywright bool, trigger *watch.JobTrigger) error {
+func validateWatchJobTrigger(cfg config.Config, defaults submission.Defaults, trigger *watch.JobTrigger) error {
 	if trigger == nil {
 		return nil
 	}
@@ -171,11 +171,7 @@ func validateWatchJobTrigger(cfg config.Config, defaultTimeoutSeconds int, defau
 	if err != nil {
 		return err
 	}
-	if _, _, err := submission.JobSpecFromRawRequest(cfg, submission.Defaults{
-		DefaultTimeoutSeconds: defaultTimeoutSeconds,
-		DefaultUsePlaywright:  defaultUsePlaywright,
-		ResolveAuth:           false,
-	}, trigger.Kind, normalizedRequest); err != nil {
+	if _, _, err := submission.JobSpecFromRawRequest(cfg, defaults, trigger.Kind, normalizedRequest); err != nil {
 		return err
 	}
 	trigger.Request = normalizedRequest
@@ -253,7 +249,7 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newWatch := buildWatchFromRequest(req)
-	if err := validateWatchJobTrigger(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), newWatch.JobTrigger); err != nil {
+	if err := validateWatchJobTrigger(s.cfg, s.nonResolvingSubmissionDefaults(), newWatch.JobTrigger); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -318,7 +314,7 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 	}
 
 	applyWatchRequest(existing, req)
-	if err := validateWatchJobTrigger(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), existing.JobTrigger); err != nil {
+	if err := validateWatchJobTrigger(s.cfg, s.nonResolvingSubmissionDefaults(), existing.JobTrigger); err != nil {
 		writeError(w, r, err)
 		return
 	}

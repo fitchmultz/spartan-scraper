@@ -72,6 +72,52 @@ func TestHandleBatchScrapeDefaultsMethodToGET(t *testing.T) {
 	}
 }
 
+func TestHandleBatchScrapeAppliesEnvAuthOverrides(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+	srv.cfg.AuthOverrides.Headers = map[string]string{"X-Batch-Env": "present"}
+
+	body, err := json.Marshal(BatchScrapeRequest{
+		Jobs: []BatchJobRequest{{URL: "https://example.com/articles/1"}},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/jobs/batch/scrape", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp BatchResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	jobsByBatch, err := srv.store.ListJobsByBatch(context.Background(), resp.Batch.ID, store.ListOptions{})
+	if err != nil {
+		t.Fatalf("list jobs by batch: %v", err)
+	}
+	if len(jobsByBatch) != 1 {
+		t.Fatalf("expected 1 stored job, got %d", len(jobsByBatch))
+	}
+	authConfig, ok := jobsByBatch[0].SpecMap()["auth"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected persisted auth config, got %#v", jobsByBatch[0].SpecMap())
+	}
+	headers, ok := authConfig["headers"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected persisted auth headers, got %#v", authConfig)
+	}
+	if headers["X-Batch-Env"] != "present" {
+		t.Fatalf("expected env auth header to be persisted, got %#v", headers)
+	}
+}
+
 func TestHandleBatchResearchCreatesSingleResearchJob(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

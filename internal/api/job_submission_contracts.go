@@ -1,28 +1,28 @@
-// Package api provides HTTP submission helpers for single-job and schedule flows.
+// Package api provides thin submission-contract adapters for schedules and non-HTTP callers.
 //
 // Purpose:
-// - Keep API handlers aligned with the shared operator-facing submission contract.
+//   - Keep schedule CRUD and MCP adapters aligned with the canonical operator-facing
+//     submission conversion that now lives in internal/submission.
 //
 // Responsibilities:
-// - Validate scrape/crawl/research requests.
-// - Build create-time jobs.JobSpec values and request-option envelopes for handlers.
-// - Convert between persisted typed specs and public request payloads for schedules.
+// - Reconstruct public request payloads from persisted typed specs.
+// - Convert raw schedule request JSON into typed specs using shared defaults.
+// - Expose narrow forwarding helpers for existing non-HTTP API callers.
 //
 // Scope:
-// - API-facing glue only; canonical request conversion lives in internal/submission.
+// - Thin adapters only; validation and request-to-spec conversion live in internal/submission.
 //
 // Usage:
-// - Used by REST handlers, schedule CRUD, and MCP adapters.
+// - Used by REST schedule handlers, MCP handlers, and tests.
 //
 // Invariants/Assumptions:
-// - Single-job API surfaces share the same conversion logic as automation surfaces.
-// - Schedule payloads stay on the operator-facing request contract.
+// - Schedule payloads must stay on the same operator-facing request contract as live submissions.
+// - Behavior changes should land in internal/submission first and flow through these adapters.
 package api
 
 import (
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
@@ -30,119 +30,6 @@ import (
 )
 
 type JobSubmissionDefaults = submission.Defaults
-
-func validateExtractOptions(opts *extract.ExtractOptions) error {
-	return submission.ValidateExtractOptions(opts)
-}
-
-func validateScrapeRequest(req ScrapeRequest) error {
-	return submission.ValidateScrapeRequest(req)
-}
-
-func scrapeJobSpecFromRequest(req ScrapeRequest) jobs.JobSpec {
-	spec := jobs.JobSpec{
-		Kind:        model.KindScrape,
-		URL:         req.URL,
-		Method:      req.Method,
-		Body:        []byte(req.Body),
-		ContentType: req.ContentType,
-		Headless:    req.Headless,
-	}
-	if spec.Method == "" {
-		spec.Method = "GET"
-	}
-	return spec
-}
-
-func scrapeJobRequestOptions(requestID string, req ScrapeRequest) jobRequestOptions {
-	return jobRequestOptions{
-		authURL:          req.URL,
-		authProfile:      req.AuthProfile,
-		auth:             req.Auth,
-		extract:          req.Extract,
-		pipeline:         req.Pipeline,
-		webhook:          req.Webhook,
-		screenshot:       req.Screenshot,
-		device:           req.Device,
-		networkIntercept: req.NetworkIntercept,
-		incremental:      req.Incremental,
-		playwright:       req.Playwright,
-		timeoutSeconds:   req.TimeoutSeconds,
-		requestID:        requestID,
-	}
-}
-
-func validateCrawlRequest(req CrawlRequest) error {
-	return submission.ValidateCrawlRequest(req)
-}
-
-func crawlJobSpecFromRequest(req CrawlRequest) jobs.JobSpec {
-	return jobs.JobSpec{
-		Kind:             model.KindCrawl,
-		URL:              req.URL,
-		MaxDepth:         req.MaxDepth,
-		MaxPages:         req.MaxPages,
-		Headless:         req.Headless,
-		SitemapURL:       req.SitemapURL,
-		SitemapOnly:      valueOr(req.SitemapOnly, false),
-		IncludePatterns:  req.IncludePatterns,
-		ExcludePatterns:  req.ExcludePatterns,
-		RespectRobotsTxt: valueOr(req.RespectRobotsTxt, false),
-		SkipDuplicates:   valueOr(req.SkipDuplicates, false),
-		SimHashThreshold: valueOr(req.SimHashThreshold, 0),
-	}
-}
-
-func crawlJobRequestOptions(requestID string, req CrawlRequest) jobRequestOptions {
-	return jobRequestOptions{
-		authURL:          req.URL,
-		authProfile:      req.AuthProfile,
-		auth:             req.Auth,
-		extract:          req.Extract,
-		pipeline:         req.Pipeline,
-		webhook:          req.Webhook,
-		screenshot:       req.Screenshot,
-		device:           req.Device,
-		networkIntercept: req.NetworkIntercept,
-		incremental:      req.Incremental,
-		playwright:       req.Playwright,
-		timeoutSeconds:   req.TimeoutSeconds,
-		requestID:        requestID,
-	}
-}
-
-func validateResearchRequest(req ResearchRequest) error {
-	return submission.ValidateResearchRequest(req)
-}
-
-func researchJobSpecFromRequest(req ResearchRequest) jobs.JobSpec {
-	return jobs.JobSpec{
-		Kind:     model.KindResearch,
-		Query:    req.Query,
-		URLs:     req.URLs,
-		MaxDepth: req.MaxDepth,
-		MaxPages: req.MaxPages,
-		Headless: req.Headless,
-		Agentic:  req.Agentic,
-	}
-}
-
-func researchJobRequestOptions(requestID string, req ResearchRequest) jobRequestOptions {
-	return jobRequestOptions{
-		authURL:          req.URLs[0],
-		authProfile:      req.AuthProfile,
-		auth:             req.Auth,
-		extract:          req.Extract,
-		pipeline:         req.Pipeline,
-		webhook:          req.Webhook,
-		screenshot:       req.Screenshot,
-		device:           req.Device,
-		networkIntercept: req.NetworkIntercept,
-		playwright:       req.Playwright,
-		timeoutSeconds:   req.TimeoutSeconds,
-		requestID:        requestID,
-	}
-}
 
 func requestFromSchedule(schedule scheduler.Schedule) (any, error) {
 	return submission.RequestFromTypedSpec(schedule.Spec)
@@ -161,11 +48,7 @@ func JobSpecFromResearchRequest(cfg config.Config, defaults JobSubmissionDefault
 }
 
 func convertScheduleRequestToTypedSpec(s *Server, kind model.Kind, rawRequest []byte) (jobs.JobSpec, int, any, error) {
-	spec, _, err := submission.JobSpecFromRawRequest(s.cfg, submission.Defaults{
-		DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
-		DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
-		ResolveAuth:           false,
-	}, kind, rawRequest)
+	spec, _, err := submission.JobSpecFromRawRequest(s.cfg, s.nonResolvingSubmissionDefaults(), kind, rawRequest)
 	if err != nil {
 		return jobs.JobSpec{}, 0, nil, err
 	}

@@ -1,122 +1,67 @@
-// Package api provides shared job-construction helpers for Spartan Scraper's API.
+// Package api provides shared HTTP submission helpers for job-creation endpoints.
 //
 // Purpose:
-// - Centralize repeated job-spec defaults and batch creation behavior.
+//   - Keep REST handlers thin while delegating operator-facing request conversion to
+//     the canonical internal/submission package.
 //
 // Responsibilities:
-// - Apply shared timeout, Playwright, auth, webhook, extraction, and device settings.
-// - Validate repeated batch URL constraints.
-// - Create and enqueue batch jobs with a single response-shaping path.
+// - Decode JSON requests and route them through shared submission builders.
+// - Provide consistent request-default envelopes for live REST job creation.
+// - Create and enqueue single jobs and batches with one response-shaping path.
 //
 // Scope:
-// - Shared helper logic for API handlers that submit scrape, crawl, and research jobs.
+//   - API transport glue only; request validation and request-to-spec conversion live in
+//     internal/submission.
 //
 // Usage:
-//   - Handlers build the kind-specific fields, then call applySingleJobDefaults or
-//     applyBatchJobDefaults before creating or enqueuing jobs.
+// - Used by scrape, crawl, research, and batch API handlers.
 //
 // Invariants/Assumptions:
-// - Auth profile resolution should behave the same for single-job and batch endpoints.
-// - Empty optional request sections resolve to zero-value options rather than nil-dependent branches.
+// - REST creation endpoints should use the same operator-facing conversion rules as other surfaces.
+// - Live REST submissions always resolve auth before persisting jobs.
 package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/config"
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
-	"github.com/fitchmultz/spartan-scraper/internal/validate"
+	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
-type jobRequestOptions struct {
-	authURL          string
-	authProfile      string
-	auth             *fetch.AuthOptions
-	extract          *extract.ExtractOptions
-	pipeline         *pipeline.Options
-	webhook          *WebhookConfig
-	screenshot       *fetch.ScreenshotConfig
-	device           *fetch.DeviceEmulation
-	networkIntercept *fetch.NetworkInterceptConfig
-	incremental      *bool
-	playwright       *bool
-	timeoutSeconds   int
-	requestID        string
-}
-
 type singleJobSubmission[T any] struct {
-	kind           model.Kind
-	validate       func(T) error
-	buildSpec      func(T) jobs.JobSpec
-	requestOptions func(*http.Request, T) jobRequestOptions
+	buildSpec func(*http.Request, T) (jobs.JobSpec, error)
 }
 
 type batchJobSubmission[T any] struct {
 	kind       model.Kind
-	validate   func(T) error
 	buildSpecs func(*http.Request, T) ([]jobs.JobSpec, error)
 }
 
-func applyJobDefaultsWithConfig(cfg config.Config, defaultTimeoutSeconds int, defaultUsePlaywright bool, spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
-	spec.TimeoutSeconds = opts.timeoutSeconds
-	if spec.TimeoutSeconds <= 0 {
-		spec.TimeoutSeconds = defaultTimeoutSeconds
+func (s *Server) requestSubmissionDefaults(r *http.Request) submission.Defaults {
+	return submission.Defaults{
+		DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+		DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+		RequestID:             contextRequestID(r.Context()),
+		ResolveAuth:           true,
 	}
-	spec.UsePlaywright = valueOr(opts.playwright, defaultUsePlaywright)
-	spec.AuthProfile = opts.authProfile
-	spec.Extract = valueOr(opts.extract, extract.ExtractOptions{})
-	spec.Pipeline = valueOr(opts.pipeline, pipeline.Options{})
-	spec.Incremental = valueOr(opts.incremental, false)
-	spec.RequestID = opts.requestID
-	spec.Screenshot = opts.screenshot
-	spec.Device = opts.device
-	spec.NetworkIntercept = opts.networkIntercept
-	applyWebhookConfig(spec, opts.webhook)
-
-	if !resolveAuth {
-		spec.Auth = valueOr(opts.auth, fetch.AuthOptions{})
-		spec.Auth.NormalizeTransport()
-		if err := spec.Auth.ValidateTransport(); err != nil {
-			return err
-		}
-		return spec.Validate()
-	}
-
-	authOptions, err := resolveAuthForRequest(cfg, opts.authURL, opts.authProfile, opts.auth)
-	if err != nil {
-		return err
-	}
-	spec.Auth = authOptions
-	return spec.Validate()
 }
 
-func (s *Server) applyJobDefaults(spec *jobs.JobSpec, opts jobRequestOptions, resolveAuth bool) error {
-	return applyJobDefaultsWithConfig(s.cfg, s.manager.DefaultTimeoutSeconds(), s.manager.DefaultUsePlaywright(), spec, opts, resolveAuth)
+func (s *Server) nonResolvingSubmissionDefaults() submission.Defaults {
+	return submission.Defaults{
+		DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
+		DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
+		ResolveAuth:           false,
+	}
 }
 
-func applyWebhookConfig(spec *jobs.JobSpec, webhook *WebhookConfig) {
-	if webhook == nil {
-		return
+func (s *Server) requestBatchDefaults(r *http.Request) submission.BatchDefaults {
+	return submission.BatchDefaults{
+		Defaults:     s.requestSubmissionDefaults(r),
+		MaxBatchSize: s.cfg.MaxBatchSize,
 	}
-	spec.WebhookURL = webhook.URL
-	spec.WebhookEvents = webhook.Events
-	spec.WebhookSecret = webhook.Secret
-}
-
-func validateBatchURLs(items []BatchJobRequest) error {
-	for i, job := range items {
-		if err := validate.ValidateURL(job.URL); err != nil {
-			return apperrors.Validation(fmt.Sprintf("invalid URL at index %d: %v", i, err))
-		}
-	}
-	return nil
 }
 
 func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
@@ -144,13 +89,9 @@ func handleSingleJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.
 	if !ok {
 		return
 	}
-	if err := submission.validate(req); err != nil {
-		writeError(w, r, err)
-		return
-	}
 
-	spec := submission.buildSpec(req)
-	if err := s.applyJobDefaults(&spec, submission.requestOptions(r, req), true); err != nil {
+	spec, err := submission.buildSpec(r, req)
+	if err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -174,10 +115,6 @@ func handleBatchJobSubmission[T any](s *Server, w http.ResponseWriter, r *http.R
 	}
 	req, ok := decodeJSONRequest[T](w, r)
 	if !ok {
-		return
-	}
-	if err := submission.validate(req); err != nil {
-		writeError(w, r, err)
 		return
 	}
 

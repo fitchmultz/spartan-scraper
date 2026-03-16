@@ -23,10 +23,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fitchmultz/spartan-scraper/internal/extract"
-	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
@@ -85,79 +82,16 @@ type ScheduleResponse struct {
 }
 
 // BatchJobRequest represents a single job within a batch.
-type BatchJobRequest struct {
-	URL         string            `json:"url"`
-	Method      string            `json:"method,omitempty"`
-	Body        string            `json:"body,omitempty"`
-	ContentType string            `json:"contentType,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
-}
+type BatchJobRequest = submission.BatchJobRequest
 
 // BatchScrapeRequest creates multiple scrape jobs.
-type BatchScrapeRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	OutputFormat     string                        `json:"outputFormat,omitempty"`
-	ExtractionName   string                        `json:"extractionName,omitempty"`
-	ExtractionMode   string                        `json:"extractionMode,omitempty"`
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Incremental      *bool                         `json:"incremental,omitempty"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type BatchScrapeRequest = submission.BatchScrapeRequest
 
 // BatchCrawlRequest creates multiple crawl jobs.
-type BatchCrawlRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	MaxDepth         int                           `json:"maxDepth"`
-	MaxPages         int                           `json:"maxPages"`
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Incremental      *bool                         `json:"incremental,omitempty"`
-	SitemapURL       string                        `json:"sitemapURL,omitempty"`
-	SitemapOnly      *bool                         `json:"sitemapOnly,omitempty"`
-	IncludePatterns  []string                      `json:"includePatterns,omitempty"`
-	ExcludePatterns  []string                      `json:"excludePatterns,omitempty"`
-	RespectRobotsTxt *bool                         `json:"respectRobotsTxt,omitempty"`
-	SkipDuplicates   *bool                         `json:"skipDuplicates,omitempty"`
-	SimHashThreshold *int                          `json:"simHashThreshold,omitempty"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-}
+type BatchCrawlRequest = submission.BatchCrawlRequest
 
 // BatchResearchRequest creates multiple research jobs.
-type BatchResearchRequest struct {
-	Jobs             []BatchJobRequest             `json:"jobs"`
-	Query            string                        `json:"query"`
-	MaxDepth         int                           `json:"maxDepth"`
-	MaxPages         int                           `json:"maxPages"`
-	Headless         bool                          `json:"headless"`
-	Playwright       *bool                         `json:"playwright,omitempty"`
-	TimeoutSeconds   int                           `json:"timeoutSeconds"`
-	AuthProfile      string                        `json:"authProfile,omitempty"`
-	Auth             *fetch.AuthOptions            `json:"auth,omitempty"`
-	Extract          *extract.ExtractOptions       `json:"extract,omitempty"`
-	Pipeline         *pipeline.Options             `json:"pipeline,omitempty"`
-	Webhook          *WebhookConfig                `json:"webhook,omitempty"`
-	Screenshot       *fetch.ScreenshotConfig       `json:"screenshot,omitempty"`
-	Device           *fetch.DeviceEmulation        `json:"device,omitempty"`
-	NetworkIntercept *fetch.NetworkInterceptConfig `json:"networkIntercept,omitempty"`
-	Agentic          *model.ResearchAgenticConfig  `json:"agentic,omitempty"`
-}
+type BatchResearchRequest = submission.BatchResearchRequest
 
 // JobResponse represents a single sanitized job envelope.
 type JobResponse struct {

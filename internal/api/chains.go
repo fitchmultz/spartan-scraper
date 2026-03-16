@@ -1,17 +1,22 @@
 // Package api provides HTTP handlers for job chain management endpoints.
 //
-// This file is responsible for:
-// - Chain CRUD operations (create, list, get, delete)
-// - Chain submission (instantiating jobs from a chain)
+// Purpose:
+// - Expose chain CRUD and submission operations over the REST API.
 //
-// This file does NOT handle:
-// - Chain execution (jobs package handles this)
-// - Chain validation (model package handles this)
+// Responsibilities:
+// - Validate chain definitions before creation.
+// - Normalize node request payloads onto the canonical submission contract.
+// - Submit chain nodes through the shared operator-facing request-to-spec conversion layer.
 //
-// Invariants:
-// - Chain definitions are validated before creation
-// - Chain names must be unique
-// - Only chains with no active jobs can be deleted
+// Scope:
+// - `/v1/chains` CRUD and submission routes only.
+//
+// Usage:
+// - Mounted by Server.Routes for chain management.
+//
+// Invariants/Assumptions:
+// - Chain node requests must stay on the same request contract as live job submissions.
+// - Only chains with no active jobs can be deleted.
 package api
 
 import (
@@ -86,11 +91,7 @@ func (s *Server) handleCreateChain(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, apperrors.Validation(fmt.Sprintf("definition.nodes[%d].request is required", i)))
 			return
 		}
-		if _, _, err := submission.JobSpecFromRawRequest(s.cfg, submission.Defaults{
-			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
-			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
-			ResolveAuth:           false,
-		}, node.Kind, node.Request); err != nil {
+		if _, _, err := submission.JobSpecFromRawRequest(s.cfg, s.nonResolvingSubmissionDefaults(), node.Kind, node.Request); err != nil {
 			writeError(w, r, apperrors.Validation("invalid chain node request for "+node.ID+": "+err.Error()))
 			return
 		}
@@ -171,11 +172,7 @@ func (s *Server) handleChainSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jobs, err := s.manager.SubmitChain(r.Context(), chainID, req.Overrides, func(kind model.Kind, rawRequest json.RawMessage) (jobs.JobSpec, error) {
-		spec, _, err := submission.JobSpecFromRawRequest(s.cfg, submission.Defaults{
-			DefaultTimeoutSeconds: s.manager.DefaultTimeoutSeconds(),
-			DefaultUsePlaywright:  s.manager.DefaultUsePlaywright(),
-			ResolveAuth:           true,
-		}, kind, rawRequest)
+		spec, _, err := submission.JobSpecFromRawRequest(s.cfg, s.requestSubmissionDefaults(r), kind, rawRequest)
 		return spec, err
 	})
 	if err != nil {
