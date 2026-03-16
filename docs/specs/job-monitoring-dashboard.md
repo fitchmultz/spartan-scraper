@@ -1,7 +1,14 @@
 # Job Monitoring Dashboard
 
-**Status:** Roadmap / Now  
+**Status:** Implemented / Done  
 **Primary surface:** Web UI `/jobs` and related return flow from `/jobs/:id`
+
+## Implementation Notes
+
+- `/jobs` now uses a scan-first monitoring dashboard with summary metrics, lane-based grouping, and card-based job presentation.
+- `/jobs/:id` remains result-focused.
+- Returning from `/jobs/:id` restores jobs-route filter, page, and scroll state.
+- Loading states use skeleton cards instead of generic placeholders.
 
 ## Summary
 

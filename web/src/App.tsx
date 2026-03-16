@@ -89,6 +89,7 @@ import {
   submitScrapeJob,
 } from "./lib/job-actions";
 import { getApiBaseUrl } from "./lib/api-config";
+import { saveJobsViewState } from "./lib/job-monitoring";
 import type { JobPreset, JobType } from "./types/presets";
 
 const MetricsDashboard = lazy(() =>
@@ -357,6 +358,18 @@ export function App() {
 
   const route = useMemo(() => parseRoute(pathname), [pathname]);
 
+  const persistJobsViewState = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    saveJobsViewState({
+      statusFilter: jobStatusFilter,
+      currentPage: jobsPage,
+      scrollY: window.scrollY,
+    });
+  }, [jobStatusFilter, jobsPage]);
+
   const navigate = useCallback(
     (path: string) => {
       const nextPath = normalizePath(path);
@@ -411,13 +424,18 @@ export function App() {
         navigate("/jobs/new");
         return;
       }
+
       if (view === "results" && selectedJobId) {
+        if (route.kind === "jobs") {
+          persistJobsViewState();
+        }
         navigate(`/jobs/${selectedJobId}`);
         return;
       }
+
       navigate("/jobs");
     },
-    [navigate, selectedJobId],
+    [navigate, persistJobsViewState, route.kind, selectedJobId],
   );
 
   useEffect(() => {
@@ -529,10 +547,14 @@ export function App() {
 
   const handleViewResults = useCallback(
     async (jobId: string, format: string, page: number) => {
+      if (route.kind === "jobs") {
+        persistJobsViewState();
+      }
+
       navigate(`/jobs/${jobId}`);
       await loadResults(jobId, format, page);
     },
-    [loadResults, navigate],
+    [loadResults, navigate, persistJobsViewState, route.kind],
   );
 
   const activeJob = jobs.find((job) => job.status === "running");
@@ -857,6 +879,7 @@ export function App() {
                   jobs={jobs}
                   failedJobs={failedJobs}
                   error={error}
+                  loading={loading}
                   statusFilter={jobStatusFilter}
                   onStatusFilterChange={setJobStatusFilter}
                   onViewResults={handleViewResults}
@@ -868,6 +891,7 @@ export function App() {
                   jobsPerPage={100}
                   onPageChange={setJobsPage}
                   connectionState={connectionState}
+                  managerStatus={managerStatus}
                 />
               </section>
             </div>
@@ -885,7 +909,10 @@ export function App() {
                     <button
                       type="button"
                       className="secondary"
-                      onClick={() => navigate(`/jobs/${selectedJobId}`)}
+                      onClick={() => {
+                        persistJobsViewState();
+                        navigate(`/jobs/${selectedJobId}`);
+                      }}
                     >
                       Open Last Results
                     </button>

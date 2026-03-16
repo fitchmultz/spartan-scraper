@@ -24,7 +24,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 ## Now
 
 - [Web Shell Simplification](./specs/web-shell-simplification.md) — Remove the duplicated masthead/route-intro pattern, reduce repeated metrics and CTA chrome above the fold, and let each route spend its first screen on real work instead of repeated framing.
-- [Job Monitoring Dashboard](./specs/job-monitoring-dashboard.md) — Replace the dense recent-run list with a scan-friendly monitoring surface that emphasizes visual progress, failure severity, queue position, and smoother movement between the jobs index and job detail.
 - [Guided Job Submission Wizard](./specs/guided-job-wizard.md) — Replace the long single-screen submission flow with a step-based wizard for scrape, crawl, and research jobs while preserving an Expert mode for operators who want dense editing.
 
 ## After
