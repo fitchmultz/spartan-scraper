@@ -32,10 +32,12 @@ func TestPrintHelp_IncludesRoutedCommands(t *testing.T) {
 	for _, expected := range []string{
 		"  ai           AI authoring utilities (preview, templates, render profiles, pipeline JS, research refinement, transforms)",
 		"  proxy-pool   Inspect proxy-pool configuration and runtime status",
+		"  webhook      Inspect webhook delivery history",
 		"  export       Export job results (jsonl, json, md, csv, xlsx)",
 		"  export-schedule Manage automated export schedules",
 		"  spartan ai preview --url https://example.com --prompt \"Extract the main product facts\"",
 		"  spartan scrape --url https://example.com --proxy-region us-east --proxy-tag residential --out ./out/example.json",
+		"  spartan webhook deliveries list --job-id <job-id>",
 		"  spartan export --job-id <id> --format md --out ./out/report.md",
 		"  spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv",
 		"  spartan export-schedule list",

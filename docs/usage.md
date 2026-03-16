@@ -644,6 +644,23 @@ Do not combine both on the same schedule; Spartan treats transform and shape as 
 
 For `md`, `csv`, and `xlsx` schedules, the Web UI, REST API, CLI (`spartan ai export-shape`), and MCP (`ai_export_shape`) can generate bounded `ExportShapeConfig` suggestions from a representative job result before you save or update the recurring export. For any schedule format, the Web UI, REST API, CLI (`spartan ai transform`), and MCP (`ai_transform_generate`) can generate or tune a saved `ResultTransformConfig` from a representative job result before you save or update the recurring export.
 
+### Webhook deliveries
+
+Commands:
+
+- `spartan webhook deliveries list [--job-id <job-id>] [--limit <n>] [--offset <n>]`
+- `spartan webhook deliveries get <delivery-id>`
+
+Examples:
+
+```bash
+spartan webhook deliveries list
+spartan webhook deliveries list --job-id <job-id> --limit 50 --offset 0
+spartan webhook deliveries get <delivery-id>
+```
+
+The CLI prefers the local REST API when it is available and falls back to the persisted delivery store when running serverless or offline. Output is sanitized so webhook credentials, query tokens, and obvious secrets in failure text do not leak to terminal operators.
+
 ### Retention, backup, and restore
 
 Retention:
@@ -824,6 +841,8 @@ Core tools:
 - `export_schedule_update`
 - `export_schedule_delete`
 - `export_schedule_history`
+- `webhook_delivery_list`
+- `webhook_delivery_get`
 
 `scrape_page`, `crawl_site`, and `research` now accept the same request bodies as the REST job-submission endpoints for their respective kinds.
 
@@ -859,6 +878,8 @@ That means AI extraction rides inside `extract.ai.*`, proxy transport rides insi
 - `content`
 
 The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive).
+
+`webhook_delivery_list` returns `{ deliveries, total, limit, offset }` with optional `jobId`, `limit`, and `offset` arguments. `webhook_delivery_get` returns one sanitized delivery record by id.
 
 Smoke example:
 

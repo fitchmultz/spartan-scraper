@@ -38,6 +38,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/research"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
 
 func decodeToolArguments(args map[string]interface{}, dst any) error {
@@ -536,11 +537,64 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			return nil, err
 		}
 		return map[string]interface{}{"records": records, "total": total}, nil
+	case "webhook_delivery_list":
+		jobID := strings.TrimSpace(paramdecode.String(params.Arguments, "jobId"))
+		if jobID == "" {
+			jobID = strings.TrimSpace(paramdecode.String(params.Arguments, "job_id"))
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 100)
+		if limit > 1000 {
+			limit = 1000
+		}
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		deliveryStore, err := loadWebhookDeliveryStore(s.cfg.DataDir)
+		if err != nil {
+			return nil, err
+		}
+		records, err := deliveryStore.ListRecords(ctx, jobID, limit, offset)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to list webhook deliveries", err)
+		}
+		total, err := deliveryStore.CountRecords(ctx, jobID)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to count webhook deliveries", err)
+		}
+		return map[string]interface{}{
+			"deliveries": webhook.ToInspectableDeliveries(records),
+			"total":      total,
+			"limit":      limit,
+			"offset":     offset,
+		}, nil
+	case "webhook_delivery_get":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		deliveryStore, err := loadWebhookDeliveryStore(s.cfg.DataDir)
+		if err != nil {
+			return nil, err
+		}
+		record, found, err := deliveryStore.GetRecord(ctx, id)
+		if err != nil {
+			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to get webhook delivery", err)
+		}
+		if !found {
+			return nil, apperrors.NotFound("webhook delivery not found")
+		}
+		return webhook.ToInspectableDelivery(record), nil
 	case "proxy_pool_status":
 		return api.BuildProxyPoolStatusResponse(s.manager.GetProxyPool()), nil
 	default:
 		return nil, apperrors.Validation(fmt.Sprintf("unknown tool: %s", params.Name))
 	}
+}
+
+func loadWebhookDeliveryStore(dataDir string) (*webhook.Store, error) {
+	deliveryStore := webhook.NewStore(dataDir)
+	if err := deliveryStore.Load(); err != nil {
+		return nil, apperrors.Wrap(apperrors.KindInternal, "failed to load webhook deliveries", err)
+	}
+	return deliveryStore, nil
 }
 
 func loadResult(ctx context.Context, store *store.Store, id string) (string, error) {

@@ -31,6 +31,7 @@ Commands:
   batch        Submit and manage batch jobs
   chains       Manage job chains (create/list/get/submit/delete)
   watch        Watch content for changes
+  webhook      Inspect webhook delivery history
   retention    Manage data retention and cleanup
   proxy-pool   Inspect proxy-pool configuration and runtime status
   export       Export job results (jsonl, json, md, csv, xlsx)
@@ -91,6 +92,7 @@ Examples:
   spartan watch list
   spartan watch check <id>
   spartan watch start
+  spartan webhook deliveries list --job-id <job-id>
   spartan export --job-id <id> --format md --out ./out/report.md
   spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv
   spartan schedule add --kind scrape --interval 3600 --url https://example.com

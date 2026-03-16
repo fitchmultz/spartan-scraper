@@ -150,6 +150,16 @@ func (s *Server) toolsList() []tool {
 			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{
+			Name:        "webhook_delivery_list",
+			Description: "List persisted webhook delivery attempts, including failures, retries, and response metadata",
+			InputSchema: schema(nil, map[string]string{"jobId": "string", "limit": "number", "offset": "number"}),
+		},
+		{
+			Name:        "webhook_delivery_get",
+			Description: "Get a single persisted webhook delivery attempt by id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
 			Name:        "proxy_pool_status",
 			Description: "Inspect the currently loaded proxy pool strategy and per-proxy health/runtime stats",
 			InputSchema: schema(nil, nil),

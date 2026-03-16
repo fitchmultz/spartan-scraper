@@ -51,7 +51,7 @@ func (s *Server) handleWebhookDeliveries(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, map[string]any{
-		"deliveries": mapSlice(records, deliveryRecordToResponse),
+		"deliveries": webhook.ToInspectableDeliveries(records),
 		"total":      total,
 	})
 }
@@ -89,35 +89,5 @@ func (s *Server) handleWebhookDeliveryDetail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	writeJSON(w, deliveryRecordToResponse(record))
-}
-
-// deliveryRecordToResponse converts a DeliveryRecord to a response map.
-func deliveryRecordToResponse(r *webhook.DeliveryRecord) map[string]any {
-	result := map[string]any{
-		"id":        r.ID,
-		"eventId":   r.EventID,
-		"eventType": r.EventType,
-		"jobId":     r.JobID,
-		"url":       r.URL,
-		"status":    r.Status,
-		"attempts":  r.Attempts,
-		"createdAt": r.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		"updatedAt": r.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-	}
-
-	if r.LastError != "" {
-		result["lastError"] = r.LastError
-	}
-
-	if r.DeliveredAt != nil {
-		formatted := r.DeliveredAt.Format("2006-01-02T15:04:05Z07:00")
-		result["deliveredAt"] = formatted
-	}
-
-	if r.ResponseCode != 0 {
-		result["responseCode"] = r.ResponseCode
-	}
-
-	return result
+	writeJSON(w, webhook.ToInspectableDelivery(record))
 }
