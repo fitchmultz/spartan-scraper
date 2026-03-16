@@ -688,14 +688,15 @@ spartan mcp
 spartan version
 ```
 
-### TUI AI scope
+### TUI scope
 
-`spartan tui` remains an operator inspection surface, not an AI authoring surface.
+`spartan tui` remains a lightweight local inspection surface, not a feature-parity or AI authoring surface.
 
 - The TUI is for browsing jobs, statuses, templates, profiles, schedules, and crawl state.
 - The TUI may show AI-related job metadata that already exists in persisted job specs or results.
 - Dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, AI research refinement, AI export shaping, AI transform generation, and other prompt-heavy authoring flows live in the Web UI, API, CLI (`spartan ai ...`), and MCP (`ai_extract_preview`, `ai_template_generate`, `ai_template_debug`, `ai_render_profile_generate`, `ai_render_profile_debug`, `ai_pipeline_js_generate`, `ai_pipeline_js_debug`, `ai_research_refine`, `ai_export_shape`, `ai_transform_generate`) instead.
-- Do not add TUI-only AI workflows unless the roadmap explicitly changes this policy.
+- Operator-surface parity work should target Web UI, CLI, and MCP over the shared API/store contracts before considering TUI expansion.
+- Do not add TUI-only workflows unless the roadmap explicitly changes this policy.
 
 ## Web UI
 

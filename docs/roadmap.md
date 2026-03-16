@@ -4,7 +4,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Planning Principles
 
-- Prefer feature symmetry across the primary product interfaces: API, Web UI, CLI, MCP, and TUI where the capability is meaningful in that interface.
+- Prefer feature symmetry across the primary product interfaces that carry the main operator and automation workflows: API, Web UI, CLI, and MCP.
+- Treat the TUI as an intentionally limited local inspection surface, not a feature-parity target, unless this roadmap explicitly says otherwise.
 - Add AI enablement where it improves a real scraping/research workflow; do not force AI into surfaces where it adds little operational value.
 - Treat interface asymmetry as intentional only when the roadmap says so explicitly.
 - Prefer roadmap ordering that limits churn in shared contracts, generated clients, and operator-facing docs.
@@ -15,6 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Add TUI inspection flows for webhook deliveries, export schedule history, and watch-trigger outcomes so terminal-only operators can debug automation without leaving the TUI.
-- Close the remaining highest-value operator-surface gaps across API, Web UI, CLI, MCP, and TUI for export schedules, watches, and batches in that order.
+- Close the remaining highest-value operator-surface gaps across API, Web UI, CLI, and MCP for export schedules, watches, and batches in that order.
 - Expand operator observability so run history, export outcomes, and delivery failures are actionable without digging through host-local files or internal state.
+- Keep the TUI scope frozen as a lightweight local inspector unless a future roadmap item justifies re-investing in it as a first-class surface.

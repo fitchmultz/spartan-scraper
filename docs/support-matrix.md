@@ -19,7 +19,8 @@
 - Optional proxy-pool execution is a supported runtime path with shared status inspection plus per-request direct-proxy or proxy-hint selection controls across REST, Web UI, CLI, and MCP.
 - Explicit `PROXY_POOL_FILE` misconfiguration is treated as a startup error rather than silently disabling proxy-backed execution.
 - Request-scoped multimodal image context for AI authoring is supported on REST, Web, CLI, and MCP: operators can attach bounded uploaded/pasted images directly, and URL-based flows can additionally capture screenshots when an image-capable pi route is available.
-- TUI is an operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, or agent-session workflows.
+- TUI is an intentionally limited operations and inspection surface. It may display AI metadata already persisted on jobs, but it does not carry dedicated AI preview, AI template generation, AI template debugging, AI render-profile generation, AI render-profile debugging, AI pipeline-JS generation, AI pipeline-JS debugging, research-refinement, export-shaping, saved-result transform-generation, or agent-session workflows.
+- Feature-parity work should target REST, Web UI, CLI, and MCP first; the TUI is not a standing parity target unless the roadmap explicitly elevates it.
 
 ## Release Guarantee
 
