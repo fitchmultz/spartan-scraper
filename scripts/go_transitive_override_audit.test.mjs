@@ -145,8 +145,15 @@ async function run() {
 		assertEqual(version, null, 'Expected null for missing requirement');
 	});
 
-	await test('managed override inventory remains at the documented size', () => {
-		assertEqual(module.MANAGED_OVERRIDES.length, 12, 'Expected 12 managed overrides');
+	await test('managed override inventory paths are unique', () => {
+		const paths = module.MANAGED_OVERRIDES.map(override => override.path);
+		assertEqual(new Set(paths).size, paths.length, 'Expected MANAGED_OVERRIDES paths to be unique');
+	});
+
+	await test('managed override inventory matches go.mod replace paths', () => {
+		const replaceMap = module.rootReplaceMap(join(__dirname, '..'));
+		const findings = module.findOverrideInventoryFindings(replaceMap, module.MANAGED_OVERRIDES);
+		assertEqual(findings.length, 0, `Expected go.mod and MANAGED_OVERRIDES to stay synchronized: ${findings.join('; ')}`);
 	});
 
 	await test('go_transitive_override_audit.mjs --help exits successfully and prints usage', async () => {

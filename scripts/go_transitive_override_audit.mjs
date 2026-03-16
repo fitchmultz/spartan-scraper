@@ -4,7 +4,8 @@
  * Purpose: Keep temporary Go transitive override usage explicit, current, and removable.
  * Responsibilities: Verify each managed `go.mod` replace override still points at the latest
  *   available tag, confirm the selected stale version still comes from known upstream parents,
- *   and fail when unmanaged stale Go modules or redundant overrides appear.
+ *   keep the root `replace` block synchronized with the managed override inventory, and fail
+ *   when unmanaged stale Go modules or redundant overrides appear.
  * Scope: Root-module Go dependency metadata only (`go.mod`, `go list -m`, and upstream parent
  *   `go.mod` files); does not build or test application code.
  * Usage: node scripts/go_transitive_override_audit.mjs [--json] [--help]
@@ -297,6 +298,33 @@ function rootReplaceMap(root) {
 	return replaces;
 }
 
+function findOverrideInventoryFindings(replaceMap, managedOverrides = MANAGED_OVERRIDES) {
+	const findings = [];
+	const managedPaths = new Set();
+
+	for (const override of managedOverrides) {
+		if (managedPaths.has(override.path)) {
+			findings.push(`MANAGED_OVERRIDES contains duplicate entry for ${override.path}`);
+			continue;
+		}
+		managedPaths.add(override.path);
+	}
+
+	for (const path of replaceMap.keys()) {
+		if (!managedPaths.has(path)) {
+			findings.push(`go.mod replace for ${path} is unmanaged; remove it or add a matching MANAGED_OVERRIDES entry`);
+		}
+	}
+
+	for (const override of managedOverrides) {
+		if (!replaceMap.has(override.path)) {
+			findings.push(`MANAGED_OVERRIDES entry for ${override.path} has no matching go.mod replace`);
+		}
+	}
+
+	return findings;
+}
+
 function validateManagedOverride(root, replaceMap, outdatedByPath, override) {
 	const findings = [];
 	const rootReplaceVersion = replaceMap.get(override.path);
@@ -367,7 +395,7 @@ function runAudit() {
 	const outdatedModules = goListOutdatedModules(root);
 	const outdatedByPath = new Map(outdatedModules.map(module => [module.path, module]));
 	const managedPaths = new Set(MANAGED_OVERRIDES.map(override => override.path));
-	const findings = [];
+	const findings = [...findOverrideInventoryFindings(replaceMap, MANAGED_OVERRIDES)];
 
 	for (const override of MANAGED_OVERRIDES) {
 		findings.push(...validateManagedOverride(root, replaceMap, outdatedByPath, override));
@@ -437,11 +465,13 @@ export {
 	EXIT_SUCCESS,
 	EXIT_USAGE,
 	MANAGED_OVERRIDES,
+	findOverrideInventoryFindings,
 	findRequireVersion,
 	goListOutdatedModules,
 	main,
 	parseArgs,
 	parseOutdatedModuleLine,
+	rootReplaceMap,
 	runAudit,
 	usage,
 	validateManagedOverride,

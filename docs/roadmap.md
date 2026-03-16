@@ -11,4 +11,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Now
 
-- Remove the temporary transitive Go dependency overrides in `go.mod` as soon as upstream parent modules absorb those newer tags; keep `make audit-deps` green so override cleanup happens immediately once the parent graph catches up.
+- Keep the remaining managed transitive Go overrides synchronized between `go.mod` and `scripts/go_transitive_override_audit.mjs`, and remove entries immediately as upstream parent modules absorb those newer tags.

@@ -28,8 +28,6 @@ replace (
 	github.com/zeebo/assert => github.com/zeebo/assert v1.3.1
 	golang.org/x/telemetry => golang.org/x/telemetry v0.0.0-20260312161427-1546bf4b83fe
 	golang.org/x/xerrors => golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
-
-	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20260128011058-8636f8732409
 )
 
 require (
