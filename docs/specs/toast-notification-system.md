@@ -1,6 +1,6 @@
 # Toast Notification System
 
-**Status:** Roadmap / After  
+**Status:** Completed
 **Primary surface:** Web UI global feedback layer
 
 ## Summary

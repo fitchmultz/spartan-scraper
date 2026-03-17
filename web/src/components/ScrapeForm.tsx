@@ -29,6 +29,7 @@ import { DeviceSelector } from "./DeviceSelector";
 import { ScreenshotConfig } from "./ScreenshotConfig";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
+import { useToast } from "./toast";
 import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
@@ -65,9 +66,15 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     },
     ref,
   ) {
+    const toast = useToast();
+
     const handleSubmit = useCallback(async () => {
       if (!url.trim()) {
-        alert("Scrape URL is required.");
+        toast.show({
+          tone: "warning",
+          title: "Scrape URL required",
+          description: "Add a target URL before launching the scrape.",
+        });
         return;
       }
 
@@ -83,7 +90,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           form.aiExtractFields,
         );
       } catch (error) {
-        alert(error instanceof Error ? error.message : String(error));
+        toast.show({
+          tone: "error",
+          title: "Scrape configuration is invalid",
+          description: error instanceof Error ? error.message : String(error),
+        });
         return;
       }
 
@@ -106,7 +117,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         aiExtractOptions,
       );
       await onSubmit(request);
-    }, [device, form, onSubmit, url]);
+    }, [device, form, onSubmit, toast, url]);
 
     const getConfig = useCallback((): PresetConfig => {
       const draftState: JobDraftLocalState = {

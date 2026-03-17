@@ -10,6 +10,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { FormController } from "../hooks/useFormState";
+import { ToastProvider } from "./toast";
 import { BatchForm } from "./BatchForm";
 
 function createFormController(): FormController {
@@ -129,26 +130,28 @@ function renderBatchForm(urlsInput = "") {
   const setUrlsInput = vi.fn();
 
   render(
-    <BatchForm
-      activeTab="scrape"
-      setActiveTab={vi.fn()}
-      form={createFormController()}
-      profiles={[]}
-      urlsInput={urlsInput}
-      setUrlsInput={setUrlsInput}
-      submissionNotice={null}
-      onViewSubmittedBatch={vi.fn()}
-      maxDepth={2}
-      setMaxDepth={vi.fn()}
-      maxPages={200}
-      setMaxPages={vi.fn()}
-      query=""
-      setQuery={vi.fn()}
-      onSubmitScrape={vi.fn()}
-      onSubmitCrawl={vi.fn()}
-      onSubmitResearch={vi.fn()}
-      loading={false}
-    />,
+    <ToastProvider>
+      <BatchForm
+        activeTab="scrape"
+        setActiveTab={vi.fn()}
+        form={createFormController()}
+        profiles={[]}
+        urlsInput={urlsInput}
+        setUrlsInput={setUrlsInput}
+        submissionNotice={null}
+        onViewSubmittedBatch={vi.fn()}
+        maxDepth={2}
+        setMaxDepth={vi.fn()}
+        maxPages={200}
+        setMaxPages={vi.fn()}
+        query=""
+        setQuery={vi.fn()}
+        onSubmitScrape={vi.fn()}
+        onSubmitCrawl={vi.fn()}
+        onSubmitResearch={vi.fn()}
+        loading={false}
+      />
+    </ToastProvider>,
   );
 
   return { setUrlsInput };
@@ -186,30 +189,32 @@ describe("BatchForm", () => {
 
   it("renders an in-context confirmation with the submitted URLs", () => {
     render(
-      <BatchForm
-        activeTab="scrape"
-        setActiveTab={vi.fn()}
-        form={createFormController()}
-        profiles={[]}
-        urlsInput=""
-        setUrlsInput={vi.fn()}
-        submissionNotice={{
-          batchId: "batch-12345678",
-          kind: "scrape",
-          submittedUrls: ["https://example.com", "https://example.org"],
-        }}
-        onViewSubmittedBatch={vi.fn()}
-        maxDepth={2}
-        setMaxDepth={vi.fn()}
-        maxPages={200}
-        setMaxPages={vi.fn()}
-        query=""
-        setQuery={vi.fn()}
-        onSubmitScrape={vi.fn()}
-        onSubmitCrawl={vi.fn()}
-        onSubmitResearch={vi.fn()}
-        loading={false}
-      />,
+      <ToastProvider>
+        <BatchForm
+          activeTab="scrape"
+          setActiveTab={vi.fn()}
+          form={createFormController()}
+          profiles={[]}
+          urlsInput=""
+          setUrlsInput={vi.fn()}
+          submissionNotice={{
+            batchId: "batch-12345678",
+            kind: "scrape",
+            submittedUrls: ["https://example.com", "https://example.org"],
+          }}
+          onViewSubmittedBatch={vi.fn()}
+          maxDepth={2}
+          setMaxDepth={vi.fn()}
+          maxPages={200}
+          setMaxPages={vi.fn()}
+          query=""
+          setQuery={vi.fn()}
+          onSubmitScrape={vi.fn()}
+          onSubmitCrawl={vi.fn()}
+          onSubmitResearch={vi.fn()}
+          loading={false}
+        />
+      </ToastProvider>,
     );
 
     expect(screen.getByRole("status")).toHaveTextContent(

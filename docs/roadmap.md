@@ -27,7 +27,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- [Toast Notification System](./specs/toast-notification-system.md) — Introduce a global notification layer for success, error, loading, and progress feedback so transient operations stop relying on `alert()`, `confirm()`, `console.error`, and inconsistent inline messaging.
 - Onboarding and Discoverability Expansion — Replace the heavy first-run modal with lighter progressive onboarding, expand guidance beyond the job form, and make command palette, shortcuts, and route-specific help discoverable without prior knowledge.
 - Mobile Experience Pass — Make job monitoring, form actions, results inspection, and automation interactions touch-friendly, improve status readability at small sizes, and provide a mobile-accessible alternative to keyboard-first navigation.
 - Zero-Friction First Run and Empty-State Resilience — Ensure fresh local startup never requires hidden env toggles like `PROXY_POOL_FILE=`, replace dead-end empty states with guided recovery steps, and make setup/runtime problems visible inside the product instead of only in terminal logs.

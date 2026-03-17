@@ -1,11 +1,9 @@
 /**
- * Batch Form Component
- *
- * Form for submitting batch jobs (scrape, crawl, research).
- * Supports URL list input (textarea), file upload (CSV/JSON),
- * and shared configuration options.
- *
- * @module BatchForm
+ * Purpose: Render the operator-facing batch submission workspace for scrape, crawl, and research jobs.
+ * Responsibilities: Parse URL input and uploads, validate batch-specific requirements, build typed API requests from shared form state, and preserve in-context submission notices.
+ * Scope: Batch authoring only; server mutation side effects and batch list rendering stay outside this component.
+ * Usage: Render from `BatchContainer` with the shared `FormController`, controlled batch-local fields, and submit callbacks.
+ * Invariants/Assumptions: URLs are validated before request assembly, research batches require a non-empty query, and transient validation problems surface through the global toast system instead of browser alerts.
  */
 import {
   useMemo,
@@ -46,6 +44,7 @@ import {
   parseBatchUrls,
   summarizeBatchUrls,
 } from "../lib/batch-urls";
+import { useToast } from "./toast";
 
 interface BatchFormProps {
   // Job type selector
@@ -117,6 +116,8 @@ export function BatchForm({
   onSubmitResearch,
   loading,
 }: BatchFormProps) {
+  const toast = useToast();
+
   const {
     headless,
     setHeadless,
@@ -376,7 +377,11 @@ export function BatchForm({
       shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
-      alert(error instanceof Error ? error.message : String(error));
+      toast.show({
+        tone: "error",
+        title: "Batch scrape configuration is invalid",
+        description: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
 
@@ -409,6 +414,7 @@ export function BatchForm({
     device,
     resolveAIExtractOptions,
     onSubmitScrape,
+    toast,
   ]);
 
   // Handle crawl submit
@@ -421,7 +427,11 @@ export function BatchForm({
       shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
-      alert(error instanceof Error ? error.message : String(error));
+      toast.show({
+        tone: "error",
+        title: "Batch crawl configuration is invalid",
+        description: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
 
@@ -458,13 +468,18 @@ export function BatchForm({
     device,
     resolveAIExtractOptions,
     onSubmitCrawl,
+    toast,
   ]);
 
   // Handle research submit
   const handleSubmitResearch = useCallback(async () => {
     if (!validateUrls()) return;
     if (!query.trim()) {
-      alert("Research query is required");
+      toast.show({
+        tone: "warning",
+        title: "Research query required",
+        description: "Add the question you want this batch of URLs to answer.",
+      });
       return;
     }
 
@@ -475,7 +490,11 @@ export function BatchForm({
       shared = buildSharedRequestConfig(form);
       aiExtractOptions = resolveAIExtractOptions();
     } catch (error) {
-      alert(error instanceof Error ? error.message : String(error));
+      toast.show({
+        tone: "error",
+        title: "Batch research configuration is invalid",
+        description: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
 
@@ -514,6 +533,7 @@ export function BatchForm({
     resolveAIExtractOptions,
     resolveAgenticOptions,
     onSubmitResearch,
+    toast,
   ]);
 
   // Handle submit based on active tab

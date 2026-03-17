@@ -1,17 +1,9 @@
 /**
- * WatchContainer - Container component for watch management functionality
- *
- * This component encapsulates all watch-related state and operations:
- * - Loading and displaying watches
- * - Creating, updating, and deleting watches
- * - Checking watch status
- *
- * It does NOT handle:
- * - Job submission or results viewing
- * - Chain management
- * - Batch operations
- *
- * @module WatchContainer
+ * Purpose: Coordinate watch-management data loading and mutations for the automation route.
+ * Responsibilities: Fetch the authoritative watch list, proxy create/update/delete/check actions to the API, and surface success/failure feedback through the shared toast layer.
+ * Scope: Watch route container behavior only; form/list presentation stays inside `WatchManager`.
+ * Usage: Render from the automation route wherever the watch workspace should appear.
+ * Invariants/Assumptions: The server remains the source of truth for watch state, post-mutation refreshes reconcile local state, and operator-triggered checks always surface completion feedback.
  */
 
 import { useCallback, useEffect, useState, Suspense, lazy } from "react";
@@ -26,6 +18,8 @@ import {
   type WatchCheckResult,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { getApiErrorMessage } from "../../lib/api-errors";
+import { useToast } from "../toast";
 
 const WatchManager = lazy(() =>
   import("../../components/WatchManager").then((mod) => ({
@@ -34,6 +28,7 @@ const WatchManager = lazy(() =>
 );
 
 export function WatchContainer() {
+  const toast = useToast();
   const [watches, setWatches] = useState<Watch[]>([]);
   const [watchesLoading, setWatchesLoading] = useState(false);
 
@@ -42,65 +37,151 @@ export function WatchContainer() {
     try {
       const { data, error } = await listWatches({ baseUrl: getApiBaseUrl() });
       if (error) {
+        const message = getApiErrorMessage(error, "Failed to load watches.");
         console.error("Failed to load watches:", error);
+        toast.show({
+          tone: "error",
+          title: "Failed to load watches",
+          description: message,
+        });
         return;
       }
       setWatches(data?.watches || []);
     } catch (err) {
       console.error("Error loading watches:", err);
+      toast.show({
+        tone: "error",
+        title: "Failed to load watches",
+        description: getApiErrorMessage(err, "Failed to load watches."),
+      });
     } finally {
       setWatchesLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const handleCreateWatch = useCallback(
     async (input: WatchInput) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Creating watch",
+        description: "Saving the new watch configuration.",
+      });
       const { error } = await createWatch({
         baseUrl: getApiBaseUrl(),
         body: input,
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(error, "Failed to create watch.");
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to create watch",
+          description: message,
+        });
+        throw error;
+      }
       await refreshWatches();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Watch created",
+        description: `${input.url} is now being monitored for change detection.`,
+      });
     },
-    [refreshWatches],
+    [refreshWatches, toast],
   );
 
   const handleUpdateWatch = useCallback(
     async (id: string, input: WatchInput) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Updating watch",
+        description: "Saving the latest watch changes.",
+      });
       const { error } = await updateWatch({
         baseUrl: getApiBaseUrl(),
         path: { id },
         body: input,
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(error, "Failed to update watch.");
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to update watch",
+          description: message,
+        });
+        throw error;
+      }
       await refreshWatches();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Watch updated",
+        description: `${input.url} now reflects the latest watch settings.`,
+      });
     },
-    [refreshWatches],
+    [refreshWatches, toast],
   );
 
   const handleDeleteWatch = useCallback(
     async (id: string) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Deleting watch",
+        description: "Removing the saved watch configuration.",
+      });
       const { error } = await deleteWatch({
         baseUrl: getApiBaseUrl(),
         path: { id },
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(error, "Failed to delete watch.");
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to delete watch",
+          description: message,
+        });
+        throw error;
+      }
       await refreshWatches();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Watch deleted",
+        description: "The selected watch has been removed.",
+      });
     },
-    [refreshWatches],
+    [refreshWatches, toast],
   );
 
   const handleCheckWatch = useCallback(
     async (id: string): Promise<WatchCheckResult | undefined> => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Running watch check",
+        description:
+          "Comparing the latest response against the stored baseline.",
+      });
       const { data, error } = await checkWatch({
         baseUrl: getApiBaseUrl(),
         path: { id },
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(error, "Failed to run watch check.");
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to run watch check",
+          description: message,
+        });
+        throw error;
+      }
       await refreshWatches();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Watch check finished",
+        description: data?.changed
+          ? "Spartan detected a change in the watched target."
+          : "No change was detected in the watched target.",
+      });
       return data;
     },
-    [refreshWatches],
+    [refreshWatches, toast],
   );
 
   useEffect(() => {

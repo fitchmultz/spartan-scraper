@@ -1,15 +1,9 @@
 /**
- * PipelineJSEditor - Web UI component for managing pipeline JavaScript scripts
- *
- * Responsibilities:
- * - Display list of pipeline JS scripts with create/edit/delete capabilities
- * - Form for creating/editing JS script configuration
- * - JSON preview for advanced users
- * - Empty state guidance
- *
- * This component does NOT:
- * - Execute JavaScript code
- * - Handle script matching at runtime
+ * Purpose: Provide the Settings-route editor for stored pipeline JavaScript configurations.
+ * Responsibilities: Load the script inventory, coordinate create/edit/delete flows, surface operator feedback through inline state and toasts, and host the existing AI generation/debug helpers.
+ * Scope: Browser-side pipeline-script management only; runtime execution and matching logic stay on the backend.
+ * Usage: Render inside the Settings route without additional providers beyond the app-level toast boundary.
+ * Invariants/Assumptions: Script persistence goes through the generated API client, errors remain user-safe, and destructive actions must use the shared confirmation dialog instead of browser-native prompts.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -24,12 +18,14 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
+import { useToast } from "../toast";
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
 }
 
 export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
+  const toast = useToast();
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +64,11 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
   }, [loadScripts]);
 
   const handleCreate = async (input: PipelineJsInput) => {
+    const toastId = toast.show({
+      tone: "loading",
+      title: input.name ? `Creating ${input.name}` : "Creating script",
+      description: "Saving the new pipeline JavaScript configuration.",
+    });
     try {
       setError(null);
       const response = await postV1PipelineJs({ body: input });
@@ -78,14 +79,29 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
       }
       await loadScripts();
       setIsCreating(false);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Script created",
+        description: `${input.name} is ready for pipeline matching.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to create script");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to create script",
+        description: message,
+      });
     }
   };
 
   const handleUpdate = async (name: string, input: PipelineJsInput) => {
+    const toastId = toast.show({
+      tone: "loading",
+      title: `Updating ${name}`,
+      description: "Saving the latest pipeline JavaScript changes.",
+    });
     try {
       setError(null);
       const response = await putV1PipelineJsByName({
@@ -99,15 +115,39 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
       }
       await loadScripts();
       setEditingScript(null);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Script updated",
+        description: `${name} now reflects the latest configuration.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to update script");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to update script",
+        description: message,
+      });
     }
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete script "${name}"?`)) return;
+    const confirmed = await toast.confirm({
+      title: `Delete ${name}?`,
+      description:
+        "This removes the saved script configuration from local storage. Matching pages will stop using it immediately.",
+      confirmLabel: "Delete script",
+      cancelLabel: "Keep script",
+      tone: "error",
+    });
+    if (!confirmed) return;
+
+    const toastId = toast.show({
+      tone: "loading",
+      title: `Deleting ${name}`,
+      description: "Removing the saved pipeline script.",
+    });
     try {
       setError(null);
       const response = await deleteV1PipelineJsByName({ path: { name } });
@@ -117,10 +157,20 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
         );
       }
       await loadScripts();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Script deleted",
+        description: `${name} has been removed.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to delete script");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to delete script",
+        description: message,
+      });
     }
   };
 

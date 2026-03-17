@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ToastProvider } from "../toast";
 import { RenderProfileEditor } from "./RenderProfileEditor";
 import * as api from "../../api";
 
@@ -29,7 +30,11 @@ describe("RenderProfileEditor", () => {
     });
 
     const onError = vi.fn();
-    render(<RenderProfileEditor onError={onError} />);
+    render(
+      <ToastProvider>
+        <RenderProfileEditor onError={onError} />
+      </ToastProvider>,
+    );
 
     await screen.findByRole("button", { name: /create profile/i });
 
@@ -51,9 +56,7 @@ describe("RenderProfileEditor", () => {
       });
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "invalid hostPatterns",
-    );
+    expect(await screen.findAllByText("invalid hostPatterns")).toHaveLength(2);
     expect(
       screen.getByRole("heading", { name: /create new profile/i }),
     ).toBeInTheDocument();

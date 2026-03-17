@@ -1,18 +1,9 @@
 /**
- * ExportScheduleContainer - Container component for export schedule management
- *
- * This component encapsulates all export schedule-related state and operations:
- * - Loading and displaying export schedules
- * - Creating, updating, and deleting export schedules
- * - Viewing export history
- * - Toggling schedule enabled state
- *
- * It does NOT handle:
- * - Job submission or results viewing
- * - Watch management
- * - Batch operations
- *
- * @module ExportScheduleContainer
+ * Purpose: Coordinate export-schedule data loading and mutations for the automation route.
+ * Responsibilities: Fetch the authoritative schedule list, proxy create/update/delete/toggle/history actions to the API, and surface operator-facing success/failure feedback through shared toasts.
+ * Scope: Export-schedule container behavior only; modal/list presentation stays in `ExportScheduleManager`.
+ * Usage: Render from the automation route with the app-level toast provider already mounted.
+ * Invariants/Assumptions: The server remains the source of truth for schedules, post-mutation refreshes reconcile local state, and history-load failures should never disappear into console-only output.
  */
 
 import { useCallback, useEffect, useState, Suspense, lazy } from "react";
@@ -28,6 +19,8 @@ import {
   type ExportHistoryRecord,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { getApiErrorMessage } from "../../lib/api-errors";
+import { useToast } from "../toast";
 
 const ExportScheduleManager = lazy(() =>
   import("../../components/ExportScheduleManager").then((mod) => ({
@@ -36,6 +29,7 @@ const ExportScheduleManager = lazy(() =>
 );
 
 export function ExportScheduleContainer() {
+  const toast = useToast();
   const [schedules, setSchedules] = useState<ExportSchedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
 
@@ -46,63 +40,173 @@ export function ExportScheduleContainer() {
         baseUrl: getApiBaseUrl(),
       });
       if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to load export schedules.",
+        );
         console.error("Failed to load export schedules:", error);
+        toast.show({
+          tone: "error",
+          title: "Failed to load export schedules",
+          description: message,
+        });
         return;
       }
       setSchedules(data?.schedules || []);
     } catch (err) {
       console.error("Error loading export schedules:", err);
+      toast.show({
+        tone: "error",
+        title: "Failed to load export schedules",
+        description: getApiErrorMessage(
+          err,
+          "Failed to load export schedules.",
+        ),
+      });
     } finally {
       setSchedulesLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const handleCreateSchedule = useCallback(
     async (request: ExportScheduleRequest) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: request.name
+          ? `Creating ${request.name}`
+          : "Creating export schedule",
+        description: "Saving the new recurring export configuration.",
+      });
       const { error } = await createExportSchedule({
         baseUrl: getApiBaseUrl(),
         body: request,
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to create export schedule.",
+        );
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to create export schedule",
+          description: message,
+        });
+        throw error;
+      }
       await refreshSchedules();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Export schedule created",
+        description: `${request.name} is now ready to run automatically.`,
+      });
     },
-    [refreshSchedules],
+    [refreshSchedules, toast],
   );
 
   const handleUpdateSchedule = useCallback(
     async (id: string, request: ExportScheduleRequest) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: request.name
+          ? `Updating ${request.name}`
+          : "Updating export schedule",
+        description: "Saving the latest export schedule changes.",
+      });
       const { error } = await updateExportSchedule({
         baseUrl: getApiBaseUrl(),
         path: { id },
         body: request,
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to update export schedule.",
+        );
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to update export schedule",
+          description: message,
+        });
+        throw error;
+      }
       await refreshSchedules();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Export schedule updated",
+        description: `${request.name} now reflects the latest settings.`,
+      });
     },
-    [refreshSchedules],
+    [refreshSchedules, toast],
   );
 
   const handleDeleteSchedule = useCallback(
     async (id: string) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Deleting export schedule",
+        description: "Removing the recurring export configuration.",
+      });
       const { error } = await deleteExportSchedule({
         baseUrl: getApiBaseUrl(),
         path: { id },
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to delete export schedule.",
+        );
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to delete export schedule",
+          description: message,
+        });
+        throw error;
+      }
       await refreshSchedules();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Export schedule deleted",
+        description: "The selected recurring export has been removed.",
+      });
     },
-    [refreshSchedules],
+    [refreshSchedules, toast],
   );
 
   const handleToggleEnabled = useCallback(
     async (id: string, enabled: boolean) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: enabled
+          ? "Enabling export schedule"
+          : "Disabling export schedule",
+        description: "Saving the updated schedule state.",
+      });
       // First get the current schedule
       const { data, error: getError } = await getExportSchedule({
         baseUrl: getApiBaseUrl(),
         path: { id },
       });
-      if (getError) throw getError;
-      if (!data) throw new Error("Schedule not found");
+      if (getError) {
+        const message = getApiErrorMessage(
+          getError,
+          "Failed to load export schedule.",
+        );
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to update export schedule",
+          description: message,
+        });
+        throw getError;
+      }
+      if (!data) {
+        const message = "Schedule not found";
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to update export schedule",
+          description: message,
+        });
+        throw new Error(message);
+      }
 
       // Update only the enabled field
       const { error: updateError } = await updateExportSchedule({
@@ -116,10 +220,26 @@ export function ExportScheduleContainer() {
           retry: data.retry,
         },
       });
-      if (updateError) throw updateError;
+      if (updateError) {
+        const message = getApiErrorMessage(
+          updateError,
+          "Failed to update export schedule.",
+        );
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to update export schedule",
+          description: message,
+        });
+        throw updateError;
+      }
       await refreshSchedules();
+      toast.update(toastId, {
+        tone: "success",
+        title: enabled ? "Export schedule enabled" : "Export schedule disabled",
+        description: `${data.name} has been ${enabled ? "enabled" : "disabled"}.`,
+      });
     },
-    [refreshSchedules],
+    [refreshSchedules, toast],
   );
 
   const handleGetHistory = useCallback(
@@ -133,13 +253,24 @@ export function ExportScheduleContainer() {
         path: { id },
         query: { limit, offset },
       });
-      if (error) throw error;
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to load export history.",
+        );
+        toast.show({
+          tone: "error",
+          title: "Failed to load export history",
+          description: message,
+        });
+        throw error;
+      }
       return {
         records: data?.records || [],
         total: data?.total || 0,
       };
     },
-    [],
+    [toast],
   );
 
   useEffect(() => {

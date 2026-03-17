@@ -1,17 +1,16 @@
 /**
- * React Application Entry Point
- *
- * This file initializes the Spartan Scraper web application by:
- * 1. Locating the root DOM element (#root)
- * 2. Creating a React root with concurrent rendering
- * 3. Rendering the main App component in StrictMode
- *
- * @module main
+ * Purpose: Bootstrap the Spartan Scraper web application and mount the root provider tree.
+ * Responsibilities: Configure the generated API client, locate the React root, and render the app inside the shared StrictMode and toast-notification boundaries.
+ * Scope: Client-side startup only.
+ * Usage: Executed by Vite as the browser entrypoint.
+ * Invariants/Assumptions: `#root` exists in `index.html`, API client configuration is side-effectful but idempotent, and the toast provider wraps the entire app.
  */
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "./App";
+import { ToastProvider } from "./components/toast";
 import { configureApiClient } from "./lib/api-config";
 
 const root = document.getElementById("root");
@@ -23,6 +22,8 @@ configureApiClient();
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <ToastProvider>
+      <App />
+    </ToastProvider>
   </StrictMode>,
 );

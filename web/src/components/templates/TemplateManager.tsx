@@ -24,6 +24,7 @@ import {
   type TemplateAssistantMode,
   useAIAssistant,
 } from "../ai-assistant";
+import { useToast } from "../toast";
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 import { TemplateEditorInline } from "./TemplateEditorInline";
 import {
@@ -49,6 +50,7 @@ export function TemplateManager({
   onTemplatesChanged,
 }: TemplateManagerProps) {
   const aiAssistant = useAIAssistant();
+  const toast = useToast();
   const [selectedName, setSelectedName] = useState<string | null>(
     templateNames[0] ?? null,
   );
@@ -85,8 +87,20 @@ export function TemplateManager({
 
   const draftTemplate = useMemo(() => buildTemplateSnapshot(draft), [draft]);
 
-  const confirmDiscardChanges = () =>
-    !isDirty || window.confirm("Discard unsaved template changes?");
+  const confirmDiscardChanges = useCallback(async () => {
+    if (!isDirty) {
+      return true;
+    }
+
+    return toast.confirm({
+      title: "Discard unsaved template changes?",
+      description:
+        "Your in-progress edits will be lost and the previous saved state will stay unchanged.",
+      confirmLabel: "Discard changes",
+      cancelLabel: "Keep editing",
+      tone: "warning",
+    });
+  }, [isDirty, toast]);
 
   const loadDraft = useCallback(
     (
@@ -217,9 +231,21 @@ export function TemplateManager({
   const handleSave = async () => {
     const { payload, error } = buildTemplatePayload(draft);
     if (!payload || error) {
-      setSaveError(error ?? "Failed to build template payload.");
+      const message = error ?? "Failed to build template payload.";
+      setSaveError(message);
+      toast.show({
+        tone: "error",
+        title: "Template configuration is invalid",
+        description: message,
+      });
       return;
     }
+
+    const toastId = toast.show({
+      tone: "loading",
+      title: payload.name ? `Saving ${payload.name}` : "Saving template",
+      description: "Persisting your template changes.",
+    });
 
     setIsSaving(true);
     setSaveError(null);
@@ -266,10 +292,20 @@ export function TemplateManager({
       setSaveNotice("Template saved.");
       setSelectedName(payload.name);
       onTemplatesChanged();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Template saved",
+        description: `${payload.name} is ready to reuse from the template library.`,
+      });
     } catch (error) {
-      setSaveError(
-        error instanceof Error ? error.message : "Failed to save template.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to save template.";
+      setSaveError(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to save template",
+        description: message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -280,13 +316,23 @@ export function TemplateManager({
       return;
     }
 
-    if (
-      !window.confirm(
-        `Delete the "${selectedTemplateData.name}" template? This only removes the saved custom template.`,
-      )
-    ) {
+    const confirmed = await toast.confirm({
+      title: `Delete ${selectedTemplateData.name}?`,
+      description:
+        "This removes the saved custom template from the library. Built-in templates remain available.",
+      confirmLabel: "Delete template",
+      cancelLabel: "Keep template",
+      tone: "error",
+    });
+    if (!confirmed) {
       return;
     }
+
+    const toastId = toast.show({
+      tone: "loading",
+      title: `Deleting ${selectedTemplateData.name}`,
+      description: "Removing the saved template from the library.",
+    });
 
     setDetailError(null);
     try {
@@ -306,15 +352,25 @@ export function TemplateManager({
       setSelectedName(null);
       setSelectedTemplate(null);
       loadDraft(undefined, "create");
+      toast.update(toastId, {
+        tone: "success",
+        title: "Template deleted",
+        description: `${selectedTemplateData.name} has been removed from the library.`,
+      });
     } catch (error) {
-      setDetailError(
-        error instanceof Error ? error.message : "Failed to delete template.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to delete template.";
+      setDetailError(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to delete template",
+        description: message,
+      });
     }
   };
 
-  const handleStartCreate = () => {
-    if (!confirmDiscardChanges()) {
+  const handleStartCreate = async () => {
+    if (!(await confirmDiscardChanges())) {
       return;
     }
 
@@ -322,8 +378,8 @@ export function TemplateManager({
     loadDraft(undefined, "create");
   };
 
-  const handleStartDuplicate = () => {
-    if (!selectedTemplateData || !confirmDiscardChanges()) {
+  const handleStartDuplicate = async () => {
+    if (!selectedTemplateData || !(await confirmDiscardChanges())) {
       return;
     }
 
@@ -340,12 +396,12 @@ export function TemplateManager({
     );
   };
 
-  const handleSelectTemplate = (name: string) => {
+  const handleSelectTemplate = async (name: string) => {
     if (name === selectedName) {
       return;
     }
 
-    if (!confirmDiscardChanges()) {
+    if (!(await confirmDiscardChanges())) {
       return;
     }
 

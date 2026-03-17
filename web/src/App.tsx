@@ -62,6 +62,7 @@ import { ProxyPoolStatusPanel } from "./components/ProxyPoolStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
 import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
+import { useToast } from "./components/toast";
 import { TemplateManager } from "./components/templates/TemplateManager";
 import { PresetContainer } from "./components/presets/PresetContainer";
 import {
@@ -92,6 +93,7 @@ import {
   submitScrapeJob,
 } from "./lib/job-actions";
 import { getApiBaseUrl } from "./lib/api-config";
+import { getApiErrorMessage } from "./lib/api-errors";
 import { saveJobsViewState } from "./lib/job-monitoring";
 import type { JobPreset, JobType } from "./types/presets";
 
@@ -226,6 +228,7 @@ export function App() {
 
 function AppShell() {
   const aiAssistant = useAIAssistant();
+  const toast = useToast();
   const appData = useAppData();
   const formState = useFormState();
   const resultsState = useResultsState();
@@ -390,73 +393,179 @@ function AppShell() {
 
   const handleSubmitScrape = useCallback(
     async (request: ScrapeRequest) => {
-      await submitScrapeJob(postV1Scrape, {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Submitting scrape job",
+        description:
+          "Queueing your scrape request and refreshing the Jobs view.",
+      });
+
+      const result = await submitScrapeJob(postV1Scrape, {
         request,
         setLoading: () => {},
         setError: () => {},
         refreshJobs,
         getApiBaseUrl,
       });
+
+      if (result.status === "error") {
+        toast.update(toastId, {
+          tone: "error",
+          title: "Scrape job failed",
+          description: result.message,
+        });
+        return;
+      }
+
       jobSubmissionRef.current?.clearDraft("scrape");
+      toast.update(toastId, {
+        tone: "success",
+        title: "Scrape job queued",
+        description: "The new run is now visible from Jobs.",
+      });
       navigate("/jobs");
     },
-    [refreshJobs, navigate],
+    [navigate, refreshJobs, toast],
   );
 
   const handleSubmitCrawl = useCallback(
     async (request: CrawlRequest) => {
-      await submitCrawlJob(postV1Crawl, {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Submitting crawl job",
+        description:
+          "Queueing your crawl request and refreshing the Jobs view.",
+      });
+
+      const result = await submitCrawlJob(postV1Crawl, {
         request,
         setLoading: () => {},
         setError: () => {},
         refreshJobs,
         getApiBaseUrl,
       });
+
+      if (result.status === "error") {
+        toast.update(toastId, {
+          tone: "error",
+          title: "Crawl job failed",
+          description: result.message,
+        });
+        return;
+      }
+
       jobSubmissionRef.current?.clearDraft("crawl");
+      toast.update(toastId, {
+        tone: "success",
+        title: "Crawl job queued",
+        description: "The crawl is now visible from Jobs.",
+      });
       navigate("/jobs");
     },
-    [refreshJobs, navigate],
+    [navigate, refreshJobs, toast],
   );
 
   const handleSubmitResearch = useCallback(
     async (request: ResearchRequest) => {
-      await submitResearchJob(postV1Research, {
+      const toastId = toast.show({
+        tone: "loading",
+        title: "Submitting research job",
+        description:
+          "Queueing your research request and refreshing the Jobs view.",
+      });
+
+      const result = await submitResearchJob(postV1Research, {
         request,
         setLoading: () => {},
         setError: () => {},
         refreshJobs,
         getApiBaseUrl,
       });
+
+      if (result.status === "error") {
+        toast.update(toastId, {
+          tone: "error",
+          title: "Research job failed",
+          description: result.message,
+        });
+        return;
+      }
+
       jobSubmissionRef.current?.clearDraft("research");
+      toast.update(toastId, {
+        tone: "success",
+        title: "Research job queued",
+        description: "The research run is now visible from Jobs.",
+      });
       navigate("/jobs");
     },
-    [refreshJobs, navigate],
+    [navigate, refreshJobs, toast],
   );
 
   const cancelJob = useCallback(
     async (jobId: string) => {
+      const toastId = toast.show({
+        tone: "loading",
+        title: `Canceling job ${formatShortJobId(jobId)}`,
+        description: "Requesting a graceful stop for the active run.",
+      });
+
       try {
         const { error: apiError } = await deleteV1JobsById({
           baseUrl: getApiBaseUrl(),
           path: { id: jobId },
         });
         if (apiError) {
-          console.error(String(apiError));
+          toast.update(toastId, {
+            tone: "error",
+            title: "Failed to cancel job",
+            description: getApiErrorMessage(
+              apiError,
+              "Unable to stop the selected job.",
+            ),
+          });
           return;
         }
         await refreshJobs();
+        toast.update(toastId, {
+          tone: "success",
+          title: "Job canceled",
+          description: `Job ${formatShortJobId(jobId)} is no longer running.`,
+        });
       } catch (err) {
-        console.error(String(err));
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to cancel job",
+          description: getApiErrorMessage(
+            err,
+            "Unable to stop the selected job.",
+          ),
+        });
       }
     },
-    [refreshJobs],
+    [refreshJobs, toast],
   );
 
   const deleteJob = useCallback(
     async (jobId: string) => {
-      if (!confirm("Are you sure you want to permanently delete this job?")) {
+      const confirmed = await toast.confirm({
+        title: "Delete this job permanently?",
+        description:
+          "This removes the saved run and its local artifacts. This action cannot be undone.",
+        confirmLabel: "Delete job",
+        cancelLabel: "Keep job",
+        tone: "error",
+      });
+      if (!confirmed) {
         return;
       }
+
+      const toastId = toast.show({
+        tone: "loading",
+        title: `Deleting job ${formatShortJobId(jobId)}`,
+        description: "Removing the saved run from local storage.",
+      });
+
       try {
         const { error: apiError } = await deleteV1JobsById({
           baseUrl: getApiBaseUrl(),
@@ -464,18 +573,37 @@ function AppShell() {
           query: { force: true },
         });
         if (apiError) {
-          console.error(String(apiError));
+          toast.update(toastId, {
+            tone: "error",
+            title: "Failed to delete job",
+            description: getApiErrorMessage(
+              apiError,
+              "Unable to delete the selected job.",
+            ),
+          });
           return;
         }
         await refreshJobs();
         if (selectedJobId === jobId) {
           navigate("/jobs");
         }
+        toast.update(toastId, {
+          tone: "success",
+          title: "Job deleted",
+          description: `Job ${formatShortJobId(jobId)} has been removed.`,
+        });
       } catch (err) {
-        console.error(String(err));
+        toast.update(toastId, {
+          tone: "error",
+          title: "Failed to delete job",
+          description: getApiErrorMessage(
+            err,
+            "Unable to delete the selected job.",
+          ),
+        });
       }
     },
-    [navigate, refreshJobs, selectedJobId],
+    [navigate, refreshJobs, selectedJobId, toast],
   );
 
   const handleViewResults = useCallback(
@@ -936,13 +1064,11 @@ function AppShell() {
           />
 
           <section className="panel">
-            <RenderProfileEditor
-              onError={(message) => console.error(message)}
-            />
+            <RenderProfileEditor />
           </section>
 
           <section className="panel">
-            <PipelineJSEditor onError={(message) => console.error(message)} />
+            <PipelineJSEditor />
           </section>
 
           <ProxyPoolStatusPanel />

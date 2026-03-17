@@ -1,15 +1,9 @@
 /**
- * RenderProfileEditor - Web UI component for managing render profiles
- *
- * Responsibilities:
- * - Display list of render profiles with create/edit/delete capabilities
- * - Form for creating/editing render profile configuration
- * - JSON preview for advanced users
- * - Empty state guidance
- *
- * This component does NOT:
- * - Handle runtime profile matching
- * - Execute fetches
+ * Purpose: Provide the Settings-route editor for saved render profiles.
+ * Responsibilities: Load the render-profile inventory, coordinate create/edit/delete flows, expose JSON inspection and AI helpers, and route transient operator feedback through the shared toast system.
+ * Scope: Browser-side render-profile management only; fetch execution and runtime matching stay outside this component.
+ * Usage: Render inside the Settings route with the app-level toast provider already mounted.
+ * Invariants/Assumptions: Profiles are persisted through the generated API client, destructive actions require the shared confirmation dialog, and API errors should remain visible in both inline state and toasts.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -24,12 +18,14 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
+import { useToast } from "../toast";
 
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
 }
 
 export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
+  const toast = useToast();
   const [profiles, setProfiles] = useState<RenderProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +63,11 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
   }, [loadProfiles]);
 
   const handleCreate = async (input: RenderProfileInput) => {
+    const toastId = toast.show({
+      tone: "loading",
+      title: input.name ? `Creating ${input.name}` : "Creating render profile",
+      description: "Saving the new render profile configuration.",
+    });
     try {
       setError(null);
       const response = await postV1RenderProfiles({ body: input });
@@ -77,14 +78,29 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
       }
       await loadProfiles();
       setIsCreating(false);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Render profile created",
+        description: `${input.name} is now available for fetch configuration.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to create profile");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to create render profile",
+        description: message,
+      });
     }
   };
 
   const handleUpdate = async (name: string, input: RenderProfileInput) => {
+    const toastId = toast.show({
+      tone: "loading",
+      title: `Updating ${name}`,
+      description: "Saving the latest render profile changes.",
+    });
     try {
       setError(null);
       const response = await putV1RenderProfilesByName({
@@ -98,15 +114,39 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
       }
       await loadProfiles();
       setEditingProfile(null);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Render profile updated",
+        description: `${name} now reflects the latest configuration.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to update profile");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to update render profile",
+        description: message,
+      });
     }
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete profile "${name}"?`)) return;
+    const confirmed = await toast.confirm({
+      title: `Delete ${name}?`,
+      description:
+        "This removes the saved render profile from local storage. Jobs that reference it will need a different profile.",
+      confirmLabel: "Delete profile",
+      cancelLabel: "Keep profile",
+      tone: "error",
+    });
+    if (!confirmed) return;
+
+    const toastId = toast.show({
+      tone: "loading",
+      title: `Deleting ${name}`,
+      description: "Removing the saved render profile.",
+    });
     try {
       setError(null);
       const response = await deleteV1RenderProfilesByName({ path: { name } });
@@ -116,10 +156,20 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
         );
       }
       await loadProfiles();
+      toast.update(toastId, {
+        tone: "success",
+        title: "Render profile deleted",
+        description: `${name} has been removed.`,
+      });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to delete profile");
       setError(message);
       onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to delete render profile",
+        description: message,
+      });
     }
   };
 

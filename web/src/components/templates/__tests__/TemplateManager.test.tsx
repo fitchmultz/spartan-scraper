@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TemplateManager } from "../TemplateManager";
 import { AIAssistantProvider } from "../../ai-assistant";
+import { ToastProvider } from "../../toast";
 import * as api from "../../../api";
 
 vi.mock("../../../api", () => ({
@@ -89,12 +90,14 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <AIAssistantProvider>
-        <TemplateManager
-          templateNames={["custom-news"]}
-          onTemplatesChanged={onTemplatesChanged}
-        />
-      </AIAssistantProvider>,
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["custom-news"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
     );
 
     expect(await screen.findByLabelText(/template name/i)).toHaveValue(
@@ -149,18 +152,24 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <AIAssistantProvider>
-        <TemplateManager
-          templateNames={["article"]}
-          onTemplatesChanged={onTemplatesChanged}
-        />
-      </AIAssistantProvider>,
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["article"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
     );
 
     await screen.findByRole("button", { name: /duplicate to edit/i });
     fireEvent.click(screen.getByRole("button", { name: /duplicate to edit/i }));
 
-    expect(screen.getByLabelText(/template name/i)).toHaveValue("article-copy");
+    await waitFor(() => {
+      expect(screen.getByLabelText(/template name/i)).toHaveValue(
+        "article-copy",
+      );
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /save template/i }));
 
@@ -202,12 +211,14 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <AIAssistantProvider>
-        <TemplateManager
-          templateNames={["custom-news"]}
-          onTemplatesChanged={onTemplatesChanged}
-        />
-      </AIAssistantProvider>,
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["custom-news"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
     );
 
     await screen.findByLabelText(/preview target url/i);
@@ -255,12 +266,14 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <AIAssistantProvider>
-        <TemplateManager
-          templateNames={["custom-news"]}
-          onTemplatesChanged={onTemplatesChanged}
-        />
-      </AIAssistantProvider>,
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["custom-news"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /^generate$/i }));
@@ -300,12 +313,14 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <AIAssistantProvider>
-        <TemplateManager
-          templateNames={["custom-news"]}
-          onTemplatesChanged={onTemplatesChanged}
-        />
-      </AIAssistantProvider>,
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["custom-news"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
     );
 
     await screen.findByText(/custom-news/i);

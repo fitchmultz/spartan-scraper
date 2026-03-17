@@ -97,7 +97,7 @@ describe("submitScrapeJob", () => {
       getApiBaseUrl,
     });
 
-    expect(mockSetError).toHaveBeenCalledWith("Error: Network error");
+    expect(mockSetError).toHaveBeenCalledWith("Network error");
     expect(mockSetLoading).toHaveBeenCalledWith(false);
   });
 });
@@ -285,7 +285,7 @@ describe("cancelJob", () => {
       getApiBaseUrl,
     );
 
-    expect(mockSetError).toHaveBeenCalledWith("Error: Network error");
+    expect(mockSetError).toHaveBeenCalledWith("Network error");
     expect(mockSetLoading).toHaveBeenCalledWith(false);
   });
 });
@@ -296,8 +296,7 @@ describe("deleteJob", () => {
   });
 
   it("should delete job successfully when confirmed", async () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => true);
+    const confirmDelete = vi.fn(() => true);
 
     mockDeleteV1JobsById.mockResolvedValue({ error: undefined });
     const mockRefreshJobs = vi.fn().mockResolvedValue(undefined);
@@ -306,20 +305,20 @@ describe("deleteJob", () => {
     const mockOnJobDeleted = vi.fn();
     const getApiBaseUrl = vi.fn(() => "http://localhost:8080");
 
-    await deleteJob(
+    const result = await deleteJob(
       mockDeleteV1JobsById,
       "job-123",
       mockSetLoading,
       mockSetError,
       mockRefreshJobs,
       getApiBaseUrl,
+      confirmDelete,
       "job-123",
       mockOnJobDeleted,
     );
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      "Are you sure you want to permanently delete this job?",
-    );
+    expect(confirmDelete).toHaveBeenCalled();
+    expect(result).toEqual({ status: "success" });
     expect(mockDeleteV1JobsById).toHaveBeenCalledWith({
       baseUrl: "http://localhost:8080",
       path: { id: "job-123" },
@@ -328,13 +327,10 @@ describe("deleteJob", () => {
     expect(mockSetError).toHaveBeenCalledWith(null);
     expect(mockRefreshJobs).toHaveBeenCalled();
     expect(mockOnJobDeleted).toHaveBeenCalledWith("job-123");
-
-    window.confirm = originalConfirm;
   });
 
   it("should not delete job when not confirmed", async () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => false);
+    const confirmDelete = vi.fn(() => false);
 
     mockDeleteV1JobsById.mockResolvedValue({ error: undefined });
     const mockRefreshJobs = vi.fn().mockResolvedValue(undefined);
@@ -343,30 +339,27 @@ describe("deleteJob", () => {
     const mockOnJobDeleted = vi.fn();
     const getApiBaseUrl = vi.fn(() => "http://localhost:8080");
 
-    await deleteJob(
+    const result = await deleteJob(
       mockDeleteV1JobsById,
       "job-123",
       mockSetLoading,
       mockSetError,
       mockRefreshJobs,
       getApiBaseUrl,
+      confirmDelete,
       "job-123",
       mockOnJobDeleted,
     );
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      "Are you sure you want to permanently delete this job?",
-    );
+    expect(confirmDelete).toHaveBeenCalled();
+    expect(result).toEqual({ status: "canceled" });
     expect(mockDeleteV1JobsById).not.toHaveBeenCalled();
     expect(mockRefreshJobs).not.toHaveBeenCalled();
     expect(mockOnJobDeleted).not.toHaveBeenCalled();
-
-    window.confirm = originalConfirm;
   });
 
   it("should handle API error", async () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => true);
+    const confirmDelete = vi.fn(() => true);
 
     mockDeleteV1JobsById.mockResolvedValue({ error: "Delete failed" });
     const mockRefreshJobs = vi.fn().mockResolvedValue(undefined);
@@ -375,27 +368,26 @@ describe("deleteJob", () => {
     const mockOnJobDeleted = vi.fn();
     const getApiBaseUrl = vi.fn(() => "http://localhost:8080");
 
-    await deleteJob(
+    const result = await deleteJob(
       mockDeleteV1JobsById,
       "job-123",
       mockSetLoading,
       mockSetError,
       mockRefreshJobs,
       getApiBaseUrl,
+      confirmDelete,
       "job-123",
       mockOnJobDeleted,
     );
 
+    expect(result).toEqual({ status: "error", message: "Delete failed" });
     expect(mockSetError).toHaveBeenCalledWith("Delete failed");
     expect(mockRefreshJobs).not.toHaveBeenCalled();
     expect(mockOnJobDeleted).not.toHaveBeenCalled();
-
-    window.confirm = originalConfirm;
   });
 
   it("should call onJobDeleted when deleting selected job", async () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => true);
+    const confirmDelete = vi.fn(() => true);
 
     mockDeleteV1JobsById.mockResolvedValue({ error: undefined });
     const mockRefreshJobs = vi.fn().mockResolvedValue(undefined);
@@ -411,18 +403,16 @@ describe("deleteJob", () => {
       mockSetError,
       mockRefreshJobs,
       getApiBaseUrl,
+      confirmDelete,
       "job-123",
       mockOnJobDeleted,
     );
 
     expect(mockOnJobDeleted).toHaveBeenCalledWith("job-123");
-
-    window.confirm = originalConfirm;
   });
 
   it("should not call onJobDeleted when deleting different job", async () => {
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => true);
+    const confirmDelete = vi.fn(() => true);
 
     mockDeleteV1JobsById.mockResolvedValue({ error: undefined });
     const mockRefreshJobs = vi.fn().mockResolvedValue(undefined);
@@ -438,12 +428,11 @@ describe("deleteJob", () => {
       mockSetError,
       mockRefreshJobs,
       getApiBaseUrl,
+      confirmDelete,
       "job-456",
       mockOnJobDeleted,
     );
 
     expect(mockOnJobDeleted).not.toHaveBeenCalled();
-
-    window.confirm = originalConfirm;
   });
 });

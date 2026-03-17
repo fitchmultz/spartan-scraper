@@ -1,14 +1,15 @@
 /**
- * Chain List Component
- *
- * Displays the list of job chains with their details and provides actions
- * for viewing, submitting, and deleting chains.
- *
- * @module ChainList
+ * Purpose: Render the saved job-chain inventory with inline expand, submit, and delete controls.
+ * Responsibilities: Display chain summaries, collect optional JSON overrides for submissions, and route destructive/transient feedback through the shared toast system.
+ * Scope: Chain list presentation and local interaction state only.
+ * Usage: Mount inside the automation route with authoritative chain data and mutation callbacks supplied by the parent container.
+ * Invariants/Assumptions: Override input must parse as JSON before submission, only one submit modal is open at a time, and deletions require explicit confirmation through the shared dialog layer.
  */
 import { useState, useCallback } from "react";
 import type { JobChain, ChainCreateRequest } from "../api";
+import { getApiErrorMessage } from "../lib/api-errors";
 import { formatDateTime } from "../lib/formatting";
+import { useToast } from "./toast";
 
 export type { ChainCreateRequest };
 
@@ -29,6 +30,7 @@ export function ChainList({
   loading = false,
   onCreateClick,
 }: ChainListProps) {
+  const toast = useToast();
   const [expandedChain, setExpandedChain] = useState<string | null>(null);
   const [submittingChain, setSubmittingChain] = useState<string | null>(null);
   const [showOverridesModal, setShowOverridesModal] = useState(false);
@@ -41,17 +43,37 @@ export function ChainList({
 
   const handleDelete = useCallback(
     async (chainId: string) => {
-      if (!confirm("Are you sure you want to delete this chain?")) {
+      const confirmed = await toast.confirm({
+        title: "Delete this chain?",
+        description:
+          "This removes the saved workflow definition. Existing jobs already created from it are not affected.",
+        confirmLabel: "Delete chain",
+        cancelLabel: "Keep chain",
+        tone: "error",
+      });
+      if (!confirmed) {
         return;
       }
       try {
         await onDelete(chainId);
+        toast.show({
+          tone: "success",
+          title: "Chain deleted",
+          description: "The saved workflow has been removed.",
+        });
       } catch (err) {
         console.error("Failed to delete chain:", err);
-        alert(`Failed to delete chain: ${String(err)}`);
+        toast.show({
+          tone: "error",
+          title: "Failed to delete chain",
+          description: getApiErrorMessage(
+            err,
+            "Unable to delete the selected chain.",
+          ),
+        });
       }
     },
-    [onDelete],
+    [onDelete, toast],
   );
 
   const openSubmitModal = useCallback((chainId: string) => {
@@ -85,11 +107,23 @@ export function ChainList({
     try {
       await onSubmit(submittingChain, overrides);
       closeSubmitModal();
+      toast.show({
+        tone: "success",
+        title: "Chain submitted",
+        description: "The workflow is now queued with the selected overrides.",
+      });
     } catch (err) {
       console.error("Failed to submit chain:", err);
-      alert(`Failed to submit chain: ${String(err)}`);
+      toast.show({
+        tone: "error",
+        title: "Failed to submit chain",
+        description: getApiErrorMessage(
+          err,
+          "Unable to start the selected chain.",
+        ),
+      });
     }
-  }, [submittingChain, overridesInput, onSubmit, closeSubmitModal]);
+  }, [closeSubmitModal, onSubmit, overridesInput, submittingChain, toast]);
 
   // Find the chain being submitted for display
   const submittingChainData = chains.find((c) => c.id === submittingChain);

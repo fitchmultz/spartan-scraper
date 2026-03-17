@@ -30,6 +30,7 @@ import { DeviceSelector } from "./DeviceSelector";
 import { ScreenshotConfig } from "./ScreenshotConfig";
 import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
+import { useToast } from "./toast";
 import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface CrawlFormRef {
@@ -82,9 +83,15 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     },
     ref,
   ) {
+    const toast = useToast();
+
     const handleSubmit = useCallback(async () => {
       if (!url.trim()) {
-        alert("Crawl URL is required.");
+        toast.show({
+          tone: "warning",
+          title: "Crawl URL required",
+          description: "Add a root URL before launching the crawl.",
+        });
         return;
       }
 
@@ -100,7 +107,11 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
           form.aiExtractFields,
         );
       } catch (error) {
-        alert(error instanceof Error ? error.message : String(error));
+        toast.show({
+          tone: "error",
+          title: "Crawl configuration is invalid",
+          description: error instanceof Error ? error.message : String(error),
+        });
         return;
       }
 
@@ -137,6 +148,7 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
       onSubmit,
       sitemapOnly,
       sitemapURL,
+      toast,
       url,
     ]);
 

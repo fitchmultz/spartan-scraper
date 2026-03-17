@@ -32,6 +32,7 @@ import { NetworkInterceptConfig } from "./NetworkInterceptConfig";
 import { AIExtractSection } from "./AIExtractSection";
 import { ResearchAgenticSection } from "./ResearchAgenticSection";
 import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
+import { useToast } from "./toast";
 import type {
   AiExtractOptions,
   DeviceEmulation,
@@ -76,9 +77,16 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
     },
     ref,
   ) {
+    const toast = useToast();
+
     const handleSubmit = useCallback(async () => {
       if (!query.trim() || !urls.trim()) {
-        alert("Research query and URLs are required.");
+        toast.show({
+          tone: "warning",
+          title: "Research query and URLs required",
+          description:
+            "Add both a research prompt and at least one source URL before submitting.",
+        });
         return;
       }
 
@@ -101,7 +109,11 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           form.agenticResearchMaxFollowUpUrls,
         );
       } catch (error) {
-        alert(error instanceof Error ? error.message : String(error));
+        toast.show({
+          tone: "error",
+          title: "Research configuration is invalid",
+          description: error instanceof Error ? error.message : String(error),
+        });
         return;
       }
 
@@ -127,7 +139,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         agenticOptions,
       );
       await onSubmit(request);
-    }, [device, form, onSubmit, query, urls]);
+    }, [device, form, onSubmit, query, toast, urls]);
 
     const getConfig = useCallback((): PresetConfig => {
       const draftState: JobDraftLocalState = {

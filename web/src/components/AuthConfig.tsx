@@ -1,14 +1,13 @@
 /**
- * Auth Config Component
- *
- * Reusable authentication configuration UI shared across all job forms.
- * Handles auth profile selection, basic auth, custom headers, cookies, query params,
- * headless login flow configuration, and OAuth 2.0 configuration.
- *
- * @module AuthConfig
+ * Purpose: Render the shared authentication and session-override controls used across operator job forms.
+ * Responsibilities: Edit auth profile selection, direct credentials, header/cookie/query overrides, proxy settings, and OAuth discovery inputs in one reusable surface.
+ * Scope: Web-form configuration UI only; submitting jobs and persisting auth state remain parent responsibilities.
+ * Usage: Mount inside scrape, crawl, research, and batch forms with controlled state setters from `useFormState`.
+ * Invariants/Assumptions: Parent components own all field state, OAuth discovery remains optional, and discovery failures should surface as operator-facing toast feedback instead of blocking the rest of the form.
  */
 
 import type { CSSProperties } from "react";
+import { useToast } from "./toast";
 
 interface OAuth2Config {
   flowType: "authorization_code" | "client_credentials" | "device_code";
@@ -160,6 +159,7 @@ export function AuthConfig({
   setOauthConfig,
   onOAuthInitiate,
 }: AuthConfigProps) {
+  const toast = useToast();
   const hasOAuth = oauthConfig !== undefined && setOauthConfig !== undefined;
 
   const handleProviderChange = (provider: string) => {
@@ -208,10 +208,12 @@ export function AuthConfig({
         });
       }
     } catch (error) {
-      alert(
-        "OIDC discovery failed: " +
-          (error instanceof Error ? error.message : "Unknown error"),
-      );
+      toast.show({
+        tone: "error",
+        title: "OIDC discovery failed",
+        description:
+          error instanceof Error ? error.message : "Unknown discovery error.",
+      });
     }
   };
 

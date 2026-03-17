@@ -18,11 +18,14 @@
 /* 4. Primitives: Components depend on theme + layout */
 @import "./styles/components.css";
 
-/* 5. Animations: Keyframes and utilities */
+/* 5. Notifications: Toasts depend on theme + shared component tokens */
+@import "./styles/toast.css";
+
+/* 6. Animations: Keyframes and utilities */
 @import "./styles/animations.css";
 
-/* 6. Features: Complex UI features depend on all above */
+/* 7. Features: Complex UI features depend on all above */
 @import "./styles/features.css";
 
-/* 7. Tools: Specialized tools depend on everything */
+/* 8. Tools: Specialized tools depend on everything */
 @import "./styles/tools.css";
