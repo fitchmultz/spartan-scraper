@@ -17,7 +17,6 @@ import type {
   ResearchResultItem,
   ResultItem,
 } from "../types";
-import { AIResearchRefiner } from "./AIResearchRefiner";
 import { NormalizedView } from "./NormalizedView";
 
 function getFieldDisplayValues(
@@ -114,6 +113,7 @@ interface ResultsViewerProps {
   totalResults: number;
   resultsPerPage: number;
   onLoadPage: (page: number) => void;
+  onOpenResearchAssistant?: () => void;
 }
 
 export function ResultsViewer({
@@ -134,9 +134,9 @@ export function ResultsViewer({
   totalResults,
   resultsPerPage,
   onLoadPage,
+  onOpenResearchAssistant,
 }: ResultsViewerProps) {
   const [jumpInputValue, setJumpInputValue] = useState(currentPage.toString());
-  const [isResearchRefinerOpen, setIsResearchRefinerOpen] = useState(false);
 
   const selectedItem = resultItems[selectedResultIndex] ?? null;
   const selectedResearchResult =
@@ -154,12 +154,6 @@ export function ResultsViewer({
   useEffect(() => {
     setJumpInputValue(currentPage.toString());
   }, [currentPage]);
-
-  useEffect(() => {
-    if (!selectedResearchResult) {
-      setIsResearchRefinerOpen(false);
-    }
-  }, [selectedResearchResult]);
 
   if (!jobId) {
     return null;
@@ -473,15 +467,17 @@ export function ResultsViewer({
                     <p className="results-viewer__lead">{resultSummary}</p>
                   ) : null}
 
-                  <div className="results-explorer__actions">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => setIsResearchRefinerOpen(true)}
-                    >
-                      Refine with AI
-                    </button>
-                  </div>
+                  {jobKind === "research" && onOpenResearchAssistant ? (
+                    <div className="results-explorer__actions">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={onOpenResearchAssistant}
+                      >
+                        Open AI assistant
+                      </button>
+                    </div>
+                  ) : null}
 
                   <details className="results-viewer__disclosure">
                     <summary>Research insights</summary>
@@ -730,12 +726,6 @@ export function ResultsViewer({
           )}
         </section>
       </div>
-
-      <AIResearchRefiner
-        isOpen={isResearchRefinerOpen}
-        onClose={() => setIsResearchRefinerOpen(false)}
-        result={selectedResearchResult}
-      />
     </div>
   );
 }

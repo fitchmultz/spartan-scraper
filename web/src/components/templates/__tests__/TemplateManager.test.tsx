@@ -10,6 +10,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TemplateManager } from "../TemplateManager";
+import { AIAssistantProvider } from "../../ai-assistant";
 import * as api from "../../../api";
 
 vi.mock("../../../api", () => ({
@@ -88,10 +89,12 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <TemplateManager
-        templateNames={["custom-news"]}
-        onTemplatesChanged={onTemplatesChanged}
-      />,
+      <AIAssistantProvider>
+        <TemplateManager
+          templateNames={["custom-news"]}
+          onTemplatesChanged={onTemplatesChanged}
+        />
+      </AIAssistantProvider>,
     );
 
     expect(await screen.findByLabelText(/template name/i)).toHaveValue(
@@ -146,10 +149,12 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <TemplateManager
-        templateNames={["article"]}
-        onTemplatesChanged={onTemplatesChanged}
-      />,
+      <AIAssistantProvider>
+        <TemplateManager
+          templateNames={["article"]}
+          onTemplatesChanged={onTemplatesChanged}
+        />
+      </AIAssistantProvider>,
     );
 
     await screen.findByRole("button", { name: /duplicate to edit/i });
@@ -197,10 +202,12 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <TemplateManager
-        templateNames={["custom-news"]}
-        onTemplatesChanged={onTemplatesChanged}
-      />,
+      <AIAssistantProvider>
+        <TemplateManager
+          templateNames={["custom-news"]}
+          onTemplatesChanged={onTemplatesChanged}
+        />
+      </AIAssistantProvider>,
     );
 
     await screen.findByLabelText(/preview target url/i);
@@ -248,13 +255,15 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <TemplateManager
-        templateNames={["custom-news"]}
-        onTemplatesChanged={onTemplatesChanged}
-      />,
+      <AIAssistantProvider>
+        <TemplateManager
+          templateNames={["custom-news"]}
+          onTemplatesChanged={onTemplatesChanged}
+        />
+      </AIAssistantProvider>,
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: /ai generate/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^generate$/i }));
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/product" },
     });
@@ -291,10 +300,12 @@ describe("TemplateManager", () => {
     });
 
     render(
-      <TemplateManager
-        templateNames={["custom-news"]}
-        onTemplatesChanged={onTemplatesChanged}
-      />,
+      <AIAssistantProvider>
+        <TemplateManager
+          templateNames={["custom-news"]}
+          onTemplatesChanged={onTemplatesChanged}
+        />
+      </AIAssistantProvider>,
     );
 
     await screen.findByText(/custom-news/i);

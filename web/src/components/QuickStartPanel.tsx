@@ -1,10 +1,9 @@
 /**
- * Quick Start Panel Component
- *
- * Presents a compact preset rail for the active workflow so the route stays
- * focused on one job type at a time.
- *
- * @module components/QuickStartPanel
+ * Purpose: Present a compact preset rail that lets operators switch job workflows without leaving the new-job route.
+ * Responsibilities: Show workflow tabs, highlight recommended presets for the current URL, and expose quick launch actions for presets, AI help, and saving.
+ * Scope: `/jobs/new` quick-start surface only.
+ * Usage: Render from the job-submission workspace header beside the guided and expert flows.
+ * Invariants/Assumptions: Preset recommendations stay advisory, workflow switching remains explicit, and quick actions never submit work automatically.
  */
 
 import { useMemo } from "react";
@@ -18,8 +17,8 @@ interface QuickStartPanelProps {
   onJobTypeChange: (jobType: JobType) => void;
   onSelectPreset: (preset: JobPreset) => void;
   onSavePreset?: () => void;
-  onOpenAIPreview?: (url?: string) => void;
-  onOpenTemplateGenerator?: () => void;
+  onOpenAssistant?: () => void;
+  onOpenTemplateAssistant?: () => void;
   currentUrl?: string;
 }
 
@@ -108,8 +107,8 @@ export function QuickStartPanel({
   onJobTypeChange,
   onSelectPreset,
   onSavePreset,
-  onOpenAIPreview,
-  onOpenTemplateGenerator,
+  onOpenAssistant,
+  onOpenTemplateAssistant,
   currentUrl,
 }: QuickStartPanelProps) {
   const activePresets = useMemo(
@@ -154,22 +153,22 @@ export function QuickStartPanel({
           <p>{activeCopy.summary}</p>
         </div>
         <div className="job-quickstart__header-actions">
-          {onOpenAIPreview ? (
+          {onOpenAssistant ? (
             <button
               type="button"
               className="secondary"
-              onClick={() => onOpenAIPreview(currentUrl)}
+              onClick={onOpenAssistant}
             >
-              AI Preview
+              Open AI assistant
             </button>
           ) : null}
-          {onOpenTemplateGenerator ? (
+          {onOpenTemplateAssistant ? (
             <button
               type="button"
               className="secondary"
-              onClick={onOpenTemplateGenerator}
+              onClick={onOpenTemplateAssistant}
             >
-              AI Template
+              Open template assistant
             </button>
           ) : null}
           {onSavePreset ? (

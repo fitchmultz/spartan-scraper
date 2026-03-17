@@ -21,28 +21,18 @@ import {
   toAIImagePayloads,
   type AttachedAIImage,
 } from "../../lib/ai-image-utils";
+import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIImageAttachments } from "../AIImageAttachments";
 
 type AssistantMode = "generate" | "debug";
 type SourceMode = "url" | "html";
 
-interface TemplateAssistantPanelProps {
+interface TemplateAssistantWorkspaceProps {
   mode: AssistantMode;
   draftTemplate: Template;
   url: string;
   onUrlChange: (value: string) => void;
   onApplyTemplate: (template: Template) => void;
-}
-
-function getAPIErrorMessage(error: unknown) {
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error && typeof error === "object") {
-    const candidate = error as { error?: string; message?: string };
-    return candidate.error || candidate.message || JSON.stringify(error);
-  }
-  return String(error);
 }
 
 function extractGeneratedTemplate(
@@ -60,13 +50,13 @@ function extractGeneratedTemplate(
   return candidate as Template;
 }
 
-export function TemplateAssistantPanel({
+export function TemplateAssistantWorkspace({
   mode,
   draftTemplate,
   url,
   onUrlChange,
   onApplyTemplate,
-}: TemplateAssistantPanelProps) {
+}: TemplateAssistantWorkspaceProps) {
   const [source, setSource] = useState<SourceMode>("url");
   const [html, setHtml] = useState("");
   const [description, setDescription] = useState("");
@@ -156,7 +146,9 @@ export function TemplateAssistantPanel({
       });
 
       if (response.error) {
-        throw new Error(getAPIErrorMessage(response.error));
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to generate template."),
+        );
       }
 
       setGenerated(
@@ -209,7 +201,9 @@ export function TemplateAssistantPanel({
       });
 
       if (response.error) {
-        throw new Error(getAPIErrorMessage(response.error));
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to debug template."),
+        );
       }
 
       setDebugged((response.data as AiExtractTemplateDebugResponse) ?? null);
@@ -557,4 +551,4 @@ export function TemplateAssistantPanel({
   );
 }
 
-export default TemplateAssistantPanel;
+export default TemplateAssistantWorkspace;

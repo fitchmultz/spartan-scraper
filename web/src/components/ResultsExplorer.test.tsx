@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Job, ResultItem } from "../types";
+import { AIAssistantProvider } from "./ai-assistant";
 import { ResultsExplorer } from "./ResultsExplorer";
 
 const exportResultsMock = vi.fn();
@@ -46,13 +47,25 @@ vi.mock("./ClusterGraph", () => ({
 }));
 
 vi.mock("./TransformPreview", () => ({
-  TransformPreview: () => (
-    <div data-testid="transform-preview">transform preview</div>
+  TransformPreview: ({
+    onApply,
+  }: {
+    onApply?: (
+      format: "jsonl" | "json" | "md" | "csv" | "xlsx",
+      expression: string,
+      language: "jmespath" | "jsonata",
+    ) => void;
+  }) => (
+    <div data-testid="transform-preview">
+      <div>transform preview</div>
+      <button
+        type="button"
+        onClick={() => onApply?.("json", "[].url", "jmespath")}
+      >
+        Apply transform export
+      </button>
+    </div>
   ),
-}));
-
-vi.mock("./AIExportShapeAssistant", () => ({
-  AIExportShapeAssistant: () => null,
 }));
 
 const jobs: Job[] = [
@@ -98,26 +111,28 @@ const items: ResultItem[] = [
 
 function renderExplorer() {
   return render(
-    <ResultsExplorer
-      jobId="job-1"
-      resultItems={items}
-      selectedResultIndex={0}
-      setSelectedResultIndex={vi.fn()}
-      resultSummary={null}
-      resultConfidence={null}
-      resultEvidence={[]}
-      resultClusters={[]}
-      resultCitations={[]}
-      resultAgentic={null}
-      rawResult={JSON.stringify(items)}
-      resultFormat="jsonl"
-      currentPage={1}
-      totalResults={12}
-      resultsPerPage={100}
-      onLoadPage={vi.fn()}
-      availableJobs={jobs}
-      jobType="crawl"
-    />,
+    <AIAssistantProvider>
+      <ResultsExplorer
+        jobId="job-1"
+        resultItems={items}
+        selectedResultIndex={0}
+        setSelectedResultIndex={vi.fn()}
+        resultSummary={null}
+        resultConfidence={null}
+        resultEvidence={[]}
+        resultClusters={[]}
+        resultCitations={[]}
+        resultAgentic={null}
+        rawResult={JSON.stringify(items)}
+        resultFormat="jsonl"
+        currentPage={1}
+        totalResults={12}
+        resultsPerPage={100}
+        onLoadPage={vi.fn()}
+        availableJobs={jobs}
+        jobType="crawl"
+      />
+    </AIAssistantProvider>,
   );
 }
 
@@ -193,5 +208,24 @@ describe("ResultsExplorer", () => {
     expect(exportResultsMock).toHaveBeenCalledWith("job-1", {
       format: "json",
     });
+  });
+
+  it("surfaces transform export failures without leaking object coercions", async () => {
+    const user = userEvent.setup();
+    exportResultsMock.mockRejectedValueOnce({
+      message: "Transform export failed cleanly.",
+    });
+    renderExplorer();
+
+    await user.click(screen.getByRole("button", { name: "Tools" }));
+    await user.click(screen.getByRole("button", { name: /Transform output/i }));
+    await user.click(
+      screen.getByRole("button", { name: /Apply transform export/i }),
+    );
+
+    expect(
+      await screen.findByText(/Transform export failed cleanly\./i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
   });
 });

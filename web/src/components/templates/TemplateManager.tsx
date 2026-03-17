@@ -18,10 +18,14 @@ import {
   type TemplateDetail,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { getApiErrorMessage } from "../../lib/api-errors";
+import {
+  TemplateAssistantSection,
+  type TemplateAssistantMode,
+  useAIAssistant,
+} from "../ai-assistant";
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
-import { TemplateAssistantPanel } from "./TemplateAssistantPanel";
 import { TemplateEditorInline } from "./TemplateEditorInline";
-import { TemplatePreviewPane } from "./TemplatePreviewPane";
 import {
   BUILT_IN_TEMPLATE_NAMES,
   buildDraftFromTemplate,
@@ -39,12 +43,12 @@ interface TemplateManagerProps {
 }
 
 type DraftSource = "selected" | "create" | "duplicate";
-type RailTab = "preview" | "generate" | "debug";
 
 export function TemplateManager({
   templateNames,
   onTemplatesChanged,
 }: TemplateManagerProps) {
+  const aiAssistant = useAIAssistant();
   const [selectedName, setSelectedName] = useState<string | null>(
     templateNames[0] ?? null,
   );
@@ -67,7 +71,7 @@ export function TemplateManager({
   const [shouldAutoSelectFirst, setShouldAutoSelectFirst] = useState(true);
 
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const [railTab, setRailTab] = useState<RailTab>("preview");
+  const [railTab, setRailTab] = useState<TemplateAssistantMode>("preview");
   const [previewUrl, setPreviewUrl] = useState("");
 
   const selectedTemplateData = selectedTemplate?.template ?? null;
@@ -144,7 +148,12 @@ export function TemplateManager({
         });
 
         if (response.error) {
-          throw new Error(String(response.error));
+          throw new Error(
+            getApiErrorMessage(
+              response.error,
+              "Failed to load template details.",
+            ),
+          );
         }
 
         if (!cancelled) {
@@ -230,7 +239,9 @@ export function TemplateManager({
         });
 
         if (response.error) {
-          throw new Error(String(response.error));
+          throw new Error(
+            getApiErrorMessage(response.error, "Failed to save template."),
+          );
         }
       } else {
         const response = await createTemplate({
@@ -239,7 +250,9 @@ export function TemplateManager({
         });
 
         if (response.error) {
-          throw new Error(String(response.error));
+          throw new Error(
+            getApiErrorMessage(response.error, "Failed to save template."),
+          );
         }
       }
 
@@ -283,7 +296,9 @@ export function TemplateManager({
       });
 
       if (response.error) {
-        throw new Error(String(response.error));
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to delete template."),
+        );
       }
 
       onTemplatesChanged();
@@ -348,6 +363,17 @@ export function TemplateManager({
     setRailTab("preview");
   };
 
+  const openAssistantMode = (mode: TemplateAssistantMode) => {
+    setRailTab(mode);
+    setIsBuilderOpen(false);
+    aiAssistant.open({
+      surface: "templates",
+      templateName: draftTemplate.name || undefined,
+      templateSnapshot: draftTemplate as Record<string, unknown>,
+      selectedUrl: previewUrl || undefined,
+    });
+  };
+
   const editorTitle =
     draftSource === "create"
       ? "New template"
@@ -379,12 +405,9 @@ export function TemplateManager({
           <button
             type="button"
             className="btn btn--secondary"
-            onClick={() => {
-              setRailTab("generate");
-              setIsBuilderOpen(false);
-            }}
+            onClick={() => openAssistantMode("generate")}
           >
-            AI Generate
+            Open AI assistant
           </button>
           <button
             type="button"
@@ -489,16 +512,16 @@ export function TemplateManager({
                   <button
                     type="button"
                     className="btn btn--secondary btn--small"
-                    onClick={() => setRailTab("preview")}
+                    onClick={() => openAssistantMode("preview")}
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     className="btn btn--secondary btn--small"
-                    onClick={() => setRailTab("debug")}
+                    onClick={() => openAssistantMode("debug")}
                   >
-                    AI Debug
+                    Open AI assistant
                   </button>
                   {readOnly ? (
                     <button
@@ -580,66 +603,23 @@ export function TemplateManager({
               />
             </section>
 
-            <aside className="template-manager__rail">
-              <div
-                className="template-manager__rail-tabs"
-                role="tablist"
-                aria-label="Template workspace tools"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={railTab === "preview"}
-                  className={`template-manager__rail-tab ${railTab === "preview" ? "is-active" : ""}`}
-                  onClick={() => setRailTab("preview")}
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={railTab === "generate"}
-                  className={`template-manager__rail-tab ${railTab === "generate" ? "is-active" : ""}`}
-                  onClick={() => setRailTab("generate")}
-                >
-                  AI Generate
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={railTab === "debug"}
-                  className={`template-manager__rail-tab ${railTab === "debug" ? "is-active" : ""}`}
-                  onClick={() => setRailTab("debug")}
-                >
-                  AI Debug
-                </button>
-              </div>
-
-              {railTab === "preview" ? (
-                <TemplatePreviewPane
-                  template={draftTemplate}
-                  url={previewUrl}
-                  onUrlChange={setPreviewUrl}
-                />
-              ) : (
-                <TemplateAssistantPanel
-                  mode={railTab === "generate" ? "generate" : "debug"}
-                  draftTemplate={draftTemplate}
-                  url={previewUrl}
-                  onUrlChange={setPreviewUrl}
-                  onApplyTemplate={(template) => {
-                    handleApplyTemplate(
-                      template,
-                      railTab === "generate"
-                        ? "create"
-                        : readOnly
-                          ? "duplicate"
-                          : draftSource,
-                    );
-                  }}
-                />
-              )}
-            </aside>
+            <TemplateAssistantSection
+              mode={railTab}
+              onModeChange={setRailTab}
+              draftTemplate={draftTemplate}
+              previewUrl={previewUrl}
+              onPreviewUrlChange={setPreviewUrl}
+              onApplyTemplate={(template) => {
+                handleApplyTemplate(
+                  template,
+                  railTab === "generate"
+                    ? "create"
+                    : readOnly
+                      ? "duplicate"
+                      : draftSource,
+                );
+              }}
+            />
           </>
         )}
       </section>

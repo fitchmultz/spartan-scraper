@@ -8,6 +8,7 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## Recently Completed
 
+- [Integrated AI Assistant Panel](ai-assistant-panel.md) — `/jobs/new`, `/templates`, and `/jobs/:id` now share a persistent, route-aware AI rail instead of modal-first preview, generation, debugging, shaping, and refinement entry points.
 - [Template Editor Rework](template-editor-rework.md) — `/templates` now runs as an inline authoring workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of modal-first editing.
 - [Web Shell Simplification](web-shell-simplification.md)
 - [Guided Job Submission Wizard](guided-job-wizard.md) — `/jobs/new` now uses a guided 4-step wizard with Expert mode, per-job draft persistence, and review-before-submit.
@@ -15,5 +16,4 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## After
 
-- [Integrated AI Assistant Panel](ai-assistant-panel.md)
 - [Toast Notification System](toast-notification-system.md)

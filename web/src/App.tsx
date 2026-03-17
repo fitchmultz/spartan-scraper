@@ -61,8 +61,7 @@ import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
 import { ProxyPoolStatusPanel } from "./components/ProxyPoolStatusPanel";
 import { ChainContainer } from "./components/chains/ChainContainer";
 import { BatchContainer } from "./components/batches/BatchContainer";
-import { AIExtractPreview } from "./components/AIExtractPreview";
-import { AITemplateGenerator } from "./components/AITemplateGenerator";
+import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
 import { TemplateManager } from "./components/templates/TemplateManager";
 import { PresetContainer } from "./components/presets/PresetContainer";
 import {
@@ -218,6 +217,15 @@ function ErrorBanner({ message }: { message: string | null }) {
 }
 
 export function App() {
+  return (
+    <AIAssistantProvider>
+      <AppShell />
+    </AIAssistantProvider>
+  );
+}
+
+function AppShell() {
+  const aiAssistant = useAIAssistant();
   const appData = useAppData();
   const formState = useFormState();
   const resultsState = useResultsState();
@@ -227,9 +235,6 @@ export function App() {
     normalizePath(window.location.pathname),
   );
   const [activeTab, setActiveTab] = useState<JobType>("scrape");
-  const [isAIPreviewOpen, setIsAIPreviewOpen] = useState(false);
-  const [aiPreviewInitialURL, setAIPreviewInitialURL] = useState("");
-  const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<JobPreset | null>(null);
   const [pendingSubmission, setPendingSubmission] = useState<JobType | null>(
     null,
@@ -525,13 +530,43 @@ export function App() {
     }
   }, [activeTab]);
 
-  const openAIPreview = useCallback(
-    (url?: string) => {
-      setAIPreviewInitialURL(url ?? getCurrentUrl());
-      setIsAIPreviewOpen(true);
-    },
-    [getCurrentUrl],
-  );
+  const openJobAssistant = useCallback(() => {
+    const currentConfig = getCurrentConfig();
+
+    navigate("/jobs/new");
+    aiAssistant.open({
+      surface: "job-submission",
+      jobType: activeTab,
+      url:
+        activeTab === "scrape"
+          ? jobSubmissionRef.current?.getScrapeUrl()
+          : activeTab === "crawl"
+            ? jobSubmissionRef.current?.getCrawlUrl()
+            : undefined,
+      query:
+        activeTab === "research"
+          ? (currentConfig.query as string | undefined)
+          : undefined,
+      templateName: formState.extractTemplate || undefined,
+      formSnapshot: currentConfig as Record<string, unknown>,
+    });
+  }, [
+    activeTab,
+    aiAssistant,
+    formState.extractTemplate,
+    getCurrentConfig,
+    navigate,
+  ]);
+
+  const openTemplateAssistant = useCallback(() => {
+    navigate("/templates");
+    aiAssistant.open({
+      surface: "templates",
+      templateName: undefined,
+      templateSnapshot: undefined,
+      selectedUrl: getCurrentUrl() || undefined,
+    });
+  }, [aiAssistant, getCurrentUrl, navigate]);
 
   const handleSubmitForm = useCallback(
     async (formType: "scrape" | "crawl" | "research") => {
@@ -829,8 +864,8 @@ export function App() {
                 getCurrentConfig={getCurrentConfig}
                 getCurrentUrl={getCurrentUrl}
                 onSelectPreset={handleSelectPreset}
-                onOpenAIPreview={openAIPreview}
-                onOpenTemplateGenerator={() => setIsAIGeneratorOpen(true)}
+                onOpenAssistant={openJobAssistant}
+                onOpenTemplateAssistant={openTemplateAssistant}
               />
             </aside>
           </div>
@@ -914,21 +949,6 @@ export function App() {
           <RetentionStatusPanel />
         </div>
       )}
-
-      <AIExtractPreview
-        isOpen={isAIPreviewOpen}
-        initialUrl={aiPreviewInitialURL}
-        onClose={() => setIsAIPreviewOpen(false)}
-      />
-
-      <AITemplateGenerator
-        isOpen={isAIGeneratorOpen}
-        onClose={() => setIsAIGeneratorOpen(false)}
-        onTemplateSaved={() => {
-          setIsAIGeneratorOpen(false);
-          void refreshTemplates();
-        }}
-      />
 
       <div className="footer">Spartan Scraper 1.0 local-first workbench.</div>
     </div>

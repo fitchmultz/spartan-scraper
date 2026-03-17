@@ -15,6 +15,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Recently Completed
 
+- Integrated AI assistant panel now gives `/jobs/new`, `/templates`, and `/jobs/:id` one persistent, collapsible, route-aware AI rail with explicit apply actions, replacing modal-only preview, generation, debugging, shape, and refinement entry points in the core operator workflows.
 - Template editor rework now makes `/templates` a real inline workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of blocking modal-first authoring.
 - Results view system overhaul now keeps `/jobs/:id` centered on one dominant reader, moves comparison/tree/transform/visualization into an explicit secondary layer, replaces the export button strip with guided export, and preserves jobs-route continuity without reintroducing extra below-the-fold job clutter.
 - Web shell simplification now uses a compact global top bar, route-owned headers, and reduced repeated metrics so `/jobs` lands directly on the scan-first monitoring surface, `/jobs/:id` stays result-focused, and top-level routes spend their first screen on real work instead of stacked framing.
@@ -26,7 +27,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- [Integrated AI Assistant Panel](./specs/ai-assistant-panel.md) — Replace modal-only AI preview, generation, and debugging flows with a persistent, collapsible, route-aware assistant panel embedded into job submission, templates, and results workflows after the primary jobs, results, and templates layouts settle.
 - [Toast Notification System](./specs/toast-notification-system.md) — Introduce a global notification layer for success, error, loading, and progress feedback so transient operations stop relying on `alert()`, `confirm()`, `console.error`, and inconsistent inline messaging.
 - Onboarding and Discoverability Expansion — Replace the heavy first-run modal with lighter progressive onboarding, expand guidance beyond the job form, and make command palette, shortcuts, and route-specific help discoverable without prior knowledge.
 - Mobile Experience Pass — Make job monitoring, form actions, results inspection, and automation interactions touch-friendly, improve status readability at small sizes, and provide a mobile-accessible alternative to keyboard-first navigation.

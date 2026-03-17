@@ -1,10 +1,9 @@
 /**
- * Spartan Scraper Web UI - Feature Components
- *
- * Major UI features: Command Palette, Keyboard Shortcuts, Results Explorer,
- * Diff Viewer, Evidence Charts, and Metrics Dashboard.
- *
- * @module styles/features.css
+ * Purpose: Define shared feature-surface styling for the Spartan Scraper web workbench.
+ * Responsibilities: Style operator-facing feature modules such as templates, results, AI assistant rails, automation panels, and utility overlays.
+ * Scope: Feature-level CSS only; design tokens and base layout primitives live in the broader style system.
+ * Usage: Imported by the web application shell so feature components share one consistent visual language.
+ * Invariants/Assumptions: Feature styles compose with the shared token palette, preserve route-owned layouts, and avoid depending on modal-first UI structures that no longer exist.
  */
 
 /* ============================================================================
@@ -281,6 +280,147 @@
         transparent 42%
       ),
       linear-gradient(180deg, rgba(26, 26, 31, 0.02), rgba(26, 26, 31, 0));
+  }
+}
+
+/* ============================================================================
+   Integrated AI Assistant Styles
+   ============================================================================ */
+
+.ai-assistant-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.ai-assistant-surface__main {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.ai-assistant-panel {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: width 160ms ease;
+}
+
+.ai-assistant-panel.is-collapsed {
+  width: 96px;
+  padding: 12px;
+}
+
+.ai-assistant-panel__collapsed,
+.ai-assistant-panel__section,
+.ai-assistant-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-assistant-panel__collapsed {
+  min-height: 180px;
+  justify-content: space-between;
+}
+
+.ai-assistant-panel__collapsed-label {
+  color: var(--muted);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  align-self: center;
+}
+
+.ai-assistant-panel__toggle {
+  align-self: flex-start;
+}
+
+.ai-assistant-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ai-assistant-panel__header h3,
+.ai-assistant-panel__section h4 {
+  margin: 0;
+}
+
+.ai-assistant-panel__header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.ai-assistant-panel__header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 128px;
+}
+
+.ai-assistant-panel__width-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.ai-assistant-panel__width-control input {
+  width: 100%;
+}
+
+.ai-assistant-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-assistant-panel__context-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.ai-assistant-panel__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+@media (max-width: 1200px) {
+  .ai-assistant-surface {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-assistant-panel {
+    position: static;
+    max-height: none;
+    width: 100%;
+  }
+
+  .ai-assistant-panel.is-collapsed {
+    width: 100%;
+  }
+
+  .ai-assistant-panel__collapsed {
+    min-height: auto;
+  }
+
+  .ai-assistant-panel__collapsed-label {
+    writing-mode: initial;
+    transform: none;
+    align-self: flex-start;
   }
 }
 

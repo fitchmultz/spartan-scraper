@@ -1,14 +1,12 @@
 /**
- * Transform Preview Component
- *
- * Provides a UI for testing JMESPath and JSONata transformations on job results.
- * Allows users to input expressions, preview the transformed output, apply
- * transformations to exports, and generate bounded transform suggestions from
- * saved job results.
- *
- * @module TransformPreview
+ * Purpose: Let operators validate, preview, and export bounded transforms against saved job results.
+ * Responsibilities: Validate expressions, preview transformed output, surface AI-assisted transform suggestions, and hand approved transforms back to the results workflow.
+ * Scope: Results-route transform tooling only.
+ * Usage: Mount inside `ResultsExplorer` when the transform tool is active.
+ * Invariants/Assumptions: Validation stays explicit, previews read from saved job results only, and apply actions never mutate results without a user click.
  */
 import { useState, useCallback, useEffect } from "react";
+import { getApiErrorMessage } from "../lib/api-errors";
 
 interface TransformPreviewProps {
   jobId: string;
@@ -166,7 +164,10 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
           message: result.message,
         });
       } catch (err) {
-        setValidationResult({ valid: false, message: String(err) });
+        setValidationResult({
+          valid: false,
+          message: getApiErrorMessage(err, "Validation failed."),
+        });
       } finally {
         setIsValidating(false);
       }
@@ -189,7 +190,7 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
       const result = await previewTransform(jobId, expression, language, limit);
       setPreviewResult(result);
     } catch (err) {
-      setError(String(err));
+      setError(getApiErrorMessage(err, "Failed to preview transform."));
     } finally {
       setIsPreviewing(false);
     }
@@ -226,7 +227,9 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
         resultCount: result.preview?.length || 0,
       });
     } catch (err) {
-      setError(String(err));
+      setError(
+        getApiErrorMessage(err, "Failed to generate transform suggestions."),
+      );
     } finally {
       setIsGeneratingAI(false);
     }

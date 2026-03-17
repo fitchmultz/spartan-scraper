@@ -13,6 +13,7 @@ import {
   diffResults,
   type ResearchDiffResult,
 } from "../lib/diff-utils";
+import { getApiErrorMessage } from "../lib/api-errors";
 import { exportResults, loadResults } from "../lib/results";
 import { buildUrlTree, type TreeNode } from "../lib/tree-utils";
 import type {
@@ -24,7 +25,11 @@ import type {
   Job,
   ResultItem,
 } from "../types";
-import { AIExportShapeAssistant } from "./AIExportShapeAssistant";
+import {
+  ResultsAssistantSection,
+  type ResultsAssistantMode,
+  useAIAssistant,
+} from "./ai-assistant";
 import { ClusterGraph } from "./ClusterGraph";
 import { DiffViewer } from "./DiffViewer";
 import { EvidenceChart } from "./EvidenceChart";
@@ -373,6 +378,10 @@ export function ResultsExplorer({
   availableJobs,
   jobType = "crawl",
 }: ResultsExplorerProps) {
+  const aiAssistant = useAIAssistant();
+  const [assistantMode, setAssistantMode] = useState<ResultsAssistantMode>(
+    jobType === "research" ? "research" : "shape",
+  );
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<SecondaryToolId | null>(null);
@@ -406,7 +415,6 @@ export function ResultsExplorer({
   >("md");
   const [shapeConfigText, setShapeConfigText] = useState("");
   const [shapeConfigError, setShapeConfigError] = useState<string | null>(null);
-  const [isShapeAssistantOpen, setIsShapeAssistantOpen] = useState(false);
 
   const treeNodes = useMemo(() => {
     const crawlItems = resultItems.filter((item): item is CrawlResultItem =>
@@ -420,6 +428,12 @@ export function ResultsExplorer({
       setTreeExpandedIds(buildDefaultExpandedTreeIds(treeNodes));
     }
   }, [treeNodes, treeExpandedIds.size]);
+
+  useEffect(() => {
+    if (jobType !== "research" && assistantMode === "research") {
+      setAssistantMode("shape");
+    }
+  }, [assistantMode, jobType]);
 
   const filteredResultItems = useMemo(
     () => filterResultItems(resultItems, searchQuery, statusFilter),
@@ -543,7 +557,12 @@ export function ResultsExplorer({
 
         setDiffResult(diffResults(baseData, compareData));
       } catch (err) {
-        setDiffError(String(err));
+        setDiffError(
+          getApiErrorMessage(
+            err,
+            "Failed to compare the selected job results.",
+          ),
+        );
       } finally {
         setDiffLoading(false);
       }
@@ -606,7 +625,9 @@ export function ResultsExplorer({
         result.isBinary,
       );
     } catch (err) {
-      setExportError(String(err));
+      setExportError(
+        getApiErrorMessage(err, "Failed to export the saved result."),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -622,6 +643,7 @@ export function ResultsExplorer({
     }
 
     setExportError(null);
+    setShapeConfigError(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, {
@@ -638,7 +660,9 @@ export function ResultsExplorer({
         result.isBinary,
       );
     } catch (err) {
-      setShapeConfigError(String(err));
+      setExportError(
+        getApiErrorMessage(err, "Failed to export the transformed result."),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -678,7 +702,9 @@ export function ResultsExplorer({
         result.isBinary,
       );
     } catch (err) {
-      setShapeConfigError(String(err));
+      setShapeConfigError(
+        getApiErrorMessage(err, "Failed to export the shaped result."),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -686,286 +712,348 @@ export function ResultsExplorer({
 
   return (
     <div className="panel results-explorer">
-      <div className="results-explorer-header">
-        <div>
-          <div className="results-viewer__section-label">Result reader</div>
-          <h3>Read the saved output</h3>
-          <p className="form-help">
-            Start with the selected item, understand what changed, and only then
-            branch into comparison, structure, transforms, or exports.
-          </p>
-          <div className="results-explorer__surface-summary">
-            <span>Job {jobId}</span>
-            {currentJob?.kind ? <span>{currentJob.kind} workflow</span> : null}
-            <span>
-              {totalResults > 0
-                ? `${totalResults} saved results`
-                : "Saved result route"}
-            </span>
-          </div>
-        </div>
-
-        <div className="results-explorer__actions">
-          <button
-            type="button"
-            className={isToolsOpen ? "active" : "secondary"}
-            onClick={() => {
-              setIsToolsOpen((open) => !open);
-              setIsExportOpen(false);
-            }}
-          >
-            Tools
-          </button>
-          <button
-            type="button"
-            className={isExportOpen ? "active" : "secondary"}
-            onClick={() => {
-              setIsExportOpen((open) => !open);
-              setIsToolsOpen(false);
-            }}
-          >
-            Export
-          </button>
-        </div>
-      </div>
-
-      <ReaderToolbar
-        searchQuery={searchQuery}
-        statusFilter={statusFilter}
-        visibleResults={filteredResultItems.length}
-        totalResults={Math.max(totalResults, resultItems.length)}
-        onChangeSearchQuery={setSearchQuery}
-        onChangeStatusFilter={setStatusFilter}
-        onClearFilters={() => {
-          setSearchQuery("");
-          setStatusFilter("all");
-        }}
-      />
-
-      {filteredResultItems.length === 0 ? (
-        <div className="results-explorer__surface-note">
-          No saved results match the current reader filters.
-        </div>
-      ) : null}
-
-      {isToolsOpen ? (
-        <SecondaryToolsDrawer
-          tools={secondaryTools}
-          activeTool={activeTool}
-          onSelectTool={(tool) => {
-            setActiveTool(tool);
-          }}
-          onClose={() => setIsToolsOpen(false)}
-        />
-      ) : null}
-
-      {isExportOpen ? (
-        <GuidedExportDrawer
-          options={exportOptions}
-          isExporting={isExporting}
-          exportError={exportError}
-          onExport={(format) => {
-            void handleDirectExport(format);
-          }}
-          onClose={() => setIsExportOpen(false)}
-          onOpenTransform={() => {
-            setIsExportOpen(false);
-            setIsToolsOpen(true);
-            setActiveTool("transform");
-          }}
-        />
-      ) : null}
-
-      <ResultsViewer
-        jobId={jobId}
-        jobKind={
-          currentJob?.kind as "scrape" | "crawl" | "research" | undefined
-        }
-        resultItems={filteredResultItems}
-        selectedResultIndex={visibleSelectedIndex}
-        setSelectedResultIndex={(visibleIndex) => {
-          const sourceIndex = filteredSourceIndexes[visibleIndex];
-          if (typeof sourceIndex === "number") {
-            setSelectedResultIndex(sourceIndex);
-          }
-        }}
-        resultSummary={resultSummary}
-        resultConfidence={resultConfidence}
-        resultEvidence={resultEvidence}
-        resultClusters={resultClusters}
-        resultCitations={resultCitations}
-        resultAgentic={resultAgentic}
-        rawResult={rawResult}
-        resultFormat={resultFormat}
-        currentPage={currentPage}
-        totalResults={totalResults}
-        resultsPerPage={resultsPerPage}
-        onLoadPage={onLoadPage}
-      />
-
-      {activeToolConfig ? (
-        <div className="results-explorer__tool-panel">
-          <div className="results-explorer__drawer-header">
+      <div className="ai-assistant-surface">
+        <div className="ai-assistant-surface__main">
+          <div className="results-explorer-header">
             <div>
-              <div className="results-viewer__section-label">
-                Secondary tool
+              <div className="results-viewer__section-label">Result reader</div>
+              <h3>Read the saved output</h3>
+              <p className="form-help">
+                Start with the selected item, understand what changed, and only
+                then branch into comparison, structure, transforms, or exports.
+              </p>
+              <div className="results-explorer__surface-summary">
+                <span>Job {jobId}</span>
+                {currentJob?.kind ? (
+                  <span>{currentJob.kind} workflow</span>
+                ) : null}
+                <span>
+                  {totalResults > 0
+                    ? `${totalResults} saved results`
+                    : "Saved result route"}
+                </span>
               </div>
-              <h4>Secondary tool: {activeToolConfig.label}</h4>
-              <p className="form-help">{activeToolConfig.description}</p>
             </div>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setActiveTool(null)}
-            >
-              Hide tool
-            </button>
+
+            <div className="results-explorer__actions">
+              <button
+                type="button"
+                className={isToolsOpen ? "active" : "secondary"}
+                onClick={() => {
+                  setIsToolsOpen((open) => !open);
+                  setIsExportOpen(false);
+                }}
+              >
+                Tools
+              </button>
+              <button
+                type="button"
+                className={isExportOpen ? "active" : "secondary"}
+                onClick={() => {
+                  setIsExportOpen((open) => !open);
+                  setIsToolsOpen(false);
+                }}
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setAssistantMode("shape");
+                  aiAssistant.open({
+                    surface: "results",
+                    jobId,
+                    resultFormat,
+                    selectedResultIndex,
+                    resultSummary,
+                  });
+                }}
+              >
+                Open AI assistant
+              </button>
+            </div>
           </div>
 
-          {activeTool === "tree" ? (
-            <>
-              <ExplorerTreeControls
-                treeNodes={treeNodes}
-                onExpandAll={expandAllTreeNodes}
-                onCollapseAll={collapseAllTreeNodes}
-              />
-              <TreeView
-                nodes={treeNodes}
-                selectedId={treeSelectedId}
-                onSelect={handleTreeSelect}
-                onToggleExpand={handleTreeToggle}
-                expandedIds={treeExpandedIds}
-                searchQuery={searchQuery}
-                statusFilter={statusFilter}
-              />
-            </>
+          <ReaderToolbar
+            searchQuery={searchQuery}
+            statusFilter={statusFilter}
+            visibleResults={filteredResultItems.length}
+            totalResults={Math.max(totalResults, resultItems.length)}
+            onChangeSearchQuery={setSearchQuery}
+            onChangeStatusFilter={setStatusFilter}
+            onClearFilters={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }}
+          />
+
+          {filteredResultItems.length === 0 ? (
+            <div className="results-explorer__surface-note">
+              No saved results match the current reader filters.
+            </div>
           ) : null}
 
-          {activeTool === "diff" ? (
-            <>
-              <ExplorerDiffControls
-                compareJobId={compareJobId}
-                comparableJobs={comparableJobs}
-                onChangeCompareJobID={setCompareJobId}
-              />
-              <DiffViewer
-                baseJob={currentJob}
-                compareJob={compareJob}
-                diffResult={diffResult}
-                isLoading={diffLoading}
-                error={diffError}
-                onClose={() => setActiveTool(null)}
-              />
-            </>
+          {isToolsOpen ? (
+            <SecondaryToolsDrawer
+              tools={secondaryTools}
+              activeTool={activeTool}
+              onSelectTool={(tool) => {
+                setActiveTool(tool);
+              }}
+              onClose={() => setIsToolsOpen(false)}
+            />
           ) : null}
 
-          {activeTool === "visualize" && isResearchJob ? (
-            <div className="visualize-content">
-              <EvidenceChart
-                evidence={resultEvidence}
-                clusters={resultClusters}
-                selectedEvidenceUrl={selectedEvidenceUrl}
-                onSelectEvidence={(item) => setSelectedEvidenceUrl(item.url)}
-              />
-              {resultClusters.length > 0 ? (
-                <ClusterGraph
-                  clusters={resultClusters}
-                  evidence={resultEvidence}
-                  selectedClusterId={selectedClusterId}
-                  onSelectCluster={(cluster) =>
-                    setSelectedClusterId(cluster.id)
-                  }
-                />
+          {isExportOpen ? (
+            <GuidedExportDrawer
+              options={exportOptions}
+              isExporting={isExporting}
+              exportError={exportError}
+              onExport={(format) => {
+                void handleDirectExport(format);
+              }}
+              onClose={() => setIsExportOpen(false)}
+              onOpenTransform={() => {
+                setExportError(null);
+                setIsExportOpen(false);
+                setIsToolsOpen(true);
+                setActiveTool("transform");
+              }}
+            />
+          ) : null}
+
+          <ResultsViewer
+            jobId={jobId}
+            jobKind={
+              currentJob?.kind as "scrape" | "crawl" | "research" | undefined
+            }
+            resultItems={filteredResultItems}
+            selectedResultIndex={visibleSelectedIndex}
+            setSelectedResultIndex={(visibleIndex) => {
+              const sourceIndex = filteredSourceIndexes[visibleIndex];
+              if (typeof sourceIndex === "number") {
+                setSelectedResultIndex(sourceIndex);
+              }
+            }}
+            resultSummary={resultSummary}
+            resultConfidence={resultConfidence}
+            resultEvidence={resultEvidence}
+            resultClusters={resultClusters}
+            resultCitations={resultCitations}
+            resultAgentic={resultAgentic}
+            rawResult={rawResult}
+            resultFormat={resultFormat}
+            currentPage={currentPage}
+            totalResults={totalResults}
+            resultsPerPage={resultsPerPage}
+            onLoadPage={onLoadPage}
+            onOpenResearchAssistant={() => {
+              setAssistantMode("research");
+              aiAssistant.open({
+                surface: "results",
+                jobId,
+                resultFormat,
+                selectedResultIndex,
+                resultSummary,
+              });
+            }}
+          />
+
+          {activeToolConfig ? (
+            <div className="results-explorer__tool-panel">
+              <div className="results-explorer__drawer-header">
+                <div>
+                  <div className="results-viewer__section-label">
+                    Secondary tool
+                  </div>
+                  <h4>Secondary tool: {activeToolConfig.label}</h4>
+                  <p className="form-help">{activeToolConfig.description}</p>
+                </div>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setActiveTool(null)}
+                >
+                  Hide tool
+                </button>
+              </div>
+
+              {activeTool === "tree" ? (
+                <>
+                  <ExplorerTreeControls
+                    treeNodes={treeNodes}
+                    onExpandAll={expandAllTreeNodes}
+                    onCollapseAll={collapseAllTreeNodes}
+                  />
+                  <TreeView
+                    nodes={treeNodes}
+                    selectedId={treeSelectedId}
+                    onSelect={handleTreeSelect}
+                    onToggleExpand={handleTreeToggle}
+                    expandedIds={treeExpandedIds}
+                    searchQuery={searchQuery}
+                    statusFilter={statusFilter}
+                  />
+                </>
+              ) : null}
+
+              {activeTool === "diff" ? (
+                <>
+                  <ExplorerDiffControls
+                    compareJobId={compareJobId}
+                    comparableJobs={comparableJobs}
+                    onChangeCompareJobID={setCompareJobId}
+                  />
+                  <DiffViewer
+                    baseJob={currentJob}
+                    compareJob={compareJob}
+                    diffResult={diffResult}
+                    isLoading={diffLoading}
+                    error={diffError}
+                    onClose={() => setActiveTool(null)}
+                  />
+                </>
+              ) : null}
+
+              {activeTool === "visualize" && isResearchJob ? (
+                <div className="visualize-content">
+                  <EvidenceChart
+                    evidence={resultEvidence}
+                    clusters={resultClusters}
+                    selectedEvidenceUrl={selectedEvidenceUrl}
+                    onSelectEvidence={(item) =>
+                      setSelectedEvidenceUrl(item.url)
+                    }
+                  />
+                  {resultClusters.length > 0 ? (
+                    <ClusterGraph
+                      clusters={resultClusters}
+                      evidence={resultEvidence}
+                      selectedClusterId={selectedClusterId}
+                      onSelectCluster={(cluster) =>
+                        setSelectedClusterId(cluster.id)
+                      }
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+
+              {activeTool === "transform" ? (
+                <div className="results-explorer__transform-stack">
+                  {exportError ? (
+                    <div className="transform-error">{exportError}</div>
+                  ) : null}
+                  <TransformPreview
+                    jobId={jobId}
+                    onApply={(format, expression, language) => {
+                      void handleExportWithTransform(
+                        format,
+                        expression,
+                        language,
+                      );
+                    }}
+                  />
+                  <div className="panel results-explorer__shape-export">
+                    <h4>Direct shape export</h4>
+                    <p className="form-help">
+                      Apply a bounded export shape directly to this saved result
+                      for markdown and tabular handoffs.
+                    </p>
+                    <div className="row results-explorer__shape-export-controls">
+                      <label>
+                        Format
+                        <select
+                          value={shapeExportFormat}
+                          onChange={(event) =>
+                            setShapeExportFormat(
+                              event.target.value as "md" | "csv" | "xlsx",
+                            )
+                          }
+                        >
+                          <option value="md">Markdown</option>
+                          <option value="csv">CSV</option>
+                          <option value="xlsx">XLSX</option>
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setAssistantMode("shape");
+                          aiAssistant.open({
+                            surface: "results",
+                            jobId,
+                            resultFormat,
+                            selectedResultIndex,
+                            resultSummary,
+                          });
+                        }}
+                      >
+                        Open AI assistant
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setExportError(null);
+                          setShapeConfigText("");
+                          setShapeConfigError(null);
+                        }}
+                      >
+                        Clear shape
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleShapeExport()}
+                      >
+                        Export shaped result
+                      </button>
+                    </div>
+                    <textarea
+                      className="form-textarea results-explorer__shape-export-input"
+                      rows={10}
+                      value={shapeConfigText}
+                      onChange={(event) => {
+                        setExportError(null);
+                        setShapeConfigText(event.target.value);
+                        setShapeConfigError(null);
+                      }}
+                      placeholder='{"summaryFields":["title","url"],"normalizedFields":["field.price"]}'
+                    />
+                    {shapeConfigError ? (
+                      <div className="transform-error">
+                        Error: {shapeConfigError}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
             </div>
           ) : null}
-
-          {activeTool === "transform" ? (
-            <div className="results-explorer__transform-stack">
-              <TransformPreview
-                jobId={jobId}
-                onApply={(format, expression, language) => {
-                  void handleExportWithTransform(format, expression, language);
-                }}
-              />
-              <div className="panel results-explorer__shape-export">
-                <h4>Direct shape export</h4>
-                <p className="form-help">
-                  Apply a bounded export shape directly to this saved result for
-                  markdown and tabular handoffs.
-                </p>
-                <div className="row results-explorer__shape-export-controls">
-                  <label>
-                    Format
-                    <select
-                      value={shapeExportFormat}
-                      onChange={(event) =>
-                        setShapeExportFormat(
-                          event.target.value as "md" | "csv" | "xlsx",
-                        )
-                      }
-                    >
-                      <option value="md">Markdown</option>
-                      <option value="csv">CSV</option>
-                      <option value="xlsx">XLSX</option>
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setIsShapeAssistantOpen(true)}
-                  >
-                    Generate shape with AI
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => {
-                      setShapeConfigText("");
-                      setShapeConfigError(null);
-                    }}
-                  >
-                    Clear shape
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleShapeExport()}
-                  >
-                    Export shaped result
-                  </button>
-                </div>
-                <textarea
-                  className="form-textarea results-explorer__shape-export-input"
-                  rows={10}
-                  value={shapeConfigText}
-                  onChange={(event) => {
-                    setShapeConfigText(event.target.value);
-                    setShapeConfigError(null);
-                  }}
-                  placeholder='{"summaryFields":["title","url"],"normalizedFields":["field.price"]}'
-                />
-                {shapeConfigError ? (
-                  <div className="transform-error">
-                    Error: {shapeConfigError}
-                  </div>
-                ) : null}
-              </div>
-              <AIExportShapeAssistant
-                isOpen={isShapeAssistantOpen}
-                onClose={() => setIsShapeAssistantOpen(false)}
-                format={shapeExportFormat}
-                currentShape={currentShapeConfig}
-                initialJobId={jobId}
-                onApplyShape={(shape) => {
-                  setShapeConfigText(JSON.stringify(shape, null, 2));
-                  setShapeConfigError(null);
-                  setIsShapeAssistantOpen(false);
-                }}
-              />
-            </div>
-          ) : null}
         </div>
-      ) : null}
+
+        <ResultsAssistantSection
+          jobId={jobId}
+          jobType={jobType}
+          resultFormat={resultFormat}
+          selectedResultIndex={selectedResultIndex}
+          resultSummary={resultSummary}
+          selectedResult={resultItems[selectedResultIndex] ?? null}
+          mode={assistantMode}
+          onModeChange={setAssistantMode}
+          shapeFormat={shapeExportFormat}
+          onShapeFormatChange={setShapeExportFormat}
+          currentShape={currentShapeConfig}
+          onApplyShape={(shape) => {
+            setIsExportOpen(false);
+            setIsToolsOpen(true);
+            setActiveTool("transform");
+            setShapeConfigText(JSON.stringify(shape, null, 2));
+            setShapeConfigError(null);
+          }}
+        />
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ForwardedRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AIAssistantProvider } from "../../ai-assistant";
 import { useFormState } from "../../../hooks/useFormState";
 import { JobSubmissionContainer } from "../JobSubmissionContainer";
 import type { JobType } from "../../../types/presets";
@@ -146,16 +147,18 @@ function renderHarness(initialTab: JobType = "scrape") {
     const [activeTab, setActiveTab] = useState<JobType>(initialTab);
 
     return (
-      <JobSubmissionContainer
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        formState={formState}
-        onSubmitScrape={onSubmitScrape}
-        onSubmitCrawl={onSubmitCrawl}
-        onSubmitResearch={onSubmitResearch}
-        loading={false}
-        profiles={[]}
-      />
+      <AIAssistantProvider>
+        <JobSubmissionContainer
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          formState={formState}
+          onSubmitScrape={onSubmitScrape}
+          onSubmitCrawl={onSubmitCrawl}
+          onSubmitResearch={onSubmitResearch}
+          loading={false}
+          profiles={[]}
+        />
+      </AIAssistantProvider>
     );
   }
 
@@ -188,14 +191,14 @@ describe("JobSubmissionContainer wizard", () => {
     renderHarness();
 
     await user.type(
-      screen.getByLabelText(/target url/i),
+      screen.getAllByLabelText(/target url/i)[0],
       "https://example.com",
     );
 
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("checkbox", { name: /guided mode/i }));
 
     expect(
-      await screen.findByDisplayValue("https://example.com"),
+      (await screen.findAllByDisplayValue("https://example.com"))[0],
     ).toBeInTheDocument();
   });
 
@@ -204,7 +207,7 @@ describe("JobSubmissionContainer wizard", () => {
     renderHarness();
 
     await user.type(
-      screen.getByLabelText(/target url/i),
+      screen.getAllByLabelText(/target url/i)[0],
       "https://example.com",
     );
 
@@ -224,7 +227,7 @@ describe("JobSubmissionContainer wizard", () => {
     const view = renderHarness();
 
     await user.type(
-      screen.getByLabelText(/target url/i),
+      screen.getAllByLabelText(/target url/i)[0],
       "https://example.com/docs",
     );
 
@@ -242,7 +245,7 @@ describe("JobSubmissionContainer wizard", () => {
     renderHarness();
 
     expect(
-      await screen.findByDisplayValue("https://example.com/docs"),
+      (await screen.findAllByDisplayValue("https://example.com/docs"))[0],
     ).toBeInTheDocument();
   });
 });

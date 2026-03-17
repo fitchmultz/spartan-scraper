@@ -31,9 +31,7 @@ describe("RenderProfileEditor", () => {
     const onError = vi.fn();
     render(<RenderProfileEditor onError={onError} />);
 
-    await waitFor(() => {
-      expect(api.getV1RenderProfiles).toHaveBeenCalledTimes(1);
-    });
+    await screen.findByRole("button", { name: /create profile/i });
 
     fireEvent.click(screen.getByRole("button", { name: /create profile/i }));
     fireEvent.change(screen.getByLabelText(/^name$/i), {

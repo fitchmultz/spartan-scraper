@@ -15,6 +15,7 @@ import {
   type TestSelectorResponse,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { getApiErrorMessage } from "../../lib/api-errors";
 import { ruleKey } from "./templateEditorUtils";
 
 interface PreviewResult {
@@ -26,17 +27,6 @@ interface TemplatePreviewPaneProps {
   template: Template;
   url: string;
   onUrlChange: (value: string) => void;
-}
-
-function getAPIErrorMessage(error: unknown) {
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error && typeof error === "object") {
-    const candidate = error as { error?: string; message?: string };
-    return candidate.error || candidate.message || JSON.stringify(error);
-  }
-  return String(error);
 }
 
 export function TemplatePreviewPane({
@@ -97,7 +87,12 @@ export function TemplatePreviewPane({
           });
 
           if (response.error) {
-            throw new Error(getAPIErrorMessage(response.error));
+            throw new Error(
+              getApiErrorMessage(
+                response.error,
+                "Failed to run selector preview.",
+              ),
+            );
           }
 
           return {

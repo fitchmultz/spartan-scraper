@@ -23,6 +23,7 @@ import type {
 import type { Profile } from "../../hooks/useAppData";
 import type { FormController, ProfileOption } from "../../hooks/useFormState";
 import type { JobType, PresetConfig } from "../../types/presets";
+import { JobSubmissionAssistantSection } from "../ai-assistant";
 import { WizardActions } from "./WizardActions";
 import { WizardStepper } from "./WizardStepper";
 import { useJobWizard } from "./useJobWizard";
@@ -181,195 +182,212 @@ export const JobSubmissionContainer = forwardRef<
       className="job-workflow job-wizard"
       data-tour="form-types"
     >
-      <div className="panel job-workflow__header job-wizard__header">
-        <div className="job-workflow__header-copy">
-          <div className="job-workflow__eyebrow">Workflow</div>
-          <h2>Create a job with a guided workflow</h2>
-          <p>
-            Move step by step, keep presets in the sidebar, and switch to Expert
-            mode at any time without losing entered values.
-          </p>
+      <div className="ai-assistant-surface">
+        <div className="ai-assistant-surface__main">
+          <div className="panel job-workflow__header job-wizard__header">
+            <div className="job-workflow__header-copy">
+              <div className="job-workflow__eyebrow">Workflow</div>
+              <h2>Create a job with a guided workflow</h2>
+              <p>
+                Move step by step, keep presets in the sidebar, and switch to
+                Expert mode at any time without losing entered values.
+              </p>
+            </div>
+
+            <div className="job-wizard__header-controls">
+              <label
+                className="job-wizard__mode-toggle"
+                data-tour="expert-mode"
+              >
+                <input
+                  type="checkbox"
+                  checked={wizard.expertMode}
+                  onChange={(event) =>
+                    wizard.setExpertMode(event.target.checked)
+                  }
+                />
+                <span>{wizard.expertMode ? "Expert mode" : "Guided mode"}</span>
+              </label>
+              <span className="job-wizard__draft-status">
+                {wizard.draftSavedAt ? "Draft saved" : "Draft active"}
+              </span>
+            </div>
+          </div>
+
+          {!wizard.expertMode ? (
+            <>
+              <WizardStepper
+                activeStep={wizard.activeStep}
+                completedSteps={wizard.completedSteps}
+                onStepChange={wizard.setActiveStep}
+              />
+
+              {wizard.activeStep === "basics" ? (
+                <BasicsStep
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  scrapeUrl={wizard.localState.scrape.url}
+                  setScrapeUrl={(value) =>
+                    wizard.updateLocalState("scrape", { url: value })
+                  }
+                  crawlUrl={wizard.localState.crawl.url}
+                  setCrawlUrl={(value) =>
+                    wizard.updateLocalState("crawl", { url: value })
+                  }
+                  researchQuery={wizard.localState.research.query}
+                  setResearchQuery={(value) =>
+                    wizard.updateLocalState("research", { query: value })
+                  }
+                  researchUrls={wizard.localState.research.urls}
+                  setResearchUrls={(value) =>
+                    wizard.updateLocalState("research", { urls: value })
+                  }
+                  maxDepth={formState.maxDepth}
+                  setMaxDepth={formState.setMaxDepth}
+                  maxPages={formState.maxPages}
+                  setMaxPages={formState.setMaxPages}
+                  errors={wizard.validationErrors.basics ?? []}
+                />
+              ) : null}
+
+              {wizard.activeStep === "runtime" ? (
+                <RuntimeStep
+                  form={formState}
+                  profiles={profileOptions}
+                  device={activeRuntimeDevice}
+                  setDevice={setActiveRuntimeDevice}
+                  errors={wizard.validationErrors.runtime ?? []}
+                  inputPrefix={activeTab}
+                />
+              ) : null}
+
+              {wizard.activeStep === "extraction" ? (
+                <ExtractionStep
+                  activeTab={activeTab}
+                  form={formState}
+                  errors={wizard.validationErrors.extraction ?? []}
+                />
+              ) : null}
+
+              {wizard.activeStep === "review" ? (
+                <ReviewStep
+                  activeTab={activeTab}
+                  config={wizard.getCurrentConfig(activeTab)}
+                  warnings={wizard.reviewWarnings}
+                />
+              ) : null}
+
+              <WizardActions
+                activeStep={wizard.activeStep}
+                activeTab={activeTab}
+                loading={loading}
+                draftSavedAt={wizard.draftSavedAt}
+                onBack={wizard.goBack}
+                onNext={wizard.goNext}
+                onSubmit={() => {
+                  void submitActiveJob();
+                }}
+                onResetDraft={() => wizard.clearDraft(activeTab)}
+              />
+            </>
+          ) : null}
+
+          <Suspense
+            fallback={
+              <div className="loading-placeholder">Loading job form...</div>
+            }
+          >
+            {activeTab === "scrape" ? (
+              <ScrapeForm
+                ref={scrapeFormRef}
+                surface={wizard.expertMode ? "full" : "headless"}
+                form={formState}
+                profiles={profileOptions}
+                url={wizard.localState.scrape.url}
+                setUrl={(value) =>
+                  wizard.updateLocalState("scrape", { url: value })
+                }
+                device={wizard.localState.scrape.device}
+                setDevice={(value) =>
+                  wizard.updateLocalState("scrape", { device: value })
+                }
+                onSubmit={async (req) => {
+                  await onSubmitScrape(req);
+                }}
+                loading={loading}
+              />
+            ) : null}
+
+            {activeTab === "crawl" ? (
+              <CrawlForm
+                ref={crawlFormRef}
+                surface={wizard.expertMode ? "full" : "headless"}
+                form={formState}
+                profiles={profileOptions}
+                url={wizard.localState.crawl.url}
+                setUrl={(value) =>
+                  wizard.updateLocalState("crawl", { url: value })
+                }
+                sitemapURL={wizard.localState.crawl.sitemapURL}
+                setSitemapURL={(value) =>
+                  wizard.updateLocalState("crawl", { sitemapURL: value })
+                }
+                sitemapOnly={wizard.localState.crawl.sitemapOnly}
+                setSitemapOnly={(value) =>
+                  wizard.updateLocalState("crawl", { sitemapOnly: value })
+                }
+                includePatterns={wizard.localState.crawl.includePatterns}
+                setIncludePatterns={(value) =>
+                  wizard.updateLocalState("crawl", { includePatterns: value })
+                }
+                excludePatterns={wizard.localState.crawl.excludePatterns}
+                setExcludePatterns={(value) =>
+                  wizard.updateLocalState("crawl", { excludePatterns: value })
+                }
+                device={wizard.localState.crawl.device}
+                setDevice={(value) =>
+                  wizard.updateLocalState("crawl", { device: value })
+                }
+                onSubmit={async (req) => {
+                  await onSubmitCrawl(req);
+                }}
+                loading={loading}
+              />
+            ) : null}
+
+            {activeTab === "research" ? (
+              <ResearchForm
+                ref={researchFormRef}
+                surface={wizard.expertMode ? "full" : "headless"}
+                form={formState}
+                profiles={profileOptions}
+                query={wizard.localState.research.query}
+                setQuery={(value) =>
+                  wizard.updateLocalState("research", { query: value })
+                }
+                urls={wizard.localState.research.urls}
+                setUrls={(value) =>
+                  wizard.updateLocalState("research", { urls: value })
+                }
+                device={wizard.localState.research.device}
+                setDevice={(value) =>
+                  wizard.updateLocalState("research", { device: value })
+                }
+                onSubmit={async (req) => {
+                  await onSubmitResearch(req);
+                }}
+                loading={loading}
+              />
+            ) : null}
+          </Suspense>
         </div>
 
-        <div className="job-wizard__header-controls">
-          <label className="job-wizard__mode-toggle" data-tour="expert-mode">
-            <input
-              type="checkbox"
-              checked={wizard.expertMode}
-              onChange={(event) => wizard.setExpertMode(event.target.checked)}
-            />
-            <span>{wizard.expertMode ? "Expert mode" : "Guided mode"}</span>
-          </label>
-          <span className="job-wizard__draft-status">
-            {wizard.draftSavedAt ? "Draft saved" : "Draft active"}
-          </span>
-        </div>
+        <JobSubmissionAssistantSection
+          activeTab={activeTab}
+          form={formState}
+          localState={wizard.localState}
+        />
       </div>
-
-      {!wizard.expertMode ? (
-        <>
-          <WizardStepper
-            activeStep={wizard.activeStep}
-            completedSteps={wizard.completedSteps}
-            onStepChange={wizard.setActiveStep}
-          />
-
-          {wizard.activeStep === "basics" ? (
-            <BasicsStep
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              scrapeUrl={wizard.localState.scrape.url}
-              setScrapeUrl={(value) =>
-                wizard.updateLocalState("scrape", { url: value })
-              }
-              crawlUrl={wizard.localState.crawl.url}
-              setCrawlUrl={(value) =>
-                wizard.updateLocalState("crawl", { url: value })
-              }
-              researchQuery={wizard.localState.research.query}
-              setResearchQuery={(value) =>
-                wizard.updateLocalState("research", { query: value })
-              }
-              researchUrls={wizard.localState.research.urls}
-              setResearchUrls={(value) =>
-                wizard.updateLocalState("research", { urls: value })
-              }
-              maxDepth={formState.maxDepth}
-              setMaxDepth={formState.setMaxDepth}
-              maxPages={formState.maxPages}
-              setMaxPages={formState.setMaxPages}
-              errors={wizard.validationErrors.basics ?? []}
-            />
-          ) : null}
-
-          {wizard.activeStep === "runtime" ? (
-            <RuntimeStep
-              form={formState}
-              profiles={profileOptions}
-              device={activeRuntimeDevice}
-              setDevice={setActiveRuntimeDevice}
-              errors={wizard.validationErrors.runtime ?? []}
-              inputPrefix={activeTab}
-            />
-          ) : null}
-
-          {wizard.activeStep === "extraction" ? (
-            <ExtractionStep
-              activeTab={activeTab}
-              form={formState}
-              errors={wizard.validationErrors.extraction ?? []}
-            />
-          ) : null}
-
-          {wizard.activeStep === "review" ? (
-            <ReviewStep
-              activeTab={activeTab}
-              config={wizard.getCurrentConfig(activeTab)}
-              warnings={wizard.reviewWarnings}
-            />
-          ) : null}
-
-          <WizardActions
-            activeStep={wizard.activeStep}
-            activeTab={activeTab}
-            loading={loading}
-            draftSavedAt={wizard.draftSavedAt}
-            onBack={wizard.goBack}
-            onNext={wizard.goNext}
-            onSubmit={() => {
-              void submitActiveJob();
-            }}
-            onResetDraft={() => wizard.clearDraft(activeTab)}
-          />
-        </>
-      ) : null}
-
-      <Suspense
-        fallback={
-          <div className="loading-placeholder">Loading job form...</div>
-        }
-      >
-        {activeTab === "scrape" ? (
-          <ScrapeForm
-            ref={scrapeFormRef}
-            surface={wizard.expertMode ? "full" : "headless"}
-            form={formState}
-            profiles={profileOptions}
-            url={wizard.localState.scrape.url}
-            setUrl={(value) =>
-              wizard.updateLocalState("scrape", { url: value })
-            }
-            device={wizard.localState.scrape.device}
-            setDevice={(value) =>
-              wizard.updateLocalState("scrape", { device: value })
-            }
-            onSubmit={async (req) => {
-              await onSubmitScrape(req);
-            }}
-            loading={loading}
-          />
-        ) : null}
-
-        {activeTab === "crawl" ? (
-          <CrawlForm
-            ref={crawlFormRef}
-            surface={wizard.expertMode ? "full" : "headless"}
-            form={formState}
-            profiles={profileOptions}
-            url={wizard.localState.crawl.url}
-            setUrl={(value) => wizard.updateLocalState("crawl", { url: value })}
-            sitemapURL={wizard.localState.crawl.sitemapURL}
-            setSitemapURL={(value) =>
-              wizard.updateLocalState("crawl", { sitemapURL: value })
-            }
-            sitemapOnly={wizard.localState.crawl.sitemapOnly}
-            setSitemapOnly={(value) =>
-              wizard.updateLocalState("crawl", { sitemapOnly: value })
-            }
-            includePatterns={wizard.localState.crawl.includePatterns}
-            setIncludePatterns={(value) =>
-              wizard.updateLocalState("crawl", { includePatterns: value })
-            }
-            excludePatterns={wizard.localState.crawl.excludePatterns}
-            setExcludePatterns={(value) =>
-              wizard.updateLocalState("crawl", { excludePatterns: value })
-            }
-            device={wizard.localState.crawl.device}
-            setDevice={(value) =>
-              wizard.updateLocalState("crawl", { device: value })
-            }
-            onSubmit={async (req) => {
-              await onSubmitCrawl(req);
-            }}
-            loading={loading}
-          />
-        ) : null}
-
-        {activeTab === "research" ? (
-          <ResearchForm
-            ref={researchFormRef}
-            surface={wizard.expertMode ? "full" : "headless"}
-            form={formState}
-            profiles={profileOptions}
-            query={wizard.localState.research.query}
-            setQuery={(value) =>
-              wizard.updateLocalState("research", { query: value })
-            }
-            urls={wizard.localState.research.urls}
-            setUrls={(value) =>
-              wizard.updateLocalState("research", { urls: value })
-            }
-            device={wizard.localState.research.device}
-            setDevice={(value) =>
-              wizard.updateLocalState("research", { device: value })
-            }
-            onSubmit={async (req) => {
-              await onSubmitResearch(req);
-            }}
-            loading={loading}
-          />
-        ) : null}
-      </Suspense>
     </section>
   );
 });
