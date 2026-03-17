@@ -33,7 +33,7 @@ export function AutomationLayout({
     : [...visitedSections, activeSection];
 
   return (
-    <div className="automation-hub">
+    <div className="automation-hub" data-tour="automation-hub">
       <div className="automation-hub__content">
         {sectionsToRender.map((section) => {
           const isActive = section === activeSection;

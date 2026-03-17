@@ -1,24 +1,21 @@
 /**
- * Keyboard Shortcuts Help Modal
- *
- * Displays a cheatsheet of all available keyboard shortcuts.
- * Organized by category: Global, Navigation, Forms, and Modal shortcuts.
- *
- * @module KeyboardShortcutsHelp
+ * Purpose: Render the keyboard shortcut help overlay with global, navigation, and route-specific guidance.
+ * Responsibilities: Present shortcut groups, format keys for the current platform, and expose route-relevant actions alongside global shell affordances.
+ * Scope: Keyboard shortcut help presentation only.
+ * Usage: Mount from `App.tsx` and pass the current shortcut config plus optional route kind.
+ * Invariants/Assumptions: The overlay closes on backdrop click or Escape, and route-specific content must stay aligned with the onboarding route-help model.
  */
 
 import type { ShortcutConfig } from "../hooks/useKeyboard";
 import { formatShortcut } from "../lib/keyboard-shortcuts";
+import { ROUTE_HELP_CONTENT, type OnboardingRouteKey } from "../lib/onboarding";
 
 export type KeyboardShortcutsHelpProps = {
-  /** Whether the modal is visible */
   isOpen: boolean;
-  /** Callback when modal should close */
   onClose: () => void;
-  /** Current shortcut configuration */
   shortcuts: ShortcutConfig;
-  /** Platform indicator for shortcut display */
   isMac?: boolean;
+  routeKind?: OnboardingRouteKey;
 };
 
 type ShortcutSection = {
@@ -26,19 +23,26 @@ type ShortcutSection = {
   items: { label: string; shortcut: string }[];
 };
 
-/**
- * Keyboard Shortcuts Help Modal
- *
- * A modal dialog displaying all available keyboard shortcuts
- * organized by category for easy reference.
- */
 export function KeyboardShortcutsHelp({
   isOpen,
   onClose,
   shortcuts,
   isMac = false,
+  routeKind,
 }: KeyboardShortcutsHelpProps) {
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
+
+  const routeSection: ShortcutSection | null = routeKind
+    ? {
+        title: "This Route",
+        items: ROUTE_HELP_CONTENT[routeKind].shortcuts.map((item) => ({
+          label: item.label,
+          shortcut: shortcuts[item.shortcut],
+        })),
+      }
+    : null;
 
   const sections: ShortcutSection[] = [
     {
@@ -58,23 +62,27 @@ export function KeyboardShortcutsHelp({
         { label: "Go to Forms", shortcut: shortcuts.navigateForms },
       ],
     },
-    {
-      title: "Forms",
-      items: [{ label: "Submit Form", shortcut: shortcuts.submitForm }],
-    },
+    ...(routeSection ? [routeSection] : []),
   ];
+
+  if (routeKind === "new-job") {
+    sections.push({
+      title: "Job Creation",
+      items: [{ label: "Submit current job", shortcut: shortcuts.submitForm }],
+    });
+  }
 
   return (
     <div
       className="shortcuts-help-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
           onClose();
         }
       }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
           onClose();
         }
       }}
@@ -115,8 +123,8 @@ export function KeyboardShortcutsHelp({
 
         <div className="shortcuts-help-footer">
           <span className="shortcuts-help-hint">
-            Press <kbd>?</kbd> to open this help when focus is outside text
-            inputs
+            Press <kbd>?</kbd> when focus is outside text inputs to reopen this
+            help
           </span>
         </div>
       </div>

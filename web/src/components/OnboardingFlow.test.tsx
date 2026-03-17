@@ -1,13 +1,16 @@
 /**
- * Tests for OnboardingFlow callback behavior.
- *
- * @module OnboardingFlow.test
+ * Purpose: Verify the route-aware onboarding flow wires Joyride steps and callbacks correctly.
+ * Responsibilities: Assert cross-route target coverage, route-navigation callbacks, and terminal completion/skip behavior.
+ * Scope: Onboarding flow integration with the mocked Joyride adapter only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Joyride is mocked and receives the final props that `App.tsx` depends on for onboarding control.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Joyride, { ACTIONS, EVENTS, STATUS } from "react-joyride";
 import { OnboardingFlow } from "./OnboardingFlow";
+import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
 
 vi.mock("react-joyride", () => {
   const JoyrideMock = vi.fn(() => null);
@@ -31,30 +34,21 @@ vi.mock("react-joyride", () => {
   };
 });
 
-type JoyrideProps = {
-  callback: (data: {
-    action: string;
-    index: number;
-    status: string;
-    type: string;
-  }) => void;
-};
-
-function getCallback(): JoyrideProps["callback"] {
-  const joyrideMock = vi.mocked(Joyride);
-  const firstCall = joyrideMock.mock.calls[0];
+function getJoyrideProps() {
+  const firstCall = vi.mocked(Joyride).mock.calls[0];
   if (!firstCall) {
     throw new Error("Joyride was not rendered");
   }
 
-  const [props] = firstCall;
-  const callback = (props as unknown as JoyrideProps).callback;
-
-  if (!callback) {
-    throw new Error("Joyride callback prop was not provided");
-  }
-
-  return callback;
+  return firstCall[0] as unknown as {
+    callback: (data: {
+      action: string;
+      index: number;
+      status: string;
+      type: string;
+    }) => void;
+    steps: { target: string }[];
+  };
 }
 
 describe("OnboardingFlow", () => {
@@ -62,105 +56,99 @@ describe("OnboardingFlow", () => {
     vi.clearAllMocks();
   });
 
-  it("advances and rewinds steps from Joyride callback events", () => {
-    const onStepChange = vi.fn();
-
-    render(
-      <OnboardingFlow
-        isRunning
-        currentStep={2}
-        onComplete={vi.fn()}
-        onStepChange={onStepChange}
-      />,
-    );
-
-    const callback = getCallback();
-
-    act(() => {
-      callback({
-        action: ACTIONS.NEXT,
-        index: 2,
-        status: "running",
-        type: EVENTS.STEP_AFTER,
-      });
-    });
-
-    expect(onStepChange).toHaveBeenLastCalledWith(3);
-
-    act(() => {
-      callback({
-        action: ACTIONS.PREV,
-        index: 2,
-        status: "running",
-        type: EVENTS.STEP_AFTER,
-      });
-    });
-
-    expect(onStepChange).toHaveBeenLastCalledWith(1);
-
-    act(() => {
-      callback({
-        action: ACTIONS.NEXT,
-        index: 3,
-        status: "running",
-        type: EVENTS.TARGET_NOT_FOUND,
-      });
-    });
-
-    expect(onStepChange).toHaveBeenLastCalledWith(4);
-  });
-
-  it("calls completion and skip callbacks for terminal states", () => {
-    const onComplete = vi.fn();
-    const onSkip = vi.fn();
-    const onStepChange = vi.fn();
-
+  it("covers every major route in the guided tour", () => {
     render(
       <OnboardingFlow
         isRunning
         currentStep={0}
-        onComplete={onComplete}
-        onSkip={onSkip}
+        currentRoute="jobs"
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const props = getJoyrideProps();
+
+    expect(props.steps).toHaveLength(ONBOARDING_TOTAL_STEPS);
+    expect(props.steps.map((step) => step.target)).toEqual(
+      expect.arrayContaining([
+        '[data-tour="jobs-dashboard"], body',
+        '[data-tour="command-palette"], body',
+        '[data-tour="quickstart"], body',
+        '[data-tour="wizard-steps"], body',
+        '[data-tour="job-results"], body',
+        '[data-tour="templates-workspace"], body',
+        '[data-tour="automation-hub"], body',
+        '[data-tour="settings-workspace"], body',
+      ]),
+    );
+  });
+
+  it("requests route navigation when the next step lives on a different route", () => {
+    const onRouteChange = vi.fn();
+    const onStepChange = vi.fn();
+
+    render(
+      <OnboardingFlow
+        isRunning
+        currentStep={1}
+        currentRoute="jobs"
+        onComplete={vi.fn()}
+        onRouteChange={onRouteChange}
         onStepChange={onStepChange}
       />,
     );
 
-    const callback = getCallback();
+    const { callback } = getJoyrideProps();
 
     act(() => {
       callback({
         action: ACTIONS.NEXT,
-        index: 7,
-        status: STATUS.FINISHED,
-        type: EVENTS.STEP_AFTER,
-      });
-    });
-
-    expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onSkip).not.toHaveBeenCalled();
-
-    act(() => {
-      callback({
-        action: ACTIONS.CLOSE,
         index: 1,
         status: "running",
         type: EVENTS.STEP_AFTER,
       });
     });
 
-    expect(onSkip).toHaveBeenCalledTimes(1);
-    expect(onStepChange).not.toHaveBeenCalled();
+    expect(onStepChange).toHaveBeenCalledWith(2);
+    expect(onRouteChange).toHaveBeenCalledWith("new-job");
+  });
+
+  it("calls completion and skip callbacks for terminal states", () => {
+    const onComplete = vi.fn();
+    const onSkip = vi.fn();
+
+    render(
+      <OnboardingFlow
+        isRunning
+        currentStep={0}
+        currentRoute="jobs"
+        onComplete={onComplete}
+        onSkip={onSkip}
+      />,
+    );
+
+    const { callback } = getJoyrideProps();
+
+    act(() => {
+      callback({
+        action: ACTIONS.NEXT,
+        index: ONBOARDING_TOTAL_STEPS - 1,
+        status: STATUS.FINISHED,
+        type: EVENTS.STEP_AFTER,
+      });
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
 
     act(() => {
       callback({
         action: ACTIONS.SKIP,
-        index: 2,
+        index: 1,
         status: STATUS.SKIPPED,
         type: EVENTS.STEP_AFTER,
       });
     });
 
-    expect(onSkip).toHaveBeenCalledTimes(2);
-    expect(onStepChange).not.toHaveBeenCalled();
+    expect(onSkip).toHaveBeenCalledTimes(1);
   });
 });

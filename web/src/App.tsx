@@ -43,8 +43,9 @@ import {
 import { InfoSections } from "./components/InfoSections";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
-import { WelcomeModal } from "./components/WelcomeModal";
 import { OnboardingFlow } from "./components/OnboardingFlow";
+import { OnboardingNudge } from "./components/OnboardingNudge";
+import { RouteHelpPanel } from "./components/RouteHelpPanel";
 import { AutomationLayout } from "./components/automation/AutomationLayout";
 import { AutomationSubnav } from "./components/automation/AutomationSubnav";
 import {
@@ -80,6 +81,8 @@ import {
   type RouteSignal,
 } from "./components/shell/ShellPrimitives";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { ShortcutHint } from "./components/ShortcutHint";
+import { TutorialTooltip } from "./components/TutorialTooltip";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
@@ -95,6 +98,7 @@ import {
 import { getApiBaseUrl } from "./lib/api-config";
 import { getApiErrorMessage } from "./lib/api-errors";
 import { saveJobsViewState } from "./lib/job-monitoring";
+import type { OnboardingRouteKey } from "./lib/onboarding";
 import type { JobPreset, JobType } from "./types/presets";
 
 type RouteKind =
@@ -243,9 +247,10 @@ function AppShell() {
     null,
   );
   const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
+  const previousRouteKeyRef = useRef<OnboardingRouteKey | null>(null);
 
   const {
-    shouldShowWelcome,
+    shouldShowFirstRunHint,
     isTourActive,
     currentStep,
     startOnboarding,
@@ -253,12 +258,17 @@ function AppShell() {
     resetOnboarding,
     goToStep,
     finishOnboarding,
+    dismissFirstRunHint,
+    markRouteVisited,
+    visitedRoutes,
   } = useOnboarding();
 
   const {
     isCommandPaletteOpen,
     isHelpOpen,
+    openCommandPalette,
     closeCommandPalette,
+    openHelp,
     closeHelp,
     shortcuts,
     isMac,
@@ -290,6 +300,9 @@ function AppShell() {
   const { selectedJobId, loadResults } = resultsState;
 
   const route = useMemo(() => parseRoute(pathname), [pathname]);
+  const routeKey = route.kind as OnboardingRouteKey;
+  const [routeHelpDefaultExpanded, setRouteHelpDefaultExpanded] =
+    useState(false);
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -350,6 +363,19 @@ function AppShell() {
       void loadResults(route.jobId);
     }
   }, [route, loadResults]);
+
+  useEffect(() => {
+    if (previousRouteKeyRef.current === routeKey) {
+      return;
+    }
+
+    const firstVisit = !visitedRoutes.includes(routeKey);
+    setRouteHelpDefaultExpanded(firstVisit);
+    if (firstVisit) {
+      markRouteVisited(routeKey);
+    }
+    previousRouteKeyRef.current = routeKey;
+  }, [markRouteVisited, routeKey, visitedRoutes]);
 
   const handleNavigate = useCallback(
     (view: "jobs" | "results" | "forms") => {
@@ -732,6 +758,41 @@ function AppShell() {
       ? (route.automationSection ?? DEFAULT_AUTOMATION_SECTION)
       : DEFAULT_AUTOMATION_SECTION;
 
+  const handleTourRouteChange = useCallback(
+    (targetRoute: OnboardingRouteKey) => {
+      switch (targetRoute) {
+        case "jobs":
+          navigate("/jobs");
+          return;
+        case "new-job":
+          navigate("/jobs/new");
+          return;
+        case "job-detail": {
+          const targetJobId =
+            selectedJobId ??
+            jobs.find((job) => job.status === "succeeded")?.id ??
+            jobs[0]?.id;
+          if (targetJobId) {
+            navigate(`/jobs/${targetJobId}`);
+            return;
+          }
+          navigate("/jobs");
+          return;
+        }
+        case "templates":
+          navigate("/templates");
+          return;
+        case "automation":
+          navigate("/automation/batches");
+          return;
+        case "settings":
+          navigate("/settings");
+          return;
+      }
+    },
+    [jobs, navigate, selectedJobId],
+  );
+
   const renderAutomationSection = useCallback(
     (section: AutomationSection): ReactNode => {
       switch (section) {
@@ -836,6 +897,47 @@ function AppShell() {
     route.kind,
   ]);
 
+  const shellUtilities = (
+    <>
+      <button
+        type="button"
+        className="secondary app-toolbar-shortcut"
+        data-tour="command-palette"
+        onClick={openCommandPalette}
+      >
+        Command Palette
+        <ShortcutHint shortcut={shortcuts.commandPalette} isMac={isMac} />
+      </button>
+      <button
+        type="button"
+        className="secondary app-toolbar-shortcut"
+        data-tour="keyboard-help"
+        onClick={openHelp}
+      >
+        Shortcuts
+        <ShortcutHint shortcut={shortcuts.help} isMac={isMac} />
+      </button>
+      <ThemeToggle
+        theme={theme}
+        resolvedTheme={resolvedTheme}
+        onThemeChange={setTheme}
+        onToggle={toggleTheme}
+      />
+    </>
+  );
+
+  const routeHelpPanel = (
+    <RouteHelpPanel
+      routeKey={routeKey}
+      shortcuts={shortcuts}
+      isMac={isMac}
+      defaultExpanded={routeHelpDefaultExpanded}
+      onOpenCommandPalette={openCommandPalette}
+      onOpenShortcuts={openHelp}
+      onRestartTour={resetOnboarding}
+    />
+  );
+
   return (
     <div className={`app app--${route.kind}`}>
       <AppTopBar
@@ -849,14 +951,33 @@ function AppShell() {
             </button>
           ) : null
         }
-        utilities={
-          <ThemeToggle
-            theme={theme}
-            resolvedTheme={resolvedTheme}
-            onThemeChange={setTheme}
-            onToggle={toggleTheme}
-          />
-        }
+        utilities={shellUtilities}
+      />
+
+      <OnboardingNudge
+        isVisible={shouldShowFirstRunHint}
+        isMac={isMac}
+        onStartTour={startOnboarding}
+        onOpenHelp={openHelp}
+        onDismiss={dismissFirstRunHint}
+      />
+
+      <TutorialTooltip
+        target='[data-tour="command-palette"]'
+        title="Jump anywhere fast"
+        content="Use the command palette to navigate routes, submit work, select presets, and restart onboarding."
+        position="bottom"
+        showBeacon={shouldShowFirstRunHint}
+        showDelay={500}
+      />
+
+      <TutorialTooltip
+        target='[data-tour="keyboard-help"]'
+        title="Shortcut help is visible now"
+        content="Open this anytime to see global shortcuts and a route-specific section for what matters on the current screen."
+        position="bottom"
+        showBeacon={shouldShowFirstRunHint}
+        showDelay={500}
       />
 
       <CommandPalette
@@ -878,20 +999,17 @@ function AppShell() {
         onClose={closeHelp}
         shortcuts={shortcuts}
         isMac={isMac}
-      />
-
-      <WelcomeModal
-        isOpen={shouldShowWelcome}
-        onStartTour={startOnboarding}
-        onSkip={skipOnboarding}
+        routeKind={routeKey}
       />
 
       <OnboardingFlow
         isRunning={isTourActive}
         currentStep={currentStep}
+        currentRoute={routeKey}
         onComplete={finishOnboarding}
         onSkip={skipOnboarding}
         onStepChange={goToStep}
+        onRouteChange={handleTourRouteChange}
       />
 
       <ErrorBanner message={error} />
@@ -917,7 +1035,9 @@ function AppShell() {
             }
           />
 
-          <section id="jobs">
+          {routeHelpPanel}
+
+          <section id="jobs" data-tour="jobs-dashboard">
             <JobMonitoringDashboard
               jobs={jobs}
               failedJobs={failedJobs}
@@ -956,9 +1076,13 @@ function AppShell() {
             }
           />
 
+          {routeHelpPanel}
+
           <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
 
-          <ResultsContainer resultsState={resultsState} jobs={jobs} />
+          <div data-tour="job-results">
+            <ResultsContainer resultsState={resultsState} jobs={jobs} />
+          </div>
         </div>
       )}
 
@@ -969,8 +1093,10 @@ function AppShell() {
             description={routeMeta.description}
           />
 
+          {routeHelpPanel}
+
           <div className="route-grid route-grid--new-job">
-            <div className="route-primary route-stack">
+            <div className="route-primary route-stack" data-tour="job-wizard">
               <JobSubmissionContainer
                 ref={jobSubmissionRef}
                 activeTab={activeTab}
@@ -1007,12 +1133,16 @@ function AppShell() {
             description={routeMeta.description}
           />
 
-          <TemplateManager
-            templateNames={templates}
-            onTemplatesChanged={() => {
-              void refreshTemplates();
-            }}
-          />
+          {routeHelpPanel}
+
+          <div data-tour="templates-workspace">
+            <TemplateManager
+              templateNames={templates}
+              onTemplatesChanged={() => {
+                void refreshTemplates();
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -1022,18 +1152,23 @@ function AppShell() {
             title={routeMeta.title}
             description={routeMeta.description}
             subnav={
-              <AutomationSubnav
-                activeSection={activeAutomationSection}
-                onSectionChange={(section) =>
-                  navigate(getAutomationPath(section))
-                }
-              />
+              <div data-tour="automation-subnav">
+                <AutomationSubnav
+                  activeSection={activeAutomationSection}
+                  onSectionChange={(section) =>
+                    navigate(getAutomationPath(section))
+                  }
+                />
+              </div>
             }
           />
-          <AutomationLayout
-            activeSection={activeAutomationSection}
-            renderSection={renderAutomationSection}
-          />
+          {routeHelpPanel}
+          <section data-tour="automation-hub">
+            <AutomationLayout
+              activeSection={activeAutomationSection}
+              renderSection={renderAutomationSection}
+            />
+          </section>
         </div>
       )}
 
@@ -1053,26 +1188,30 @@ function AppShell() {
             }
           />
 
-          <InfoSections
-            profiles={profiles}
-            schedules={schedules}
-            crawlStates={crawlStates}
-            crawlStatesPage={crawlStatesPage}
-            crawlStatesTotal={crawlStatesTotal}
-            crawlStatesPerPage={100}
-            onCrawlStatesPageChange={setCrawlStatesPage}
-          />
+          {routeHelpPanel}
 
-          <section className="panel">
-            <RenderProfileEditor />
-          </section>
+          <div data-tour="settings-workspace">
+            <InfoSections
+              profiles={profiles}
+              schedules={schedules}
+              crawlStates={crawlStates}
+              crawlStatesPage={crawlStatesPage}
+              crawlStatesTotal={crawlStatesTotal}
+              crawlStatesPerPage={100}
+              onCrawlStatesPageChange={setCrawlStatesPage}
+            />
 
-          <section className="panel">
-            <PipelineJSEditor />
-          </section>
+            <section className="panel">
+              <RenderProfileEditor />
+            </section>
 
-          <ProxyPoolStatusPanel />
-          <RetentionStatusPanel />
+            <section className="panel">
+              <PipelineJSEditor />
+            </section>
+
+            <ProxyPoolStatusPanel />
+            <RetentionStatusPanel />
+          </div>
         </div>
       )}
 

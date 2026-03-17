@@ -227,7 +227,10 @@ export function JobMonitoringDashboard({
         : "job-summary-card--attention";
 
   return (
-    <section className="panel job-monitoring-dashboard">
+    <section
+      className="panel job-monitoring-dashboard"
+      data-tour="jobs-dashboard"
+    >
       <div className="job-summary-strip">
         <div className="job-summary-card">
           <span className="job-summary-card__label">Total jobs</span>

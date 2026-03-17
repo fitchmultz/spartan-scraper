@@ -1,13 +1,15 @@
 /**
- * Tests for useOnboarding hook.
- *
- * @module useOnboarding.test
+ * Purpose: Verify the progressive onboarding state model persists first-run hints, route visits, and tour restart semantics.
+ * Responsibilities: Cover first-run hint dismissal, route visitation persistence, immediate tour restart, and full-tour completion bookkeeping.
+ * Scope: `useOnboarding` state behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Tests run in jsdom with localStorage stubbed and the onboarding step count sourced from shared onboarding config.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
-import { useOnboarding } from "./useOnboarding";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
+import { useOnboarding } from "./useOnboarding";
 
 describe("useOnboarding", () => {
   const storage = new Map<string, string>();
@@ -36,100 +38,53 @@ describe("useOnboarding", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the welcome modal for first-time users", async () => {
+  it("shows a lightweight first-run hint for first-time users", () => {
     const { result } = renderHook(() => useOnboarding());
 
-    await waitFor(() => {
-      expect(result.current.shouldShowWelcome).toBe(true);
-    });
-
+    expect(result.current.shouldShowFirstRunHint).toBe(true);
     expect(result.current.isTourActive).toBe(false);
-  });
-
-  it("hides welcome and starts tour when onboarding starts", async () => {
-    const { result } = renderHook(() => useOnboarding());
-
-    await waitFor(() => {
-      expect(result.current.shouldShowWelcome).toBe(true);
-    });
 
     act(() => {
-      result.current.startOnboarding();
+      result.current.dismissFirstRunHint();
     });
 
-    expect(result.current.shouldShowWelcome).toBe(false);
-    expect(result.current.isTourActive).toBe(true);
-    expect(result.current.currentStep).toBe(0);
-    expect(localStorageMock.setItem).toHaveBeenCalled();
-    expect(storage.get("spartan-onboarding")).toContain(
-      '"hasStartedOnboarding":true',
-    );
+    expect(result.current.shouldShowFirstRunHint).toBe(false);
   });
 
-  it("persists skip immediately and respects it on refresh", async () => {
+  it("persists visited routes for contextual onboarding", () => {
     const { result, unmount } = renderHook(() => useOnboarding());
 
-    await waitFor(() => {
-      expect(result.current.shouldShowWelcome).toBe(true);
-    });
-
     act(() => {
-      result.current.skipOnboarding();
+      result.current.markRouteVisited("templates");
     });
 
-    expect(result.current.shouldShowWelcome).toBe(false);
-    expect(result.current.hasSkippedOnboarding).toBe(true);
-    expect(localStorageMock.setItem).toHaveBeenCalled();
-    expect(storage.get("spartan-onboarding")).toContain(
-      '"hasSkippedOnboarding":true',
-    );
+    expect(result.current.hasVisitedRoute("templates")).toBe(true);
 
     unmount();
 
     const { result: refreshed } = renderHook(() => useOnboarding());
-
-    expect(refreshed.current.shouldShowWelcome).toBe(false);
-    expect(refreshed.current.hasSkippedOnboarding).toBe(true);
+    expect(refreshed.current.hasVisitedRoute("templates")).toBe(true);
   });
 
-  it("resetOnboarding returns to welcome state instead of auto-starting", async () => {
+  it("resetOnboarding restarts the full tour immediately", () => {
     const { result } = renderHook(() => useOnboarding());
-
-    await waitFor(() => {
-      expect(result.current.shouldShowWelcome).toBe(true);
-    });
-
-    act(() => {
-      result.current.startOnboarding();
-    });
-
-    expect(result.current.isTourActive).toBe(true);
 
     act(() => {
       result.current.resetOnboarding();
     });
 
-    expect(result.current.shouldShowWelcome).toBe(true);
-    expect(result.current.isTourActive).toBe(false);
+    expect(result.current.isTourActive).toBe(true);
     expect(result.current.currentStep).toBe(0);
-    expect(storage.get("spartan-onboarding")).toContain(
-      '"hasSkippedOnboarding":false',
-    );
   });
 
-  it("keeps total steps aligned with onboarding constants", async () => {
+  it("finishOnboarding completes all guided steps", () => {
     const { result } = renderHook(() => useOnboarding());
-
-    await waitFor(() => {
-      expect(result.current.shouldShowWelcome).toBe(true);
-    });
-
-    expect(result.current.totalSteps).toBe(ONBOARDING_TOTAL_STEPS);
 
     act(() => {
       result.current.finishOnboarding();
     });
 
     expect(result.current.completedSteps).toHaveLength(ONBOARDING_TOTAL_STEPS);
+    expect(result.current.shouldShowFirstRunHint).toBe(false);
   });
 });

@@ -22,7 +22,11 @@ export function AutomationSubnav({
   onSectionChange,
 }: AutomationSubnavProps) {
   return (
-    <nav className="automation-subnav" aria-label="Automation sections">
+    <nav
+      className="automation-subnav"
+      aria-label="Automation sections"
+      data-tour="automation-subnav"
+    >
       {AUTOMATION_SECTIONS.map((section) => {
         const isActive = section === activeSection;
         const meta = AUTOMATION_SECTION_META[section];

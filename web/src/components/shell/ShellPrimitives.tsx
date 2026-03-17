@@ -76,7 +76,7 @@ export function AppTopBar<TKind extends string>({
           </div>
         </nav>
 
-        <div className="app-shell__toolbar" data-tour="command-palette">
+        <div className="app-shell__toolbar">
           {globalAction}
           {utilities}
         </div>

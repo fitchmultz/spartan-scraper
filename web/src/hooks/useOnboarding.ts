@@ -1,59 +1,43 @@
 /**
- * Onboarding State Management Hook
- *
- * Manages the onboarding flow state with localStorage persistence.
- * Tracks completion status, current step, and provides controls for
- * starting, skipping, and resetting the onboarding experience.
- *
- * Features:
- * - First-time visitor detection
- * - Step-by-step progress tracking
- * - Query param override (?showHelp) for testing
- * - Resumable tours
- *
- * @module useOnboarding
+ * Purpose: Persist progressive onboarding state for the web app across sessions and route visits.
+ * Responsibilities: Track first-run nudges, full-tour progress, route visitation, and onboarding reset semantics in localStorage-backed state.
+ * Scope: Onboarding state management only; rendering lives in route help, nudge, and tour components.
+ * Usage: Call from `App.tsx` once and pass the returned state/actions into the onboarding UI surfaces.
+ * Invariants/Assumptions: Restarting onboarding should launch the full tour immediately, route help stays available after tour skip, and `?showHelp` forces a fresh tour without restoring the old blocking modal model.
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
+import {
+  ONBOARDING_TOTAL_STEPS,
+  type OnboardingRouteKey,
+} from "../lib/onboarding";
 
 const STORAGE_KEY = "spartan-onboarding";
 
 export interface OnboardingState {
-  /** Whether the user has completed the full onboarding tour */
   hasCompletedOnboarding: boolean;
-  /** Whether the user has explicitly skipped onboarding */
   hasSkippedOnboarding: boolean;
-  /** Whether the user has started the onboarding tour */
   hasStartedOnboarding: boolean;
-  /** Current step index (0-based) */
+  hasDismissedFirstRunHint: boolean;
   currentStep: number;
-  /** Array of completed step indices */
   completedSteps: number[];
-  /** ISO timestamp of first visit */
+  visitedRoutes: OnboardingRouteKey[];
   firstVisitAt: string | null;
-  /** Whether this is the first time the hook has loaded (for showing welcome) */
   isFirstLoad: boolean;
 }
 
 export interface OnboardingActions {
-  /** Start the onboarding tour from the beginning */
   startOnboarding: () => void;
-  /** Skip the onboarding tour entirely */
   skipOnboarding: () => void;
-  /** Reset onboarding state to start fresh */
   resetOnboarding: () => void;
-  /** Mark the current step as complete and advance */
   completeStep: (stepIndex: number) => void;
-  /** Go to a specific step */
   goToStep: (stepIndex: number) => void;
-  /** Mark the entire tour as complete */
   finishOnboarding: () => void;
-  /** Show welcome modal (if first visit and not skipped/completed) */
-  shouldShowWelcome: boolean;
-  /** Whether the tour is currently active */
+  dismissFirstRunHint: () => void;
+  markRouteVisited: (route: OnboardingRouteKey) => void;
+  hasVisitedRoute: (route: OnboardingRouteKey) => boolean;
+  shouldShowFirstRunHint: boolean;
   isTourActive: boolean;
-  /** Total number of steps in the tour */
   totalSteps: number;
 }
 
@@ -63,124 +47,95 @@ const DEFAULT_STATE: OnboardingState = {
   hasCompletedOnboarding: false,
   hasSkippedOnboarding: false,
   hasStartedOnboarding: false,
+  hasDismissedFirstRunHint: false,
   currentStep: 0,
   completedSteps: [],
+  visitedRoutes: [],
   firstVisitAt: null,
   isFirstLoad: true,
 };
 
-const TOTAL_STEPS = ONBOARDING_TOTAL_STEPS;
-
-/**
- * Load onboarding state from localStorage.
- */
-function loadStoredState(): Partial<OnboardingState> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (typeof parsed === "object" && parsed !== null) {
-        return parsed as Partial<OnboardingState>;
-      }
-    }
-  } catch {
-    // localStorage may be unavailable or data corrupted
+function hasShowHelpParam(): boolean {
+  if (typeof window === "undefined") {
+    return false;
   }
-  return null;
+
+  return new URLSearchParams(window.location.search).has("showHelp");
 }
 
-/**
- * Save onboarding state to localStorage.
- */
-function saveState(state: Pick<OnboardingState, keyof OnboardingState>): void {
-  if (typeof window === "undefined") return;
+function loadStoredState(): Partial<OnboardingState> | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   try {
-    // Don't persist isFirstLoad (runtime state only)
-    const { isFirstLoad: _, ...stateToSave } = state;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored);
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Partial<OnboardingState>)
+      : null;
   } catch {
-    // localStorage may be unavailable
+    return null;
+  }
+}
+
+function saveState(state: OnboardingState): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const { isFirstLoad: _runtimeOnly, ...persisted } = state;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+  } catch {
+    // ignore storage failures
   }
 }
 
 function buildInitialState(): OnboardingState {
   const stored = loadStoredState();
-  const isForced = hasShowHelpParam();
+  const forced = hasShowHelpParam();
 
-  if (stored) {
-    const hasCompletedOnboarding = isForced
-      ? false
-      : (stored.hasCompletedOnboarding ?? false);
-    const hasSkippedOnboarding = isForced
-      ? false
-      : (stored.hasSkippedOnboarding ?? false);
-    const hasStartedOnboarding = isForced
-      ? false
-      : (stored.hasStartedOnboarding ?? false);
-    const isFirstLoad =
-      !hasCompletedOnboarding && !hasSkippedOnboarding && !hasStartedOnboarding;
-
+  if (!stored) {
     return {
       ...DEFAULT_STATE,
-      ...stored,
-      hasCompletedOnboarding,
-      hasSkippedOnboarding,
-      hasStartedOnboarding,
-      firstVisitAt: stored.firstVisitAt ?? new Date().toISOString(),
-      isFirstLoad,
+      hasStartedOnboarding: forced,
+      hasDismissedFirstRunHint: forced,
+      firstVisitAt: new Date().toISOString(),
+      isFirstLoad: !forced,
     };
   }
 
   return {
     ...DEFAULT_STATE,
-    firstVisitAt: new Date().toISOString(),
-    isFirstLoad: true,
+    ...stored,
+    hasCompletedOnboarding: forced
+      ? false
+      : (stored.hasCompletedOnboarding ?? false),
+    hasSkippedOnboarding: forced
+      ? false
+      : (stored.hasSkippedOnboarding ?? false),
+    hasStartedOnboarding: forced
+      ? true
+      : (stored.hasStartedOnboarding ?? false),
+    hasDismissedFirstRunHint: forced
+      ? true
+      : (stored.hasDismissedFirstRunHint ?? false),
+    currentStep: forced ? 0 : (stored.currentStep ?? 0),
+    firstVisitAt: stored.firstVisitAt ?? new Date().toISOString(),
+    visitedRoutes: stored.visitedRoutes ?? [],
+    isFirstLoad: forced
+      ? false
+      : !stored.hasCompletedOnboarding &&
+        !stored.hasSkippedOnboarding &&
+        !(stored.hasDismissedFirstRunHint ?? false),
   };
 }
 
-/**
- * Check if URL has ?showHelp query param for forcing onboarding.
- */
-function hasShowHelpParam(): boolean {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.has("showHelp");
-}
-
-/**
- * React hook for managing onboarding state and flow.
- *
- * @example
- * ```tsx
- * function App() {
- *   const {
- *     shouldShowWelcome,
- *     startOnboarding,
- *     skipOnboarding,
- *     isTourActive,
- *     currentStep
- *   } = useOnboarding();
- *
- *   return (
- *     <>
- *       {shouldShowWelcome && (
- *         <WelcomeModal
- *           onStart={startOnboarding}
- *           onSkip={skipOnboarding}
- *         />
- *       )}
- *       {isTourActive && (
- *         <OnboardingFlow
- *           currentStep={currentStep}
- *           onComplete={finishOnboarding}
- *         />
- *       )}
- *     </>
- *   );
- * }
- * ```
- */
 export function useOnboarding(): UseOnboardingReturn {
   const [state, setState] = useState<OnboardingState>(() =>
     buildInitialState(),
@@ -202,116 +157,138 @@ export function useOnboarding(): UseOnboardingReturn {
     [],
   );
 
-  /**
-   * Start the onboarding tour from the beginning.
-   */
   const startOnboarding = useCallback(() => {
-    updateState((prev) => ({
-      ...prev,
+    updateState((previous) => ({
+      ...previous,
       hasStartedOnboarding: true,
+      hasSkippedOnboarding: false,
+      hasCompletedOnboarding: false,
+      hasDismissedFirstRunHint: true,
       currentStep: 0,
       completedSteps: [],
-      hasSkippedOnboarding: false,
       isFirstLoad: false,
     }));
   }, [updateState]);
 
-  /**
-   * Skip the onboarding tour entirely.
-   */
   const skipOnboarding = useCallback(() => {
-    updateState((prev) => ({
-      ...prev,
+    updateState((previous) => ({
+      ...previous,
       hasStartedOnboarding: false,
       hasSkippedOnboarding: true,
+      hasDismissedFirstRunHint: true,
       currentStep: 0,
       completedSteps: [],
       isFirstLoad: false,
     }));
   }, [updateState]);
 
-  /**
-   * Reset onboarding state to start fresh.
-   */
   const resetOnboarding = useCallback(() => {
-    updateState({
-      ...DEFAULT_STATE,
-      hasStartedOnboarding: false,
-      firstVisitAt: new Date().toISOString(),
-      isFirstLoad: true,
-    });
+    updateState((previous) => ({
+      ...previous,
+      hasCompletedOnboarding: false,
+      hasSkippedOnboarding: false,
+      hasStartedOnboarding: true,
+      hasDismissedFirstRunHint: true,
+      currentStep: 0,
+      completedSteps: [],
+      isFirstLoad: false,
+    }));
   }, [updateState]);
 
-  /**
-   * Mark the current step as complete and advance.
-   */
   const completeStep = useCallback(
     (stepIndex: number) => {
-      updateState((prev) => ({
-        ...prev,
-        completedSteps: [...new Set([...prev.completedSteps, stepIndex])],
-        currentStep: stepIndex + 1,
+      updateState((previous) => ({
+        ...previous,
+        completedSteps: [...new Set([...previous.completedSteps, stepIndex])],
+        currentStep: Math.min(stepIndex + 1, ONBOARDING_TOTAL_STEPS - 1),
       }));
     },
     [updateState],
   );
 
-  /**
-   * Go to a specific step.
-   */
   const goToStep = useCallback(
     (stepIndex: number) => {
-      updateState((prev) => ({
-        ...prev,
-        currentStep: Math.max(0, Math.min(stepIndex, TOTAL_STEPS - 1)),
+      updateState((previous) => ({
+        ...previous,
+        currentStep: Math.max(
+          0,
+          Math.min(stepIndex, ONBOARDING_TOTAL_STEPS - 1),
+        ),
       }));
     },
     [updateState],
   );
 
-  /**
-   * Mark the entire tour as complete.
-   */
   const finishOnboarding = useCallback(() => {
-    updateState((prev) => ({
-      ...prev,
+    updateState((previous) => ({
+      ...previous,
       hasCompletedOnboarding: true,
       hasStartedOnboarding: false,
       hasSkippedOnboarding: false,
-      completedSteps: Array.from({ length: TOTAL_STEPS }, (_, i) => i),
+      hasDismissedFirstRunHint: true,
+      completedSteps: Array.from(
+        { length: ONBOARDING_TOTAL_STEPS },
+        (_, index) => index,
+      ),
       currentStep: 0,
       isFirstLoad: false,
     }));
   }, [updateState]);
 
-  /**
-   * Whether to show the welcome modal.
-   * Show if: first load, not completed, not skipped, and is loaded
-   */
-  const shouldShowWelcome = useMemo(() => {
-    if (!state.isFirstLoad) return false;
-    if (state.hasCompletedOnboarding) return false;
-    if (state.hasSkippedOnboarding) return false;
-    return true;
-  }, [
-    state.isFirstLoad,
-    state.hasCompletedOnboarding,
-    state.hasSkippedOnboarding,
-  ]);
+  const dismissFirstRunHint = useCallback(() => {
+    updateState((previous) => ({
+      ...previous,
+      hasDismissedFirstRunHint: true,
+      isFirstLoad: false,
+    }));
+  }, [updateState]);
 
-  /**
-   * Whether the tour is currently active.
-   * Active if: started but not completed and not skipped
-   */
-  const isTourActive = useMemo(() => {
-    if (state.hasCompletedOnboarding) return false;
-    if (state.hasSkippedOnboarding) return false;
-    return state.hasStartedOnboarding;
-  }, [
-    state.hasCompletedOnboarding,
-    state.hasSkippedOnboarding,
-    state.hasStartedOnboarding,
-  ]);
+  const markRouteVisited = useCallback(
+    (route: OnboardingRouteKey) => {
+      updateState((previous) => {
+        if (previous.visitedRoutes.includes(route)) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          visitedRoutes: [...previous.visitedRoutes, route],
+        };
+      });
+    },
+    [updateState],
+  );
+
+  const hasVisitedRoute = useCallback(
+    (route: OnboardingRouteKey) => state.visitedRoutes.includes(route),
+    [state.visitedRoutes],
+  );
+
+  const shouldShowFirstRunHint = useMemo(
+    () =>
+      !state.hasCompletedOnboarding &&
+      !state.hasSkippedOnboarding &&
+      !state.hasDismissedFirstRunHint &&
+      state.isFirstLoad,
+    [
+      state.hasCompletedOnboarding,
+      state.hasDismissedFirstRunHint,
+      state.hasSkippedOnboarding,
+      state.isFirstLoad,
+    ],
+  );
+
+  const isTourActive = useMemo(
+    () =>
+      !state.hasCompletedOnboarding &&
+      !state.hasSkippedOnboarding &&
+      state.hasStartedOnboarding,
+    [
+      state.hasCompletedOnboarding,
+      state.hasSkippedOnboarding,
+      state.hasStartedOnboarding,
+    ],
+  );
 
   return {
     ...state,
@@ -321,8 +298,11 @@ export function useOnboarding(): UseOnboardingReturn {
     completeStep,
     goToStep,
     finishOnboarding,
-    shouldShowWelcome,
+    dismissFirstRunHint,
+    markRouteVisited,
+    hasVisitedRoute,
+    shouldShowFirstRunHint,
     isTourActive,
-    totalSteps: TOTAL_STEPS,
+    totalSteps: ONBOARDING_TOTAL_STEPS,
   };
 }

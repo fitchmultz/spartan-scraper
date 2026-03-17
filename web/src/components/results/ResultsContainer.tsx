@@ -53,7 +53,7 @@ export function ResultsContainer({
   );
 
   return (
-    <section id="results">
+    <section id="results" data-tour="job-results">
       <Suspense
         fallback={
           <div className="loading-placeholder">Loading results explorer...</div>

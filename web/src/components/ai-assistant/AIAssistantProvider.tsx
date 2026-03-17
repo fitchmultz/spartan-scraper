@@ -118,6 +118,21 @@ function readStoredWidth(): number {
   return AI_ASSISTANT_DEFAULT_WIDTH;
 }
 
+function areAssistantContextsEqual(
+  previousContext: AssistantContext | null,
+  nextContext: AssistantContext,
+): boolean {
+  if (previousContext === nextContext) {
+    return true;
+  }
+
+  if (!previousContext || previousContext.surface !== nextContext.surface) {
+    return false;
+  }
+
+  return JSON.stringify(previousContext) === JSON.stringify(nextContext);
+}
+
 export const AIAssistantContext = createContext<AIAssistantController | null>(
   null,
 );
@@ -150,7 +165,11 @@ export function AIAssistantProvider({ children }: AIAssistantProviderProps) {
   }, [width]);
 
   const open = useCallback((nextContext: AssistantContext) => {
-    setContextState(nextContext);
+    setContextState((previousContext) =>
+      areAssistantContextsEqual(previousContext, nextContext)
+        ? previousContext
+        : nextContext,
+    );
     setIsOpen(true);
   }, []);
 
@@ -163,7 +182,11 @@ export function AIAssistantProvider({ children }: AIAssistantProviderProps) {
   }, []);
 
   const setContext = useCallback((nextContext: AssistantContext) => {
-    setContextState(nextContext);
+    setContextState((previousContext) =>
+      areAssistantContextsEqual(previousContext, nextContext)
+        ? previousContext
+        : nextContext,
+    );
   }, []);
 
   const setWidth = useCallback((nextWidth: number) => {
