@@ -1,15 +1,12 @@
 /**
- * Research Form Component
- *
- * Form for submitting research jobs. Handles research query, source URLs,
- * crawl parameters (max depth/pages), headless/playwright options, authentication,
- * and extraction template configuration. Builds ResearchRequest objects using shared
- * utilities and submits them via callback.
- *
- * @module ResearchForm
+ * Purpose: Render the expert research authoring surface and expose imperative submission/config helpers for guided and command-palette flows.
+ * Responsibilities: Keep research-local query/source fields controlled, build research requests from shared form state, and optionally mount headlessly for wizard submission.
+ * Scope: Research job authoring only.
+ * Usage: Render from `JobSubmissionContainer` with shared form state plus controlled research-local inputs.
+ * Invariants/Assumptions: Research jobs require both a query and source URLs, shared crawl/runtime fields live in `useFormState`, and `surface="headless"` must still provide a working imperative ref.
  */
+
 import {
-  useState,
   useCallback,
   forwardRef,
   useImperativeHandle,
@@ -24,6 +21,7 @@ import {
   buildSharedRequestConfig,
   parseUrlList,
 } from "../lib/form-utils";
+import { buildPresetConfig, type JobDraftLocalState } from "../lib/job-drafts";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
@@ -41,13 +39,9 @@ import type {
 } from "../api";
 
 export interface ResearchFormRef {
-  /** Submit the form programmatically */
   submit: () => Promise<void>;
-  /** Get the current query value */
   getQuery: () => string;
-  /** Set the query value */
   setQuery: (query: string) => void;
-  /** Get the current configuration as a preset */
   getConfig: () => PresetConfig;
 }
 
@@ -56,126 +50,34 @@ interface ResearchFormProps {
   profiles: ProfileOption[];
   onSubmit: (request: import("../api").ResearchRequest) => Promise<void>;
   loading: boolean;
+  query: string;
+  setQuery: (value: string) => void;
+  urls: string;
+  setUrls: (value: string) => void;
+  device: DeviceEmulation | null;
+  setDevice: (value: DeviceEmulation | null) => void;
+  surface?: "full" | "headless";
 }
 
 export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
   function ResearchForm(
-    { form, profiles, onSubmit, loading }: ResearchFormProps,
+    {
+      form,
+      profiles,
+      onSubmit,
+      loading,
+      query,
+      setQuery,
+      urls,
+      setUrls,
+      device,
+      setDevice,
+      surface = "full",
+    },
     ref,
   ) {
-    const {
-      maxDepth,
-      setMaxDepth,
-      maxPages,
-      setMaxPages,
-      headless,
-      setHeadless,
-      usePlaywright,
-      setUsePlaywright,
-      timeoutSeconds,
-      setTimeoutSeconds,
-      authProfile,
-      setAuthProfile,
-      authBasic,
-      setAuthBasic,
-      headersRaw,
-      setHeadersRaw,
-      cookiesRaw,
-      setCookiesRaw,
-      queryRaw,
-      setQueryRaw,
-      proxyUrl,
-      setProxyUrl,
-      proxyUsername,
-      setProxyUsername,
-      proxyPassword,
-      setProxyPassword,
-      proxyRegion,
-      setProxyRegion,
-      proxyRequiredTags,
-      setProxyRequiredTags,
-      proxyExcludeProxyIds,
-      setProxyExcludeProxyIds,
-      loginUrl,
-      setLoginUrl,
-      loginUserSelector,
-      setLoginUserSelector,
-      loginPassSelector,
-      setLoginPassSelector,
-      loginSubmitSelector,
-      setLoginSubmitSelector,
-      loginUser,
-      setLoginUser,
-      loginPass,
-      setLoginPass,
-      extractTemplate,
-      setExtractTemplate,
-      extractValidate,
-      setExtractValidate,
-      aiExtractEnabled,
-      setAIExtractEnabled,
-      aiExtractMode,
-      setAIExtractMode,
-      aiExtractPrompt,
-      setAIExtractPrompt,
-      aiExtractSchema,
-      setAIExtractSchema,
-      aiExtractFields,
-      setAIExtractFields,
-      agenticResearchEnabled,
-      setAgenticResearchEnabled,
-      agenticResearchInstructions,
-      setAgenticResearchInstructions,
-      agenticResearchMaxRounds,
-      setAgenticResearchMaxRounds,
-      agenticResearchMaxFollowUpUrls,
-      setAgenticResearchMaxFollowUpUrls,
-      preProcessors,
-      setPreProcessors,
-      postProcessors,
-      setPostProcessors,
-      transformers,
-      setTransformers,
-      webhookUrl,
-      setWebhookUrl,
-      webhookEvents,
-      setWebhookEvents,
-      webhookSecret,
-      setWebhookSecret,
-      screenshotEnabled,
-      setScreenshotEnabled,
-      screenshotFullPage,
-      setScreenshotFullPage,
-      screenshotFormat,
-      setScreenshotFormat,
-      screenshotQuality,
-      setScreenshotQuality,
-      screenshotWidth,
-      setScreenshotWidth,
-      screenshotHeight,
-      setScreenshotHeight,
-      interceptEnabled,
-      setInterceptEnabled,
-      interceptURLPatterns,
-      setInterceptURLPatterns,
-      interceptResourceTypes,
-      setInterceptResourceTypes,
-      interceptCaptureRequestBody,
-      setInterceptCaptureRequestBody,
-      interceptCaptureResponseBody,
-      setInterceptCaptureResponseBody,
-      interceptMaxBodySize,
-      setInterceptMaxBodySize,
-      interceptMaxEntries,
-      setInterceptMaxEntries,
-    } = form;
-
-    const [researchQuery, setResearchQuery] = useState("");
-    const [researchUrls, setResearchUrls] = useState("");
-    const [device, setDevice] = useState<DeviceEmulation | null>(null);
-
     const handleSubmit = useCallback(async () => {
-      if (!researchQuery || !researchUrls) {
+      if (!query.trim() || !urls.trim()) {
         alert("Research query and URLs are required.");
         return;
       }
@@ -186,17 +88,17 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       try {
         shared = buildSharedRequestConfig(form);
         aiExtractOptions = buildAIExtractOptions(
-          aiExtractEnabled,
-          aiExtractMode,
-          aiExtractPrompt,
-          aiExtractSchema,
-          aiExtractFields,
+          form.aiExtractEnabled,
+          form.aiExtractMode,
+          form.aiExtractPrompt,
+          form.aiExtractSchema,
+          form.aiExtractFields,
         );
         agenticOptions = buildResearchAgenticOptions(
-          agenticResearchEnabled,
-          agenticResearchInstructions,
-          agenticResearchMaxRounds,
-          agenticResearchMaxFollowUpUrls,
+          form.agenticResearchEnabled,
+          form.agenticResearchInstructions,
+          form.agenticResearchMaxRounds,
+          form.agenticResearchMaxFollowUpUrls,
         );
       } catch (error) {
         alert(error instanceof Error ? error.message : String(error));
@@ -204,13 +106,13 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
       }
 
       const request = buildResearchRequest(
-        researchQuery,
-        parseUrlList(researchUrls),
-        maxDepth,
-        maxPages,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
+        query.trim(),
+        parseUrlList(urls),
+        form.maxDepth,
+        form.maxPages,
+        form.headless,
+        form.usePlaywright,
+        form.timeoutSeconds,
         shared.authProfile,
         shared.auth,
         shared.extract,
@@ -225,153 +127,46 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
         agenticOptions,
       );
       await onSubmit(request);
-    }, [
-      researchQuery,
-      researchUrls,
-      maxDepth,
-      maxPages,
-      headless,
-      usePlaywright,
-      timeoutSeconds,
-      form,
-      aiExtractEnabled,
-      aiExtractMode,
-      aiExtractPrompt,
-      aiExtractSchema,
-      aiExtractFields,
-      agenticResearchEnabled,
-      agenticResearchInstructions,
-      agenticResearchMaxRounds,
-      agenticResearchMaxFollowUpUrls,
-      device,
-      onSubmit,
-    ]);
+    }, [device, form, onSubmit, query, urls]);
 
-    // Build config from current form state
-    const getConfig = useCallback(
-      (): PresetConfig => ({
-        query: researchQuery,
-        urls: researchUrls,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
-        authProfile,
-        authBasic,
-        headersRaw,
-        cookiesRaw,
-        queryRaw,
-        proxyUrl,
-        proxyUsername,
-        proxyPassword,
-        proxyRegion,
-        proxyRequiredTags,
-        proxyExcludeProxyIds,
-        loginUrl,
-        loginUserSelector,
-        loginPassSelector,
-        loginSubmitSelector,
-        loginUser,
-        loginPass,
-        extractTemplate,
-        extractValidate,
-        aiExtractEnabled,
-        aiExtractMode,
-        aiExtractPrompt,
-        aiExtractSchema,
-        aiExtractFields,
-        agenticResearchEnabled,
-        agenticResearchInstructions,
-        agenticResearchMaxRounds,
-        agenticResearchMaxFollowUpUrls,
-        preProcessors,
-        postProcessors,
-        transformers,
-        maxDepth,
-        maxPages,
-        webhookUrl,
-        webhookEvents,
-        webhookSecret,
-        screenshotEnabled,
-        screenshotFullPage,
-        screenshotFormat,
-        screenshotQuality,
-        screenshotWidth,
-        screenshotHeight,
-        device: device || undefined,
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-        interceptMaxEntries,
+    const getConfig = useCallback((): PresetConfig => {
+      const draftState: JobDraftLocalState = {
+        scrape: {
+          url: "",
+          device: null,
+        },
+        crawl: {
+          url: "",
+          sitemapURL: "",
+          sitemapOnly: false,
+          includePatterns: "",
+          excludePatterns: "",
+          device: null,
+        },
+        research: {
+          query,
+          urls,
+          device,
+        },
+      };
+
+      return buildPresetConfig("research", form, draftState);
+    }, [device, form, query, urls]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        submit: handleSubmit,
+        getQuery: () => query,
+        setQuery,
+        getConfig,
       }),
-      [
-        researchQuery,
-        researchUrls,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
-        authProfile,
-        authBasic,
-        headersRaw,
-        cookiesRaw,
-        queryRaw,
-        proxyUrl,
-        proxyUsername,
-        proxyPassword,
-        proxyRegion,
-        proxyRequiredTags,
-        proxyExcludeProxyIds,
-        loginUrl,
-        loginUserSelector,
-        loginPassSelector,
-        loginSubmitSelector,
-        loginUser,
-        loginPass,
-        extractTemplate,
-        extractValidate,
-        aiExtractEnabled,
-        aiExtractMode,
-        aiExtractPrompt,
-        aiExtractSchema,
-        aiExtractFields,
-        agenticResearchEnabled,
-        agenticResearchInstructions,
-        agenticResearchMaxRounds,
-        agenticResearchMaxFollowUpUrls,
-        preProcessors,
-        postProcessors,
-        transformers,
-        maxDepth,
-        maxPages,
-        webhookUrl,
-        webhookEvents,
-        webhookSecret,
-        screenshotEnabled,
-        screenshotFullPage,
-        screenshotFormat,
-        screenshotQuality,
-        screenshotWidth,
-        screenshotHeight,
-        device,
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-        interceptMaxEntries,
-      ],
+      [getConfig, handleSubmit, query, setQuery],
     );
 
-    // Expose imperative handle for external submission
-    useImperativeHandle(ref, () => ({
-      submit: handleSubmit,
-      getQuery: () => researchQuery,
-      setQuery: (query: string) => setResearchQuery(query),
-      getConfig,
-    }));
+    if (surface === "headless") {
+      return null;
+    }
 
     const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -392,8 +187,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
                 type="button"
                 className="secondary"
                 onClick={() => {
-                  setResearchQuery("");
-                  setResearchUrls("");
+                  setQuery("");
+                  setUrls("");
                 }}
               >
                 Clear
@@ -404,8 +199,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           <label htmlFor="research-query">Research query</label>
           <input
             id="research-query"
-            value={researchQuery}
-            onChange={(event) => setResearchQuery(event.target.value)}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="pricing model, security posture, roadmap..."
           />
           <label htmlFor="research-urls" style={{ marginTop: 12 }}>
@@ -414,8 +209,8 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           <textarea
             id="research-urls"
             rows={3}
-            value={researchUrls}
-            onChange={(event) => setResearchUrls(event.target.value)}
+            value={urls}
+            onChange={(event) => setUrls(event.target.value)}
             placeholder="https://example.com, https://example.com/docs"
           />
           <div className="row" style={{ marginTop: 12 }}>
@@ -424,8 +219,10 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
               <input
                 type="number"
                 min={0}
-                value={maxDepth}
-                onChange={(event) => setMaxDepth(Number(event.target.value))}
+                value={form.maxDepth}
+                onChange={(event) =>
+                  form.setMaxDepth(Number(event.target.value))
+                }
               />
             </label>
             <label>
@@ -433,8 +230,10 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
               <input
                 type="number"
                 min={1}
-                value={maxPages}
-                onChange={(event) => setMaxPages(Number(event.target.value))}
+                value={form.maxPages}
+                onChange={(event) =>
+                  form.setMaxPages(Number(event.target.value))
+                }
               />
             </label>
             <label>
@@ -442,20 +241,20 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
               <input
                 type="number"
                 min={5}
-                value={timeoutSeconds}
+                value={form.timeoutSeconds}
                 onChange={(event) =>
-                  setTimeoutSeconds(Number(event.target.value))
+                  form.setTimeoutSeconds(Number(event.target.value))
                 }
               />
             </label>
           </div>
           <BrowserExecutionControls
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
+            headless={form.headless}
+            setHeadless={form.setHeadless}
+            usePlaywright={form.usePlaywright}
+            setUsePlaywright={form.setUsePlaywright}
+            timeoutSeconds={form.timeoutSeconds}
+            setTimeoutSeconds={form.setTimeoutSeconds}
           />
         </JobFormIntro>
 
@@ -464,42 +263,42 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           description="Screenshot capture, device emulation, network interception, and browser-only diagnostics."
         >
           <ScreenshotConfig
-            enabled={screenshotEnabled}
-            setEnabled={setScreenshotEnabled}
-            fullPage={screenshotFullPage}
-            setFullPage={setScreenshotFullPage}
-            format={screenshotFormat}
-            setFormat={setScreenshotFormat}
-            quality={screenshotQuality}
-            setQuality={setScreenshotQuality}
-            width={screenshotWidth}
-            setWidth={setScreenshotWidth}
-            height={screenshotHeight}
-            setHeight={setScreenshotHeight}
-            disabled={!headless}
+            enabled={form.screenshotEnabled}
+            setEnabled={form.setScreenshotEnabled}
+            fullPage={form.screenshotFullPage}
+            setFullPage={form.setScreenshotFullPage}
+            format={form.screenshotFormat}
+            setFormat={form.setScreenshotFormat}
+            quality={form.screenshotQuality}
+            setQuality={form.setScreenshotQuality}
+            width={form.screenshotWidth}
+            setWidth={form.setScreenshotWidth}
+            height={form.screenshotHeight}
+            setHeight={form.setScreenshotHeight}
+            disabled={!form.headless}
             inputPrefix="research"
           />
           <DeviceSelector
             device={device}
             onChange={setDevice}
-            disabled={!headless}
+            disabled={!form.headless}
           />
           <NetworkInterceptConfig
-            enabled={interceptEnabled}
-            setEnabled={setInterceptEnabled}
-            urlPatterns={interceptURLPatterns}
-            setURLPatterns={setInterceptURLPatterns}
-            resourceTypes={interceptResourceTypes}
-            setResourceTypes={setInterceptResourceTypes}
-            captureRequestBody={interceptCaptureRequestBody}
-            setCaptureRequestBody={setInterceptCaptureRequestBody}
-            captureResponseBody={interceptCaptureResponseBody}
-            setCaptureResponseBody={setInterceptCaptureResponseBody}
-            maxBodySize={interceptMaxBodySize}
-            setMaxBodySize={setInterceptMaxBodySize}
-            maxEntries={interceptMaxEntries}
-            setMaxEntries={setInterceptMaxEntries}
-            disabled={!headless}
+            enabled={form.interceptEnabled}
+            setEnabled={form.setInterceptEnabled}
+            urlPatterns={form.interceptURLPatterns}
+            setURLPatterns={form.setInterceptURLPatterns}
+            resourceTypes={form.interceptResourceTypes}
+            setResourceTypes={form.setInterceptResourceTypes}
+            captureRequestBody={form.interceptCaptureRequestBody}
+            setCaptureRequestBody={form.setInterceptCaptureRequestBody}
+            captureResponseBody={form.interceptCaptureResponseBody}
+            setCaptureResponseBody={form.setInterceptCaptureResponseBody}
+            maxBodySize={form.interceptMaxBodySize}
+            setMaxBodySize={form.setInterceptMaxBodySize}
+            maxEntries={form.interceptMaxEntries}
+            setMaxEntries={form.setInterceptMaxEntries}
+            disabled={!form.headless}
             inputPrefix="research"
           />
         </JobFormAdvancedSection>
@@ -509,40 +308,40 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           description="Profiles, cookies, login automation, and request overrides."
         >
           <AuthConfig
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            proxyUrl={proxyUrl}
-            setProxyUrl={setProxyUrl}
-            proxyUsername={proxyUsername}
-            setProxyUsername={setProxyUsername}
-            proxyPassword={proxyPassword}
-            setProxyPassword={setProxyPassword}
-            proxyRegion={proxyRegion}
-            setProxyRegion={setProxyRegion}
-            proxyRequiredTags={proxyRequiredTags}
-            setProxyRequiredTags={setProxyRequiredTags}
-            proxyExcludeProxyIds={proxyExcludeProxyIds}
-            setProxyExcludeProxyIds={setProxyExcludeProxyIds}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
+            authProfile={form.authProfile}
+            setAuthProfile={form.setAuthProfile}
+            authBasic={form.authBasic}
+            setAuthBasic={form.setAuthBasic}
+            headersRaw={form.headersRaw}
+            setHeadersRaw={form.setHeadersRaw}
+            cookiesRaw={form.cookiesRaw}
+            setCookiesRaw={form.setCookiesRaw}
+            queryRaw={form.queryRaw}
+            setQueryRaw={form.setQueryRaw}
+            proxyUrl={form.proxyUrl}
+            setProxyUrl={form.setProxyUrl}
+            proxyUsername={form.proxyUsername}
+            setProxyUsername={form.setProxyUsername}
+            proxyPassword={form.proxyPassword}
+            setProxyPassword={form.setProxyPassword}
+            proxyRegion={form.proxyRegion}
+            setProxyRegion={form.setProxyRegion}
+            proxyRequiredTags={form.proxyRequiredTags}
+            setProxyRequiredTags={form.setProxyRequiredTags}
+            proxyExcludeProxyIds={form.proxyExcludeProxyIds}
+            setProxyExcludeProxyIds={form.setProxyExcludeProxyIds}
+            loginUrl={form.loginUrl}
+            setLoginUrl={form.setLoginUrl}
+            loginUserSelector={form.loginUserSelector}
+            setLoginUserSelector={form.setLoginUserSelector}
+            loginPassSelector={form.loginPassSelector}
+            setLoginPassSelector={form.setLoginPassSelector}
+            loginSubmitSelector={form.loginSubmitSelector}
+            setLoginSubmitSelector={form.setLoginSubmitSelector}
+            loginUser={form.loginUser}
+            setLoginUser={form.setLoginUser}
+            loginPass={form.loginPass}
+            setLoginPass={form.setLoginPass}
             profiles={profiles}
           />
         </JobFormAdvancedSection>
@@ -552,47 +351,47 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
           description="Templates, processors, and optional webhook notifications."
         >
           <PipelineOptions
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
+            extractTemplate={form.extractTemplate}
+            setExtractTemplate={form.setExtractTemplate}
+            extractValidate={form.extractValidate}
+            setExtractValidate={form.setExtractValidate}
+            preProcessors={form.preProcessors}
+            setPreProcessors={form.setPreProcessors}
+            postProcessors={form.postProcessors}
+            setPostProcessors={form.setPostProcessors}
+            transformers={form.transformers}
+            setTransformers={form.setTransformers}
             inputPrefix="research"
           />
           <AIExtractSection
-            enabled={aiExtractEnabled}
-            setEnabled={setAIExtractEnabled}
-            mode={aiExtractMode}
-            setMode={setAIExtractMode}
-            prompt={aiExtractPrompt}
-            setPrompt={setAIExtractPrompt}
-            schemaText={aiExtractSchema}
-            setSchemaText={setAIExtractSchema}
-            fields={aiExtractFields}
-            setFields={setAIExtractFields}
+            enabled={form.aiExtractEnabled}
+            setEnabled={form.setAIExtractEnabled}
+            mode={form.aiExtractMode}
+            setMode={form.setAIExtractMode}
+            prompt={form.aiExtractPrompt}
+            setPrompt={form.setAIExtractPrompt}
+            schemaText={form.aiExtractSchema}
+            setSchemaText={form.setAIExtractSchema}
+            fields={form.aiExtractFields}
+            setFields={form.setAIExtractFields}
           />
           <ResearchAgenticSection
-            enabled={agenticResearchEnabled}
-            setEnabled={setAgenticResearchEnabled}
-            instructions={agenticResearchInstructions}
-            setInstructions={setAgenticResearchInstructions}
-            maxRounds={agenticResearchMaxRounds}
-            setMaxRounds={setAgenticResearchMaxRounds}
-            maxFollowUpUrls={agenticResearchMaxFollowUpUrls}
-            setMaxFollowUpUrls={setAgenticResearchMaxFollowUpUrls}
+            enabled={form.agenticResearchEnabled}
+            setEnabled={form.setAgenticResearchEnabled}
+            instructions={form.agenticResearchInstructions}
+            setInstructions={form.setAgenticResearchInstructions}
+            maxRounds={form.agenticResearchMaxRounds}
+            setMaxRounds={form.setAgenticResearchMaxRounds}
+            maxFollowUpUrls={form.agenticResearchMaxFollowUpUrls}
+            setMaxFollowUpUrls={form.setAgenticResearchMaxFollowUpUrls}
           />
           <WebhookConfig
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
+            webhookUrl={form.webhookUrl}
+            setWebhookUrl={form.setWebhookUrl}
+            webhookEvents={form.webhookEvents}
+            setWebhookEvents={form.setWebhookEvents}
+            webhookSecret={form.webhookSecret}
+            setWebhookSecret={form.setWebhookSecret}
             inputPrefix="research"
           />
         </JobFormAdvancedSection>

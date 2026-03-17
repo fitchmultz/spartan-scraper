@@ -1,11 +1,9 @@
 /**
- * Form State Hook
- *
- * Custom React hook for managing all form-related state for scrape, crawl,
- * and research forms. Includes all form fields and handlers, with automatic
- * headless/playwright constraint enforcement.
- *
- * @module useFormState
+ * Purpose: Own the shared mutable form-controller state used by scrape, crawl, and research job creation surfaces.
+ * Responsibilities: Expose field values, setter actions, preset application, and full-form reset behavior while enforcing shared runtime invariants.
+ * Scope: Web job-creation form state only.
+ * Usage: Call `useFormState()` once per job-creation workspace and pass the returned controller into expert forms, presets, and wizard steps.
+ * Invariants/Assumptions: The controller is the canonical source for shared runtime/extraction fields, Playwright cannot remain enabled when headless execution is off, and presets may partially overlay the current state.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -127,6 +125,8 @@ export interface FormActions {
   setInterceptMaxEntries: (value: number) => void;
   /** Apply a preset configuration to the form state */
   applyPreset: (config: PresetConfig) => void;
+  /** Reset the controller back to its initial shared defaults */
+  reset: () => void;
 }
 
 export type FormController = FormState & FormActions;
@@ -554,6 +554,10 @@ export function useFormState(): FormController {
     }));
   }, []);
 
+  const reset = useCallback(() => {
+    setState(INITIAL_STATE);
+  }, []);
+
   return {
     ...state,
     setHeadless,
@@ -610,5 +614,6 @@ export function useFormState(): FormController {
     setInterceptMaxBodySize,
     setInterceptMaxEntries,
     applyPreset,
+    reset,
   };
 }

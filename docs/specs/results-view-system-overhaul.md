@@ -1,6 +1,6 @@
 # Results View System Overhaul
 
-**Status:** Roadmap / After  
+**Status:** Recently Completed  
 **Primary surface:** Web UI `/jobs/:id`
 
 ## Summary

@@ -1,13 +1,11 @@
 /**
- * Info Sections Component
- *
- * Displays informational sections showing configured resources: auth profiles,
- * recurring schedules, extraction templates, and crawl state tracking for incremental
- * crawling. Each section is rendered conditionally based on data availability.
- *
- * @module InfoSections
+ * Purpose: Render compact settings inventory panels for auth profiles, schedules, and crawl-state records.
+ * Responsibilities: Show only populated settings sections, keep crawl-state pagination wired, and present runtime inventory without route-level layout hacks.
+ * Scope: Settings route inventory panels only; shell framing and editor surfaces stay outside this component.
+ * Usage: Render from the Settings route with current profile, schedule, and crawl-state data plus pagination callbacks.
+ * Invariants/Assumptions: Empty sections stay hidden, pagination is parent-owned, and spacing comes from shared layout containers instead of per-panel margins.
  */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { CrawlState } from "../api";
 import { formatDateTime } from "../lib/formatting";
 
@@ -43,12 +41,12 @@ export function InfoSections({
     setJumpInputValue(crawlStatesPage.toString());
   }, [crawlStatesPage]);
 
-  const maxPage = Math.ceil(crawlStatesTotal / crawlStatesPerPage);
+  const maxPage = Math.max(1, Math.ceil(crawlStatesTotal / crawlStatesPerPage));
 
   return (
-    <>
+    <div className="info-sections">
       {profiles.length > 0 && (
-        <section className="panel" style={{ marginTop: 16 }}>
+        <section className="panel info-section">
           <h2>Auth Profiles</h2>
           <div className="job-list">
             {profiles.map((profile) => (
@@ -66,7 +64,7 @@ export function InfoSections({
       )}
 
       {schedules.length > 0 && (
-        <section className="panel" style={{ marginTop: 16 }}>
+        <section className="panel info-section">
           <h2>Schedules</h2>
           <div className="job-list">
             {schedules.map((sched) => (
@@ -84,7 +82,7 @@ export function InfoSections({
       )}
 
       {crawlStates.length > 0 && (
-        <section className="panel" style={{ marginTop: 16 }}>
+        <section className="panel info-section">
           <h2>Crawl States (Incremental Tracking)</h2>
 
           {crawlStatesTotal > crawlStatesPerPage ? (
@@ -115,22 +113,17 @@ export function InfoSections({
                   min="1"
                   max={maxPage}
                   value={jumpInputValue}
-                  onChange={(e) => {
-                    const page = parseInt(e.target.value, 10);
+                  onChange={(event) => setJumpInputValue(event.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const page = Number.parseInt(jumpInputValue, 10);
                     if (
                       Number.isInteger(page) &&
                       page >= 1 &&
                       page <= maxPage
                     ) {
-                      setJumpInputValue(e.target.value);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const page = parseInt(jumpInputValue, 10);
-                    if (page >= 1 && page <= maxPage) {
                       onCrawlStatesPageChange(page);
                     }
                   }}
@@ -163,6 +156,6 @@ export function InfoSections({
           </div>
         </section>
       )}
-    </>
+    </div>
   );
 }

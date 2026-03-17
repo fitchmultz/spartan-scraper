@@ -2,7 +2,7 @@
  * Spartan Scraper Web UI - Route-aware application shell.
  *
  * Purpose:
- * - Provide the route-based 1.0 shell for the reduced local-first product.
+ * - Provide the route-based application shell for the local-first operator workbench.
  *
  * Responsibilities:
  * - Route between jobs, templates, automation, and settings views.
@@ -24,8 +24,6 @@
  */
 
 import {
-  Suspense,
-  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -42,7 +40,6 @@ import {
   type ResearchRequest,
   type ScrapeRequest,
 } from "./api";
-import { JobList } from "./components/JobList";
 import { InfoSections } from "./components/InfoSections";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
@@ -72,9 +69,16 @@ import {
   JobSubmissionContainer,
   type JobSubmissionContainerRef,
 } from "./components/jobs/JobSubmissionContainer";
+import { JobMonitoringDashboard } from "./components/jobs/JobMonitoringDashboard";
 import { ResultsContainer } from "./components/results/ResultsContainer";
 import { RenderProfileEditor } from "./components/render-profiles";
 import { PipelineJSEditor } from "./components/pipeline-js/PipelineJSEditor";
+import {
+  AppTopBar,
+  RouteHeader,
+  RouteSignals,
+  type RouteSignal,
+} from "./components/shell/ShellPrimitives";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
@@ -91,12 +95,6 @@ import {
 import { getApiBaseUrl } from "./lib/api-config";
 import { saveJobsViewState } from "./lib/job-monitoring";
 import type { JobPreset, JobType } from "./types/presets";
-
-const MetricsDashboard = lazy(() =>
-  import("./components/MetricsDashboard").then((mod) => ({
-    default: mod.MetricsDashboard,
-  })),
-);
 
 type RouteKind =
   | "jobs"
@@ -121,7 +119,6 @@ interface NavItem {
 }
 
 interface RouteMeta {
-  eyebrow?: string;
   title: string;
   description?: string;
 }
@@ -200,83 +197,12 @@ function parseRoute(pathname: string): AppRoute {
   return { kind: "jobs", path: "/jobs" };
 }
 
-function AppNavigation({
-  activeRoute,
-  onNavigate,
-}: {
-  activeRoute: RouteKind;
-  onNavigate: (path: string) => void;
-}) {
-  return (
-    <nav className="app-nav" aria-label="Primary">
-      <div className="app-nav__items">
-        {NAV_ITEMS.map((item) => {
-          const isActive = activeRoute === item.kind;
-          return (
-            <button
-              key={item.path}
-              type="button"
-              className={
-                isActive ? "app-nav__button" : "app-nav__button secondary"
-              }
-              onClick={() => onNavigate(item.path)}
-              aria-current={isActive ? "page" : undefined}
-              title={item.description}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
+function formatShortJobId(id: string): string {
+  if (id.length <= 14) {
+    return id;
+  }
 
-function RouteHeader({
-  eyebrow,
-  title,
-  description,
-  actions,
-  subnav,
-}: {
-  eyebrow?: string;
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-  subnav?: ReactNode;
-}) {
-  return (
-    <section className="route-header" aria-label={`${title} overview`}>
-      <div className="route-header__copy">
-        {eyebrow ? (
-          <div className="route-header__eyebrow">{eyebrow}</div>
-        ) : null}
-        <div className="route-header__title-row">
-          <h2>{title}</h2>
-          {actions ? (
-            <div className="route-header__actions">{actions}</div>
-          ) : null}
-        </div>
-        {description ? <p>{description}</p> : null}
-        {subnav ? <div className="route-header__subnav">{subnav}</div> : null}
-      </div>
-    </section>
-  );
-}
-
-function SignalPill({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="signal-pill">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
 }
 
 function ErrorBanner({ message }: { message: string | null }) {
@@ -339,7 +265,6 @@ export function App() {
     templates,
     crawlStates,
     managerStatus,
-    metrics,
     jobsTotal,
     jobsPage,
     crawlStatesTotal,
@@ -467,6 +392,7 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      jobSubmissionRef.current?.clearDraft("scrape");
       navigate("/jobs");
     },
     [refreshJobs, navigate],
@@ -481,6 +407,7 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      jobSubmissionRef.current?.clearDraft("crawl");
       navigate("/jobs");
     },
     [refreshJobs, navigate],
@@ -495,6 +422,7 @@ export function App() {
         refreshJobs,
         getApiBaseUrl,
       });
+      jobSubmissionRef.current?.clearDraft("research");
       navigate("/jobs");
     },
     [refreshJobs, navigate],
@@ -546,15 +474,14 @@ export function App() {
   );
 
   const handleViewResults = useCallback(
-    async (jobId: string, format: string, page: number) => {
+    (jobId: string, _format: string, _page: number) => {
       if (route.kind === "jobs") {
         persistJobsViewState();
       }
 
       navigate(`/jobs/${jobId}`);
-      await loadResults(jobId, format, page);
     },
-    [loadResults, navigate, persistJobsViewState, route.kind],
+    [navigate, persistJobsViewState, route.kind],
   );
 
   const activeJob = jobs.find((job) => job.status === "running");
@@ -576,81 +503,16 @@ export function App() {
       return;
     }
 
-    if (pendingPreset.config.url) {
-      if (pendingPreset.jobType === "scrape") {
-        jobSubmissionRef.current?.setScrapeUrl(pendingPreset.config.url);
-      } else if (pendingPreset.jobType === "crawl") {
-        jobSubmissionRef.current?.setCrawlUrl(pendingPreset.config.url);
-      }
-    }
-    if (pendingPreset.config.query) {
-      jobSubmissionRef.current?.setResearchQuery(pendingPreset.config.query);
-    }
+    jobSubmissionRef.current?.applyPreset(
+      pendingPreset.config,
+      pendingPreset.jobType,
+    );
     setPendingPreset(null);
   }, [activeTab, pendingPreset, route.kind]);
 
   const getCurrentConfig = useCallback(() => {
-    const baseConfig = {
-      headless: formState.headless,
-      usePlaywright: formState.usePlaywright,
-      timeoutSeconds: formState.timeoutSeconds,
-      authProfile: formState.authProfile,
-      authBasic: formState.authBasic,
-      headersRaw: formState.headersRaw,
-      cookiesRaw: formState.cookiesRaw,
-      queryRaw: formState.queryRaw,
-      loginUrl: formState.loginUrl,
-      loginUserSelector: formState.loginUserSelector,
-      loginPassSelector: formState.loginPassSelector,
-      loginSubmitSelector: formState.loginSubmitSelector,
-      loginUser: formState.loginUser,
-      loginPass: formState.loginPass,
-      extractTemplate: formState.extractTemplate,
-      extractValidate: formState.extractValidate,
-      preProcessors: formState.preProcessors,
-      postProcessors: formState.postProcessors,
-      transformers: formState.transformers,
-      incremental: formState.incremental,
-      maxDepth: formState.maxDepth,
-      maxPages: formState.maxPages,
-      webhookUrl: formState.webhookUrl,
-      webhookEvents: formState.webhookEvents,
-      webhookSecret: formState.webhookSecret,
-      interceptEnabled: formState.interceptEnabled,
-      interceptURLPatterns: formState.interceptURLPatterns,
-      interceptResourceTypes: formState.interceptResourceTypes,
-      interceptCaptureRequestBody: formState.interceptCaptureRequestBody,
-      interceptCaptureResponseBody: formState.interceptCaptureResponseBody,
-      interceptMaxBodySize: formState.interceptMaxBodySize,
-    };
-
-    if (
-      activeTab === "scrape" ||
-      activeTab === "crawl" ||
-      activeTab === "research"
-    ) {
-      return {
-        ...baseConfig,
-        aiExtractEnabled: formState.aiExtractEnabled,
-        aiExtractMode: formState.aiExtractMode,
-        aiExtractPrompt: formState.aiExtractPrompt,
-        aiExtractSchema: formState.aiExtractSchema,
-        aiExtractFields: formState.aiExtractFields,
-        ...(activeTab === "research"
-          ? {
-              agenticResearchEnabled: formState.agenticResearchEnabled,
-              agenticResearchInstructions:
-                formState.agenticResearchInstructions,
-              agenticResearchMaxRounds: formState.agenticResearchMaxRounds,
-              agenticResearchMaxFollowUpUrls:
-                formState.agenticResearchMaxFollowUpUrls,
-            }
-          : {}),
-      };
-    }
-
-    return baseConfig;
-  }, [activeTab, formState]);
+    return jobSubmissionRef.current?.getCurrentConfig() ?? {};
+  }, []);
 
   const getCurrentUrl = useCallback(() => {
     switch (activeTab) {
@@ -737,95 +599,102 @@ export function App() {
     switch (route.kind) {
       case "jobs":
         return {
-          eyebrow: "Operations",
           title: "Jobs",
-          description:
-            "Monitor live execution and jump directly into the latest results.",
+          description: "Monitor live work and open results fast.",
         };
       case "job-detail":
         return {
-          eyebrow: route.jobId ? `Job ${route.jobId}` : "Results Explorer",
-          title: "Results",
+          title: route.jobId
+            ? `Job ${formatShortJobId(route.jobId)}`
+            : "Results",
           description:
-            "Inspect extracted output first and return to the jobs index only when you need broader queue context.",
+            "Read saved output first, then open comparison, transform, and export tools only when needed.",
         };
       case "new-job":
         return {
-          eyebrow: "Submission",
           title: "Create Job",
           description:
-            "Launch a scrape, crawl, or research run from one focused workflow.",
+            "Step through scrape, crawl, or research setup without losing access to expert controls.",
         };
       case "templates":
         return {
-          eyebrow: "Extraction",
           title: "Templates",
           description:
-            "Manage extraction templates and AI-assisted creation without extra dashboard framing.",
+            "Manage extraction templates and AI-assisted generation in one workspace.",
         };
       case "automation":
         return {
-          eyebrow: "Workflow Orchestration",
           title: "Automation",
           description:
-            "Move between batches, chains, watches, exports, and webhook deliveries from one focused automation hub.",
+            "Switch sections from the sub-navigation and stay in the workspace.",
         };
       case "settings":
         return {
-          eyebrow: "Runtime Control",
           title: "Settings",
           description:
-            "Profiles, schedules, crawl-state inventory, retention, and pipeline tools.",
+            "Configure runtime profiles, schedules, crawl state, and pipeline tools.",
         };
     }
   }, [route.jobId, route.kind]);
 
-  const showShellSignals =
-    route.kind === "jobs" ||
-    route.kind === "job-detail" ||
-    route.kind === "automation";
+  const detailJob =
+    route.kind === "job-detail"
+      ? (jobs.find((job) => job.id === route.jobId) ?? null)
+      : null;
+
+  const jobDetailSignals = useMemo<RouteSignal[]>(() => {
+    if (route.kind !== "job-detail") {
+      return [];
+    }
+
+    return [
+      {
+        label: "Status",
+        value: detailJob?.status ?? "unknown",
+      },
+      {
+        label: "Results",
+        value: resultsState.totalResults,
+      },
+      {
+        label: "Format",
+        value: resultsState.resultFormat.toUpperCase(),
+      },
+      {
+        label: "Connection",
+        value: connectionState,
+      },
+    ];
+  }, [
+    connectionState,
+    detailJob?.status,
+    resultsState.resultFormat,
+    resultsState.totalResults,
+    route.kind,
+  ]);
 
   return (
     <div className={`app app--${route.kind}`}>
-      <header className="app-shell">
-        <div className="app-shell__topbar">
-          <div className="app-shell__brand">
-            <div className="app-shell__eyebrow">Operation Spartan</div>
-            <h1>Spartan Scraper</h1>
-            <p>Local-first scraping and automation workbench.</p>
-          </div>
-
-          <AppNavigation
-            activeRoute={activeRouteForNav}
-            onNavigate={navigate}
+      <AppTopBar
+        activeRoute={activeRouteForNav}
+        navItems={NAV_ITEMS}
+        onNavigate={navigate}
+        globalAction={
+          route.kind !== "new-job" ? (
+            <button type="button" onClick={() => navigate("/jobs/new")}>
+              Create Job
+            </button>
+          ) : null
+        }
+        utilities={
+          <ThemeToggle
+            theme={theme}
+            resolvedTheme={resolvedTheme}
+            onThemeChange={setTheme}
+            onToggle={toggleTheme}
           />
-
-          <div className="app-shell__toolbar">
-            {route.kind !== "new-job" ? (
-              <button type="button" onClick={() => navigate("/jobs/new")}>
-                Create Job
-              </button>
-            ) : null}
-            <ThemeToggle
-              theme={theme}
-              resolvedTheme={resolvedTheme}
-              onThemeChange={setTheme}
-              onToggle={toggleTheme}
-            />
-          </div>
-        </div>
-
-        {showShellSignals ? (
-          <section
-            className="app-shell__signals"
-            aria-label="Live system signals"
-          >
-            <SignalPill label="Jobs" value={jobsTotal} />
-            <SignalPill label="Queued" value={managerStatus?.queued ?? 0} />
-            <SignalPill label="Active" value={managerStatus?.active ?? 0} />
-          </section>
-        ) : null}
-      </header>
+        }
+      />
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}
@@ -865,95 +734,52 @@ export function App() {
       <ErrorBanner message={error} />
 
       {route.kind === "jobs" && (
-        <>
+        <div className="route-stack">
           <RouteHeader
-            eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
+            actions={
+              selectedJobId ? (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    persistJobsViewState();
+                    navigate(`/jobs/${selectedJobId}`);
+                  }}
+                >
+                  Open Last Results
+                </button>
+              ) : null
+            }
           />
 
-          <div className="route-grid route-grid--jobs">
-            <div className="route-primary">
-              <section id="jobs">
-                <JobList
-                  jobs={jobs}
-                  failedJobs={failedJobs}
-                  error={error}
-                  loading={loading}
-                  statusFilter={jobStatusFilter}
-                  onStatusFilterChange={setJobStatusFilter}
-                  onViewResults={handleViewResults}
-                  onCancel={cancelJob}
-                  onDelete={deleteJob}
-                  onRefresh={refreshJobs}
-                  currentPage={jobsPage}
-                  totalJobs={jobsTotal}
-                  jobsPerPage={100}
-                  onPageChange={setJobsPage}
-                  connectionState={connectionState}
-                  managerStatus={managerStatus}
-                />
-              </section>
-            </div>
-            <aside className="route-sidebar">
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">Focus</div>
-                <h3>Recent jobs stay primary</h3>
-                <p>
-                  This route should land directly on the monitoring surface. Use
-                  the global create action to queue new work, then reopen a
-                  result when you need to drill deeper.
-                </p>
-                {selectedJobId ? (
-                  <div className="route-sidebar-panel__actions">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => {
-                        persistJobsViewState();
-                        navigate(`/jobs/${selectedJobId}`);
-                      }}
-                    >
-                      Open Last Results
-                    </button>
-                  </div>
-                ) : null}
-              </section>
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">Live Signals</div>
-                <div className="route-sidebar-panel__stats">
-                  <SignalPill
-                    label="Loading"
-                    value={loading ? "Refreshing" : "Ready"}
-                  />
-                  <SignalPill
-                    label="Headless"
-                    value={formState.headless ? "On" : "Off"}
-                  />
-                  <SignalPill label="Connection" value={connectionState} />
-                </div>
-              </section>
-              <Suspense
-                fallback={
-                  <div className="loading-placeholder panel">
-                    Loading metrics...
-                  </div>
-                }
-              >
-                <MetricsDashboard
-                  metrics={metrics}
-                  connectionState={connectionState}
-                />
-              </Suspense>
-            </aside>
-          </div>
-        </>
+          <section id="jobs">
+            <JobMonitoringDashboard
+              jobs={jobs}
+              failedJobs={failedJobs}
+              error={error}
+              loading={loading}
+              statusFilter={jobStatusFilter}
+              onStatusFilterChange={setJobStatusFilter}
+              onViewResults={handleViewResults}
+              onCancel={cancelJob}
+              onDelete={deleteJob}
+              onRefresh={refreshJobs}
+              currentPage={jobsPage}
+              totalJobs={jobsTotal}
+              jobsPerPage={100}
+              onPageChange={setJobsPage}
+              connectionState={connectionState}
+              managerStatus={managerStatus}
+            />
+          </section>
+        </div>
       )}
 
       {route.kind === "job-detail" && (
-        <>
+        <div className="route-stack">
           <RouteHeader
-            eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
             actions={
@@ -967,107 +793,55 @@ export function App() {
             }
           />
 
-          <div className="route-grid route-grid--job-detail">
-            <div className="route-primary">
-              <ResultsContainer resultsState={resultsState} jobs={jobs} />
-            </div>
-            <aside className="route-sidebar">
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">Job Context</div>
-                <h3>Stay with this result set</h3>
-                <p>
-                  Keep the default layout focused on the selected run. Return to
-                  the jobs index only when you want to compare runs or pivot to
-                  another job.
-                </p>
-                <div className="route-sidebar-panel__stats">
-                  <SignalPill
-                    label="Result Items"
-                    value={resultsState.totalResults}
-                  />
-                  <SignalPill label="Page" value={resultsState.currentPage} />
-                  <SignalPill
-                    label="Format"
-                    value={resultsState.resultFormat.toUpperCase()}
-                  />
-                </div>
-              </section>
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">
-                  Queue Signals
-                </div>
-                <div className="route-sidebar-panel__stats">
-                  <SignalPill label="Connection" value={connectionState} />
-                  <SignalPill
-                    label="Queued"
-                    value={managerStatus?.queued ?? 0}
-                  />
-                  <SignalPill
-                    label="Active"
-                    value={managerStatus?.active ?? 0}
-                  />
-                </div>
-              </section>
-            </aside>
-          </div>
-        </>
+          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
+
+          <ResultsContainer resultsState={resultsState} jobs={jobs} />
+        </div>
       )}
 
       {route.kind === "new-job" && (
-        <div className="route-grid route-grid--new-job">
-          <div className="route-primary route-stack">
-            <JobSubmissionContainer
-              ref={jobSubmissionRef}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formState={formState}
-              onSubmitScrape={handleSubmitScrape}
-              onSubmitCrawl={handleSubmitCrawl}
-              onSubmitResearch={handleSubmitResearch}
-              loading={loading}
-              profiles={profiles}
-            />
+        <div className="route-stack">
+          <RouteHeader
+            title={routeMeta.title}
+            description={routeMeta.description}
+          />
+
+          <div className="route-grid route-grid--new-job">
+            <div className="route-primary route-stack">
+              <JobSubmissionContainer
+                ref={jobSubmissionRef}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                formState={formState}
+                onSubmitScrape={handleSubmitScrape}
+                onSubmitCrawl={handleSubmitCrawl}
+                onSubmitResearch={handleSubmitResearch}
+                loading={loading}
+                profiles={profiles}
+              />
+            </div>
+            <aside className="route-sidebar">
+              <PresetContainer
+                presets={presets}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                savePreset={savePreset}
+                getCurrentConfig={getCurrentConfig}
+                getCurrentUrl={getCurrentUrl}
+                onSelectPreset={handleSelectPreset}
+                onOpenAIPreview={openAIPreview}
+                onOpenTemplateGenerator={() => setIsAIGeneratorOpen(true)}
+              />
+            </aside>
           </div>
-          <aside className="route-sidebar">
-            <PresetContainer
-              presets={presets}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              applyPreset={formState.applyPreset}
-              savePreset={savePreset}
-              getCurrentConfig={getCurrentConfig}
-              getCurrentUrl={getCurrentUrl}
-              onSelectPreset={handleSelectPreset}
-              onOpenAIPreview={openAIPreview}
-              onOpenTemplateGenerator={() => setIsAIGeneratorOpen(true)}
-            />
-          </aside>
         </div>
       )}
 
       {route.kind === "templates" && (
-        <>
+        <div className="route-stack">
           <RouteHeader
-            eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
-            actions={
-              <>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => openAIPreview()}
-                >
-                  Preview Extraction with AI
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAIGeneratorOpen(true)}
-                >
-                  Generate Template with AI
-                </button>
-              </>
-            }
           />
 
           <TemplateManager
@@ -1075,16 +849,13 @@ export function App() {
             onTemplatesChanged={() => {
               void refreshTemplates();
             }}
-            onOpenAIPreview={() => openAIPreview()}
-            onOpenAIGenerator={() => setIsAIGeneratorOpen(true)}
           />
-        </>
+        </div>
       )}
 
       {route.kind === "automation" && (
-        <>
+        <div className="route-stack">
           <RouteHeader
-            eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
             subnav={
@@ -1100,84 +871,48 @@ export function App() {
             activeSection={activeAutomationSection}
             renderSection={renderAutomationSection}
           />
-        </>
+        </div>
       )}
 
       {route.kind === "settings" && (
-        <>
+        <div className="route-stack">
           <RouteHeader
-            eyebrow={routeMeta.eyebrow}
             title={routeMeta.title}
             description={routeMeta.description}
+            actions={
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => navigate("/templates")}
+              >
+                Open Templates
+              </button>
+            }
           />
-          <div className="route-grid route-grid--settings">
-            <div className="route-primary route-stack">
-              <section className="panel">
-                <div className="settings-template-callout">
-                  <div>
-                    <h3>Extraction Templates</h3>
-                    <p>
-                      Template lifecycle management now lives on the Templates
-                      page so existing templates, AI preview, and AI generation
-                      stay actionable instead of split across multiple surfaces.
-                    </p>
-                  </div>
-                  <div className="settings-template-callout__actions">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => navigate("/templates")}
-                    >
-                      Open Templates
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => openAIPreview()}
-                    >
-                      Preview Extraction with AI
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsAIGeneratorOpen(true)}
-                    >
-                      Generate Template with AI
-                    </button>
-                  </div>
-                </div>
-              </section>
-              <InfoSections
-                profiles={profiles}
-                schedules={schedules}
-                crawlStates={crawlStates}
-                crawlStatesPage={crawlStatesPage}
-                crawlStatesTotal={crawlStatesTotal}
-                crawlStatesPerPage={100}
-                onCrawlStatesPageChange={setCrawlStatesPage}
-              />
-            </div>
-            <aside className="route-sidebar">
-              <section className="panel route-sidebar-panel">
-                <div className="route-sidebar-panel__eyebrow">Inventory</div>
-                <div className="route-sidebar-panel__stats">
-                  <SignalPill label="Profiles" value={profiles.length} />
-                  <SignalPill label="Schedules" value={schedules.length} />
-                  <SignalPill label="States" value={crawlStatesTotal} />
-                </div>
-              </section>
-            </aside>
-          </div>
-          <section className="panel" style={{ marginTop: 16 }}>
+
+          <InfoSections
+            profiles={profiles}
+            schedules={schedules}
+            crawlStates={crawlStates}
+            crawlStatesPage={crawlStatesPage}
+            crawlStatesTotal={crawlStatesTotal}
+            crawlStatesPerPage={100}
+            onCrawlStatesPageChange={setCrawlStatesPage}
+          />
+
+          <section className="panel">
             <RenderProfileEditor
               onError={(message) => console.error(message)}
             />
           </section>
-          <section className="panel" style={{ marginTop: 16 }}>
+
+          <section className="panel">
             <PipelineJSEditor onError={(message) => console.error(message)} />
           </section>
+
           <ProxyPoolStatusPanel />
           <RetentionStatusPanel />
-        </>
+        </div>
       )}
 
       <AIExtractPreview

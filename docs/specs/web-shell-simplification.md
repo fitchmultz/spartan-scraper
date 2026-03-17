@@ -1,6 +1,6 @@
 # Web Shell Simplification
 
-**Status:** Roadmap / Now  
+**Status:** Recently Completed  
 **Primary surfaces:** All top-level Web UI routes
 
 ## Summary

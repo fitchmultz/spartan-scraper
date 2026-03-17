@@ -1,17 +1,9 @@
 /**
- * PresetContainer - Container component for preset management functionality
- *
- * This component encapsulates all preset-related UI state and operations:
- * - Managing save preset dialog state
- * - Handling preset selection and application
- * - Rendering QuickStartPanel and SavePresetDialog
- *
- * It does NOT handle:
- * - Job submission directly
- * - Form state management (uses applyPreset callback)
- * - Watch or chain management
- *
- * @module PresetContainer
+ * Purpose: Coordinate the quick-start preset rail and save-preset dialog for the new-job route.
+ * Responsibilities: Bridge preset selection into route-owned navigation, open the save dialog with the current config snapshot, and keep the quick-start rail focused on discovery rather than direct form mutation.
+ * Scope: Preset management for single-job creation only.
+ * Usage: Render from `App.tsx` alongside `JobSubmissionContainer` on `/jobs/new`.
+ * Invariants/Assumptions: The route owner applies presets exactly once, the active job type is controlled by the surrounding route, and scrolling to `#forms` remains the correct affordance after selecting a preset.
  */
 
 import { useState, useCallback } from "react";
@@ -23,7 +15,6 @@ interface PresetContainerProps {
   presets: JobPreset[];
   activeTab: JobType;
   setActiveTab: (tab: JobType) => void;
-  applyPreset: (config: PresetConfig) => void;
   savePreset: (
     name: string,
     desc: string,
@@ -41,7 +32,6 @@ export function PresetContainer({
   presets,
   activeTab,
   setActiveTab,
-  applyPreset,
   savePreset,
   getCurrentConfig,
   getCurrentUrl,
@@ -53,22 +43,12 @@ export function PresetContainer({
 
   const handleSelectPreset = useCallback(
     (preset: JobPreset) => {
-      // Switch to the appropriate tab
-      setActiveTab(preset.jobType);
-
-      // Apply preset config to form state
-      applyPreset(preset.config);
-
-      // Notify parent for form ref updates
       onSelectPreset(preset);
 
-      // Scroll to forms section
       const formsSection = document.getElementById("forms");
-      if (formsSection) {
-        formsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      formsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [setActiveTab, applyPreset, onSelectPreset],
+    [onSelectPreset],
   );
 
   const handleSavePreset = useCallback(() => {

@@ -6,14 +6,14 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 - [Web UI/UX Audit](web-ui-ux-audit.md) — findings from code inspection plus live app walkthroughs and screenshot-based review.
 
-## Now
+## Recently Completed
 
+- [Template Editor Rework](template-editor-rework.md) — `/templates` now runs as an inline authoring workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of modal-first editing.
 - [Web Shell Simplification](web-shell-simplification.md)
-- [Guided Job Submission Wizard](guided-job-wizard.md)
+- [Guided Job Submission Wizard](guided-job-wizard.md) — `/jobs/new` now uses a guided 4-step wizard with Expert mode, per-job draft persistence, and review-before-submit.
+- [Results View System Overhaul](results-view-system-overhaul.md) — `/jobs/:id` now defaults to one dominant reader, with secondary tools and guided export moved behind quieter drawers.
 
 ## After
 
-- [Results View System Overhaul](results-view-system-overhaul.md)
-- [Template Editor Rework](template-editor-rework.md)
 - [Integrated AI Assistant Panel](ai-assistant-panel.md)
 - [Toast Notification System](toast-notification-system.md)

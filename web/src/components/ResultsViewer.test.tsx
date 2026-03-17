@@ -1,12 +1,24 @@
+/**
+ * Purpose: Verify the result viewer keeps research detail readable while demoting deeper inspection behind disclosures.
+ * Responsibilities: Assert agentic research content remains reachable from the new primary-reader layout.
+ * Scope: Component coverage for `ResultsViewer`.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: Agentic detail is secondary to the main research summary but must remain accessible without route changes.
+ */
+
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ResearchResultItem } from "../types";
 import { ResultsViewer } from "./ResultsViewer";
 
 describe("ResultsViewer agentic research rendering", () => {
-  it("renders bounded agentic research details for research results", () => {
+  it("keeps agentic research details available behind a secondary disclosure", async () => {
+    const user = userEvent.setup();
+
     const result: ResearchResultItem = {
+      query: "support model",
       summary: "Deterministic summary",
       confidence: 0.73,
       evidence: [],
@@ -55,22 +67,27 @@ describe("ResultsViewer agentic research rendering", () => {
       />,
     );
 
-    const agenticPanel = screen
-      .getByRole("heading", { name: "Agentic Research" })
-      .closest(".panel");
+    expect(screen.getAllByText("Deterministic summary").length).toBeGreaterThan(
+      0,
+    );
 
-    expect(agenticPanel).not.toBeNull();
-    const panel = within(agenticPanel as HTMLElement);
+    await user.click(screen.getByText(/Agentic research details/i));
 
-    expect(panel.getByText(/Status completed/)).toBeInTheDocument();
+    const link = screen.getByRole("link", {
+      name: "https://example.com/support",
+    });
+    expect(link).toBeInTheDocument();
+
+    const disclosure = link.closest("details");
+    expect(disclosure).not.toBeNull();
+
+    const detailRegion = within(disclosure as HTMLElement);
+    expect(detailRegion.getByText(/Status completed/)).toBeInTheDocument();
     expect(
-      panel.getByText(
+      detailRegion.getByText(
         "The vendor uses enterprise pricing and provides dedicated SLA-backed support.",
       ),
     ).toBeInTheDocument();
-    expect(panel.getByText("Round 1")).toBeInTheDocument();
-    expect(
-      panel.getByRole("link", { name: "https://example.com/support" }),
-    ).toBeInTheDocument();
+    expect(detailRegion.getByText("Round 1")).toBeInTheDocument();
   });
 });

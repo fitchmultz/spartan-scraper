@@ -1,10 +1,9 @@
 /**
- * Onboarding Flow Component
- *
- * Guided tour component using react-joyride for step-by-step
- * user onboarding. Defines tour steps and handles tour events.
- *
- * @module components/OnboardingFlow
+ * Purpose: Render the application onboarding tour with route-aware guidance for the current web workflow model.
+ * Responsibilities: Define Joyride steps, keep onboarding copy aligned with visible UI targets, and report progress/completion events back to onboarding state.
+ * Scope: Web onboarding tour presentation only.
+ * Usage: Mount once from `App.tsx` and drive it with `useOnboarding` state.
+ * Invariants/Assumptions: Tour steps must target visible elements in the current shell, the guided job wizard is the default new-job experience, and total step count stays aligned with `ONBOARDING_TOTAL_STEPS`.
  */
 
 import Joyride, {
@@ -43,8 +42,8 @@ const TOUR_STEPS: Step[] = [
           Welcome to Spartan Scraper!
         </h3>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
-          This quick tour will show you the key features and help you get
-          started with your first scraping job.
+          This quick tour walks through the new guided job workflow, presets,
+          and the fastest ways to launch real work.
         </p>
       </div>
     ),
@@ -59,9 +58,8 @@ const TOUR_STEPS: Step[] = [
           Quick Start Panel
         </h3>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
-          Choose from preset configurations to jumpstart your job. Each preset
-          is optimized for different scenarios like blogs, e-commerce sites, or
-          SPAs. Click any card to auto-configure the form.
+          Browse saved and built-in presets, switch job types quickly, and save
+          your current workflow once you have a setup worth reusing.
         </p>
       </div>
     ),
@@ -69,90 +67,77 @@ const TOUR_STEPS: Step[] = [
     title: "Quick Start",
   },
   {
-    target: '[data-tour="form-types"]',
+    target: '[data-tour="job-type-selection"]',
     content: (
       <div>
         <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Three Job Types</h3>
         <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
-          Spartan Scraper supports three types of jobs:
+          Start by choosing the workflow that matches your intent:
         </p>
         <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
           <li>
-            <strong>Scrape</strong> — Single page extraction with precise
+            <strong>Scrape</strong> — Single-page extraction with precise
             control
           </li>
           <li>
-            <strong>Crawl</strong> — Multi-page crawling with depth and page
-            limits
+            <strong>Crawl</strong> — Multi-page crawling with explicit bounds
           </li>
           <li>
-            <strong>Research</strong> — AI-powered multi-source analysis and
-            synthesis
+            <strong>Research</strong> — Multi-source synthesis driven by a query
           </li>
         </ul>
       </div>
     ),
-    placement: "right",
+    placement: "bottom",
     title: "Job Types",
   },
   {
-    target: '[data-tour="fetcher-options"]',
-    content: (
-      <div>
-        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Fetcher Options</h3>
-        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
-          Choose the right fetcher for your target:
-        </p>
-        <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-          <li>
-            <strong>HTTP</strong> — Fast, lightweight, good for static sites
-          </li>
-          <li>
-            <strong>Chromedp</strong> — Built-in headless Chrome for
-            JavaScript-heavy pages
-          </li>
-          <li>
-            <strong>Playwright</strong> — Full browser automation for complex
-            SPAs (optional)
-          </li>
-        </ul>
-      </div>
-    ),
-    placement: "left",
-    title: "Fetchers",
-  },
-  {
-    target: '[data-tour="auth-profiles"]',
-    content: (
-      <div>
-        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Authentication</h3>
-        <p style={{ margin: 0, lineHeight: 1.5 }}>
-          Configure authentication using saved profiles or custom credentials.
-          Support for headers, cookies, query parameters, and form-based login.
-          Profiles can inherit from each other for flexible credential
-          management.
-        </p>
-      </div>
-    ),
-    placement: "top",
-    title: "Auth Profiles",
-  },
-  {
-    target: '[data-tour="templates"]',
+    target: '[data-tour="wizard-steps"]',
     content: (
       <div>
         <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>
-          Extraction Templates
+          Guided Setup Steps
         </h3>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
-          Use templates to extract structured data from HTML. Templates support
-          CSS selectors, validation rules, and can be combined with pre/post
-          processors and transformers for powerful data pipelines.
+          Move through Basics, Runtime, Extraction, and Review. Spartan blocks
+          the next step only when the required inputs for the current stage are
+          missing.
         </p>
       </div>
     ),
-    placement: "top",
-    title: "Templates",
+    placement: "bottom",
+    title: "Wizard Steps",
+  },
+  {
+    target: '[data-tour="expert-mode"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>Expert Mode</h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          Switch to the dense full-form editor whenever you want every advanced
+          control on one screen. Your draft carries across both modes.
+        </p>
+      </div>
+    ),
+    placement: "left",
+    title: "Expert Mode",
+  },
+  {
+    target: '[data-tour="quickstart"]',
+    content: (
+      <div>
+        <h3 style={{ margin: "0 0 8px", fontSize: "1rem" }}>
+          AI Assistance and Presets
+        </h3>
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          The quick-start rail is also where you can open AI preview and AI
+          template actions, so you can debug extraction or generate helpers
+          without leaving the job-creation workspace.
+        </p>
+      </div>
+    ),
+    placement: "bottom",
+    title: "AI Assistance",
   },
   {
     target: '[data-tour="command-palette"]',

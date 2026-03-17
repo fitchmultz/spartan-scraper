@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the template workspace behavior for inline editing, preview, AI assistance, and builder handoffs.
+ * Responsibilities: Cover TemplateManager route-level interactions without relying on live API calls or the real visual builder implementation.
+ * Scope: Component behavior for `TemplateManager` only.
+ * Usage: Run under Vitest as part of the web test suite.
+ * Invariants/Assumptions: API calls are mocked, built-in templates are non-destructive, and the `/templates` route no longer depends on modal-first editing.
+ */
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -5,10 +13,13 @@ import { TemplateManager } from "../TemplateManager";
 import * as api from "../../../api";
 
 vi.mock("../../../api", () => ({
-  createTemplate: vi.fn(),
-  deleteTemplate: vi.fn(),
   getTemplate: vi.fn(),
+  createTemplate: vi.fn(),
   updateTemplate: vi.fn(),
+  deleteTemplate: vi.fn(),
+  testSelector: vi.fn(),
+  aiTemplateGenerate: vi.fn(),
+  aiTemplateDebug: vi.fn(),
 }));
 
 vi.mock("../../../lib/api-config", () => ({
@@ -31,7 +42,7 @@ vi.mock("../../VisualSelectorBuilder", () => ({
       <button
         type="button"
         onClick={() =>
-          onSave({ name: initialTemplate?.name ?? "saved-template" })
+          onSave({ name: initialTemplate?.name ?? "builder-saved" })
         }
       >
         Save Builder
@@ -45,8 +56,6 @@ vi.mock("../../VisualSelectorBuilder", () => ({
 
 describe("TemplateManager", () => {
   const onTemplatesChanged = vi.fn();
-  const onOpenAIPreview = vi.fn();
-  const onOpenAIGenerator = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -56,51 +65,65 @@ describe("TemplateManager", () => {
     );
   });
 
-  it("loads template details and exposes built-in actions from the template library", async () => {
+  it("renders a custom template as an inline editable workspace", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {
-        name: "article",
-        is_built_in: true,
+        name: "custom-news",
+        is_built_in: false,
         template: {
-          name: "article",
-          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+          name: "custom-news",
+          selectors: [{ name: "title", selector: "h1", attr: "text" }],
         },
       },
-      error: undefined,
-      request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.updateTemplate).mockResolvedValue({
+      data: undefined,
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
       response: new Response(),
     });
 
     render(
       <TemplateManager
-        templateNames={["article", "custom-news"]}
+        templateNames={["custom-news"]}
         onTemplatesChanged={onTemplatesChanged}
-        onOpenAIPreview={onOpenAIPreview}
-        onOpenAIGenerator={onOpenAIGenerator}
       />,
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "article" }),
-      ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "custom-news",
+    );
+    expect(screen.queryByText(/modal-overlay/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue("h1"), {
+      target: { value: "main h1" },
     });
 
-    expect(
-      screen.getAllByText(/open details and management actions/i),
-    ).toHaveLength(2);
-    expect(
-      screen.getByRole("button", { name: /duplicate/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /edit in visual builder/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^delete$/i }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /save template/i }));
+
+    await waitFor(() => {
+      expect(api.updateTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: { name: "custom-news" },
+          body: expect.objectContaining({
+            name: "custom-news",
+            selectors: [
+              expect.objectContaining({
+                name: "title",
+                selector: "main h1",
+              }),
+            ],
+          }),
+        }),
+      );
+    });
   });
 
-  it("opens the AI preview surface from the template library", async () => {
+  it("duplicates a built-in template into an editable draft instead of opening a modal", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {
         name: "article",
@@ -110,8 +133,15 @@ describe("TemplateManager", () => {
           selectors: [{ name: "title", selector: "article h1", attr: "text" }],
         },
       },
-      error: undefined,
+      error: undefined as never,
       request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.createTemplate).mockResolvedValue({
+      data: undefined,
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates"),
       response: new Response(),
     });
 
@@ -119,97 +149,28 @@ describe("TemplateManager", () => {
       <TemplateManager
         templateNames={["article"]}
         onTemplatesChanged={onTemplatesChanged}
-        onOpenAIPreview={onOpenAIPreview}
-        onOpenAIGenerator={onOpenAIGenerator}
       />,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: /preview extraction with ai/i,
-      }),
-    );
+    await screen.findByRole("button", { name: /duplicate to edit/i });
+    fireEvent.click(screen.getByRole("button", { name: /duplicate to edit/i }));
 
-    expect(onOpenAIPreview).toHaveBeenCalledTimes(1);
-  });
+    expect(screen.getByLabelText(/template name/i)).toHaveValue("article-copy");
 
-  it("edits a custom template through the modal editor", async () => {
-    vi.mocked(api.getTemplate).mockResolvedValue({
-      data: {
-        name: "custom-news",
-        is_built_in: false,
-        template: {
-          name: "custom-news",
-          selectors: [{ name: "title", selector: "h1", attr: "text" }],
-        },
-      },
-      error: undefined,
-      request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
-      response: new Response(),
-    });
-    vi.mocked(api.updateTemplate).mockResolvedValue({
-      data: {
-        name: "custom-news-renamed",
-        is_built_in: false,
-        template: {
-          name: "custom-news-renamed",
-          selectors: [{ name: "title", selector: "main h1", attr: "text" }],
-        },
-      },
-      error: undefined,
-      request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
-      response: new Response(),
-    });
-
-    render(
-      <TemplateManager
-        templateNames={["custom-news"]}
-        onTemplatesChanged={onTemplatesChanged}
-        onOpenAIPreview={onOpenAIPreview}
-        onOpenAIGenerator={onOpenAIGenerator}
-      />,
-    );
+    fireEvent.click(screen.getByRole("button", { name: /save template/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /^edit$/i }),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
-    fireEvent.change(screen.getByLabelText(/template name/i), {
-      target: { value: "custom-news-renamed" },
-    });
-
-    const selectorInputs = screen.getAllByDisplayValue(/h1/);
-    fireEvent.change(selectorInputs[0], {
-      target: { value: "main h1" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
-
-    await waitFor(() => {
-      expect(api.updateTemplate).toHaveBeenCalledWith(
+      expect(api.createTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseUrl: "http://127.0.0.1:8741",
-          path: { name: "custom-news" },
           body: expect.objectContaining({
-            name: "custom-news-renamed",
-            selectors: [
-              expect.objectContaining({
-                name: "title",
-                selector: "main h1",
-                attr: "text",
-              }),
-            ],
+            name: "article-copy",
           }),
         }),
       );
     });
-    expect(onTemplatesChanged).toHaveBeenCalled();
   });
 
-  it("deletes a custom template from the primary management surface", async () => {
+  it("runs selector preview in the right rail", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {
         name: "custom-news",
@@ -219,13 +180,112 @@ describe("TemplateManager", () => {
           selectors: [{ name: "title", selector: "h1", attr: "text" }],
         },
       },
-      error: undefined,
+      error: undefined as never,
       request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
       response: new Response(),
     });
-    vi.mocked(api.deleteTemplate).mockResolvedValue({
-      data: undefined,
-      error: undefined,
+
+    vi.mocked(api.testSelector).mockResolvedValue({
+      data: {
+        selector: "h1",
+        matches: 1,
+        elements: [{ tag: "h1", text: "Headline" }],
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/test-selector"),
+      response: new Response(),
+    });
+
+    render(
+      <TemplateManager
+        templateNames={["custom-news"]}
+        onTemplatesChanged={onTemplatesChanged}
+      />,
+    );
+
+    await screen.findByLabelText(/preview target url/i);
+
+    fireEvent.change(screen.getByLabelText(/preview target url/i), {
+      target: { value: "https://example.com/article" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /run preview/i }));
+
+    expect(await screen.findByText(/1 match/i)).toBeInTheDocument();
+    expect(screen.getByText(/headline/i)).toBeInTheDocument();
+  });
+
+  it("applies AI-generated templates into the inline workspace", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "custom-news",
+        is_built_in: false,
+        template: {
+          name: "custom-news",
+          selectors: [{ name: "title", selector: "h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.aiTemplateGenerate).mockResolvedValue({
+      data: {
+        template: {
+          name: "generated-template",
+          is_built_in: false,
+          template: {
+            name: "generated-template",
+            selectors: [{ name: "price", selector: ".price", attr: "text" }],
+          },
+        },
+        explanation: "Generated a price selector.",
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/ai/template-generate"),
+      response: new Response(),
+    });
+
+    render(
+      <TemplateManager
+        templateNames={["custom-news"]}
+        onTemplatesChanged={onTemplatesChanged}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: /ai generate/i }));
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/product" },
+    });
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: "Extract price" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate template/i }));
+    await screen.findByRole("button", { name: /apply to workspace/i });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /apply to workspace/i }),
+    );
+
+    expect(screen.getByLabelText(/template name/i)).toHaveValue(
+      "generated-template",
+    );
+    expect(screen.getByDisplayValue(".price")).toBeInTheDocument();
+  });
+
+  it("opens the visual builder inline inside the workspace", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "custom-news",
+        is_built_in: false,
+        template: {
+          name: "custom-news",
+          selectors: [{ name: "title", selector: "h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
       request: new Request("http://127.0.0.1:8741/v1/templates/custom-news"),
       response: new Response(),
     });
@@ -234,25 +294,14 @@ describe("TemplateManager", () => {
       <TemplateManager
         templateNames={["custom-news"]}
         onTemplatesChanged={onTemplatesChanged}
-        onOpenAIPreview={onOpenAIPreview}
-        onOpenAIGenerator={onOpenAIGenerator}
       />,
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /^delete$/i }),
-      ).toBeInTheDocument();
-    });
+    await screen.findByText(/custom-news/i);
+    fireEvent.click(
+      screen.getByRole("button", { name: /open visual builder/i }),
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
-
-    await waitFor(() => {
-      expect(api.deleteTemplate).toHaveBeenCalledWith({
-        baseUrl: "http://127.0.0.1:8741",
-        path: { name: "custom-news" },
-      });
-    });
-    expect(onTemplatesChanged).toHaveBeenCalled();
+    expect(screen.getByText(/visual builder mock/i)).toBeInTheDocument();
   });
 });

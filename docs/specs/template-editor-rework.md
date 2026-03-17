@@ -1,6 +1,6 @@
 # Template Editor Rework
 
-**Status:** Roadmap / After  
+**Status:** Recently Completed  
 **Primary surface:** Web UI `/templates`
 
 ## Summary

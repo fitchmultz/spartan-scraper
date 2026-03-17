@@ -1,6 +1,6 @@
 # Guided Job Submission Wizard
 
-**Status:** Roadmap / Now  
+**Status:** Recently Completed  
 **Primary surface:** Web UI `/jobs/new`
 
 ## Summary

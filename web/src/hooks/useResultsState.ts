@@ -1,15 +1,12 @@
 /**
- * Results State Hook
- *
- * Custom React hook for managing results loading, display, and pagination.
- * Handles result format switching, pagination, and extraction of detailed
- * result information (summary, confidence, evidence, clusters, citations).
- * Supports tree view state, search/filter, and diff comparison state.
- *
- * @module useResultsState
+ * Purpose: Own the canonical saved-results loading state for the `/jobs/:id` route.
+ * Responsibilities: Load saved job results, track pagination and selection, and derive selected-item summary metadata for the active result.
+ * Scope: Results-route data state only; reader filters, secondary tools, and export UI stay local to the results explorer surface.
+ * Usage: Call `useResultsState()` once from the application shell and pass the returned state/actions into `ResultsContainer`.
+ * Invariants/Assumptions: `loadResults()` is the only authoritative fetch path, selection must stay within the currently loaded result page, and the route defaults to paginated `jsonl` inspection.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { loadResults as loadResultsUtil } from "../lib/results";
 import type {
   AgenticResearchItem,
@@ -19,10 +16,7 @@ import type {
   ResultItem,
 } from "../types";
 
-const RESULTS_PER_PAGE = 100;
-
-export type ViewMode = "explorer" | "tree" | "diff" | "visualize";
-export type StatusFilter = "all" | "success" | "error";
+export const RESULTS_PER_PAGE = 100;
 
 export interface ResultsState {
   selectedJobId: string | null;
@@ -38,30 +32,27 @@ export interface ResultsState {
   resultFormat: string;
   currentPage: number;
   totalResults: number;
-  // Tree view state
-  viewMode: ViewMode;
-  treeExpandedIds: Set<string>;
-  treeSelectedId: string | null;
-  // Search/filter state
-  searchQuery: string;
-  statusFilter: StatusFilter;
 }
 
 export interface ResultsActions {
   loadResults: (jobId: string, format?: string, page?: number) => Promise<void>;
-  updateResultFormat: (format: string) => void;
   setSelectedResultIndex: (index: number) => void;
-  setCurrentPage: (page: number) => void;
-  // Tree view actions
-  setViewMode: (mode: ViewMode) => void;
-  toggleTreeNode: (nodeId: string) => void;
-  expandAllTreeNodes: () => void;
-  collapseAllTreeNodes: () => void;
-  setTreeSelectedId: (id: string | null) => void;
-  // Search/filter actions
-  setSearchQuery: (query: string) => void;
-  setStatusFilter: (filter: StatusFilter) => void;
-  clearFilters: () => void;
+}
+
+function resetSelectedResultState(
+  setResultSummary: (value: string | null) => void,
+  setResultConfidence: (value: number | null) => void,
+  setResultEvidence: (value: EvidenceItem[]) => void,
+  setResultClusters: (value: ClusterItem[]) => void,
+  setResultCitations: (value: CitationItem[]) => void,
+  setResultAgentic: (value: AgenticResearchItem | null) => void,
+) {
+  setResultSummary(null);
+  setResultConfidence(null);
+  setResultEvidence([]);
+  setResultClusters([]);
+  setResultCitations([]);
+  setResultAgentic(null);
 }
 
 export function useResultsState(): ResultsState & ResultsActions {
@@ -80,37 +71,23 @@ export function useResultsState(): ResultsState & ResultsActions {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
 
-  // Tree view state
-  const [viewMode, setViewMode] = useState<ViewMode>("explorer");
-  const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [treeSelectedId, setTreeSelectedId] = useState<string | null>(null);
-
-  // Search/filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-
-  const selectedJobIdRef = useRef<string | null>(null);
-
   const loadResults = useCallback(
     async (jobId: string, format = "jsonl", page = 1) => {
       setSelectedJobId(jobId);
       setResultFormat(format);
       setCurrentPage(page);
-
-      if (page === 1) {
-        setTotalResults(0);
-        setResultItems([]);
-        setSelectedResultIndex(0);
-        setResultSummary(null);
-        setResultConfidence(null);
-        setResultEvidence([]);
-        setResultClusters([]);
-        setResultCitations([]);
-        setResultAgentic(null);
-        setRawResult(null);
-      }
+      setSelectedResultIndex(0);
+      setResultItems([]);
+      setRawResult(null);
+      setTotalResults(0);
+      resetSelectedResultState(
+        setResultSummary,
+        setResultConfidence,
+        setResultEvidence,
+        setResultClusters,
+        setResultCitations,
+        setResultAgentic,
+      );
 
       const result = await loadResultsUtil(
         jobId,
@@ -131,67 +108,37 @@ export function useResultsState(): ResultsState & ResultsActions {
 
         setResultItems(result.data as ResultItem[]);
         setRawResult(result.raw ?? JSON.stringify(result.data, null, 2));
-      } else if (result.raw) {
-        setRawResult(result.raw);
-        setResultItems([]);
+        return;
       }
+
+      setRawResult(result.raw ?? null);
     },
     [],
   );
 
-  const updateResultFormat = useCallback((format: string) => {
-    setResultFormat(format);
-  }, []);
-
-  // Tree view actions
-  const toggleTreeNode = useCallback((nodeId: string) => {
-    setTreeExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
-    });
-  }, []);
-
-  const expandAllTreeNodes = useCallback(() => {
-    // This will be populated when tree nodes are available
-    setTreeExpandedIds(new Set());
-  }, []);
-
-  const collapseAllTreeNodes = useCallback(() => {
-    setTreeExpandedIds(new Set());
-  }, []);
-
-  // Search/filter actions
-  const clearFilters = useCallback(() => {
-    setSearchQuery("");
-    setStatusFilter("all");
-  }, []);
-
-  useEffect(() => {
-    selectedJobIdRef.current = selectedJobId;
-  }, [selectedJobId]);
-
-  useEffect(() => {
-    if (selectedJobId && resultFormat) {
-      void loadResults(selectedJobId, resultFormat, 1);
-    }
-  }, [selectedJobId, resultFormat, loadResults]);
-
   useEffect(() => {
     if (resultItems.length === 0) {
-      setResultSummary(null);
-      setResultConfidence(null);
-      setResultEvidence([]);
-      setResultClusters([]);
-      setResultCitations([]);
-      setResultAgentic(null);
+      resetSelectedResultState(
+        setResultSummary,
+        setResultConfidence,
+        setResultEvidence,
+        setResultClusters,
+        setResultCitations,
+        setResultAgentic,
+      );
       return;
     }
-    const item = resultItems[selectedResultIndex];
+
+    const clampedIndex = Math.min(
+      Math.max(selectedResultIndex, 0),
+      resultItems.length - 1,
+    );
+    if (clampedIndex !== selectedResultIndex) {
+      setSelectedResultIndex(clampedIndex);
+      return;
+    }
+
+    const item = resultItems[clampedIndex];
     if (item && "summary" in item) {
       setResultSummary((item as { summary?: string }).summary ?? null);
       setResultConfidence((item as { confidence?: number }).confidence ?? null);
@@ -203,15 +150,18 @@ export function useResultsState(): ResultsState & ResultsActions {
       setResultAgentic(
         (item as { agentic?: AgenticResearchItem }).agentic ?? null,
       );
-    } else {
-      setResultSummary(null);
-      setResultConfidence(null);
-      setResultEvidence([]);
-      setResultClusters([]);
-      setResultCitations([]);
-      setResultAgentic(null);
+      return;
     }
-  }, [selectedResultIndex, resultItems]);
+
+    resetSelectedResultState(
+      setResultSummary,
+      setResultConfidence,
+      setResultEvidence,
+      setResultClusters,
+      setResultCitations,
+      setResultAgentic,
+    );
+  }, [resultItems, selectedResultIndex]);
 
   return {
     selectedJobId,
@@ -227,25 +177,7 @@ export function useResultsState(): ResultsState & ResultsActions {
     resultFormat,
     currentPage,
     totalResults,
-    // Tree view state
-    viewMode,
-    treeExpandedIds,
-    treeSelectedId,
-    // Search/filter state
-    searchQuery,
-    statusFilter,
-    // Actions
     loadResults,
-    updateResultFormat,
     setSelectedResultIndex,
-    setCurrentPage,
-    setViewMode,
-    toggleTreeNode,
-    expandAllTreeNodes,
-    collapseAllTreeNodes,
-    setTreeSelectedId,
-    setSearchQuery,
-    setStatusFilter,
-    clearFilters,
   };
 }

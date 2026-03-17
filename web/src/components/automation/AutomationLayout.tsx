@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AutomationSectionHeader } from "./AutomationSectionHeader";
 import type { AutomationSection } from "./automationSections";
 
 interface AutomationLayoutProps {
@@ -35,7 +34,6 @@ export function AutomationLayout({
 
   return (
     <div className="automation-hub">
-      <AutomationSectionHeader section={activeSection} />
       <div className="automation-hub__content">
         {sectionsToRender.map((section) => {
           const isActive = section === activeSection;

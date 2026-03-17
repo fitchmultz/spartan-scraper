@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify batch-form behaviors against a mocked form controller.
+ * Responsibilities: Supply a complete `FormController` test double and assert batch authoring interactions without live API calls.
+ * Scope: Component coverage for `BatchForm` only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Batch tests use a fully mocked controller and should stay aligned with the current `FormController` contract.
+ */
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -113,6 +121,7 @@ function createFormController(): FormController {
     interceptMaxEntries: 1000,
     setInterceptMaxEntries: vi.fn(),
     applyPreset: vi.fn(),
+    reset: vi.fn(),
   };
 }
 

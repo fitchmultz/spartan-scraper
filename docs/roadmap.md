@@ -15,21 +15,17 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Recently Completed
 
+- Template editor rework now makes `/templates` a real inline workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of blocking modal-first authoring.
+- Results view system overhaul now keeps `/jobs/:id` centered on one dominant reader, moves comparison/tree/transform/visualization into an explicit secondary layer, replaces the export button strip with guided export, and preserves jobs-route continuity without reintroducing extra below-the-fold job clutter.
+- Web shell simplification now uses a compact global top bar, route-owned headers, and reduced repeated metrics so `/jobs` lands directly on the scan-first monitoring surface, `/jobs/:id` stays result-focused, and top-level routes spend their first screen on real work instead of stacked framing.
 - Automation hub navigation now gives `/automation` explicit section switching and stable deep links for batches, chains, watches, exports, and webhook deliveries, so operators no longer have to scroll a stacked mega-page just to change automation modes.
 - Run history observability now spans API, Web UI, CLI, and MCP with recent execution inspection, explicit batch queue progression, recent failed-run views, and structured failure context so operators can understand outcomes without digging through host-local files or internal state.
 - Watch management now spans API, Web UI, CLI, and MCP with `watch_list`, `watch_get`, `watch_create`, `watch_update`, `watch_delete`, and `watch_check`, so operators and agents can manage stored watches and run manual checks without falling back to REST-only flows.
 - Webhook delivery inspection now spans API, Web UI, CLI, and MCP with sanitized URL/error output, so operators can debug retries and failures from `spartan webhook deliveries ...` and `webhook_delivery_get` without reading host-local files.
 - Batch management now spans API, Web UI, CLI, and MCP with authoritative list/detail/cancel flows plus MCP batch submission tools, so operators and agents can create, enumerate, inspect, and stop persisted batches without falling back to REST-only workflows or browser-local tracking.
 
-## Now
-
-- [Web Shell Simplification](./specs/web-shell-simplification.md) — Remove the duplicated masthead/route-intro pattern, reduce repeated metrics and CTA chrome above the fold, and let each route spend its first screen on real work instead of repeated framing.
-- [Guided Job Submission Wizard](./specs/guided-job-wizard.md) — Replace the long single-screen submission flow with a step-based wizard for scrape, crawl, and research jobs while preserving an Expert mode for operators who want dense editing.
-
 ## After
 
-- [Results View System Overhaul](./specs/results-view-system-overhaul.md) — Reduce view-mode overload in results exploration, promote clearer default views, add saved views or bookmarks for repeat investigation patterns, and make export and transform workflows easier to understand before download.
-- [Template Editor Rework](./specs/template-editor-rework.md) — Move template creation and editing out of blocking modal overlays into an inline workspace with clearer hierarchy, side-by-side builder and preview, and stronger continuity with the broader Templates route.
 - [Integrated AI Assistant Panel](./specs/ai-assistant-panel.md) — Replace modal-only AI preview, generation, and debugging flows with a persistent, collapsible, route-aware assistant panel embedded into job submission, templates, and results workflows after the primary jobs, results, and templates layouts settle.
 - [Toast Notification System](./specs/toast-notification-system.md) — Introduce a global notification layer for success, error, loading, and progress feedback so transient operations stop relying on `alert()`, `confirm()`, `console.error`, and inconsistent inline messaging.
 - Onboarding and Discoverability Expansion — Replace the heavy first-run modal with lighter progressive onboarding, expand guidance beyond the job form, and make command palette, shortcuts, and route-specific help discoverable without prior knowledge.

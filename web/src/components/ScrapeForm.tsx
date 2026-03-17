@@ -1,14 +1,12 @@
 /**
- * Scrape Form Component
- *
- * Form for submitting single-page scrape jobs. Handles URL input, headless/playwright
- * options, timeout configuration, authentication settings, and extraction template selection.
- * Builds ScrapeRequest objects using shared utilities and submits them via callback.
- *
- * @module ScrapeForm
+ * Purpose: Render the expert single-page scrape surface and expose imperative submission/config helpers for guided and command-palette flows.
+ * Responsibilities: Keep scrape-specific inputs controlled, build scrape requests from shared form state, and optionally mount in headless mode for non-visual wizard submission.
+ * Scope: Single-page scrape job authoring only.
+ * Usage: Render from `JobSubmissionContainer` with shared form state plus controlled scrape-local fields.
+ * Invariants/Assumptions: Shared runtime and extraction options live in `useFormState`, the target URL is required before submit, and `surface="headless"` must still provide a working imperative ref.
  */
+
 import {
-  useState,
   useCallback,
   forwardRef,
   useImperativeHandle,
@@ -22,6 +20,7 @@ import {
   buildScrapeRequest,
   buildSharedRequestConfig,
 } from "../lib/form-utils";
+import { buildPresetConfig, type JobDraftLocalState } from "../lib/job-drafts";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
 import type { PresetConfig } from "../types/presets";
 import { WebhookConfig } from "./WebhookConfig";
@@ -33,13 +32,9 @@ import { JobFormAdvancedSection, JobFormIntro } from "./jobs/JobFormSections";
 import type { AiExtractOptions, DeviceEmulation } from "../api";
 
 export interface ScrapeFormRef {
-  /** Submit the form programmatically */
   submit: () => Promise<void>;
-  /** Get the current URL value */
   getUrl: () => string;
-  /** Set the URL value */
   setUrl: (url: string) => void;
-  /** Get the current configuration as a preset */
   getConfig: () => PresetConfig;
 }
 
@@ -48,115 +43,30 @@ interface ScrapeFormProps {
   profiles: ProfileOption[];
   onSubmit: (request: import("../api").ScrapeRequest) => Promise<void>;
   loading: boolean;
+  url: string;
+  setUrl: (value: string) => void;
+  device: DeviceEmulation | null;
+  setDevice: (value: DeviceEmulation | null) => void;
+  surface?: "full" | "headless";
 }
 
 export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
   function ScrapeForm(
-    { form, profiles, onSubmit, loading }: ScrapeFormProps,
+    {
+      form,
+      profiles,
+      onSubmit,
+      loading,
+      url,
+      setUrl,
+      device,
+      setDevice,
+      surface = "full",
+    },
     ref,
   ) {
-    const {
-      headless,
-      setHeadless,
-      usePlaywright,
-      setUsePlaywright,
-      timeoutSeconds,
-      setTimeoutSeconds,
-      authProfile,
-      setAuthProfile,
-      authBasic,
-      setAuthBasic,
-      headersRaw,
-      setHeadersRaw,
-      cookiesRaw,
-      setCookiesRaw,
-      queryRaw,
-      setQueryRaw,
-      proxyUrl,
-      setProxyUrl,
-      proxyUsername,
-      setProxyUsername,
-      proxyPassword,
-      setProxyPassword,
-      proxyRegion,
-      setProxyRegion,
-      proxyRequiredTags,
-      setProxyRequiredTags,
-      proxyExcludeProxyIds,
-      setProxyExcludeProxyIds,
-      loginUrl,
-      setLoginUrl,
-      loginUserSelector,
-      setLoginUserSelector,
-      loginPassSelector,
-      setLoginPassSelector,
-      loginSubmitSelector,
-      setLoginSubmitSelector,
-      loginUser,
-      setLoginUser,
-      loginPass,
-      setLoginPass,
-      extractTemplate,
-      setExtractTemplate,
-      extractValidate,
-      setExtractValidate,
-      aiExtractEnabled,
-      setAIExtractEnabled,
-      aiExtractMode,
-      setAIExtractMode,
-      aiExtractPrompt,
-      setAIExtractPrompt,
-      aiExtractSchema,
-      setAIExtractSchema,
-      aiExtractFields,
-      setAIExtractFields,
-      preProcessors,
-      setPreProcessors,
-      postProcessors,
-      setPostProcessors,
-      transformers,
-      setTransformers,
-      incremental,
-      setIncremental,
-      webhookUrl,
-      setWebhookUrl,
-      webhookEvents,
-      setWebhookEvents,
-      webhookSecret,
-      setWebhookSecret,
-      screenshotEnabled,
-      setScreenshotEnabled,
-      screenshotFullPage,
-      setScreenshotFullPage,
-      screenshotFormat,
-      setScreenshotFormat,
-      screenshotQuality,
-      setScreenshotQuality,
-      screenshotWidth,
-      setScreenshotWidth,
-      screenshotHeight,
-      setScreenshotHeight,
-      interceptEnabled,
-      setInterceptEnabled,
-      interceptURLPatterns,
-      setInterceptURLPatterns,
-      interceptResourceTypes,
-      setInterceptResourceTypes,
-      interceptCaptureRequestBody,
-      setInterceptCaptureRequestBody,
-      interceptCaptureResponseBody,
-      setInterceptCaptureResponseBody,
-      interceptMaxBodySize,
-      setInterceptMaxBodySize,
-      interceptMaxEntries,
-      setInterceptMaxEntries,
-    } = form;
-
-    const [scrapeUrl, setScrapeUrl] = useState("");
-    const [device, setDevice] = useState<DeviceEmulation | null>(null);
-
     const handleSubmit = useCallback(async () => {
-      if (!scrapeUrl) {
+      if (!url.trim()) {
         alert("Scrape URL is required.");
         return;
       }
@@ -166,11 +76,11 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       try {
         shared = buildSharedRequestConfig(form);
         aiExtractOptions = buildAIExtractOptions(
-          aiExtractEnabled,
-          aiExtractMode,
-          aiExtractPrompt,
-          aiExtractSchema,
-          aiExtractFields,
+          form.aiExtractEnabled,
+          form.aiExtractMode,
+          form.aiExtractPrompt,
+          form.aiExtractSchema,
+          form.aiExtractFields,
         );
       } catch (error) {
         alert(error instanceof Error ? error.message : String(error));
@@ -178,17 +88,17 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
       }
 
       const request = buildScrapeRequest(
-        scrapeUrl,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
+        url.trim(),
+        form.headless,
+        form.usePlaywright,
+        form.timeoutSeconds,
         shared.authProfile,
         shared.auth,
         shared.extract,
         shared.preProcessors,
         shared.postProcessors,
         shared.transformers,
-        incremental,
+        form.incremental,
         shared.webhook,
         shared.screenshot,
         device || undefined,
@@ -196,135 +106,46 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
         aiExtractOptions,
       );
       await onSubmit(request);
-    }, [
-      scrapeUrl,
-      headless,
-      usePlaywright,
-      timeoutSeconds,
-      form,
-      aiExtractEnabled,
-      aiExtractMode,
-      aiExtractPrompt,
-      aiExtractSchema,
-      aiExtractFields,
-      incremental,
-      device,
-      onSubmit,
-    ]);
+    }, [device, form, onSubmit, url]);
 
-    // Build config from current form state
-    const getConfig = useCallback(
-      (): PresetConfig => ({
-        url: scrapeUrl,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
-        authProfile,
-        authBasic,
-        headersRaw,
-        cookiesRaw,
-        queryRaw,
-        proxyUrl,
-        proxyUsername,
-        proxyPassword,
-        proxyRegion,
-        proxyRequiredTags,
-        proxyExcludeProxyIds,
-        loginUrl,
-        loginUserSelector,
-        loginPassSelector,
-        loginSubmitSelector,
-        loginUser,
-        loginPass,
-        extractTemplate,
-        extractValidate,
-        aiExtractEnabled,
-        aiExtractMode,
-        aiExtractPrompt,
-        aiExtractSchema,
-        aiExtractFields,
-        preProcessors,
-        postProcessors,
-        transformers,
-        incremental,
-        webhookUrl,
-        webhookEvents,
-        webhookSecret,
-        device: device || undefined,
-        screenshotEnabled,
-        screenshotFullPage,
-        screenshotFormat,
-        screenshotQuality,
-        screenshotWidth,
-        screenshotHeight,
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-        interceptMaxEntries,
+    const getConfig = useCallback((): PresetConfig => {
+      const draftState: JobDraftLocalState = {
+        scrape: {
+          url,
+          device,
+        },
+        crawl: {
+          url: "",
+          sitemapURL: "",
+          sitemapOnly: false,
+          includePatterns: "",
+          excludePatterns: "",
+          device: null,
+        },
+        research: {
+          query: "",
+          urls: "",
+          device: null,
+        },
+      };
+
+      return buildPresetConfig("scrape", form, draftState);
+    }, [device, form, url]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        submit: handleSubmit,
+        getUrl: () => url,
+        setUrl,
+        getConfig,
       }),
-      [
-        scrapeUrl,
-        headless,
-        usePlaywright,
-        timeoutSeconds,
-        authProfile,
-        authBasic,
-        headersRaw,
-        cookiesRaw,
-        queryRaw,
-        proxyUrl,
-        proxyUsername,
-        proxyPassword,
-        proxyRegion,
-        proxyRequiredTags,
-        proxyExcludeProxyIds,
-        loginUrl,
-        loginUserSelector,
-        loginPassSelector,
-        loginSubmitSelector,
-        loginUser,
-        loginPass,
-        extractTemplate,
-        extractValidate,
-        aiExtractEnabled,
-        aiExtractMode,
-        aiExtractPrompt,
-        aiExtractSchema,
-        aiExtractFields,
-        preProcessors,
-        postProcessors,
-        transformers,
-        incremental,
-        webhookUrl,
-        webhookEvents,
-        webhookSecret,
-        device,
-        screenshotEnabled,
-        screenshotFullPage,
-        screenshotFormat,
-        screenshotQuality,
-        screenshotWidth,
-        screenshotHeight,
-        interceptEnabled,
-        interceptURLPatterns,
-        interceptResourceTypes,
-        interceptCaptureRequestBody,
-        interceptCaptureResponseBody,
-        interceptMaxBodySize,
-        interceptMaxEntries,
-      ],
+      [getConfig, handleSubmit, setUrl, url],
     );
 
-    // Expose imperative handle for external submission
-    useImperativeHandle(ref, () => ({
-      submit: handleSubmit,
-      getUrl: () => scrapeUrl,
-      setUrl: (url: string) => setScrapeUrl(url),
-      getConfig,
-    }));
+    if (surface === "headless") {
+      return null;
+    }
 
     const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -344,7 +165,7 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
               <button
                 type="button"
                 className="secondary"
-                onClick={() => setScrapeUrl("")}
+                onClick={() => setUrl("")}
               >
                 Clear
               </button>
@@ -354,17 +175,17 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           <label htmlFor="scrape-url">Target URL</label>
           <input
             id="scrape-url"
-            value={scrapeUrl}
-            onChange={(event) => setScrapeUrl(event.target.value)}
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
             placeholder="https://example.com"
           />
           <BrowserExecutionControls
-            headless={headless}
-            setHeadless={setHeadless}
-            usePlaywright={usePlaywright}
-            setUsePlaywright={setUsePlaywright}
-            timeoutSeconds={timeoutSeconds}
-            setTimeoutSeconds={setTimeoutSeconds}
+            headless={form.headless}
+            setHeadless={form.setHeadless}
+            usePlaywright={form.usePlaywright}
+            setUsePlaywright={form.setUsePlaywright}
+            timeoutSeconds={form.timeoutSeconds}
+            setTimeoutSeconds={form.setTimeoutSeconds}
           />
         </JobFormIntro>
 
@@ -373,42 +194,42 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           description="Screenshot capture, device emulation, network interception, and browser-only diagnostics."
         >
           <ScreenshotConfig
-            enabled={screenshotEnabled}
-            setEnabled={setScreenshotEnabled}
-            fullPage={screenshotFullPage}
-            setFullPage={setScreenshotFullPage}
-            format={screenshotFormat}
-            setFormat={setScreenshotFormat}
-            quality={screenshotQuality}
-            setQuality={setScreenshotQuality}
-            width={screenshotWidth}
-            setWidth={setScreenshotWidth}
-            height={screenshotHeight}
-            setHeight={setScreenshotHeight}
-            disabled={!headless}
+            enabled={form.screenshotEnabled}
+            setEnabled={form.setScreenshotEnabled}
+            fullPage={form.screenshotFullPage}
+            setFullPage={form.setScreenshotFullPage}
+            format={form.screenshotFormat}
+            setFormat={form.setScreenshotFormat}
+            quality={form.screenshotQuality}
+            setQuality={form.setScreenshotQuality}
+            width={form.screenshotWidth}
+            setWidth={form.setScreenshotWidth}
+            height={form.screenshotHeight}
+            setHeight={form.setScreenshotHeight}
+            disabled={!form.headless}
             inputPrefix="scrape"
           />
           <DeviceSelector
             device={device}
             onChange={setDevice}
-            disabled={!headless}
+            disabled={!form.headless}
           />
           <NetworkInterceptConfig
-            enabled={interceptEnabled}
-            setEnabled={setInterceptEnabled}
-            urlPatterns={interceptURLPatterns}
-            setURLPatterns={setInterceptURLPatterns}
-            resourceTypes={interceptResourceTypes}
-            setResourceTypes={setInterceptResourceTypes}
-            captureRequestBody={interceptCaptureRequestBody}
-            setCaptureRequestBody={setInterceptCaptureRequestBody}
-            captureResponseBody={interceptCaptureResponseBody}
-            setCaptureResponseBody={setInterceptCaptureResponseBody}
-            maxBodySize={interceptMaxBodySize}
-            setMaxBodySize={setInterceptMaxBodySize}
-            maxEntries={interceptMaxEntries}
-            setMaxEntries={setInterceptMaxEntries}
-            disabled={!headless}
+            enabled={form.interceptEnabled}
+            setEnabled={form.setInterceptEnabled}
+            urlPatterns={form.interceptURLPatterns}
+            setURLPatterns={form.setInterceptURLPatterns}
+            resourceTypes={form.interceptResourceTypes}
+            setResourceTypes={form.setInterceptResourceTypes}
+            captureRequestBody={form.interceptCaptureRequestBody}
+            setCaptureRequestBody={form.setInterceptCaptureRequestBody}
+            captureResponseBody={form.interceptCaptureResponseBody}
+            setCaptureResponseBody={form.setInterceptCaptureResponseBody}
+            maxBodySize={form.interceptMaxBodySize}
+            setMaxBodySize={form.setInterceptMaxBodySize}
+            maxEntries={form.interceptMaxEntries}
+            setMaxEntries={form.setInterceptMaxEntries}
+            disabled={!form.headless}
             inputPrefix="scrape"
           />
         </JobFormAdvancedSection>
@@ -418,40 +239,40 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           description="Profiles, cookies, login automation, and request overrides."
         >
           <AuthConfig
-            authProfile={authProfile}
-            setAuthProfile={setAuthProfile}
-            authBasic={authBasic}
-            setAuthBasic={setAuthBasic}
-            headersRaw={headersRaw}
-            setHeadersRaw={setHeadersRaw}
-            cookiesRaw={cookiesRaw}
-            setCookiesRaw={setCookiesRaw}
-            queryRaw={queryRaw}
-            setQueryRaw={setQueryRaw}
-            proxyUrl={proxyUrl}
-            setProxyUrl={setProxyUrl}
-            proxyUsername={proxyUsername}
-            setProxyUsername={setProxyUsername}
-            proxyPassword={proxyPassword}
-            setProxyPassword={setProxyPassword}
-            proxyRegion={proxyRegion}
-            setProxyRegion={setProxyRegion}
-            proxyRequiredTags={proxyRequiredTags}
-            setProxyRequiredTags={setProxyRequiredTags}
-            proxyExcludeProxyIds={proxyExcludeProxyIds}
-            setProxyExcludeProxyIds={setProxyExcludeProxyIds}
-            loginUrl={loginUrl}
-            setLoginUrl={setLoginUrl}
-            loginUserSelector={loginUserSelector}
-            setLoginUserSelector={setLoginUserSelector}
-            loginPassSelector={loginPassSelector}
-            setLoginPassSelector={setLoginPassSelector}
-            loginSubmitSelector={loginSubmitSelector}
-            setLoginSubmitSelector={setLoginSubmitSelector}
-            loginUser={loginUser}
-            setLoginUser={setLoginUser}
-            loginPass={loginPass}
-            setLoginPass={setLoginPass}
+            authProfile={form.authProfile}
+            setAuthProfile={form.setAuthProfile}
+            authBasic={form.authBasic}
+            setAuthBasic={form.setAuthBasic}
+            headersRaw={form.headersRaw}
+            setHeadersRaw={form.setHeadersRaw}
+            cookiesRaw={form.cookiesRaw}
+            setCookiesRaw={form.setCookiesRaw}
+            queryRaw={form.queryRaw}
+            setQueryRaw={form.setQueryRaw}
+            proxyUrl={form.proxyUrl}
+            setProxyUrl={form.setProxyUrl}
+            proxyUsername={form.proxyUsername}
+            setProxyUsername={form.setProxyUsername}
+            proxyPassword={form.proxyPassword}
+            setProxyPassword={form.setProxyPassword}
+            proxyRegion={form.proxyRegion}
+            setProxyRegion={form.setProxyRegion}
+            proxyRequiredTags={form.proxyRequiredTags}
+            setProxyRequiredTags={form.setProxyRequiredTags}
+            proxyExcludeProxyIds={form.proxyExcludeProxyIds}
+            setProxyExcludeProxyIds={form.setProxyExcludeProxyIds}
+            loginUrl={form.loginUrl}
+            setLoginUrl={form.setLoginUrl}
+            loginUserSelector={form.loginUserSelector}
+            setLoginUserSelector={form.setLoginUserSelector}
+            loginPassSelector={form.loginPassSelector}
+            setLoginPassSelector={form.setLoginPassSelector}
+            loginSubmitSelector={form.loginSubmitSelector}
+            setLoginSubmitSelector={form.setLoginSubmitSelector}
+            loginUser={form.loginUser}
+            setLoginUser={form.setLoginUser}
+            loginPass={form.loginPass}
+            setLoginPass={form.setLoginPass}
             profiles={profiles}
           />
         </JobFormAdvancedSection>
@@ -461,31 +282,31 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           description="Templates, validation, transformers, and AI extraction helpers."
         >
           <PipelineOptions
-            extractTemplate={extractTemplate}
-            setExtractTemplate={setExtractTemplate}
-            extractValidate={extractValidate}
-            setExtractValidate={setExtractValidate}
-            preProcessors={preProcessors}
-            setPreProcessors={setPreProcessors}
-            postProcessors={postProcessors}
-            setPostProcessors={setPostProcessors}
-            transformers={transformers}
-            setTransformers={setTransformers}
-            incremental={incremental}
-            setIncremental={setIncremental}
+            extractTemplate={form.extractTemplate}
+            setExtractTemplate={form.setExtractTemplate}
+            extractValidate={form.extractValidate}
+            setExtractValidate={form.setExtractValidate}
+            preProcessors={form.preProcessors}
+            setPreProcessors={form.setPreProcessors}
+            postProcessors={form.postProcessors}
+            setPostProcessors={form.setPostProcessors}
+            transformers={form.transformers}
+            setTransformers={form.setTransformers}
+            incremental={form.incremental}
+            setIncremental={form.setIncremental}
             inputPrefix="scrape"
           />
           <AIExtractSection
-            enabled={aiExtractEnabled}
-            setEnabled={setAIExtractEnabled}
-            mode={aiExtractMode}
-            setMode={setAIExtractMode}
-            prompt={aiExtractPrompt}
-            setPrompt={setAIExtractPrompt}
-            schemaText={aiExtractSchema}
-            setSchemaText={setAIExtractSchema}
-            fields={aiExtractFields}
-            setFields={setAIExtractFields}
+            enabled={form.aiExtractEnabled}
+            setEnabled={form.setAIExtractEnabled}
+            mode={form.aiExtractMode}
+            setMode={form.setAIExtractMode}
+            prompt={form.aiExtractPrompt}
+            setPrompt={form.setAIExtractPrompt}
+            schemaText={form.aiExtractSchema}
+            setSchemaText={form.setAIExtractSchema}
+            fields={form.aiExtractFields}
+            setFields={form.setAIExtractFields}
           />
         </JobFormAdvancedSection>
 
@@ -494,12 +315,12 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
           description="Optional webhook notifications for external systems."
         >
           <WebhookConfig
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            webhookEvents={webhookEvents}
-            setWebhookEvents={setWebhookEvents}
-            webhookSecret={webhookSecret}
-            setWebhookSecret={setWebhookSecret}
+            webhookUrl={form.webhookUrl}
+            setWebhookUrl={form.setWebhookUrl}
+            webhookEvents={form.webhookEvents}
+            setWebhookEvents={form.setWebhookEvents}
+            webhookSecret={form.webhookSecret}
+            setWebhookSecret={form.setWebhookSecret}
             inputPrefix="scrape"
           />
         </JobFormAdvancedSection>

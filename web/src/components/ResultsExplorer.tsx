@@ -1,16 +1,11 @@
 /**
- * Results Explorer Component
- *
- * Comprehensive results visualization component with multiple view modes:
- * - Explorer: Enhanced list view with pagination
- * - Tree: Hierarchical tree view for crawl site structure
- * - Diff: Side-by-side comparison between job runs
- * - Visualize: Research evidence charts and cluster graphs
- *
- * Integrates export functionality, search/filter, and view mode switching.
- *
- * @module ResultsExplorer
+ * Purpose: Provide the result-focused workspace for `/jobs/:id` with one dominant default reader.
+ * Responsibilities: Coordinate reader filters, selected-item continuity, secondary tools, guided export flows, tree navigation, diff loading, and research visualization state.
+ * Scope: Results exploration UI only; route framing and authoritative result fetching stay outside this component.
+ * Usage: Render from `ResultsContainer` with the active job's saved results and the surrounding jobs list for compare workflows.
+ * Invariants/Assumptions: A selected job ID exists before rendering, the default reader always remains visible on first paint, and comparison/export actions operate on saved job results.
  */
+
 import { useEffect, useMemo, useState } from "react";
 import type { ExportShapeConfig } from "../api";
 import {
@@ -38,14 +33,15 @@ import {
   buildDefaultExpandedTreeIds,
   collectTreeNodeIds,
   type ExportFormat,
-  exportFormats,
-  filterResultItems,
-  findComparableJobs,
+  getAvailableSecondaryTools,
+  getExportGuidanceOptions,
   getJobByID,
   hasResearchVisualization,
-  resultsExplorerViewModes,
+  type SecondaryToolId,
+  filterResultItems,
+  findComparableJobs,
+  isCrawlResult,
   type StatusFilter,
-  type ViewMode,
 } from "./results-explorer/resultsExplorerUtils";
 import { TransformPreview } from "./TransformPreview";
 import { TreeView } from "./TreeView";
@@ -71,19 +67,30 @@ interface ResultsExplorerProps {
   jobType?: "scrape" | "crawl" | "research";
 }
 
-interface ResultsExplorerTabsProps {
-  isResearchJob: boolean;
-  viewMode: ViewMode;
-  onSelectMode: (mode: ViewMode) => void;
-}
-
-interface ResultsExplorerToolbarProps {
+interface ReaderToolbarProps {
   searchQuery: string;
   statusFilter: StatusFilter;
-  isExporting: boolean;
+  visibleResults: number;
+  totalResults: number;
   onChangeSearchQuery: (value: string) => void;
   onChangeStatusFilter: (value: StatusFilter) => void;
+  onClearFilters: () => void;
+}
+
+interface SecondaryToolsDrawerProps {
+  tools: ReturnType<typeof getAvailableSecondaryTools>;
+  activeTool: SecondaryToolId | null;
+  onSelectTool: (tool: SecondaryToolId) => void;
+  onClose: () => void;
+}
+
+interface GuidedExportDrawerProps {
+  options: ReturnType<typeof getExportGuidanceOptions>;
+  isExporting: boolean;
+  exportError: string | null;
   onExport: (format: ExportFormat) => void;
+  onClose: () => void;
+  onOpenTransform: () => void;
 }
 
 interface TreeControlsProps {
@@ -98,9 +105,6 @@ interface DiffControlsProps {
   onChangeCompareJobID: (jobID: string | null) => void;
 }
 
-/**
- * Download content as a file.
- */
 function downloadFile(
   content: string,
   filename: string,
@@ -120,9 +124,6 @@ function downloadFile(
   URL.revokeObjectURL(url);
 }
 
-/**
- * Convert base64 string to ArrayBuffer for binary downloads.
- */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -132,37 +133,15 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function ResultsExplorerTabs({
-  isResearchJob,
-  viewMode,
-  onSelectMode,
-}: ResultsExplorerTabsProps) {
-  return (
-    <div className="view-mode-tabs">
-      {resultsExplorerViewModes
-        .filter((mode) => isResearchJob || mode.id !== "visualize")
-        .map((mode) => (
-          <button
-            key={mode.id}
-            type="button"
-            className={viewMode === mode.id ? "active" : ""}
-            onClick={() => onSelectMode(mode.id)}
-          >
-            {mode.label}
-          </button>
-        ))}
-    </div>
-  );
-}
-
-function ResultsExplorerToolbar({
+function ReaderToolbar({
   searchQuery,
   statusFilter,
-  isExporting,
+  visibleResults,
+  totalResults,
   onChangeSearchQuery,
   onChangeStatusFilter,
-  onExport,
-}: ResultsExplorerToolbarProps) {
+  onClearFilters,
+}: ReaderToolbarProps) {
   return (
     <div className="results-explorer-toolbar">
       <div className="search-box">
@@ -172,38 +151,156 @@ function ResultsExplorerToolbar({
           value={searchQuery}
           onChange={(event) => onChangeSearchQuery(event.target.value)}
         />
-        {searchQuery && (
+        {searchQuery ? (
           <button
             type="button"
             className="search-clear"
             onClick={() => onChangeSearchQuery("")}
+            aria-label="Clear search"
           >
             ×
           </button>
-        )}
+        ) : null}
       </div>
+
       <select
         value={statusFilter}
         onChange={(event) =>
           onChangeStatusFilter(event.target.value as StatusFilter)
         }
         className="status-filter"
+        aria-label="Result status filter"
       >
-        <option value="all">All Status</option>
+        <option value="all">All status</option>
         <option value="success">Success (2xx)</option>
         <option value="error">Error (4xx/5xx)</option>
       </select>
-      <div className="export-buttons">
-        {exportFormats.map((format) => (
+
+      <div className="results-explorer__toolbar-hint">
+        {visibleResults === totalResults || totalResults === 0
+          ? `${Math.max(visibleResults, totalResults)} result${
+              Math.max(visibleResults, totalResults) === 1 ? "" : "s"
+            } in the reader.`
+          : `${visibleResults} of ${totalResults} results are visible in the reader.`}
+      </div>
+
+      {(searchQuery.trim() || statusFilter !== "all") &&
+      visibleResults !== totalResults ? (
+        <button type="button" className="secondary" onClick={onClearFilters}>
+          Clear reader filters
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function SecondaryToolsDrawer({
+  tools,
+  activeTool,
+  onSelectTool,
+  onClose,
+}: SecondaryToolsDrawerProps) {
+  return (
+    <div className="results-explorer__drawer">
+      <div className="results-explorer__drawer-header">
+        <div>
+          <div className="results-viewer__section-label">Secondary tools</div>
+          <h4>Open comparison and analysis only when you need it</h4>
+          <p className="form-help">
+            The reader stays primary. These tools sit underneath it so you can
+            branch into structure, comparison, visualization, or transforms
+            without losing context.
+          </p>
+        </div>
+        <button type="button" className="secondary" onClick={onClose}>
+          Close
+        </button>
+      </div>
+
+      <div className="results-explorer__tool-grid">
+        {tools.map((tool) => (
           <button
-            key={format}
+            key={tool.id}
             type="button"
-            className="secondary"
-            onClick={() => onExport(format)}
-            disabled={isExporting}
+            className={`results-explorer__tool-card ${
+              activeTool === tool.id ? "is-active" : ""
+            }`}
+            onClick={() => onSelectTool(tool.id)}
           >
-            Export {format.toUpperCase()}
+            <strong>{tool.label}</strong>
+            <span>{tool.description}</span>
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GuidedExportDrawer({
+  options,
+  isExporting,
+  exportError,
+  onExport,
+  onClose,
+  onOpenTransform,
+}: GuidedExportDrawerProps) {
+  const scopePreview = options[0];
+
+  return (
+    <div className="results-explorer__drawer">
+      <div className="results-explorer__drawer-header">
+        <div>
+          <div className="results-viewer__section-label">Guided export</div>
+          <h4>Choose the right handoff format before you download</h4>
+          <p className="form-help">
+            Export stays quiet by default. Open it when you are ready to hand
+            off or archive the saved result.
+          </p>
+        </div>
+        <div className="results-explorer__export-actions">
+          <button type="button" className="secondary" onClick={onOpenTransform}>
+            Need a transformed export?
+          </button>
+          <button type="button" className="secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+
+      {scopePreview ? (
+        <div className="results-explorer__export-preview">
+          <strong>{scopePreview.scopeLabel}</strong>
+          <p>{scopePreview.scopeNote}</p>
+        </div>
+      ) : null}
+
+      {exportError ? (
+        <div className="transform-error">{exportError}</div>
+      ) : null}
+
+      <div className="results-explorer__export-grid">
+        {options.map((option) => (
+          <div key={option.format} className="results-explorer__export-card">
+            <div className="results-explorer__export-card-head">
+              <div>
+                <h5>{option.title}</h5>
+                <p>{option.description}</p>
+              </div>
+              <span
+                className={`results-explorer__readiness results-explorer__readiness--${option.readiness}`}
+              >
+                {option.readiness}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => onExport(option.format)}
+              disabled={isExporting}
+            >
+              Export {option.title}
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -218,10 +315,10 @@ function ExplorerTreeControls({
   return (
     <div className="tree-controls">
       <button type="button" className="secondary" onClick={onExpandAll}>
-        Expand All
+        Expand all
       </button>
       <button type="button" className="secondary" onClick={onCollapseAll}>
-        Collapse All
+        Collapse to domains
       </button>
       <span className="tree-stats">
         {treeNodes.length} domains,{" "}
@@ -256,9 +353,6 @@ function ExplorerDiffControls({
   );
 }
 
-/**
- * Main ResultsExplorer component.
- */
 export function ResultsExplorer({
   jobId,
   resultItems,
@@ -279,20 +373,18 @@ export function ResultsExplorer({
   availableJobs,
   jobType = "crawl",
 }: ResultsExplorerProps) {
-  // View mode state
-  const [viewMode, setViewMode] = useState<ViewMode>("explorer");
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<SecondaryToolId | null>(null);
 
-  // Tree view state
   const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(
     new Set(),
   );
   const [treeSelectedId, setTreeSelectedId] = useState<string | null>(null);
 
-  // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  // Diff view state
   const [compareJobId, setCompareJobId] = useState<string | null>(null);
   const [diffResult, setDiffResult] = useState<
     CrawlDiffResult | ResearchDiffResult | null
@@ -300,7 +392,6 @@ export function ResultsExplorer({
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
 
-  // Visualization state
   const [selectedEvidenceUrl, setSelectedEvidenceUrl] = useState<string | null>(
     null,
   );
@@ -308,8 +399,8 @@ export function ResultsExplorer({
     null,
   );
 
-  // Export state
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [shapeExportFormat, setShapeExportFormat] = useState<
     "md" | "csv" | "xlsx"
   >("md");
@@ -317,58 +408,112 @@ export function ResultsExplorer({
   const [shapeConfigError, setShapeConfigError] = useState<string | null>(null);
   const [isShapeAssistantOpen, setIsShapeAssistantOpen] = useState(false);
 
-  // Build tree from crawl results
   const treeNodes = useMemo(() => {
-    const crawlItems = resultItems.filter(
-      (item): item is CrawlResultItem => "url" in item && "status" in item,
+    const crawlItems = resultItems.filter((item): item is CrawlResultItem =>
+      isCrawlResult(item),
     );
     return buildUrlTree(crawlItems);
   }, [resultItems]);
 
-  // Initialize tree expansion on first load
   useEffect(() => {
     if (treeNodes.length > 0 && treeExpandedIds.size === 0) {
       setTreeExpandedIds(buildDefaultExpandedTreeIds(treeNodes));
     }
   }, [treeNodes, treeExpandedIds.size]);
 
-  const handleTreeSelect = (node: TreeNode) => {
-    setTreeSelectedId(node.id);
-    if (!node.result) {
+  const filteredResultItems = useMemo(
+    () => filterResultItems(resultItems, searchQuery, statusFilter),
+    [resultItems, searchQuery, statusFilter],
+  );
+
+  const filteredSourceIndexes = useMemo(
+    () =>
+      resultItems.reduce<number[]>((indexes, item, index) => {
+        if (filteredResultItems.includes(item)) {
+          indexes.push(index);
+        }
+        return indexes;
+      }, []),
+    [filteredResultItems, resultItems],
+  );
+
+  useEffect(() => {
+    if (filteredSourceIndexes.length === 0) {
       return;
     }
 
-    const index = resultItems.findIndex(
-      (item) => "url" in item && item.url === node.url,
-    );
-    if (index !== -1) {
-      setSelectedResultIndex(index);
+    if (!filteredSourceIndexes.includes(selectedResultIndex)) {
+      setSelectedResultIndex(filteredSourceIndexes[0]);
     }
-  };
+  }, [filteredSourceIndexes, selectedResultIndex, setSelectedResultIndex]);
 
-  const handleTreeToggle = (nodeId: string) => {
-    setTreeExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
-    });
-  };
+  const visibleSelectedIndex = Math.max(
+    0,
+    filteredSourceIndexes.indexOf(selectedResultIndex),
+  );
 
-  const expandAllTreeNodes = () => {
-    setTreeExpandedIds(collectTreeNodeIds(treeNodes));
-  };
+  const currentJob = useMemo(
+    () => getJobByID(availableJobs, jobId),
+    [availableJobs, jobId],
+  );
 
-  const collapseAllTreeNodes = () => {
-    setTreeExpandedIds(buildDefaultExpandedTreeIds(treeNodes));
-  };
+  const compareJob = useMemo(
+    () => getJobByID(availableJobs, compareJobId),
+    [availableJobs, compareJobId],
+  );
 
-  // Compute diff when compare job is selected
+  const isResearchJob = hasResearchVisualization(jobType, resultEvidence);
+
+  const secondaryTools = useMemo(
+    () => getAvailableSecondaryTools(isResearchJob),
+    [isResearchJob],
+  );
+
+  const activeToolConfig = secondaryTools.find(
+    (tool) => tool.id === activeTool,
+  );
+
+  const comparableJobs = useMemo(
+    () => findComparableJobs(availableJobs, jobId, currentJob?.kind),
+    [availableJobs, currentJob?.kind, jobId],
+  );
+
+  const exportOptions = useMemo(
+    () =>
+      getExportGuidanceOptions({
+        totalResults,
+        visibleResults: filteredResultItems.length,
+        searchQuery,
+        statusFilter,
+        resultItems,
+        evidence: resultEvidence,
+        isResearchJob,
+      }),
+    [
+      filteredResultItems.length,
+      isResearchJob,
+      resultEvidence,
+      resultItems,
+      searchQuery,
+      statusFilter,
+      totalResults,
+    ],
+  );
+
+  const currentShapeConfig = useMemo<ExportShapeConfig | undefined>(() => {
+    const trimmed = shapeConfigText.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(trimmed) as ExportShapeConfig;
+    } catch {
+      return undefined;
+    }
+  }, [shapeConfigText]);
+
   useEffect(() => {
-    if (!jobId || !compareJobId || viewMode !== "diff") {
+    if (!jobId || !compareJobId || activeTool !== "diff") {
       setDiffResult(null);
       return;
     }
@@ -378,7 +523,6 @@ export function ResultsExplorer({
       setDiffError(null);
 
       try {
-        // Load results for both jobs
         const [baseResult, compareResult] = await Promise.all([
           loadResults(jobId, "jsonl", 1, 1000),
           loadResults(compareJobId, "jsonl", 1, 1000),
@@ -397,8 +541,7 @@ export function ResultsExplorer({
         const baseData = (baseResult.data || []) as ResultItem[];
         const compareData = (compareResult.data || []) as ResultItem[];
 
-        const diff = diffResults(baseData, compareData);
-        setDiffResult(diff);
+        setDiffResult(diffResults(baseData, compareData));
       } catch (err) {
         setDiffError(String(err));
       } finally {
@@ -407,12 +550,52 @@ export function ResultsExplorer({
     };
 
     void computeDiff();
-  }, [jobId, compareJobId, viewMode]);
+  }, [activeTool, compareJobId, jobId]);
 
-  // Handle export
-  const handleExport = async (format: ExportFormat) => {
-    if (!jobId) return;
+  if (!jobId) {
+    return null;
+  }
 
+  const handleTreeSelect = (node: TreeNode) => {
+    setTreeSelectedId(node.id);
+    if (!node.result) {
+      return;
+    }
+
+    const index = resultItems.findIndex(
+      (item) => isCrawlResult(item) && item.url === node.url,
+    );
+    if (index !== -1) {
+      setSelectedResultIndex(index);
+    }
+  };
+
+  const handleTreeToggle = (nodeId: string) => {
+    setTreeExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
+
+  const expandAllTreeNodes = () => {
+    setTreeExpandedIds(collectTreeNodeIds(treeNodes));
+  };
+
+  const collapseAllTreeNodes = () => {
+    setTreeExpandedIds(buildDefaultExpandedTreeIds(treeNodes));
+  };
+
+  const handleDirectExport = async (format: ExportFormat) => {
+    if (!jobId) {
+      return;
+    }
+
+    setExportError(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, { format });
@@ -423,7 +606,7 @@ export function ResultsExplorer({
         result.isBinary,
       );
     } catch (err) {
-      console.error("Export failed:", err);
+      setExportError(String(err));
     } finally {
       setIsExporting(false);
     }
@@ -434,8 +617,11 @@ export function ResultsExplorer({
     expression: string,
     language: "jmespath" | "jsonata",
   ) => {
-    if (!jobId) return;
+    if (!jobId) {
+      return;
+    }
 
+    setExportError(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, {
@@ -452,26 +638,16 @@ export function ResultsExplorer({
         result.isBinary,
       );
     } catch (err) {
-      console.error("Transform export failed:", err);
+      setShapeConfigError(String(err));
     } finally {
       setIsExporting(false);
     }
   };
 
-  const currentShapeConfig = useMemo<ExportShapeConfig | undefined>(() => {
-    const trimmed = shapeConfigText.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-    try {
-      return JSON.parse(trimmed) as ExportShapeConfig;
-    } catch {
-      return undefined;
-    }
-  }, [shapeConfigText]);
-
   const handleShapeExport = async () => {
-    if (!jobId) return;
+    if (!jobId) {
+      return;
+    }
 
     const trimmed = shapeConfigText.trim();
     if (!trimmed) {
@@ -488,6 +664,7 @@ export function ResultsExplorer({
     }
 
     setShapeConfigError(null);
+    setExportError(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, {
@@ -507,220 +684,288 @@ export function ResultsExplorer({
     }
   };
 
-  const filteredResultItems = useMemo(
-    () => filterResultItems(resultItems, searchQuery, statusFilter),
-    [resultItems, searchQuery, statusFilter],
-  );
-
-  const currentJob = useMemo(
-    () => getJobByID(availableJobs, jobId),
-    [availableJobs, jobId],
-  );
-
-  const compareJob = useMemo(
-    () => getJobByID(availableJobs, compareJobId),
-    [availableJobs, compareJobId],
-  );
-
-  const isResearchJob = hasResearchVisualization(jobType, resultEvidence);
-
-  const comparableJobs = useMemo(
-    () => findComparableJobs(availableJobs, jobId),
-    [availableJobs, jobId],
-  );
-
-  if (!jobId) {
-    return null;
-  }
-
   return (
-    <div className="panel results-explorer" style={{ marginTop: 16 }}>
-      {/* Header with view mode tabs */}
+    <div className="panel results-explorer">
       <div className="results-explorer-header">
-        <h3>Results: {jobId}</h3>
-        <ResultsExplorerTabs
-          isResearchJob={isResearchJob}
-          viewMode={viewMode}
-          onSelectMode={setViewMode}
-        />
+        <div>
+          <div className="results-viewer__section-label">Result reader</div>
+          <h3>Read the saved output</h3>
+          <p className="form-help">
+            Start with the selected item, understand what changed, and only then
+            branch into comparison, structure, transforms, or exports.
+          </p>
+          <div className="results-explorer__surface-summary">
+            <span>Job {jobId}</span>
+            {currentJob?.kind ? <span>{currentJob.kind} workflow</span> : null}
+            <span>
+              {totalResults > 0
+                ? `${totalResults} saved results`
+                : "Saved result route"}
+            </span>
+          </div>
+        </div>
+
+        <div className="results-explorer__actions">
+          <button
+            type="button"
+            className={isToolsOpen ? "active" : "secondary"}
+            onClick={() => {
+              setIsToolsOpen((open) => !open);
+              setIsExportOpen(false);
+            }}
+          >
+            Tools
+          </button>
+          <button
+            type="button"
+            className={isExportOpen ? "active" : "secondary"}
+            onClick={() => {
+              setIsExportOpen((open) => !open);
+              setIsToolsOpen(false);
+            }}
+          >
+            Export
+          </button>
+        </div>
       </div>
 
-      {viewMode !== "diff" && viewMode !== "visualize" && (
-        <ResultsExplorerToolbar
-          searchQuery={searchQuery}
-          statusFilter={statusFilter}
+      <ReaderToolbar
+        searchQuery={searchQuery}
+        statusFilter={statusFilter}
+        visibleResults={filteredResultItems.length}
+        totalResults={Math.max(totalResults, resultItems.length)}
+        onChangeSearchQuery={setSearchQuery}
+        onChangeStatusFilter={setStatusFilter}
+        onClearFilters={() => {
+          setSearchQuery("");
+          setStatusFilter("all");
+        }}
+      />
+
+      {filteredResultItems.length === 0 ? (
+        <div className="results-explorer__surface-note">
+          No saved results match the current reader filters.
+        </div>
+      ) : null}
+
+      {isToolsOpen ? (
+        <SecondaryToolsDrawer
+          tools={secondaryTools}
+          activeTool={activeTool}
+          onSelectTool={(tool) => {
+            setActiveTool(tool);
+          }}
+          onClose={() => setIsToolsOpen(false)}
+        />
+      ) : null}
+
+      {isExportOpen ? (
+        <GuidedExportDrawer
+          options={exportOptions}
           isExporting={isExporting}
-          onChangeSearchQuery={setSearchQuery}
-          onChangeStatusFilter={setStatusFilter}
-          onExport={(format) => void handleExport(format)}
+          exportError={exportError}
+          onExport={(format) => {
+            void handleDirectExport(format);
+          }}
+          onClose={() => setIsExportOpen(false)}
+          onOpenTransform={() => {
+            setIsExportOpen(false);
+            setIsToolsOpen(true);
+            setActiveTool("transform");
+          }}
         />
-      )}
+      ) : null}
 
-      {viewMode === "tree" && (
-        <ExplorerTreeControls
-          treeNodes={treeNodes}
-          onExpandAll={expandAllTreeNodes}
-          onCollapseAll={collapseAllTreeNodes}
-        />
-      )}
+      <ResultsViewer
+        jobId={jobId}
+        jobKind={
+          currentJob?.kind as "scrape" | "crawl" | "research" | undefined
+        }
+        resultItems={filteredResultItems}
+        selectedResultIndex={visibleSelectedIndex}
+        setSelectedResultIndex={(visibleIndex) => {
+          const sourceIndex = filteredSourceIndexes[visibleIndex];
+          if (typeof sourceIndex === "number") {
+            setSelectedResultIndex(sourceIndex);
+          }
+        }}
+        resultSummary={resultSummary}
+        resultConfidence={resultConfidence}
+        resultEvidence={resultEvidence}
+        resultClusters={resultClusters}
+        resultCitations={resultCitations}
+        resultAgentic={resultAgentic}
+        rawResult={rawResult}
+        resultFormat={resultFormat}
+        currentPage={currentPage}
+        totalResults={totalResults}
+        resultsPerPage={resultsPerPage}
+        onLoadPage={onLoadPage}
+      />
 
-      {viewMode === "diff" && (
-        <ExplorerDiffControls
-          compareJobId={compareJobId}
-          comparableJobs={comparableJobs}
-          onChangeCompareJobID={setCompareJobId}
-        />
-      )}
-
-      {/* View content */}
-      <div className="results-explorer-content">
-        {viewMode === "explorer" && (
-          <ResultsViewer
-            jobId={jobId}
-            jobKind={
-              currentJob?.kind as "scrape" | "crawl" | "research" | undefined
-            }
-            resultItems={filteredResultItems}
-            selectedResultIndex={selectedResultIndex}
-            setSelectedResultIndex={setSelectedResultIndex}
-            resultSummary={resultSummary}
-            resultConfidence={resultConfidence}
-            resultEvidence={resultEvidence}
-            resultClusters={resultClusters}
-            resultCitations={resultCitations}
-            resultAgentic={resultAgentic}
-            rawResult={rawResult}
-            resultFormat={resultFormat}
-            currentPage={currentPage}
-            totalResults={totalResults}
-            resultsPerPage={resultsPerPage}
-            onLoadPage={onLoadPage}
-          />
-        )}
-
-        {viewMode === "tree" && (
-          <TreeView
-            nodes={treeNodes}
-            selectedId={treeSelectedId}
-            onSelect={handleTreeSelect}
-            onToggleExpand={handleTreeToggle}
-            expandedIds={treeExpandedIds}
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-          />
-        )}
-
-        {viewMode === "diff" && (
-          <DiffViewer
-            baseJob={currentJob}
-            compareJob={compareJob}
-            diffResult={diffResult}
-            isLoading={diffLoading}
-            error={diffError}
-            onClose={() => setViewMode("explorer")}
-          />
-        )}
-
-        {viewMode === "visualize" && isResearchJob && (
-          <div className="visualize-content">
-            <EvidenceChart
-              evidence={resultEvidence}
-              clusters={resultClusters}
-              selectedEvidenceUrl={selectedEvidenceUrl}
-              onSelectEvidence={(item) => setSelectedEvidenceUrl(item.url)}
-            />
-            {resultClusters.length > 0 && (
-              <ClusterGraph
-                clusters={resultClusters}
-                evidence={resultEvidence}
-                selectedClusterId={selectedClusterId}
-                onSelectCluster={(cluster) => setSelectedClusterId(cluster.id)}
-              />
-            )}
-          </div>
-        )}
-
-        {viewMode === "transform" && (
-          <>
-            <TransformPreview
-              jobId={jobId}
-              onApply={(format, expression, language) => {
-                void handleExportWithTransform(format, expression, language);
-              }}
-            />
-            <div className="panel" style={{ marginTop: 16 }}>
-              <h4>Direct Shape Export</h4>
-              <p className="form-help">
-                Apply a bounded export shape directly to this saved result for
-                markdown and tabular exports.
-              </p>
-              <div className="row" style={{ gap: 12, alignItems: "flex-end" }}>
-                <label>
-                  Format
-                  <select
-                    value={shapeExportFormat}
-                    onChange={(event) =>
-                      setShapeExportFormat(
-                        event.target.value as "md" | "csv" | "xlsx",
-                      )
-                    }
-                  >
-                    <option value="md">Markdown</option>
-                    <option value="csv">CSV</option>
-                    <option value="xlsx">XLSX</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setIsShapeAssistantOpen(true)}
-                >
-                  Generate Shape with AI
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    setShapeConfigText("");
-                    setShapeConfigError(null);
-                  }}
-                >
-                  Clear Shape
-                </button>
-                <button type="button" onClick={() => void handleShapeExport()}>
-                  Export Shaped Result
-                </button>
+      {activeToolConfig ? (
+        <div className="results-explorer__tool-panel">
+          <div className="results-explorer__drawer-header">
+            <div>
+              <div className="results-viewer__section-label">
+                Secondary tool
               </div>
-              <textarea
-                className="form-textarea"
-                rows={10}
-                style={{ marginTop: 12 }}
-                value={shapeConfigText}
-                onChange={(event) => {
-                  setShapeConfigText(event.target.value);
-                  setShapeConfigError(null);
-                }}
-                placeholder='{"summaryFields":["title","url"],"normalizedFields":["field.price"]}'
+              <h4>Secondary tool: {activeToolConfig.label}</h4>
+              <p className="form-help">{activeToolConfig.description}</p>
+            </div>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setActiveTool(null)}
+            >
+              Hide tool
+            </button>
+          </div>
+
+          {activeTool === "tree" ? (
+            <>
+              <ExplorerTreeControls
+                treeNodes={treeNodes}
+                onExpandAll={expandAllTreeNodes}
+                onCollapseAll={collapseAllTreeNodes}
               />
-              {shapeConfigError ? (
-                <div className="transform-error">Error: {shapeConfigError}</div>
+              <TreeView
+                nodes={treeNodes}
+                selectedId={treeSelectedId}
+                onSelect={handleTreeSelect}
+                onToggleExpand={handleTreeToggle}
+                expandedIds={treeExpandedIds}
+                searchQuery={searchQuery}
+                statusFilter={statusFilter}
+              />
+            </>
+          ) : null}
+
+          {activeTool === "diff" ? (
+            <>
+              <ExplorerDiffControls
+                compareJobId={compareJobId}
+                comparableJobs={comparableJobs}
+                onChangeCompareJobID={setCompareJobId}
+              />
+              <DiffViewer
+                baseJob={currentJob}
+                compareJob={compareJob}
+                diffResult={diffResult}
+                isLoading={diffLoading}
+                error={diffError}
+                onClose={() => setActiveTool(null)}
+              />
+            </>
+          ) : null}
+
+          {activeTool === "visualize" && isResearchJob ? (
+            <div className="visualize-content">
+              <EvidenceChart
+                evidence={resultEvidence}
+                clusters={resultClusters}
+                selectedEvidenceUrl={selectedEvidenceUrl}
+                onSelectEvidence={(item) => setSelectedEvidenceUrl(item.url)}
+              />
+              {resultClusters.length > 0 ? (
+                <ClusterGraph
+                  clusters={resultClusters}
+                  evidence={resultEvidence}
+                  selectedClusterId={selectedClusterId}
+                  onSelectCluster={(cluster) =>
+                    setSelectedClusterId(cluster.id)
+                  }
+                />
               ) : null}
             </div>
-            <AIExportShapeAssistant
-              isOpen={isShapeAssistantOpen}
-              onClose={() => setIsShapeAssistantOpen(false)}
-              format={shapeExportFormat}
-              currentShape={currentShapeConfig}
-              initialJobId={jobId}
-              onApplyShape={(shape) => {
-                setShapeConfigText(JSON.stringify(shape, null, 2));
-                setShapeConfigError(null);
-                setIsShapeAssistantOpen(false);
-              }}
-            />
-          </>
-        )}
-      </div>
+          ) : null}
+
+          {activeTool === "transform" ? (
+            <div className="results-explorer__transform-stack">
+              <TransformPreview
+                jobId={jobId}
+                onApply={(format, expression, language) => {
+                  void handleExportWithTransform(format, expression, language);
+                }}
+              />
+              <div className="panel results-explorer__shape-export">
+                <h4>Direct shape export</h4>
+                <p className="form-help">
+                  Apply a bounded export shape directly to this saved result for
+                  markdown and tabular handoffs.
+                </p>
+                <div className="row results-explorer__shape-export-controls">
+                  <label>
+                    Format
+                    <select
+                      value={shapeExportFormat}
+                      onChange={(event) =>
+                        setShapeExportFormat(
+                          event.target.value as "md" | "csv" | "xlsx",
+                        )
+                      }
+                    >
+                      <option value="md">Markdown</option>
+                      <option value="csv">CSV</option>
+                      <option value="xlsx">XLSX</option>
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setIsShapeAssistantOpen(true)}
+                  >
+                    Generate shape with AI
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => {
+                      setShapeConfigText("");
+                      setShapeConfigError(null);
+                    }}
+                  >
+                    Clear shape
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleShapeExport()}
+                  >
+                    Export shaped result
+                  </button>
+                </div>
+                <textarea
+                  className="form-textarea results-explorer__shape-export-input"
+                  rows={10}
+                  value={shapeConfigText}
+                  onChange={(event) => {
+                    setShapeConfigText(event.target.value);
+                    setShapeConfigError(null);
+                  }}
+                  placeholder='{"summaryFields":["title","url"],"normalizedFields":["field.price"]}'
+                />
+                {shapeConfigError ? (
+                  <div className="transform-error">
+                    Error: {shapeConfigError}
+                  </div>
+                ) : null}
+              </div>
+              <AIExportShapeAssistant
+                isOpen={isShapeAssistantOpen}
+                onClose={() => setIsShapeAssistantOpen(false)}
+                format={shapeExportFormat}
+                currentShape={currentShapeConfig}
+                initialJobId={jobId}
+                onApplyShape={(shape) => {
+                  setShapeConfigText(JSON.stringify(shape, null, 2));
+                  setShapeConfigError(null);
+                  setIsShapeAssistantOpen(false);
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
