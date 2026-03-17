@@ -165,7 +165,7 @@ Examples:
 
 ### 12. First-run/local startup resilience is not yet product-grade
 
-**Observed during audit:** local server startup failed until `PROXY_POOL_FILE=` was explicitly cleared in the shell. That should not be mandatory for a clean local boot.
+**Resolved after audit follow-up:** fresh local startup no longer requires clearing `PROXY_POOL_FILE=` when the default optional proxy-pool file is absent; the runtime now boots with proxy pooling disabled unless a real pool is configured.
 
 **Why it hurts:** First-run friction is UX, not just plumbing. Users should never need hidden environment overrides to get a healthy default state.
 

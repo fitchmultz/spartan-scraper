@@ -28,7 +28,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Zero-Friction First Run and Empty-State Resilience — Ensure fresh local startup never requires hidden env toggles like `PROXY_POOL_FILE=`, replace dead-end empty states with guided recovery steps, and make setup/runtime problems visible inside the product instead of only in terminal logs.
+- Zero-Friction First Run and Empty-State Resilience — Keep fresh local startup free of optional-subsystem footguns, replace dead-end empty states with guided recovery steps, and make setup/runtime problems visible inside the product instead of only in terminal logs.
 
 ## Later / Deprioritized
 

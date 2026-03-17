@@ -1,3 +1,10 @@
+/*
+Purpose: Verify runtime job-manager bootstrap handles optional proxy-pool startup correctly.
+Responsibilities: Cover missing default proxy-pool tolerance, explicit custom-path failures, and successful proxy-pool attachment.
+Scope: Runtime bootstrap behavior only.
+Usage: Run with `go test ./internal/runtime`.
+Invariants/Assumptions: Missing default proxy-pool files must not block startup, while explicit custom proxy-pool paths still surface configuration mistakes.
+*/
 package runtime
 
 import (
@@ -25,7 +32,7 @@ func testRuntimeConfig(dataDir string) config.Config {
 	}
 }
 
-func TestInitJobManager_FailsForExplicitMissingProxyPoolFile(t *testing.T) {
+func TestInitJobManager_IgnoresMissingDefaultProxyPoolFileEvenWhenEnvSet(t *testing.T) {
 	dataDir := t.TempDir()
 	st, err := store.Open(dataDir)
 	if err != nil {
@@ -34,7 +41,35 @@ func TestInitJobManager_FailsForExplicitMissingProxyPoolFile(t *testing.T) {
 	defer st.Close()
 
 	cfg := testRuntimeConfig(dataDir)
-	cfg.ProxyPoolFile = filepath.Join(dataDir, "missing-proxy-pool.json")
+	cfg.ProxyPoolFile = filepath.Join(dataDir, "proxy_pool.json")
+	t.Setenv("PROXY_POOL_FILE", cfg.ProxyPoolFile)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, err := InitJobManager(ctx, cfg, st)
+	if err != nil {
+		t.Fatalf("InitJobManager() failed: %v", err)
+	}
+	defer manager.Wait()
+
+	if manager.GetProxyPool() != nil {
+		t.Fatal("expected missing default proxy pool file to leave proxy pool disabled")
+	}
+
+	cancel()
+}
+
+func TestInitJobManager_FailsForExplicitMissingCustomProxyPoolFile(t *testing.T) {
+	dataDir := t.TempDir()
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatalf("store.Open() failed: %v", err)
+	}
+	defer st.Close()
+
+	cfg := testRuntimeConfig(dataDir)
+	cfg.ProxyPoolFile = filepath.Join(dataDir, "missing-proxy-pool-custom.json")
 	t.Setenv("PROXY_POOL_FILE", cfg.ProxyPoolFile)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -46,7 +81,7 @@ func TestInitJobManager_FailsForExplicitMissingProxyPoolFile(t *testing.T) {
 			cancel()
 			manager.Wait()
 		}
-		t.Fatal("expected explicit missing proxy pool file to fail")
+		t.Fatal("expected explicit missing custom proxy pool file to fail")
 	}
 }
 
