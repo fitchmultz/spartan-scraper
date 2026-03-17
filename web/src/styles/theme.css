@@ -12,6 +12,9 @@
   color-scheme: light dark;
   font-family: "Space Grotesk", system-ui, sans-serif;
 
+  --touch-target-size: 44px;
+  --mobile-bottom-safe-area: env(safe-area-inset-bottom, 0px);
+
   /* Dark theme colors (default) */
   --bg: #0b0b0d;
   --bg-alt: #17171c;

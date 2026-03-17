@@ -12,9 +12,16 @@ button {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #1a1200;
   padding: 10px 16px;
+  min-height: var(--touch-target-size);
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 button.secondary {
@@ -31,6 +38,7 @@ button:disabled {
 .app-brand {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   padding: 0;
   border: none;
@@ -77,8 +85,8 @@ button:disabled {
 }
 
 .app-nav__button {
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: var(--touch-target-size);
+  padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid transparent;
   background: transparent;
@@ -96,6 +104,22 @@ button:disabled {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   border-color: transparent;
   color: #1a1200;
+}
+
+.app-shell__menu-toggle {
+  display: none;
+  min-width: 88px;
+}
+
+.app-shell__menu-toggle.is-active {
+  background: var(--bg-alt);
+  border-color: var(--stroke);
+  color: var(--text);
+}
+
+.app-shell__menu-toggle-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .browser-execution-controls {
@@ -332,6 +356,10 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+  .app-shell__menu-toggle {
+    display: inline-flex;
+  }
+
   .device-selector {
     padding: 16px;
   }
@@ -353,8 +381,63 @@ button:disabled {
     justify-content: center;
   }
 
+  .job-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .job-dashboard-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .job-dashboard-controls,
+  .job-dashboard-controls__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .job-filter-chip,
   .automation-subnav__link {
-    flex: 1 1 calc(50% - 10px);
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .pagination-info {
+    text-align: left;
+  }
+
+  .pagination-jump {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pagination-jump input {
+    width: 100%;
+  }
+
+  .job-run-card__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .job-run-card__actions > button {
+    width: 100%;
+  }
+
+  .job-run-card__timeline {
+    grid-template-columns: 1fr;
+  }
+
+  .automation-subnav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -368,7 +451,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: var(--touch-target-size);
   padding: 10px 16px;
   border-radius: 999px;
   border: 1px solid var(--stroke);
@@ -648,6 +731,7 @@ textarea:focus-visible {
   background: var(--bg-alt);
   border: 1px solid var(--stroke);
   border-radius: 12px;
+  flex-wrap: wrap;
 }
 
 .pagination-info {
@@ -665,6 +749,7 @@ textarea:focus-visible {
 
 .pagination-jump input {
   width: 60px;
+  min-height: var(--touch-target-size);
   padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -686,6 +771,7 @@ textarea:focus-visible {
 }
 
 .pagination-controls button {
+  min-height: var(--touch-target-size);
   padding: 6px 12px;
   background: var(--accent);
   color: #1a1200;

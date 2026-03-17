@@ -6,7 +6,7 @@
  * Invariants/Assumptions: The panel reads context from `AIAssistantProvider`, collapsed state hides route content without unmounting the route surface, and route adapters provide all mutating actions explicitly.
  */
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import type { AssistantContext } from "./AIAssistantProvider";
 import { useAIAssistant } from "./useAIAssistant";
 
@@ -127,11 +127,14 @@ export function AIAssistantPanel({
   const { close, context, isOpen, setWidth, toggle, width } = useAIAssistant();
 
   const contextEntries = useMemo(() => buildContextEntries(context), [context]);
+  const panelStyle = isOpen
+    ? ({ "--ai-assistant-panel-width": `${width}px` } as CSSProperties)
+    : undefined;
 
   return (
     <aside
       className={`panel ai-assistant-panel ${isOpen ? "" : "is-collapsed"}`}
-      style={isOpen ? { width } : undefined}
+      style={panelStyle}
       aria-label={`${title} panel`}
     >
       {isOpen ? (

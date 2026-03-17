@@ -727,3 +727,49 @@
     border-color: rgba(220, 50, 50, 0.3);
   }
 }
+
+@media (max-width: 720px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .modal-content {
+    max-height: 88vh;
+    border-radius: 22px 22px 16px 16px;
+  }
+
+  .template-editor__header,
+  .template-editor__footer,
+  .visual-selector-builder__header,
+  .visual-selector-builder__actions,
+  .template-editor__section-header,
+  .generated-selector,
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .template-editor__body,
+  .visual-selector-builder__panel,
+  .visual-selector-builder__url-section {
+    padding: 16px;
+  }
+
+  .dom-tree-node__row,
+  .dom-tree-node__select {
+    min-height: var(--touch-target-size);
+  }
+
+  .dom-tree-node__toggle,
+  .dom-tree-node__toggle-spacer {
+    width: var(--touch-target-size);
+    height: var(--touch-target-size);
+  }
+
+  .selector-option {
+    min-height: var(--touch-target-size);
+    display: inline-flex;
+    align-items: center;
+  }
+}

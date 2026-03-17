@@ -71,6 +71,7 @@ input,
 select,
 textarea {
   width: 100%;
+  min-height: var(--touch-target-size);
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -95,13 +96,19 @@ textarea {
   }
 }
 
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
   width: auto;
+  min-height: auto;
+  padding: 0;
 }
 
 pre {
   white-space: pre-wrap;
   word-break: break-word;
+  overflow: auto;
+  max-width: 100%;
   background: rgba(0, 0, 0, 0.35);
   padding: 12px;
   border-radius: 12px;

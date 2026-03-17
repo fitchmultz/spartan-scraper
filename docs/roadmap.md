@@ -15,7 +15,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Recently Completed
 
-- Onboarding and Discoverability Expansion now replaces the blocking first-run modal with progressive onboarding, adds route-specific help across `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings`, makes the command palette and shortcut help visibly discoverable in the shell, and expands the guided tour beyond the job form.
+- Mobile Experience Pass — Makes the shell, route headers, jobs dashboard, new-job wizard, results reader, automation hub, templates workspace, settings panels, and command/help surfaces genuinely usable at `≤720px` with touch-friendly controls, preserved visible onboarding affordances, and overflow-safe layouts.
 - Integrated AI assistant panel now gives `/jobs/new`, `/templates`, and `/jobs/:id` one persistent, collapsible, route-aware AI rail with explicit apply actions, replacing modal-only preview, generation, debugging, shape, and refinement entry points in the core operator workflows.
 - Template editor rework now makes `/templates` a real inline workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of blocking modal-first authoring.
 - Results view system overhaul now keeps `/jobs/:id` centered on one dominant reader, moves comparison/tree/transform/visualization into an explicit secondary layer, replaces the export button strip with guided export, and preserves jobs-route continuity without reintroducing extra below-the-fold job clutter.
@@ -28,7 +28,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Mobile Experience Pass — Make job monitoring, form actions, results inspection, and automation interactions touch-friendly, improve status readability at small sizes, and provide a mobile-accessible alternative to keyboard-first navigation.
 - Zero-Friction First Run and Empty-State Resilience — Ensure fresh local startup never requires hidden env toggles like `PROXY_POOL_FILE=`, replace dead-end empty states with guided recovery steps, and make setup/runtime problems visible inside the product instead of only in terminal logs.
 
 ## Later / Deprioritized

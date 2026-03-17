@@ -6,7 +6,7 @@
  * Invariants/Assumptions: The shell stays compact, route context belongs to each route, and signal rows are optional per route.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export interface AppShellNavItem<TKind extends string = string> {
   kind: TKind;
@@ -35,25 +35,79 @@ export function AppTopBar<TKind extends string>({
   globalAction,
   utilities,
 }: AppTopBarProps<TKind>) {
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const navId = useId();
+  const previousRouteRef = useRef(activeRoute);
+
+  useEffect(() => {
+    if (previousRouteRef.current === activeRoute) {
+      return;
+    }
+
+    previousRouteRef.current = activeRoute;
+    setIsNavOpen(false);
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const closeOnDesktop = () => {
+      if (window.innerWidth > 720) {
+        setIsNavOpen(false);
+      }
+    };
+
+    closeOnDesktop();
+    window.addEventListener("resize", closeOnDesktop);
+    return () => window.removeEventListener("resize", closeOnDesktop);
+  }, []);
+
   return (
     <header className="app-shell">
       <div className="app-shell__topbar">
-        <button
-          type="button"
-          className="app-brand"
-          onClick={() => onNavigate("/jobs")}
-          aria-label="Go to Jobs"
-        >
-          <span className="app-brand__mark" aria-hidden="true">
-            S
-          </span>
-          <span className="app-brand__copy">
-            <strong className="app-brand__title">Spartan Scraper</strong>
-            <span className="app-brand__meta">Local-first workbench</span>
-          </span>
-        </button>
+        <div className="app-shell__brand-row">
+          <button
+            type="button"
+            className="app-brand"
+            onClick={() => {
+              setIsNavOpen(false);
+              onNavigate("/jobs");
+            }}
+            aria-label="Go to Jobs"
+          >
+            <span className="app-brand__mark" aria-hidden="true">
+              S
+            </span>
+            <span className="app-brand__copy">
+              <strong className="app-brand__title">Spartan Scraper</strong>
+              <span className="app-brand__meta">Local-first workbench</span>
+            </span>
+          </button>
 
-        <nav className="app-nav" aria-label="Primary">
+          <button
+            type="button"
+            className={`app-shell__menu-toggle secondary${isNavOpen ? " is-active" : ""}`}
+            aria-controls={navId}
+            aria-expanded={isNavOpen}
+            aria-label={
+              isNavOpen ? "Close navigation menu" : "Open navigation menu"
+            }
+            onClick={() => setIsNavOpen((current) => !current)}
+          >
+            <span className="app-shell__menu-toggle-icon" aria-hidden="true">
+              {isNavOpen ? "✕" : "☰"}
+            </span>
+            Menu
+          </button>
+        </div>
+
+        <nav
+          id={navId}
+          className={`app-nav${isNavOpen ? " is-open" : ""}`}
+          aria-label="Primary"
+        >
           <div className="app-nav__items">
             {navItems.map((item) => {
               const isActive = item.kind === activeRoute;
@@ -65,7 +119,10 @@ export function AppTopBar<TKind extends string>({
                   className={
                     isActive ? "app-nav__button is-active" : "app-nav__button"
                   }
-                  onClick={() => onNavigate(item.path)}
+                  onClick={() => {
+                    setIsNavOpen(false);
+                    onNavigate(item.path);
+                  }}
                   aria-current={isActive ? "page" : undefined}
                   title={item.description}
                 >
