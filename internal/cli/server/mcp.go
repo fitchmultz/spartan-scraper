@@ -24,6 +24,7 @@ Examples:
 
 Notes:
   MCP uses stdio. One JSON-RPC request per line.
+  In setup mode, MCP still starts but only exposes health_status and diagnostic_check.
 `)
 	}
 	_ = fs.Parse(args)
@@ -33,10 +34,21 @@ Notes:
 		return 0
 	}
 
-	srv, err := mcp.NewServer(cfg)
+	setupStatus, err := inspectStartupPreflight(cfg, currentCommandName())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
+	}
+
+	var srv *mcp.Server
+	if setupStatus != nil {
+		srv = mcp.NewSetupServer(cfg, *setupStatus)
+	} else {
+		srv, err = mcp.NewServer(cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 	}
 	defer srv.Close()
 

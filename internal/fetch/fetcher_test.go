@@ -1,6 +1,22 @@
-// Package fetch provides tests for browser availability detection and Chrome discovery.
-// Tests cover Chrome/Chromium detection on multiple platforms and Playwright availability checking.
-// Does NOT test actual browser operations or fetch execution.
+// Package fetch provides tests for fetcher construction and browser-tooling availability probes.
+//
+// Purpose:
+// - Verify browser discovery plus cached and fresh Playwright readiness checks.
+//
+// Responsibilities:
+// - Cover Chrome/Chromium lookup across supported platforms.
+// - Assert browser availability helpers classify missing dependencies correctly.
+// - Confirm cached checks can be refreshed for operator-facing diagnostics.
+//
+// Scope:
+// - Availability probing only; end-to-end browser automation lives in higher-level tests.
+//
+// Usage:
+// - Run with `go test ./internal/fetch`.
+//
+// Invariants/Assumptions:
+// - Tests stub host lookups and Playwright bootstrap helpers instead of requiring local browser installs.
+// - Fresh checks must invalidate the cached Playwright result.
 package fetch
 
 import (
@@ -531,6 +547,48 @@ func TestCheckPlaywrightAvailability_Caching(t *testing.T) {
 
 	if err1 != err2 {
 		t.Errorf("expected same error, got %v and %v", err1, err2)
+	}
+}
+
+func TestCheckBrowserAvailabilityFresh_InvalidatesPlaywrightCache(t *testing.T) {
+	callCount := 0
+	playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
+		callCount++
+		if callCount == 1 {
+			return nil, errors.New("not found")
+		}
+		return nil, nil
+	}
+	defer func() {
+		playwrightRun = func(options ...*playwright.RunOptions) (*playwright.Playwright, error) {
+			return playwright.Run(options...)
+		}
+		playwrightOnce = &sync.Once{}
+		playwrightErr = nil
+	}()
+
+	playwrightOnce = &sync.Once{}
+	playwrightErr = nil
+
+	if err := CheckBrowserAvailability(true); err == nil {
+		t.Fatal("expected cached playwright check to fail initially")
+	}
+	if callCount != 1 {
+		t.Fatalf("expected initial playwright call count 1, got %d", callCount)
+	}
+
+	if err := CheckBrowserAvailabilityFresh(true); err != nil {
+		t.Fatalf("expected fresh playwright check to succeed, got %v", err)
+	}
+	if callCount != 2 {
+		t.Fatalf("expected fresh playwright call count 2, got %d", callCount)
+	}
+
+	if err := CheckBrowserAvailability(true); err != nil {
+		t.Fatalf("expected refreshed cached playwright check to stay healthy, got %v", err)
+	}
+	if callCount != 2 {
+		t.Fatalf("expected cached playwright call count to remain 2, got %d", callCount)
 	}
 }
 

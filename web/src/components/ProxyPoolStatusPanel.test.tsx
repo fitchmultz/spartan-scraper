@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify proxy-pool status rendering and disabled-state guidance in Settings.
+ * Responsibilities: Assert loading, loaded, and refresh behaviors for the proxy-pool panel.
+ * Scope: ProxyPoolStatusPanel component behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Missing proxy-pool config is a valid optional state and should render actionable guidance instead of a raw error.
+ */
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ProxyPoolStatusPanel } from "./ProxyPoolStatusPanel";
@@ -85,11 +93,11 @@ describe("ProxyPoolStatusPanel", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/no proxy pool is currently loaded/i),
+        screen.getByText(/proxy pooling is disabled/i),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
+    fireEvent.click(screen.getByRole("button", { name: /refresh status/i }));
 
     await waitFor(() => {
       expect(api.getProxyPoolStatus).toHaveBeenCalledTimes(2);

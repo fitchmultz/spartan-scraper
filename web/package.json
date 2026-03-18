@@ -24,7 +24,7 @@
     "react-joyride": "^2.9.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.7",
+    "@biomejs/biome": "^2.4.8",
     "@hey-api/openapi-ts": "^0.94.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

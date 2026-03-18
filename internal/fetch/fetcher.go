@@ -1,6 +1,22 @@
-// Package fetch provides abstractions and implementations for fetching web content.
-// It includes support for standard HTTP requests, headless browser rendering
-// (via Chromedp or Playwright), rate limiting, and automatic retries with backoff.
+// Package fetch provides browser/tooling availability checks and fetcher construction helpers.
+//
+// Purpose:
+// - Centralize fetcher factories plus browser and Playwright prerequisite detection.
+//
+// Responsibilities:
+// - Create adaptive fetchers with optional metrics and proxy-pool wiring.
+// - Detect Chrome/Chromium availability across supported host platforms.
+// - Cache Playwright readiness checks while allowing explicit refresh probes.
+//
+// Scope:
+// - Shared fetcher setup and availability probing only; concrete fetching lives in sibling files.
+//
+// Usage:
+// - Called by runtime initialization, health endpoints, and diagnostic helpers.
+//
+// Invariants/Assumptions:
+// - Availability checks must never launch long-running browser sessions.
+// - Fresh diagnostic probes may invalidate cached Playwright readiness state.
 package fetch
 
 import (
@@ -25,6 +41,7 @@ var (
 		return playwright.Run(options...)
 	}
 	currentOS      = runtime.GOOS
+	playwrightMu   sync.Mutex
 	playwrightOnce = &sync.Once{}
 	playwrightErr  error
 )
@@ -81,12 +98,31 @@ var (
 	ErrPlaywrightNotReady = apperrors.ErrPlaywrightNotReady
 )
 
+// FindChrome resolves the Chrome/Chromium binary path for diagnostics and runtime checks.
+func FindChrome() (string, error) {
+	return findChrome()
+}
+
 // CheckBrowserAvailability checks if the required browser binaries are available.
 func CheckBrowserAvailability(usePlaywright bool) error {
 	if usePlaywright {
 		return checkPlaywrightAvailability()
 	}
 	return checkChromeAvailability()
+}
+
+// CheckBrowserAvailabilityFresh forces a new availability probe.
+func CheckBrowserAvailabilityFresh(usePlaywright bool) error {
+	if !usePlaywright {
+		return checkChromeAvailability()
+	}
+
+	playwrightMu.Lock()
+	playwrightOnce = &sync.Once{}
+	playwrightErr = nil
+	playwrightMu.Unlock()
+
+	return checkPlaywrightAvailability()
 }
 
 func checkChromeAvailability() error {
@@ -98,9 +134,19 @@ func checkChromeAvailability() error {
 }
 
 func checkPlaywrightAvailability() error {
-	playwrightOnce.Do(func() {
-		playwrightErr = performPlaywrightAvailabilityCheck()
+	playwrightMu.Lock()
+	once := playwrightOnce
+	playwrightMu.Unlock()
+
+	once.Do(func() {
+		err := performPlaywrightAvailabilityCheck()
+		playwrightMu.Lock()
+		playwrightErr = err
+		playwrightMu.Unlock()
 	})
+
+	playwrightMu.Lock()
+	defer playwrightMu.Unlock()
 	return playwrightErr
 }
 

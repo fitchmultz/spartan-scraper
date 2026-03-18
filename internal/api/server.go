@@ -55,6 +55,7 @@ type Server struct {
 	analyticsService      *analytics.Service
 	aiExtractor           *extract.AIExtractor
 	aiAuthoring           *aiauthoring.Service
+	setup                 *SetupStatus
 	ctx                   context.Context
 	cancel                context.CancelFunc
 }
@@ -126,6 +127,17 @@ func NewServer(manager *jobs.Manager, store *store.Store, cfg config.Config) *Se
 	return s
 }
 
+// NewSetupServer creates a minimal API server used when startup must remain in guided setup mode.
+func NewSetupServer(cfg config.Config, setup SetupStatus) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Server{
+		cfg:    cfg,
+		setup:  &setup,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
 // metricsCollectorAdapter adapts api.MetricsCollector to analytics.MetricsCollector
 type metricsCollectorAdapter struct {
 	collector *MetricsCollector
@@ -157,6 +169,11 @@ func (a *metricsCollectorAdapter) GetSnapshot() analytics.MetricsSnapshot {
 // GetMetricsCollector returns the server's metrics collector for external registration
 func (s *Server) GetMetricsCollector() *MetricsCollector {
 	return s.metricsCollector
+}
+
+// Manager returns the server's job manager when the server is running normally.
+func (s *Server) Manager() *jobs.Manager {
+	return s.manager
 }
 
 // WebhookDispatcher returns the server's shared webhook dispatcher.
@@ -247,6 +264,17 @@ func (s *Server) subscribeToJobEvents() {
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)
+	mux.HandleFunc("/v1/diagnostics/browser-check", s.handleBrowserDiagnostic)
+	mux.HandleFunc("/v1/diagnostics/ai-check", s.handleAIDiagnostic)
+	mux.HandleFunc("/v1/diagnostics/proxy-pool-check", s.handleProxyPoolDiagnostic)
+
+	if s.setup != nil {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			writeJSONStatus(w, http.StatusServiceUnavailable, ErrorResponse{Error: "setup required"})
+		})
+		return requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
+	}
+
 	mux.HandleFunc("/v1/auth/profiles", s.handleAuthProfiles)
 	mux.HandleFunc("/v1/auth/profiles/", s.handleAuthProfile)
 	mux.HandleFunc("/v1/auth/import", s.handleAuthImport)
@@ -320,10 +348,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/pipeline-js", s.handlePipelineJS)
 	mux.HandleFunc("/v1/pipeline-js/", s.handlePipelineJSScript)
 
-	// Build middleware chain
 	handler := requestIDMiddleware(loggingMiddleware(recoveryMiddleware(mux)))
-
-	// Add auth middleware if enabled or if bind address is not localhost
 	if s.cfg.APIAuthEnabled || !isLocalhost(s.cfg.BindAddr) {
 		handler = apiKeyAuthMiddleware(s.cfg, handler)
 	}

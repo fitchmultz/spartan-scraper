@@ -1,13 +1,14 @@
 /**
  * Purpose: Render compact settings inventory panels for auth profiles, schedules, and crawl-state records.
- * Responsibilities: Show only populated settings sections, keep crawl-state pagination wired, and present runtime inventory without route-level layout hacks.
+ * Responsibilities: Show populated settings sections, keep crawl-state pagination wired, and present an intentional empty guidance state when nothing has been configured yet.
  * Scope: Settings route inventory panels only; shell framing and editor surfaces stay outside this component.
  * Usage: Render from the Settings route with current profile, schedule, and crawl-state data plus pagination callbacks.
- * Invariants/Assumptions: Empty sections stay hidden, pagination is parent-owned, and spacing comes from shared layout containers instead of per-panel margins.
+ * Invariants/Assumptions: Pagination is parent-owned, spacing comes from shared layout containers instead of per-panel margins, and empty settings should still suggest a next step.
  */
 import { useEffect, useState } from "react";
 import type { CrawlState } from "../api";
 import { formatDateTime } from "../lib/formatting";
+import { ActionEmptyState } from "./ActionEmptyState";
 
 interface InfoSectionsProps {
   profiles: Array<{ name: string; parents: string[] }>;
@@ -22,6 +23,8 @@ interface InfoSectionsProps {
   crawlStatesTotal: number;
   crawlStatesPerPage: number;
   onCrawlStatesPageChange: (page: number) => void;
+  onCreateJob: () => void;
+  onOpenAutomation: () => void;
 }
 
 export function InfoSections({
@@ -32,6 +35,8 @@ export function InfoSections({
   crawlStatesTotal,
   crawlStatesPerPage,
   onCrawlStatesPageChange,
+  onCreateJob,
+  onOpenAutomation,
 }: InfoSectionsProps) {
   const [jumpInputValue, setJumpInputValue] = useState(
     crawlStatesPage.toString(),
@@ -42,6 +47,28 @@ export function InfoSections({
   }, [crawlStatesPage]);
 
   const maxPage = Math.max(1, Math.ceil(crawlStatesTotal / crawlStatesPerPage));
+  const isEmpty =
+    profiles.length === 0 && schedules.length === 0 && crawlStates.length === 0;
+
+  if (isEmpty) {
+    return (
+      <section className="panel info-section">
+        <ActionEmptyState
+          eyebrow="Settings"
+          title="Nothing to tune yet"
+          description="Settings will fill in as you create auth profiles, schedules, and crawl state. Start with a job, then return here for reuse and maintenance."
+          actions={[
+            { label: "Create first job", onClick: onCreateJob },
+            {
+              label: "Open automation",
+              onClick: onOpenAutomation,
+              tone: "secondary",
+            },
+          ]}
+        />
+      </section>
+    );
+  }
 
   return (
     <div className="info-sections">

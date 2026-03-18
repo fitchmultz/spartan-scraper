@@ -97,6 +97,9 @@ describe("JobMonitoringDashboard", () => {
         onCancel={vi.fn()}
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenTemplates={vi.fn()}
+        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={4}
         jobsPerPage={100}
@@ -142,6 +145,9 @@ describe("JobMonitoringDashboard", () => {
         onCancel={vi.fn()}
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenTemplates={vi.fn()}
+        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={0}
         jobsPerPage={100}
@@ -153,6 +159,42 @@ describe("JobMonitoringDashboard", () => {
     expect(screen.getAllByTestId("job-card-skeleton").length).toBeGreaterThan(
       0,
     );
+  });
+
+  it("renders a guided empty state for a fresh workspace", () => {
+    const onCreateJob = vi.fn();
+    const onOpenTemplates = vi.fn();
+
+    render(
+      <JobMonitoringDashboard
+        jobs={[]}
+        failedJobs={[]}
+        error={null}
+        loading={false}
+        statusFilter=""
+        onStatusFilterChange={vi.fn()}
+        onViewResults={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onRefresh={vi.fn()}
+        onCreateJob={onCreateJob}
+        onOpenTemplates={onOpenTemplates}
+        onOpenAutomation={vi.fn()}
+        currentPage={1}
+        totalJobs={0}
+        jobsPerPage={100}
+        onPageChange={vi.fn()}
+        connectionState="connected"
+      />,
+    );
+
+    expect(screen.getByText("No jobs yet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create first job/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /browse templates/i }),
+    ).toBeInTheDocument();
   });
 
   it("restores saved filter, page, and scroll position", async () => {
@@ -180,6 +222,9 @@ describe("JobMonitoringDashboard", () => {
         onCancel={vi.fn()}
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenTemplates={vi.fn()}
+        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={300}
         jobsPerPage={100}
@@ -203,6 +248,9 @@ describe("JobMonitoringDashboard", () => {
         onCancel={vi.fn()}
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenTemplates={vi.fn()}
+        onOpenAutomation={vi.fn()}
         currentPage={3}
         totalJobs={300}
         jobsPerPage={100}

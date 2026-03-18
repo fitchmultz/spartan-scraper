@@ -21,11 +21,22 @@ export interface RouteHelpShortcutConfig {
   shortcut: keyof ShortcutConfig;
 }
 
+export interface RouteHelpAction {
+  id:
+    | "create-job"
+    | "open-templates"
+    | "open-automation"
+    | "open-settings"
+    | "start-tour";
+  label: string;
+}
+
 export interface RouteHelpContent {
   title: string;
   summary: string;
   whatYouCanDo: readonly string[];
   shortcuts: readonly RouteHelpShortcutConfig[];
+  nextActions: readonly RouteHelpAction[];
 }
 
 export interface OnboardingTourStepConfig {
@@ -55,6 +66,10 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to New Job", shortcut: "navigateForms" },
       ],
+      nextActions: [
+        { id: "create-job", label: "Create first job" },
+        { id: "open-templates", label: "Browse templates" },
+      ],
     },
     "new-job": {
       title: "What can I do here?",
@@ -69,6 +84,10 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open command palette", shortcut: "commandPalette" },
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
+      ],
+      nextActions: [
+        { id: "open-templates", label: "Open templates" },
+        { id: "start-tour", label: "Restart tour" },
       ],
     },
     "job-detail": {
@@ -85,6 +104,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
+      nextActions: [{ id: "create-job", label: "Queue another job" }],
     },
     templates: {
       title: "What can I do here?",
@@ -99,6 +119,10 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open command palette", shortcut: "commandPalette" },
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
+      ],
+      nextActions: [
+        { id: "create-job", label: "Create first job" },
+        { id: "open-automation", label: "Open automation" },
       ],
     },
     automation: {
@@ -115,6 +139,10 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
+      nextActions: [
+        { id: "create-job", label: "Create single job" },
+        { id: "open-settings", label: "Open settings" },
+      ],
     },
     settings: {
       title: "What can I do here?",
@@ -129,6 +157,10 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open command palette", shortcut: "commandPalette" },
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
+      ],
+      nextActions: [
+        { id: "create-job", label: "Create first job" },
+        { id: "open-automation", label: "Open automation" },
       ],
     },
   };

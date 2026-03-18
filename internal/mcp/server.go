@@ -23,6 +23,7 @@ import (
 	"log/slog"
 
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
@@ -51,10 +52,21 @@ func NewServer(cfg config.Config) (*Server, error) {
 		store:       st,
 		manager:     mgr,
 		cfg:         cfg,
+		aiExtractor: aiExtractor,
 		aiAuthoring: aiauthoring.NewService(cfg, aiExtractor, true),
 		ctx:         ctx,
 		cancel:      cancel,
 	}, nil
+}
+
+func NewSetupServer(cfg config.Config, setup api.SetupStatus) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Server{
+		cfg:    cfg,
+		setup:  &setup,
+		ctx:    ctx,
+		cancel: cancel,
+	}
 }
 
 func (s *Server) Close() error {

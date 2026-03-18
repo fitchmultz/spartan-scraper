@@ -41,11 +41,13 @@ import {
   type ScrapeRequest,
 } from "./api";
 import { InfoSections } from "./components/InfoSections";
+import { ActionEmptyState } from "./components/ActionEmptyState";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { OnboardingNudge } from "./components/OnboardingNudge";
 import { RouteHelpPanel } from "./components/RouteHelpPanel";
+import { SystemStatusPanel } from "./components/SystemStatusPanel";
 import { AutomationLayout } from "./components/automation/AutomationLayout";
 import { AutomationSubnav } from "./components/automation/AutomationSubnav";
 import {
@@ -98,7 +100,7 @@ import {
 import { getApiBaseUrl } from "./lib/api-config";
 import { getApiErrorMessage } from "./lib/api-errors";
 import { saveJobsViewState } from "./lib/job-monitoring";
-import type { OnboardingRouteKey } from "./lib/onboarding";
+import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
 import type { JobPreset, JobType } from "./types/presets";
 
 type RouteKind =
@@ -290,6 +292,9 @@ function AppShell() {
     error,
     loading,
     connectionState,
+    health,
+    setupRequired,
+    refreshHealth,
     refreshJobs,
     refreshTemplates,
     setJobsPage,
@@ -897,6 +902,29 @@ function AppShell() {
     route.kind,
   ]);
 
+  const handleRouteHelpAction = useCallback(
+    (actionId: RouteHelpAction["id"]) => {
+      switch (actionId) {
+        case "create-job":
+          navigate("/jobs/new");
+          return;
+        case "open-templates":
+          navigate("/templates");
+          return;
+        case "open-automation":
+          navigate("/automation/batches");
+          return;
+        case "open-settings":
+          navigate("/settings");
+          return;
+        case "start-tour":
+          resetOnboarding();
+          return;
+      }
+    },
+    [navigate, resetOnboarding],
+  );
+
   const shellUtilities = (
     <>
       <button
@@ -935,6 +963,7 @@ function AppShell() {
       onOpenCommandPalette={openCommandPalette}
       onOpenShortcuts={openHelp}
       onRestartTour={resetOnboarding}
+      onAction={handleRouteHelpAction}
     />
   );
 
@@ -945,7 +974,7 @@ function AppShell() {
         navItems={NAV_ITEMS}
         onNavigate={navigate}
         globalAction={
-          route.kind !== "new-job" ? (
+          !setupRequired && route.kind !== "new-job" ? (
             <button type="button" onClick={() => navigate("/jobs/new")}>
               Create Job
             </button>
@@ -954,13 +983,18 @@ function AppShell() {
         utilities={shellUtilities}
       />
 
-      <OnboardingNudge
-        isVisible={shouldShowFirstRunHint}
-        isMac={isMac}
-        onStartTour={startOnboarding}
-        onOpenHelp={openHelp}
-        onDismiss={dismissFirstRunHint}
-      />
+      {!setupRequired ? (
+        <OnboardingNudge
+          isVisible={shouldShowFirstRunHint}
+          isMac={isMac}
+          onStartTour={startOnboarding}
+          onOpenHelp={openHelp}
+          onDismiss={dismissFirstRunHint}
+          onCreateJob={() => navigate("/jobs/new")}
+          health={health}
+          hasTemplates={templates.length > 0}
+        />
+      ) : null}
 
       <TutorialTooltip
         target='[data-tour="command-palette"]'
@@ -1014,7 +1048,31 @@ function AppShell() {
 
       <ErrorBanner message={error} />
 
-      {route.kind === "jobs" && (
+      <SystemStatusPanel
+        health={health}
+        onNavigate={navigate}
+        onRefresh={refreshHealth}
+      />
+
+      {setupRequired ? (
+        <div className="route-stack">
+          <RouteHeader
+            title="Setup required"
+            description="Spartan is running in guided recovery mode so the issue is visible in-product instead of only in terminal output."
+          />
+
+          <ActionEmptyState
+            eyebrow="Guided recovery"
+            title={health?.setup?.title ?? "Setup required"}
+            description={
+              health?.setup?.message ??
+              "Resolve the setup issue, then restart the server."
+            }
+          />
+        </div>
+      ) : null}
+
+      {!setupRequired && route.kind === "jobs" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1049,6 +1107,9 @@ function AppShell() {
               onCancel={cancelJob}
               onDelete={deleteJob}
               onRefresh={refreshJobs}
+              onCreateJob={() => navigate("/jobs/new")}
+              onOpenTemplates={() => navigate("/templates")}
+              onOpenAutomation={() => navigate("/automation/batches")}
               currentPage={jobsPage}
               totalJobs={jobsTotal}
               jobsPerPage={100}
@@ -1060,7 +1121,7 @@ function AppShell() {
         </div>
       )}
 
-      {route.kind === "job-detail" && (
+      {!setupRequired && route.kind === "job-detail" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1086,7 +1147,7 @@ function AppShell() {
         </div>
       )}
 
-      {route.kind === "new-job" && (
+      {!setupRequired && route.kind === "new-job" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1094,6 +1155,26 @@ function AppShell() {
           />
 
           {routeHelpPanel}
+
+          {jobsTotal === 0 && jobStatusFilter === "" ? (
+            <ActionEmptyState
+              eyebrow="First run"
+              title="Start with a single page scrape"
+              description="Paste a URL into the form below, keep the defaults, and submit one successful run before moving on to templates or automation."
+              actions={[
+                {
+                  label: "Open templates",
+                  onClick: () => navigate("/templates"),
+                  tone: "secondary",
+                },
+                {
+                  label: "Restart tour",
+                  onClick: resetOnboarding,
+                  tone: "secondary",
+                },
+              ]}
+            />
+          ) : null}
 
           <div className="route-grid route-grid--new-job">
             <div className="route-primary route-stack" data-tour="job-wizard">
@@ -1126,7 +1207,7 @@ function AppShell() {
         </div>
       )}
 
-      {route.kind === "templates" && (
+      {!setupRequired && route.kind === "templates" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1146,7 +1227,7 @@ function AppShell() {
         </div>
       )}
 
-      {route.kind === "automation" && (
+      {!setupRequired && route.kind === "automation" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1172,7 +1253,7 @@ function AppShell() {
         </div>
       )}
 
-      {route.kind === "settings" && (
+      {!setupRequired && route.kind === "settings" && (
         <div className="route-stack">
           <RouteHeader
             title={routeMeta.title}
@@ -1199,6 +1280,8 @@ function AppShell() {
               crawlStatesTotal={crawlStatesTotal}
               crawlStatesPerPage={100}
               onCrawlStatesPageChange={setCrawlStatesPage}
+              onCreateJob={() => navigate("/jobs/new")}
+              onOpenAutomation={() => navigate("/automation/batches")}
             />
 
             <section className="panel">

@@ -1,0 +1,16 @@
+Recovery UX console check — 2026-03-18
+
+Session: Playwright CLI `recoveryuxpw`
+Route checked: /settings with degraded AI, browser, and proxy-pool states visible
+
+Post-fix result:
+- Errors: 0
+- Warnings: 0
+- Info: React DevTools development notice from Vite/React dev mode
+
+Raw console excerpt:
+[INFO] Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+
+Dogfood issue fixed before this final capture:
+- Running a degraded one-click diagnostic previously triggered `RangeError: Maximum call stack size exceeded` from recursive nested action rendering in `SystemStatusPanel`.
+- After the fix, browser, AI, and proxy-pool one-click checks all rendered inline results without console errors.

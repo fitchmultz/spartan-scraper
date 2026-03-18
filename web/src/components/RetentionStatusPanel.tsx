@@ -1,10 +1,9 @@
 /**
- * Retention Status Panel Component
- *
- * Displays retention configuration, current statistics, and provides
- * cleanup controls with dry-run preview capability.
- *
- * @module RetentionStatusPanel
+ * Purpose: Render retention status, capacity, and cleanup controls in Settings.
+ * Responsibilities: Fetch retention status, surface disabled-state guidance, run cleanup previews or executions, and summarize capacity pressure.
+ * Scope: Retention settings presentation and local UI state only.
+ * Usage: Mount on the Settings route to help operators understand and operate data-retention behavior.
+ * Invariants/Assumptions: Retention is optional, disabled mode should still explain what to do next, and destructive cleanup runs remain explicitly operator-controlled.
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -15,6 +14,7 @@ import {
   type RetentionCleanupResponse,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { ActionEmptyState } from "./ActionEmptyState";
 
 interface StatusCardProps {
   label: string;
@@ -219,6 +219,23 @@ export function RetentionStatusPanel() {
               </div>
             </div>
           </div>
+
+          {!status.enabled ? (
+            <ActionEmptyState
+              eyebrow="Optional subsystem"
+              title="Automatic retention is disabled"
+              description="Retention is optional. Enable RETENTION_ENABLED when you want Spartan to clean up old jobs and crawl state automatically."
+              actions={[
+                {
+                  label: "Refresh status",
+                  onClick: () => {
+                    void refreshStatus();
+                  },
+                  tone: "secondary",
+                },
+              ]}
+            />
+          ) : null}
 
           <div className="retention-controls">
             <h4 className="retention-section-title">Cleanup Controls</h4>

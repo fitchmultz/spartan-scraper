@@ -28,11 +28,59 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
 
+const (
+	ActionKindRoute        = "route"
+	ActionKindCommand      = "command"
+	ActionKindEnv          = "env"
+	ActionKindCopy         = "copy"
+	ActionKindDoc          = "doc"
+	ActionKindExternalLink = "external-link"
+	ActionKindOneClick     = "one-click"
+)
+
+// RecommendedAction describes an operator-facing next step for setup or recovery.
+type RecommendedAction struct {
+	Label string `json:"label"`
+	Kind  string `json:"kind"`
+	Value string `json:"value,omitempty"`
+}
+
+// RuntimeNotice summarizes a non-fatal setup, config, or runtime issue.
+type RuntimeNotice struct {
+	ID       string              `json:"id"`
+	Scope    string              `json:"scope"`
+	Severity string              `json:"severity"`
+	Title    string              `json:"title"`
+	Message  string              `json:"message"`
+	Actions  []RecommendedAction `json:"actions,omitempty"`
+}
+
+// SetupStatus describes guided recovery information when the server starts in setup mode.
+type SetupStatus struct {
+	Required      bool                `json:"required"`
+	Code          string              `json:"code,omitempty"`
+	Title         string              `json:"title,omitempty"`
+	Message       string              `json:"message,omitempty"`
+	DataDir       string              `json:"dataDir,omitempty"`
+	SchemaVersion string              `json:"schemaVersion,omitempty"`
+	Actions       []RecommendedAction `json:"actions,omitempty"`
+}
+
 // ComponentStatus represents the health of a single system component.
 type ComponentStatus struct {
-	Status  string      `json:"status"`
-	Message string      `json:"message,omitempty"`
-	Details interface{} `json:"details,omitempty"`
+	Status  string              `json:"status"`
+	Message string              `json:"message,omitempty"`
+	Details interface{}         `json:"details,omitempty"`
+	Actions []RecommendedAction `json:"actions,omitempty"`
+}
+
+// DiagnosticActionResponse represents the result of a safe read-only diagnostic action.
+type DiagnosticActionResponse struct {
+	Status  string              `json:"status"`
+	Title   string              `json:"title,omitempty"`
+	Message string              `json:"message"`
+	Details interface{}         `json:"details,omitempty"`
+	Actions []RecommendedAction `json:"actions,omitempty"`
 }
 
 // HealthResponse represents the overall health of the system.
@@ -40,6 +88,8 @@ type HealthResponse struct {
 	Status     string                     `json:"status"`
 	Version    string                     `json:"version"`
 	Components map[string]ComponentStatus `json:"components"`
+	Notices    []RuntimeNotice            `json:"notices,omitempty"`
+	Setup      *SetupStatus               `json:"setup,omitempty"`
 }
 
 // ErrorResponse represents a standard error response.

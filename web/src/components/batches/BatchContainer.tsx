@@ -325,6 +325,12 @@ export function BatchContainer(props: BatchContainerProps) {
           onViewStatus={handleViewBatchStatus}
           onCancel={handleCancelBatch}
           onRefresh={() => void refreshBatches()}
+          onCreateBatch={() => {
+            document.getElementById("batch-forms")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }}
           onPageChange={(nextOffset) => void refreshBatches(nextOffset)}
           loading={batchesLoading}
         />

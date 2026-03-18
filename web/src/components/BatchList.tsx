@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Job } from "../api";
 import { getStatusClass, isTerminalStatus } from "../lib/batch-utils";
 import { formatDateTime } from "../lib/formatting";
+import { ActionEmptyState } from "./ActionEmptyState";
 
 interface BatchListProps {
   batches: BatchEntry[];
@@ -20,6 +21,7 @@ interface BatchListProps {
   onViewStatus: (batchId: string) => void | Promise<void>;
   onCancel: (batchId: string) => void;
   onRefresh: () => void;
+  onCreateBatch: () => void;
   onPageChange: (offset: number) => void;
   loading: boolean;
 }
@@ -61,6 +63,7 @@ export function BatchList({
   onViewStatus,
   onCancel,
   onRefresh,
+  onCreateBatch,
   onPageChange,
   loading,
 }: BatchListProps) {
@@ -84,33 +87,19 @@ export function BatchList({
   if (batches.length === 0) {
     return (
       <div className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <h2>Batch Jobs</h2>
-          <button
-            type="button"
-            className="secondary"
-            onClick={onRefresh}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-        <p
-          style={{
-            color: "var(--text-muted)",
-            textAlign: "center",
-            padding: 32,
-          }}
-        >
-          No batch jobs yet. Use the Batch form to submit jobs.
-        </p>
+        <ActionEmptyState
+          eyebrow="Automation"
+          title="No batch jobs yet"
+          description="Queue multiple URLs at once from the batch form above. Use batches when one-off single jobs are too slow or repetitive."
+          actions={[
+            { label: "Create batch", onClick: onCreateBatch },
+            {
+              label: loading ? "Loading..." : "Refresh",
+              onClick: onRefresh,
+              tone: "secondary",
+            },
+          ]}
+        />
       </div>
     );
   }

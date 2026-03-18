@@ -2078,19 +2078,57 @@ export type JobList = {
 };
 
 export type HealthResponse = {
-    status?: string;
-    version?: string;
-    components?: {
+    status: 'ok' | 'degraded' | 'setup_required' | 'error';
+    version: string;
+    components: {
         [key: string]: ComponentStatus;
     };
+    notices?: Array<RuntimeNotice>;
+    setup?: SetupStatus;
+};
+
+export type RecommendedAction = {
+    label: string;
+    kind: 'route' | 'command' | 'env' | 'copy' | 'doc' | 'external-link' | 'one-click';
+    value?: string;
+};
+
+export type RuntimeNotice = {
+    id: string;
+    scope: string;
+    severity: 'info' | 'warning' | 'error';
+    title: string;
+    message: string;
+    actions?: Array<RecommendedAction>;
+};
+
+export type SetupStatus = {
+    required: boolean;
+    code?: string;
+    title?: string;
+    message?: string;
+    dataDir?: string;
+    schemaVersion?: string;
+    actions?: Array<RecommendedAction>;
 };
 
 export type ComponentStatus = {
-    status?: string;
+    status: 'ok' | 'degraded' | 'disabled' | 'setup_required' | 'error';
     message?: string;
     details?: {
         [key: string]: unknown;
     };
+    actions?: Array<RecommendedAction>;
+};
+
+export type DiagnosticActionResponse = {
+    status: 'ok' | 'degraded' | 'disabled' | 'error';
+    title?: string;
+    message: string;
+    details?: {
+        [key: string]: unknown;
+    };
+    actions?: Array<RecommendedAction>;
 };
 
 export type ErrorResponse = {
@@ -3767,23 +3805,62 @@ export type GetHealthzData = {
     url: '/healthz';
 };
 
-export type GetHealthzErrors = {
-    /**
-     * Service Unavailable
-     */
-    503: HealthResponse;
-};
-
-export type GetHealthzError = GetHealthzErrors[keyof GetHealthzErrors];
-
 export type GetHealthzResponses = {
     /**
-     * OK
+     * Structured health, setup, and runtime diagnostics.
      */
     200: HealthResponse;
 };
 
 export type GetHealthzResponse = GetHealthzResponses[keyof GetHealthzResponses];
+
+export type PostV1DiagnosticsBrowserCheckData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/diagnostics/browser-check';
+};
+
+export type PostV1DiagnosticsBrowserCheckResponses = {
+    /**
+     * Browser diagnostic result
+     */
+    200: DiagnosticActionResponse;
+};
+
+export type PostV1DiagnosticsBrowserCheckResponse = PostV1DiagnosticsBrowserCheckResponses[keyof PostV1DiagnosticsBrowserCheckResponses];
+
+export type PostV1DiagnosticsAiCheckData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/diagnostics/ai-check';
+};
+
+export type PostV1DiagnosticsAiCheckResponses = {
+    /**
+     * AI diagnostic result
+     */
+    200: DiagnosticActionResponse;
+};
+
+export type PostV1DiagnosticsAiCheckResponse = PostV1DiagnosticsAiCheckResponses[keyof PostV1DiagnosticsAiCheckResponses];
+
+export type PostV1DiagnosticsProxyPoolCheckData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/diagnostics/proxy-pool-check';
+};
+
+export type PostV1DiagnosticsProxyPoolCheckResponses = {
+    /**
+     * Proxy-pool diagnostic result
+     */
+    200: DiagnosticActionResponse;
+};
+
+export type PostV1DiagnosticsProxyPoolCheckResponse = PostV1DiagnosticsProxyPoolCheckResponses[keyof PostV1DiagnosticsProxyPoolCheckResponses];
 
 export type GetV1AuthProfilesData = {
     body?: never;

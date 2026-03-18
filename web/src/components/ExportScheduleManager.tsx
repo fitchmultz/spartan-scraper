@@ -1,23 +1,16 @@
 /**
- * Export Schedule Manager Component
- *
- * Provides UI for managing automated export schedules. Supports creating,
- * editing, deleting, and viewing export history. Displays schedule status,
- * filters, and destinations.
- *
- * This is a coordination layer component that delegates to:
- * - ExportScheduleList for displaying the schedules table
- * - ExportScheduleForm for create/edit modal
- * - ExportScheduleHistory for viewing history
- * - useExportScheduleForm hook for form state management
- *
- * @module ExportScheduleManager
+ * Purpose: Coordinate export-schedule management for the Automation route.
+ * Responsibilities: Handle create/edit/delete/toggle flows, load export history, and render a guided empty state when no schedules exist yet.
+ * Scope: Export-schedule route coordination only; API calls arrive through props and list/history presentation stays in subcomponents.
+ * Usage: Render from the export-schedules automation container with authoritative schedules and callbacks.
+ * Invariants/Assumptions: Empty schedule state should still suggest a next step, history pagination is offset-based, and only one editor modal is open at a time.
  */
 
 import { useState, useCallback } from "react";
 import type { ExportSchedule, ExportHistoryRecord } from "../api";
 import type { ExportScheduleManagerProps } from "../types/export-schedule";
 import { useExportScheduleForm } from "../hooks/useExportScheduleForm";
+import { ActionEmptyState } from "./ActionEmptyState";
 import { ExportScheduleList } from "./export-schedules/ExportScheduleList";
 import { ExportScheduleForm } from "./export-schedules/ExportScheduleForm";
 import { ExportScheduleHistory } from "./export-schedules/ExportScheduleHistory";
@@ -188,19 +181,15 @@ export function ExportScheduleManager({
       </p>
 
       {schedules.length === 0 && !loading ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px 20px",
-            color: "var(--muted)",
-          }}
-        >
-          <p>No export schedules configured yet.</p>
-          <p>
-            Click &quot;Add Schedule&quot; to create automated exports for your
-            jobs.
-          </p>
-        </div>
+        <ActionEmptyState
+          eyebrow="Automation"
+          title="No export schedules yet"
+          description="Create a recurring export when you want completed jobs to automatically fan out into files or downstream systems."
+          actions={[
+            { label: "Add schedule", onClick: handleCreateClick },
+            { label: "Refresh", onClick: onRefresh, tone: "secondary" },
+          ]}
+        />
       ) : (
         <ExportScheduleList
           schedules={schedules}

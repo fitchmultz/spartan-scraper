@@ -9,6 +9,7 @@ import { useState, useCallback } from "react";
 import type { JobChain, ChainCreateRequest } from "../api";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { formatDateTime } from "../lib/formatting";
+import { ActionEmptyState } from "./ActionEmptyState";
 import { useToast } from "./toast";
 
 export type { ChainCreateRequest };
@@ -131,41 +132,17 @@ export function ChainList({
   if (chains.length === 0) {
     return (
       <div className="panel">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <h2>Job Chains</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              className="secondary"
-              onClick={onRefresh}
-              disabled={loading}
-            >
-              {loading ? "Loading..." : "Refresh"}
-            </button>
-            {onCreateClick && (
-              <button type="button" onClick={onCreateClick}>
-                Create Chain
-              </button>
-            )}
-          </div>
-        </div>
-        <p
-          style={{
-            color: "var(--text-muted)",
-            textAlign: "center",
-            padding: 32,
-          }}
-        >
-          No job chains yet. Use the Create Chain button to define reusable
-          workflows.
-        </p>
+        <ActionEmptyState
+          eyebrow="Automation"
+          title="No job chains yet"
+          description="Create a reusable workflow when you want one action to fan out into multiple dependent jobs."
+          actions={[
+            ...(onCreateClick
+              ? [{ label: "Create chain", onClick: onCreateClick }]
+              : []),
+            { label: "Refresh", onClick: onRefresh, tone: "secondary" },
+          ]}
+        />
       </div>
     );
   }

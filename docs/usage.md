@@ -684,11 +684,16 @@ Backup and restore:
 ```bash
 spartan server
 spartan health
+spartan health --check browser
+spartan health --check ai
+spartan health --check proxy_pool
 spartan proxy-pool status
 spartan tui
 spartan mcp
 spartan version
 ```
+
+`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints.
 
 ### TUI scope
 
@@ -828,6 +833,8 @@ spartan mcp
 
 Core tools:
 
+- `health_status`
+- `diagnostic_check`
 - `scrape_page`
 - `crawl_site`
 - `research`
@@ -857,6 +864,8 @@ Core tools:
 - `export_schedule_history`
 - `webhook_delivery_list`
 - `webhook_delivery_get`
+
+`health_status` returns the same structured health payload used by `/healthz`, including setup notices, degraded components, and follow-up actions. `diagnostic_check` runs the same read-only browser, AI, and proxy-pool re-checks exposed elsewhere; use `component: "browser" | "ai" | "proxy_pool"`. When Spartan is in setup mode, MCP still starts but limits the tool surface to `health_status` and `diagnostic_check` until recovery is completed.
 
 `scrape_page`, `crawl_site`, and `research` now accept the same request bodies as the REST job-submission endpoints for their respective kinds.
 

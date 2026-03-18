@@ -14,17 +14,44 @@ paths:
       security: []
       responses:
         '200':
-          description: OK
+          description: Structured health, setup, and runtime diagnostics.
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/HealthResponse"
-        '503':
-          description: Service Unavailable
+  "/v1/diagnostics/browser-check":
+    post:
+      summary: Re-check browser tooling availability
+      operationId: postV1DiagnosticsBrowserCheck
+      responses:
+        '200':
+          description: Browser diagnostic result
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HealthResponse"
+                "$ref": "#/components/schemas/DiagnosticActionResponse"
+  "/v1/diagnostics/ai-check":
+    post:
+      summary: Re-check AI prerequisites
+      operationId: postV1DiagnosticsAiCheck
+      responses:
+        '200':
+          description: AI diagnostic result
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DiagnosticActionResponse"
+  "/v1/diagnostics/proxy-pool-check":
+    post:
+      summary: Re-check proxy-pool configuration
+      operationId: postV1DiagnosticsProxyPoolCheck
+      responses:
+        '200':
+          description: Proxy-pool diagnostic result
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DiagnosticActionResponse"
   "/v1/auth/profiles":
     get:
       summary: List auth profiles
@@ -6107,21 +6134,141 @@ components:
       properties:
         status:
           type: string
+          enum:
+          - ok
+          - degraded
+          - setup_required
+          - error
         version:
           type: string
         components:
           type: object
           additionalProperties:
             "$ref": "#/components/schemas/ComponentStatus"
+        notices:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RuntimeNotice"
+        setup:
+          "$ref": "#/components/schemas/SetupStatus"
+      required:
+      - status
+      - version
+      - components
+    RecommendedAction:
+      type: object
+      properties:
+        label:
+          type: string
+        kind:
+          type: string
+          enum:
+          - route
+          - command
+          - env
+          - copy
+          - doc
+          - external-link
+          - one-click
+        value:
+          type: string
+      required:
+      - label
+      - kind
+    RuntimeNotice:
+      type: object
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+        severity:
+          type: string
+          enum:
+          - info
+          - warning
+          - error
+        title:
+          type: string
+        message:
+          type: string
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+      required:
+      - id
+      - scope
+      - severity
+      - title
+      - message
+    SetupStatus:
+      type: object
+      properties:
+        required:
+          type: boolean
+        code:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        dataDir:
+          type: string
+        schemaVersion:
+          type: string
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+      required:
+      - required
     ComponentStatus:
       type: object
       properties:
         status:
           type: string
+          enum:
+          - ok
+          - degraded
+          - disabled
+          - setup_required
+          - error
         message:
           type: string
         details:
           type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+      required:
+      - status
+    DiagnosticActionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+          - disabled
+          - error
+        title:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: {}
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+      required:
+      - status
+      - message
     ErrorResponse:
       type: object
       properties:

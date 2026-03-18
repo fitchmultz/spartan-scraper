@@ -13,6 +13,8 @@ import (
 func testConfig(cfg config.Config) config.Config {
 	return config.Config{
 		DataDir:            cfg.DataDir,
+		ProxyPoolFile:      cfg.ProxyPoolFile,
+		AI:                 cfg.AI,
 		UserAgent:          "test-agent",
 		RequestTimeoutSecs: 30,
 		MaxConcurrency:     1,
@@ -21,7 +23,7 @@ func testConfig(cfg config.Config) config.Config {
 		MaxRetries:         3,
 		RetryBaseMs:        100,
 		MaxResponseBytes:   10 * 1024 * 1024,
-		UsePlaywright:      false,
+		UsePlaywright:      cfg.UsePlaywright,
 	}
 }
 

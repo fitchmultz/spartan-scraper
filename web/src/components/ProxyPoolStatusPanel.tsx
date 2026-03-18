@@ -1,6 +1,15 @@
+/**
+ * Purpose: Render proxy-pool status and optional-subsystem guidance in Settings.
+ * Responsibilities: Fetch the current proxy-pool status, summarize pool and per-proxy health, and explain the disabled state without treating it as a startup failure.
+ * Scope: Proxy-pool settings presentation only.
+ * Usage: Mount on the Settings route to help operators understand whether proxy pooling is configured.
+ * Invariants/Assumptions: Missing proxy-pool config is a valid optional state and should remain actionable instead of alarming.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import { getProxyPoolStatus, type ProxyPoolStatusResponse } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { ActionEmptyState } from "./ActionEmptyState";
 
 function formatTags(tags: string[] | undefined): string {
   if (!tags || tags.length === 0) {
@@ -38,7 +47,7 @@ export function ProxyPoolStatusPanel() {
   }, []);
 
   useEffect(() => {
-    refreshStatus();
+    void refreshStatus();
   }, [refreshStatus]);
 
   return (
@@ -127,10 +136,18 @@ export function ProxyPoolStatusPanel() {
           )}
 
           {status.proxies.length === 0 ? (
-            <p style={{ marginTop: 16 }}>
-              No proxy pool is currently loaded. Configure `PROXY_POOL_FILE` to
-              enable pooled proxy routing.
-            </p>
+            <ActionEmptyState
+              eyebrow="Optional subsystem"
+              title="Proxy pooling is disabled"
+              description="Spartan does not need a proxy pool for normal startup. Configure PROXY_POOL_FILE only when you want pooled routing across multiple proxies."
+              actions={[
+                {
+                  label: "Refresh status",
+                  onClick: refreshStatus,
+                  tone: "secondary",
+                },
+              ]}
+            />
           ) : (
             <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
               {status.proxies.map((proxy) => (

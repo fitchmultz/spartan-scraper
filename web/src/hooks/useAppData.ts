@@ -3,7 +3,7 @@
  * Responsibilities: Fetch recent runs, failed runs, manager health, metrics, profiles, schedules, templates, and crawl states; keep job data fresh via WebSocket and polling fallbacks; expose pagination and run-filter controls.
  * Scope: Client-side data orchestration only; presentation stays in React components and transport contracts come from the generated API client.
  * Usage: Call `useAppData()` from the application shell and pass the returned state/actions into route-level components.
- * Invariants/Assumptions: Jobs are loaded from the API as recent-run envelopes, failedJobs is a lightweight failure-focused subset, and polling only activates when the WebSocket connection is unavailable.
+ * Invariants/Assumptions: Jobs are loaded from the API as recent-run envelopes, failedJobs is a lightweight failure-focused subset, polling only activates when the WebSocket connection is unavailable, and setup-mode health short-circuits normal data loading.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,9 +17,11 @@ import {
   getV1AuthProfiles,
   getV1Schedules,
   type CrawlState,
+  type HealthResponse,
   type MetricsResponse,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
 import { useWebSocket, type WSMessage } from "./useWebSocket";
 
 type JobEntry = import("../types").JobEntry;
@@ -65,6 +67,8 @@ export interface AppDataState {
   error: string | null;
   loading: boolean;
   connectionState: "connected" | "disconnected" | "reconnecting" | "polling";
+  health: HealthResponse | null;
+  setupRequired: boolean;
 }
 
 export interface AppDataActions {
@@ -74,6 +78,7 @@ export interface AppDataActions {
   refreshSchedules: () => Promise<void>;
   refreshTemplates: () => Promise<void>;
   refreshCrawlStates: (page?: number) => Promise<void>;
+  refreshHealth: () => Promise<HealthResponse | null>;
   setJobsPage: (page: number) => void;
   setCrawlStatesPage: (page: number) => void;
   setJobStatusFilter: (status: JobStatusFilter) => void;
@@ -113,6 +118,7 @@ export function useAppData(): AppDataState & AppDataActions {
     null,
   );
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
@@ -122,6 +128,7 @@ export function useAppData(): AppDataState & AppDataActions {
   const [crawlStatesPage, setCrawlStatesPage] = useState(1);
   const [crawlStatesTotal, setCrawlStatesTotal] = useState(0);
   const [usePolling, setUsePolling] = useState(false);
+  const [healthLoaded, setHealthLoaded] = useState(false);
 
   const refreshJobs = useCallback(
     async (page = jobsPage) => {
@@ -140,7 +147,7 @@ export function useAppData(): AppDataState & AppDataActions {
           },
         });
         if (apiError) {
-          setError(String(apiError));
+          setError(getApiErrorMessage(apiError, "Failed to fetch jobs."));
           return;
         }
         setJobs(data?.jobs ?? []);
@@ -154,7 +161,7 @@ export function useAppData(): AppDataState & AppDataActions {
         }
         setError(null);
       } catch (err) {
-        setError(String(err));
+        setError(getApiErrorMessage(err, "Failed to fetch jobs."));
       } finally {
         setLoading(false);
       }
@@ -178,28 +185,6 @@ export function useAppData(): AppDataState & AppDataActions {
       setFailedJobs(data?.jobs ?? []);
     } catch (err) {
       console.error("Failed to fetch job failures:", err);
-    }
-  }, []);
-
-  const refreshManagerStatus = useCallback(async () => {
-    try {
-      const { data, error: apiError } = await getHealthz({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch manager status:", apiError);
-        return;
-      }
-      const queueDetails = data?.components?.queue?.details;
-      if (queueDetails && typeof queueDetails === "object") {
-        const queued =
-          typeof queueDetails.queued === "number" ? queueDetails.queued : 0;
-        const active =
-          typeof queueDetails.active === "number" ? queueDetails.active : 0;
-        setManagerStatus({ queued, active });
-      }
-    } catch (err) {
-      console.error("Failed to fetch manager status:", err);
     }
   }, []);
 
@@ -299,6 +284,45 @@ export function useAppData(): AppDataState & AppDataActions {
     [crawlStatesPage],
   );
 
+  const refreshHealth =
+    useCallback(async (): Promise<HealthResponse | null> => {
+      try {
+        const { data, error: apiError } = await getHealthz({
+          baseUrl: getApiBaseUrl(),
+        });
+
+        if (apiError) {
+          setError(
+            getApiErrorMessage(apiError, "Failed to fetch system status."),
+          );
+          setHealthLoaded(true);
+          return null;
+        }
+
+        const nextHealth = data ?? null;
+        setHealth(nextHealth);
+
+        const queueDetails = nextHealth?.components?.queue?.details;
+        if (queueDetails && typeof queueDetails === "object") {
+          const queued =
+            typeof queueDetails.queued === "number" ? queueDetails.queued : 0;
+          const active =
+            typeof queueDetails.active === "number" ? queueDetails.active : 0;
+          setManagerStatus({ queued, active });
+        } else {
+          setManagerStatus(null);
+        }
+
+        setError(null);
+        setHealthLoaded(true);
+        return nextHealth;
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Failed to fetch system status."));
+        setHealthLoaded(true);
+        return null;
+      }
+    }, []);
+
   const setJobStatusFilter = useCallback((status: JobStatusFilter) => {
     setJobsPage(1);
     setJobStatusFilterState(status);
@@ -311,7 +335,11 @@ export function useAppData(): AppDataState & AppDataActions {
         case "job_started":
         case "job_status_changed":
         case "job_completed":
-          void Promise.all([refreshJobs(), refreshJobFailures()]);
+          void Promise.all([
+            refreshJobs(),
+            refreshJobFailures(),
+            refreshHealth(),
+          ]);
           break;
         case "manager_status": {
           const payload = msg.payload as {
@@ -333,42 +361,65 @@ export function useAppData(): AppDataState & AppDataActions {
           break;
       }
     },
-    [refreshJobFailures, refreshJobs],
+    [refreshHealth, refreshJobFailures, refreshJobs],
   );
 
+  const setupRequired = health?.setup?.required ?? false;
   const wsUrl = useMemo(() => getWebSocketUrl(), []);
   const { state: wsState } = useWebSocket({
     url: wsUrl,
+    enabled: healthLoaded && !setupRequired,
     onMessage: handleWebSocketMessage,
     onConnect: () => {
       setUsePolling(false);
     },
     onDisconnect: () => {
-      setUsePolling(true);
+      if (!setupRequired) {
+        setUsePolling(true);
+      }
     },
   });
 
   const connectionState = useMemo(() => {
+    if (setupRequired) return "disconnected";
     if (wsState === "connected") return "connected";
     if (wsState === "reconnecting") return "reconnecting";
     if (usePolling) return "polling";
     return "disconnected";
-  }, [usePolling, wsState]);
+  }, [setupRequired, usePolling, wsState]);
 
   useEffect(() => {
-    void refreshJobs();
-    void refreshJobFailures();
-    void refreshManagerStatus();
-    void refreshMetrics();
-    void refreshProfiles();
-    void refreshSchedules();
-    void refreshTemplates();
-    void refreshCrawlStates();
+    void (async () => {
+      setLoading(true);
+      const currentHealth = await refreshHealth();
+      if (currentHealth?.setup?.required) {
+        setJobs([]);
+        setFailedJobs([]);
+        setProfiles([]);
+        setSchedules([]);
+        setTemplates([]);
+        setCrawlStates([]);
+        setMetrics(null);
+        setLoading(false);
+        return;
+      }
+
+      await Promise.all([
+        refreshJobs(),
+        refreshJobFailures(),
+        refreshMetrics(),
+        refreshProfiles(),
+        refreshSchedules(),
+        refreshTemplates(),
+        refreshCrawlStates(),
+      ]);
+      setLoading(false);
+    })();
   }, [
     refreshCrawlStates,
+    refreshHealth,
     refreshJobFailures,
     refreshJobs,
-    refreshManagerStatus,
     refreshMetrics,
     refreshProfiles,
     refreshSchedules,
@@ -376,21 +427,24 @@ export function useAppData(): AppDataState & AppDataActions {
   ]);
 
   useEffect(() => {
-    if (!usePolling) return;
+    if (!usePolling || setupRequired) {
+      return;
+    }
 
     const handle = window.setInterval(() => {
+      void refreshHealth();
       void refreshJobs();
       void refreshJobFailures();
-      void refreshManagerStatus();
       void refreshMetrics();
     }, POLL_INTERVAL);
 
     return () => window.clearInterval(handle);
   }, [
+    refreshHealth,
     refreshJobFailures,
     refreshJobs,
-    refreshManagerStatus,
     refreshMetrics,
+    setupRequired,
     usePolling,
   ]);
 
@@ -411,12 +465,15 @@ export function useAppData(): AppDataState & AppDataActions {
     error,
     loading,
     connectionState,
+    health,
+    setupRequired,
     refreshJobs,
     refreshJobFailures,
     refreshProfiles,
     refreshSchedules,
     refreshTemplates,
     refreshCrawlStates,
+    refreshHealth,
     setJobsPage,
     setCrawlStatesPage,
     setJobStatusFilter,

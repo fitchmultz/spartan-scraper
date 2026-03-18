@@ -3236,9 +3236,182 @@
   }
 }
 
+.empty-state,
+.system-status,
 .onboarding-nudge {
   display: grid;
   gap: 14px;
+}
+
+.empty-state {
+  min-height: 220px;
+  place-content: center;
+  padding: 12px;
+  border: 1px dashed var(--stroke);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-subtle) 82%, transparent);
+}
+
+.empty-state h3,
+.system-status__header h2,
+.system-status__section h3,
+.onboarding-nudge__copy h2,
+.route-help__header h2,
+.route-help__section h3 {
+  margin: 0;
+}
+
+.empty-state p,
+.system-status__header p,
+.onboarding-nudge__copy p,
+.route-help__header p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.empty-state__eyebrow,
+.system-status__eyebrow,
+.onboarding-nudge__eyebrow,
+.route-help__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.empty-state__actions,
+.system-status__actions,
+.onboarding-nudge__actions,
+.route-help__actions,
+.route-help__shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.empty-state__body,
+.system-status__section,
+.system-status__setup,
+.system-status__hint,
+.onboarding-nudge__copy,
+.route-help__header,
+.route-help__content,
+.route-help__section {
+  display: grid;
+  gap: 8px;
+}
+
+.system-status {
+  border-color: var(--tone-warning-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    color-mix(in srgb, var(--panel) 78%, var(--tone-warning-surface));
+}
+
+.system-status__header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.system-status__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.system-status__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.system-status__list li,
+.system-status__hint {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-subtle);
+}
+
+.system-status__list li {
+  display: grid;
+  gap: 6px;
+}
+
+.system-status__actions--stacked {
+  align-items: stretch;
+}
+
+.system-status__action-card {
+  display: grid;
+  gap: 10px;
+  min-width: min(100%, 320px);
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--surface-subtle);
+}
+
+.system-status__action-inline {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.system-status__code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.system-status__code-row code,
+.system-status__hint code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel) 84%, black 6%);
+  word-break: break-word;
+}
+
+.system-status__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.system-status__action-result {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+}
+
+.system-status__action-result--ok {
+  border-color: var(--tone-success-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    color-mix(in srgb, var(--panel) 82%, var(--tone-success-surface));
+}
+
+.system-status__action-result--warning {
+  border-color: var(--tone-warning-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    color-mix(in srgb, var(--panel) 82%, var(--tone-warning-surface));
+}
+
+.onboarding-nudge {
   border-color: var(--tone-info-border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
@@ -3290,6 +3463,15 @@
   align-items: stretch;
 }
 
+.onboarding-nudge__checklist {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
 .app-toolbar-shortcut {
   display: inline-flex;
   align-items: center;
@@ -3333,10 +3515,18 @@
 }
 
 @media (max-width: 720px) {
-  .route-help__header {
+  .system-status__header,
+  .route-help__header,
+  .system-status__code-row {
     grid-template-columns: 1fr;
   }
 
+  .system-status__action-inline {
+    flex-direction: column;
+  }
+
+  .empty-state__actions,
+  .system-status__actions,
   .onboarding-nudge__actions,
   .route-help__actions {
     display: grid;

@@ -1,17 +1,13 @@
 /**
- * WebhookDeliveries Component
- *
- * Main presentation component for the webhook delivery dashboard.
- * Composes filter controls, delivery list table, pagination, and detail modal.
- *
- * This component does NOT handle:
- * - API calls for delivery operations
- * - State management (handled by WebhookDeliveryContainer)
- *
- * @module components/webhooks/WebhookDeliveries
+ * Purpose: Render the webhook-delivery dashboard for the Automation route.
+ * Responsibilities: Compose filters, list rendering, pagination, detail view, and guided empty states for both first-run and filtered-no-match scenarios.
+ * Scope: Presentation only; API state and mutations live in `WebhookDeliveryContainer`.
+ * Usage: Mount from the webhook delivery container with authoritative delivery data and callbacks.
+ * Invariants/Assumptions: Empty delivery history should still suggest a next step, and filtered empties should make it easy to recover the last visible results.
  */
 
 import type { WebhookDeliveriesProps } from "../../types/webhook";
+import { ActionEmptyState } from "../ActionEmptyState";
 import { WebhookDeliveryFilters } from "./WebhookDeliveryFilters";
 import { WebhookDeliveryList } from "./WebhookDeliveryList";
 import { WebhookDeliveryDetail } from "./WebhookDeliveryDetail";
@@ -77,20 +73,38 @@ export function WebhookDeliveries({
       />
 
       {deliveries.length === 0 && !loading ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px 20px",
-            color: "var(--muted)",
-          }}
-        >
-          <p>No webhook deliveries found.</p>
-          <p>
-            {filters.jobId || filters.status !== "all"
-              ? "Try adjusting your filters."
-              : "Webhook deliveries will appear here when webhooks are triggered."}
-          </p>
-        </div>
+        <ActionEmptyState
+          eyebrow="Automation"
+          title={
+            filters.jobId || filters.status !== "all"
+              ? "No webhook deliveries match these filters"
+              : "No webhook deliveries yet"
+          }
+          description={
+            filters.jobId || filters.status !== "all"
+              ? "Clear the current filters or refresh after a new delivery is attempted."
+              : "Webhook deliveries will appear here after jobs or exports run with webhook notification configured."
+          }
+          actions={
+            filters.jobId || filters.status !== "all"
+              ? [
+                  {
+                    label: "Reset filters",
+                    onClick: () =>
+                      onFilterChange({
+                        jobId: "",
+                        status: "all",
+                      }),
+                  },
+                  {
+                    label: "Refresh",
+                    onClick: onRefresh,
+                    tone: "secondary",
+                  },
+                ]
+              : [{ label: "Refresh", onClick: onRefresh }]
+          }
+        />
       ) : (
         <>
           <WebhookDeliveryList

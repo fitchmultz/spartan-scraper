@@ -25,6 +25,7 @@ import {
   useAIAssistant,
 } from "../ai-assistant";
 import { useToast } from "../toast";
+import { ActionEmptyState } from "../ActionEmptyState";
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 import { TemplateEditorInline } from "./TemplateEditorInline";
 import {
@@ -483,10 +484,24 @@ export function TemplateManager({
           </div>
 
           {templateNames.length === 0 ? (
-            <div className="template-manager__empty">
-              No saved templates yet. Start a new one, open the visual builder,
-              or generate a draft with AI.
-            </div>
+            <ActionEmptyState
+              eyebrow="Empty library"
+              title="No saved templates yet"
+              description="Start a template from scratch, open the visual builder, or let AI draft a starting point from a real page."
+              actions={[
+                { label: "New template", onClick: handleStartCreate },
+                {
+                  label: "Open visual builder",
+                  onClick: () => setIsBuilderOpen(true),
+                  tone: "secondary",
+                },
+                {
+                  label: "Open AI assistant",
+                  onClick: () => openAssistantMode("generate"),
+                  tone: "secondary",
+                },
+              ]}
+            />
           ) : (
             <ul
               className="template-manager__list"

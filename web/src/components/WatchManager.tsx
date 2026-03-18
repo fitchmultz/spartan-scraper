@@ -1,23 +1,16 @@
 /**
- * Watch Manager Component
- *
- * Provides UI for managing content change monitoring watches. Supports creating,
- * editing, deleting, and manually checking watches. Displays watch status,
- * change counts, and next run times.
- *
- * This is a coordination layer component that delegates to:
- * - WatchList for displaying the watches table
- * - WatchForm for create/edit modal
- * - CheckResultModal for displaying check results
- * - useWatchForm hook for form state management
- *
- * @module WatchManager
+ * Purpose: Coordinate watch-management actions for the Automation route.
+ * Responsibilities: Load create/edit form state, coordinate manual checks and deletions, and render a guided empty state when no watches exist yet.
+ * Scope: Watch route coordination only; API calls arrive through props and detailed presentation stays in subcomponents.
+ * Usage: Render from the watches automation container with authoritative watch data and callbacks.
+ * Invariants/Assumptions: Empty watch state should still suggest a next step, only one edit form is open at a time, and check results stay visible until dismissed.
  */
 
 import { useState, useCallback } from "react";
 import type { Watch, WatchCheckResult } from "../api";
 import type { WatchManagerProps } from "../types/watch";
 import { useWatchForm } from "../hooks/useWatchForm";
+import { ActionEmptyState } from "./ActionEmptyState";
 import { WatchList } from "./watches/WatchList";
 import { WatchForm } from "./watches/WatchForm";
 import { CheckResultModal } from "./watches/CheckResultModal";
@@ -131,16 +124,15 @@ export function WatchManager({
       </div>
 
       {watches.length === 0 && !loading ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px 20px",
-            color: "var(--muted)",
-          }}
-        >
-          <p>No watches configured yet.</p>
-          <p>Click "Add Watch" to start monitoring content changes.</p>
-        </div>
+        <ActionEmptyState
+          eyebrow="Automation"
+          title="No watches configured yet"
+          description="Add a watch to monitor a page for content changes and check it manually or on its configured cadence."
+          actions={[
+            { label: "Add watch", onClick: handleCreateClick },
+            { label: "Refresh", onClick: onRefresh, tone: "secondary" },
+          ]}
+        />
       ) : (
         <WatchList
           watches={watches}

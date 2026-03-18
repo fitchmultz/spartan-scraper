@@ -1,5 +1,22 @@
 // Package config provides application configuration loading from environment variables.
-// It handles loading defaults from .env files and parsing environment variables.
+//
+// Purpose:
+// - Load the application's startup configuration from environment variables and `.env` defaults.
+//
+// Responsibilities:
+// - Parse environment variables into a typed immutable `Config` snapshot.
+// - Apply sensible defaults and non-fatal corrections for invalid optional settings.
+// - Surface startup notices for configuration issues that should appear inside operator surfaces.
+//
+// Scope:
+// - Configuration loading and validation only; runtime initialization lives elsewhere.
+//
+// Usage:
+// - Call `Load()` once during process startup and pass the returned `Config` by value.
+//
+// Invariants/Assumptions:
+// - `Config` is treated as immutable after loading.
+// - `AuthOverrides.Headers` and `AuthOverrides.Cookies` are read-only map fields unless callers deep-copy them first.
 //
 // # Immutability & thread-safety
 //
@@ -26,6 +43,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
@@ -46,6 +64,15 @@ type WebhookConfig struct {
 	Timeout                 time.Duration
 	AllowInternal           bool // Allow webhooks to internal/private addresses; bypasses the default dispatch-time private-target guardrail
 	MaxConcurrentDispatches int  // Maximum concurrent webhook dispatches (default: 100)
+}
+
+// StartupNotice captures non-fatal configuration issues that should surface inside operator surfaces.
+type StartupNotice struct {
+	ID       string
+	Severity string
+	Title    string
+	Message  string
+	Action   string
 }
 
 // Config is the application's configuration snapshot.
@@ -82,6 +109,7 @@ type Config struct {
 	AuthOverrides      EnvOverrides
 	LogLevel           string
 	LogFormat          string
+	StartupNotices     []StartupNotice
 
 	// Proxy configuration
 	ProxyURL      string
@@ -210,6 +238,40 @@ type AIConfig struct {
 	Routing            AIRoutingConfig
 }
 
+var (
+	startupNoticeMu    sync.Mutex
+	startupLoadNotices []StartupNotice
+)
+
+func resetStartupNotices() {
+	startupNoticeMu.Lock()
+	defer startupNoticeMu.Unlock()
+	startupLoadNotices = nil
+}
+
+func recordStartupNotice(notice StartupNotice) {
+	if notice.ID == "" {
+		return
+	}
+
+	startupNoticeMu.Lock()
+	defer startupNoticeMu.Unlock()
+	for _, existing := range startupLoadNotices {
+		if existing.ID == notice.ID {
+			return
+		}
+	}
+	startupLoadNotices = append(startupLoadNotices, notice)
+}
+
+func consumeStartupNotices() []StartupNotice {
+	startupNoticeMu.Lock()
+	defer startupNoticeMu.Unlock()
+	out := append([]StartupNotice(nil), startupLoadNotices...)
+	startupLoadNotices = nil
+	return out
+}
+
 // Load reads configuration from environment variables (optionally loading defaults from
 // a local .env file).
 //
@@ -222,6 +284,7 @@ type AIConfig struct {
 // Returns an error if the data directory cannot be created or is not writable.
 // Uses apperrors.KindPermission for writability issues.
 func Load() (Config, error) {
+	resetStartupNotices()
 	_ = godotenv.Load()
 	dataDir := getenv("DATA_DIR", ".data")
 	cfg := Config{
@@ -318,54 +381,84 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	cfg.StartupNotices = consumeStartupNotices()
 	return cfg, nil
 }
 
 // validateAndFixAdaptiveConfig ensures adaptive rate limiting configuration invariants.
-// It logs warnings and applies sensible defaults for invalid configurations.
+// It records operator-visible notices and applies sensible defaults for invalid configurations.
 func validateAndFixAdaptiveConfig(cfg Config) Config {
 	if !cfg.AdaptiveRateLimit {
 		return cfg
 	}
 
-	// Ensure MinQPS <= MaxQPS
 	if cfg.AdaptiveMinQPS > cfg.AdaptiveMaxQPS {
-		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MIN_QPS (%.2f) > ADAPTIVE_MAX_QPS (%.2f), swapping values\n",
-			cfg.AdaptiveMinQPS, cfg.AdaptiveMaxQPS)
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-min-max-swapped",
+			Severity: "warning",
+			Title:    "Adaptive rate-limit bounds were corrected",
+			Message:  fmt.Sprintf("ADAPTIVE_MIN_QPS (%.2f) exceeded ADAPTIVE_MAX_QPS (%.2f), so Spartan swapped them for this session.", cfg.AdaptiveMinQPS, cfg.AdaptiveMaxQPS),
+		})
 		cfg.AdaptiveMinQPS, cfg.AdaptiveMaxQPS = cfg.AdaptiveMaxQPS, cfg.AdaptiveMinQPS
 	}
 
-	// Ensure MinQPS is positive and finite
 	if cfg.AdaptiveMinQPS <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MIN_QPS must be positive, using default 0.1\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-min-invalid",
+			Severity: "warning",
+			Title:    "Adaptive minimum QPS was reset",
+			Message:  "ADAPTIVE_MIN_QPS must be positive, so Spartan is using 0.1 for this session.",
+		})
 		cfg.AdaptiveMinQPS = 0.1
 	}
 
-	// Ensure MaxQPS is positive and finite
 	if cfg.AdaptiveMaxQPS <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_MAX_QPS must be positive, using RATE_LIMIT_QPS\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-max-invalid",
+			Severity: "warning",
+			Title:    "Adaptive maximum QPS was reset",
+			Message:  "ADAPTIVE_MAX_QPS must be positive, so Spartan is using RATE_LIMIT_QPS for this session.",
+		})
 		cfg.AdaptiveMaxQPS = float64(cfg.RateLimitQPS)
 	}
 
-	// Ensure decrease factor is in valid range (0, 1)
 	if cfg.AdaptiveDecreaseFactor <= 0 || cfg.AdaptiveDecreaseFactor >= 1 {
-		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_DECREASE_FACTOR must be in (0, 1), using default 0.5\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-decrease-invalid",
+			Severity: "warning",
+			Title:    "Adaptive decrease factor was reset",
+			Message:  "ADAPTIVE_DECREASE_FACTOR must be between 0 and 1, so Spartan is using 0.5 for this session.",
+		})
 		cfg.AdaptiveDecreaseFactor = 0.5
 	}
 
-	// Ensure increase amount is positive
 	if cfg.AdaptiveIncreaseQPS <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] ADAPTIVE_INCREASE_QPS must be positive, using default 0.5\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-increase-invalid",
+			Severity: "warning",
+			Title:    "Adaptive increase QPS was reset",
+			Message:  "ADAPTIVE_INCREASE_QPS must be positive, so Spartan is using 0.5 for this session.",
+		})
 		cfg.AdaptiveIncreaseQPS = 0.5
 	}
 
-	// Ensure success threshold is positive
 	if cfg.AdaptiveSuccessThreshold <= 0 {
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-success-threshold-invalid",
+			Severity: "warning",
+			Title:    "Adaptive success threshold was reset",
+			Message:  "ADAPTIVE_SUCCESS_THRESHOLD must be positive, so Spartan is using 5 for this session.",
+		})
 		cfg.AdaptiveSuccessThreshold = 5
 	}
 
-	// Ensure cooldown is non-negative
 	if cfg.AdaptiveCooldownMs < 0 {
+		recordStartupNotice(StartupNotice{
+			ID:       "adaptive-cooldown-invalid",
+			Severity: "warning",
+			Title:    "Adaptive cooldown was reset",
+			Message:  "ADAPTIVE_COOLDOWN_MS must be non-negative, so Spartan is using 1000ms for this session.",
+		})
 		cfg.AdaptiveCooldownMs = 1000
 	}
 
@@ -373,36 +466,63 @@ func validateAndFixAdaptiveConfig(cfg Config) Config {
 }
 
 // validateAndFixRetentionConfig ensures retention configuration invariants.
-// It logs warnings and applies sensible defaults for invalid configurations.
+// It records operator-visible notices and applies sensible defaults for invalid configurations.
 func validateAndFixRetentionConfig(cfg Config) Config {
-	// Ensure non-negative values
 	if cfg.RetentionJobDays < 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_JOB_DAYS must be non-negative, using 0 (unlimited)\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retention-job-days-invalid",
+			Severity: "warning",
+			Title:    "Job retention age was reset",
+			Message:  "RETENTION_JOB_DAYS must be non-negative, so Spartan is using unlimited retention for this session.",
+		})
 		cfg.RetentionJobDays = 0
 	}
 	if cfg.RetentionCrawlStateDays < 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_CRAWL_STATE_DAYS must be non-negative, using 0 (unlimited)\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retention-crawl-days-invalid",
+			Severity: "warning",
+			Title:    "Crawl-state retention age was reset",
+			Message:  "RETENTION_CRAWL_STATE_DAYS must be non-negative, so Spartan is using unlimited retention for this session.",
+		})
 		cfg.RetentionCrawlStateDays = 0
 	}
 	if cfg.RetentionMaxJobs < 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_MAX_JOBS must be non-negative, using 0 (unlimited)\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retention-max-jobs-invalid",
+			Severity: "warning",
+			Title:    "Retention max jobs was reset",
+			Message:  "RETENTION_MAX_JOBS must be non-negative, so Spartan is using unlimited jobs for this session.",
+		})
 		cfg.RetentionMaxJobs = 0
 	}
 	if cfg.RetentionMaxStorageGB < 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_MAX_STORAGE_GB must be non-negative, using 0 (unlimited)\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retention-max-storage-invalid",
+			Severity: "warning",
+			Title:    "Retention max storage was reset",
+			Message:  "RETENTION_MAX_STORAGE_GB must be non-negative, so Spartan is using unlimited storage for this session.",
+		})
 		cfg.RetentionMaxStorageGB = 0
 	}
 	if cfg.RetentionCleanupIntervalHours <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETENTION_CLEANUP_INTERVAL_HOURS must be positive, using default 24\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retention-cleanup-interval-invalid",
+			Severity: "warning",
+			Title:    "Retention cleanup interval was reset",
+			Message:  "RETENTION_CLEANUP_INTERVAL_HOURS must be positive, so Spartan is using 24 hours for this session.",
+		})
 		cfg.RetentionCleanupIntervalHours = 24
 	}
 
-	// Log warning if retention is disabled but custom limits are explicitly set.
-	// Defaults in code are intentionally non-zero and should not warn on first run.
 	if !cfg.RetentionEnabled {
 		hasLimits := cfg.RetentionJobDays > 0 || cfg.RetentionMaxJobs > 0 || cfg.RetentionMaxStorageGB > 0
 		if hasLimits && hasExplicitRetentionLimitOverrides() {
-			fmt.Fprintf(os.Stderr, "[WARN] Retention limits are set but RETENTION_ENABLED is false; cleanup will not run automatically\n")
+			recordStartupNotice(StartupNotice{
+				ID:       "retention-disabled-with-limits",
+				Severity: "warning",
+				Title:    "Retention limits are configured but inactive",
+				Message:  "Retention limits are set while RETENTION_ENABLED is false, so automatic cleanup will not run until retention is enabled.",
+			})
 		}
 	}
 
@@ -410,27 +530,46 @@ func validateAndFixRetentionConfig(cfg Config) Config {
 }
 
 // validateAndFixCircuitBreakerConfig ensures circuit breaker configuration invariants.
-// It logs warnings and applies sensible defaults for invalid configurations.
+// It records operator-visible notices and applies sensible defaults for invalid configurations.
 func validateAndFixCircuitBreakerConfig(cfg Config) Config {
 	if !cfg.CircuitBreakerEnabled {
 		return cfg
 	}
 
-	// Ensure positive thresholds
 	if cfg.CircuitBreakerFailureThreshold <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_FAILURE_THRESHOLD must be positive, using default 5\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "circuit-breaker-failure-threshold-invalid",
+			Severity: "warning",
+			Title:    "Circuit-breaker failure threshold was reset",
+			Message:  "CIRCUIT_BREAKER_FAILURE_THRESHOLD must be positive, so Spartan is using 5 for this session.",
+		})
 		cfg.CircuitBreakerFailureThreshold = 5
 	}
 	if cfg.CircuitBreakerSuccessThreshold <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_SUCCESS_THRESHOLD must be positive, using default 3\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "circuit-breaker-success-threshold-invalid",
+			Severity: "warning",
+			Title:    "Circuit-breaker success threshold was reset",
+			Message:  "CIRCUIT_BREAKER_SUCCESS_THRESHOLD must be positive, so Spartan is using 3 for this session.",
+		})
 		cfg.CircuitBreakerSuccessThreshold = 3
 	}
 	if cfg.CircuitBreakerResetTimeoutSecs <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS must be positive, using default 30\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "circuit-breaker-reset-timeout-invalid",
+			Severity: "warning",
+			Title:    "Circuit-breaker reset timeout was reset",
+			Message:  "CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS must be positive, so Spartan is using 30 seconds for this session.",
+		})
 		cfg.CircuitBreakerResetTimeoutSecs = 30
 	}
 	if cfg.CircuitBreakerHalfOpenMaxRequests <= 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] CIRCUIT_BREAKER_HALF_OPEN_MAX_REQUESTS must be positive, using default 3\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "circuit-breaker-half-open-invalid",
+			Severity: "warning",
+			Title:    "Circuit-breaker half-open limit was reset",
+			Message:  "CIRCUIT_BREAKER_HALF_OPEN_MAX_REQUESTS must be positive, so Spartan is using 3 for this session.",
+		})
 		cfg.CircuitBreakerHalfOpenMaxRequests = 3
 	}
 
@@ -438,15 +577,18 @@ func validateAndFixCircuitBreakerConfig(cfg Config) Config {
 }
 
 // validateAndFixRetryConfig ensures retry configuration invariants.
-// It logs warnings and applies sensible defaults for invalid configurations.
+// It records operator-visible notices and applies sensible defaults for invalid configurations.
 func validateAndFixRetryConfig(cfg Config) Config {
-	// Validate retry max delay
 	if cfg.RetryMaxDelaySecs < 0 {
-		fmt.Fprintf(os.Stderr, "[WARN] RETRY_MAX_DELAY_SECONDS must be non-negative, using default 60\n")
+		recordStartupNotice(StartupNotice{
+			ID:       "retry-max-delay-invalid",
+			Severity: "warning",
+			Title:    "Retry max delay was reset",
+			Message:  "RETRY_MAX_DELAY_SECONDS must be non-negative, so Spartan is using 60 seconds for this session.",
+		})
 		cfg.RetryMaxDelaySecs = 60
 	}
 
-	// Validate backoff strategy
 	validStrategies := map[string]bool{
 		"exponential":        true,
 		"exponential_jitter": true,
@@ -458,11 +600,15 @@ func validateAndFixRetryConfig(cfg Config) Config {
 
 	strategyLower := strings.ToLower(cfg.RetryBackoffStrategy)
 	if cfg.RetryBackoffStrategy != "" && !validStrategies[strategyLower] {
-		fmt.Fprintf(os.Stderr, "[WARN] Invalid RETRY_BACKOFF_STRATEGY: %q, using default 'exponential_jitter'\n", cfg.RetryBackoffStrategy)
+		recordStartupNotice(StartupNotice{
+			ID:       "retry-backoff-strategy-invalid",
+			Severity: "warning",
+			Title:    "Retry backoff strategy was reset",
+			Message:  fmt.Sprintf("RETRY_BACKOFF_STRATEGY %q is unsupported, so Spartan is using exponential_jitter for this session.", cfg.RetryBackoffStrategy),
+		})
 		cfg.RetryBackoffStrategy = "exponential_jitter"
 	}
 
-	// Normalize to canonical form
 	if strategyLower == "exponential-jitter" || strategyLower == "exponentialjitter" {
 		cfg.RetryBackoffStrategy = "exponential_jitter"
 	}
@@ -564,6 +710,15 @@ func normalizeAuthKeySuffix(raw string) string {
 	return name
 }
 
+func recordInvalidEnvValue(key, value, fallback string) {
+	recordStartupNotice(StartupNotice{
+		ID:       fmt.Sprintf("invalid-env-%s", strings.ToLower(strings.ReplaceAll(key, "_", "-"))),
+		Severity: "warning",
+		Title:    fmt.Sprintf("%s used a fallback value", key),
+		Message:  fmt.Sprintf("%s=%q is invalid, so Spartan is using %s for this session.", key, value, fallback),
+	})
+}
+
 func getenv(key, fallback string) string {
 	value, ok := lookupEnvNormalized(key)
 	if !ok || value == "" {
@@ -615,7 +770,7 @@ func getenvInt(key string, fallback int) int {
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %d)\n", key, value, fallback)
+		recordInvalidEnvValue(key, value, strconv.Itoa(fallback))
 		return fallback
 	}
 	return parsed
@@ -628,7 +783,7 @@ func getenvInt64(key string, fallback int64) int64 {
 	}
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %d)\n", key, value, fallback)
+		recordInvalidEnvValue(key, value, strconv.FormatInt(fallback, 10))
 		return fallback
 	}
 	return parsed
@@ -645,7 +800,7 @@ func getenvBool(key string, fallback bool) bool {
 	case "0", "false", "no", "n":
 		return false
 	default:
-		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %t)\n", key, value, fallback)
+		recordInvalidEnvValue(key, value, strconv.FormatBool(fallback))
 		return fallback
 	}
 }
@@ -657,14 +812,14 @@ func getenvFloat64(key string, fallback float64) float64 {
 	}
 	parsed, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] Invalid value for %s: %q (using default: %f)\n", key, value, fallback)
+		recordInvalidEnvValue(key, value, strconv.FormatFloat(fallback, 'f', -1, 64))
 		return fallback
 	}
 	return parsed
 }
 
 // validateAndFixAIConfig ensures AI configuration invariants.
-// It logs warnings and applies sensible defaults for invalid configurations.
+// It records operator-visible notices and applies sensible defaults for invalid configurations.
 func validateAndFixAIConfig(cfg Config) Config {
 	ai := AIConfig{
 		Enabled:            getenvBool("PI_ENABLED", false),
@@ -678,20 +833,40 @@ func validateAndFixAIConfig(cfg Config) Config {
 	}
 
 	if ai.StartupTimeoutSecs < 1 {
-		fmt.Fprintf(os.Stderr, "[WARN] PI_STARTUP_TIMEOUT_SECONDS too low (%d), using minimum 1\n", ai.StartupTimeoutSecs)
+		recordStartupNotice(StartupNotice{
+			ID:       "pi-startup-timeout-too-low",
+			Severity: "warning",
+			Title:    "AI startup timeout was raised",
+			Message:  fmt.Sprintf("PI_STARTUP_TIMEOUT_SECONDS was %d, so Spartan raised it to the minimum 1 second.", ai.StartupTimeoutSecs),
+		})
 		ai.StartupTimeoutSecs = 1
 	}
 	if ai.StartupTimeoutSecs > 60 {
-		fmt.Fprintf(os.Stderr, "[WARN] PI_STARTUP_TIMEOUT_SECONDS too high (%d), using maximum 60\n", ai.StartupTimeoutSecs)
+		recordStartupNotice(StartupNotice{
+			ID:       "pi-startup-timeout-too-high",
+			Severity: "warning",
+			Title:    "AI startup timeout was capped",
+			Message:  fmt.Sprintf("PI_STARTUP_TIMEOUT_SECONDS was %d, so Spartan capped it at 60 seconds.", ai.StartupTimeoutSecs),
+		})
 		ai.StartupTimeoutSecs = 60
 	}
 
 	if ai.RequestTimeoutSecs < 5 {
-		fmt.Fprintf(os.Stderr, "[WARN] PI_REQUEST_TIMEOUT_SECONDS too low (%d), using minimum 5\n", ai.RequestTimeoutSecs)
+		recordStartupNotice(StartupNotice{
+			ID:       "pi-request-timeout-too-low",
+			Severity: "warning",
+			Title:    "AI request timeout was raised",
+			Message:  fmt.Sprintf("PI_REQUEST_TIMEOUT_SECONDS was %d, so Spartan raised it to the minimum 5 seconds.", ai.RequestTimeoutSecs),
+		})
 		ai.RequestTimeoutSecs = 5
 	}
 	if ai.RequestTimeoutSecs > 300 {
-		fmt.Fprintf(os.Stderr, "[WARN] PI_REQUEST_TIMEOUT_SECONDS too high (%d), using maximum 300\n", ai.RequestTimeoutSecs)
+		recordStartupNotice(StartupNotice{
+			ID:       "pi-request-timeout-too-high",
+			Severity: "warning",
+			Title:    "AI request timeout was capped",
+			Message:  fmt.Sprintf("PI_REQUEST_TIMEOUT_SECONDS was %d, so Spartan capped it at 300 seconds.", ai.RequestTimeoutSecs),
+		})
 		ai.RequestTimeoutSecs = 300
 	}
 
@@ -708,7 +883,12 @@ func validateAndFixAIConfig(cfg Config) Config {
 	if ai.Enabled && ai.ConfigPath != "" {
 		loaded, err := loadAIRoutingConfig(ai.ConfigPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[WARN] invalid PI_CONFIG_PATH %q: %v; AI features disabled\n", ai.ConfigPath, err)
+			recordStartupNotice(StartupNotice{
+				ID:       "pi-config-path-invalid",
+				Severity: "warning",
+				Title:    "AI routing config could not be loaded",
+				Message:  fmt.Sprintf("PI_CONFIG_PATH %q could not be loaded (%v), so AI features were disabled for this session.", ai.ConfigPath, err),
+			})
 			ai.Enabled = false
 		} else {
 			if loaded.Mode != "" {

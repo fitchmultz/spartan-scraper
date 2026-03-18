@@ -1,10 +1,9 @@
 /**
- * WebSocket Hook
- *
- * Custom React hook for managing WebSocket connections with auto-reconnect.
- * Handles connection lifecycle, message handling, and graceful degradation.
- *
- * @module useWebSocket
+ * Purpose: Manage a resilient WebSocket connection for real-time web app updates.
+ * Responsibilities: Handle connect/disconnect lifecycle, auto-reconnect, heartbeat messages, and callback delivery for parsed server messages.
+ * Scope: Browser-side WebSocket transport only; state derivation and UI responses live in consuming hooks/components.
+ * Usage: Call `useWebSocket()` from client-side hooks such as `useAppData` and pass the target URL plus callbacks.
+ * Invariants/Assumptions: Only one live socket is owned per hook instance, manual disconnects suppress reconnect loops, and disabled connections should fully tear down without stale event noise.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +22,7 @@ export interface WSMessage {
 
 export interface UseWebSocketOptions {
   url: string;
+  enabled?: boolean;
   onMessage?: (msg: WSMessage) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -55,6 +55,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const {
     url,
+    enabled = true,
     onMessage,
     onConnect,
     onDisconnect,
@@ -239,6 +240,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   ]);
 
   useEffect(() => {
+    if (!enabled) {
+      disconnect();
+      return;
+    }
+
     initialConnectTimeoutRef.current = window.setTimeout(() => {
       initialConnectTimeoutRef.current = null;
       connect();
@@ -258,6 +264,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     };
   }, [
     connect,
+    disconnect,
+    enabled,
     clearInitialConnectTimeout,
     clearReconnectTimeout,
     clearHeartbeatInterval,

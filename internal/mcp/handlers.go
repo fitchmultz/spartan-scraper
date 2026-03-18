@@ -105,7 +105,19 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 	}
 
+	if s.setup != nil && params.Name != "health_status" && params.Name != "diagnostic_check" {
+		return nil, apperrors.Permission("setup mode only exposes diagnostics until recovery is completed")
+	}
+
 	switch params.Name {
+	case "health_status":
+		return s.buildHealthStatus(ctx), nil
+	case "diagnostic_check":
+		component := api.NormalizeDiagnosticTarget(strings.TrimSpace(paramdecode.String(params.Arguments, "component")))
+		if component == "" {
+			return nil, apperrors.Validation("component is required and must be one of browser, ai, or proxy_pool")
+		}
+		return s.runDiagnostic(ctx, component), nil
 	case "ai_extract_preview":
 		mode := extract.AIExtractionMode(strings.TrimSpace(paramdecode.String(params.Arguments, "mode")))
 		if mode == "" {

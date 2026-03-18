@@ -310,6 +310,35 @@ func TestLoad_AllowsEmptyProxyPoolFileOverride(t *testing.T) {
 	}
 }
 
+func TestLoad_CollectsStartupNotices(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("RETENTION_ENABLED", "false")
+	t.Setenv("RETENTION_MAX_JOBS", "250")
+	t.Setenv("ADAPTIVE_RATE_LIMIT", "true")
+	t.Setenv("ADAPTIVE_MIN_QPS", "not-a-number")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if len(cfg.StartupNotices) == 0 {
+		t.Fatal("expected startup notices to be collected")
+	}
+
+	ids := make(map[string]bool, len(cfg.StartupNotices))
+	for _, notice := range cfg.StartupNotices {
+		ids[notice.ID] = true
+	}
+	if !ids["invalid-env-adaptive-min-qps"] {
+		t.Fatalf("expected invalid adaptive env notice, got %#v", cfg.StartupNotices)
+	}
+	if !ids["retention-disabled-with-limits"] {
+		t.Fatalf("expected retention warning notice, got %#v", cfg.StartupNotices)
+	}
+}
+
 func TestConfig_ConcurrentReadIsSafe(t *testing.T) {
 	// This test is primarily validated by running with the race detector:
 	//   go test -race ./...

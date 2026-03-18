@@ -13,13 +13,56 @@
 DATA_DIR=.data spartan server
 ```
 
-If startup blocks on a legacy `.data` directory, run:
+## Canonical Diagnostics Workflow
+
+Use the same recovery model everywhere:
+
+```bash
+spartan health
+spartan health --check browser
+spartan health --check ai
+spartan health --check proxy_pool
+```
+
+- `spartan health` shows structured setup, runtime, component, and config notices.
+- `spartan health --check ...` runs the same read-only re-checks surfaced by the Web UI.
+- If the API server is already running, the CLI reads `/healthz` and the diagnostic endpoints directly.
+- If the API server is offline, the CLI falls back to local checks instead of hiding recovery guidance.
+
+## Setup Recovery
+
+If startup blocks on legacy or unsupported persisted state, Spartan now stays in setup mode and keeps diagnostics available.
+
+Canonical recovery path:
 
 ```bash
 spartan reset-data
+spartan server
 ```
 
-That archives the current data directory to `output/cutover/` and recreates `.data` for a fresh Balanced 1.0 start.
+That archives the current data directory to `output/cutover/` and recreates `DATA_DIR` for a fresh Balanced 1.0 store.
+
+Alternative path:
+
+```bash
+DATA_DIR=/path/to/new-empty-dir spartan server
+```
+
+## MCP Diagnostics
+
+`spartan mcp` now exposes diagnostics parity as well:
+
+- `health_status`
+- `diagnostic_check` with `component: browser | ai | proxy_pool`
+
+In setup mode, MCP still starts but only exposes those diagnostics tools until recovery is completed.
+
+Smoke examples:
+
+```bash
+printf '%s\n' '{"id":1,"method":"tools/call","params":{"name":"health_status","arguments":{}}}' | spartan mcp
+printf '%s\n' '{"id":2,"method":"tools/call","params":{"name":"diagnostic_check","arguments":{"component":"browser"}}}' | spartan mcp
+```
 
 ## Runtime Expectations
 

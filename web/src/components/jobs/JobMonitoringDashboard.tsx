@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ActionEmptyState } from "../ActionEmptyState";
 import type { ManagerStatus } from "../../hooks/useAppData";
 import {
   buildJobMonitoringDashboardModel,
@@ -106,6 +107,9 @@ export interface JobMonitoringDashboardProps {
   onCancel: (jobId: string) => void;
   onDelete: (jobId: string) => void;
   onRefresh: () => void;
+  onCreateJob: () => void;
+  onOpenTemplates: () => void;
+  onOpenAutomation: () => void;
   currentPage: number;
   totalJobs: number;
   jobsPerPage: number;
@@ -125,6 +129,9 @@ export function JobMonitoringDashboard({
   onCancel,
   onDelete,
   onRefresh,
+  onCreateJob,
+  onOpenTemplates,
+  onOpenAutomation,
   currentPage,
   totalJobs,
   jobsPerPage,
@@ -225,6 +232,34 @@ export function JobMonitoringDashboard({
       : connectionState === "reconnecting" || connectionState === "polling"
         ? "job-summary-card--active"
         : "job-summary-card--attention";
+
+  if (!loading && !error && totalJobs === 0 && statusFilter === "") {
+    return (
+      <section
+        className="panel job-monitoring-dashboard"
+        data-tour="jobs-dashboard"
+      >
+        <ActionEmptyState
+          eyebrow="Fresh workspace"
+          title="No jobs yet"
+          description="Create a scrape, crawl, or research run to populate the dashboard. Queue state, failures, and completed results will all appear here."
+          actions={[
+            { label: "Create first job", onClick: onCreateJob },
+            {
+              label: "Browse templates",
+              onClick: onOpenTemplates,
+              tone: "secondary",
+            },
+            {
+              label: "Open automation",
+              onClick: onOpenAutomation,
+              tone: "secondary",
+            },
+          ]}
+        />
+      </section>
+    );
+  }
 
   return (
     <section

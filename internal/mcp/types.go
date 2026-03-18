@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"github.com/fitchmultz/spartan-scraper/internal/aiauthoring"
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -28,6 +30,8 @@ type Server struct {
 	store       *store.Store
 	manager     *jobs.Manager
 	cfg         config.Config
+	setup       *api.SetupStatus
+	aiExtractor *extract.AIExtractor
 	aiAuthoring *aiauthoring.Service
 	ctx         context.Context
 	cancel      context.CancelFunc

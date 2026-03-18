@@ -3,12 +3,16 @@
  * Responsibilities: Show route guidance, relevant shortcuts, and discoverability actions that operators can reopen at any time.
  * Scope: Route help presentation only.
  * Usage: Render below each `RouteHeader` in `App.tsx` with the current route key and keyboard shortcut config.
- * Invariants/Assumptions: The panel must stay manually accessible after first visit, and default expansion should reflect route-visit context supplied by the parent.
+ * Invariants/Assumptions: The panel must stay manually accessible after first visit, default expansion should reflect route-visit context supplied by the parent, and next actions stay route-specific.
  */
 
 import { useEffect, useState } from "react";
 import type { ShortcutConfig } from "../hooks/useKeyboard";
-import { ROUTE_HELP_CONTENT, type OnboardingRouteKey } from "../lib/onboarding";
+import {
+  ROUTE_HELP_CONTENT,
+  type OnboardingRouteKey,
+  type RouteHelpAction,
+} from "../lib/onboarding";
 import { ShortcutHint } from "./ShortcutHint";
 
 interface RouteHelpPanelProps {
@@ -19,6 +23,7 @@ interface RouteHelpPanelProps {
   onOpenCommandPalette: () => void;
   onOpenShortcuts: () => void;
   onRestartTour: () => void;
+  onAction: (actionId: RouteHelpAction["id"]) => void;
 }
 
 export function RouteHelpPanel({
@@ -29,6 +34,7 @@ export function RouteHelpPanel({
   onOpenCommandPalette,
   onOpenShortcuts,
   onRestartTour,
+  onAction,
 }: RouteHelpPanelProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const content = ROUTE_HELP_CONTENT[routeKey];
@@ -87,24 +93,41 @@ export function RouteHelpPanel({
             </div>
           </div>
 
-          <div className="route-help__actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={onOpenCommandPalette}
-            >
-              Open command palette
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={onOpenShortcuts}
-            >
-              Open shortcut help
-            </button>
-            <button type="button" className="secondary" onClick={onRestartTour}>
-              Restart full tour
-            </button>
+          <div className="route-help__section">
+            <h3>Next actions</h3>
+            <div className="route-help__actions">
+              {content.nextActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="secondary"
+                  onClick={() => onAction(action.id)}
+                >
+                  {action.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="secondary"
+                onClick={onOpenCommandPalette}
+              >
+                Open command palette
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={onOpenShortcuts}
+              >
+                Open shortcut help
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={onRestartTour}
+              >
+                Restart full tour
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

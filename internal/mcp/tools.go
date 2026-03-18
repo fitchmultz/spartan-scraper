@@ -23,7 +23,22 @@ import (
 )
 
 func (s *Server) toolsList() []tool {
-	return []tool{
+	diagnostics := []tool{
+		{
+			Name:        "health_status",
+			Description: "Return the same structured setup/runtime health payload used by /healthz",
+			InputSchema: schema(nil, nil),
+		},
+		{
+			Name:        "diagnostic_check",
+			Description: "Run a read-only browser, ai, or proxy_pool diagnostic re-check and return follow-up actions",
+			InputSchema: schema(map[string]string{"component": "string"}, nil),
+		},
+	}
+	if s.setup != nil {
+		return diagnostics
+	}
+	return append(diagnostics, []tool{
 		{
 			Name:        "ai_extract_preview",
 			Description: "Preview AI-powered extraction against fetched or pasted HTML without creating a job",
@@ -224,7 +239,7 @@ func (s *Server) toolsList() []tool {
 			Description: "Inspect the currently loaded proxy pool strategy and per-proxy health/runtime stats",
 			InputSchema: schema(nil, nil),
 		},
-	}
+	}...)
 }
 
 func schema(required map[string]string, optional map[string]string) map[string]interface{} {

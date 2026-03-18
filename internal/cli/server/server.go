@@ -1,11 +1,26 @@
 // Package server contains long-running CLI services (server/mcp/health/tui).
 //
-// It does NOT define API routes or scheduler logic; internal/api and internal/scheduler do.
+// Purpose:
+// - Start and stop the local HTTP server entrypoint for Spartan.
+//
+// Responsibilities:
+// - Perform startup preflight checks.
+// - Boot either the normal API runtime or guided setup mode.
+// - Own HTTP listener lifecycle and graceful shutdown behavior.
+//
+// Scope:
+// - Server process orchestration only; route handling and scheduler internals live in sibling packages.
+//
+// Usage:
+// - Invoked from `spartan server` after configuration is loaded.
+//
+// Invariants/Assumptions:
+// - Setup-mode startup should still bind the server so diagnostics stay visible in-product.
+// - Graceful shutdown should stop HTTP handling before waiting on background workers.
 package server
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -35,14 +50,17 @@ Notes:
 	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	preflightMessage, err := startupPreflightMessage(cfg, currentCommandName())
+	setupStatus, err := inspectStartupPreflight(cfg, currentCommandName())
 	if err != nil {
 		slog.Error("failed to inspect data directory", "error", err)
 		return 1
 	}
-	if preflightMessage != "" {
-		_, _ = fmt.Fprintln(os.Stderr, preflightMessage)
-		return 1
+	if setupStatus != nil {
+		slog.Warn("startup requires operator action; serving setup mode",
+			"code", setupStatus.Code,
+			"dataDir", setupStatus.DataDir,
+		)
+		return serveAPIServer(serverCtx, stop, cfg, api.NewSetupServer(cfg, *setupStatus), "Spartan setup mode listening")
 	}
 
 	st, err := store.Open(cfg.DataDir)
@@ -80,10 +98,14 @@ Notes:
 		}
 	}()
 
+	return serveAPIServer(serverCtx, stop, cfg, apiServer, "Spartan server listening")
+}
+
+func serveAPIServer(serverCtx context.Context, stop context.CancelFunc, cfg config.Config, apiServer *api.Server, listenMessage string) int {
 	httpServer := newHTTPServer(cfg, apiServer.Routes())
 
 	go func() {
-		slog.Info("Spartan server listening", "addr", httpServer.Addr)
+		slog.Info(listenMessage, "addr", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 			stop()
@@ -103,10 +125,15 @@ Notes:
 	slog.Info("stopping analytics collector...")
 	apiServer.Stop()
 
+	if apiServer.Manager() == nil {
+		slog.Info("shutdown complete")
+		return 0
+	}
+
 	slog.Info("waiting for job workers to finish...")
 	waitCh := make(chan struct{})
 	go func() {
-		manager.Wait()
+		apiServer.Manager().Wait()
 		close(waitCh)
 	}()
 
