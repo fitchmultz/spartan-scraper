@@ -61,6 +61,7 @@ func (s *Server) handleRetentionStatus(w http.ResponseWriter, r *http.Request) {
 		JobsEligible:     status.JobsEligible,
 		StorageUsedMB:    status.StorageUsedMB,
 	}
+	resp.Guidance = BuildRetentionCapabilityGuidance(resp)
 
 	writeJSON(w, resp)
 }

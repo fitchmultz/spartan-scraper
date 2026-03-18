@@ -1,4 +1,22 @@
 // Package manage contains proxy-pool inspection CLI wiring.
+//
+// Purpose:
+// - Present proxy-pool status with capability-aware guidance in the CLI.
+//
+// Responsibilities:
+// - Fetch proxy-pool status from the local server when available, or inspect local runtime state as a fallback.
+// - Explain whether proxy pooling is disabled, degraded, or ready before dumping low-level pool details.
+// - Keep operator-facing recovery actions aligned with shared health diagnostics.
+//
+// Scope:
+// - Proxy-pool CLI status rendering only.
+//
+// Usage:
+// - Called by `spartan proxy-pool status`.
+//
+// Invariants/Assumptions:
+// - Missing proxy-pool configuration is a valid optional state.
+// - Detailed proxy stats are helpful only after the capability state is clear.
 package manage
 
 import (
@@ -65,7 +83,6 @@ func runProxyPoolStatus(ctx context.Context, cfg config.Config, args []string) i
 	defer st.Close()
 
 	managerCtx, cancel := context.WithCancel(ctx)
-
 	manager, err := common.InitJobManager(managerCtx, cfg, st)
 	if err != nil {
 		cancel()
@@ -106,7 +123,19 @@ func printProxyPoolStatus(status api.ProxyPoolStatusResponse, fromServer bool, c
 	if fromServer {
 		source = "running server"
 	}
+
+	component := api.BuildProxyPoolComponentStatus(
+		config.Config{ProxyPoolFile: configPath},
+		proxyPoolRuntimeStateFromStatus(status),
+	)
+
 	fmt.Printf("Proxy Pool Status (%s)\n", source)
+	fmt.Printf("Capability: %s\n", strings.ToUpper(strings.ReplaceAll(component.Status, "_", " ")))
+	if message := strings.TrimSpace(component.Message); message != "" {
+		fmt.Printf("%s\n", message)
+	}
+	renderRecommendedActions(component.Actions, "spartan")
+	fmt.Println()
 	fmt.Printf("  Config Path:      %s\n", displayOr(configPath, "disabled"))
 	fmt.Printf("  Strategy:         %s\n", status.Strategy)
 	fmt.Printf("  Total Proxies:    %d\n", status.TotalProxies)
@@ -131,6 +160,31 @@ func printProxyPoolStatus(status api.ProxyPoolStatusResponse, fromServer bool, c
 		fmt.Printf("      Success Rate:      %.2f%%\n", proxy.SuccessRate)
 		fmt.Printf("      Avg Latency (ms):  %d\n", proxy.AvgLatencyMs)
 		fmt.Printf("      Consecutive Fails: %d\n", proxy.ConsecutiveFails)
+	}
+}
+
+func proxyPoolRuntimeStateFromStatus(status api.ProxyPoolStatusResponse) api.ProxyPoolRuntimeState {
+	if status.TotalProxies > 0 {
+		return api.ProxyPoolRuntimeLoaded
+	}
+	return api.ProxyPoolRuntimeUnloaded
+}
+
+func renderRecommendedActions(actions []api.RecommendedAction, commandName string) {
+	translated := api.CLIRecommendedActions(actions, commandName)
+	for _, action := range translated {
+		label := strings.TrimSpace(action.Label)
+		value := strings.TrimSpace(action.Value)
+		switch {
+		case label == "" && value == "":
+			continue
+		case value == "":
+			fmt.Printf("Next step: %s\n", label)
+		case label == "":
+			fmt.Printf("Next step: %s\n", value)
+		default:
+			fmt.Printf("Next step: %s: %s\n", label, value)
+		}
 	}
 }
 

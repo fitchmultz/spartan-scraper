@@ -6277,6 +6277,26 @@ components:
           description: Human-readable error message
       required:
       - error
+    CapabilityGuidance:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - disabled
+          - warning
+          - danger
+          - ok
+        title:
+          type: string
+        message:
+          type: string
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+      required:
+      - status
     RetentionStatusResponse:
       type: object
       properties:
@@ -6307,6 +6327,8 @@ components:
           type: integer
           format: int64
           description: Current storage usage in MB
+        guidance:
+          "$ref": "#/components/schemas/CapabilityGuidance"
       required:
       - enabled
       - jobRetentionDays

@@ -64,7 +64,7 @@ func TestProxyPoolRecoveryActionsIncludeDisableOverride(t *testing.T) {
 	actions := proxyPoolRecoveryActions(".data/proxy_pool.json")
 
 	for _, action := range actions {
-		if action.Kind == ActionKindCopy && action.Value == "PROXY_POOL_FILE=" {
+		if action.Kind == ActionKindEnv && action.Value == "PROXY_POOL_FILE=" {
 			return
 		}
 	}
@@ -73,20 +73,43 @@ func TestProxyPoolRecoveryActionsIncludeDisableOverride(t *testing.T) {
 }
 
 func TestActionTranslationsUseSurfaceNativeCommands(t *testing.T) {
-	actions := []RecommendedAction{{
-		Label: "Re-check browser tooling",
-		Kind:  ActionKindOneClick,
-		Value: DiagnosticActionPath(DiagnosticTargetBrowser),
-	}}
+	actions := []RecommendedAction{
+		{
+			Label: "Re-check browser tooling",
+			Kind:  ActionKindOneClick,
+			Value: DiagnosticActionPath(DiagnosticTargetBrowser),
+		},
+		{
+			Label: "Enable retention in the environment",
+			Kind:  ActionKindEnv,
+			Value: "RETENTION_ENABLED=true",
+		},
+	}
 
 	cli := CLIRecommendedActions(actions, "spartan")
-	if len(cli) != 1 || cli[0].Kind != ActionKindCommand || cli[0].Value != "spartan health --check browser" {
+	if len(cli) != 2 || cli[0].Kind != ActionKindCommand || cli[0].Value != "spartan health --check browser" {
 		t.Fatalf("unexpected CLI actions %#v", cli)
+	}
+	if cli[1] != actions[1] {
+		t.Fatalf("expected non one-click action to stay unchanged, got %#v", cli[1])
 	}
 
 	mcp := MCPRecommendedActions(actions)
-	if len(mcp) != 1 || mcp[0].Kind != ActionKindCommand || mcp[0].Value != "diagnostic_check component=browser" {
+	if len(mcp) != 2 || mcp[0].Kind != ActionKindCommand || mcp[0].Value != "diagnostic_check component=browser" {
 		t.Fatalf("unexpected MCP actions %#v", mcp)
+	}
+	if mcp[1] != actions[1] {
+		t.Fatalf("expected non one-click action to stay unchanged, got %#v", mcp[1])
+	}
+}
+
+func TestBuildProxyPoolComponentStatusDisabledIncludesActions(t *testing.T) {
+	component := BuildProxyPoolComponentStatus(config.Config{}, ProxyPoolRuntimeUnavailable)
+	if component.Status != "disabled" {
+		t.Fatalf("status = %q, want disabled", component.Status)
+	}
+	if len(component.Actions) == 0 {
+		t.Fatal("expected disabled proxy-pool guidance actions")
 	}
 }
 

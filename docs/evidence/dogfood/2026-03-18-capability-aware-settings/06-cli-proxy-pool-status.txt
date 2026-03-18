@@ -1,0 +1,16 @@
+Proxy Pool Status (running server)
+Capability: DEGRADED
+Configured proxy pool file .data/proxy_pool.json is missing or unreadable: stat .data/proxy_pool.json: no such file or directory
+Next step: Re-check proxy pool configuration: spartan health --check proxy_pool
+Next step: Disable proxy pool intentionally: PROXY_POOL_FILE=
+Next step: Inspect configured proxy pool file: ls -l ".data/proxy_pool.json"
+Next step: Expected proxy pool file: .data/proxy_pool.json
+
+  Config Path:      .data/proxy_pool.json
+  Strategy:         none
+  Total Proxies:    0
+  Healthy Proxies:  0
+  Regions:          n/a
+  Tags:             n/a
+
+No proxy pool is currently loaded.

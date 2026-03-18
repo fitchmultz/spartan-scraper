@@ -22,10 +22,13 @@ spartan health
 spartan health --check browser
 spartan health --check ai
 spartan health --check proxy_pool
+spartan proxy-pool status
+spartan retention status
 ```
 
 - `spartan health` shows structured setup, runtime, component, and config notices.
 - `spartan health --check ...` runs the same read-only re-checks surfaced by the Web UI.
+- `spartan proxy-pool status` and `spartan retention status` now lead with capability-aware guidance before the low-level runtime/config details.
 - If the API server is already running, the CLI reads `/healthz` and the diagnostic endpoints directly.
 - If the API server is offline, the CLI falls back to local checks instead of hiding recovery guidance.
 

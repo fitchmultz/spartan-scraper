@@ -1,15 +1,26 @@
 /**
- * Purpose: Render proxy-pool status and optional-subsystem guidance in Settings.
- * Responsibilities: Fetch the current proxy-pool status, summarize pool and per-proxy health, and explain the disabled state without treating it as a startup failure.
+ * Purpose: Render guided proxy-pool capability status in Settings.
+ * Responsibilities: Merge health-driven capability guidance with detailed runtime proxy-pool stats and recovery actions.
  * Scope: Proxy-pool settings presentation only.
- * Usage: Mount on the Settings route to help operators understand whether proxy pooling is configured.
- * Invariants/Assumptions: Missing proxy-pool config is a valid optional state and should remain actionable instead of alarming.
+ * Usage: Mount on the Settings route with health, navigation, and refresh helpers.
+ * Invariants/Assumptions: Proxy pooling is optional, but degraded configuration must remain actionable and self-explanatory.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { getProxyPoolStatus, type ProxyPoolStatusResponse } from "../api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  getProxyPoolStatus,
+  type HealthResponse,
+  type ProxyPoolStatusResponse,
+} from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
 import { ActionEmptyState } from "./ActionEmptyState";
+import { CapabilityActionList } from "./CapabilityActionList";
+
+interface ProxyPoolStatusPanelProps {
+  health: HealthResponse | null;
+  onNavigate: (path: string) => void;
+  onRefreshHealth: () => Promise<unknown> | undefined;
+}
 
 function formatTags(tags: string[] | undefined): string {
   if (!tags || tags.length === 0) {
@@ -18,7 +29,20 @@ function formatTags(tags: string[] | undefined): string {
   return tags.join(", ");
 }
 
-export function ProxyPoolStatusPanel() {
+function readStringDetail(details: unknown, key: string): string | null {
+  if (!details || typeof details !== "object") {
+    return null;
+  }
+
+  const value = (details as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+export function ProxyPoolStatusPanel({
+  health,
+  onNavigate,
+  onRefreshHealth,
+}: ProxyPoolStatusPanelProps) {
   const [status, setStatus] = useState<ProxyPoolStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +50,9 @@ export function ProxyPoolStatusPanel() {
   const refreshStatus = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response = await getProxyPoolStatus({
-        baseUrl: getApiBaseUrl(),
-      });
+      const response = await getProxyPoolStatus({ baseUrl: getApiBaseUrl() });
       if (response.data) {
         setStatus(response.data);
       } else if (response.error) {
@@ -46,9 +69,44 @@ export function ProxyPoolStatusPanel() {
     }
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshStatus(), Promise.resolve(onRefreshHealth())]);
+  }, [onRefreshHealth, refreshStatus]);
+
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
+
+  const proxyComponent = health?.components?.proxy_pool;
+  const capabilityStatus =
+    proxyComponent?.status ?? (status?.proxies.length ? "ok" : "disabled");
+  const configuredPath = readStringDetail(proxyComponent?.details, "path");
+  const hasLoadedProxies = (status?.proxies.length ?? 0) > 0;
+
+  const guidance = useMemo(() => {
+    switch (capabilityStatus) {
+      case "disabled":
+        return {
+          eyebrow: "Optional subsystem",
+          title: "Proxy pooling is currently off",
+          description:
+            proxyComponent?.message ??
+            "Spartan does not require a proxy pool for normal operation. Configure it only when you need pooled routing across multiple proxies.",
+        };
+      case "degraded":
+      case "error":
+      case "setup_required":
+        return {
+          eyebrow: "Recovery guidance",
+          title: "Proxy pool needs attention",
+          description:
+            proxyComponent?.message ??
+            "Spartan found proxy-pool configuration issues. Use the recovery actions below, then re-check the pool.",
+        };
+      default:
+        return null;
+    }
+  }, [capabilityStatus, proxyComponent?.message]);
 
   return (
     <section className="panel" id="proxy-pool">
@@ -64,20 +122,74 @@ export function ProxyPoolStatusPanel() {
         <div>
           <h2 style={{ marginBottom: 4 }}>Proxy Pool</h2>
           <p style={{ margin: 0, opacity: 0.8 }}>
-            Inspect the currently loaded proxy pool and per-proxy health/runtime
-            stats.
+            Understand whether pooled proxy routing is off, degraded, or ready,
+            then inspect the live pool only when it exists.
           </p>
         </div>
-        <button type="button" className="secondary" onClick={refreshStatus}>
+
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            void refreshAll();
+          }}
+        >
           Refresh
         </button>
       </div>
 
-      {error && (
+      {error ? (
         <div className="error" style={{ marginBottom: 16 }}>
           {error}
         </div>
-      )}
+      ) : null}
+
+      {guidance && !hasLoadedProxies ? (
+        <ActionEmptyState
+          eyebrow={guidance.eyebrow}
+          title={guidance.title}
+          description={guidance.description}
+          actions={[
+            {
+              label: "Refresh status",
+              onClick: () => {
+                void refreshAll();
+              },
+              tone: "secondary",
+            },
+          ]}
+        >
+          {configuredPath ? (
+            <div className="system-status__hint">
+              <strong>Configured file</strong>
+              <span>{configuredPath}</span>
+            </div>
+          ) : null}
+
+          <CapabilityActionList
+            actions={proxyComponent?.actions ?? []}
+            onNavigate={onNavigate}
+            onRefresh={refreshAll}
+          />
+        </ActionEmptyState>
+      ) : null}
+
+      {guidance && hasLoadedProxies ? (
+        <div className="retention-notice retention-notice--warning">
+          <h4 className="retention-section-title">{guidance.title}</h4>
+          <p className="retention-notice__copy">{guidance.description}</p>
+          {configuredPath ? (
+            <div className="retention-notice__detail">
+              <strong>Configured file:</strong> <code>{configuredPath}</code>
+            </div>
+          ) : null}
+          <CapabilityActionList
+            actions={proxyComponent?.actions ?? []}
+            onNavigate={onNavigate}
+            onRefresh={refreshAll}
+          />
+        </div>
+      ) : null}
 
       {loading && !status ? (
         <div>Loading proxy pool status...</div>
@@ -85,9 +197,9 @@ export function ProxyPoolStatusPanel() {
         <>
           <div className="retention-status-grid">
             <div className="retention-status-card retention-status-card--normal">
-              <div className="retention-status-card__label">Status</div>
+              <div className="retention-status-card__label">Capability</div>
               <div className="retention-status-card__value">
-                {status.total_proxies > 0 ? "Loaded" : "Disabled"}
+                {capabilityStatus.replaceAll("_", " ")}
               </div>
             </div>
             <div className="retention-status-card retention-status-card--normal">
@@ -124,7 +236,7 @@ export function ProxyPoolStatusPanel() {
             </div>
           </div>
 
-          {(status.regions.length > 0 || status.tags.length > 0) && (
+          {status.regions.length > 0 || status.tags.length > 0 ? (
             <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
               <div>
                 <strong>Available regions:</strong> {formatTags(status.regions)}
@@ -133,22 +245,9 @@ export function ProxyPoolStatusPanel() {
                 <strong>Available tags:</strong> {formatTags(status.tags)}
               </div>
             </div>
-          )}
+          ) : null}
 
-          {status.proxies.length === 0 ? (
-            <ActionEmptyState
-              eyebrow="Optional subsystem"
-              title="Proxy pooling is disabled"
-              description="Spartan does not need a proxy pool for normal startup. Configure PROXY_POOL_FILE only when you want pooled routing across multiple proxies."
-              actions={[
-                {
-                  label: "Refresh status",
-                  onClick: refreshStatus,
-                  tone: "secondary",
-                },
-              ]}
-            />
-          ) : (
+          {hasLoadedProxies ? (
             <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
               {status.proxies.map((proxy) => (
                 <div key={proxy.id} className="retention-config-card">
@@ -164,6 +263,7 @@ export function ProxyPoolStatusPanel() {
                     <h4 className="retention-section-title">{proxy.id}</h4>
                     <span>{proxy.is_healthy ? "Healthy" : "Unhealthy"}</span>
                   </div>
+
                   <div className="retention-config-grid">
                     <div className="retention-metric">
                       <span className="retention-metric__label">Region</span>
@@ -223,7 +323,7 @@ export function ProxyPoolStatusPanel() {
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
         </>
       ) : null}
     </section>

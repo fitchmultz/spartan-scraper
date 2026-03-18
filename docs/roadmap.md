@@ -15,7 +15,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Capability-aware settings follow-through — Continue replacing raw config/status panels with guided explanations and recovery actions anywhere optional subsystems still read like internal implementation details.
 - Resume export outcome inspection across API, Web UI, CLI, and MCP after the core Web operator workflows above stop imposing major usability cost.
 - Resume watch outcome and check-history inspection across the primary operator surfaces after the Automation Hub redesign clarifies where that information should live in the Web UI.
 

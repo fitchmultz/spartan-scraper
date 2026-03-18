@@ -1,0 +1,18 @@
+Retention Status
+Capability: DISABLED
+Automatic retention is disabled
+Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you understand the blast radius.
+Next step: Enable retention in the environment: RETENTION_ENABLED=true
+Next step: Preview cleanup from the CLI: spartan retention cleanup --dry-run
+
+Configuration
+  Enabled:              false
+  Job Retention Days:   30 (0 = unlimited)
+  Crawl State Days:     90 (0 = unlimited)
+  Max Jobs:             10000 (0 = unlimited)
+  Max Storage:          10 GB (0 = unlimited)
+
+Current Statistics
+  Total Jobs:           3
+  Jobs Eligible:        0
+  Storage Used:         1 MB

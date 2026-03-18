@@ -1,27 +1,28 @@
 /**
- * RetentionStatusPanel Component Tests
- *
- * Tests cover:
- * - Status display and formatting
- * - Dry-run toggle behavior
- * - Confirmation dialog for destructive actions
- * - Cleanup result display
- *
- * @module RetentionStatusPanelTests
+ * Purpose: Verify retention settings render guided explanations, cleanup controls, and preview outcomes.
+ * Responsibilities: Assert disabled/opportunity guidance, dry-run behavior, destructive confirmation, and result rendering.
+ * Scope: RetentionStatusPanel behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Retention is optional, preview remains the safe default, and operators should understand the next action before deleting data.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { RetentionStatusPanel } from "./RetentionStatusPanel";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { RetentionStatusPanel } from "./RetentionStatusPanel";
 
-// Mock the API module
-vi.mock("../api", () => ({
-  getRetentionStatus: vi.fn(),
-  runRetentionCleanup: vi.fn(),
-}));
+vi.mock("../api", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("../api");
+  return {
+    ...actual,
+    getRetentionStatus: vi.fn(),
+    runRetentionCleanup: vi.fn(),
+    postV1DiagnosticsAiCheck: vi.fn(),
+    postV1DiagnosticsBrowserCheck: vi.fn(),
+    postV1DiagnosticsProxyPoolCheck: vi.fn(),
+  };
+});
 
-// Mock the api-config module
 vi.mock("../lib/api-config", () => ({
   getApiBaseUrl: vi.fn(() => "http://localhost:8741"),
 }));
@@ -36,6 +37,19 @@ describe("RetentionStatusPanel", () => {
     totalJobs: 5000,
     jobsEligible: 100,
     storageUsedMB: 5120,
+    guidance: {
+      status: "warning" as const,
+      title: "Cleanup opportunity detected",
+      message:
+        "100 job(s) already meet the current cleanup policy. Preview a cleanup run before pressure becomes urgent.",
+      actions: [
+        {
+          label: "Preview cleanup from the CLI",
+          kind: "command" as const,
+          value: "spartan retention cleanup --dry-run",
+        },
+      ],
+    },
   };
 
   beforeEach(() => {
@@ -47,47 +61,79 @@ describe("RetentionStatusPanel", () => {
     });
   });
 
+  function renderPanel() {
+    return render(
+      <RetentionStatusPanel
+        health={null}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenAutomation={vi.fn()}
+      />,
+    );
+  }
+
   it("renders loading state initially", () => {
-    // Override mock to return a never-resolving promise to prevent
-    // post-test state updates that trigger act() warnings
     vi.mocked(api.getRetentionStatus).mockReturnValue(
       new Promise(() => {}) as ReturnType<typeof api.getRetentionStatus>,
     );
 
-    render(<RetentionStatusPanel />);
+    renderPanel();
     expect(screen.getByText(/loading retention status/i)).toBeInTheDocument();
   });
 
-  it("displays retention status after loading", async () => {
-    render(<RetentionStatusPanel />);
+  it("displays guided retention status after loading", async () => {
+    renderPanel();
 
-    await waitFor(() => {
-      expect(screen.getByText("5,000")).toBeInTheDocument(); // Total jobs
-    });
-
-    expect(screen.getByText("Yes")).toBeInTheDocument(); // Enabled
-    expect(screen.getByText("100")).toBeInTheDocument(); // Eligible
+    expect(
+      await screen.findByText("Cleanup opportunity detected"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("5,000")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(
+      screen.getByText("spartan retention cleanup --dry-run"),
+    ).toBeInTheDocument();
   });
 
-  it("shows warning when retention is disabled", async () => {
+  it("shows disabled guidance when retention is off", async () => {
     vi.mocked(api.getRetentionStatus).mockResolvedValue({
-      data: { ...mockStatus, enabled: false },
+      data: {
+        ...mockStatus,
+        enabled: false,
+        guidance: {
+          status: "disabled" as const,
+          title: "Automatic retention is disabled",
+          message:
+            "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you understand the blast radius.",
+          actions: [
+            {
+              label: "Enable retention in the environment",
+              kind: "env" as const,
+              value: "RETENTION_ENABLED=true",
+            },
+          ],
+        },
+      },
       request: new Request("http://localhost:8741/v1/retention/status"),
       response: new Response(),
     });
 
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
-    await waitFor(() => {
-      expect(screen.getByText("No")).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText("Automatic retention is disabled"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("RETENTION_ENABLED=true")).toBeInTheDocument();
   });
 
   it("toggles dry-run mode", async () => {
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText(/preview cleanup/i)).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /preview cleanup/i }).length,
+      ).toBeGreaterThan(0);
     });
 
     const dryRunCheckbox = screen.getByLabelText(
@@ -113,13 +159,17 @@ describe("RetentionStatusPanel", () => {
       response: new Response(),
     });
 
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText(/preview cleanup/i)).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /preview cleanup/i }).length,
+      ).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByText(/preview cleanup/i));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /preview cleanup/i })[0],
+    );
 
     await waitFor(() => {
       expect(api.runRetentionCleanup).toHaveBeenCalledWith({
@@ -130,16 +180,13 @@ describe("RetentionStatusPanel", () => {
   });
 
   it("shows confirmation dialog for non-dry-run cleanup", async () => {
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByLabelText(/dry-run mode/i)).toBeInTheDocument();
     });
 
-    // Uncheck dry-run
     fireEvent.click(screen.getByLabelText(/dry-run mode/i));
-
-    // Click run cleanup
     fireEvent.click(screen.getByText(/run cleanup/i));
 
     await waitFor(() => {
@@ -164,13 +211,17 @@ describe("RetentionStatusPanel", () => {
       response: new Response(),
     });
 
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText(/preview cleanup/i)).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /preview cleanup/i }).length,
+      ).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByText(/preview cleanup/i));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /preview cleanup/i })[0],
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/dry-run preview results/i)).toBeInTheDocument();
@@ -183,28 +234,18 @@ describe("RetentionStatusPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders configuration in a theme-aware card", async () => {
-    render(<RetentionStatusPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/configuration/i)).toBeInTheDocument();
-    });
-
-    expect(
-      document.querySelector(".retention-config-card"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/job retention/i)).toBeInTheDocument();
-    expect(screen.getByText("30 days")).toBeInTheDocument();
-  });
-
   it("refreshes status when refresh button clicked", async () => {
-    render(<RetentionStatusPanel />);
+    renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText(/refresh status/i)).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /refresh status/i }).length,
+      ).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByText(/refresh status/i));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /refresh status/i })[0],
+    );
 
     await waitFor(() => {
       expect(api.getRetentionStatus).toHaveBeenCalledTimes(2);

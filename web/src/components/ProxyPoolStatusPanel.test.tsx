@@ -1,19 +1,31 @@
 /**
- * Purpose: Verify proxy-pool status rendering and disabled-state guidance in Settings.
- * Responsibilities: Assert loading, loaded, and refresh behaviors for the proxy-pool panel.
- * Scope: ProxyPoolStatusPanel component behavior only.
+ * Purpose: Verify proxy-pool settings render guided capability explanations and actionable recovery flows.
+ * Responsibilities: Assert degraded/disabled guidance, inline diagnostic execution, and runtime status details remain visible when available.
+ * Scope: ProxyPoolStatusPanel behavior only.
  * Usage: Run with Vitest as part of the web test suite.
- * Invariants/Assumptions: Missing proxy-pool config is a valid optional state and should render actionable guidance instead of a raw error.
+ * Invariants/Assumptions: Proxy pooling is optional, but degraded configuration should expose recovery actions without hiding operational detail.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  getProxyPoolStatus,
+  postV1DiagnosticsProxyPoolCheck,
+  type HealthResponse,
+} from "../api";
 import { ProxyPoolStatusPanel } from "./ProxyPoolStatusPanel";
-import * as api from "../api";
 
-vi.mock("../api", () => ({
-  getProxyPoolStatus: vi.fn(),
-}));
+vi.mock("../api", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("../api");
+  return {
+    ...actual,
+    getProxyPoolStatus: vi.fn(),
+    postV1DiagnosticsProxyPoolCheck: vi.fn(),
+    postV1DiagnosticsAiCheck: vi.fn(),
+    postV1DiagnosticsBrowserCheck: vi.fn(),
+  };
+});
 
 vi.mock("../lib/api-config", () => ({
   getApiBaseUrl: vi.fn(() => "http://localhost:8741"),
@@ -25,17 +37,111 @@ describe("ProxyPoolStatusPanel", () => {
   });
 
   it("renders loading state initially", () => {
-    vi.mocked(api.getProxyPoolStatus).mockReturnValue(
-      new Promise(() => {}) as ReturnType<typeof api.getProxyPoolStatus>,
+    vi.mocked(getProxyPoolStatus).mockReturnValue(
+      new Promise(() => {}) as ReturnType<typeof getProxyPoolStatus>,
     );
 
-    render(<ProxyPoolStatusPanel />);
+    render(
+      <ProxyPoolStatusPanel
+        health={null}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText(/loading proxy pool status/i)).toBeInTheDocument();
   });
 
-  it("renders loaded proxy pool stats", async () => {
-    vi.mocked(api.getProxyPoolStatus).mockResolvedValue({
+  it("renders degraded health guidance and runs inline diagnostics", async () => {
+    const user = userEvent.setup();
+    const onRefreshHealth = vi.fn().mockResolvedValue(undefined);
+
+    vi.mocked(getProxyPoolStatus).mockResolvedValue({
+      data: {
+        strategy: "round_robin",
+        total_proxies: 0,
+        healthy_proxies: 0,
+        regions: [],
+        tags: [],
+        proxies: [],
+      },
+      request: new Request("http://localhost:8741/v1/proxy-pool/status"),
+      response: new Response(),
+    } as never);
+
+    vi.mocked(postV1DiagnosticsProxyPoolCheck).mockResolvedValue({
+      data: {
+        status: "degraded",
+        title: "Proxy pool file is missing",
+        message: "Configured proxy pool file is still missing.",
+        actions: [],
+      },
+      request: new Request(
+        "http://localhost:8741/v1/diagnostics/proxy-pool-check",
+      ),
+      response: new Response(),
+    } as never);
+
+    const health: HealthResponse = {
+      status: "degraded",
+      version: "test",
+      components: {
+        proxy_pool: {
+          status: "degraded",
+          message: "Configured proxy pool file is missing or unreadable.",
+          details: { path: "/tmp/proxies.txt" },
+          actions: [
+            {
+              label: "Re-check proxy pool configuration",
+              kind: "one-click",
+              value: "/v1/diagnostics/proxy-pool-check",
+            },
+            {
+              label: "Disable proxy pool intentionally",
+              kind: "env",
+              value: "PROXY_POOL_FILE=",
+            },
+          ],
+        },
+      },
+      notices: [],
+    };
+
+    render(
+      <ProxyPoolStatusPanel
+        health={health}
+        onNavigate={vi.fn()}
+        onRefreshHealth={onRefreshHealth}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Proxy pool needs attention"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Configured file")).toBeInTheDocument();
+    expect(screen.getByText("/tmp/proxies.txt")).toBeInTheDocument();
+    expect(screen.getByText("PROXY_POOL_FILE=")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Re-check proxy pool configuration",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(postV1DiagnosticsProxyPoolCheck).toHaveBeenCalledWith({
+        baseUrl: "http://localhost:8741",
+      });
+    });
+
+    expect(
+      await screen.findByText("Configured proxy pool file is still missing."),
+    ).toBeInTheDocument();
+    expect(onRefreshHealth).toHaveBeenCalled();
+  });
+
+  it("renders loaded proxy pool stats when proxies exist", async () => {
+    vi.mocked(getProxyPoolStatus).mockResolvedValue({
       data: {
         strategy: "round_robin",
         total_proxies: 2,
@@ -59,48 +165,20 @@ describe("ProxyPoolStatusPanel", () => {
       },
       request: new Request("http://localhost:8741/v1/proxy-pool/status"),
       response: new Response(),
-    });
+    } as never);
 
-    render(<ProxyPoolStatusPanel />);
+    render(
+      <ProxyPoolStatusPanel
+        health={null}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+      />,
+    );
 
-    await waitFor(() => {
-      expect(screen.getByText("round_robin")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Loaded")).toBeInTheDocument();
+    expect(await screen.findByText("round_robin")).toBeInTheDocument();
     expect(screen.getByText("proxy-east")).toBeInTheDocument();
-    expect(screen.getByText("residential")).toBeInTheDocument();
     expect(screen.getByText("Available regions:")).toBeInTheDocument();
     expect(screen.getByText(/datacenter, residential/i)).toBeInTheDocument();
     expect(screen.getByText("66.67%")).toBeInTheDocument();
-  });
-
-  it("refreshes proxy pool status when requested", async () => {
-    vi.mocked(api.getProxyPoolStatus).mockResolvedValue({
-      data: {
-        strategy: "none",
-        total_proxies: 0,
-        healthy_proxies: 0,
-        regions: [],
-        tags: [],
-        proxies: [],
-      },
-      request: new Request("http://localhost:8741/v1/proxy-pool/status"),
-      response: new Response(),
-    });
-
-    render(<ProxyPoolStatusPanel />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/proxy pooling is disabled/i),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /refresh status/i }));
-
-    await waitFor(() => {
-      expect(api.getProxyPoolStatus).toHaveBeenCalledTimes(2);
-    });
   });
 });

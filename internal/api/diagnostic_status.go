@@ -249,6 +249,7 @@ func BuildProxyPoolComponentStatus(cfg config.Config, runtimeState ProxyPoolRunt
 		return ComponentStatus{
 			Status:  "disabled",
 			Message: "Proxy pool is intentionally disabled. This is optional unless you need pooled proxy routing.",
+			Actions: proxyPoolEnableActions(),
 		}
 	}
 
@@ -422,6 +423,7 @@ func BuildProxyPoolDiagnosticResponse(cfg config.Config, runtimeState ProxyPoolR
 			Status:  "disabled",
 			Title:   "Proxy pool is disabled",
 			Message: "PROXY_POOL_FILE is empty, so pooled proxy routing is intentionally disabled.",
+			Actions: proxyPoolEnableActions(),
 		}
 	}
 
@@ -583,6 +585,21 @@ func aiRecoveryActions(cfg config.Config) []RecommendedAction {
 	return actions
 }
 
+func proxyPoolEnableActions() []RecommendedAction {
+	return []RecommendedAction{
+		{
+			Label: "Set PROXY_POOL_FILE when you need pooled routing",
+			Kind:  ActionKindEnv,
+			Value: "PROXY_POOL_FILE=/absolute/path/to/proxy-pool.txt",
+		},
+		{
+			Label: "Re-check proxy pool configuration",
+			Kind:  ActionKindOneClick,
+			Value: DiagnosticActionPath(DiagnosticTargetProxyPool),
+		},
+	}
+}
+
 func proxyPoolRecoveryActions(proxyPoolFile string) []RecommendedAction {
 	actions := []RecommendedAction{
 		{
@@ -592,7 +609,7 @@ func proxyPoolRecoveryActions(proxyPoolFile string) []RecommendedAction {
 		},
 		{
 			Label: "Disable proxy pool intentionally",
-			Kind:  ActionKindCopy,
+			Kind:  ActionKindEnv,
 			Value: "PROXY_POOL_FILE=",
 		},
 	}

@@ -2138,6 +2138,13 @@ export type ErrorResponse = {
     error: string;
 };
 
+export type CapabilityGuidance = {
+    status: 'disabled' | 'warning' | 'danger' | 'ok';
+    title?: string;
+    message?: string;
+    actions?: Array<RecommendedAction>;
+};
+
 export type RetentionStatusResponse = {
     /**
      * Whether retention is enabled
@@ -2171,6 +2178,7 @@ export type RetentionStatusResponse = {
      * Current storage usage in MB
      */
     storageUsedMB: number;
+    guidance?: CapabilityGuidance;
 };
 
 export type RetentionCleanupRequest = {

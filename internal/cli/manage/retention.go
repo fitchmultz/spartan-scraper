@@ -1,13 +1,22 @@
 // Package manage contains retention CLI command wiring.
 //
-// This file provides commands for:
-// - Viewing retention configuration and status
-// - Running manual cleanup with various options
-// - Previewing what would be deleted (dry-run)
+// Purpose:
+// - Present retention status and cleanup flows with capability-aware operator guidance.
 //
-// It does NOT handle:
-// - Scheduled cleanup execution (scheduler handles this)
-// - Policy evaluation logic (retention package handles this)
+// Responsibilities:
+// - Explain whether automatic retention is disabled, healthy, or needs attention.
+// - Run manual cleanup previews or executions with explicit destructive confirmation flags.
+// - Keep retention CLI guidance aligned with the shared API-backed Settings flows.
+//
+// Scope:
+// - Retention CLI rendering and command dispatch only.
+//
+// Usage:
+// - Called by `spartan retention ...` subcommands.
+//
+// Invariants/Assumptions:
+// - Status output should recommend the next useful action instead of dumping raw config alone.
+// - Cleanup defaults remain safety-first.
 package manage
 
 import (
@@ -15,9 +24,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
+	"strings"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/retention"
@@ -91,17 +101,39 @@ func runRetentionStatus(ctx context.Context, cfg config.Config, args []string) i
 		return 1
 	}
 
-	fmt.Println("Retention Configuration:")
-	fmt.Printf("  Enabled:              %v\n", status.Enabled)
-	fmt.Printf("  Job Retention Days:   %d (0 = unlimited)\n", status.JobRetentionDays)
-	fmt.Printf("  Crawl State Days:     %d (0 = unlimited)\n", status.CrawlStateDays)
-	fmt.Printf("  Max Jobs:             %d (0 = unlimited)\n", status.MaxJobs)
-	fmt.Printf("  Max Storage:          %d GB (0 = unlimited)\n", status.MaxStorageGB)
+	response := api.RetentionStatusResponse{
+		Enabled:          status.Enabled,
+		JobRetentionDays: status.JobRetentionDays,
+		CrawlStateDays:   status.CrawlStateDays,
+		MaxJobs:          status.MaxJobs,
+		MaxStorageGB:     status.MaxStorageGB,
+		TotalJobs:        status.TotalJobs,
+		JobsEligible:     status.JobsEligible,
+		StorageUsedMB:    status.StorageUsedMB,
+	}
+	response.Guidance = api.BuildRetentionCapabilityGuidance(response)
+
+	fmt.Println("Retention Status")
+	fmt.Printf("Capability: %s\n", strings.ToUpper(response.Guidance.Status))
+	if title := strings.TrimSpace(response.Guidance.Title); title != "" {
+		fmt.Printf("%s\n", title)
+	}
+	if message := strings.TrimSpace(response.Guidance.Message); message != "" {
+		fmt.Printf("%s\n", message)
+	}
+	renderRecommendedActions(response.Guidance.Actions, "spartan")
 	fmt.Println()
-	fmt.Println("Current Statistics:")
-	fmt.Printf("  Total Jobs:           %d\n", status.TotalJobs)
-	fmt.Printf("  Jobs Eligible:        %d\n", status.JobsEligible)
-	fmt.Printf("  Storage Used:         %d MB\n", status.StorageUsedMB)
+	fmt.Println("Configuration")
+	fmt.Printf("  Enabled:              %v\n", response.Enabled)
+	fmt.Printf("  Job Retention Days:   %d (0 = unlimited)\n", response.JobRetentionDays)
+	fmt.Printf("  Crawl State Days:     %d (0 = unlimited)\n", response.CrawlStateDays)
+	fmt.Printf("  Max Jobs:             %d (0 = unlimited)\n", response.MaxJobs)
+	fmt.Printf("  Max Storage:          %d GB (0 = unlimited)\n", response.MaxStorageGB)
+	fmt.Println()
+	fmt.Println("Current Statistics")
+	fmt.Printf("  Total Jobs:           %d\n", response.TotalJobs)
+	fmt.Printf("  Jobs Eligible:        %d\n", response.JobsEligible)
+	fmt.Printf("  Storage Used:         %d MB\n", response.StorageUsedMB)
 
 	return 0
 }
@@ -159,8 +191,8 @@ func runRetentionCleanup(ctx context.Context, cfg config.Config, args []string) 
 	if len(result.Errors) > 0 {
 		fmt.Println()
 		fmt.Printf("Errors encountered (%d):\n", len(result.Errors))
-		for _, e := range result.Errors {
-			fmt.Printf("  - %v\n", e)
+		for _, cleanupErr := range result.Errors {
+			fmt.Printf("  - %v\n", cleanupErr)
 		}
 	}
 

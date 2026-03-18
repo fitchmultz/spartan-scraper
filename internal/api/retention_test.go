@@ -32,6 +32,40 @@ func TestRetentionStatus(t *testing.T) {
 	if resp.TotalJobs != 0 {
 		t.Errorf("expected 0 jobs in fresh server, got %d", resp.TotalJobs)
 	}
+	if resp.Guidance == nil {
+		t.Fatal("expected retention guidance in status response")
+	}
+	if resp.Guidance.Status != "disabled" {
+		t.Fatalf("expected disabled guidance for fresh config, got %#v", resp.Guidance)
+	}
+}
+
+func TestBuildRetentionCapabilityGuidanceDisabledIncludesActions(t *testing.T) {
+	guidance := BuildRetentionCapabilityGuidance(RetentionStatusResponse{})
+	if guidance == nil {
+		t.Fatal("expected guidance")
+	}
+	if guidance.Status != "disabled" {
+		t.Fatalf("status = %q, want disabled", guidance.Status)
+	}
+	if len(guidance.Actions) == 0 {
+		t.Fatal("expected disabled guidance actions")
+	}
+}
+
+func TestBuildRetentionCapabilityGuidanceWarningWhenJobsEligible(t *testing.T) {
+	guidance := BuildRetentionCapabilityGuidance(RetentionStatusResponse{
+		Enabled:      true,
+		MaxJobs:      100,
+		TotalJobs:    20,
+		JobsEligible: 5,
+	})
+	if guidance == nil {
+		t.Fatal("expected guidance")
+	}
+	if guidance.Status != "warning" {
+		t.Fatalf("status = %q, want warning", guidance.Status)
+	}
 }
 
 func TestRetentionStatusMethodNotAllowed(t *testing.T) {

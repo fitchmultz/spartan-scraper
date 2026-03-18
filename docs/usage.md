@@ -693,7 +693,7 @@ spartan mcp
 spartan version
 ```
 
-`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints.
+`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints. `spartan proxy-pool status` and `spartan retention status` likewise lead with capability-aware explanations and next steps before listing raw configuration and runtime detail.
 
 ### TUI scope
 
@@ -729,7 +729,7 @@ Balanced 1.0 routes:
 - `/automation`
 - `/settings`
 
-The Settings route includes proxy-pool status inspection plus per-request proxy override/selection controls on the job forms, alongside render profiles, pipeline JS, retention, and other runtime inventory panels.
+The Settings route now keeps optional capabilities legible: auth profiles, schedules, crawl states, proxy-pool status, and retention all explain when they matter, what is currently off or degraded, and which recovery steps to take before dropping into raw detail.
 
 The UI only exposes retained product areas. Deleted surfaces are not available behind feature flags.
 

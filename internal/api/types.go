@@ -228,16 +228,25 @@ type BatchListResponse struct {
 	Offset  int            `json:"offset"`
 }
 
+// CapabilityGuidance describes a capability-aware explanation and follow-up actions.
+type CapabilityGuidance struct {
+	Status  string              `json:"status"`
+	Title   string              `json:"title,omitempty"`
+	Message string              `json:"message,omitempty"`
+	Actions []RecommendedAction `json:"actions,omitempty"`
+}
+
 // RetentionStatusResponse represents the retention system status.
 type RetentionStatusResponse struct {
-	Enabled          bool  `json:"enabled"`
-	JobRetentionDays int   `json:"jobRetentionDays"`
-	CrawlStateDays   int   `json:"crawlStateDays"`
-	MaxJobs          int   `json:"maxJobs"`
-	MaxStorageGB     int   `json:"maxStorageGB"`
-	TotalJobs        int64 `json:"totalJobs"`
-	JobsEligible     int64 `json:"jobsEligible"`
-	StorageUsedMB    int64 `json:"storageUsedMB"`
+	Enabled          bool                `json:"enabled"`
+	JobRetentionDays int                 `json:"jobRetentionDays"`
+	CrawlStateDays   int                 `json:"crawlStateDays"`
+	MaxJobs          int                 `json:"maxJobs"`
+	MaxStorageGB     int                 `json:"maxStorageGB"`
+	TotalJobs        int64               `json:"totalJobs"`
+	JobsEligible     int64               `json:"jobsEligible"`
+	StorageUsedMB    int64               `json:"storageUsedMB"`
+	Guidance         *CapabilityGuidance `json:"guidance,omitempty"`
 }
 
 // RetentionCleanupRequest represents a request to run retention cleanup.

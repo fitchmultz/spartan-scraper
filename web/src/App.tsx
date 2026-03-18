@@ -1292,8 +1292,18 @@ function AppShell() {
               <PipelineJSEditor />
             </section>
 
-            <ProxyPoolStatusPanel />
-            <RetentionStatusPanel />
+            <ProxyPoolStatusPanel
+              health={health}
+              onNavigate={navigate}
+              onRefreshHealth={refreshHealth}
+            />
+            <RetentionStatusPanel
+              health={health}
+              onNavigate={navigate}
+              onRefreshHealth={refreshHealth}
+              onCreateJob={() => navigate("/jobs/new")}
+              onOpenAutomation={() => navigate("/automation/batches")}
+            />
           </div>
         </div>
       )}
