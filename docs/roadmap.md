@@ -16,7 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Dogfood the fresh-start operator experience across Web, CLI, and MCP with optional capabilities turned off to find any remaining UX gaps.
 - Eliminate every remaining false-degraded or noisy "feature feels required" state for optional capabilities across all primary surfaces.
 - Standardize optional-capability contracts, copy, actions, and empty-state messaging across API, Web UI, CLI, and MCP.
 - Polish Settings first-run and empty-state UX so optional configuration feels coherent, quiet by default, and low-friction.

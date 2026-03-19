@@ -12,6 +12,7 @@ import {
   postV1RenderProfiles,
   putV1RenderProfilesByName,
   deleteV1RenderProfilesByName,
+  type ComponentStatus,
   type RenderProfile,
   type RenderProfileInput,
 } from "../../api";
@@ -22,9 +23,13 @@ import { useToast } from "../toast";
 
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
+  aiStatus?: ComponentStatus | null;
 }
 
-export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
+export function RenderProfileEditor({
+  onError,
+  aiStatus = null,
+}: RenderProfileEditorProps) {
   const toast = useToast();
   const [profiles, setProfiles] = useState<RenderProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +42,11 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
+
+  const aiUnavailable = aiStatus !== null && aiStatus.status !== "ok";
+  const aiUnavailableMessage = aiUnavailable
+    ? `${aiStatus?.message || "AI helpers are optional and currently unavailable."} Create and edit profiles manually below, or enable AI later when you need generation and tuning.`
+    : null;
 
   const loadProfiles = useCallback(async () => {
     try {
@@ -192,7 +202,13 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
           <button
             type="button"
             onClick={() => setIsAIGeneratorOpen(true)}
-            className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+            disabled={aiUnavailable}
+            title={aiUnavailableMessage ?? undefined}
+            className={`px-3 py-1 text-sm rounded ${
+              aiUnavailable
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-purple-600 text-white hover:bg-purple-700"
+            }`}
           >
             Generate with AI
           </button>
@@ -205,6 +221,12 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
           </button>
         </div>
       </div>
+
+      {aiUnavailableMessage ? (
+        <div className="rounded border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          {aiUnavailableMessage}
+        </div>
+      ) : null}
 
       {error && (
         <div className="error" role="alert">
@@ -288,7 +310,13 @@ export function RenderProfileEditor({ onError }: RenderProfileEditorProps) {
               <button
                 type="button"
                 onClick={() => setDebuggingProfile(profile)}
-                className="text-sm text-purple-600 hover:underline"
+                disabled={aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+                className={`text-sm ${
+                  aiUnavailable
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-purple-600 hover:underline"
+                }`}
               >
                 Tune with AI
               </button>

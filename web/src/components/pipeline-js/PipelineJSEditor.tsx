@@ -12,6 +12,7 @@ import {
   postV1PipelineJs,
   putV1PipelineJsByName,
   deleteV1PipelineJsByName,
+  type ComponentStatus,
   type JsTargetScript,
   type PipelineJsInput,
 } from "../../api";
@@ -22,9 +23,13 @@ import { useToast } from "../toast";
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
+  aiStatus?: ComponentStatus | null;
 }
 
-export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
+export function PipelineJSEditor({
+  onError,
+  aiStatus = null,
+}: PipelineJSEditorProps) {
   const toast = useToast();
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +43,11 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
+
+  const aiUnavailable = aiStatus !== null && aiStatus.status !== "ok";
+  const aiUnavailableMessage = aiUnavailable
+    ? `${aiStatus?.message || "AI helpers are optional and currently unavailable."} Create and edit scripts manually below, or enable AI later when you need generation and tuning.`
+    : null;
 
   const loadScripts = useCallback(async () => {
     try {
@@ -193,7 +203,13 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
           <button
             type="button"
             onClick={() => setIsAIGeneratorOpen(true)}
-            className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+            disabled={aiUnavailable}
+            title={aiUnavailableMessage ?? undefined}
+            className={`px-3 py-1 text-sm rounded ${
+              aiUnavailable
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-purple-600 text-white hover:bg-purple-700"
+            }`}
           >
             Generate with AI
           </button>
@@ -206,6 +222,12 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
           </button>
         </div>
       </div>
+
+      {aiUnavailableMessage ? (
+        <div className="rounded border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          {aiUnavailableMessage}
+        </div>
+      ) : null}
 
       {error && (
         <div className="error" role="alert">
@@ -307,7 +329,13 @@ export function PipelineJSEditor({ onError }: PipelineJSEditorProps) {
               <button
                 type="button"
                 onClick={() => setDebuggingScript(script)}
-                className="text-sm text-purple-600 hover:underline"
+                disabled={aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+                className={`text-sm ${
+                  aiUnavailable
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-purple-600 hover:underline"
+                }`}
               >
                 Tune with AI
               </button>

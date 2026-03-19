@@ -1,0 +1,14 @@
+Health: OK
+Version: 1.0.0-rc1
+
+Components
+  ✓ Database — OK
+  ✓ Queue — OK
+  ✓ Browser — OK
+    Browser automation is ready.
+  ○ AI — DISABLED
+    AI helpers are optional and currently disabled.
+  ○ Proxy pool — DISABLED
+    Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.
+    - Set PROXY_POOL_FILE when you need pooled routing: PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json
+    - Re-check proxy pool configuration: ./bin/spartan health --check proxy_pool

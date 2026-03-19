@@ -1,0 +1,5 @@
+Diagnostic: Proxy pool (DISABLED)
+Proxy pool is off
+No proxy-pool file is configured. Spartan does not need pooled proxy routing unless you explicitly opt into it.
+  - Set PROXY_POOL_FILE when you need pooled routing: PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json
+  - Re-check proxy pool configuration: ./bin/spartan health --check proxy_pool

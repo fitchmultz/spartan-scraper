@@ -1,0 +1,14 @@
+Proxy Pool Status (running server)
+Capability: DISABLED
+Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.
+Next step: Set PROXY_POOL_FILE when you need pooled routing: PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json
+Next step: Re-check proxy pool configuration: spartan health --check proxy_pool
+
+  Config Path:      disabled
+  Strategy:         none
+  Total Proxies:    0
+  Healthy Proxies:  0
+  Regions:          n/a
+  Tags:             n/a
+
+No proxy pool is currently loaded.

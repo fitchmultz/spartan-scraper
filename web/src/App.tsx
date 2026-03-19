@@ -1285,11 +1285,11 @@ function AppShell() {
             />
 
             <section className="panel">
-              <RenderProfileEditor />
+              <RenderProfileEditor aiStatus={health?.components?.ai ?? null} />
             </section>
 
             <section className="panel">
-              <PipelineJSEditor />
+              <PipelineJSEditor aiStatus={health?.components?.ai ?? null} />
             </section>
 
             <ProxyPoolStatusPanel

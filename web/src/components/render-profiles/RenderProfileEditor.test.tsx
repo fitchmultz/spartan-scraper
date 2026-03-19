@@ -21,6 +21,48 @@ describe("RenderProfileEditor", () => {
     });
   });
 
+  it("disables AI actions and explains the manual path when AI is unavailable", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: {
+        profiles: [
+          {
+            name: "news",
+            hostPatterns: ["example.com"],
+            preferHeadless: true,
+          },
+        ],
+      },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor
+          aiStatus={{
+            status: "disabled",
+            message: "AI helpers are optional and currently disabled.",
+          }}
+        />
+      </ToastProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        /create and edit profiles manually below, or enable ai later/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate with ai/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /tune with ai/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /create profile/i }),
+    ).toBeEnabled();
+  });
+
   it("keeps the create form open and shows the API error when create fails", async () => {
     vi.mocked(api.postV1RenderProfiles).mockResolvedValue({
       data: undefined,
