@@ -29,6 +29,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
@@ -51,6 +52,8 @@ func TestWatchToolsInToolsList(t *testing.T) {
 		"watch_update",
 		"watch_delete",
 		"watch_check",
+		"watch_check_history",
+		"watch_check_get",
 	} {
 		if _, ok := toolMap[name]; !ok {
 			t.Fatalf("expected tool %s in toolsList", name)
@@ -214,9 +217,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first watch_check failed: %v", err)
 	}
-	firstCheck, ok := firstCheckResult.(*watch.WatchCheckResult)
+	firstCheck, ok := firstCheckResult.(api.WatchCheckInspection)
 	if !ok {
-		t.Fatalf("expected first check result, got %#v", firstCheckResult)
+		t.Fatalf("expected first check inspection, got %#v", firstCheckResult)
 	}
 	if firstCheck.WatchID != createdWatch.ID {
 		t.Fatalf("unexpected watch id in first check: %q", firstCheck.WatchID)
@@ -226,6 +229,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	}
 	if firstCheck.Changed {
 		t.Fatal("expected first check to establish baseline without reporting changed")
+	}
+	if firstCheck.Status != "baseline" {
+		t.Fatalf("expected baseline status, got %q", firstCheck.Status)
 	}
 
 	mu.Lock()
@@ -243,9 +249,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second watch_check failed: %v", err)
 	}
-	secondCheck, ok := secondCheckResult.(*watch.WatchCheckResult)
+	secondCheck, ok := secondCheckResult.(api.WatchCheckInspection)
 	if !ok {
-		t.Fatalf("expected second check result, got %#v", secondCheckResult)
+		t.Fatalf("expected second check inspection, got %#v", secondCheckResult)
 	}
 	if !secondCheck.Changed {
 		t.Fatal("expected second check to detect a change")
@@ -255,6 +261,51 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	}
 	if len(secondCheck.TriggeredJobs) != 1 {
 		t.Fatalf("expected exactly one triggered job, got %#v", secondCheck.TriggeredJobs)
+	}
+	if secondCheck.ID == "" {
+		t.Fatal("expected second check to include a persisted check id")
+	}
+
+	historyResult, err := srv.handleToolCall(ctx, map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "watch_check_history",
+			"arguments": map[string]interface{}{
+				"id": createdWatch.ID,
+			},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("watch_check_history failed: %v", err)
+	}
+	historyPayload, ok := historyResult.(api.WatchCheckHistoryResponse)
+	if !ok {
+		t.Fatalf("expected history payload, got %#v", historyResult)
+	}
+	if historyPayload.Total != 2 || len(historyPayload.Checks) != 2 {
+		t.Fatalf("expected 2 history records, got total=%d len=%d", historyPayload.Total, len(historyPayload.Checks))
+	}
+	if historyPayload.Checks[0].ID != secondCheck.ID {
+		t.Fatalf("expected latest check first, got %q want %q", historyPayload.Checks[0].ID, secondCheck.ID)
+	}
+
+	checkGetResult, err := srv.handleToolCall(ctx, map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "watch_check_get",
+			"arguments": map[string]interface{}{
+				"id":      createdWatch.ID,
+				"checkId": firstCheck.ID,
+			},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("watch_check_get failed: %v", err)
+	}
+	checkGetPayload, ok := checkGetResult.(api.WatchCheckInspectionResponse)
+	if !ok {
+		t.Fatalf("expected single inspection payload, got %#v", checkGetResult)
+	}
+	if checkGetPayload.Check.ID != firstCheck.ID {
+		t.Fatalf("unexpected check id from watch_check_get: %q", checkGetPayload.Check.ID)
 	}
 
 	deleteResult, err := srv.handleToolCall(ctx, map[string]json.RawMessage{

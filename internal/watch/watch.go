@@ -51,21 +51,23 @@ type TriggerRuntime struct {
 
 // Watcher executes watch checks and detects content changes.
 type Watcher struct {
-	storage    Storage
-	stateStore *store.Store
-	dataDir    string
-	dispatcher *webhook.Dispatcher
-	runtime    *TriggerRuntime
+	storage      Storage
+	stateStore   *store.Store
+	dataDir      string
+	dispatcher   *webhook.Dispatcher
+	runtime      *TriggerRuntime
+	historyStore *WatchHistoryStore
 }
 
 // NewWatcher creates a new watcher instance.
 func NewWatcher(storage Storage, stateStore *store.Store, dataDir string, dispatcher *webhook.Dispatcher, runtime *TriggerRuntime) *Watcher {
 	return &Watcher{
-		storage:    storage,
-		stateStore: stateStore,
-		dataDir:    dataDir,
-		dispatcher: dispatcher,
-		runtime:    runtime,
+		storage:      storage,
+		stateStore:   stateStore,
+		dataDir:      dataDir,
+		dispatcher:   dispatcher,
+		runtime:      runtime,
+		historyStore: NewWatchHistoryStore(dataDir),
 	}
 }
 
@@ -76,6 +78,10 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 		URL:       watch.URL,
 		CheckedAt: time.Now(),
 		Selector:  watch.Selector,
+	}
+	finalize := func(checkErr error) (*WatchCheckResult, error) {
+		w.persistCheckHistory(result)
+		return result, checkErr
 	}
 
 	// Get previous state
@@ -100,7 +106,8 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 	content, screenshotPath, fetchErr := w.fetchContentWithScreenshot(ctx, watch)
 	if fetchErr != nil {
 		result.Error = fetchErr.Error()
-		return result, fetchErr
+		w.updateWatchCheckTime(watch)
+		return finalize(fetchErr)
 	}
 
 	var previousScreenshotPath string
@@ -145,6 +152,7 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 	// Check for content changes
 	contentChanged := previousState.ContentHash != "" && previousState.ContentHash != currentHash
 	contentIsNew := previousState.ContentHash == "" && previousContent == ""
+	result.Baseline = contentIsNew
 
 	// Check for visual changes
 	visualChanged := false
@@ -180,7 +188,7 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 	// If no changes, just update check time and return
 	if !result.Changed && !contentIsNew {
 		w.updateWatchCheckTime(watch)
-		return result, nil
+		return finalize(nil)
 	}
 
 	// Content or visual changed - generate text diff if content changed
@@ -236,7 +244,7 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 		}
 	}
 
-	return result, nil
+	return finalize(nil)
 }
 
 // fetchContentWithScreenshot fetches content and captures screenshot if enabled.
@@ -283,6 +291,19 @@ func (w *Watcher) updateWatchCheckTime(watch *Watch) {
 	watch.LastCheckedAt = time.Now()
 	if err := w.storage.Update(watch); err != nil {
 		slog.Error("failed to update watch check time", "watchID", watch.ID, "error", err)
+	}
+}
+
+func (w *Watcher) persistCheckHistory(result *WatchCheckResult) {
+	if result == nil || w.historyStore == nil {
+		return
+	}
+	record, err := w.historyStore.Record(*result)
+	if record != nil {
+		result.CheckID = record.ID
+	}
+	if err != nil {
+		slog.Warn("failed to persist watch history", "watchID", result.WatchID, "checkID", result.CheckID, "error", err)
 	}
 }
 

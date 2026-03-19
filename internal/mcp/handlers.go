@@ -711,12 +711,53 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		})
 		result, err := watcher.Check(ctx, watchItem)
 		if result != nil {
-			return result, nil
+			return api.BuildWatchCheckInspection(watchRecordFromResult(result)), nil
 		}
 		if err != nil {
 			return nil, err
 		}
 		return nil, apperrors.Internal("watch check returned no result")
+	case "watch_check_history":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		if _, err := watch.NewFileStorage(s.cfg.DataDir).Get(id); err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 10)
+		offset := paramdecode.Decode[int](params.Arguments, "offset")
+		if offset < 0 {
+			offset = 0
+		}
+		records, total, err := watch.NewWatchHistoryStore(s.cfg.DataDir).GetByWatch(id, limit, offset)
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildWatchCheckHistoryResponse(records, total, limit, offset), nil
+	case "watch_check_get":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		checkID := strings.TrimSpace(paramdecode.String(params.Arguments, "checkId"))
+		if checkID == "" {
+			return nil, apperrors.Validation("checkId is required")
+		}
+		if _, err := watch.NewFileStorage(s.cfg.DataDir).Get(id); err != nil {
+			if watch.IsNotFoundError(err) {
+				return nil, apperrors.NotFound("watch not found")
+			}
+			return nil, err
+		}
+		record, err := watch.NewWatchHistoryStore(s.cfg.DataDir).GetByID(id, checkID)
+		if err != nil {
+			return nil, apperrors.NotFound("watch check not found")
+		}
+		return api.WatchCheckInspectionResponse{Check: api.BuildWatchCheckInspection(*record)}, nil
 	case "export_schedule_list":
 		schedules, err := scheduler.NewExportStorage(s.cfg.DataDir).List()
 		if err != nil {

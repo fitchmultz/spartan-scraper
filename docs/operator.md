@@ -52,6 +52,26 @@ Cross-surface expectations:
 - `spartan mcp` exposes the same model through `job_export`, `job_export_history`, `export_outcome_get`, and `export_schedule_history`.
 - The Web UI now surfaces the same titles, messages, artifact metadata, failure context, and recommended next steps inside export history and direct-export flows.
 
+## Watch Outcome Inspection
+
+Manual and scheduled watch checks now share one persisted history.
+
+Canonical operator workflow:
+
+```bash
+spartan watch check <watch-id>
+spartan watch history <watch-id>
+spartan watch history <watch-id> --check-id <check-id>
+```
+
+Cross-surface expectations:
+
+- `POST /v1/watch/{id}/check` persists and returns a `checkId` immediately.
+- `GET /v1/watch/{id}/history` and `GET /v1/watch/{id}/history/{checkId}` return the same guided inspection envelopes used by the Web UI and MCP.
+- Historical artifact snapshots live under `/v1/watch/{id}/history/{checkId}/artifacts/{artifactKind}` so older checks stay inspectable after later runs rotate the latest watch artifacts.
+- `spartan mcp` exposes the same model through `watch_check`, `watch_check_history`, and `watch_check_get`.
+- The Web UI now lets operators jump from an immediate manual check into the saved history modal without leaving Automation.
+
 ## Setup Recovery
 
 If startup blocks on legacy or unsupported persisted state, Spartan now stays in setup mode and keeps diagnostics available.

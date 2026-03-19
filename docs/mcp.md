@@ -171,8 +171,17 @@ MCP exposes the full stored-watch management workflow used by the other primary 
   - returns `{ "deleted": true, "id": "..." }`
 - `watch_check`
   - `id: "..."`
-  - returns a `WatchCheckResult`
-  - if the underlying fetch/check fails, the tool still returns the check result object with `error` populated instead of turning the entire MCP call into a protocol-level failure
+  - returns a guided `WatchCheckInspection`
+  - the check is persisted before the tool returns, so the inspection always includes the saved check id and reusable next-step actions
+- `watch_check_history`
+  - `id: "..."`
+  - `limit: number` optional
+  - `offset: number` optional
+  - returns `{ checks, total, limit, offset }`
+- `watch_check_get`
+  - `id: "..."`
+  - `checkId: "..."`
+  - returns `{ check }` for one persisted watch check
 
 `jobTrigger.request` uses the same operator-facing request contract as the normal scrape/crawl/research submission surfaces and is normalized and validated before persistence.
 
@@ -224,9 +233,11 @@ Example nested fields:
 {"id":20,"method":"tools/call","params":{"name":"watch_create","arguments":{"url":"https://example.com/pricing","selector":"main","intervalSeconds":300,"notifyOnChange":true}}}
 {"id":21,"method":"tools/call","params":{"name":"watch_update","arguments":{"id":"<watch-id>","enabled":true,"jobTrigger":{"kind":"scrape","request":{"url":"https://example.com/pricing","extract":{"ai":{"enabled":true,"mode":"natural_language","prompt":"Extract current pricing and packaging changes","fields":["plans","pricing","packaging_notes"]}}}}}}}
 {"id":22,"method":"tools/call","params":{"name":"watch_check","arguments":{"id":"<watch-id>"}}}
-{"id":23,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
-{"id":24,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
-{"id":25,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
+{"id":23,"method":"tools/call","params":{"name":"watch_check_history","arguments":{"id":"<watch-id>","limit":10,"offset":0}}}
+{"id":24,"method":"tools/call","params":{"name":"watch_check_get","arguments":{"id":"<watch-id>","checkId":"<check-id>"}}}
+{"id":25,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
+{"id":26,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
+{"id":27,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
 ```
 
 `job_status` and `job_cancel` now return the same `{ job }` envelope shape as REST job detail. `job_list` returns `{ jobs, total, limit, offset }` and accepts an optional `status` filter. `job_failure_list` returns the same paginated envelope restricted to failed runs. Jobs and batch-included jobs now include derived `run` timing, queue, and failure context, while `batch_list` returns `{ batches, total, limit, offset }` with explicit `batch.progress`. `batch_scrape`, `batch_crawl`, and `batch_research` accept the same request bodies as the REST batch-submit endpoints. `batch_status` and `batch_cancel` return the same `{ batch, jobs, total, limit, offset }` envelope shape as REST batch create/get/cancel, including `batch.stats` and `batch.progress` on every response.

@@ -13,7 +13,11 @@ import {
   updateWatch,
   deleteWatch,
   checkWatch,
+  getWatchHistory,
+  getWatchCheck,
   type Watch,
+  type WatchCheckInspection,
+  type WatchCheckHistoryResponse,
   type WatchInput,
   type WatchCheckResult,
 } from "../../api";
@@ -177,11 +181,67 @@ export function WatchContainer() {
         title: "Watch check finished",
         description: data?.changed
           ? "Spartan detected a change in the watched target."
-          : "No change was detected in the watched target.",
+          : data?.baseline
+            ? "Baseline recorded for future watch comparisons."
+            : "No change was detected in the watched target.",
       });
       return data;
     },
     [refreshWatches, toast],
+  );
+
+  const handleLoadWatchHistory = useCallback(
+    async (
+      watchId: string,
+      limit: number,
+      offset: number,
+    ): Promise<WatchCheckHistoryResponse | undefined> => {
+      const { data, error } = await getWatchHistory({
+        baseUrl: getApiBaseUrl(),
+        path: { id: watchId },
+        query: { limit, offset },
+      });
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to load watch history.",
+        );
+        toast.show({
+          tone: "error",
+          title: "Failed to load watch history",
+          description: message,
+        });
+        throw error;
+      }
+      return data;
+    },
+    [toast],
+  );
+
+  const handleLoadWatchHistoryDetail = useCallback(
+    async (
+      watchId: string,
+      checkId: string,
+    ): Promise<WatchCheckInspection | undefined> => {
+      const { data, error } = await getWatchCheck({
+        baseUrl: getApiBaseUrl(),
+        path: { id: watchId, checkId },
+      });
+      if (error) {
+        const message = getApiErrorMessage(
+          error,
+          "Failed to load watch check details.",
+        );
+        toast.show({
+          tone: "error",
+          title: "Failed to load watch check",
+          description: message,
+        });
+        throw error;
+      }
+      return data?.check;
+    },
+    [toast],
   );
 
   useEffect(() => {
@@ -202,6 +262,8 @@ export function WatchContainer() {
           onUpdate={handleUpdateWatch}
           onDelete={handleDeleteWatch}
           onCheck={handleCheckWatch}
+          onLoadHistory={handleLoadWatchHistory}
+          onLoadHistoryDetail={handleLoadWatchHistoryDetail}
           loading={watchesLoading}
         />
       </Suspense>

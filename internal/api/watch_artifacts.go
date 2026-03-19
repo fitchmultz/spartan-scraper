@@ -46,13 +46,15 @@ func toWatchCheckResponse(result *watch.WatchCheckResult) WatchCheckResponse {
 	}
 	artifacts := make([]WatchArtifactResponse, 0, len(result.Artifacts))
 	for _, artifact := range result.Artifacts {
-		artifacts = append(artifacts, toWatchArtifactResponse(result.WatchID, artifact))
+		artifacts = append(artifacts, toWatchArtifactResponseForCheck(result.WatchID, result.CheckID, artifact))
 	}
 	return WatchCheckResponse{
+		CheckID:            result.CheckID,
 		WatchID:            result.WatchID,
 		URL:                result.URL,
 		CheckedAt:          result.CheckedAt,
 		Changed:            result.Changed,
+		Baseline:           result.Baseline,
 		PreviousHash:       result.PreviousHash,
 		CurrentHash:        result.CurrentHash,
 		DiffText:           result.DiffText,
@@ -69,17 +71,29 @@ func toWatchCheckResponse(result *watch.WatchCheckResult) WatchCheckResponse {
 }
 
 func toWatchArtifactResponse(watchID string, artifact watch.Artifact) WatchArtifactResponse {
+	return toWatchArtifactResponseForCheck(watchID, "", artifact)
+}
+
+func toWatchArtifactResponseForCheck(watchID string, checkID string, artifact watch.Artifact) WatchArtifactResponse {
+	downloadURL := watchArtifactDownloadURL(watchID, artifact.Kind)
+	if strings.TrimSpace(checkID) != "" {
+		downloadURL = watchHistoryArtifactDownloadURL(watchID, checkID, artifact.Kind)
+	}
 	return WatchArtifactResponse{
 		Kind:        string(artifact.Kind),
 		Filename:    artifact.Filename,
 		ContentType: artifact.ContentType,
 		ByteSize:    artifact.ByteSize,
-		DownloadURL: watchArtifactDownloadURL(watchID, artifact.Kind),
+		DownloadURL: downloadURL,
 	}
 }
 
 func watchArtifactDownloadURL(watchID string, kind watch.ArtifactKind) string {
 	return fmt.Sprintf("/v1/watch/%s/artifacts/%s", watchID, kind)
+}
+
+func watchHistoryArtifactDownloadURL(watchID string, checkID string, kind watch.ArtifactKind) string {
+	return fmt.Sprintf("/v1/watch/%s/history/%s/artifacts/%s", watchID, checkID, kind)
 }
 
 func extractWatchArtifactKind(path string) string {

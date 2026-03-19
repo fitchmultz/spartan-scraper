@@ -27,6 +27,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
+	"github.com/fitchmultz/spartan-scraper/internal/watch"
 )
 
 const (
@@ -282,6 +283,48 @@ type ExportOutcomeListResponse struct {
 	Limit   int                `json:"limit"`
 	Offset  int                `json:"offset"`
 }
+
+// WatchCheckInspection represents a persisted, operator-facing watch check outcome.
+type WatchCheckInspection struct {
+	ID                 string                  `json:"id"`
+	WatchID            string                  `json:"watchId"`
+	URL                string                  `json:"url"`
+	CheckedAt          time.Time               `json:"checkedAt"`
+	Status             string                  `json:"status"`
+	Changed            bool                    `json:"changed"`
+	Baseline           bool                    `json:"baseline,omitempty"`
+	Title              string                  `json:"title"`
+	Message            string                  `json:"message"`
+	PreviousHash       string                  `json:"previousHash,omitempty"`
+	CurrentHash        string                  `json:"currentHash,omitempty"`
+	DiffText           string                  `json:"diffText,omitempty"`
+	DiffHTML           string                  `json:"diffHtml,omitempty"`
+	Error              string                  `json:"error,omitempty"`
+	Selector           string                  `json:"selector,omitempty"`
+	Artifacts          []WatchArtifactResponse `json:"artifacts,omitempty"`
+	VisualHash         string                  `json:"visualHash,omitempty"`
+	PreviousVisualHash string                  `json:"previousVisualHash,omitempty"`
+	VisualChanged      bool                    `json:"visualChanged"`
+	VisualSimilarity   float64                 `json:"visualSimilarity,omitempty"`
+	TriggeredJobs      []string                `json:"triggeredJobs,omitempty"`
+	Actions            []RecommendedAction     `json:"actions,omitempty"`
+}
+
+// WatchCheckInspectionResponse represents a single watch check inspection envelope.
+type WatchCheckInspectionResponse struct {
+	Check WatchCheckInspection `json:"check"`
+}
+
+// WatchCheckHistoryResponse represents a paginated watch check history collection.
+type WatchCheckHistoryResponse struct {
+	Checks []WatchCheckInspection `json:"checks"`
+	Total  int                    `json:"total"`
+	Limit  int                    `json:"limit"`
+	Offset int                    `json:"offset"`
+}
+
+// WatchCheckStatus aliases the shared watch check status enum for transport-safe responses.
+type WatchCheckStatus = watch.CheckStatus
 
 // RetentionStatusResponse represents the retention system status.
 type RetentionStatusResponse struct {

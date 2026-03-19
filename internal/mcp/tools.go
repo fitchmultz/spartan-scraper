@@ -201,8 +201,18 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "watch_check",
-			Description: "Run a manual check for a watch and return the check result",
+			Description: "Run a manual check for a watch and return the persisted check result",
 			InputSchema: schema(map[string]string{"id": "string"}, nil),
+		},
+		{
+			Name:        "watch_check_history",
+			Description: "List persisted watch checks for a watch with pagination metadata",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"limit": "number", "offset": "number"}),
+		},
+		{
+			Name:        "watch_check_get",
+			Description: "Get a single persisted watch check inspection by watch id and check id",
+			InputSchema: schema(map[string]string{"id": "string", "checkId": "string"}, nil),
 		},
 		{
 			Name:        "export_schedule_list",

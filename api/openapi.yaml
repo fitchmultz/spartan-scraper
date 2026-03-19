@@ -2932,6 +2932,167 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/watch/{id}/history":
+    get:
+      summary: List persisted watch check history for a watch
+      operationId: getWatchHistory
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: Watch ID
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          default: 10
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Paginated watch history
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/WatchCheckHistoryResponse"
+        '404':
+          description: Watch not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/watch/{id}/history/{checkId}":
+    get:
+      summary: Get one persisted watch check inspection
+      operationId: getWatchCheck
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: Watch ID
+      - in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        description: Watch check ID
+      responses:
+        '200':
+          description: Watch check inspection
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/WatchCheckInspectionResponse"
+        '404':
+          description: Watch or check not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/watch/{id}/history/{checkId}/artifacts/{artifactKind}":
+    get:
+      summary: Download a persisted watch history artifact snapshot
+      operationId: getWatchCheckArtifact
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: Watch ID
+      - in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        description: Watch check ID
+      - in: path
+        name: artifactKind
+        required: true
+        schema:
+          type: string
+          enum:
+          - current-screenshot
+          - previous-screenshot
+          - visual-diff
+        description: Persisted watch artifact kind
+      responses:
+        '200':
+          description: Artifact bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid artifact kind
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: Watch, check, or artifact not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/v1/watch/{id}/artifacts/{artifactKind}":
     get:
       summary: Download a persisted watch artifact
@@ -5668,6 +5829,9 @@ components:
       - checkedAt
       - changed
       properties:
+        checkId:
+          type: string
+          description: Persisted history id for this completed check
         watchId:
           type: string
           description: ID of the watch that was checked
@@ -5682,6 +5846,9 @@ components:
         changed:
           type: boolean
           description: Whether content changed
+        baseline:
+          type: boolean
+          description: Whether this check established the first persisted comparison baseline
         previousHash:
           type: string
           description: Previous content hash (if available)
@@ -5696,7 +5863,7 @@ components:
           description: HTML formatted diff (if changed and previous content existed)
         error:
           type: string
-          description: Error message if check failed
+          description: Error message if check failed or follow-on automation could not complete cleanly
         selector:
           type: string
           description: CSS selector used for extraction
@@ -5723,6 +5890,124 @@ components:
           items:
             type: string
           description: Job IDs created from the optional watch trigger during this check
+    WatchCheckInspection:
+      type: object
+      required:
+      - id
+      - watchId
+      - url
+      - checkedAt
+      - status
+      - changed
+      - title
+      - message
+      - visualChanged
+      properties:
+        id:
+          type: string
+          description: Persisted watch check id
+        watchId:
+          type: string
+          description: ID of the watch that was checked
+        url:
+          type: string
+          format: uri
+          description: URL that was checked
+        checkedAt:
+          type: string
+          format: date-time
+          description: When the check completed
+        status:
+          type: string
+          enum:
+          - baseline
+          - changed
+          - unchanged
+          - failed
+          description: High-level watch check outcome
+        changed:
+          type: boolean
+          description: Whether this check detected a content or visual change
+        baseline:
+          type: boolean
+          description: Whether this check established the first persisted comparison baseline
+        title:
+          type: string
+          description: Short operator-facing inspection title
+        message:
+          type: string
+          description: Guided operator-facing summary for the check
+        previousHash:
+          type: string
+          description: Previous content hash when available
+        currentHash:
+          type: string
+          description: Current content hash when available
+        diffText:
+          type: string
+          description: Unified diff text when textual content changed
+        diffHtml:
+          type: string
+          description: HTML diff when textual content changed
+        error:
+          type: string
+          description: Error summary when the check failed or follow-on automation had issues
+        selector:
+          type: string
+          description: CSS selector used for extraction
+        artifacts:
+          type: array
+          items:
+            "$ref": "#/components/schemas/WatchArtifact"
+          description: Check-scoped artifact snapshots exposed through explicit download URLs
+        visualHash:
+          type: string
+          description: Perceptual hash of current screenshot
+        previousVisualHash:
+          type: string
+          description: Perceptual hash of previous screenshot
+        visualChanged:
+          type: boolean
+          description: Whether visual changes were detected
+        visualSimilarity:
+          type: number
+          format: float
+          description: Similarity score between screenshots (0-1)
+        triggeredJobs:
+          type: array
+          items:
+            type: string
+          description: Job IDs created from the optional watch trigger during this check
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+          description: Guided next steps for follow-up inspection or retry
+    WatchCheckInspectionResponse:
+      type: object
+      required:
+      - check
+      properties:
+        check:
+          "$ref": "#/components/schemas/WatchCheckInspection"
+    WatchCheckHistoryResponse:
+      type: object
+      required:
+      - checks
+      - total
+      - limit
+      - offset
+      properties:
+        checks:
+          type: array
+          items:
+            "$ref": "#/components/schemas/WatchCheckInspection"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
     WebhookPayload:
       type: object
       description: |

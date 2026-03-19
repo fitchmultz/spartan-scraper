@@ -20,7 +20,7 @@
  * - Success, warning, danger, neutral, and info tones share one palette.
  */
 
-import type { ExportInspection, Watch } from "../api";
+import type { ExportInspection, Watch, WatchCheckInspection } from "../api";
 
 export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
 
@@ -76,6 +76,21 @@ export function getExportHistoryStatusTone(
     case "success":
       return "success";
     case "pending":
+      return "warning";
+    case "failed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export function getWatchCheckStatusTone(
+  status?: WatchCheckInspection["status"],
+): StatusTone {
+  switch (status) {
+    case "baseline":
+      return "info";
+    case "changed":
       return "warning";
     case "failed":
       return "danger";

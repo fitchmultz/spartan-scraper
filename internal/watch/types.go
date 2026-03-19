@@ -67,10 +67,12 @@ type Watch struct {
 
 // WatchCheckResult contains the outcome of a watch check.
 type WatchCheckResult struct {
+	CheckID      string    `json:"checkId,omitempty"`
 	WatchID      string    `json:"watchId"`
 	URL          string    `json:"url"`
 	CheckedAt    time.Time `json:"checkedAt"`
 	Changed      bool      `json:"changed"`
+	Baseline     bool      `json:"baseline,omitempty"`
 	PreviousHash string    `json:"previousHash,omitempty"`
 	CurrentHash  string    `json:"currentHash,omitempty"`
 	DiffText     string    `json:"diffText,omitempty"`

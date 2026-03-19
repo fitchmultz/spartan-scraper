@@ -172,7 +172,10 @@ func (s *FileStorage) Delete(id string) error {
 	if err := s.SaveAll(filtered); err != nil {
 		return err
 	}
-	return NewArtifactStore(s.dataDir).RemoveAll(id)
+	if err := NewArtifactStore(s.dataDir).RemoveAll(id); err != nil {
+		return err
+	}
+	return NewWatchHistoryStore(s.dataDir).DeleteWatch(id)
 }
 
 // Get retrieves a watch by ID.

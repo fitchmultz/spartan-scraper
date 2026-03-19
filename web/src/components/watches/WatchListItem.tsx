@@ -23,10 +23,12 @@ import { StatusPill } from "../StatusPill";
 export function WatchListItem({
   watch,
   isChecking,
+  isHistoryLoading,
   isDeleting,
   onEdit,
   onDelete,
   onCheck,
+  onHistory,
   onDeleteConfirm,
 }: WatchListItemProps) {
   return (
@@ -89,6 +91,15 @@ export function WatchListItem({
             title="Check now"
           >
             {isChecking ? "Checking..." : "Check"}
+          </button>
+          <button
+            type="button"
+            onClick={onHistory}
+            disabled={isHistoryLoading}
+            className="secondary"
+            style={{ padding: "6px 12px", fontSize: 12 }}
+          >
+            {isHistoryLoading ? "Loading..." : "History"}
           </button>
           <button
             type="button"

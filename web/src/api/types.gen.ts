@@ -1593,6 +1593,10 @@ export type WatchArtifact = {
 
 export type WatchCheckResult = {
     /**
+     * Persisted history id for this completed check
+     */
+    checkId?: string;
+    /**
      * ID of the watch that was checked
      */
     watchId: string;
@@ -1608,6 +1612,10 @@ export type WatchCheckResult = {
      * Whether content changed
      */
     changed: boolean;
+    /**
+     * Whether this check established the first persisted comparison baseline
+     */
+    baseline?: boolean;
     /**
      * Previous content hash (if available)
      */
@@ -1625,7 +1633,7 @@ export type WatchCheckResult = {
      */
     diffHtml?: string;
     /**
-     * Error message if check failed
+     * Error message if check failed or follow-on automation could not complete cleanly
      */
     error?: string;
     /**
@@ -1656,6 +1664,108 @@ export type WatchCheckResult = {
      * Job IDs created from the optional watch trigger during this check
      */
     triggeredJobs?: Array<string>;
+};
+
+export type WatchCheckInspection = {
+    /**
+     * Persisted watch check id
+     */
+    id: string;
+    /**
+     * ID of the watch that was checked
+     */
+    watchId: string;
+    /**
+     * URL that was checked
+     */
+    url: string;
+    /**
+     * When the check completed
+     */
+    checkedAt: string;
+    /**
+     * High-level watch check outcome
+     */
+    status: 'baseline' | 'changed' | 'unchanged' | 'failed';
+    /**
+     * Whether this check detected a content or visual change
+     */
+    changed: boolean;
+    /**
+     * Whether this check established the first persisted comparison baseline
+     */
+    baseline?: boolean;
+    /**
+     * Short operator-facing inspection title
+     */
+    title: string;
+    /**
+     * Guided operator-facing summary for the check
+     */
+    message: string;
+    /**
+     * Previous content hash when available
+     */
+    previousHash?: string;
+    /**
+     * Current content hash when available
+     */
+    currentHash?: string;
+    /**
+     * Unified diff text when textual content changed
+     */
+    diffText?: string;
+    /**
+     * HTML diff when textual content changed
+     */
+    diffHtml?: string;
+    /**
+     * Error summary when the check failed or follow-on automation had issues
+     */
+    error?: string;
+    /**
+     * CSS selector used for extraction
+     */
+    selector?: string;
+    /**
+     * Check-scoped artifact snapshots exposed through explicit download URLs
+     */
+    artifacts?: Array<WatchArtifact>;
+    /**
+     * Perceptual hash of current screenshot
+     */
+    visualHash?: string;
+    /**
+     * Perceptual hash of previous screenshot
+     */
+    previousVisualHash?: string;
+    /**
+     * Whether visual changes were detected
+     */
+    visualChanged: boolean;
+    /**
+     * Similarity score between screenshots (0-1)
+     */
+    visualSimilarity?: number;
+    /**
+     * Job IDs created from the optional watch trigger during this check
+     */
+    triggeredJobs?: Array<string>;
+    /**
+     * Guided next steps for follow-up inspection or retry
+     */
+    actions?: Array<RecommendedAction>;
+};
+
+export type WatchCheckInspectionResponse = {
+    check: WatchCheckInspection;
+};
+
+export type WatchCheckHistoryResponse = {
+    checks: Array<WatchCheckInspection>;
+    total: number;
+    limit: number;
+    offset: number;
 };
 
 /**
@@ -6494,6 +6604,139 @@ export type CheckWatchResponses = {
 };
 
 export type CheckWatchResponse = CheckWatchResponses[keyof CheckWatchResponses];
+
+export type GetWatchHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+    };
+    query?: {
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/watch/{id}/history';
+};
+
+export type GetWatchHistoryErrors = {
+    /**
+     * Watch not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetWatchHistoryError = GetWatchHistoryErrors[keyof GetWatchHistoryErrors];
+
+export type GetWatchHistoryResponses = {
+    /**
+     * Paginated watch history
+     */
+    200: WatchCheckHistoryResponse;
+};
+
+export type GetWatchHistoryResponse = GetWatchHistoryResponses[keyof GetWatchHistoryResponses];
+
+export type GetWatchCheckData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+        /**
+         * Watch check ID
+         */
+        checkId: string;
+    };
+    query?: never;
+    url: '/v1/watch/{id}/history/{checkId}';
+};
+
+export type GetWatchCheckErrors = {
+    /**
+     * Watch or check not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetWatchCheckError = GetWatchCheckErrors[keyof GetWatchCheckErrors];
+
+export type GetWatchCheckResponses = {
+    /**
+     * Watch check inspection
+     */
+    200: WatchCheckInspectionResponse;
+};
+
+export type GetWatchCheckResponse = GetWatchCheckResponses[keyof GetWatchCheckResponses];
+
+export type GetWatchCheckArtifactData = {
+    body?: never;
+    path: {
+        /**
+         * Watch ID
+         */
+        id: string;
+        /**
+         * Watch check ID
+         */
+        checkId: string;
+        /**
+         * Persisted watch artifact kind
+         */
+        artifactKind: 'current-screenshot' | 'previous-screenshot' | 'visual-diff';
+    };
+    query?: never;
+    url: '/v1/watch/{id}/history/{checkId}/artifacts/{artifactKind}';
+};
+
+export type GetWatchCheckArtifactErrors = {
+    /**
+     * Invalid artifact kind
+     */
+    400: ErrorResponse;
+    /**
+     * Watch, check, or artifact not found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ErrorResponse;
+};
+
+export type GetWatchCheckArtifactError = GetWatchCheckArtifactErrors[keyof GetWatchCheckArtifactErrors];
+
+export type GetWatchCheckArtifactResponses = {
+    /**
+     * Artifact bytes
+     */
+    200: Blob | File;
+};
+
+export type GetWatchCheckArtifactResponse = GetWatchCheckArtifactResponses[keyof GetWatchCheckArtifactResponses];
 
 export type GetWatchArtifactData = {
     body?: never;

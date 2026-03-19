@@ -81,10 +81,12 @@ type WatchResponse struct {
 
 // WatchCheckResponse represents the result of a watch check.
 type WatchCheckResponse struct {
+	CheckID            string                  `json:"checkId,omitempty"`
 	WatchID            string                  `json:"watchId"`
 	URL                string                  `json:"url"`
 	CheckedAt          time.Time               `json:"checkedAt"`
 	Changed            bool                    `json:"changed"`
+	Baseline           bool                    `json:"baseline,omitempty"`
 	PreviousHash       string                  `json:"previousHash,omitempty"`
 	CurrentHash        string                  `json:"currentHash,omitempty"`
 	DiffText           string                  `json:"diffText,omitempty"`
@@ -207,7 +209,21 @@ func applyWatchRequest(existing *watch.Watch, req WatchRequest) {
 
 // handleWatchCheckWrapper routes nested watch detail paths.
 func (s *Server) handleWatchCheckWrapper(w http.ResponseWriter, r *http.Request) {
-	if strings.Contains(strings.TrimSuffix(r.URL.Path, "/"), "/artifacts/") {
+	trimmedPath := strings.TrimSuffix(r.URL.Path, "/")
+	if strings.Contains(trimmedPath, "/history/") && strings.Contains(trimmedPath, "/artifacts/") {
+		s.handleWatchHistoryArtifact(w, r)
+		return
+	}
+	if handlePathSuffix(r.URL.Path, "/history", func() {
+		s.handleWatchHistory(w, r)
+	}) {
+		return
+	}
+	if strings.Contains(trimmedPath, "/history/") {
+		s.handleWatchHistoryDetail(w, r)
+		return
+	}
+	if strings.Contains(trimmedPath, "/artifacts/") {
 		s.handleWatchArtifact(w, r)
 		return
 	}

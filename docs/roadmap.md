@@ -16,12 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Resume watch outcome and check-history inspection across API, Web UI, CLI, and MCP as the next product cutover now that the Automation Hub redesign has clarified where that workflow belongs in the Web UI.
+- Polish any cross-surface contract consistency issues discovered during the watch inspection cutover, including pagination, filters, envelope naming, and generated client/doc sync where needed.
 
 ## Later / Deprioritized
-
-- Immediately after the watch inspection cutover, update docs and examples so the canonical operator workflow matches the shipped cross-surface experience.
-- Then polish any cross-surface contract consistency issues discovered during the watch work, including pagination, filters, envelope naming, and generated client/doc sync where needed.
 
 ## Ongoing Constraints
 

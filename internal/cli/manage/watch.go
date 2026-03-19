@@ -20,6 +20,7 @@ package manage
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/runtime"
@@ -41,11 +43,12 @@ const watchCommandHelpText = `Watch content for changes.
 Usage: spartan watch <command> [options]
 
 Commands:
-  add     Create a new content watch
-  list    List all watches
-  delete  Delete a watch by ID
-  check   Manually check a watch
-  start   Start the watch scheduler
+  add      Create a new content watch
+  list     List all watches
+  delete   Delete a watch by ID
+  check    Manually check a watch
+  history  Inspect persisted watch check history
+  start    Start the watch scheduler
 
 Examples:
   spartan watch add --url https://example.com --interval 3600
@@ -54,6 +57,8 @@ Examples:
   spartan watch add --url https://example.com/pricing --trigger-kind scrape --trigger-request-file ./pricing-job.json
   spartan watch list
   spartan watch check <watch-id>
+  spartan watch history <watch-id>
+  spartan watch history <watch-id> --check-id <check-id>
   spartan watch start
 
 Use "spartan watch <command> --help" for more information about a command.
@@ -62,7 +67,7 @@ Use "spartan watch <command> --help" for more information about a command.
 // RunWatch routes watch subcommands.
 func RunWatch(ctx context.Context, cfg config.Config, args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Error: watch subcommand required (add, list, delete, check, start)")
+		fmt.Fprintln(os.Stderr, "Error: watch subcommand required (add, list, delete, check, history, start)")
 		printWatchHelp()
 		return 1
 	}
@@ -76,6 +81,8 @@ func RunWatch(ctx context.Context, cfg config.Config, args []string) int {
 		return runWatchDelete(cfg, args[1:])
 	case "check":
 		return runWatchCheck(ctx, cfg, args[1:])
+	case "history":
+		return runWatchHistory(cfg, args[1:])
 	case "start":
 		return runWatchStart(ctx, cfg, args[1:])
 	case "help", "--help", "-h":
@@ -315,27 +322,185 @@ func runWatchCheck(ctx context.Context, cfg config.Config, args []string) int {
 
 	fmt.Printf("Checking watch %s (%s)...\n", w.ID, w.URL)
 	result, err := watcher.Check(ctx, w)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: check failed: %v\n", err)
+	if result == nil {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: check failed: %v\n", err)
+			return 1
+		}
+		fmt.Fprintln(os.Stderr, "Error: watch check returned no result")
 		return 1
 	}
 
-	if result.Changed {
-		fmt.Println("Content changed!")
-		fmt.Printf("  Previous hash: %s\n", result.PreviousHash[:8])
-		fmt.Printf("  Current hash:  %s\n", result.CurrentHash[:8])
-		if len(result.TriggeredJobs) > 0 {
-			fmt.Printf("  Triggered jobs: %s\n", strings.Join(result.TriggeredJobs, ", "))
-		}
-		if result.DiffText != "" {
-			fmt.Println("\nDiff:")
-			fmt.Println(result.DiffText)
-		}
-	} else {
-		fmt.Println("No changes detected.")
+	inspection := api.BuildWatchCheckInspection(watchRecordFromResult(result))
+	printWatchInspection(inspection)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Check completed with errors: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func runWatchHistory(cfg config.Config, args []string) int {
+	fs := flag.NewFlagSet("watch history", flag.ExitOnError)
+	checkID := fs.String("check-id", "", "Inspect a single persisted watch check by check id")
+	limit := fs.Int("limit", 10, "Maximum number of history rows to show")
+	offset := fs.Int("offset", 0, "History row offset for pagination")
+	jsonOut := fs.Bool("json", false, "Emit JSON watch history envelopes instead of guided text")
+	fs.Usage = func() {
+		fmt.Fprint(os.Stderr, `Usage:
+  spartan watch history <watch-id> [--limit <n>] [--offset <n>] [--json]
+  spartan watch history <watch-id> --check-id <check-id> [--json]
+
+Examples:
+  spartan watch history <watch-id>
+  spartan watch history <watch-id> --limit 5
+  spartan watch history <watch-id> --check-id <check-id>
+  spartan watch history <watch-id> --json
+
+Options:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return 1
+	}
+	if fs.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "Error: watch ID required")
+		fs.Usage()
+		return 1
 	}
 
+	watchID := strings.TrimSpace(fs.Arg(0))
+	historyStore := watch.NewWatchHistoryStore(cfg.DataDir)
+	if strings.TrimSpace(*checkID) != "" {
+		record, err := historyStore.GetByID(watchID, strings.TrimSpace(*checkID))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to load watch check: %v\n", err)
+			return 1
+		}
+		return printWatchHistoryEnvelope(api.WatchCheckInspectionResponse{Check: api.BuildWatchCheckInspection(*record)}, *jsonOut, 0)
+	}
+
+	records, total, err := historyStore.GetByWatch(watchID, *limit, *offset)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to load watch history: %v\n", err)
+		return 1
+	}
+	return printWatchHistoryList(api.BuildWatchCheckHistoryResponse(records, total, *limit, *offset), watchID, *jsonOut)
+}
+
+func printWatchHistoryEnvelope(response api.WatchCheckInspectionResponse, jsonOut bool, exitCode int) int {
+	if jsonOut {
+		return printWatchJSON(response, exitCode)
+	}
+	printWatchInspection(response.Check)
+	return exitCode
+}
+
+func printWatchHistoryList(response api.WatchCheckHistoryResponse, watchID string, jsonOut bool) int {
+	if jsonOut {
+		return printWatchJSON(response, 0)
+	}
+	if len(response.Checks) == 0 {
+		fmt.Printf("No watch history found for %s.\n", watchID)
+		return 0
+	}
+	fmt.Printf("Watch history for %s (showing %d of %d):\n\n", watchID, len(response.Checks), response.Total)
+	for i, check := range response.Checks {
+		if i > 0 {
+			fmt.Println(strings.Repeat("-", 72))
+		}
+		printWatchInspection(check)
+	}
 	return 0
+}
+
+func printWatchJSON(value any, exitCode int) int {
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(value); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return exitCode
+}
+
+func printWatchInspection(inspection api.WatchCheckInspection) {
+	fmt.Printf("%s\n", strings.ToUpper(inspection.Title))
+	fmt.Printf("Check ID: %s\n", inspection.ID)
+	fmt.Printf("Watch: %s\n", inspection.WatchID)
+	fmt.Printf("Status: %s\n", inspection.Status)
+	fmt.Printf("Checked: %s\n", inspection.CheckedAt.Format(time.RFC3339))
+	if inspection.CurrentHash != "" {
+		fmt.Printf("Current hash: %s\n", inspection.CurrentHash)
+	}
+	if inspection.PreviousHash != "" {
+		fmt.Printf("Previous hash: %s\n", inspection.PreviousHash)
+	}
+	if inspection.Baseline {
+		fmt.Println("Baseline: this check established the first comparison snapshot")
+	}
+	if len(inspection.TriggeredJobs) > 0 {
+		fmt.Printf("Triggered jobs: %s\n", strings.Join(inspection.TriggeredJobs, ", "))
+	}
+	if len(inspection.Artifacts) > 0 {
+		fmt.Println("Artifacts:")
+		for _, artifact := range inspection.Artifacts {
+			fmt.Printf("- %s (%s) [%s]\n", artifact.Filename, artifact.ContentType, artifact.DownloadURL)
+		}
+	}
+	if inspection.Error != "" {
+		fmt.Printf("Error: %s\n", inspection.Error)
+	}
+	fmt.Printf("Message: %s\n", inspection.Message)
+	if inspection.DiffText != "" {
+		fmt.Println("Diff:")
+		fmt.Println(inspection.DiffText)
+	}
+	if len(inspection.Actions) > 0 {
+		fmt.Println("Next steps:")
+		for _, action := range inspection.Actions {
+			fmt.Printf("- %s [%s]: %s\n", action.Label, action.Kind, action.Value)
+		}
+	}
+	fmt.Println()
+}
+
+func watchRecordFromResult(result *watch.WatchCheckResult) watch.WatchCheckRecord {
+	if result == nil {
+		return watch.WatchCheckRecord{}
+	}
+	status := watch.CheckStatusUnchanged
+	switch {
+	case result.Baseline:
+		status = watch.CheckStatusBaseline
+	case result.Changed:
+		status = watch.CheckStatusChanged
+	case strings.TrimSpace(result.Error) != "":
+		status = watch.CheckStatusFailed
+	}
+	return watch.WatchCheckRecord{
+		ID:                 result.CheckID,
+		WatchID:            result.WatchID,
+		URL:                result.URL,
+		CheckedAt:          result.CheckedAt,
+		Status:             status,
+		Changed:            result.Changed,
+		Baseline:           result.Baseline,
+		PreviousHash:       result.PreviousHash,
+		CurrentHash:        result.CurrentHash,
+		DiffText:           result.DiffText,
+		DiffHTML:           result.DiffHTML,
+		Error:              result.Error,
+		Selector:           result.Selector,
+		Artifacts:          append([]watch.Artifact(nil), result.Artifacts...),
+		VisualHash:         result.VisualHash,
+		PreviousVisualHash: result.PreviousVisualHash,
+		VisualChanged:      result.VisualChanged,
+		VisualSimilarity:   result.VisualSimilarity,
+		TriggeredJobs:      append([]string(nil), result.TriggeredJobs...),
+	}
 }
 
 func runWatchStart(ctx context.Context, cfg config.Config, args []string) int {

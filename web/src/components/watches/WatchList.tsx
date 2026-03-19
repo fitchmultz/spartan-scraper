@@ -22,10 +22,12 @@ import { WatchListItem } from "./WatchListItem";
 export function WatchList({
   watches,
   checkingId,
+  historyLoadingId,
   deleteConfirmId,
   onEdit,
   onDelete,
   onCheck,
+  onHistory,
   onDeleteConfirm,
 }: WatchListProps) {
   const sortedWatches = useMemo(() => {
@@ -55,10 +57,12 @@ export function WatchList({
               key={watch.id}
               watch={watch}
               isChecking={checkingId === watch.id}
+              isHistoryLoading={historyLoadingId === watch.id}
               isDeleting={deleteConfirmId === watch.id}
               onEdit={() => onEdit(watch)}
               onDelete={() => onDelete(watch.id)}
               onCheck={() => onCheck(watch)}
+              onHistory={() => onHistory(watch)}
               onDeleteConfirm={() =>
                 onDeleteConfirm(deleteConfirmId === watch.id ? null : watch.id)
               }

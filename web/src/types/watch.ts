@@ -1,23 +1,19 @@
 /**
- * Watch Types Module
- *
- * Centralizes all watch-related type definitions used across the watch management
- * components and hooks. This module provides a single source of truth for watch
- * form data structures and component prop types.
- *
- * This module does NOT handle:
- * - API response types (those come from ../api)
- * - Runtime validation or type guards
- * - Business logic or state management
- *
- * @module types/watch
+ * Purpose: Centralize watch-management UI types and component props.
+ * Responsibilities: Define form state, list row actions, manual-check modal props, and persisted history inspection props.
+ * Scope: Web watch-management typing only; network contracts come from `../api`.
+ * Usage: Import from watch containers, managers, and modal components to keep prop contracts aligned.
+ * Invariants/Assumptions: API-generated watch contracts remain the source of truth for persisted entities, and UI-only state lives in these prop helpers rather than the generated client.
  */
 
-import type { Watch, WatchInput, WatchCheckResult } from "../api";
+import type {
+  Watch,
+  WatchCheckHistoryResponse,
+  WatchCheckInspection,
+  WatchCheckResult,
+  WatchInput,
+} from "../api";
 
-/**
- * Props for the WatchManager component
- */
 export interface WatchManagerProps {
   watches: Watch[];
   onRefresh: () => void;
@@ -25,13 +21,18 @@ export interface WatchManagerProps {
   onUpdate: (id: string, watch: WatchInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onCheck: (id: string) => Promise<WatchCheckResult | undefined>;
+  onLoadHistory: (
+    watchId: string,
+    limit: number,
+    offset: number,
+  ) => Promise<WatchCheckHistoryResponse | undefined>;
+  onLoadHistoryDetail: (
+    watchId: string,
+    checkId: string,
+  ) => Promise<WatchCheckInspection | undefined>;
   loading?: boolean;
 }
 
-/**
- * Form data structure for watch creation/editing
- * Uses string types for numeric inputs to allow empty values during editing
- */
 export interface WatchFormData {
   url: string;
   selector: string;
@@ -54,35 +55,30 @@ export interface WatchFormData {
   jobTriggerRequest: string;
 }
 
-/**
- * Props for the WatchList component
- */
 export interface WatchListProps {
   watches: Watch[];
   checkingId: string | null;
+  historyLoadingId: string | null;
   deleteConfirmId: string | null;
   onEdit: (watch: Watch) => void;
   onDelete: (id: string) => void;
   onCheck: (watch: Watch) => void;
+  onHistory: (watch: Watch) => void;
   onDeleteConfirm: (id: string | null) => void;
 }
 
-/**
- * Props for the WatchListItem component
- */
 export interface WatchListItemProps {
   watch: Watch;
   isChecking: boolean;
+  isHistoryLoading: boolean;
   isDeleting: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onCheck: () => void;
+  onHistory: () => void;
   onDeleteConfirm: () => void;
 }
 
-/**
- * Props for the WatchForm component
- */
 export interface WatchFormProps {
   formData: WatchFormData;
   formError: string | null;
@@ -93,10 +89,23 @@ export interface WatchFormProps {
   onCancel: () => void;
 }
 
-/**
- * Props for the CheckResultModal component
- */
 export interface CheckResultModalProps {
   result: WatchCheckResult;
+  inspection: WatchCheckInspection | null;
   onClose: () => void;
+  onOpenHistory: (checkId: string) => void;
+}
+
+export interface WatchHistoryModalProps {
+  watch: Watch;
+  records: WatchCheckInspection[];
+  total: number;
+  limit: number;
+  offset: number;
+  loading: boolean;
+  selectedCheck: WatchCheckInspection | null;
+  selectedCheckLoading: boolean;
+  onClose: () => void;
+  onSelectCheck: (checkId: string) => void;
+  onPageChange: (offset: number) => void;
 }
