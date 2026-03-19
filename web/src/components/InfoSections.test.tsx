@@ -26,6 +26,9 @@ describe("InfoSections", () => {
       />,
     );
 
+    expect(
+      screen.queryByText("Nothing needs maintenance yet"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Auth Profiles")).toBeInTheDocument();
     expect(
       screen.getByText("No reusable auth profiles yet"),

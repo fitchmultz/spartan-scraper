@@ -3303,6 +3303,31 @@
   gap: 8px;
 }
 
+.settings-overview__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.settings-overview__item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+}
+
+.settings-overview__item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-overview__item p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
 .system-status {
   border-color: var(--tone-warning-border);
   background:

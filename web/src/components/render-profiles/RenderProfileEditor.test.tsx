@@ -29,6 +29,29 @@ describe("RenderProfileEditor", () => {
     });
   });
 
+  it("shows a guided first-run empty state and reports inventory count", async () => {
+    const onInventoryChange = vi.fn();
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor onInventoryChange={onInventoryChange} />
+      </ToastProvider>,
+    );
+
+    expect(
+      await screen.findByText(/no saved render profiles yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /most jobs can use spartan's default runtime selection/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create your first profile/i }),
+    ).toBeEnabled();
+    expect(onInventoryChange).toHaveBeenCalledWith(0);
+  });
+
   it("disables AI actions and explains the manual path when AI is unavailable", async () => {
     vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
       data: {

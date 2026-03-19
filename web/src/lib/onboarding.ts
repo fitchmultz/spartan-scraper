@@ -240,8 +240,8 @@ export const ONBOARDING_TOUR_STEPS: readonly OnboardingTourStepConfig[] = [
     id: "settings-workspace",
     route: "settings",
     target: '[data-tour="settings-workspace"], body',
-    title: "Settings centralizes configuration surfaces",
-    body: "Use this route for profiles, schedules, render and pipeline tools, and runtime maintenance settings.",
+    title: "Settings is where reuse and maintenance live",
+    body: "Come here after a workflow proves it needs saved auth, runtime overrides, automation, proxy routing, or cleanup policy instead of configuring everything up front.",
     placement: "bottom",
   },
   {

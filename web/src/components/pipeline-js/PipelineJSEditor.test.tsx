@@ -38,6 +38,35 @@ describe("PipelineJSEditor", () => {
     });
   });
 
+  it("shows a guided first-run empty state and reports inventory count", async () => {
+    vi.mocked(api.getV1PipelineJs).mockResolvedValue({
+      data: { scripts: [] },
+      request: new Request("http://localhost:8741/v1/pipeline-js"),
+      response: new Response(),
+    });
+
+    const onInventoryChange = vi.fn();
+
+    render(
+      <ToastProvider>
+        <PipelineJSEditor onInventoryChange={onInventoryChange} />
+      </ToastProvider>,
+    );
+
+    expect(
+      await screen.findByText(/no pipeline scripts yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /most sites do not need custom javascript in the fetch pipeline/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create your first script/i }),
+    ).toBeEnabled();
+    expect(onInventoryChange).toHaveBeenCalledWith(0);
+  });
+
   it("disables AI actions and explains the manual path when AI is unavailable", async () => {
     render(
       <ToastProvider>

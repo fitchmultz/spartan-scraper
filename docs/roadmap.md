@@ -16,7 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Polish Settings first-run and empty-state UX so optional configuration feels coherent, quiet by default, and low-friction.
 - Align docs, onboarding copy, env-var references, and in-app help text with the stable optional-capability model.
 - Re-dogfood the full fresh-start-to-daily-use operator flow before expanding the Settings surface further.
 

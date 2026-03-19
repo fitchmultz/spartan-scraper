@@ -19,17 +19,20 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
+import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
+  onInventoryChange?: (count: number) => void;
 }
 
 export function RenderProfileEditor({
   onError,
   aiStatus = null,
+  onInventoryChange,
 }: RenderProfileEditorProps) {
   const toast = useToast();
   const [profiles, setProfiles] = useState<RenderProfile[]>([]);
@@ -61,7 +64,9 @@ export function RenderProfileEditor({
           getApiErrorMessage(response.error, "Failed to load profiles"),
         );
       }
-      setProfiles(response.data?.profiles || []);
+      const nextProfiles = response.data?.profiles || [];
+      setProfiles(nextProfiles);
+      onInventoryChange?.(nextProfiles.length);
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to load profiles");
       setError(message);
@@ -69,7 +74,7 @@ export function RenderProfileEditor({
     } finally {
       setLoading(false);
     }
-  }, [onError]);
+  }, [onError, onInventoryChange]);
 
   useEffect(() => {
     loadProfiles();
@@ -192,13 +197,27 @@ export function RenderProfileEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Render Profiles</h2>
-        <div className="space-x-2">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ marginBottom: 4 }}>Render Profiles</h2>
+          <p style={{ margin: 0, opacity: 0.8 }}>
+            Save reusable fetch and browser overrides only for hosts that need a
+            repeatable runtime strategy.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             type="button"
             onClick={() => setShowJson(!showJson)}
-            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+            className="secondary"
           >
             {showJson ? "Hide JSON" : "Show JSON"}
           </button>
@@ -207,19 +226,11 @@ export function RenderProfileEditor({
             onClick={() => setIsAIGeneratorOpen(true)}
             disabled={aiUnavailable}
             title={aiUnavailableMessage ?? undefined}
-            className={`px-3 py-1 text-sm rounded ${
-              aiUnavailable
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-purple-600 text-white hover:bg-purple-700"
-            }`}
+            className={aiUnavailable ? "secondary" : undefined}
           >
             Generate with AI
           </button>
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
-          >
+          <button type="button" onClick={() => setIsCreating(true)}>
             Create Profile
           </button>
         </div>
@@ -235,22 +246,19 @@ export function RenderProfileEditor({
         </div>
       )}
 
-      {profiles.length === 0 && !isCreating && (
-        <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed">
-          <p className="text-gray-600 mb-4">No render profiles configured</p>
-          <p className="text-sm text-gray-500 mb-4">
-            Render profiles control how URLs are fetched (HTTP vs headless
-            browser)
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Create Your First Profile
-          </button>
-        </div>
-      )}
+      {profiles.length === 0 && !isCreating ? (
+        <ActionEmptyState
+          eyebrow="Optional runtime override"
+          title="No saved render profiles yet"
+          description="Most jobs can use Spartan's default runtime selection. Add a render profile only when a host needs a stable override for browser usage, engine choice, or rate limits."
+          actions={[
+            {
+              label: "Create your first profile",
+              onClick: () => setIsCreating(true),
+            },
+          ]}
+        />
+      ) : null}
 
       {isCreating && (
         <ProfileForm

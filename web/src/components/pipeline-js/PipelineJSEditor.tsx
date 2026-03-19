@@ -19,17 +19,20 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
+import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
+  onInventoryChange?: (count: number) => void;
 }
 
 export function PipelineJSEditor({
   onError,
   aiStatus = null,
+  onInventoryChange,
 }: PipelineJSEditorProps) {
   const toast = useToast();
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
@@ -62,7 +65,9 @@ export function PipelineJSEditor({
           getApiErrorMessage(response.error, "Failed to load scripts"),
         );
       }
-      setScripts(response.data?.scripts || []);
+      const nextScripts = response.data?.scripts || [];
+      setScripts(nextScripts);
+      onInventoryChange?.(nextScripts.length);
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to load scripts");
       setError(message);
@@ -70,7 +75,7 @@ export function PipelineJSEditor({
     } finally {
       setLoading(false);
     }
-  }, [onError]);
+  }, [onError, onInventoryChange]);
 
   useEffect(() => {
     loadScripts();
@@ -193,13 +198,27 @@ export function PipelineJSEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Pipeline JavaScript</h2>
-        <div className="space-x-2">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ marginBottom: 4 }}>Pipeline JavaScript</h2>
+          <p style={{ margin: 0, opacity: 0.8 }}>
+            Save host-specific JavaScript only when a page needs repeatable DOM
+            prep, waits, or post-navigation cleanup.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             type="button"
             onClick={() => setShowJson(!showJson)}
-            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+            className="secondary"
           >
             {showJson ? "Hide JSON" : "Show JSON"}
           </button>
@@ -208,19 +227,11 @@ export function PipelineJSEditor({
             onClick={() => setIsAIGeneratorOpen(true)}
             disabled={aiUnavailable}
             title={aiUnavailableMessage ?? undefined}
-            className={`px-3 py-1 text-sm rounded ${
-              aiUnavailable
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-purple-600 text-white hover:bg-purple-700"
-            }`}
+            className={aiUnavailable ? "secondary" : undefined}
           >
             Generate with AI
           </button>
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
-          >
+          <button type="button" onClick={() => setIsCreating(true)}>
             Create Script
           </button>
         </div>
@@ -236,24 +247,19 @@ export function PipelineJSEditor({
         </div>
       )}
 
-      {scripts.length === 0 && !isCreating && (
-        <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed">
-          <p className="text-gray-600 mb-4">
-            No pipeline JavaScript scripts configured
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            Pipeline JS scripts run custom JavaScript on matching pages before
-            or after navigation
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Create Your First Script
-          </button>
-        </div>
-      )}
+      {scripts.length === 0 && !isCreating ? (
+        <ActionEmptyState
+          eyebrow="Optional page-specific hook"
+          title="No pipeline scripts yet"
+          description="Most sites do not need custom JavaScript in the fetch pipeline. Add a script once a host needs repeatable wait selectors, DOM normalization, or pre-navigation setup."
+          actions={[
+            {
+              label: "Create your first script",
+              onClick: () => setIsCreating(true),
+            },
+          ]}
+        />
+      ) : null}
 
       {isCreating && (
         <ScriptForm

@@ -42,6 +42,7 @@ import {
 } from "./api";
 import { InfoSections } from "./components/InfoSections";
 import { ActionEmptyState } from "./components/ActionEmptyState";
+import { SettingsOverviewPanel } from "./components/SettingsOverviewPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { OnboardingFlow } from "./components/OnboardingFlow";
@@ -308,6 +309,12 @@ function AppShell() {
   const routeKey = route.kind as OnboardingRouteKey;
   const [routeHelpDefaultExpanded, setRouteHelpDefaultExpanded] =
     useState(false);
+  const [renderProfileCount, setRenderProfileCount] = useState<number | null>(
+    null,
+  );
+  const [pipelineScriptCount, setPipelineScriptCount] = useState<number | null>(
+    null,
+  );
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -865,10 +872,46 @@ function AppShell() {
         return {
           title: "Settings",
           description:
-            "Configure runtime profiles, schedules, crawl state, and pipeline tools.",
+            "Configure saved auth, runtime overrides, automation, and maintenance only when a workflow actually needs them.",
         };
     }
   }, [route.jobId, route.kind]);
+
+  const showSettingsOverview = useMemo(() => {
+    if (route.kind !== "settings" || setupRequired) {
+      return false;
+    }
+
+    if (renderProfileCount === null || pipelineScriptCount === null) {
+      return false;
+    }
+
+    const proxyStatus = health?.components?.proxy_pool?.status;
+    const retentionStatus = health?.components?.retention?.status;
+    const optionalSubsystemsQuiet = [proxyStatus, retentionStatus].every(
+      (status) =>
+        status === undefined || status === "disabled" || status === "ok",
+    );
+
+    return (
+      optionalSubsystemsQuiet &&
+      profiles.length === 0 &&
+      schedules.length === 0 &&
+      crawlStatesTotal === 0 &&
+      renderProfileCount === 0 &&
+      pipelineScriptCount === 0
+    );
+  }, [
+    crawlStatesTotal,
+    health?.components?.proxy_pool?.status,
+    health?.components?.retention?.status,
+    pipelineScriptCount,
+    profiles.length,
+    renderProfileCount,
+    route.kind,
+    schedules.length,
+    setupRequired,
+  ]);
 
   const detailJob =
     route.kind === "job-detail"
@@ -1282,6 +1325,13 @@ function AppShell() {
           {routeHelpPanel}
 
           <div data-tour="settings-workspace">
+            {showSettingsOverview ? (
+              <SettingsOverviewPanel
+                onCreateJob={() => navigate("/jobs/new")}
+                onOpenAutomation={() => navigate("/automation/batches")}
+              />
+            ) : null}
+
             <InfoSections
               profiles={profiles}
               schedules={schedules}
@@ -1295,11 +1345,17 @@ function AppShell() {
             />
 
             <section className="panel">
-              <RenderProfileEditor aiStatus={health?.components?.ai ?? null} />
+              <RenderProfileEditor
+                aiStatus={health?.components?.ai ?? null}
+                onInventoryChange={setRenderProfileCount}
+              />
             </section>
 
             <section className="panel">
-              <PipelineJSEditor aiStatus={health?.components?.ai ?? null} />
+              <PipelineJSEditor
+                aiStatus={health?.components?.ai ?? null}
+                onInventoryChange={setPipelineScriptCount}
+              />
             </section>
 
             <ProxyPoolStatusPanel
