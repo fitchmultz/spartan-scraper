@@ -11,6 +11,8 @@ Spartan Scraper is a local-first scraping workbench for turning a URL into a cle
 
 It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, and only reach for headless browsers when a target actually needs them.
 
+A healthy first run works without any AI, proxy-pool, or retention setup. Those are optional subsystems you can enable later when a workflow actually calls for them.
+
 If you want the fastest path in, start with the 5-minute demo below. If you are integrating it into a real workflow, the API, MCP server, schedules, and local artifact model all build on that same core path.
 
 Planning and future work live in [docs/roadmap.md](docs/roadmap.md). That document is the canonical source of truth for what is in flight, next, and explicitly out of scope for the current cutover.
@@ -23,6 +25,8 @@ Planning and future work live in [docs/roadmap.md](docs/roadmap.md). That docume
 - Stay practical for real sites: HTTP-first by default, Chromedp/Playwright when pages are JS-heavy or need login flows.
 
 ## 5-Minute Demo
+
+This walkthrough uses the default out-of-the-box path. Leave AI, proxy pooling, and retention off; they are optional and not needed for the first successful scrape.
 
 ```bash
 git clone <repo-url>
@@ -173,7 +177,7 @@ make install-bin
   --urls https://example.com,https://example.com/docs \
   --out ./out/research.jsonl
 
-# Prefer residential us-east proxies from the loaded proxy pool for one request
+# If you later load a proxy pool, prefer residential us-east proxies from it for one request
 ./bin/spartan scrape \
   --url https://example.com \
   --proxy-region us-east \
@@ -230,7 +234,9 @@ Non-browser clients without an `Origin` header remain supported.
 If you run the backend on a different local port, set `DEV_API_PROXY_TARGET=http://127.0.0.1:<port>` in `web/.env` so the dev proxy stays same-origin.
 Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser should call a remote API directly.
 
-Repo-local AI defaults live in `.env` and `config/pi-routes.json`. AI is optional and disabled for the smoothest first run; when you enable `PI_ENABLED=true`, Spartan asks pi for routes in this order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`. Auth, account selection, and billing stay in pi; if you want a different route order or different provider/model IDs, override `PI_CONFIG_PATH` or edit that routes file locally.
+Repo-local AI defaults live in `.env` and `config/pi-routes.json`, but core scrape/crawl/research workflows work without AI. Leave `PI_ENABLED=false` for the default first run; when you later set `PI_ENABLED=true`, Spartan asks pi for routes in this order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`. Auth, account selection, and billing stay in pi; if you want a different route order or different provider/model IDs, override `PI_CONFIG_PATH` or edit that routes file locally.
+
+Proxy pooling and retention are optional too: leave `PROXY_POOL_FILE` unset and `RETENTION_ENABLED=false` until you actually need pooled routing or automated cleanup.
 
 ## Interfaces
 

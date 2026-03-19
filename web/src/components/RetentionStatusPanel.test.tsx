@@ -103,9 +103,9 @@ describe("RetentionStatusPanel", () => {
         enabled: false,
         guidance: {
           status: "disabled" as const,
-          title: "Automatic retention is disabled",
+          title: "Automatic retention stays off by default",
           message:
-            "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you understand the blast radius.",
+            "Spartan keeps completed jobs and crawl state until you choose an automatic cleanup policy or run a manual cleanup preview. When you are ready to reclaim space, start with a dry run so you can review what would change.",
           actions: [
             {
               label: "Enable retention in the environment",
@@ -122,7 +122,7 @@ describe("RetentionStatusPanel", () => {
     renderPanel();
 
     expect(
-      await screen.findByText("Automatic retention is disabled"),
+      await screen.findByText("Automatic retention stays off by default"),
     ).toBeInTheDocument();
     expect(screen.getByText("RETENTION_ENABLED=true")).toBeInTheDocument();
   });
@@ -134,9 +134,9 @@ describe("RetentionStatusPanel", () => {
         enabled: false,
         guidance: {
           status: "disabled" as const,
-          title: "Automatic retention is disabled",
+          title: "Automatic retention stays off by default",
           message:
-            "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you understand the blast radius.",
+            "Spartan keeps completed jobs and crawl state until you choose an automatic cleanup policy or run a manual cleanup preview. When you are ready to reclaim space, start with a dry run so you can review what would change.",
           actions: [],
         },
       },
@@ -165,7 +165,7 @@ describe("RetentionStatusPanel", () => {
     );
 
     expect(
-      await screen.findByText("Automatic retention is disabled"),
+      await screen.findByText("Automatic retention stays off by default"),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Retention needs attention"),

@@ -6,6 +6,8 @@ This is the fastest path from clone to visible value.
 
 Start the local server, open the UI, run one scrape, and confirm that Spartan Scraper persists a real result you can inspect.
 
+This walkthrough uses the default out-of-the-box path. Leave AI, proxy pooling, and retention off; they are optional and not needed for the first successful scrape.
+
 ## Prerequisites
 
 - Go `1.26.1`

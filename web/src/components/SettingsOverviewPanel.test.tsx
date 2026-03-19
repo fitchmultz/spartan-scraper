@@ -24,7 +24,7 @@ describe("SettingsOverviewPanel", () => {
 
     expect(
       screen.getByText(
-        /most settings controls can wait until a workflow proves it needs reuse/i,
+        /most settings controls can wait until a workflow proves it needs them/i,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Auth Profiles")).toBeInTheDocument();

@@ -30,13 +30,13 @@ export function describeAICapability(
     return {
       unavailable: true,
       disabledByChoice: true,
-      message: `${aiStatus.message || "AI helpers are optional and currently disabled."} ${manualFallback} Enable AI later only when you want assisted generation or tuning.`,
+      message: `${aiStatus.message || "AI helpers are off by default."} ${manualFallback} Turn AI on later when you want assisted generation or tuning.`,
     };
   }
 
   return {
     unavailable: true,
     disabledByChoice: false,
-    message: `${aiStatus.message || "AI helpers currently need attention."} ${manualFallback} Fix AI when you want assisted generation or tuning again.`,
+    message: `${aiStatus.message || "AI helpers need attention before assisted generation or tuning can run."} ${manualFallback} Fix AI when you want assisted generation or tuning again.`,
   };
 }

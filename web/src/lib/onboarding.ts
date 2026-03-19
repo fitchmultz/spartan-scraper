@@ -77,7 +77,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         "Create scrape, crawl, or research work with the guided wizard, presets, and expert controls in one route.",
       whatYouCanDo: [
         "Switch between guided and expert authoring without losing draft values.",
-        "Reuse presets and open AI helpers from the quick-start rail.",
+        "Reuse presets immediately and open optional AI helpers only when they are enabled.",
         "Submit the active draft directly from keyboard or shell actions.",
       ],
       shortcuts: [
@@ -112,7 +112,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         "Author, preview, duplicate, and refine extraction templates in a persistent workspace instead of modal fragments.",
       whatYouCanDo: [
         "Manage the template library and open one working editor at a time.",
-        "Use previews, the visual selector builder, and AI assistance in one flow.",
+        "Use previews, the visual selector builder, and optional AI assistance in one flow.",
         "Duplicate built-in templates into editable drafts without losing context.",
       ],
       shortcuts: [
@@ -147,11 +147,11 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
     settings: {
       title: "What can I do here?",
       summary:
-        "Configure profiles, schedules, pipeline tools, and runtime maintenance surfaces from the control-center route.",
+        "Review saved auth, reusable runtime tools, and optional capabilities from the control-center route without feeling pressure to configure everything up front.",
       whatYouCanDo: [
-        "Review platform configuration without leaving the main shell.",
-        "Move from settings to templates or jobs through visible shell controls.",
-        "Use the help panel to understand what belongs in this route.",
+        "See what can stay off by default and what only matters after you need reuse.",
+        "Open saved auth, runtime tools, proxy pooling, and retention guidance in one place.",
+        "Use the help panel to decide what is worth configuring now versus later.",
       ],
       shortcuts: [
         { label: "Open command palette", shortcut: "commandPalette" },
@@ -188,7 +188,7 @@ export const ONBOARDING_TOUR_STEPS: readonly OnboardingTourStepConfig[] = [
     route: "new-job",
     target: '[data-tour="quickstart"], body',
     title: "Quick Start keeps job creation fast",
-    body: "Use presets, workflow switching, and AI entry points without leaving the creation route.",
+    body: "Use presets and workflow switching immediately, then open optional AI helpers only when you want assisted authoring.",
     placement: "bottom",
   },
   {
@@ -241,7 +241,7 @@ export const ONBOARDING_TOUR_STEPS: readonly OnboardingTourStepConfig[] = [
     route: "settings",
     target: '[data-tour="settings-workspace"], body',
     title: "Settings is where reuse and maintenance live",
-    body: "Come here after a workflow proves it needs saved auth, runtime overrides, automation, proxy routing, or cleanup policy instead of configuring everything up front.",
+    body: "Most of this route can wait. Come here after a workflow proves it needs saved auth, reusable runtime overrides, optional proxy pooling, or cleanup policy instead of configuring everything up front.",
     placement: "bottom",
   },
   {

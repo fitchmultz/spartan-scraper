@@ -163,13 +163,13 @@ Examples:
 
 **Roadmap coverage:** [Web Shell Simplification](web-shell-simplification.md), [Toast Notification System](toast-notification-system.md)
 
-### 12. First-run/local startup resilience is not yet product-grade
+### 12. First-run/local startup resilience and optional-capability framing are now product-grade
 
-**Resolved after audit follow-up:** fresh local startup no longer requires clearing `PROXY_POOL_FILE=` when the default optional proxy-pool file is absent; the runtime now boots with proxy pooling disabled unless a real pool is configured.
+**Resolved after audit follow-up:** fresh local startup now boots cleanly with AI, proxy pooling, and retention off by default, and the docs/onboarding/help copy consistently explain those systems as optional capabilities rather than prerequisites or failures.
 
-**Why it hurts:** First-run friction is UX, not just plumbing. Users should never need hidden environment overrides to get a healthy default state.
+**Why it mattered:** First-run friction is UX, not just plumbing. Operators should reach a working scrape without hidden environment overrides or setup-first reading, then enable AI, proxy pooling, or retention later only if the workflow benefits.
 
-**Roadmap coverage:** Zero-Friction First Run and Empty-State Resilience
+**Roadmap coverage:** Resolved via Zero-Friction First Run and optional-capability standardization follow-through.
 
 ## Priority Call
 

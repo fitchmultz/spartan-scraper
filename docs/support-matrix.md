@@ -10,6 +10,12 @@
 - Exports: `json`, `jsonl`, `csv`, `md`, `xlsx`
 - Direct saved-result exports use one shared `format` / `shape` / `transform` contract across REST, Web UI, CLI, and MCP; `shape` and `transform` are mutually exclusive.
 
+## Optional Capability Defaults
+
+- AI stays off by default; core scraping, crawling, research, and manual authoring still work without it.
+- Proxy pooling stays off until `PROXY_POOL_FILE` points to a real pool file.
+- Retention stays off until `RETENTION_ENABLED=true`; manual cleanup preview remains available when you want it.
+
 ## AI Interface Policy
 
 - REST is the canonical machine surface for bounded AI authoring and job-integrated AI extraction.

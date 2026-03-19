@@ -10,6 +10,8 @@ Spartan Scraper is a single-node, local-first scraping workbench. The stable 1.0
 - local artifacts, retention, backup, and restore
 - exports in `json`, `jsonl`, `csv`, `md`, and `xlsx`
 
+A healthy default boot does not require AI, proxy pooling, or retention configuration. Those capabilities are additive and stay off by default until a workflow needs them.
+
 Removed from the supported product surface: GraphQL, plugins, distributed Redis mode, multi-user/workspaces, browser extension, feed monitoring, replay tooling, template A/B metrics, and cloud/database exporters.
 
 ## System model
@@ -33,6 +35,8 @@ Everything runs against one local data directory. There is no supported distribu
 GraphQL is not part of the architecture anymore.
 
 ## AI surface policy
+
+AI is an optional subsystem that stays off by default. Core scraping, crawling, research, and manual authoring workflows remain usable without it.
 
 AI support is intentionally asymmetric by interface.
 

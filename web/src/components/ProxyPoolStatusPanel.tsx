@@ -88,10 +88,10 @@ export function ProxyPoolStatusPanel({
       case "disabled":
         return {
           eyebrow: "Optional subsystem",
-          title: "Proxy pooling is currently off",
+          title: "Proxy pooling stays off by default",
           description:
             proxyComponent?.message ??
-            "Spartan does not require a proxy pool for normal operation. Configure it only when you need pooled routing across multiple proxies.",
+            "Core scraping works normally without a proxy pool. Add one later only when you need pooled routing across multiple proxies.",
         };
       case "degraded":
       case "error":
@@ -122,8 +122,8 @@ export function ProxyPoolStatusPanel({
         <div>
           <h2 style={{ marginBottom: 4 }}>Proxy Pool</h2>
           <p style={{ margin: 0, opacity: 0.8 }}>
-            Understand whether pooled proxy routing is off, degraded, or ready,
-            then inspect the live pool only when it exists.
+            See whether pooled proxy routing is still off by choice, needs
+            attention, or is ready to inspect.
           </p>
         </div>
 

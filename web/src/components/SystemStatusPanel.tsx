@@ -61,7 +61,7 @@ export function SystemStatusPanel({
           <p>
             {health.setup?.required
               ? health.setup.message
-              : "Core workflows stay available where possible. Use the guidance below to recover intentionally."}
+              : "Core workflows stay available where possible. Use the guidance below for components that truly need recovery; optional capabilities you left off by choice stay out of this panel."}
           </p>
         </div>
 

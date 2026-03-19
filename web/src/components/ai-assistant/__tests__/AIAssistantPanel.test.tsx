@@ -50,7 +50,7 @@ describe("AIAssistantPanel", () => {
 
     expect(screen.getByText(/AI helpers are disabled\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(/AI assistance is unavailable/i),
+      screen.getByText(/AI assistance is not active right now/i),
     ).toBeInTheDocument();
   });
 });

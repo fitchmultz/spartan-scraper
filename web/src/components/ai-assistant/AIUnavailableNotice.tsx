@@ -15,7 +15,7 @@ interface AIUnavailableNoticeProps {
 export function AIUnavailableNotice({
   message,
   eyebrow = "Optional subsystem",
-  title = "AI assistance is unavailable",
+  title = "AI assistance is not active right now",
 }: AIUnavailableNoticeProps) {
   return (
     <div className="ai-unavailable-notice" role="status">

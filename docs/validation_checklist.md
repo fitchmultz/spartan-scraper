@@ -47,6 +47,7 @@ Expected:
 
 - health endpoint returns JSON with `"status":"ok"`
 - server logs are clean and actionable
+- optional AI/proxy/retention components may appear as `disabled` without turning a default first run into a failure
 - if you launch with `BIND_ADDR=0.0.0.0`, non-health API routes require `X-API-Key`
 
 ## 4) WebSocket origin safety check
@@ -92,6 +93,7 @@ Expected:
 - UI loads without console/runtime errors
 - command palette and onboarding interactions are functional
 - API-backed sections render expected empty/loading states
+- a fresh first run stays calm and usable with AI, proxy pooling, and retention left off by default
 - batch forms submit successfully in all three modes (`Batch scrape`, `Batch crawl`, `Batch research`) without runtime crashes
 
 ## 6) Release-hygiene checks

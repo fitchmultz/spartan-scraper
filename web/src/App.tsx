@@ -149,7 +149,7 @@ const NAV_ITEMS = [
     label: "Templates",
     path: "/templates",
     description:
-      "Manage extraction templates and AI-assisted template generation.",
+      "Manage extraction templates, with optional AI-assisted generation when that capability is enabled.",
   },
   {
     kind: "automation",
@@ -163,7 +163,7 @@ const NAV_ITEMS = [
     label: "Settings",
     path: "/settings",
     description:
-      "Profiles, schedules, crawl state inventory, retention, and pipeline scripts.",
+      "Saved auth, reusable runtime tools, and optional maintenance controls.",
   },
 ] as const satisfies readonly NavItem[];
 
@@ -854,13 +854,13 @@ function AppShell() {
         return {
           title: "Create Job",
           description:
-            "Step through scrape, crawl, or research setup without losing access to expert controls.",
+            "Step through scrape, crawl, or research setup without front-loading optional capabilities or losing access to expert controls.",
         };
       case "templates":
         return {
           title: "Templates",
           description:
-            "Manage extraction templates and AI-assisted generation in one workspace.",
+            "Manage extraction templates, with optional AI-assisted generation when that capability is enabled.",
         };
       case "automation":
         return {

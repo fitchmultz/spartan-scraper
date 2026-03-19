@@ -43,25 +43,27 @@ export function OnboardingNudge({
         <div className="onboarding-nudge__eyebrow">First run</div>
         <h2>Start with one working job</h2>
         <p>
-          Spartan is ready for a guided first run. Submit a scrape first, then
-          come back for templates, automation, and deeper runtime tuning.
+          Spartan is ready out of the box. Start with one scrape, then come back
+          for templates, automation, and optional capabilities only when you
+          want them. No AI, proxy pool, or retention setup is required for the
+          first run.
         </p>
 
         <ul className="onboarding-nudge__checklist">
           <li>
             {browserReady
               ? "Browser automation is ready if you need it."
-              : "Browser automation is optional and can be enabled later."}
+              : "Browser automation is optional and can be enabled later for JS-heavy pages."}
           </li>
           <li>
             {aiReady
-              ? "AI helpers are available."
-              : "AI helpers are optional and currently unavailable."}
+              ? "AI helpers are available when you want assisted authoring or extraction."
+              : "AI helpers stay off by default and can be enabled later when you want assisted authoring or extraction."}
           </li>
           <li>
             {hasTemplates
               ? "Templates are already available to reuse."
-              : "You can create templates later without blocking the first run."}
+              : "Templates can be added later without changing the first-run path."}
           </li>
         </ul>
       </div>

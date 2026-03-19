@@ -80,7 +80,7 @@ describe("RenderProfileEditor", () => {
 
     expect(
       await screen.findByText(
-        /create and edit profiles manually below\.? enable ai later/i,
+        /create and edit profiles manually below\.? turn ai on later/i,
       ),
     ).toBeInTheDocument();
     expect(

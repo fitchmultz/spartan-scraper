@@ -85,9 +85,9 @@ function deriveRetentionCapability(
   if (!status.enabled) {
     return {
       status: "disabled",
-      title: "Automatic retention is disabled",
+      title: "Automatic retention stays off by default",
       message:
-        "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you know the blast radius.",
+        "Spartan keeps completed jobs and crawl state until you choose an automatic cleanup policy or run a manual cleanup preview. When you are ready to reclaim space, start with a dry run so you can review what would change.",
       actions: [
         {
           label: "Enable retention in the environment",
@@ -167,11 +167,11 @@ function resolveRetentionCapability(
   if (component.status === "disabled") {
     return {
       status: "disabled",
-      title: derived?.title || "Automatic retention is disabled",
+      title: derived?.title || "Automatic retention stays off by default",
       message:
         component.message ||
         derived?.message ||
-        "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you know the blast radius.",
+        "Spartan keeps completed jobs and crawl state until you choose an automatic cleanup policy or run a manual cleanup preview. When you are ready to reclaim space, start with a dry run so you can review what would change.",
       actions:
         component.actions && component.actions.length > 0
           ? component.actions
@@ -353,8 +353,8 @@ export function RetentionStatusPanel({
         <div>
           <h2 style={{ marginBottom: 4 }}>Data Retention</h2>
           <p style={{ margin: 0, opacity: 0.8 }}>
-            Understand when cleanup is off, optional, or becoming urgent before
-            you delete anything.
+            See whether automatic cleanup is still off by choice, available to
+            preview, or worth reviewing because storage is growing.
           </p>
         </div>
 
@@ -383,7 +383,9 @@ export function RetentionStatusPanel({
           {capability.status === "disabled" ? (
             <ActionEmptyState
               eyebrow="Optional subsystem"
-              title={capability.title || "Automatic retention is disabled"}
+              title={
+                capability.title || "Automatic retention stays off by default"
+              }
               description={capability.message}
               actions={[
                 { label: "Preview cleanup", onClick: runPreviewCleanup },
@@ -613,7 +615,8 @@ export function RetentionStatusPanel({
               </button>
               {!status.enabled && !dryRun ? (
                 <span className="retention-controls__disabled-message">
-                  Retention is disabled. Enable dry-run to preview.
+                  Automatic retention is off. Turn on dry-run to preview what
+                  cleanup would do.
                 </span>
               ) : null}
             </div>

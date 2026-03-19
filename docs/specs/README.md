@@ -8,6 +8,7 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## Recently Completed
 
+- Web UI optional-capability follow-through — first-run docs, onboarding, help text, and Settings copy now consistently treat AI, proxy pooling, and retention as optional, off-by-default capabilities instead of prerequisites.
 - [Integrated AI Assistant Panel](ai-assistant-panel.md) — `/jobs/new`, `/templates`, and `/jobs/:id` now share a persistent, route-aware AI rail instead of modal-first preview, generation, debugging, shaping, and refinement entry points.
 - [Template Editor Rework](template-editor-rework.md) — `/templates` now runs as an inline authoring workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode instead of modal-first editing.
 - [Web Shell Simplification](web-shell-simplification.md)

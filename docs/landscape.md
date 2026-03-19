@@ -26,6 +26,7 @@ Spartan Scraper is a self-hosted scraping platform with:
 - Multiple operator interfaces: CLI, TUI, API, and Web UI.
 - Shared domain models and an OpenAPI contract for consistency.
 - Pluggable fetch/extract/pipeline behavior for custom workflows.
+- A value-first default path that works without AI, proxy pooling, or retention; those optional subsystems stay off until a workflow needs them.
 
 The project targets engineering teams that need repeatable automation pipelines, not single-use scripts.
 
@@ -106,4 +107,4 @@ Likely next maturity steps include:
 - More explicit compatibility/versioning policy.
 - Additional observability metrics and dashboards.
 - Continued UX refinement in the web interface.
-- Agentic research workflows powered by `pi`, while keeping deterministic `internal/research` as the baseline. The current implementation is additive and bounded: pi can choose follow-up URLs from discovered evidence and synthesize the final brief, but fetch/crawl/extract still run through Spartan primitives.
+- Agentic research workflows powered by `pi` when AI is explicitly enabled, while keeping deterministic `internal/research` as the baseline. The current implementation is additive and bounded: pi can choose follow-up URLs from discovered evidence and synthesize the final brief, but fetch/crawl/extract still run through Spartan primitives.

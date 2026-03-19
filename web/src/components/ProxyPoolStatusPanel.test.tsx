@@ -73,7 +73,7 @@ describe("ProxyPoolStatusPanel", () => {
         proxy_pool: {
           status: "disabled",
           message:
-            "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.",
+            "Proxy pooling stays off by default. Core scraping works normally without a proxy pool.",
           actions: [
             {
               label: "Set PROXY_POOL_FILE when you need pooled routing",
@@ -95,11 +95,11 @@ describe("ProxyPoolStatusPanel", () => {
     );
 
     expect(
-      await screen.findByText("Proxy pooling is currently off"),
+      await screen.findByText("Proxy pooling stays off by default"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.",
+        "Proxy pooling stays off by default. Core scraping works normally without a proxy pool.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -130,7 +130,7 @@ describe("ProxyPoolStatusPanel", () => {
     );
 
     expect(
-      await screen.findByText("Proxy pooling is currently off"),
+      await screen.findByText("Proxy pooling stays off by default"),
     ).toBeInTheDocument();
     expect(screen.getByText("Optional subsystem")).toBeInTheDocument();
     expect(container.querySelector(".retention-notice--warning")).toBeNull();

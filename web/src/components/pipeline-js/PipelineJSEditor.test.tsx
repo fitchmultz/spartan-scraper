@@ -81,7 +81,7 @@ describe("PipelineJSEditor", () => {
 
     expect(
       await screen.findByText(
-        /create and edit scripts manually below\.? enable ai later/i,
+        /create and edit scripts manually below\.? turn ai on later/i,
       ),
     ).toBeInTheDocument();
     expect(

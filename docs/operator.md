@@ -6,6 +6,7 @@
 - Default data root: `.data`.
 - Job artifacts live under `.data/jobs/<job-id>/`.
 - Each completed or failed job writes `.data/jobs/<job-id>/manifest.json`.
+- AI, proxy pooling, and retention are optional subsystems; a healthy default boot leaves them off until you decide they are useful.
 
 ## Start Server
 
@@ -29,7 +30,10 @@ spartan retention status
 - `spartan health` shows structured setup, runtime, component, and config notices.
 - `spartan health --check ...` runs the same read-only re-checks surfaced by the Web UI.
 - `spartan proxy-pool status` and `spartan retention status` now lead with capability-aware guidance before the low-level runtime/config details.
+- AI helpers are opt-in: leave `PI_ENABLED=false` for the normal non-AI workflow, and expect `disabled` guidance rather than a degraded failure until you choose to enable it.
 - Proxy pooling is opt-in: leave `PROXY_POOL_FILE` unset for the normal no-proxy path, and expect warnings only after explicitly configuring a pool file.
+- Retention is optional: leave `RETENTION_ENABLED=false` until you want automated cleanup because local storage growth makes it worthwhile.
+- Disabled AI/proxy/retention states are informational when you left them off by choice; follow-up actions become relevant only when you want to enable that capability.
 - If the API server is already running, the CLI reads `/healthz` and the diagnostic endpoints directly.
 - If the API server is offline, the CLI falls back to local checks instead of hiding recovery guidance.
 

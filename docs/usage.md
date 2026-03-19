@@ -11,6 +11,8 @@ Balanced 1.0 narrows Spartan Scraper to a single-node, local-first workflow:
 - local artifacts, retention, backup, and restore
 - exports in `json`, `jsonl`, `csv`, `md`, and `xlsx`
 
+AI helpers, proxy pooling, and automated retention are optional subsystems. The default first run keeps them off while scrape/crawl/research, the Web UI, CLI, API, MCP, and saved artifacts remain fully usable.
+
 Removed from this guide because they are no longer supported: GraphQL, plugins, feeds, replay tooling, multi-user/workspaces, browser extension, template A/B metrics, and cloud/database exporters.
 
 ## CLI
@@ -223,6 +225,8 @@ spartan ai pipeline-js-debug [flags]
 spartan ai research-refine [flags]
 spartan ai export-shape [flags]
 ```
+
+These commands are optional. Core scraping, crawling, research, template editing, and export workflows still work when AI stays off.
 
 These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs. Preview/template/render-profile/pipeline authoring commands also accept repeatable `--image-file <path>` flags for request-scoped reference images. Those attachments are bounded visual context only and are not persisted as job artifacts.
 
@@ -705,7 +709,7 @@ spartan mcp
 spartan version
 ```
 
-`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints. `spartan proxy-pool status` and `spartan retention status` likewise lead with capability-aware explanations and next steps before listing raw configuration and runtime detail. Proxy pooling stays off by default unless you explicitly set `PROXY_POOL_FILE`.
+`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints. `spartan proxy-pool status` and `spartan retention status` likewise lead with capability-aware explanations and next steps before listing raw configuration and runtime detail. Disabled AI, proxy-pool, and retention states are informational when you have not enabled them yet. Proxy pooling stays off by default unless you explicitly set `PROXY_POOL_FILE`.
 
 ### TUI scope
 
@@ -741,7 +745,7 @@ Balanced 1.0 routes:
 - `/automation`
 - `/settings`
 
-The Settings route now keeps optional capabilities legible: auth profiles, schedules, crawl states, proxy-pool status, and retention all explain when they matter, what is currently off or degraded, and which recovery steps to take before dropping into raw detail.
+The Settings route now keeps optional capabilities legible: auth profiles, schedules, crawl states, proxy-pool status, and retention all explain when they matter, what is currently off by choice, and which recovery steps matter only after a capability is enabled.
 
 The UI only exposes retained product areas. Deleted surfaces are not available behind feature flags.
 
@@ -953,11 +957,11 @@ This is deliberate: the project no longer attempts to open legacy layouts under 
 
 ## pi bridge defaults
 
-Repo-local AI defaults live in `.env` and `config/pi-routes.json`.
+Core scraping workflows work without AI. Repo-local AI defaults live in `.env` and `config/pi-routes.json`, but they only matter after you opt in with `PI_ENABLED=true`.
 
 - Default pi route order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`
 - Spartan only passes route IDs to pi; pi continues to own auth, account selection, and billing behavior.
-- Override `PI_CONFIG_PATH` or edit `config/pi-routes.json` if you want a different local route order.
+- Override `PI_CONFIG_PATH` or edit `config/pi-routes.json` if you want a different local route order after enabling AI.
 
 ## Local CI
 
