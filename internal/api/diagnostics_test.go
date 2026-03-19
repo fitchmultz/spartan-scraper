@@ -141,6 +141,19 @@ func TestProxyPoolDiagnosticResponseHandlesUnavailableRuntime(t *testing.T) {
 	}
 }
 
+func TestBuildAIDiagnosticResponseDisabledWhenUnconfigured(t *testing.T) {
+	response := BuildAIDiagnosticResponse(t.Context(), config.Config{}, nil)
+	if response.Status != "disabled" {
+		t.Fatalf("status = %q, want disabled", response.Status)
+	}
+	if response.Title != "AI helpers are disabled" {
+		t.Fatalf("title = %q, want AI helpers are disabled", response.Title)
+	}
+	if response.Message == "" {
+		t.Fatal("expected disabled AI message")
+	}
+}
+
 func TestSetupServerProxyPoolDiagnosticRemainsAvailable(t *testing.T) {
 	srv := NewSetupServer(config.Config{}, SetupStatus{
 		Required: true,

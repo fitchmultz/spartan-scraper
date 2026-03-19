@@ -6,10 +6,13 @@
  * Invariants/Assumptions: Validation stays explicit, previews read from saved job results only, and apply actions never mutate results without a user click.
  */
 import { useState, useCallback, useEffect } from "react";
+import type { ComponentStatus } from "../api";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { describeAICapability } from "./ai-assistant/aiCapability";
 
 interface TransformPreviewProps {
   jobId: string;
+  aiStatus?: ComponentStatus | null;
   onApply?: (
     format: "jsonl" | "json" | "md" | "csv" | "xlsx",
     expression: string,
@@ -123,7 +126,11 @@ async function generateTransformWithAI(
 /**
  * Main TransformPreview component.
  */
-export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
+export function TransformPreview({
+  jobId,
+  aiStatus = null,
+  onApply,
+}: TransformPreviewProps) {
   const [expression, setExpression] = useState("");
   const [language, setLanguage] = useState<"jmespath" | "jsonata">("jmespath");
   const [exportFormat, setExportFormat] = useState<
@@ -146,6 +153,19 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Build or revise the transform manually below.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
+
+  useEffect(() => {
+    if (!aiUnavailable) {
+      return;
+    }
+    setShowAIAssistant(false);
+  }, [aiUnavailable]);
 
   // Debounced validation
   useEffect(() => {
@@ -287,6 +307,20 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
           )}
         </div>
 
+        {aiUnavailableMessage ? (
+          <div
+            className="panel"
+            style={{
+              marginBottom: 12,
+              padding: 12,
+              backgroundColor: "rgba(148, 163, 184, 0.12)",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+            }}
+          >
+            {aiUnavailableMessage}
+          </div>
+        ) : null}
+
         <div className="transform-controls">
           <div className="limit-selector">
             <label>
@@ -324,7 +358,8 @@ export function TransformPreview({ jobId, onApply }: TransformPreviewProps) {
               type="button"
               className="secondary"
               onClick={() => setShowAIAssistant((value) => !value)}
-              disabled={isGeneratingAI}
+              disabled={isGeneratingAI || aiUnavailable}
+              title={aiUnavailableMessage ?? undefined}
             >
               {showAIAssistant
                 ? "Hide AI"

@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the results transform tool keeps optional AI assistance non-blocking.
+ * Responsibilities: Assert AI generation works when available and AI controls disable cleanly when AI is intentionally off.
+ * Scope: TransformPreview behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Operators can always author transforms manually without AI.
+ */
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -110,5 +118,29 @@ describe("TransformPreview", () => {
     expect(screen.getByText(/sample records 2/i)).toBeInTheDocument();
     expect(screen.getByText(/field paths 5/i)).toBeInTheDocument();
     expect(screen.getByText(/https:\/\/example.com/i)).toBeInTheDocument();
+  });
+
+  it("disables AI generation and explains the manual path when AI is unavailable", () => {
+    render(
+      <TransformPreview
+        jobId="job-123"
+        aiStatus={{
+          status: "disabled",
+          message: "AI helpers are optional and currently disabled.",
+        }}
+        onApply={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/build or revise the transform manually below/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate with ai/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /preview/i })).toBeDisabled();
+    expect(
+      screen.getByRole("combobox", { name: /export format/i }),
+    ).toBeEnabled();
   });
 });

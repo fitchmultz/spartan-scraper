@@ -134,6 +134,31 @@ func TestDiagnosticCheckReturnsTranslatedAction(t *testing.T) {
 	}
 }
 
+func TestDiagnosticCheckReturnsDisabledForOptionalAIWhenOff(t *testing.T) {
+	srv := NewSetupServer(testConfig(config.Config{DataDir: t.TempDir()}), api.SetupStatus{
+		Required: true,
+		Code:     "legacy_data_dir",
+		Title:    "Stored data needs a one-time reset",
+		Message:  "Detected legacy persisted state.",
+	})
+	defer srv.Close()
+
+	result, err := srv.handleToolCall(context.Background(), map[string]json.RawMessage{
+		"params": mustMarshalJSON(callParams{Name: "diagnostic_check", Arguments: map[string]interface{}{"component": "ai"}}),
+	})
+	if err != nil {
+		t.Fatalf("diagnostic_check failed: %v", err)
+	}
+
+	response, ok := result.(api.DiagnosticActionResponse)
+	if !ok {
+		t.Fatalf("unexpected response type %T", result)
+	}
+	if response.Status != "disabled" {
+		t.Fatalf("expected disabled AI diagnostic, got %#v", response)
+	}
+}
+
 func TestSetupModeOnlyExposesDiagnostics(t *testing.T) {
 	srv := NewSetupServer(testConfig(config.Config{DataDir: t.TempDir()}), api.SetupStatus{
 		Required: true,

@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the render-profile Settings editor keeps optional AI helpers non-blocking.
+ * Responsibilities: Assert manual profile management remains available when create calls fail or AI assistance is intentionally unavailable.
+ * Scope: RenderProfileEditor behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Render profiles stay manually editable even when AI helpers are disabled.
+ */
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ToastProvider } from "../toast";
@@ -49,7 +57,7 @@ describe("RenderProfileEditor", () => {
 
     expect(
       await screen.findByText(
-        /create and edit profiles manually below, or enable ai later/i,
+        /create and edit profiles manually below\.? enable ai later/i,
       ),
     ).toBeInTheDocument();
     expect(

@@ -12,6 +12,7 @@
  */
 
 import type {
+  ComponentStatus,
   ExportInspection,
   ExportOutcomeListResponse,
   ExportSchedule,
@@ -34,6 +35,7 @@ export interface ExportScheduleManagerProps {
     offset?: number,
   ) => Promise<ExportOutcomeListResponse>;
   loading?: boolean;
+  aiStatus?: ComponentStatus | null;
 }
 
 /**
@@ -110,6 +112,7 @@ export interface ExportScheduleFormProps {
   onChange: (data: Partial<ExportScheduleFormData>) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  aiStatus?: ComponentStatus | null;
 }
 
 /**

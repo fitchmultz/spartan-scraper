@@ -24,7 +24,7 @@ interface CapabilityActionListProps {
 }
 
 interface ActionRunState {
-  status: "idle" | "running" | "success" | "error";
+  status: "idle" | "running" | "success" | "info" | "warning" | "error";
   result?: DiagnosticActionResponse;
   message?: string;
 }
@@ -35,6 +35,34 @@ function actionKey(action: RecommendedAction) {
 
 function isExternalHref(value: string) {
   return /^https?:\/\//i.test(value);
+}
+
+function classifyDiagnosticRunStatus(
+  responseStatus: DiagnosticActionResponse["status"],
+): Exclude<ActionRunState["status"], "idle" | "running"> {
+  switch (responseStatus) {
+    case "ok":
+      return "success";
+    case "disabled":
+      return "info";
+    case "degraded":
+      return "warning";
+    default:
+      return "error";
+  }
+}
+
+function diagnosticResultClassName(
+  responseStatus: DiagnosticActionResponse["status"],
+) {
+  switch (classifyDiagnosticRunStatus(responseStatus)) {
+    case "success":
+      return "system-status__action-result--ok";
+    case "info":
+      return "system-status__action-result--info";
+    default:
+      return "system-status__action-result--warning";
+  }
 }
 
 async function copyText(text: string) {
@@ -136,7 +164,7 @@ export function CapabilityActionList({
         setActionRuns((current) => ({
           ...current,
           [key]: {
-            status: payload.status === "ok" ? "success" : "error",
+            status: classifyDiagnosticRunStatus(payload.status),
             result: payload,
           },
         }));
@@ -265,11 +293,9 @@ export function CapabilityActionList({
 
           {!nested && runState?.result ? (
             <div
-              className={`system-status__action-result ${
-                runState.result.status === "ok"
-                  ? "system-status__action-result--ok"
-                  : "system-status__action-result--warning"
-              }`}
+              className={`system-status__action-result ${diagnosticResultClassName(
+                runState.result.status,
+              )}`}
             >
               {runState.result.title ? (
                 <strong>{runState.result.title}</strong>

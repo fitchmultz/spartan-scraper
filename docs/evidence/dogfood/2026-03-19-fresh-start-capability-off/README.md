@@ -26,9 +26,12 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
 | Fresh Settings route before fixes | Optional sections remain visible and quiet by default; no optional feature should feel required | Needed follow-up | `screenshots/04-settings-fresh-start.png` |
 | CLI health and optional capability commands | CLI should report AI/proxy/retention as intentional optional states, not failures | Pass | `14-cli-health.txt`, `15-cli-proxy-diagnostic.txt`, `16-cli-proxy-status.txt`, `17-cli-retention-status.txt` |
 | MCP health and proxy diagnostics | MCP should mirror the same `disabled` framing and translated actions | Pass | `18-mcp-health-status.json`, `19-mcp-proxy-diagnostic.json` |
-| Settings AI affordances after fix | Render-profile and pipeline-JS AI actions should stop looking active/required when AI is unavailable, while manual authoring remains available | Pass after fix | `screenshots/25-settings-ai-disabled-buttons-closeup.png`, `screenshots/22-settings-ai-disabled-note.png` |
+| Settings AI affordances after fix | Render-profile and pipeline-JS AI actions should stop looking active/required when AI is unavailable, while manual authoring remains available | Pass after fix | `screenshots/25-settings-ai-disabled-buttons-closeup.png`, `screenshots/22-settings-ai-disabled-note.png`, `screenshots/26-settings-ai-disabled-followup.png` |
+| One-click optional-off diagnostics | Re-check actions that return `disabled` should render as informational guidance, not warning-colored failure UI | Pass after fix | `web/src/components/CapabilityActionList.test.tsx` |
+| Automation and results AI affordances | Export-schedule AI suggestion buttons and results-transform AI generation should disable cleanly when AI is off while manual editing stays available | Pass after fix | `web/src/components/export-schedules/ExportScheduleForm.test.tsx`, `web/src/components/TransformPreview.test.tsx` |
+| Retention disabled guidance future-proofing | Disabled retention must stay quiet even if `/healthz` later starts surfacing a retention component | Pass after fix | `web/src/components/RetentionStatusPanel.test.tsx` |
 
-## Issue found and fixed
+## Issues found and fixed
 
 ### 1. Settings still presented AI authoring as if it were immediately usable on a fresh start
 
@@ -49,6 +52,32 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
   - Before: `screenshots/04-settings-fresh-start.png`
   - After: `screenshots/25-settings-ai-disabled-buttons-closeup.png`
 
+### 2. Disabled optional checks and secondary AI helpers still had warning-toned or active-looking states
+
+- **Severity:** medium
+- **Surface:** Web UI / Settings, Automation, Results
+- **Why it mattered:** Even after the first Settings fix, some optional-off flows still felt noisier than they should. One-click diagnostics rendered every non-`ok` result as warning-styled feedback, and some secondary AI helpers in automation/results still looked immediately usable despite AI being intentionally off.
+- **Repro:**
+  1. Start Spartan with a fresh empty `DATA_DIR` and no AI env configured.
+  2. Open Settings and run an optional-off one-click check such as proxy-pool re-check.
+  3. Open automation export scheduling or the results transform tool.
+  4. Observe disabled optional states styled as warnings or active-looking AI launchers without matching capability-aware guidance.
+- **Fix:**
+  - Treated `disabled` diagnostic responses as informational instead of warning-style failures.
+  - Centralized AI capability copy for web surfaces so disabled-by-choice and degraded AI states stay distinct.
+  - Extended AI-off gating to export-schedule AI suggestion buttons and the results transform AI helper while preserving manual editing paths.
+  - Future-proofed retention guidance so a disabled retention component cannot be relabeled as “needs attention”.
+  - Added API, CLI, MCP, and web regression coverage for disabled optional states.
+- **Evidence:**
+  - `web/src/components/CapabilityActionList.test.tsx`
+  - `web/src/components/export-schedules/ExportScheduleForm.test.tsx`
+  - `web/src/components/TransformPreview.test.tsx`
+  - `web/src/components/RetentionStatusPanel.test.tsx`
+  - `internal/api/health_test.go`
+  - `internal/api/diagnostics_test.go`
+  - `internal/cli/server/health_test.go`
+  - `internal/mcp/diagnostics_test.go`
+
 ## Notes
 
 - Fresh-start `/healthz`, CLI, and MCP all now frame optional-off states correctly:
@@ -56,7 +85,8 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
   - Proxy pool: `disabled`
   - Retention: disabled in its dedicated Settings/CLI flow without degrading core health
 - The Web UI no longer shows the top-level System Status panel for a normal fresh start where nothing is actually wrong.
-- After the settings AI-affordance fix, the first-run Settings route reads more coherently: manual paths stay primary, and optional AI help is clearly secondary.
+- After the Settings and secondary-AI follow-up fixes, manual paths stay primary across Settings, automation export schedules, and results transforms.
+- Disabled optional diagnostics now read as informational guidance instead of warning-colored failure states.
 
 ## Final verification
 
@@ -65,5 +95,8 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
 - [x] Retention stayed optional and actionable without looking broken
 - [x] No fresh-start degraded system panel appeared for optional-off states
 - [x] Settings AI affordances no longer feel required on first run
-- [x] Regression tests were added for the settings AI-off state
+- [x] Disabled optional diagnostics render as informational guidance instead of warnings
+- [x] Automation export-schedule and results-transform AI affordances now disable cleanly when AI is off
+- [x] Retention disabled guidance stays quiet even with future health-component input
+- [x] Regression tests were added across Web, API, CLI, and MCP for disabled optional states
 - [x] `make ci` passes

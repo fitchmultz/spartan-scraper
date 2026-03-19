@@ -14,6 +14,7 @@ import {
   updateExportSchedule,
   deleteExportSchedule,
   getExportScheduleHistory,
+  type ComponentStatus,
   type ExportOutcomeListResponse,
   type ExportSchedule,
   type ExportScheduleRequest,
@@ -28,7 +29,13 @@ const ExportScheduleManager = lazy(() =>
   })),
 );
 
-export function ExportScheduleContainer() {
+interface ExportScheduleContainerProps {
+  aiStatus?: ComponentStatus | null;
+}
+
+export function ExportScheduleContainer({
+  aiStatus = null,
+}: ExportScheduleContainerProps) {
   const toast = useToast();
   const [schedules, setSchedules] = useState<ExportSchedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
@@ -297,6 +304,7 @@ export function ExportScheduleContainer() {
           onToggleEnabled={handleToggleEnabled}
           onGetHistory={handleGetHistory}
           loading={schedulesLoading}
+          aiStatus={aiStatus}
         />
       </Suspense>
     </section>

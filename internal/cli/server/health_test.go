@@ -114,3 +114,23 @@ func TestBuildLocalHealthResponsePreservesSetupRecovery(t *testing.T) {
 		t.Fatalf("expected setup recovery action in rendered output, got %q", rendered)
 	}
 }
+
+func TestRunHealthCheckReturnsZeroForDisabledProxyPool(t *testing.T) {
+	exitCode := RunHealth(context.Background(), config.Config{
+		DataDir: t.TempDir(),
+		Port:    "1",
+	}, []string{"--check", "proxy_pool"})
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0 for disabled proxy pool", exitCode)
+	}
+}
+
+func TestRunHealthCheckReturnsZeroForDisabledAI(t *testing.T) {
+	exitCode := RunHealth(context.Background(), config.Config{
+		DataDir: t.TempDir(),
+		Port:    "1",
+	}, []string{"--check", "ai"})
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0 for disabled AI", exitCode)
+	}
+}

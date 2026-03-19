@@ -814,12 +814,16 @@ function AppShell() {
         case "watches":
           return <WatchContainer />;
         case "exports":
-          return <ExportScheduleContainer />;
+          return (
+            <ExportScheduleContainer
+              aiStatus={health?.components?.ai ?? null}
+            />
+          );
         case "webhooks":
           return <WebhookDeliveryContainer />;
       }
     },
-    [formState, loading, profiles, refreshJobs],
+    [formState, health?.components?.ai, loading, profiles, refreshJobs],
   );
 
   const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
@@ -1142,7 +1146,11 @@ function AppShell() {
           <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
 
           <div data-tour="job-results">
-            <ResultsContainer resultsState={resultsState} jobs={jobs} />
+            <ResultsContainer
+              resultsState={resultsState}
+              jobs={jobs}
+              aiStatus={health?.components?.ai ?? null}
+            />
           </div>
         </div>
       )}

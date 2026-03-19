@@ -26,6 +26,7 @@ export function ExportScheduleManager({
   onToggleEnabled,
   onGetHistory,
   loading,
+  aiStatus = null,
 }: ExportScheduleManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -209,6 +210,7 @@ export function ExportScheduleManager({
           onChange={setFormDataPartial}
           onSubmit={handleSubmit}
           onCancel={handleCloseForm}
+          aiStatus={aiStatus}
         />
       )}
 

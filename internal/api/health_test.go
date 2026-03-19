@@ -76,6 +76,24 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+func TestHealthLeavesAIComponentDisabledWhenUnconfigured(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	health := decodeHealthResponse(t, rr)
+	ai, ok := health.Components["ai"]
+	if !ok {
+		t.Fatal("expected ai component in health response")
+	}
+	if ai.Status != "disabled" {
+		t.Fatalf("expected disabled ai component by default, got %#v", ai)
+	}
+}
+
 func TestHealthIncludesAIComponentWhenEnabled(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -173,7 +191,7 @@ func TestSetupServerHealth(t *testing.T) {
 	}
 }
 
-func TestSetupServerHealthLeavesProxyPoolDisabledWhenUnconfigured(t *testing.T) {
+func TestSetupServerHealthLeavesDisabledOptionalSubsystemsOutOfNotices(t *testing.T) {
 	srv := NewSetupServer(config.Config{DataDir: "/tmp/spartan"}, SetupStatus{
 		Required: true,
 		Code:     "legacy_data_dir",
@@ -188,8 +206,14 @@ func TestSetupServerHealthLeavesProxyPoolDisabledWhenUnconfigured(t *testing.T) 
 	srv.Routes().ServeHTTP(rr, req)
 
 	health := decodeHealthResponse(t, rr)
+	if ai := health.Components["ai"]; ai.Status != "disabled" {
+		t.Fatalf("expected disabled ai status in setup mode without config, got %#v", ai)
+	}
 	if proxy := health.Components["proxy_pool"]; proxy.Status != "disabled" {
 		t.Fatalf("expected disabled proxy_pool status in setup mode without config, got %#v", proxy)
+	}
+	if len(health.Notices) != 1 {
+		t.Fatalf("expected only the setup notice; optional disabled subsystems must stay quiet, got %#v", health.Notices)
 	}
 }
 

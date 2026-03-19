@@ -13,10 +13,11 @@
  * @module components/export-schedules/ExportScheduleForm
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ExportScheduleFormProps } from "../../types/export-schedule";
 import { AIExportShapeAssistant } from "../AIExportShapeAssistant";
 import { AIExportTransformAssistant } from "../AIExportTransformAssistant";
+import { describeAICapability } from "../ai-assistant/aiCapability";
 import {
   clearShapeFormData,
   clearTransformFormData,
@@ -68,9 +69,16 @@ export function ExportScheduleForm({
   onChange,
   onSubmit,
   onCancel,
+  aiStatus = null,
 }: ExportScheduleFormProps) {
   const [showShapeAssistant, setShowShapeAssistant] = useState(false);
   const [showTransformAssistant, setShowTransformAssistant] = useState(false);
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Configure transforms and shapes manually in this form.",
+  );
+  const aiAssistantUnavailable = aiCapability.unavailable;
+  const aiAssistantMessage = aiCapability.message;
   const shapeSupported = supportsExportShapeFormat(formData.format);
   const stagedShape = hasShapeFormData(formData);
   const stagedTransform = hasTransformFormData(formData);
@@ -90,6 +98,14 @@ export function ExportScheduleForm({
     : stagedShape
       ? "Staged (unsupported format)"
       : "Default";
+
+  useEffect(() => {
+    if (!aiAssistantUnavailable) {
+      return;
+    }
+    setShowShapeAssistant(false);
+    setShowTransformAssistant(false);
+  }, [aiAssistantUnavailable]);
 
   const toggleJobKind = (kind: string) => {
     const current = formData.filterJobKinds;
@@ -176,6 +192,21 @@ export function ExportScheduleForm({
               onSubmit();
             }}
           >
+            {aiAssistantMessage ? (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: "rgba(148, 163, 184, 0.12)",
+                  border: "1px solid rgba(148, 163, 184, 0.25)",
+                  color: "var(--text)",
+                }}
+              >
+                {aiAssistantMessage}
+              </div>
+            ) : null}
+
             {/* Basic Info */}
             <div style={{ marginBottom: 24 }}>
               <h4 style={{ margin: "0 0 12px 0", fontSize: 14 }}>Basic Info</h4>
@@ -507,7 +538,8 @@ export function ExportScheduleForm({
                   <button
                     type="button"
                     onClick={() => setShowTransformAssistant(true)}
-                    disabled={transformLockedByShape}
+                    disabled={transformLockedByShape || aiAssistantUnavailable}
+                    title={aiAssistantMessage ?? undefined}
                   >
                     AI Suggest Transform
                   </button>
@@ -641,7 +673,12 @@ export function ExportScheduleForm({
                   <button
                     type="button"
                     onClick={() => setShowShapeAssistant(true)}
-                    disabled={!shapeSupported || shapeLockedByTransform}
+                    disabled={
+                      !shapeSupported ||
+                      shapeLockedByTransform ||
+                      aiAssistantUnavailable
+                    }
+                    title={aiAssistantMessage ?? undefined}
                   >
                     AI Suggest Shape
                   </button>

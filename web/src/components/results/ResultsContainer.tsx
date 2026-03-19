@@ -7,7 +7,7 @@
  */
 
 import { lazy, Suspense, useMemo } from "react";
-import type { Job } from "../../api";
+import type { ComponentStatus, Job } from "../../api";
 import {
   RESULTS_PER_PAGE,
   type ResultsActions,
@@ -23,11 +23,13 @@ const ResultsExplorer = lazy(() =>
 interface ResultsContainerProps {
   resultsState: ResultsState & ResultsActions;
   jobs: Job[];
+  aiStatus?: ComponentStatus | null;
 }
 
 export function ResultsContainer({
   resultsState,
   jobs,
+  aiStatus = null,
 }: ResultsContainerProps) {
   const {
     selectedJobId,
@@ -83,6 +85,7 @@ export function ResultsContainer({
           }}
           availableJobs={jobs}
           jobType={selectedJob?.kind as "scrape" | "crawl" | "research"}
+          aiStatus={aiStatus}
         />
       </Suspense>
     </section>

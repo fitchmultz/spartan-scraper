@@ -41,6 +41,19 @@ interface DerivedRetentionCapability {
   actions: RecommendedAction[];
 }
 
+type RetentionCapabilityStatus =
+  | DerivedRetentionCapability["status"]
+  | "degraded"
+  | "error"
+  | "setup_required";
+
+interface ResolvedRetentionCapability {
+  status: RetentionCapabilityStatus;
+  title: string;
+  message: string;
+  actions: RecommendedAction[];
+}
+
 function StatusCard({
   label,
   value,
@@ -132,6 +145,68 @@ function deriveRetentionCapability(
     title: "",
     message: "",
     actions: [],
+  };
+}
+
+function resolveRetentionCapability(
+  health: HealthResponse | null,
+  status: RetentionStatusResponse | null,
+): ResolvedRetentionCapability {
+  const derived = status?.guidance ?? deriveRetentionCapability(status);
+  const component = health?.components?.retention;
+
+  if (!component) {
+    return {
+      status: derived?.status ?? "ok",
+      title: derived?.title ?? "",
+      message: derived?.message ?? "",
+      actions: derived?.actions ?? [],
+    };
+  }
+
+  if (component.status === "disabled") {
+    return {
+      status: "disabled",
+      title: derived?.title || "Automatic retention is disabled",
+      message:
+        component.message ||
+        derived?.message ||
+        "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you know the blast radius.",
+      actions:
+        component.actions && component.actions.length > 0
+          ? component.actions
+          : (derived?.actions ?? []),
+    };
+  }
+
+  if (
+    component.status === "degraded" ||
+    component.status === "error" ||
+    component.status === "setup_required"
+  ) {
+    return {
+      status: component.status,
+      title:
+        component.status === "setup_required"
+          ? "Retention setup is required"
+          : "Retention needs attention",
+      message:
+        component.message || derived?.message || "Retention needs attention.",
+      actions:
+        component.actions && component.actions.length > 0
+          ? component.actions
+          : (derived?.actions ?? []),
+    };
+  }
+
+  return {
+    status: derived?.status ?? "ok",
+    title: derived?.title ?? "",
+    message: derived?.message ?? "",
+    actions:
+      component.actions && component.actions.length > 0
+        ? component.actions
+        : (derived?.actions ?? []),
   };
 }
 
@@ -259,20 +334,10 @@ export function RetentionStatusPanel({
     return "normal";
   };
 
-  const retentionComponent = health?.components?.retention;
-  const derivedCapability = useMemo(
-    () => status?.guidance ?? deriveRetentionCapability(status),
-    [status],
+  const capability = useMemo(
+    () => resolveRetentionCapability(health, status),
+    [health, status],
   );
-  const capabilityStatus =
-    retentionComponent?.status ?? derivedCapability?.status ?? "ok";
-  const capabilityTitle = retentionComponent?.message
-    ? "Retention needs attention"
-    : (derivedCapability?.title ?? "");
-  const capabilityMessage =
-    retentionComponent?.message ?? derivedCapability?.message ?? "";
-  const capabilityActions =
-    retentionComponent?.actions ?? derivedCapability?.actions ?? [];
 
   return (
     <section className="panel" id="retention">
@@ -315,16 +380,11 @@ export function RetentionStatusPanel({
         <div>Loading retention status...</div>
       ) : status ? (
         <>
-          {capabilityStatus === "disabled" ? (
+          {capability.status === "disabled" ? (
             <ActionEmptyState
               eyebrow="Optional subsystem"
-              title={
-                retentionComponent?.message
-                  ? "Retention is off by configuration"
-                  : (derivedCapability?.title ??
-                    "Automatic retention is disabled")
-              }
-              description={capabilityMessage}
+              title={capability.title || "Automatic retention is disabled"}
+              description={capability.message}
               actions={[
                 { label: "Preview cleanup", onClick: runPreviewCleanup },
                 {
@@ -335,44 +395,64 @@ export function RetentionStatusPanel({
               ]}
             >
               <CapabilityActionList
-                actions={capabilityActions}
+                actions={capability.actions}
                 onNavigate={onNavigate}
                 onRefresh={refreshAll}
               />
             </ActionEmptyState>
           ) : null}
 
-          {(capabilityStatus === "warning" || capabilityStatus === "danger") &&
-          capabilityMessage ? (
+          {[
+            "warning",
+            "danger",
+            "degraded",
+            "error",
+            "setup_required",
+          ].includes(capability.status) && capability.message ? (
             <div
               className={`retention-notice ${
-                capabilityStatus === "danger"
+                capability.status === "danger" || capability.status === "error"
                   ? "retention-notice--warning"
                   : "retention-notice--info"
               }`}
             >
-              <h4 className="retention-section-title">{capabilityTitle}</h4>
-              <p className="retention-notice__copy">{capabilityMessage}</p>
+              <h4 className="retention-section-title">{capability.title}</h4>
+              <p className="retention-notice__copy">{capability.message}</p>
               <div className="retention-notice__actions">
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={runPreviewCleanup}
-                  disabled={cleanupLoading}
-                >
-                  {cleanupLoading ? "Running..." : "Preview cleanup"}
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={onOpenAutomation}
-                >
-                  Open automation
-                </button>
+                {capability.status === "warning" ||
+                capability.status === "danger" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={runPreviewCleanup}
+                      disabled={cleanupLoading}
+                    >
+                      {cleanupLoading ? "Running..." : "Preview cleanup"}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={onOpenAutomation}
+                    >
+                      Open automation
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => {
+                      void refreshAll();
+                    }}
+                  >
+                    Refresh status
+                  </button>
+                )}
               </div>
 
               <CapabilityActionList
-                actions={capabilityActions}
+                actions={capability.actions}
                 onNavigate={onNavigate}
                 onRefresh={refreshAll}
               />

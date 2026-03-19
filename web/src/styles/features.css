@@ -3404,6 +3404,13 @@
     color-mix(in srgb, var(--panel) 82%, var(--tone-success-surface));
 }
 
+.system-status__action-result--info {
+  border-color: var(--tone-info-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    color-mix(in srgb, var(--panel) 82%, var(--tone-info-surface));
+}
+
 .system-status__action-result--warning {
   border-color: var(--tone-warning-border);
   background:

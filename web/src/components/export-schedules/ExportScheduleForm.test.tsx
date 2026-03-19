@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the export-schedule editor keeps optional AI helpers non-blocking and coherent.
+ * Responsibilities: Assert manual transform/shape editing remains available, AI launchers open when available, and AI actions disable cleanly when AI is off.
+ * Scope: ExportScheduleForm behavior only.
+ * Usage: Run with Vitest as part of the web test suite.
+ * Invariants/Assumptions: Export schedules must remain fully configurable without AI assistance.
+ */
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -75,6 +83,43 @@ describe("ExportScheduleForm", () => {
     expect(
       await screen.findByRole("heading", { name: /Shape Export with AI/i }),
     ).toBeInTheDocument();
+  });
+
+  it("disables AI suggestion actions and explains the manual path when AI is unavailable", () => {
+    render(
+      <ExportScheduleForm
+        formData={{
+          ...defaultFormData,
+          format: "md",
+          localPath: "exports/{job_id}.md",
+          pathTemplate: "exports/{job_id}.md",
+        }}
+        formError={null}
+        formSubmitting={false}
+        isEditing={false}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        aiStatus={{
+          status: "disabled",
+          message: "AI helpers are optional and currently disabled.",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /configure transforms and shapes manually in this form/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /AI Suggest Transform/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /AI Suggest Shape/i }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText(/Transform language/i)).toBeEnabled();
+    expect(screen.getByLabelText(/Top-level fields/i)).toBeEnabled();
   });
 
   it("locks transform controls when shape configuration is staged", () => {

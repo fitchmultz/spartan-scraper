@@ -19,6 +19,7 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
+import { describeAICapability } from "../ai-assistant/aiCapability";
 import { useToast } from "../toast";
 
 interface PipelineJSEditorProps {
@@ -44,10 +45,12 @@ export function PipelineJSEditor({
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
 
-  const aiUnavailable = aiStatus !== null && aiStatus.status !== "ok";
-  const aiUnavailableMessage = aiUnavailable
-    ? `${aiStatus?.message || "AI helpers are optional and currently unavailable."} Create and edit scripts manually below, or enable AI later when you need generation and tuning.`
-    : null;
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Create and edit scripts manually below.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
 
   const loadScripts = useCallback(async () => {
     try {

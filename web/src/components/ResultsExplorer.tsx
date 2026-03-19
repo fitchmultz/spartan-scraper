@@ -7,7 +7,11 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { ExportInspection, ExportShapeConfig } from "../api";
+import type {
+  ComponentStatus,
+  ExportInspection,
+  ExportShapeConfig,
+} from "../api";
 import {
   type CrawlDiffResult,
   diffResults,
@@ -70,6 +74,7 @@ interface ResultsExplorerProps {
   onLoadPage: (page: number) => void;
   availableJobs: Job[];
   jobType?: "scrape" | "crawl" | "research";
+  aiStatus?: ComponentStatus | null;
 }
 
 interface ReaderToolbarProps {
@@ -454,6 +459,7 @@ export function ResultsExplorer({
   onLoadPage,
   availableJobs,
   jobType = "crawl",
+  aiStatus = null,
 }: ResultsExplorerProps) {
   const aiAssistant = useAIAssistant();
   const [assistantMode, setAssistantMode] = useState<ResultsAssistantMode>(
@@ -1041,6 +1047,7 @@ export function ResultsExplorer({
                   ) : null}
                   <TransformPreview
                     jobId={jobId}
+                    aiStatus={aiStatus}
                     onApply={(format, expression, language) => {
                       void handleExportWithTransform(
                         format,

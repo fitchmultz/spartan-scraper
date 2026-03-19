@@ -127,6 +127,88 @@ describe("RetentionStatusPanel", () => {
     expect(screen.getByText("RETENTION_ENABLED=true")).toBeInTheDocument();
   });
 
+  it("keeps disabled retention health quiet if health starts reporting retention", async () => {
+    vi.mocked(api.getRetentionStatus).mockResolvedValue({
+      data: {
+        ...mockStatus,
+        enabled: false,
+        guidance: {
+          status: "disabled" as const,
+          title: "Automatic retention is disabled",
+          message:
+            "Spartan will keep completed jobs and crawl state until you enable automatic cleanup or run targeted cleanup manually. Preview first so you understand the blast radius.",
+          actions: [],
+        },
+      },
+      request: new Request("http://localhost:8741/v1/retention/status"),
+      response: new Response(),
+    });
+
+    render(
+      <RetentionStatusPanel
+        health={{
+          status: "ok",
+          version: "test",
+          components: {
+            retention: {
+              status: "disabled",
+              message: "Retention is intentionally off.",
+            },
+          },
+          notices: [],
+        }}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenAutomation={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Automatic retention is disabled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Retention needs attention"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("surfaces degraded retention health explicitly when retention health is present", async () => {
+    render(
+      <RetentionStatusPanel
+        health={{
+          status: "degraded",
+          version: "test",
+          components: {
+            retention: {
+              status: "degraded",
+              message: "Retention metadata could not be refreshed.",
+              actions: [
+                {
+                  label: "Refresh retention diagnostics",
+                  kind: "copy",
+                  value: "spartan retention status",
+                },
+              ],
+            },
+          },
+          notices: [],
+        }}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+        onCreateJob={vi.fn()}
+        onOpenAutomation={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Retention needs attention"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Retention metadata could not be refreshed."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("spartan retention status")).toBeInTheDocument();
+  });
+
   it("toggles dry-run mode", async () => {
     renderPanel();
 

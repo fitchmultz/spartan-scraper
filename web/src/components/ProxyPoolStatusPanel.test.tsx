@@ -107,6 +107,35 @@ describe("ProxyPoolStatusPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("falls back to quiet optional guidance when health is absent and no proxies are loaded", async () => {
+    vi.mocked(getProxyPoolStatus).mockResolvedValue({
+      data: {
+        strategy: "none",
+        total_proxies: 0,
+        healthy_proxies: 0,
+        regions: [],
+        tags: [],
+        proxies: [],
+      },
+      request: new Request("http://localhost:8741/v1/proxy-pool/status"),
+      response: new Response(),
+    } as never);
+
+    const { container } = render(
+      <ProxyPoolStatusPanel
+        health={null}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Proxy pooling is currently off"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Optional subsystem")).toBeInTheDocument();
+    expect(container.querySelector(".retention-notice--warning")).toBeNull();
+  });
+
   it("renders degraded health guidance and runs inline diagnostics", async () => {
     const user = userEvent.setup();
     const onRefreshHealth = vi.fn().mockResolvedValue(undefined);
