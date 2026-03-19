@@ -12,12 +12,7 @@
  * @module lib/watch-utils
  */
 
-import type {
-  Watch,
-  WatchArtifact,
-  WatchCheckResult,
-  WatchInput,
-} from "../api";
+import type { Watch, WatchArtifact, WatchInput } from "../api";
 import { buildApiUrl } from "./api-config";
 import { parseOptionalList } from "./input-parsing";
 import type { WatchFormData } from "../types/watch";
@@ -131,10 +126,12 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
 }
 
 export function getWatchArtifact(
-  result: Pick<WatchCheckResult, "artifacts"> | null | undefined,
+  result: { artifacts?: WatchArtifact[] } | null | undefined,
   kind: WatchArtifact["kind"],
 ): WatchArtifact | undefined {
-  return result?.artifacts?.find((artifact) => artifact.kind === kind);
+  return result?.artifacts?.find(
+    (artifact: WatchArtifact) => artifact.kind === kind,
+  );
 }
 
 export function getWatchArtifactUrl(

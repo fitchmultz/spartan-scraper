@@ -92,26 +92,8 @@ func (s *WatchHistoryStore) Record(result WatchCheckResult) (*WatchCheckRecord, 
 		return nil, err
 	}
 
-	record := &WatchCheckRecord{
-		ID:                 uuid.NewString(),
-		WatchID:            strings.TrimSpace(result.WatchID),
-		URL:                strings.TrimSpace(result.URL),
-		CheckedAt:          result.CheckedAt,
-		Status:             deriveCheckStatus(result),
-		Changed:            result.Changed,
-		Baseline:           result.Baseline,
-		PreviousHash:       strings.TrimSpace(result.PreviousHash),
-		CurrentHash:        strings.TrimSpace(result.CurrentHash),
-		DiffText:           result.DiffText,
-		DiffHTML:           result.DiffHTML,
-		Error:              strings.TrimSpace(result.Error),
-		Selector:           strings.TrimSpace(result.Selector),
-		VisualHash:         strings.TrimSpace(result.VisualHash),
-		PreviousVisualHash: strings.TrimSpace(result.PreviousVisualHash),
-		VisualChanged:      result.VisualChanged,
-		VisualSimilarity:   result.VisualSimilarity,
-		TriggeredJobs:      append([]string(nil), result.TriggeredJobs...),
-	}
+	record := RecordFromCheckResult(&result)
+	record.ID = uuid.NewString()
 	if record.CheckedAt.IsZero() {
 		record.CheckedAt = time.Now()
 	}
@@ -119,11 +101,11 @@ func (s *WatchHistoryStore) Record(result WatchCheckResult) (*WatchCheckRecord, 
 	artifacts, artifactErr := s.persistArtifactsUnsafe(record.WatchID, record.ID, result.Artifacts)
 	record.Artifacts = artifacts
 
-	history.Checks = append(history.Checks, *record)
+	history.Checks = append(history.Checks, record)
 	if err := s.saveUnsafe(history); err != nil {
 		return nil, err
 	}
-	return record, artifactErr
+	return &record, artifactErr
 }
 
 // GetByWatch returns paginated history for one watch sorted newest-first.
@@ -205,6 +187,34 @@ func (s *WatchHistoryStore) DeleteWatch(watchID string) error {
 		return err
 	}
 	return os.RemoveAll(s.watchHistoryArtifactsDir(watchID))
+}
+
+// RecordFromCheckResult converts one immediate watch check result into its persisted history shape.
+func RecordFromCheckResult(result *WatchCheckResult) WatchCheckRecord {
+	if result == nil {
+		return WatchCheckRecord{}
+	}
+	return WatchCheckRecord{
+		ID:                 strings.TrimSpace(result.CheckID),
+		WatchID:            strings.TrimSpace(result.WatchID),
+		URL:                strings.TrimSpace(result.URL),
+		CheckedAt:          result.CheckedAt,
+		Status:             deriveCheckStatus(*result),
+		Changed:            result.Changed,
+		Baseline:           result.Baseline,
+		PreviousHash:       strings.TrimSpace(result.PreviousHash),
+		CurrentHash:        strings.TrimSpace(result.CurrentHash),
+		DiffText:           result.DiffText,
+		DiffHTML:           result.DiffHTML,
+		Error:              strings.TrimSpace(result.Error),
+		Selector:           strings.TrimSpace(result.Selector),
+		Artifacts:          append([]Artifact(nil), result.Artifacts...),
+		VisualHash:         strings.TrimSpace(result.VisualHash),
+		PreviousVisualHash: strings.TrimSpace(result.PreviousVisualHash),
+		VisualChanged:      result.VisualChanged,
+		VisualSimilarity:   result.VisualSimilarity,
+		TriggeredJobs:      append([]string(nil), result.TriggeredJobs...),
+	}
 }
 
 func deriveCheckStatus(result WatchCheckResult) CheckStatus {

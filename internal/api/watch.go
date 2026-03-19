@@ -79,28 +79,6 @@ type WatchResponse struct {
 	JobTrigger          *watch.JobTrigger       `json:"jobTrigger,omitempty"`
 }
 
-// WatchCheckResponse represents the result of a watch check.
-type WatchCheckResponse struct {
-	CheckID            string                  `json:"checkId,omitempty"`
-	WatchID            string                  `json:"watchId"`
-	URL                string                  `json:"url"`
-	CheckedAt          time.Time               `json:"checkedAt"`
-	Changed            bool                    `json:"changed"`
-	Baseline           bool                    `json:"baseline,omitempty"`
-	PreviousHash       string                  `json:"previousHash,omitempty"`
-	CurrentHash        string                  `json:"currentHash,omitempty"`
-	DiffText           string                  `json:"diffText,omitempty"`
-	DiffHTML           string                  `json:"diffHtml,omitempty"`
-	Error              string                  `json:"error,omitempty"`
-	Selector           string                  `json:"selector,omitempty"`
-	Artifacts          []WatchArtifactResponse `json:"artifacts,omitempty"`
-	VisualHash         string                  `json:"visualHash,omitempty"`
-	PreviousVisualHash string                  `json:"previousVisualHash,omitempty"`
-	VisualChanged      bool                    `json:"visualChanged"`
-	VisualSimilarity   float64                 `json:"visualSimilarity,omitempty"`
-	TriggeredJobs      []string                `json:"triggeredJobs,omitempty"`
-}
-
 // toWatchResponse converts a watch.Watch to WatchResponse.
 func toWatchResponse(w watch.Watch) WatchResponse {
 	status := "active"
@@ -246,14 +224,20 @@ func (s *Server) handleWatches(w http.ResponseWriter, r *http.Request) {
 
 // handleListWatches lists all watches.
 func (s *Server) handleListWatches(w http.ResponseWriter, r *http.Request) {
-	storage := watch.NewFileStorage(s.cfg.DataDir)
-	watches, err := storage.List()
+	params, err := parsePageParams(r, 100, 1000)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 
-	writeCollectionJSON(w, "watches", mapSlice(watches, toWatchResponse))
+	storage := watch.NewFileStorage(s.cfg.DataDir)
+	watches, total, err := storage.ListPage(params.Limit, params.Offset)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, BuildWatchListResponse(watches, total, params.Limit, params.Offset))
 }
 
 // handleCreateWatch creates a new watch.
@@ -282,7 +266,7 @@ func (s *Server) handleCreateWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeCreatedJSON(w, toWatchResponse(*created))
+	writeCreatedJSON(w, BuildWatchResponse(*created))
 }
 
 // handleWatch handles requests to /v1/watch/{id}
@@ -310,7 +294,7 @@ func (s *Server) handleGetWatch(w http.ResponseWriter, r *http.Request, id strin
 	if !ok {
 		return
 	}
-	writeJSON(w, toWatchResponse(*watchItem))
+	writeJSON(w, BuildWatchResponse(*watchItem))
 }
 
 // handleUpdateWatch updates an existing watch.
@@ -345,7 +329,7 @@ func (s *Server) handleUpdateWatch(w http.ResponseWriter, r *http.Request, id st
 		return
 	}
 
-	writeJSON(w, toWatchResponse(*existing))
+	writeJSON(w, BuildWatchResponse(*existing))
 }
 
 // handleDeleteWatch deletes a watch.
@@ -391,11 +375,17 @@ func (s *Server) handleWatchCheck(w http.ResponseWriter, r *http.Request) {
 
 	// Perform check
 	result, err := watcher.Check(r.Context(), watchItem)
-	if err != nil {
-		// Return result even on error (error is in result.Error)
-		writeJSON(w, toWatchCheckResponse(result))
+	if result == nil {
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		writeError(w, r, apperrors.Internal("watch check returned no result"))
 		return
 	}
 
-	writeJSON(w, toWatchCheckResponse(result))
+	inspection := WatchCheckInspectionResponse{
+		Check: BuildWatchCheckInspection(watch.RecordFromCheckResult(result)),
+	}
+	writeJSON(w, inspection)
 }

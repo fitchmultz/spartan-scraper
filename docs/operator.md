@@ -66,7 +66,8 @@ spartan watch history <watch-id> --check-id <check-id>
 
 Cross-surface expectations:
 
-- `POST /v1/watch/{id}/check` persists and returns a `checkId` immediately.
+- `GET /v1/watch` and MCP `watch_list` use the same paginated `{ watches, total, limit, offset }` contract.
+- `POST /v1/watch/{id}/check` persists and returns the canonical `{ check }` inspection envelope immediately.
 - `GET /v1/watch/{id}/history` and `GET /v1/watch/{id}/history/{checkId}` return the same guided inspection envelopes used by the Web UI and MCP.
 - Historical artifact snapshots live under `/v1/watch/{id}/history/{checkId}/artifacts/{artifactKind}` so older checks stay inspectable after later runs rotate the latest watch artifacts.
 - `spartan mcp` exposes the same model through `watch_check`, `watch_check_history`, and `watch_check_get`.

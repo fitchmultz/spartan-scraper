@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useState } from "react";
-import type { Watch, WatchCheckInspection, WatchCheckResult } from "../api";
+import type { Watch, WatchCheckInspection } from "../api";
 import type { WatchManagerProps } from "../types/watch";
 import { useWatchForm } from "../hooks/useWatchForm";
 import { ActionEmptyState } from "./ActionEmptyState";
@@ -30,7 +30,6 @@ export function WatchManager({
   loading,
 }: WatchManagerProps) {
   const [showForm, setShowForm] = useState(false);
-  const [checkResult, setCheckResult] = useState<WatchCheckResult | null>(null);
   const [checkInspection, setCheckInspection] =
     useState<WatchCheckInspection | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
@@ -163,18 +162,11 @@ export function WatchManager({
   const handleCheck = useCallback(
     async (watch: Watch) => {
       setCheckingId(watch.id);
-      setCheckResult(null);
       setCheckInspection(null);
       try {
-        const result = await onCheck(watch.id);
-        if (result) {
-          setCheckResult(result);
-          if (result.checkId) {
-            const detail = await onLoadHistoryDetail(watch.id, result.checkId);
-            if (detail) {
-              setCheckInspection(detail);
-            }
-          }
+        const inspection = await onCheck(watch.id);
+        if (inspection) {
+          setCheckInspection(inspection);
         }
       } catch (err) {
         console.error("Check failed:", err);
@@ -182,7 +174,7 @@ export function WatchManager({
         setCheckingId(null);
       }
     },
-    [onCheck, onLoadHistoryDetail],
+    [onCheck],
   );
 
   const handleOpenHistory = useCallback(
@@ -195,16 +187,15 @@ export function WatchManager({
   const handleOpenHistoryFromCheck = useCallback(
     async (checkId: string) => {
       const watchItem = watches.find(
-        (item) => item.id === checkResult?.watchId,
+        (item) => item.id === checkInspection?.watchId,
       );
       if (!watchItem) {
         return;
       }
-      setCheckResult(null);
       setCheckInspection(null);
       await handleOpenHistory(watchItem, checkId);
     },
-    [checkResult?.watchId, handleOpenHistory, watches],
+    [checkInspection?.watchId, handleOpenHistory, watches],
   );
 
   const handleHistoryPageChange = useCallback(
@@ -281,12 +272,10 @@ export function WatchManager({
         />
       )}
 
-      {checkResult ? (
+      {checkInspection ? (
         <CheckResultModal
-          result={checkResult}
           inspection={checkInspection}
           onClose={() => {
-            setCheckResult(null);
             setCheckInspection(null);
           }}
           onOpenHistory={(checkId) => {

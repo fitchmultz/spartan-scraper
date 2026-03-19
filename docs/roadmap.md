@@ -16,8 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Polish any cross-surface contract consistency issues discovered during the watch inspection cutover, including pagination, filters, envelope naming, and generated client/doc sync where needed.
-
 ## Later / Deprioritized
 
 ## Ongoing Constraints

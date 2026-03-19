@@ -32,7 +32,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
-	"github.com/fitchmultz/spartan-scraper/internal/watch"
 )
 
 func TestWatchToolsInToolsList(t *testing.T) {
@@ -67,6 +66,13 @@ func TestWatchToolsInToolsList(t *testing.T) {
 	updateRequired := toolMap["watch_update"].InputSchema["required"].([]string)
 	if len(updateRequired) != 1 || updateRequired[0] != "id" {
 		t.Fatalf("unexpected required fields for watch_update: %#v", updateRequired)
+	}
+	watchListProperties := toolMap["watch_list"].InputSchema["properties"].(map[string]interface{})
+	if _, ok := watchListProperties["limit"]; !ok {
+		t.Fatal("expected watch_list to expose limit")
+	}
+	if _, ok := watchListProperties["offset"]; !ok {
+		t.Fatal("expected watch_list to expose offset")
 	}
 }
 
@@ -103,9 +109,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch_create failed: %v", err)
 	}
-	createdWatch, ok := createResult.(*watch.Watch)
+	createdWatch, ok := createResult.(api.WatchResponse)
 	if !ok {
-		t.Fatalf("expected created watch, got %#v", createResult)
+		t.Fatalf("expected created watch response, got %#v", createResult)
 	}
 	if createdWatch.ID == "" {
 		t.Fatal("expected created watch to have an id")
@@ -116,23 +122,25 @@ func TestHandleWatchLifecycle(t *testing.T) {
 
 	listResult, err := srv.handleToolCall(ctx, map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{
-			"name":      "watch_list",
-			"arguments": map[string]interface{}{},
+			"name": "watch_list",
+			"arguments": map[string]interface{}{
+				"limit":  1,
+				"offset": 0,
+			},
 		}),
 	})
 	if err != nil {
 		t.Fatalf("watch_list failed: %v", err)
 	}
-	listPayload, ok := listResult.(map[string]interface{})
+	listPayload, ok := listResult.(api.WatchListResponse)
 	if !ok {
 		t.Fatalf("expected list payload, got %#v", listResult)
 	}
-	watches, ok := listPayload["watches"].([]watch.Watch)
-	if !ok {
-		t.Fatalf("expected watches slice, got %#v", listPayload["watches"])
+	if listPayload.Total != 1 || listPayload.Limit != 1 || listPayload.Offset != 0 {
+		t.Fatalf("unexpected watch list metadata: %#v", listPayload)
 	}
-	if len(watches) != 1 {
-		t.Fatalf("expected 1 watch, got %d", len(watches))
+	if len(listPayload.Watches) != 1 {
+		t.Fatalf("expected 1 watch, got %d", len(listPayload.Watches))
 	}
 
 	updateResult, err := srv.handleToolCall(ctx, map[string]json.RawMessage{
@@ -154,9 +162,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch_update failed: %v", err)
 	}
-	updatedWatch, ok := updateResult.(*watch.Watch)
+	updatedWatch, ok := updateResult.(api.WatchResponse)
 	if !ok {
-		t.Fatalf("expected updated watch, got %#v", updateResult)
+		t.Fatalf("expected updated watch response, got %#v", updateResult)
 	}
 	if updatedWatch.URL != site.URL {
 		t.Fatalf("expected url to be preserved, got %q", updatedWatch.URL)
@@ -185,9 +193,9 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch_get failed: %v", err)
 	}
-	gotWatch, ok := getResult.(*watch.Watch)
+	gotWatch, ok := getResult.(api.WatchResponse)
 	if !ok {
-		t.Fatalf("expected get watch result, got %#v", getResult)
+		t.Fatalf("expected get watch response, got %#v", getResult)
 	}
 	if gotWatch.ID != createdWatch.ID {
 		t.Fatalf("unexpected watch id: %q", gotWatch.ID)
@@ -217,10 +225,11 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first watch_check failed: %v", err)
 	}
-	firstCheck, ok := firstCheckResult.(api.WatchCheckInspection)
+	firstCheckEnvelope, ok := firstCheckResult.(api.WatchCheckInspectionResponse)
 	if !ok {
-		t.Fatalf("expected first check inspection, got %#v", firstCheckResult)
+		t.Fatalf("expected first check envelope, got %#v", firstCheckResult)
 	}
+	firstCheck := firstCheckEnvelope.Check
 	if firstCheck.WatchID != createdWatch.ID {
 		t.Fatalf("unexpected watch id in first check: %q", firstCheck.WatchID)
 	}
@@ -249,10 +258,11 @@ func TestHandleWatchLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second watch_check failed: %v", err)
 	}
-	secondCheck, ok := secondCheckResult.(api.WatchCheckInspection)
+	secondCheckEnvelope, ok := secondCheckResult.(api.WatchCheckInspectionResponse)
 	if !ok {
-		t.Fatalf("expected second check inspection, got %#v", secondCheckResult)
+		t.Fatalf("expected second check envelope, got %#v", secondCheckResult)
 	}
+	secondCheck := secondCheckEnvelope.Check
 	if !secondCheck.Changed {
 		t.Fatal("expected second check to detect a change")
 	}

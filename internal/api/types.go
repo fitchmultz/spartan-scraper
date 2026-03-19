@@ -284,6 +284,14 @@ type ExportOutcomeListResponse struct {
 	Offset  int                `json:"offset"`
 }
 
+// WatchListResponse represents a paginated collection of watches.
+type WatchListResponse struct {
+	Watches []WatchResponse `json:"watches"`
+	Total   int             `json:"total"`
+	Limit   int             `json:"limit"`
+	Offset  int             `json:"offset"`
+}
+
 // WatchCheckInspection represents a persisted, operator-facing watch check outcome.
 type WatchCheckInspection struct {
 	ID                 string                  `json:"id"`

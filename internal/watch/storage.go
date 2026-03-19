@@ -204,6 +204,15 @@ func (s *FileStorage) List() ([]Watch, error) {
 	return items, nil
 }
 
+// ListPage returns a paginated slice of watches plus the total before pagination.
+func (s *FileStorage) ListPage(limit, offset int) ([]Watch, int, error) {
+	items, err := s.List()
+	if err != nil {
+		return nil, 0, err
+	}
+	return paginateWatches(items, limit, offset), len(items), nil
+}
+
 // ListEnabled returns all enabled watches sorted by next run time.
 func (s *FileStorage) ListEnabled() ([]Watch, error) {
 	items, err := s.LoadAll()
@@ -220,6 +229,23 @@ func (s *FileStorage) ListEnabled() ([]Watch, error) {
 		return enabled[i].NextRun().Before(enabled[j].NextRun())
 	})
 	return enabled, nil
+}
+
+func paginateWatches(items []Watch, limit, offset int) []Watch {
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(items) {
+		return []Watch{}
+	}
+	if limit <= 0 {
+		limit = len(items) - offset
+	}
+	end := offset + limit
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[offset:end]
 }
 
 // NotFoundError is returned when a watch is not found.

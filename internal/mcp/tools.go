@@ -176,8 +176,8 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "watch_list",
-			Description: "List configured watches",
-			InputSchema: schema(nil, nil),
+			Description: "List configured watches with pagination metadata",
+			InputSchema: schema(nil, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{
 			Name:        "watch_get",

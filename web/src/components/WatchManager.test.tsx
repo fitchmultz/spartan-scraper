@@ -14,7 +14,6 @@ import type {
   Watch,
   WatchCheckHistoryResponse,
   WatchCheckInspection,
-  WatchCheckResult,
   WatchInput,
 } from "../api";
 import { WatchManager } from "./WatchManager";
@@ -80,7 +79,7 @@ function createProps(
   const onUpdate = vi.fn<(id: string, watch: WatchInput) => Promise<void>>();
   const onDelete = vi.fn<(id: string) => Promise<void>>();
   const onCheck =
-    vi.fn<(id: string) => Promise<WatchCheckResult | undefined>>();
+    vi.fn<(id: string) => Promise<WatchCheckInspection | undefined>>();
   const onLoadHistory =
     vi.fn<
       (
@@ -151,14 +150,7 @@ describe("WatchManager", () => {
   it("can pivot from a manual check result into persisted history", async () => {
     const user = userEvent.setup();
     const props = createProps({
-      onCheck: vi.fn().mockResolvedValue({
-        checkId: "check-1",
-        watchId: "watch-1",
-        url: "https://example.com/pricing",
-        checkedAt: "2026-03-19T15:05:00Z",
-        changed: true,
-        diffText: "-old\n+new",
-      } satisfies WatchCheckResult),
+      onCheck: vi.fn().mockResolvedValue(makeInspection()),
     });
 
     render(<WatchManager {...props} />);

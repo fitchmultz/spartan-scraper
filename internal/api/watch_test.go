@@ -60,23 +60,22 @@ func TestHandleListWatches(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", rr.Code)
 	}
 
-	var emptyList map[string]interface{}
+	var emptyList WatchListResponse
 	if err := json.Unmarshal(rr.Body.Bytes(), &emptyList); err != nil {
 		t.Fatalf("Failed to parse empty response: %v", err)
 	}
-	watches, ok := emptyList["watches"].([]interface{})
-	if !ok {
-		t.Error("Expected watches array in response")
+	if len(emptyList.Watches) != 0 {
+		t.Errorf("Expected empty watches array, got %d items", len(emptyList.Watches))
 	}
-	if len(watches) != 0 {
-		t.Errorf("Expected empty watches array, got %d items", len(watches))
+	if emptyList.Total != 0 || emptyList.Limit != 100 || emptyList.Offset != 0 {
+		t.Fatalf("unexpected empty pagination metadata: %#v", emptyList)
 	}
 
-	// Create a test watch
 	storage := watch.NewFileStorage(srv.cfg.DataDir)
-	createTestWatch(t, storage, "https://example.com/test")
+	older := createTestWatch(t, storage, "https://example.com/older")
+	newer := createTestWatch(t, storage, "https://example.com/newer")
 
-	// Test list with watches
+	// Test default list envelope
 	req = httptest.NewRequest(http.MethodGet, "/v1/watch", nil)
 	rr = httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
@@ -85,16 +84,36 @@ func TestHandleListWatches(t *testing.T) {
 		t.Errorf("Expected status 200, got %d", rr.Code)
 	}
 
-	var listResp map[string]interface{}
+	var listResp WatchListResponse
 	if err := json.Unmarshal(rr.Body.Bytes(), &listResp); err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
-	watches, ok = listResp["watches"].([]interface{})
-	if !ok {
-		t.Fatal("Expected watches array in response")
+	if listResp.Total != 2 || listResp.Limit != 100 || listResp.Offset != 0 {
+		t.Fatalf("unexpected pagination metadata: %#v", listResp)
 	}
-	if len(watches) != 1 {
-		t.Errorf("Expected 1 watch, got %d", len(watches))
+	if len(listResp.Watches) != 2 {
+		t.Fatalf("Expected 2 watches, got %d", len(listResp.Watches))
+	}
+	if listResp.Watches[0].ID != newer.ID || listResp.Watches[1].ID != older.ID {
+		t.Fatalf("expected newest-first order, got %#v", listResp.Watches)
+	}
+
+	// Test explicit pagination
+	req = httptest.NewRequest(http.MethodGet, "/v1/watch?limit=1&offset=1", nil)
+	rr = httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected paginated status 200, got %d", rr.Code)
+	}
+	var pagedResp WatchListResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &pagedResp); err != nil {
+		t.Fatalf("Failed to parse paged response: %v", err)
+	}
+	if pagedResp.Total != 2 || pagedResp.Limit != 1 || pagedResp.Offset != 1 {
+		t.Fatalf("unexpected paged metadata: %#v", pagedResp)
+	}
+	if len(pagedResp.Watches) != 1 || pagedResp.Watches[0].ID != older.ID {
+		t.Fatalf("expected older watch on second page, got %#v", pagedResp.Watches)
 	}
 }
 
@@ -278,15 +297,15 @@ func TestHandleWatchCheckTriggersConfiguredJob(t *testing.T) {
 		t.Fatalf("Expected second check status 200, got %d: %s", secondRR.Code, secondRR.Body.String())
 	}
 
-	var checkResp WatchCheckResponse
+	var checkResp WatchCheckInspectionResponse
 	if err := json.Unmarshal(secondRR.Body.Bytes(), &checkResp); err != nil {
 		t.Fatalf("Failed to parse check response: %v", err)
 	}
-	if !checkResp.Changed {
+	if !checkResp.Check.Changed {
 		t.Fatalf("expected changed=true on second check")
 	}
-	if len(checkResp.TriggeredJobs) != 1 {
-		t.Fatalf("expected one triggered job, got %#v", checkResp.TriggeredJobs)
+	if len(checkResp.Check.TriggeredJobs) != 1 {
+		t.Fatalf("expected one triggered job, got %#v", checkResp.Check.TriggeredJobs)
 	}
 
 	jobs, err := srv.store.List(context.Background())
@@ -296,8 +315,8 @@ func TestHandleWatchCheckTriggersConfiguredJob(t *testing.T) {
 	if len(jobs) != 1 {
 		t.Fatalf("expected 1 triggered job, got %d", len(jobs))
 	}
-	if jobs[0].ID != checkResp.TriggeredJobs[0] {
-		t.Fatalf("expected triggered job ID %s, got %s", jobs[0].ID, checkResp.TriggeredJobs[0])
+	if jobs[0].ID != checkResp.Check.TriggeredJobs[0] {
+		t.Fatalf("expected triggered job ID %s, got %s", jobs[0].ID, checkResp.Check.TriggeredJobs[0])
 	}
 	if jobs[0].Kind != model.KindScrape {
 		t.Fatalf("expected triggered scrape job, got %s", jobs[0].Kind)
@@ -548,12 +567,12 @@ func TestHandleWatchCheck(t *testing.T) {
 		t.Errorf("Expected status 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 
-	var resp WatchCheckResponse
+	var resp WatchCheckInspectionResponse
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
-	if resp.WatchID != created.ID {
-		t.Errorf("Expected watch ID %s, got %s", created.ID, resp.WatchID)
+	if resp.Check.WatchID != created.ID {
+		t.Errorf("Expected watch ID %s, got %s", created.ID, resp.Check.WatchID)
 	}
 
 	// Test not found

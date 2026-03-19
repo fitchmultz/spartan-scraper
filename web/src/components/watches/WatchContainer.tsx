@@ -19,7 +19,6 @@ import {
   type WatchCheckInspection,
   type WatchCheckHistoryResponse,
   type WatchInput,
-  type WatchCheckResult,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
@@ -155,7 +154,7 @@ export function WatchContainer() {
   );
 
   const handleCheckWatch = useCallback(
-    async (id: string): Promise<WatchCheckResult | undefined> => {
+    async (id: string): Promise<WatchCheckInspection | undefined> => {
       const toastId = toast.show({
         tone: "loading",
         title: "Running watch check",
@@ -176,16 +175,17 @@ export function WatchContainer() {
         throw error;
       }
       await refreshWatches();
+      const inspection = data?.check;
       toast.update(toastId, {
         tone: "success",
         title: "Watch check finished",
-        description: data?.changed
+        description: inspection?.changed
           ? "Spartan detected a change in the watched target."
-          : data?.baseline
+          : inspection?.baseline
             ? "Baseline recorded for future watch comparisons."
             : "No change was detected in the watched target.",
       });
-      return data;
+      return inspection;
     },
     [refreshWatches, toast],
   );

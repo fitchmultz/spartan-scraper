@@ -40,36 +40,6 @@ type WatchArtifactResponse struct {
 	DownloadURL string `json:"downloadUrl"`
 }
 
-func toWatchCheckResponse(result *watch.WatchCheckResult) WatchCheckResponse {
-	if result == nil {
-		return WatchCheckResponse{}
-	}
-	artifacts := make([]WatchArtifactResponse, 0, len(result.Artifacts))
-	for _, artifact := range result.Artifacts {
-		artifacts = append(artifacts, toWatchArtifactResponseForCheck(result.WatchID, result.CheckID, artifact))
-	}
-	return WatchCheckResponse{
-		CheckID:            result.CheckID,
-		WatchID:            result.WatchID,
-		URL:                result.URL,
-		CheckedAt:          result.CheckedAt,
-		Changed:            result.Changed,
-		Baseline:           result.Baseline,
-		PreviousHash:       result.PreviousHash,
-		CurrentHash:        result.CurrentHash,
-		DiffText:           result.DiffText,
-		DiffHTML:           result.DiffHTML,
-		Error:              result.Error,
-		Selector:           result.Selector,
-		Artifacts:          artifacts,
-		VisualHash:         result.VisualHash,
-		PreviousVisualHash: result.PreviousVisualHash,
-		VisualChanged:      result.VisualChanged,
-		VisualSimilarity:   result.VisualSimilarity,
-		TriggeredJobs:      result.TriggeredJobs,
-	}
-}
-
 func toWatchArtifactResponse(watchID string, artifact watch.Artifact) WatchArtifactResponse {
 	return toWatchArtifactResponseForCheck(watchID, "", artifact)
 }

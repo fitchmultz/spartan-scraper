@@ -1563,9 +1563,21 @@ export type JobTrigger = {
 
 export type WatchList = {
     /**
-     * List of all watches
+     * Page of configured watches.
      */
     watches: Array<Watch>;
+    /**
+     * Total number of configured watches before pagination.
+     */
+    total: number;
+    /**
+     * Requested page size.
+     */
+    limit: number;
+    /**
+     * Requested page offset.
+     */
+    offset: number;
 };
 
 export type WatchArtifact = {
@@ -1589,81 +1601,6 @@ export type WatchArtifact = {
      * Relative API URL for downloading the artifact bytes
      */
     downloadUrl: string;
-};
-
-export type WatchCheckResult = {
-    /**
-     * Persisted history id for this completed check
-     */
-    checkId?: string;
-    /**
-     * ID of the watch that was checked
-     */
-    watchId: string;
-    /**
-     * URL that was checked
-     */
-    url: string;
-    /**
-     * When the check was performed
-     */
-    checkedAt: string;
-    /**
-     * Whether content changed
-     */
-    changed: boolean;
-    /**
-     * Whether this check established the first persisted comparison baseline
-     */
-    baseline?: boolean;
-    /**
-     * Previous content hash (if available)
-     */
-    previousHash?: string;
-    /**
-     * Current content hash
-     */
-    currentHash?: string;
-    /**
-     * Unified diff text (if changed and previous content existed)
-     */
-    diffText?: string;
-    /**
-     * HTML formatted diff (if changed and previous content existed)
-     */
-    diffHtml?: string;
-    /**
-     * Error message if check failed or follow-on automation could not complete cleanly
-     */
-    error?: string;
-    /**
-     * CSS selector used for extraction
-     */
-    selector?: string;
-    /**
-     * Persisted watch screenshot and diff artifacts for this check, exposed through explicit download URLs instead of host-local paths
-     */
-    artifacts?: Array<WatchArtifact>;
-    /**
-     * Perceptual hash of current screenshot
-     */
-    visualHash?: string;
-    /**
-     * Perceptual hash of previous screenshot
-     */
-    previousVisualHash?: string;
-    /**
-     * Whether visual changes were detected
-     */
-    visualChanged?: boolean;
-    /**
-     * Similarity score between screenshots (0-1)
-     */
-    visualSimilarity?: number;
-    /**
-     * Job IDs created from the optional watch trigger during this check
-     */
-    triggeredJobs?: Array<string>;
 };
 
 export type WatchCheckInspection = {
@@ -6382,7 +6319,16 @@ export type GetExportScheduleHistoryResponse = GetExportScheduleHistoryResponses
 export type ListWatchesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum number of watches to return.
+         */
+        limit?: number;
+        /**
+         * Number of watches to skip before returning results.
+         */
+        offset?: number;
+    };
     url: '/v1/watch';
 };
 
@@ -6600,7 +6546,7 @@ export type CheckWatchResponses = {
     /**
      * Check completed
      */
-    200: WatchCheckResult;
+    200: WatchCheckInspectionResponse;
 };
 
 export type CheckWatchResponse = CheckWatchResponses[keyof CheckWatchResponses];

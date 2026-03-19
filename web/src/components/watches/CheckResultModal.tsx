@@ -1,9 +1,9 @@
 /**
- * Purpose: Render the immediate result of a manual watch check with a bridge into persisted history inspection.
- * Responsibilities: Show the just-completed outcome, fall back to transient result fields while history detail loads, and surface next-step actions once the persisted inspection is available.
+ * Purpose: Render the immediate result of a manual watch check using the canonical persisted inspection envelope.
+ * Responsibilities: Show the just-completed inspection, artifact previews, diff content, and next-step actions with a direct jump into saved history.
  * Scope: Manual watch-check modal presentation only; check execution and history loading stay in parent components.
  * Usage: Render from `WatchManager` after `onCheck` completes.
- * Invariants/Assumptions: The manual check has already completed, and `inspection` either represents the same `checkId` or is null while the persisted detail is loading.
+ * Invariants/Assumptions: `inspection` already represents the persisted check returned from the canonical watch-check endpoint.
  */
 
 import type { CheckResultModalProps } from "../../types/watch";
@@ -17,39 +17,11 @@ import { CapabilityActionList } from "../CapabilityActionList";
 import { StatusPill } from "../StatusPill";
 
 export function CheckResultModal({
-  result,
   inspection,
   onClose,
   onOpenHistory,
 }: CheckResultModalProps) {
-  const title =
-    inspection?.title ||
-    (result.baseline
-      ? "Baseline recorded"
-      : result.changed
-        ? "Change detected"
-        : result.error
-          ? "Check failed"
-          : "No change detected");
-  const message =
-    inspection?.message ||
-    (result.error
-      ? result.error
-      : result.baseline
-        ? "The first successful check saved a comparison baseline for this watch."
-        : result.changed
-          ? "Spartan detected a change during this manual watch check."
-          : "The latest manual check matched the saved baseline.");
-  const status: "baseline" | "changed" | "failed" | "unchanged" =
-    inspection?.status ||
-    (result.baseline
-      ? "baseline"
-      : result.changed
-        ? "changed"
-        : result.error
-          ? "failed"
-          : "unchanged");
-  const artifacts = inspection?.artifacts || result.artifacts || [];
+  const artifacts = inspection.artifacts || [];
 
   return (
     <div
@@ -85,28 +57,26 @@ export function CheckResultModal({
           <div>
             <div className="row" style={{ alignItems: "center", gap: 8 }}>
               <StatusPill
-                label={status}
-                tone={getWatchCheckStatusTone(status)}
+                label={inspection.status}
+                tone={getWatchCheckStatusTone(inspection.status)}
               />
               <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                {formatDateTime(result.checkedAt, "Never")}
+                {formatDateTime(inspection.checkedAt, "Never")}
               </span>
             </div>
-            <h3 style={{ margin: "8px 0 0" }}>{title}</h3>
+            <h3 style={{ margin: "8px 0 0" }}>{inspection.title}</h3>
             <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
-              {message}
+              {inspection.message}
             </p>
           </div>
           <div className="row" style={{ gap: 8 }}>
-            {result.checkId ? (
-              <button
-                type="button"
-                onClick={() => onOpenHistory(result.checkId || "")}
-                className="secondary"
-              >
-                View history
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => onOpenHistory(inspection.id)}
+              className="secondary"
+            >
+              View history
+            </button>
             <button type="button" onClick={onClose} className="secondary">
               Close
             </button>
@@ -123,23 +93,23 @@ export function CheckResultModal({
         >
           <div>
             <strong>Watch ID</strong>
-            <div>{result.watchId}</div>
+            <div>{inspection.watchId}</div>
           </div>
           <div>
             <strong>Check ID</strong>
-            <div>{result.checkId || "Saving..."}</div>
+            <div>{inspection.id}</div>
           </div>
           <div>
             <strong>Changed</strong>
-            <div>{result.changed ? "Yes" : "No"}</div>
+            <div>{inspection.changed ? "Yes" : "No"}</div>
           </div>
           <div>
             <strong>Baseline</strong>
-            <div>{result.baseline ? "Yes" : "No"}</div>
+            <div>{inspection.baseline ? "Yes" : "No"}</div>
           </div>
         </div>
 
-        {result.triggeredJobs && result.triggeredJobs.length > 0 ? (
+        {inspection.triggeredJobs && inspection.triggeredJobs.length > 0 ? (
           <div
             style={{
               padding: 12,
@@ -149,7 +119,8 @@ export function CheckResultModal({
               marginBottom: 16,
             }}
           >
-            <strong>Triggered Jobs:</strong> {result.triggeredJobs.join(", ")}
+            <strong>Triggered Jobs:</strong>{" "}
+            {inspection.triggeredJobs.join(", ")}
           </div>
         ) : null}
 
@@ -216,11 +187,11 @@ export function CheckResultModal({
           </div>
         ) : null}
 
-        {(inspection?.actions?.length || 0) > 0 ? (
+        {inspection.actions?.length ? (
           <div style={{ marginBottom: 16 }}>
             <h4 style={{ marginBottom: 8 }}>Recommended next steps</h4>
             <CapabilityActionList
-              actions={inspection?.actions || []}
+              actions={inspection.actions}
               onNavigate={(path) => {
                 window.location.assign(path);
               }}
@@ -229,7 +200,7 @@ export function CheckResultModal({
           </div>
         ) : null}
 
-        {inspection?.diffText || result.diffText ? (
+        {inspection.diffText ? (
           <div>
             <h4 style={{ marginBottom: 8 }}>Diff</h4>
             <pre
@@ -243,7 +214,7 @@ export function CheckResultModal({
                 maxHeight: 320,
               }}
             >
-              {inspection?.diffText || result.diffText}
+              {inspection.diffText}
             </pre>
           </div>
         ) : null}

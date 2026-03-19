@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import type { Watch, WatchCheckResult } from "../api";
+import type { Watch, WatchCheckInspection } from "../api";
 import { formatDateTime, formatSecondsAsDuration } from "../lib/formatting";
 import { getWatchStatusTone } from "../lib/status-display";
 import {
@@ -20,7 +20,7 @@ import { StatusPill } from "./StatusPill";
 
 interface WatchDetailProps {
   watch: Watch;
-  checkResult?: WatchCheckResult | null;
+  checkResult?: WatchCheckInspection | null;
   onCheck: () => Promise<void>;
   onClose: () => void;
   loading?: boolean;

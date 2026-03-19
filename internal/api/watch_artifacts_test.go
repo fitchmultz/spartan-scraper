@@ -31,11 +31,13 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/watch"
 )
 
-func TestToWatchCheckResponseUsesArtifactDownloads(t *testing.T) {
-	result := &watch.WatchCheckResult{
+func TestBuildWatchCheckInspectionUsesHistoryArtifactDownloads(t *testing.T) {
+	record := watch.WatchCheckRecord{
+		ID:        "check-123",
 		WatchID:   "watch-123",
 		URL:       "https://example.com",
 		CheckedAt: time.Unix(1700000000, 0).UTC(),
+		Status:    watch.CheckStatusChanged,
 		Changed:   true,
 		Artifacts: []watch.Artifact{{
 			Kind:        watch.ArtifactKindCurrentScreenshot,
@@ -46,18 +48,18 @@ func TestToWatchCheckResponseUsesArtifactDownloads(t *testing.T) {
 		}},
 	}
 
-	response := toWatchCheckResponse(result)
-	if len(response.Artifacts) != 1 {
-		t.Fatalf("expected one artifact response, got %d", len(response.Artifacts))
+	inspection := BuildWatchCheckInspection(record)
+	if len(inspection.Artifacts) != 1 {
+		t.Fatalf("expected one artifact response, got %d", len(inspection.Artifacts))
 	}
-	artifact := response.Artifacts[0]
-	if artifact.DownloadURL != "/v1/watch/watch-123/artifacts/current-screenshot" {
+	artifact := inspection.Artifacts[0]
+	if artifact.DownloadURL != "/v1/watch/watch-123/history/check-123/artifacts/current-screenshot" {
 		t.Fatalf("unexpected download URL: %s", artifact.DownloadURL)
 	}
 
-	raw, err := json.Marshal(response)
+	raw, err := json.Marshal(inspection)
 	if err != nil {
-		t.Fatalf("marshal response: %v", err)
+		t.Fatalf("marshal inspection: %v", err)
 	}
 	body := string(raw)
 	if strings.Contains(body, "/tmp/private/current.png") {

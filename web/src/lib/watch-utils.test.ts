@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { WatchCheckResult } from "../api";
+import type { WatchArtifact } from "../api";
 import {
   getWatchArtifact,
   getWatchArtifactLabel,
@@ -14,7 +14,7 @@ import {
 } from "./watch-utils";
 
 describe("watch artifact helpers", () => {
-  const result: Pick<WatchCheckResult, "artifacts"> = {
+  const result: { artifacts: WatchArtifact[] } = {
     artifacts: [
       {
         kind: "current-screenshot",

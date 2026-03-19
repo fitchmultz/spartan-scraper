@@ -10,7 +10,6 @@ import type {
   Watch,
   WatchCheckHistoryResponse,
   WatchCheckInspection,
-  WatchCheckResult,
   WatchInput,
 } from "../api";
 
@@ -20,7 +19,7 @@ export interface WatchManagerProps {
   onCreate: (watch: WatchInput) => Promise<void>;
   onUpdate: (id: string, watch: WatchInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onCheck: (id: string) => Promise<WatchCheckResult | undefined>;
+  onCheck: (id: string) => Promise<WatchCheckInspection | undefined>;
   onLoadHistory: (
     watchId: string,
     limit: number,
@@ -90,8 +89,7 @@ export interface WatchFormProps {
 }
 
 export interface CheckResultModalProps {
-  result: WatchCheckResult;
-  inspection: WatchCheckInspection | null;
+  inspection: WatchCheckInspection;
   onClose: () => void;
   onOpenHistory: (checkId: string) => void;
 }

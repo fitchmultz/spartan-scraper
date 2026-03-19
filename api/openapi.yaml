@@ -2717,6 +2717,22 @@ paths:
     get:
       summary: List all watches
       operationId: listWatches
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+        description: Maximum number of watches to return.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+        description: Number of watches to skip before returning results.
       responses:
         '200':
           description: List of watches
@@ -2913,7 +2929,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/WatchCheckResult"
+                "$ref": "#/components/schemas/WatchCheckInspectionResponse"
         '404':
           description: Watch not found
           content:
@@ -5787,12 +5803,24 @@ components:
       type: object
       required:
       - watches
+      - total
+      - limit
+      - offset
       properties:
         watches:
           type: array
           items:
             "$ref": "#/components/schemas/Watch"
-          description: List of all watches
+          description: Page of configured watches.
+        total:
+          type: integer
+          description: Total number of configured watches before pagination.
+        limit:
+          type: integer
+          description: Requested page size.
+        offset:
+          type: integer
+          description: Requested page offset.
     WatchArtifact:
       type: object
       required:
@@ -5821,75 +5849,6 @@ components:
         downloadUrl:
           type: string
           description: Relative API URL for downloading the artifact bytes
-    WatchCheckResult:
-      type: object
-      required:
-      - watchId
-      - url
-      - checkedAt
-      - changed
-      properties:
-        checkId:
-          type: string
-          description: Persisted history id for this completed check
-        watchId:
-          type: string
-          description: ID of the watch that was checked
-        url:
-          type: string
-          format: uri
-          description: URL that was checked
-        checkedAt:
-          type: string
-          format: date-time
-          description: When the check was performed
-        changed:
-          type: boolean
-          description: Whether content changed
-        baseline:
-          type: boolean
-          description: Whether this check established the first persisted comparison baseline
-        previousHash:
-          type: string
-          description: Previous content hash (if available)
-        currentHash:
-          type: string
-          description: Current content hash
-        diffText:
-          type: string
-          description: Unified diff text (if changed and previous content existed)
-        diffHtml:
-          type: string
-          description: HTML formatted diff (if changed and previous content existed)
-        error:
-          type: string
-          description: Error message if check failed or follow-on automation could not complete cleanly
-        selector:
-          type: string
-          description: CSS selector used for extraction
-        artifacts:
-          type: array
-          items:
-            "$ref": "#/components/schemas/WatchArtifact"
-          description: Persisted watch screenshot and diff artifacts for this check, exposed through explicit download URLs instead of host-local paths
-        visualHash:
-          type: string
-          description: Perceptual hash of current screenshot
-        previousVisualHash:
-          type: string
-          description: Perceptual hash of previous screenshot
-        visualChanged:
-          type: boolean
-          description: Whether visual changes were detected
-        visualSimilarity:
-          type: number
-          format: float
-          description: Similarity score between screenshots (0-1)
-        triggeredJobs:
-          type: array
-          items:
-            type: string
-          description: Job IDs created from the optional watch trigger during this check
     WatchCheckInspection:
       type: object
       required:

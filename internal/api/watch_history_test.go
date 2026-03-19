@@ -61,14 +61,14 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if firstCheckRR.Code != http.StatusOK {
 		t.Fatalf("expected first check 200, got %d: %s", firstCheckRR.Code, firstCheckRR.Body.String())
 	}
-	var firstCheck WatchCheckResponse
+	var firstCheck WatchCheckInspectionResponse
 	if err := json.Unmarshal(firstCheckRR.Body.Bytes(), &firstCheck); err != nil {
 		t.Fatalf("failed to decode first check: %v", err)
 	}
-	if firstCheck.CheckID == "" {
-		t.Fatal("expected first check to include checkId")
+	if firstCheck.Check.ID == "" {
+		t.Fatal("expected first check to include check id")
 	}
-	if !firstCheck.Baseline {
+	if !firstCheck.Check.Baseline {
 		t.Fatal("expected first check to establish a baseline")
 	}
 
@@ -79,14 +79,14 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if secondCheckRR.Code != http.StatusOK {
 		t.Fatalf("expected second check 200, got %d: %s", secondCheckRR.Code, secondCheckRR.Body.String())
 	}
-	var secondCheck WatchCheckResponse
+	var secondCheck WatchCheckInspectionResponse
 	if err := json.Unmarshal(secondCheckRR.Body.Bytes(), &secondCheck); err != nil {
 		t.Fatalf("failed to decode second check: %v", err)
 	}
-	if secondCheck.CheckID == "" {
-		t.Fatal("expected second check to include checkId")
+	if secondCheck.Check.ID == "" {
+		t.Fatal("expected second check to include check id")
 	}
-	if !secondCheck.Changed {
+	if !secondCheck.Check.Changed {
 		t.Fatal("expected second check to detect a change")
 	}
 
@@ -103,14 +103,14 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if historyResp.Total != 2 || len(historyResp.Checks) != 2 {
 		t.Fatalf("expected 2 history items, got total=%d len=%d", historyResp.Total, len(historyResp.Checks))
 	}
-	if historyResp.Checks[0].ID != secondCheck.CheckID {
-		t.Fatalf("expected latest history record first, got %q want %q", historyResp.Checks[0].ID, secondCheck.CheckID)
+	if historyResp.Checks[0].ID != secondCheck.Check.ID {
+		t.Fatalf("expected latest history record first, got %q want %q", historyResp.Checks[0].ID, secondCheck.Check.ID)
 	}
 	if historyResp.Checks[0].Status != "changed" {
 		t.Fatalf("expected changed status, got %q", historyResp.Checks[0].Status)
 	}
 
-	detailReq := httptest.NewRequest(http.MethodGet, "/v1/watch/"+created.ID+"/history/"+firstCheck.CheckID, nil)
+	detailReq := httptest.NewRequest(http.MethodGet, "/v1/watch/"+created.ID+"/history/"+firstCheck.Check.ID, nil)
 	detailRR := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(detailRR, detailReq)
 	if detailRR.Code != http.StatusOK {
@@ -120,7 +120,7 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if err := json.Unmarshal(detailRR.Body.Bytes(), &detailResp); err != nil {
 		t.Fatalf("failed to decode detail response: %v", err)
 	}
-	if detailResp.Check.ID != firstCheck.CheckID {
+	if detailResp.Check.ID != firstCheck.Check.ID {
 		t.Fatalf("unexpected detail id: %q", detailResp.Check.ID)
 	}
 	if detailResp.Check.Status != "baseline" {

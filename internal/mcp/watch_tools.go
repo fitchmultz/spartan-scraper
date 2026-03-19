@@ -201,42 +201,6 @@ func (s *Server) buildWatchCreate(args watchCreateArgs) (*watch.Watch, error) {
 	return item, nil
 }
 
-func watchRecordFromResult(result *watch.WatchCheckResult) watch.WatchCheckRecord {
-	if result == nil {
-		return watch.WatchCheckRecord{}
-	}
-	status := watch.CheckStatusUnchanged
-	switch {
-	case result.Baseline:
-		status = watch.CheckStatusBaseline
-	case result.Changed:
-		status = watch.CheckStatusChanged
-	case strings.TrimSpace(result.Error) != "":
-		status = watch.CheckStatusFailed
-	}
-	return watch.WatchCheckRecord{
-		ID:                 result.CheckID,
-		WatchID:            result.WatchID,
-		URL:                result.URL,
-		CheckedAt:          result.CheckedAt,
-		Status:             status,
-		Changed:            result.Changed,
-		Baseline:           result.Baseline,
-		PreviousHash:       result.PreviousHash,
-		CurrentHash:        result.CurrentHash,
-		DiffText:           result.DiffText,
-		DiffHTML:           result.DiffHTML,
-		Error:              result.Error,
-		Selector:           result.Selector,
-		Artifacts:          append([]watch.Artifact(nil), result.Artifacts...),
-		VisualHash:         result.VisualHash,
-		PreviousVisualHash: result.PreviousVisualHash,
-		VisualChanged:      result.VisualChanged,
-		VisualSimilarity:   result.VisualSimilarity,
-		TriggeredJobs:      append([]string(nil), result.TriggeredJobs...),
-	}
-}
-
 func (s *Server) applyWatchUpdate(existing *watch.Watch, args watchUpdateArgs) error {
 	if args.URL != nil {
 		existing.URL = strings.TrimSpace(*args.URL)

@@ -140,8 +140,8 @@ Direct `job_export` calls and recurring export schedules can persist either `tra
 MCP exposes the full stored-watch management workflow used by the other primary operator surfaces.
 
 - `watch_list`
-  - no arguments
-  - returns `{ "watches": [...] }`
+  - optional `limit: number`, `offset: number`
+  - returns `{ "watches": [...], "total": number, "limit": number, "offset": number }`
 - `watch_get`
   - `id: "..."`
   - returns a single persisted `Watch`
@@ -171,7 +171,7 @@ MCP exposes the full stored-watch management workflow used by the other primary 
   - returns `{ "deleted": true, "id": "..." }`
 - `watch_check`
   - `id: "..."`
-  - returns a guided `WatchCheckInspection`
+  - returns `{ check }` using the canonical guided watch inspection envelope
   - the check is persisted before the tool returns, so the inspection always includes the saved check id and reusable next-step actions
 - `watch_check_history`
   - `id: "..."`
@@ -235,7 +235,7 @@ Example nested fields:
 {"id":22,"method":"tools/call","params":{"name":"watch_check","arguments":{"id":"<watch-id>"}}}
 {"id":23,"method":"tools/call","params":{"name":"watch_check_history","arguments":{"id":"<watch-id>","limit":10,"offset":0}}}
 {"id":24,"method":"tools/call","params":{"name":"watch_check_get","arguments":{"id":"<watch-id>","checkId":"<check-id>"}}}
-{"id":25,"method":"tools/call","params":{"name":"watch_list","arguments":{}}}
+{"id":25,"method":"tools/call","params":{"name":"watch_list","arguments":{"limit":25,"offset":0}}}
 {"id":26,"method":"tools/call","params":{"name":"watch_get","arguments":{"id":"<watch-id>"}}}
 {"id":27,"method":"tools/call","params":{"name":"watch_delete","arguments":{"id":"<watch-id>"}}}
 ```

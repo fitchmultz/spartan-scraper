@@ -621,11 +621,16 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return api.ExportOutcomeResponse{Export: api.BuildExportInspection(*record, nil)}, nil
 	case "watch_list":
-		watches, err := watch.NewFileStorage(s.cfg.DataDir).List()
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 100)
+		if limit > 1000 {
+			limit = 1000
+		}
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		watches, total, err := watch.NewFileStorage(s.cfg.DataDir).ListPage(limit, offset)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"watches": watches}, nil
+		return api.BuildWatchListResponse(watches, total, limit, offset), nil
 	case "watch_get":
 		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
@@ -638,7 +643,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			}
 			return nil, err
 		}
-		return watchItem, nil
+		return api.BuildWatchResponse(*watchItem), nil
 	case "watch_create":
 		var args watchCreateArgs
 		if err := decodeToolArguments(params.Arguments, &args); err != nil {
@@ -652,7 +657,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return created, nil
+		return api.BuildWatchResponse(*created), nil
 	case "watch_update":
 		var args watchUpdateArgs
 		if err := decodeToolArguments(params.Arguments, &args); err != nil {
@@ -679,7 +684,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 			}
 			return nil, err
 		}
-		return existing, nil
+		return api.BuildWatchResponse(*existing), nil
 	case "watch_delete":
 		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
@@ -711,7 +716,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		})
 		result, err := watcher.Check(ctx, watchItem)
 		if result != nil {
-			return api.BuildWatchCheckInspection(watchRecordFromResult(result)), nil
+			return api.WatchCheckInspectionResponse{Check: api.BuildWatchCheckInspection(watch.RecordFromCheckResult(result))}, nil
 		}
 		if err != nil {
 			return nil, err
