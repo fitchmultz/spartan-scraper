@@ -16,6 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
+- Vet proxy-pool optionality end to end so missing proxy-pool files/config do not degrade startup, health, diagnostics, or the Web UI for normal users. Treat proxy-pool as fully opt-in: only surface warnings/errors when operators explicitly enable it, and align config/docs/settings copy with that model.
+
 ## Later / Deprioritized
 
 ## Ongoing Constraints
