@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ComponentStatus } from "../api";
 import { getApiErrorMessage } from "../lib/api-errors";
-import { describeAICapability } from "./ai-assistant/aiCapability";
+import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 
 interface TransformPreviewProps {
   jobId: string;
@@ -308,16 +308,8 @@ export function TransformPreview({
         </div>
 
         {aiUnavailableMessage ? (
-          <div
-            className="panel"
-            style={{
-              marginBottom: 12,
-              padding: 12,
-              backgroundColor: "rgba(148, 163, 184, 0.12)",
-              border: "1px solid rgba(148, 163, 184, 0.25)",
-            }}
-          >
-            {aiUnavailableMessage}
+          <div style={{ marginBottom: 12 }}>
+            <AIUnavailableNotice message={aiUnavailableMessage} />
           </div>
         ) : null}
 

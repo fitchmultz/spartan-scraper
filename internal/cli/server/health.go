@@ -32,6 +32,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/buildinfo"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
@@ -325,7 +326,7 @@ func renderHealthResponse(health api.HealthResponse, commandName string, source 
 		if message := strings.TrimSpace(health.Setup.Message); message != "" {
 			builder.WriteString(fmt.Sprintf("  %s\n", message))
 		}
-		renderActions(&builder, "  ", health.Setup.Actions, commandName)
+		common.WriteRecommendedActions(&builder, "  ", health.Setup.Actions, commandName)
 		builder.WriteString("\n")
 	}
 
@@ -336,7 +337,7 @@ func renderHealthResponse(health api.HealthResponse, commandName string, source 
 		if message := strings.TrimSpace(component.Message); message != "" {
 			builder.WriteString(fmt.Sprintf("    %s\n", message))
 		}
-		renderActions(&builder, "    ", component.Actions, commandName)
+		common.WriteRecommendedActions(&builder, "    ", component.Actions, commandName)
 	}
 
 	if len(health.Notices) > 0 {
@@ -346,7 +347,7 @@ func renderHealthResponse(health api.HealthResponse, commandName string, source 
 			if message := strings.TrimSpace(notice.Message); message != "" {
 				builder.WriteString(fmt.Sprintf("    %s\n", message))
 			}
-			renderActions(&builder, "    ", notice.Actions, commandName)
+			common.WriteRecommendedActions(&builder, "    ", notice.Actions, commandName)
 		}
 	}
 
@@ -365,26 +366,8 @@ func renderDiagnosticResponse(target string, response api.DiagnosticActionRespon
 	if message := strings.TrimSpace(response.Message); message != "" {
 		builder.WriteString(fmt.Sprintf("%s\n", message))
 	}
-	renderActions(&builder, "  ", response.Actions, commandName)
+	common.WriteRecommendedActions(&builder, "  ", response.Actions, commandName)
 	return builder.String()
-}
-
-func renderActions(builder *strings.Builder, indent string, actions []api.RecommendedAction, commandName string) {
-	translated := api.CLIRecommendedActions(actions, commandName)
-	for _, action := range translated {
-		label := strings.TrimSpace(action.Label)
-		value := strings.TrimSpace(action.Value)
-		switch {
-		case label == "" && value == "":
-			continue
-		case value == "":
-			builder.WriteString(fmt.Sprintf("%s- %s\n", indent, label))
-		case label == "":
-			builder.WriteString(fmt.Sprintf("%s- %s\n", indent, value))
-		default:
-			builder.WriteString(fmt.Sprintf("%s- %s: %s\n", indent, label, value))
-		}
-	}
 }
 
 func orderedComponentKeys(components map[string]api.ComponentStatus) []string {

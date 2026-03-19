@@ -13,6 +13,7 @@ import {
   aiTemplateGenerate,
   type AiExtractTemplateDebugResponse,
   type AiExtractTemplateGenerateResponse,
+  type ComponentStatus,
   type Template,
   type TemplateDetail,
 } from "../../api";
@@ -22,6 +23,7 @@ import {
   type AttachedAIImage,
 } from "../../lib/ai-image-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { describeAICapability, AIUnavailableNotice } from "../ai-assistant";
 import { AIImageAttachments } from "../AIImageAttachments";
 
 type AssistantMode = "generate" | "debug";
@@ -31,6 +33,7 @@ interface TemplateAssistantWorkspaceProps {
   mode: AssistantMode;
   draftTemplate: Template;
   url: string;
+  aiStatus?: ComponentStatus | null;
   onUrlChange: (value: string) => void;
   onApplyTemplate: (template: Template) => void;
 }
@@ -54,6 +57,7 @@ export function TemplateAssistantWorkspace({
   mode,
   draftTemplate,
   url,
+  aiStatus = null,
   onUrlChange,
   onApplyTemplate,
 }: TemplateAssistantWorkspaceProps) {
@@ -77,6 +81,13 @@ export function TemplateAssistantWorkspace({
     () => extractGeneratedTemplate(generated),
     [generated],
   );
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Edit the template manually in the main workspace.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
+  const interactionsDisabled = isWorking || aiUnavailable;
 
   const validate = () => {
     if (source === "url") {
@@ -108,6 +119,9 @@ export function TemplateAssistantWorkspace({
   };
 
   const handleGenerate = async () => {
+    if (aiUnavailable) {
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -166,6 +180,9 @@ export function TemplateAssistantWorkspace({
   };
 
   const handleDebug = async () => {
+    if (aiUnavailable) {
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -222,104 +239,152 @@ export function TemplateAssistantWorkspace({
 
   return (
     <div className="template-assistant-panel">
-      <div className="template-assistant-panel__header">
-        <div>
-          <h4>{mode === "generate" ? "AI generator" : "AI debugger"}</h4>
-          <p>
-            {mode === "generate"
-              ? "Generate a candidate template, review it in place, and explicitly apply it to the workspace."
-              : "Debug the current draft, inspect the issues, and explicitly apply the suggested fix."}
-          </p>
-        </div>
-      </div>
-
-      {mode === "debug" ? (
-        <div className="template-assistant-panel__callout">
-          Debugging <code>{draftTemplate.name || "unsaved-workspace"}</code>
+      {aiUnavailableMessage ? (
+        <div style={{ marginBottom: 16 }}>
+          <AIUnavailableNotice message={aiUnavailableMessage} />
         </div>
       ) : null}
 
-      <div className="form-group">
-        <span className="form-label">Source</span>
-        <div className="template-assistant-panel__source-toggle">
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${source === "url" ? "is-active" : ""}`}
-            onClick={() => {
-              setSource("url");
-              resetResult();
-            }}
-            disabled={isWorking}
-          >
-            Fetch URL
-          </button>
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${source === "html" ? "is-active" : ""}`}
-            onClick={() => {
-              setSource("html");
-              setHeadless(false);
-              setPlaywright(false);
-              setVisual(false);
-              resetResult();
-            }}
-            disabled={isWorking}
-          >
-            Paste HTML
-          </button>
+      <fieldset
+        disabled={interactionsDisabled}
+        style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+      >
+        <div className="template-assistant-panel__header">
+          <div>
+            <h4>{mode === "generate" ? "AI generator" : "AI debugger"}</h4>
+            <p>
+              {mode === "generate"
+                ? "Generate a candidate template, review it in place, and explicitly apply it to the workspace."
+                : "Debug the current draft, inspect the issues, and explicitly apply the suggested fix."}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="form-group">
-        <label htmlFor="template-assistant-url" className="form-label">
-          {source === "url" ? "Target URL" : "Page URL (optional)"}
-        </label>
-        <input
-          id="template-assistant-url"
-          type="url"
-          value={url}
-          onChange={(event) => {
-            onUrlChange(event.target.value);
-            resetResult();
-          }}
-          className="form-input"
-          disabled={isWorking}
-        />
-      </div>
+        {mode === "debug" ? (
+          <div className="template-assistant-panel__callout">
+            Debugging <code>{draftTemplate.name || "unsaved-workspace"}</code>
+          </div>
+        ) : null}
 
-      {source === "html" ? (
         <div className="form-group">
-          <label htmlFor="template-assistant-html" className="form-label">
-            HTML
+          <span className="form-label">Source</span>
+          <div className="template-assistant-panel__source-toggle">
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${source === "url" ? "is-active" : ""}`}
+              onClick={() => {
+                setSource("url");
+                resetResult();
+              }}
+              disabled={isWorking}
+            >
+              Fetch URL
+            </button>
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${source === "html" ? "is-active" : ""}`}
+              onClick={() => {
+                setSource("html");
+                setHeadless(false);
+                setPlaywright(false);
+                setVisual(false);
+                resetResult();
+              }}
+              disabled={isWorking}
+            >
+              Paste HTML
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="template-assistant-url" className="form-label">
+            {source === "url" ? "Target URL" : "Page URL (optional)"}
           </label>
-          <textarea
-            id="template-assistant-html"
-            value={html}
+          <input
+            id="template-assistant-url"
+            type="url"
+            value={url}
             onChange={(event) => {
-              setHtml(event.target.value);
+              onUrlChange(event.target.value);
               resetResult();
             }}
-            rows={8}
-            className="form-textarea font-mono text-xs"
+            className="form-input"
             disabled={isWorking}
           />
         </div>
-      ) : null}
 
-      {mode === "generate" ? (
-        <>
+        {source === "html" ? (
           <div className="form-group">
-            <label
-              htmlFor="template-assistant-description"
-              className="form-label"
-            >
-              Description
+            <label htmlFor="template-assistant-html" className="form-label">
+              HTML
             </label>
             <textarea
-              id="template-assistant-description"
-              value={description}
+              id="template-assistant-html"
+              value={html}
               onChange={(event) => {
-                setDescription(event.target.value);
+                setHtml(event.target.value);
+                resetResult();
+              }}
+              rows={8}
+              className="form-textarea font-mono text-xs"
+              disabled={isWorking}
+            />
+          </div>
+        ) : null}
+
+        {mode === "generate" ? (
+          <>
+            <div className="form-group">
+              <label
+                htmlFor="template-assistant-description"
+                className="form-label"
+              >
+                Description
+              </label>
+              <textarea
+                id="template-assistant-description"
+                value={description}
+                onChange={(event) => {
+                  setDescription(event.target.value);
+                  resetResult();
+                }}
+                rows={3}
+                className="form-textarea"
+                disabled={isWorking}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="template-assistant-fields" className="form-label">
+                Sample fields
+              </label>
+              <input
+                id="template-assistant-fields"
+                type="text"
+                value={sampleFields}
+                onChange={(event) => {
+                  setSampleFields(event.target.value);
+                  resetResult();
+                }}
+                className="form-input"
+                disabled={isWorking}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="form-group">
+            <label
+              htmlFor="template-assistant-instructions"
+              className="form-label"
+            >
+              Repair instructions
+            </label>
+            <textarea
+              id="template-assistant-instructions"
+              value={instructions}
+              onChange={(event) => {
+                setInstructions(event.target.value);
                 resetResult();
               }}
               rows={3}
@@ -327,226 +392,197 @@ export function TemplateAssistantWorkspace({
               disabled={isWorking}
             />
           </div>
+        )}
 
-          <div className="form-group">
-            <label htmlFor="template-assistant-fields" className="form-label">
-              Sample fields
+        <AIImageAttachments
+          images={images}
+          onChange={(nextImages) => {
+            setImages(nextImages);
+            resetResult();
+          }}
+          disabled={interactionsDisabled}
+          disabledReason={aiUnavailableMessage}
+        />
+
+        {source === "url" ? (
+          <div className="template-assistant-panel__fetch-options">
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={headless}
+                onChange={(event) => {
+                  setHeadless(event.target.checked);
+                  if (!event.target.checked) {
+                    setPlaywright(false);
+                    setVisual(false);
+                  }
+                  resetResult();
+                }}
+                disabled={isWorking}
+              />
+              Use headless browser
             </label>
-            <input
-              id="template-assistant-fields"
-              type="text"
-              value={sampleFields}
-              onChange={(event) => {
-                setSampleFields(event.target.value);
-                resetResult();
-              }}
-              className="form-input"
-              disabled={isWorking}
-            />
+
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={playwright}
+                onChange={(event) => {
+                  setPlaywright(event.target.checked);
+                  resetResult();
+                }}
+                disabled={!headless || isWorking}
+              />
+              Use Playwright
+            </label>
+
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={visual}
+                onChange={(event) => {
+                  setVisual(event.target.checked);
+                  if (event.target.checked) {
+                    setHeadless(true);
+                  }
+                  resetResult();
+                }}
+                disabled={isWorking}
+              />
+              Include screenshot context
+            </label>
           </div>
-        </>
-      ) : (
-        <div className="form-group">
-          <label
-            htmlFor="template-assistant-instructions"
-            className="form-label"
-          >
-            Repair instructions
-          </label>
-          <textarea
-            id="template-assistant-instructions"
-            value={instructions}
-            onChange={(event) => {
-              setInstructions(event.target.value);
-              resetResult();
-            }}
-            rows={3}
-            className="form-textarea"
-            disabled={isWorking}
-          />
-        </div>
-      )}
+        ) : null}
 
-      <AIImageAttachments
-        images={images}
-        onChange={(nextImages) => {
-          setImages(nextImages);
-          resetResult();
-        }}
-        disabled={isWorking}
-      />
+        {error ? <div className="form-error">{error}</div> : null}
 
-      {source === "url" ? (
-        <div className="template-assistant-panel__fetch-options">
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(event) => {
-                setHeadless(event.target.checked);
-                if (!event.target.checked) {
-                  setPlaywright(false);
-                  setVisual(false);
-                }
-                resetResult();
-              }}
-              disabled={isWorking}
-            />
-            Use headless browser
-          </label>
-
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={playwright}
-              onChange={(event) => {
-                setPlaywright(event.target.checked);
-                resetResult();
-              }}
-              disabled={!headless || isWorking}
-            />
-            Use Playwright
-          </label>
-
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={visual}
-              onChange={(event) => {
-                setVisual(event.target.checked);
-                if (event.target.checked) {
-                  setHeadless(true);
-                }
-                resetResult();
-              }}
-              disabled={isWorking}
-            />
-            Include screenshot context
-          </label>
-        </div>
-      ) : null}
-
-      {error ? <div className="form-error">{error}</div> : null}
-
-      <div className="template-assistant-panel__actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={mode === "generate" ? handleGenerate : handleDebug}
-          disabled={isWorking}
-        >
-          {isWorking
-            ? mode === "generate"
-              ? "Generating..."
-              : "Debugging..."
-            : mode === "generate"
-              ? "Generate Template"
-              : "Debug Template"}
-        </button>
-      </div>
-
-      {routeResult?.explanation ? (
-        <div className="template-assistant-panel__callout">
-          {routeResult.explanation}
-        </div>
-      ) : null}
-
-      {routeResult?.route_id || routeResult?.provider || routeResult?.model ? (
-        <div className="template-assistant-panel__route-info">
-          <h5>AI Route</h5>
-          <dl>
-            {routeResult.route_id ? (
-              <div>
-                <dt>Route</dt>
-                <dd>{routeResult.route_id}</dd>
-              </div>
-            ) : null}
-            {routeResult.provider ? (
-              <div>
-                <dt>Provider</dt>
-                <dd>{routeResult.provider}</dd>
-              </div>
-            ) : null}
-            {routeResult.model ? (
-              <div>
-                <dt>Model</dt>
-                <dd>{routeResult.model}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt>Visual context</dt>
-              <dd>{routeResult.visual_context_used ? "Used" : "Not used"}</dd>
-            </div>
-          </dl>
-        </div>
-      ) : null}
-
-      {mode === "generate" && generatedTemplate ? (
-        <div className="template-assistant-panel__result">
-          <div className="template-assistant-panel__template-preview">
-            <strong>{generatedTemplate.name || "Generated template"}</strong>
-            <ul>
-              {(generatedTemplate.selectors ?? []).map((selector) => (
-                <li
-                  key={`${selector.name ?? "field"}-${selector.selector ?? "selector"}`}
-                >
-                  <span>{selector.name ?? "Unnamed field"}</span>
-                  <code>{selector.selector}</code>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="template-assistant-panel__actions">
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => onApplyTemplate(generatedTemplate)}
+            onClick={mode === "generate" ? handleGenerate : handleDebug}
+            disabled={interactionsDisabled}
+            title={aiUnavailableMessage ?? undefined}
           >
-            Apply to workspace
+            {isWorking
+              ? mode === "generate"
+                ? "Generating..."
+                : "Debugging..."
+              : mode === "generate"
+                ? "Generate Template"
+                : "Debug Template"}
           </button>
         </div>
-      ) : null}
 
-      {mode === "debug" && debugged ? (
-        <div className="template-assistant-panel__result">
-          {debugged.issues && debugged.issues.length > 0 ? (
-            <div className="template-assistant-panel__issues">
-              <h5>Detected issues</h5>
+        {routeResult?.explanation ? (
+          <div className="template-assistant-panel__callout">
+            {routeResult.explanation}
+          </div>
+        ) : null}
+
+        {routeResult?.route_id ||
+        routeResult?.provider ||
+        routeResult?.model ? (
+          <div className="template-assistant-panel__route-info">
+            <h5>AI Route</h5>
+            <dl>
+              {routeResult.route_id ? (
+                <div>
+                  <dt>Route</dt>
+                  <dd>{routeResult.route_id}</dd>
+                </div>
+              ) : null}
+              {routeResult.provider ? (
+                <div>
+                  <dt>Provider</dt>
+                  <dd>{routeResult.provider}</dd>
+                </div>
+              ) : null}
+              {routeResult.model ? (
+                <div>
+                  <dt>Model</dt>
+                  <dd>{routeResult.model}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Visual context</dt>
+                <dd>{routeResult.visual_context_used ? "Used" : "Not used"}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
+
+        {mode === "generate" && generatedTemplate ? (
+          <div className="template-assistant-panel__result">
+            <div className="template-assistant-panel__template-preview">
+              <strong>{generatedTemplate.name || "Generated template"}</strong>
               <ul>
-                {debugged.issues.map((issue) => (
-                  <li key={issue}>{issue}</li>
+                {(generatedTemplate.selectors ?? []).map((selector) => (
+                  <li
+                    key={`${selector.name ?? "field"}-${selector.selector ?? "selector"}`}
+                  >
+                    <span>{selector.name ?? "Unnamed field"}</span>
+                    <code>{selector.selector}</code>
+                  </li>
                 ))}
               </ul>
             </div>
-          ) : null}
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => onApplyTemplate(generatedTemplate)}
+              disabled={aiUnavailable}
+              title={aiUnavailableMessage ?? undefined}
+            >
+              Apply to workspace
+            </button>
+          </div>
+        ) : null}
 
-          {debugged.extracted_fields ? (
-            <div className="template-assistant-panel__json-block">
-              <h5>Current extracted fields</h5>
-              <pre>{JSON.stringify(debugged.extracted_fields, null, 2)}</pre>
-            </div>
-          ) : null}
-
-          {debugged.suggested_template ? (
-            <>
-              <div className="template-assistant-panel__json-block">
-                <h5>Suggested template</h5>
-                <pre>
-                  {JSON.stringify(debugged.suggested_template, null, 2)}
-                </pre>
+        {mode === "debug" && debugged ? (
+          <div className="template-assistant-panel__result">
+            {debugged.issues && debugged.issues.length > 0 ? (
+              <div className="template-assistant-panel__issues">
+                <h5>Detected issues</h5>
+                <ul>
+                  {debugged.issues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
               </div>
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={() =>
-                  onApplyTemplate(debugged.suggested_template as Template)
-                }
-              >
-                Apply suggestion
-              </button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+            ) : null}
+
+            {debugged.extracted_fields ? (
+              <div className="template-assistant-panel__json-block">
+                <h5>Current extracted fields</h5>
+                <pre>{JSON.stringify(debugged.extracted_fields, null, 2)}</pre>
+              </div>
+            ) : null}
+
+            {debugged.suggested_template ? (
+              <>
+                <div className="template-assistant-panel__json-block">
+                  <h5>Suggested template</h5>
+                  <pre>
+                    {JSON.stringify(debugged.suggested_template, null, 2)}
+                  </pre>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={() =>
+                    onApplyTemplate(debugged.suggested_template as Template)
+                  }
+                  disabled={aiUnavailable}
+                  title={aiUnavailableMessage ?? undefined}
+                >
+                  Apply suggestion
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </fieldset>
     </div>
   );
 }

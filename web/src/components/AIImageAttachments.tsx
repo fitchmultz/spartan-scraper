@@ -1,5 +1,14 @@
+/**
+ * Purpose: Collect optional image attachments for AI-assisted browser and extraction requests.
+ * Responsibilities: Accept uploads and pasted images, enforce attachment limits through shared utilities, and explain why attachments are unavailable when callers disable them.
+ * Scope: Browser-side attachment input only; callers own capability state and request submission.
+ * Usage: Mount inside AI helper forms that accept bounded screenshot or image context.
+ * Invariants/Assumptions: Attachments stay request-scoped, disabled states must remain self-explanatory, and image removal is always explicit.
+ */
+
 import { useId, useRef, useState, type ClipboardEvent } from "react";
 
+import { AIUnavailableNotice } from "./ai-assistant/AIUnavailableNotice";
 import {
   ACCEPTED_AI_IMAGE_MIME_TYPES,
   aiImageDataURL,
@@ -12,6 +21,7 @@ interface AIImageAttachmentsProps {
   images: AttachedAIImage[];
   onChange: (images: AttachedAIImage[]) => void;
   disabled?: boolean;
+  disabledReason?: string | null;
 }
 
 const ACCEPT = ACCEPTED_AI_IMAGE_MIME_TYPES.join(",");
@@ -20,6 +30,7 @@ export function AIImageAttachments({
   images,
   onChange,
   disabled = false,
+  disabledReason = null,
 }: AIImageAttachmentsProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -123,6 +134,12 @@ export function AIImageAttachments({
         Up to 4 images total. PNG, JPEG, WebP, and GIF only. 1 MiB per image, 4
         MiB combined.
       </p>
+
+      {disabledReason ? (
+        <div className="mt-3">
+          <AIUnavailableNotice message={disabledReason} />
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">

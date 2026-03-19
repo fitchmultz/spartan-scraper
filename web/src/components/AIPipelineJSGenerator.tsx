@@ -1,10 +1,20 @@
+/**
+ * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator instructions and sample pages.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, surface generated script details, and require explicit save confirmation.
+ * Scope: Modal generation flow for Settings pipeline scripts only.
+ * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted authoring.
+ * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, and AI-unavailable states must remain self-explanatory.
+ */
+
 import { useState } from "react";
 import {
   aiPipelineJsGenerate,
   postV1PipelineJs,
   type AiPipelineJsGenerateResponse,
+  type ComponentStatus,
   type JsTargetScript,
 } from "../api";
+import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -12,6 +22,7 @@ import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIPipelineJSGeneratorProps {
   isOpen: boolean;
+  aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -58,11 +69,18 @@ const INITIAL_STATE: GeneratorState = {
 
 export function AIPipelineJSGenerator({
   isOpen,
+  aiStatus = null,
   onClose,
   onSaved,
 }: AIPipelineJSGeneratorProps) {
   const [state, setState] = useState<GeneratorState>(INITIAL_STATE);
 
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Create and edit pipeline scripts manually in Settings.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
   const resetState = () => setState(INITIAL_STATE);
 
   const handleClose = () => {
@@ -86,6 +104,9 @@ export function AIPipelineJSGenerator({
   };
 
   const handleGenerate = async () => {
+    if (aiUnavailable) {
+      return;
+    }
     const validationError = validateInputs();
     if (validationError) {
       setState((prev) => ({ ...prev, error: validationError }));
@@ -218,193 +239,208 @@ export function AIPipelineJSGenerator({
         </div>
 
         <div className="modal-body space-y-4">
-          <div className="form-group">
-            <label htmlFor="ai-pipeline-js-url" className="form-label">
-              Target URL <span className="required">*</span>
-            </label>
-            <input
-              id="ai-pipeline-js-url"
-              type="url"
-              className="form-input"
-              value={state.url}
-              onChange={(event) =>
-                setState((prev) => ({ ...prev, url: event.target.value }))
-              }
-              placeholder="https://example.com/app"
-              disabled={state.isGenerating}
-            />
-          </div>
+          {aiUnavailableMessage ? (
+            <AIUnavailableNotice message={aiUnavailableMessage} />
+          ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <fieldset
+            disabled={state.isGenerating || state.isSaving || aiUnavailable}
+            style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+          >
             <div className="form-group">
-              <label htmlFor="ai-pipeline-js-name" className="form-label">
-                Script Name
+              <label htmlFor="ai-pipeline-js-url" className="form-label">
+                Target URL <span className="required">*</span>
               </label>
               <input
-                id="ai-pipeline-js-name"
-                type="text"
+                id="ai-pipeline-js-url"
+                type="url"
                 className="form-input"
-                value={state.name}
+                value={state.url}
                 onChange={(event) =>
-                  setState((prev) => ({ ...prev, name: event.target.value }))
+                  setState((prev) => ({ ...prev, url: event.target.value }))
                 }
-                placeholder="example-app"
+                placeholder="https://example.com/app"
                 disabled={state.isGenerating}
               />
             </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="form-group">
+                <label htmlFor="ai-pipeline-js-name" className="form-label">
+                  Script Name
+                </label>
+                <input
+                  id="ai-pipeline-js-name"
+                  type="text"
+                  className="form-input"
+                  value={state.name}
+                  onChange={(event) =>
+                    setState((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="example-app"
+                  disabled={state.isGenerating}
+                />
+              </div>
+              <div className="form-group">
+                <label
+                  htmlFor="ai-pipeline-js-host-patterns"
+                  className="form-label"
+                >
+                  Host Patterns
+                </label>
+                <input
+                  id="ai-pipeline-js-host-patterns"
+                  type="text"
+                  className="form-input"
+                  value={state.hostPatterns}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      hostPatterns: event.target.value,
+                    }))
+                  }
+                  placeholder="example.com, *.example.com"
+                  disabled={state.isGenerating}
+                />
+              </div>
+            </div>
+
             <div className="form-group">
               <label
-                htmlFor="ai-pipeline-js-host-patterns"
+                htmlFor="ai-pipeline-js-instructions"
                 className="form-label"
               >
-                Host Patterns
+                Instructions <span className="required">*</span>
               </label>
-              <input
-                id="ai-pipeline-js-host-patterns"
-                type="text"
-                className="form-input"
-                value={state.hostPatterns}
+              <textarea
+                id="ai-pipeline-js-instructions"
+                className="form-textarea"
+                value={state.instructions}
                 onChange={(event) =>
                   setState((prev) => ({
                     ...prev,
-                    hostPatterns: event.target.value,
+                    instructions: event.target.value,
                   }))
                 }
-                placeholder="example.com, *.example.com"
+                rows={4}
+                placeholder="Describe what the script should wait for or automate, such as waiting for the main app shell, dismissing a cookie banner, or scrolling the page before extraction."
                 disabled={state.isGenerating}
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="ai-pipeline-js-instructions" className="form-label">
-              Instructions <span className="required">*</span>
-            </label>
-            <textarea
-              id="ai-pipeline-js-instructions"
-              className="form-textarea"
-              value={state.instructions}
-              onChange={(event) =>
-                setState((prev) => ({
-                  ...prev,
-                  instructions: event.target.value,
-                }))
-              }
-              rows={4}
-              placeholder="Describe what the script should wait for or automate, such as waiting for the main app shell, dismissing a cookie banner, or scrolling the page before extraction."
-              disabled={state.isGenerating}
+            <AIImageAttachments
+              images={state.images}
+              onChange={(images) => setState((prev) => ({ ...prev, images }))}
+              disabled={state.isGenerating || state.isSaving || aiUnavailable}
+              disabledReason={aiUnavailableMessage}
             />
-          </div>
 
-          <AIImageAttachments
-            images={state.images}
-            onChange={(images) => setState((prev) => ({ ...prev, images }))}
-            disabled={state.isGenerating || state.isSaving}
-          />
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.headless}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    headless: event.target.checked,
-                    ...(event.target.checked ? {} : { playwright: false }),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Fetch headless
-            </label>
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.playwright}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    playwright: event.target.checked,
-                    ...(event.target.checked ? { headless: true } : {}),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Use Playwright
-            </label>
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.visual}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    visual: event.target.checked,
-                    ...(event.target.checked ? { headless: true } : {}),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Include screenshot context
-            </label>
-          </div>
-
-          {state.error ? (
-            <div className="error" role="alert">
-              {state.error}
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.headless}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      headless: event.target.checked,
+                      ...(event.target.checked ? {} : { playwright: false }),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Fetch headless
+              </label>
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.playwright}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      playwright: event.target.checked,
+                      ...(event.target.checked ? { headless: true } : {}),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Use Playwright
+              </label>
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.visual}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      visual: event.target.checked,
+                      ...(event.target.checked ? { headless: true } : {}),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Include screenshot context
+              </label>
             </div>
-          ) : null}
 
-          {state.generatedScript ? (
-            <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                {state.routeId ? <span>Route: {state.routeId}</span> : null}
-                {state.provider ? (
-                  <span>Provider: {state.provider}</span>
-                ) : null}
-                {state.model ? <span>Model: {state.model}</span> : null}
-                {state.visualContextUsed ? (
-                  <span>Visual context used</span>
-                ) : null}
+            {state.error ? (
+              <div className="error" role="alert">
+                {state.error}
               </div>
-              {state.explanation ? (
-                <p className="text-sm text-slate-200">{state.explanation}</p>
-              ) : null}
-              <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                {JSON.stringify(state.generatedScript, null, 2)}
-              </pre>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
 
-        <div className="modal-footer gap-3">
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={handleClose}
-          >
-            Cancel
-          </button>
-          {state.generatedScript ? (
+            {state.generatedScript ? (
+              <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                  {state.routeId ? <span>Route: {state.routeId}</span> : null}
+                  {state.provider ? (
+                    <span>Provider: {state.provider}</span>
+                  ) : null}
+                  {state.model ? <span>Model: {state.model}</span> : null}
+                  {state.visualContextUsed ? (
+                    <span>Visual context used</span>
+                  ) : null}
+                </div>
+                {state.explanation ? (
+                  <p className="text-sm text-slate-200">{state.explanation}</p>
+                ) : null}
+                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
+                  {JSON.stringify(state.generatedScript, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </fieldset>
+
+          <div className="modal-footer gap-3">
             <button
               type="button"
-              className="button-primary"
-              onClick={handleSave}
-              disabled={state.isSaving}
+              className="button-secondary"
+              onClick={handleClose}
             >
-              {state.isSaving ? "Saving..." : "Save Script"}
+              Cancel
             </button>
-          ) : (
-            <button
-              type="button"
-              className="button-primary"
-              onClick={handleGenerate}
-              disabled={state.isGenerating}
-            >
-              {state.isGenerating ? "Generating..." : "Generate Script"}
-            </button>
-          )}
+            {state.generatedScript ? (
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleSave}
+                disabled={state.isSaving || aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+              >
+                {state.isSaving ? "Saving..." : "Save Script"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleGenerate}
+                disabled={state.isGenerating || aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+              >
+                {state.isGenerating ? "Generating..." : "Generate Script"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

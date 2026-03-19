@@ -15,6 +15,7 @@ import {
   useRef,
 } from "react";
 import type {
+  ComponentStatus,
   CrawlRequest,
   DeviceEmulation,
   ResearchRequest,
@@ -70,6 +71,7 @@ interface JobSubmissionContainerProps {
   activeTab: JobType;
   setActiveTab: (tab: JobType) => void;
   formState: FormController;
+  aiStatus?: ComponentStatus | null;
   onSubmitScrape: (request: ScrapeRequest) => void;
   onSubmitCrawl: (request: CrawlRequest) => void;
   onSubmitResearch: (request: ResearchRequest) => void;
@@ -85,6 +87,7 @@ export const JobSubmissionContainer = forwardRef<
     activeTab,
     setActiveTab,
     formState,
+    aiStatus = null,
     onSubmitScrape,
     onSubmitCrawl,
     onSubmitResearch,
@@ -386,6 +389,7 @@ export const JobSubmissionContainer = forwardRef<
           activeTab={activeTab}
           form={formState}
           localState={wizard.localState}
+          aiStatus={aiStatus}
         />
       </div>
     </section>

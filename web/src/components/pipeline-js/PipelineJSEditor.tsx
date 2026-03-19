@@ -19,7 +19,7 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
-import { describeAICapability } from "../ai-assistant/aiCapability";
+import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 interface PipelineJSEditorProps {
@@ -227,9 +227,7 @@ export function PipelineJSEditor({
       </div>
 
       {aiUnavailableMessage ? (
-        <div className="rounded border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-          {aiUnavailableMessage}
-        </div>
+        <AIUnavailableNotice message={aiUnavailableMessage} />
       ) : null}
 
       {error && (
@@ -280,6 +278,7 @@ export function PipelineJSEditor({
 
       <AIPipelineJSGenerator
         isOpen={isAIGeneratorOpen}
+        aiStatus={aiStatus}
         onClose={() => setIsAIGeneratorOpen(false)}
         onSaved={() => {
           void loadScripts();
@@ -288,6 +287,7 @@ export function PipelineJSEditor({
 
       <AIPipelineJSDebugger
         isOpen={debuggingScript !== null}
+        aiStatus={aiStatus}
         script={debuggingScript}
         onClose={() => setDebuggingScript(null)}
         onSaved={() => {

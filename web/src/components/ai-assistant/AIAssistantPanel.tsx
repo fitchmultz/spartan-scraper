@@ -7,12 +7,17 @@
  */
 
 import { useMemo, type CSSProperties, type ReactNode } from "react";
+import type { ComponentStatus } from "../../api";
+import { AIUnavailableNotice } from "./AIUnavailableNotice";
 import type { AssistantContext } from "./AIAssistantProvider";
+import { describeAICapability } from "./aiCapability";
 import { useAIAssistant } from "./useAIAssistant";
 
 interface AIAssistantPanelProps {
   title: string;
   routeLabel: string;
+  aiStatus?: ComponentStatus | null;
+  aiManualFallback: string;
   suggestedActions?: ReactNode;
   children: ReactNode;
 }
@@ -121,12 +126,15 @@ function buildContextEntries(context: AssistantContext | null): ContextEntry[] {
 export function AIAssistantPanel({
   title,
   routeLabel,
+  aiStatus = null,
+  aiManualFallback,
   suggestedActions,
   children,
 }: AIAssistantPanelProps) {
   const { close, context, isOpen, setWidth, toggle, width } = useAIAssistant();
 
   const contextEntries = useMemo(() => buildContextEntries(context), [context]);
+  const aiCapability = describeAICapability(aiStatus, aiManualFallback);
   const panelStyle = isOpen
     ? ({ "--ai-assistant-panel-width": `${width}px` } as CSSProperties)
     : undefined;
@@ -193,6 +201,12 @@ export function AIAssistantPanel({
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {aiCapability.message ? (
+            <section className="ai-assistant-panel__section">
+              <AIUnavailableNotice message={aiCapability.message} />
             </section>
           ) : null}
 

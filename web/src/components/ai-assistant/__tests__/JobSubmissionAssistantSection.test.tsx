@@ -39,6 +39,19 @@ function createFormController(): FormController {
 }
 
 describe("JobSubmissionAssistantSection", () => {
+  const localState = {
+    scrape: { url: "https://example.com", device: null },
+    crawl: {
+      url: "",
+      sitemapURL: "",
+      sitemapOnly: false,
+      includePatterns: "",
+      excludePatterns: "",
+      device: null,
+    },
+    research: { query: "", urls: "", device: null },
+  };
+
   it("runs preview and applies returned field names", async () => {
     vi.mocked(api.aiExtractPreview).mockResolvedValue({
       data: {
@@ -60,18 +73,7 @@ describe("JobSubmissionAssistantSection", () => {
         <JobSubmissionAssistantSection
           activeTab="scrape"
           form={form}
-          localState={{
-            scrape: { url: "https://example.com", device: null },
-            crawl: {
-              url: "",
-              sitemapURL: "",
-              sitemapOnly: false,
-              includePatterns: "",
-              excludePatterns: "",
-              device: null,
-            },
-            research: { query: "", urls: "", device: null },
-          }}
+          localState={localState}
         />
       </AIAssistantProvider>,
     );
@@ -85,5 +87,28 @@ describe("JobSubmissionAssistantSection", () => {
     fireEvent.click(screen.getByText(/use returned field names/i));
 
     expect(form.setAIExtractFields).toHaveBeenCalledWith("title, author");
+  });
+
+  it("shows the unavailable notice and disables preview when ai is off", () => {
+    const form = createFormController();
+
+    render(
+      <AIAssistantProvider>
+        <JobSubmissionAssistantSection
+          activeTab="scrape"
+          form={form}
+          localState={localState}
+          aiStatus={{
+            status: "disabled",
+            message: "AI helpers are disabled.",
+          }}
+        />
+      </AIAssistantProvider>,
+    );
+
+    expect(
+      screen.getAllByText(/AI helpers are disabled\./i).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /run preview/i })).toBeDisabled();
   });
 });

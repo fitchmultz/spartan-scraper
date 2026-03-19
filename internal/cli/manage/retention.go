@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/api"
+	"github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/retention"
@@ -121,7 +122,7 @@ func runRetentionStatus(ctx context.Context, cfg config.Config, args []string) i
 	if message := strings.TrimSpace(response.Guidance.Message); message != "" {
 		fmt.Printf("%s\n", message)
 	}
-	renderRecommendedActions(response.Guidance.Actions, "spartan")
+	common.WriteRecommendedActions(os.Stdout, "", response.Guidance.Actions, "spartan")
 	fmt.Println()
 	fmt.Println("Configuration")
 	fmt.Printf("  Enabled:              %v\n", response.Enabled)

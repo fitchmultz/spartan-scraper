@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the export-transform AI modal guards required inputs and self-defends when AI assistance is unavailable.
+ * Responsibilities: Mock the AI transform API, exercise explicit apply flows, and cover unavailable-state rendering.
+ * Scope: Component coverage for `AIExportTransformAssistant` only.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: Generated transforms are only applied after an operator click, and unavailable AI should disable generation clearly.
+ */
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -109,5 +117,24 @@ describe("AIExportTransformAssistant", () => {
       await screen.findByText(/representative job id is required/i),
     ).toBeInTheDocument();
     expect(api.aiTransformGenerate).not.toHaveBeenCalled();
+  });
+
+  it("shows an unavailable notice and disables generation when ai is off", () => {
+    render(
+      <AIExportTransformAssistant
+        isOpen
+        onClose={vi.fn()}
+        aiStatus={{
+          status: "disabled",
+          message: "AI helpers are disabled.",
+        }}
+        onApplyTransform={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/AI helpers are disabled\./i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate transform/i }),
+    ).toBeDisabled();
   });
 });

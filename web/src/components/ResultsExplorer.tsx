@@ -1139,6 +1139,7 @@ export function ResultsExplorer({
           jobId={jobId}
           jobType={jobType}
           resultFormat={resultFormat}
+          aiStatus={aiStatus}
           selectedResultIndex={selectedResultIndex}
           resultSummary={resultSummary}
           selectedResult={resultItems[selectedResultIndex] ?? null}

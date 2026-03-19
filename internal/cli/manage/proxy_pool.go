@@ -134,7 +134,7 @@ func printProxyPoolStatus(status api.ProxyPoolStatusResponse, fromServer bool, c
 	if message := strings.TrimSpace(component.Message); message != "" {
 		fmt.Printf("%s\n", message)
 	}
-	renderRecommendedActions(component.Actions, "spartan")
+	common.WriteRecommendedActions(os.Stdout, "", component.Actions, "spartan")
 	fmt.Println()
 	fmt.Printf("  Config Path:      %s\n", displayOr(configPath, "disabled"))
 	fmt.Printf("  Strategy:         %s\n", status.Strategy)
@@ -168,24 +168,6 @@ func proxyPoolRuntimeStateFromStatus(status api.ProxyPoolStatusResponse) api.Pro
 		return api.ProxyPoolRuntimeLoaded
 	}
 	return api.ProxyPoolRuntimeUnloaded
-}
-
-func renderRecommendedActions(actions []api.RecommendedAction, commandName string) {
-	translated := api.CLIRecommendedActions(actions, commandName)
-	for _, action := range translated {
-		label := strings.TrimSpace(action.Label)
-		value := strings.TrimSpace(action.Value)
-		switch {
-		case label == "" && value == "":
-			continue
-		case value == "":
-			fmt.Printf("Next step: %s\n", label)
-		case label == "":
-			fmt.Printf("Next step: %s\n", value)
-		default:
-			fmt.Printf("Next step: %s: %s\n", label, value)
-		}
-	}
 }
 
 func displayOr(value string, fallback string) string {

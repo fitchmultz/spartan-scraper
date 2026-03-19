@@ -13,6 +13,7 @@ import {
   deleteTemplate,
   getTemplate,
   updateTemplate,
+  type ComponentStatus,
   type SelectorRule,
   type Template,
   type TemplateDetail,
@@ -42,6 +43,7 @@ import {
 interface TemplateManagerProps {
   templateNames: string[];
   onTemplatesChanged: () => void;
+  aiStatus?: ComponentStatus | null;
 }
 
 type DraftSource = "selected" | "create" | "duplicate";
@@ -49,6 +51,7 @@ type DraftSource = "selected" | "create" | "duplicate";
 export function TemplateManager({
   templateNames,
   onTemplatesChanged,
+  aiStatus = null,
 }: TemplateManagerProps) {
   const aiAssistant = useAIAssistant();
   const toast = useToast();
@@ -679,6 +682,7 @@ export function TemplateManager({
               onModeChange={setRailTab}
               draftTemplate={draftTemplate}
               previewUrl={previewUrl}
+              aiStatus={aiStatus}
               onPreviewUrlChange={setPreviewUrl}
               onApplyTemplate={(template) => {
                 handleApplyTemplate(

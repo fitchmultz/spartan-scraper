@@ -19,7 +19,7 @@ import {
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
-import { describeAICapability } from "../ai-assistant/aiCapability";
+import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 interface RenderProfileEditorProps {
@@ -226,9 +226,7 @@ export function RenderProfileEditor({
       </div>
 
       {aiUnavailableMessage ? (
-        <div className="rounded border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-          {aiUnavailableMessage}
-        </div>
+        <AIUnavailableNotice message={aiUnavailableMessage} />
       ) : null}
 
       {error && (
@@ -277,6 +275,7 @@ export function RenderProfileEditor({
 
       <AIRenderProfileGenerator
         isOpen={isAIGeneratorOpen}
+        aiStatus={aiStatus}
         onClose={() => setIsAIGeneratorOpen(false)}
         onSaved={() => {
           void loadProfiles();
@@ -285,6 +284,7 @@ export function RenderProfileEditor({
 
       <AIRenderProfileDebugger
         isOpen={debuggingProfile !== null}
+        aiStatus={aiStatus}
         profile={debuggingProfile}
         onClose={() => setDebuggingProfile(null)}
         onSaved={() => {

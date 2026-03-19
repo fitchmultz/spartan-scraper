@@ -8,6 +8,8 @@
 
 export * from "./AIAssistantProvider";
 export * from "./AIAssistantPanel";
+export * from "./AIUnavailableNotice";
+export * from "./aiCapability";
 export * from "./JobSubmissionAssistantSection";
 export * from "./TemplateAssistantSection";
 export * from "./ResultsAssistantSection";

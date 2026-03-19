@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import type { ExportScheduleFormProps } from "../../types/export-schedule";
 import { AIExportShapeAssistant } from "../AIExportShapeAssistant";
 import { AIExportTransformAssistant } from "../AIExportTransformAssistant";
-import { describeAICapability } from "../ai-assistant/aiCapability";
+import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import {
   clearShapeFormData,
   clearTransformFormData,
@@ -193,17 +193,8 @@ export function ExportScheduleForm({
             }}
           >
             {aiAssistantMessage ? (
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: "rgba(148, 163, 184, 0.12)",
-                  border: "1px solid rgba(148, 163, 184, 0.25)",
-                  color: "var(--text)",
-                }}
-              >
-                {aiAssistantMessage}
+              <div style={{ marginBottom: 16 }}>
+                <AIUnavailableNotice message={aiAssistantMessage} />
               </div>
             ) : null}
 
@@ -1033,6 +1024,7 @@ export function ExportScheduleForm({
         <AIExportTransformAssistant
           isOpen={showTransformAssistant}
           onClose={() => setShowTransformAssistant(false)}
+          aiStatus={aiStatus}
           currentTransform={currentTransform}
           onApplyTransform={(transform) =>
             onChange(transformConfigToFormData(transform))
@@ -1044,6 +1036,7 @@ export function ExportScheduleForm({
         <AIExportShapeAssistant
           isOpen={showShapeAssistant}
           onClose={() => setShowShapeAssistant(false)}
+          aiStatus={aiStatus}
           format={formData.format as "md" | "csv" | "xlsx"}
           currentShape={currentShape}
           onApplyShape={(shape) => onChange(shapeConfigToFormData(shape))}

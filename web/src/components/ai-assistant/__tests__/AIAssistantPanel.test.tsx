@@ -15,7 +15,11 @@ describe("AIAssistantPanel", () => {
   it("stores panel width in a CSS custom property", () => {
     render(
       <AIAssistantProvider>
-        <AIAssistantPanel title="Template assistant" routeLabel="/templates">
+        <AIAssistantPanel
+          title="Template assistant"
+          routeLabel="/templates"
+          aiManualFallback="Edit templates manually in the main workspace."
+        >
           <div>Assistant body</div>
         </AIAssistantPanel>
       </AIAssistantProvider>,
@@ -25,5 +29,28 @@ describe("AIAssistantPanel", () => {
 
     expect(panel).toHaveStyle({ "--ai-assistant-panel-width": "380px" });
     expect(panel).not.toHaveStyle({ width: "380px" });
+  });
+
+  it("shows the shared unavailable notice when ai is off", () => {
+    render(
+      <AIAssistantProvider>
+        <AIAssistantPanel
+          title="Template assistant"
+          routeLabel="/templates"
+          aiStatus={{
+            status: "disabled",
+            message: "AI helpers are disabled.",
+          }}
+          aiManualFallback="Edit templates manually in the main workspace."
+        >
+          <div>Assistant body</div>
+        </AIAssistantPanel>
+      </AIAssistantProvider>,
+    );
+
+    expect(screen.getByText(/AI helpers are disabled\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/AI assistance is unavailable/i),
+    ).toBeInTheDocument();
   });
 });

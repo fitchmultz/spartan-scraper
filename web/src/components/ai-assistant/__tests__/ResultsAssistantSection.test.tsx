@@ -69,4 +69,34 @@ describe("ResultsAssistantSection", () => {
       normalizedFields: ["field.price"],
     });
   });
+
+  it("shows the unavailable notice and disables shape generation when ai is off", () => {
+    render(
+      <AIAssistantProvider>
+        <ResultsAssistantSection
+          jobId="job-123"
+          jobType="scrape"
+          resultFormat="jsonl"
+          selectedResultIndex={0}
+          resultSummary="Saved output"
+          selectedResult={null}
+          mode="shape"
+          onModeChange={() => {}}
+          shapeFormat="md"
+          onShapeFormatChange={() => {}}
+          currentShape={undefined}
+          onApplyShape={vi.fn()}
+          aiStatus={{
+            status: "disabled",
+            message: "AI helpers are disabled.",
+          }}
+        />
+      </AIAssistantProvider>,
+    );
+
+    expect(screen.getByText(/AI helpers are disabled\./i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate shape/i }),
+    ).toBeDisabled();
+  });
 });

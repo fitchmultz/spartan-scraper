@@ -12,6 +12,7 @@ import {
   aiResearchRefine,
   type AiExportShapeResponse,
   type AiResearchRefineResponse,
+  type ComponentStatus,
   type ExportShapeConfig,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
@@ -21,6 +22,7 @@ import { isResearchResultItem } from "../../lib/form-utils";
 import type { ResultItem } from "../../types";
 import type { AssistantContext } from "./AIAssistantProvider";
 import { AIAssistantPanel } from "./AIAssistantPanel";
+import { describeAICapability } from "./aiCapability";
 import { useAIAssistant } from "./useAIAssistant";
 
 export type ResultsAssistantMode = "shape" | "research";
@@ -29,6 +31,7 @@ interface ResultsAssistantSectionProps {
   jobId: string;
   jobType: "scrape" | "crawl" | "research";
   resultFormat: string;
+  aiStatus?: ComponentStatus | null;
   selectedResultIndex: number;
   resultSummary: string | null;
   selectedResult: ResultItem | null;
@@ -95,6 +98,7 @@ export function ResultsAssistantSection({
   jobId,
   jobType,
   resultFormat,
+  aiStatus = null,
   selectedResultIndex,
   resultSummary,
   selectedResult,
@@ -114,6 +118,12 @@ export function ResultsAssistantSection({
     selectedResult && isResearchResultItem(selectedResult)
       ? selectedResult
       : null;
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Shape exports or refine research manually from the saved results workspace.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
 
   const assistantContext = useMemo<AssistantContext>(
     () => ({
@@ -142,6 +152,10 @@ export function ResultsAssistantSection({
   }, [selectionResetKey]);
 
   const handleGenerateShape = async () => {
+    if (aiUnavailable) {
+      return;
+    }
+
     setShapeState((previous) => ({
       ...previous,
       isLoading: true,
@@ -189,6 +203,9 @@ export function ResultsAssistantSection({
   };
 
   const handleRefine = async () => {
+    if (aiUnavailable) {
+      return;
+    }
     if (!researchResult) {
       setRefineState((previous) => ({
         ...previous,
@@ -243,6 +260,8 @@ export function ResultsAssistantSection({
     <AIAssistantPanel
       title="Results assistant"
       routeLabel="/jobs/:id"
+      aiStatus={aiStatus}
+      aiManualFallback="Shape exports or refine research manually from the saved results workspace."
       suggestedActions={
         <>
           <button
@@ -265,7 +284,11 @@ export function ResultsAssistantSection({
       }
     >
       {mode === "shape" ? (
-        <div className="form-section">
+        <fieldset
+          className="form-section"
+          disabled={shapeState.isLoading || aiUnavailable}
+          style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+        >
           <div className="form-group">
             <label
               htmlFor="results-assistant-shape-format"
@@ -313,7 +336,12 @@ export function ResultsAssistantSection({
           ) : null}
 
           <div className="form-actions">
-            <button type="button" onClick={() => void handleGenerateShape()}>
+            <button
+              type="button"
+              onClick={() => void handleGenerateShape()}
+              disabled={shapeState.isLoading || aiUnavailable}
+              title={aiUnavailableMessage ?? undefined}
+            >
               {shapeState.isLoading ? "Generating…" : "Generate shape"}
             </button>
           </div>
@@ -348,14 +376,20 @@ export function ResultsAssistantSection({
                 onClick={() =>
                   onApplyShape(shapeState.response?.shape as ExportShapeConfig)
                 }
+                disabled={aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
               >
                 Apply shape
               </button>
             </div>
           ) : null}
-        </div>
+        </fieldset>
       ) : (
-        <div className="form-section">
+        <fieldset
+          className="form-section"
+          disabled={refineState.isLoading || aiUnavailable}
+          style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+        >
           <div className="form-group">
             <label
               htmlFor="results-assistant-refine-instructions"
@@ -386,7 +420,10 @@ export function ResultsAssistantSection({
             <button
               type="button"
               onClick={() => void handleRefine()}
-              disabled={!researchResult}
+              disabled={
+                !researchResult || refineState.isLoading || aiUnavailable
+              }
+              title={aiUnavailableMessage ?? undefined}
             >
               {refineState.isLoading ? "Refining…" : "Refine result"}
             </button>
@@ -420,13 +457,15 @@ export function ResultsAssistantSection({
                       refineState.response?.markdown ?? "",
                     )
                   }
+                  disabled={aiUnavailable}
+                  title={aiUnavailableMessage ?? undefined}
                 >
                   Copy markdown
                 </button>
               ) : null}
             </div>
           ) : null}
-        </div>
+        </fieldset>
       )}
     </AIAssistantPanel>
   );

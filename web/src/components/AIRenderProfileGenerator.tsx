@@ -1,10 +1,20 @@
+/**
+ * Purpose: Present the modal AI helper that generates saved render profiles from operator instructions and sample pages.
+ * Responsibilities: Collect bounded AI inputs, call the render-profile generation endpoint, surface generated profile details, and require explicit save confirmation.
+ * Scope: Modal generation flow for Settings render profiles only.
+ * Usage: Mount from `RenderProfileEditor` when operators opt into AI-assisted authoring.
+ * Invariants/Assumptions: Generated profiles are never auto-saved, image attachments stay request-scoped, and AI-unavailable states must remain self-explanatory.
+ */
+
 import { useState } from "react";
 import {
   aiRenderProfileGenerate,
   postV1RenderProfiles,
   type AiRenderProfileGenerateResponse,
+  type ComponentStatus,
   type RenderProfile,
 } from "../api";
+import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -12,6 +22,7 @@ import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIRenderProfileGeneratorProps {
   isOpen: boolean;
+  aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -58,11 +69,18 @@ const INITIAL_STATE: GeneratorState = {
 
 export function AIRenderProfileGenerator({
   isOpen,
+  aiStatus = null,
   onClose,
   onSaved,
 }: AIRenderProfileGeneratorProps) {
   const [state, setState] = useState<GeneratorState>(INITIAL_STATE);
 
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Create and edit render profiles manually in Settings.",
+  );
+  const aiUnavailable = aiCapability.unavailable;
+  const aiUnavailableMessage = aiCapability.message;
   const resetState = () => setState(INITIAL_STATE);
 
   const handleClose = () => {
@@ -86,6 +104,9 @@ export function AIRenderProfileGenerator({
   };
 
   const handleGenerate = async () => {
+    if (aiUnavailable) {
+      return;
+    }
     const validationError = validateInputs();
     if (validationError) {
       setState((prev) => ({ ...prev, error: validationError }));
@@ -216,196 +237,208 @@ export function AIRenderProfileGenerator({
         </div>
 
         <div className="modal-body space-y-4">
-          <div className="form-group">
-            <label htmlFor="ai-render-profile-url" className="form-label">
-              Target URL <span className="required">*</span>
-            </label>
-            <input
-              id="ai-render-profile-url"
-              type="url"
-              className="form-input"
-              value={state.url}
-              onChange={(event) =>
-                setState((prev) => ({ ...prev, url: event.target.value }))
-              }
-              placeholder="https://example.com/app"
-              disabled={state.isGenerating}
-            />
-          </div>
+          {aiUnavailableMessage ? (
+            <AIUnavailableNotice message={aiUnavailableMessage} />
+          ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <fieldset
+            disabled={state.isGenerating || state.isSaving || aiUnavailable}
+            style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+          >
             <div className="form-group">
-              <label htmlFor="ai-render-profile-name" className="form-label">
-                Profile Name
+              <label htmlFor="ai-render-profile-url" className="form-label">
+                Target URL <span className="required">*</span>
               </label>
               <input
-                id="ai-render-profile-name"
-                type="text"
+                id="ai-render-profile-url"
+                type="url"
                 className="form-input"
-                value={state.name}
+                value={state.url}
                 onChange={(event) =>
-                  setState((prev) => ({ ...prev, name: event.target.value }))
+                  setState((prev) => ({ ...prev, url: event.target.value }))
                 }
-                placeholder="example-app"
+                placeholder="https://example.com/app"
                 disabled={state.isGenerating}
               />
             </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="form-group">
+                <label htmlFor="ai-render-profile-name" className="form-label">
+                  Profile Name
+                </label>
+                <input
+                  id="ai-render-profile-name"
+                  type="text"
+                  className="form-input"
+                  value={state.name}
+                  onChange={(event) =>
+                    setState((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="example-app"
+                  disabled={state.isGenerating}
+                />
+              </div>
+              <div className="form-group">
+                <label
+                  htmlFor="ai-render-profile-host-patterns"
+                  className="form-label"
+                >
+                  Host Patterns
+                </label>
+                <input
+                  id="ai-render-profile-host-patterns"
+                  type="text"
+                  className="form-input"
+                  value={state.hostPatterns}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      hostPatterns: event.target.value,
+                    }))
+                  }
+                  placeholder="example.com, *.example.com"
+                  disabled={state.isGenerating}
+                />
+              </div>
+            </div>
+
             <div className="form-group">
               <label
-                htmlFor="ai-render-profile-host-patterns"
+                htmlFor="ai-render-profile-instructions"
                 className="form-label"
               >
-                Host Patterns
+                Instructions <span className="required">*</span>
               </label>
-              <input
-                id="ai-render-profile-host-patterns"
-                type="text"
-                className="form-input"
-                value={state.hostPatterns}
+              <textarea
+                id="ai-render-profile-instructions"
+                className="form-textarea"
+                value={state.instructions}
                 onChange={(event) =>
                   setState((prev) => ({
                     ...prev,
-                    hostPatterns: event.target.value,
+                    instructions: event.target.value,
                   }))
                 }
-                placeholder="example.com, *.example.com"
+                rows={4}
+                placeholder="Describe the fetch behavior you want, such as waiting for the main app shell, preferring headless mode, or keeping heavy assets blocked."
                 disabled={state.isGenerating}
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label
-              htmlFor="ai-render-profile-instructions"
-              className="form-label"
-            >
-              Instructions <span className="required">*</span>
-            </label>
-            <textarea
-              id="ai-render-profile-instructions"
-              className="form-textarea"
-              value={state.instructions}
-              onChange={(event) =>
-                setState((prev) => ({
-                  ...prev,
-                  instructions: event.target.value,
-                }))
-              }
-              rows={4}
-              placeholder="Describe the fetch behavior you want, such as waiting for the main app shell, preferring headless mode, or keeping heavy assets blocked."
-              disabled={state.isGenerating}
+            <AIImageAttachments
+              images={state.images}
+              onChange={(images) => setState((prev) => ({ ...prev, images }))}
+              disabled={state.isGenerating || state.isSaving || aiUnavailable}
+              disabledReason={aiUnavailableMessage}
             />
-          </div>
 
-          <AIImageAttachments
-            images={state.images}
-            onChange={(images) => setState((prev) => ({ ...prev, images }))}
-            disabled={state.isGenerating || state.isSaving}
-          />
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.headless}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    headless: event.target.checked,
-                    ...(event.target.checked ? {} : { playwright: false }),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Fetch headless
-            </label>
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.playwright}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    playwright: event.target.checked,
-                    ...(event.target.checked ? { headless: true } : {}),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Use Playwright
-            </label>
-            <label className="form-label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={state.visual}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    visual: event.target.checked,
-                    ...(event.target.checked ? { headless: true } : {}),
-                  }))
-                }
-                disabled={state.isGenerating}
-              />
-              Include screenshot context
-            </label>
-          </div>
-
-          {state.error ? (
-            <div className="error" role="alert">
-              {state.error}
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.headless}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      headless: event.target.checked,
+                      ...(event.target.checked ? {} : { playwright: false }),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Fetch headless
+              </label>
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.playwright}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      playwright: event.target.checked,
+                      ...(event.target.checked ? { headless: true } : {}),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Use Playwright
+              </label>
+              <label className="form-label flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={state.visual}
+                  onChange={(event) =>
+                    setState((prev) => ({
+                      ...prev,
+                      visual: event.target.checked,
+                      ...(event.target.checked ? { headless: true } : {}),
+                    }))
+                  }
+                  disabled={state.isGenerating}
+                />
+                Include screenshot context
+              </label>
             </div>
-          ) : null}
 
-          {state.generatedProfile ? (
-            <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                {state.routeId ? <span>Route: {state.routeId}</span> : null}
-                {state.provider ? (
-                  <span>Provider: {state.provider}</span>
-                ) : null}
-                {state.model ? <span>Model: {state.model}</span> : null}
-                {state.visualContextUsed ? (
-                  <span>Visual context used</span>
-                ) : null}
+            {state.error ? (
+              <div className="error" role="alert">
+                {state.error}
               </div>
-              {state.explanation ? (
-                <p className="text-sm text-slate-200">{state.explanation}</p>
-              ) : null}
-              <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                {JSON.stringify(state.generatedProfile, null, 2)}
-              </pre>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
 
-        <div className="modal-footer gap-3">
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={handleClose}
-          >
-            Cancel
-          </button>
-          {state.generatedProfile ? (
+            {state.generatedProfile ? (
+              <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                  {state.routeId ? <span>Route: {state.routeId}</span> : null}
+                  {state.provider ? (
+                    <span>Provider: {state.provider}</span>
+                  ) : null}
+                  {state.model ? <span>Model: {state.model}</span> : null}
+                  {state.visualContextUsed ? (
+                    <span>Visual context used</span>
+                  ) : null}
+                </div>
+                {state.explanation ? (
+                  <p className="text-sm text-slate-200">{state.explanation}</p>
+                ) : null}
+                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
+                  {JSON.stringify(state.generatedProfile, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </fieldset>
+
+          <div className="modal-footer gap-3">
             <button
               type="button"
-              className="button-primary"
-              onClick={handleSave}
-              disabled={state.isSaving}
+              className="button-secondary"
+              onClick={handleClose}
             >
-              {state.isSaving ? "Saving..." : "Save Profile"}
+              Cancel
             </button>
-          ) : (
-            <button
-              type="button"
-              className="button-primary"
-              onClick={handleGenerate}
-              disabled={state.isGenerating}
-            >
-              {state.isGenerating ? "Generating..." : "Generate Profile"}
-            </button>
-          )}
+            {state.generatedProfile ? (
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleSave}
+                disabled={state.isSaving || aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+              >
+                {state.isSaving ? "Saving..." : "Save Profile"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleGenerate}
+                disabled={state.isGenerating || aiUnavailable}
+                title={aiUnavailableMessage ?? undefined}
+              >
+                {state.isGenerating ? "Generating..." : "Generate Profile"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

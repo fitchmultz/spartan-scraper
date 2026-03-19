@@ -17,6 +17,7 @@ import {
 import {
   aiExtractPreview,
   type AiExtractPreviewResponse,
+  type ComponentStatus,
   type FieldValue,
 } from "../../api";
 import type { FormController } from "../../hooks/useFormState";
@@ -34,6 +35,7 @@ import type { JobType } from "../../types/presets";
 import { AIImageAttachments } from "../AIImageAttachments";
 import type { AssistantContext } from "./AIAssistantProvider";
 import { AIAssistantPanel } from "./AIAssistantPanel";
+import { describeAICapability } from "./aiCapability";
 import { useAIAssistant } from "./useAIAssistant";
 
 type PreviewSource = "url" | "html";
@@ -43,6 +45,7 @@ interface JobSubmissionAssistantSectionProps {
   activeTab: JobType;
   form: FormController;
   localState: JobDraftLocalState;
+  aiStatus?: ComponentStatus | null;
 }
 
 interface PreviewState {
@@ -134,6 +137,7 @@ export function JobSubmissionAssistantSection({
   activeTab,
   form,
   localState,
+  aiStatus = null,
 }: JobSubmissionAssistantSectionProps) {
   const { setContext } = useAIAssistant();
 
@@ -166,6 +170,10 @@ export function JobSubmissionAssistantSection({
     });
   }, [activeTab, assistantContext, form]);
 
+  const aiCapability = describeAICapability(
+    aiStatus,
+    "Configure AI extraction manually in the main job form.",
+  );
   const resultFields = Object.entries(state.result?.fields ?? {});
 
   const loadCurrentFormSettings = () => {
@@ -210,6 +218,9 @@ export function JobSubmissionAssistantSection({
   };
 
   const handlePreview = async () => {
+    if (aiCapability.unavailable) {
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setState((previous) => ({ ...previous, error: validationError }));
@@ -307,6 +318,9 @@ export function JobSubmissionAssistantSection({
     <JobSubmissionAssistantShell
       assistantContext={assistantContext}
       state={state}
+      aiStatus={aiStatus}
+      aiCapabilityMessage={aiCapability.message}
+      aiUnavailable={aiCapability.unavailable}
       resultFields={resultFields}
       onChangeState={setState}
       onLoadCurrentFormSettings={loadCurrentFormSettings}
@@ -320,6 +334,9 @@ export function JobSubmissionAssistantSection({
 interface JobSubmissionAssistantShellProps {
   assistantContext: Extract<AssistantContext, { surface: "job-submission" }>;
   state: PreviewState;
+  aiStatus: ComponentStatus | null;
+  aiCapabilityMessage: string | null;
+  aiUnavailable: boolean;
   resultFields: [string, FieldValue][];
   onChangeState: Dispatch<SetStateAction<PreviewState>>;
   onLoadCurrentFormSettings: () => void;
@@ -331,6 +348,9 @@ interface JobSubmissionAssistantShellProps {
 function JobSubmissionAssistantShell({
   assistantContext,
   state,
+  aiStatus,
+  aiCapabilityMessage,
+  aiUnavailable,
   resultFields,
   onChangeState,
   onLoadCurrentFormSettings,
@@ -338,10 +358,13 @@ function JobSubmissionAssistantShell({
   onApplyToForm,
   onApplyReturnedFieldNames,
 }: JobSubmissionAssistantShellProps) {
+  const interactionsDisabled = state.isLoading || aiUnavailable;
   return (
     <AIAssistantPanel
       title="Job submission assistant"
       routeLabel="/jobs/new"
+      aiStatus={aiStatus}
+      aiManualFallback="Configure AI extraction manually in the main job form."
       suggestedActions={
         <>
           <button
@@ -351,10 +374,21 @@ function JobSubmissionAssistantShell({
           >
             Load current form settings
           </button>
-          <button type="button" onClick={() => void onRunPreview()}>
+          <button
+            type="button"
+            onClick={() => void onRunPreview()}
+            disabled={interactionsDisabled}
+            title={aiCapabilityMessage ?? undefined}
+          >
             {state.isLoading ? "Running preview…" : "Run preview"}
           </button>
-          <button type="button" className="secondary" onClick={onApplyToForm}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={onApplyToForm}
+            disabled={aiUnavailable}
+            title={aiCapabilityMessage ?? undefined}
+          >
             Apply settings to form
           </button>
           {state.result ? (
@@ -362,6 +396,8 @@ function JobSubmissionAssistantShell({
               type="button"
               className="secondary"
               onClick={onApplyReturnedFieldNames}
+              disabled={aiUnavailable}
+              title={aiCapabilityMessage ?? undefined}
             >
               Use returned field names
             </button>
@@ -369,281 +405,287 @@ function JobSubmissionAssistantShell({
         </>
       }
     >
-      <div className="form-group">
-        <span className="form-label">Source</span>
-        <div className="template-assistant-panel__source-toggle">
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${state.source === "url" ? "is-active" : ""}`}
-            onClick={() =>
-              onChangeState((previous) => ({
-                ...previous,
-                source: "url",
-                error: null,
-              }))
-            }
-            disabled={state.isLoading}
-          >
-            Fetch URL
-          </button>
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${state.source === "html" ? "is-active" : ""}`}
-            onClick={() =>
-              onChangeState((previous) => ({
-                ...previous,
-                source: "html",
-                error: null,
-                headless: false,
-                playwright: false,
-                visual: false,
-              }))
-            }
-            disabled={state.isLoading}
-          >
-            Paste HTML
-          </button>
-        </div>
-        {assistantContext.query ? (
-          <p className="form-help">
-            Research query in progress:{" "}
-            <strong>{assistantContext.query}</strong>
-          </p>
-        ) : null}
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="job-assistant-url" className="form-label">
-          {state.source === "url" ? "Target URL" : "Page URL (optional)"}
-        </label>
-        <input
-          id="job-assistant-url"
-          type="url"
-          className="form-input"
-          value={state.url}
-          onChange={(event) =>
-            onChangeState((previous) => ({
-              ...previous,
-              url: event.target.value,
-            }))
-          }
-          disabled={state.isLoading}
-        />
-      </div>
-
-      {state.source === "html" ? (
+      <fieldset
+        disabled={interactionsDisabled}
+        style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
+      >
         <div className="form-group">
-          <label htmlFor="job-assistant-html" className="form-label">
-            HTML
-          </label>
-          <textarea
-            id="job-assistant-html"
-            rows={8}
-            className="form-textarea font-mono text-xs"
-            value={state.html}
-            onChange={(event) =>
-              onChangeState((previous) => ({
-                ...previous,
-                html: event.target.value,
-              }))
-            }
-            disabled={state.isLoading}
-          />
-        </div>
-      ) : null}
-
-      <div className="form-group">
-        <span className="form-label">Extraction mode</span>
-        <div className="template-assistant-panel__source-toggle">
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${state.mode === "natural_language" ? "is-active" : ""}`}
-            onClick={() =>
-              onChangeState((previous) => ({
-                ...previous,
-                mode: "natural_language",
-                error: null,
-              }))
-            }
-          >
-            Natural language
-          </button>
-          <button
-            type="button"
-            className={`btn btn--secondary btn--small ${state.mode === "schema_guided" ? "is-active" : ""}`}
-            onClick={() =>
-              onChangeState((previous) => ({
-                ...previous,
-                mode: "schema_guided",
-                error: null,
-              }))
-            }
-          >
-            Schema guided
-          </button>
-        </div>
-      </div>
-
-      {state.mode === "natural_language" ? (
-        <div className="form-group">
-          <label htmlFor="job-assistant-prompt" className="form-label">
-            Extraction instructions
-          </label>
-          <textarea
-            id="job-assistant-prompt"
-            rows={4}
-            className="form-textarea"
-            value={state.prompt}
-            onChange={(event) =>
-              onChangeState((previous) => ({
-                ...previous,
-                prompt: event.target.value,
-              }))
-            }
-            disabled={state.isLoading}
-          />
-        </div>
-      ) : (
-        <div className="form-group">
-          <label htmlFor="job-assistant-schema" className="form-label">
-            Schema example JSON
-          </label>
-          <textarea
-            id="job-assistant-schema"
-            rows={8}
-            className="form-textarea font-mono text-sm"
-            value={state.schemaText}
-            onChange={(event) =>
-              onChangeState((previous) => ({
-                ...previous,
-                schemaText: event.target.value,
-              }))
-            }
-            disabled={state.isLoading}
-          />
-        </div>
-      )}
-
-      <div className="form-group">
-        <label htmlFor="job-assistant-fields" className="form-label">
-          Specific fields
-        </label>
-        <input
-          id="job-assistant-fields"
-          type="text"
-          className="form-input"
-          value={state.fields}
-          onChange={(event) =>
-            onChangeState((previous) => ({
-              ...previous,
-              fields: event.target.value,
-            }))
-          }
-          disabled={state.isLoading}
-        />
-      </div>
-
-      <AIImageAttachments
-        images={state.images}
-        onChange={(images) =>
-          onChangeState((previous) => ({
-            ...previous,
-            images,
-          }))
-        }
-        disabled={state.isLoading}
-      />
-
-      {state.source === "url" ? (
-        <div className="template-assistant-panel__fetch-options">
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={state.headless}
-              onChange={(event) =>
+          <span className="form-label">Source</span>
+          <div className="template-assistant-panel__source-toggle">
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${state.source === "url" ? "is-active" : ""}`}
+              onClick={() =>
                 onChangeState((previous) => ({
                   ...previous,
-                  headless: event.target.checked,
-                  playwright: event.target.checked
-                    ? previous.playwright
-                    : false,
-                  visual: event.target.checked ? previous.visual : false,
+                  source: "url",
+                  error: null,
                 }))
               }
               disabled={state.isLoading}
-            />
-            Use headless browser
-          </label>
-
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={state.playwright}
-              onChange={(event) =>
+            >
+              Fetch URL
+            </button>
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${state.source === "html" ? "is-active" : ""}`}
+              onClick={() =>
                 onChangeState((previous) => ({
                   ...previous,
-                  playwright: event.target.checked,
-                }))
-              }
-              disabled={!state.headless || state.isLoading}
-            />
-            Use Playwright
-          </label>
-
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={state.visual}
-              onChange={(event) =>
-                onChangeState((previous) => ({
-                  ...previous,
-                  visual: event.target.checked,
-                  headless: event.target.checked ? true : previous.headless,
+                  source: "html",
+                  error: null,
+                  headless: false,
+                  playwright: false,
+                  visual: false,
                 }))
               }
               disabled={state.isLoading}
-            />
-            Include screenshot context
-          </label>
-        </div>
-      ) : null}
-
-      {state.error ? <div className="form-error">{state.error}</div> : null}
-
-      {state.result ? (
-        <div className="template-assistant-panel__result">
-          <div className="results-viewer__badge-row">
-            <span>
-              Confidence {Math.round((state.result.confidence ?? 0) * 100)}%
-            </span>
-            <span>
-              Tokens {(state.result.tokens_used ?? 0).toLocaleString()}
-            </span>
-            <span>Cache {state.result.cached ? "Hit" : "Miss"}</span>
+            >
+              Paste HTML
+            </button>
           </div>
-
-          {state.result.explanation ? (
-            <div className="template-assistant-panel__callout">
-              {state.result.explanation}
-            </div>
+          {assistantContext.query ? (
+            <p className="form-help">
+              Research query in progress:{" "}
+              <strong>{assistantContext.query}</strong>
+            </p>
           ) : null}
+        </div>
 
-          <div className="template-assistant-panel__json-block">
-            <h5>Extracted fields</h5>
-            <div className="job-list">
-              {resultFields.map(([name, field]) => (
-                <div key={name} className="job-item">
-                  <strong>{name}</strong>
-                  {formatFieldValues(field).map((value) => (
-                    <div key={`${name}-${value}`}>{value}</div>
-                  ))}
-                  {field.rawObject ? <pre>{field.rawObject}</pre> : null}
-                </div>
-              ))}
-            </div>
+        <div className="form-group">
+          <label htmlFor="job-assistant-url" className="form-label">
+            {state.source === "url" ? "Target URL" : "Page URL (optional)"}
+          </label>
+          <input
+            id="job-assistant-url"
+            type="url"
+            className="form-input"
+            value={state.url}
+            onChange={(event) =>
+              onChangeState((previous) => ({
+                ...previous,
+                url: event.target.value,
+              }))
+            }
+            disabled={state.isLoading}
+          />
+        </div>
+
+        {state.source === "html" ? (
+          <div className="form-group">
+            <label htmlFor="job-assistant-html" className="form-label">
+              HTML
+            </label>
+            <textarea
+              id="job-assistant-html"
+              rows={8}
+              className="form-textarea font-mono text-xs"
+              value={state.html}
+              onChange={(event) =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  html: event.target.value,
+                }))
+              }
+              disabled={state.isLoading}
+            />
+          </div>
+        ) : null}
+
+        <div className="form-group">
+          <span className="form-label">Extraction mode</span>
+          <div className="template-assistant-panel__source-toggle">
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${state.mode === "natural_language" ? "is-active" : ""}`}
+              onClick={() =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  mode: "natural_language",
+                  error: null,
+                }))
+              }
+            >
+              Natural language
+            </button>
+            <button
+              type="button"
+              className={`btn btn--secondary btn--small ${state.mode === "schema_guided" ? "is-active" : ""}`}
+              onClick={() =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  mode: "schema_guided",
+                  error: null,
+                }))
+              }
+            >
+              Schema guided
+            </button>
           </div>
         </div>
-      ) : null}
+
+        {state.mode === "natural_language" ? (
+          <div className="form-group">
+            <label htmlFor="job-assistant-prompt" className="form-label">
+              Extraction instructions
+            </label>
+            <textarea
+              id="job-assistant-prompt"
+              rows={4}
+              className="form-textarea"
+              value={state.prompt}
+              onChange={(event) =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  prompt: event.target.value,
+                }))
+              }
+              disabled={state.isLoading}
+            />
+          </div>
+        ) : (
+          <div className="form-group">
+            <label htmlFor="job-assistant-schema" className="form-label">
+              Schema example JSON
+            </label>
+            <textarea
+              id="job-assistant-schema"
+              rows={8}
+              className="form-textarea font-mono text-sm"
+              value={state.schemaText}
+              onChange={(event) =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  schemaText: event.target.value,
+                }))
+              }
+              disabled={state.isLoading}
+            />
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="job-assistant-fields" className="form-label">
+            Specific fields
+          </label>
+          <input
+            id="job-assistant-fields"
+            type="text"
+            className="form-input"
+            value={state.fields}
+            onChange={(event) =>
+              onChangeState((previous) => ({
+                ...previous,
+                fields: event.target.value,
+              }))
+            }
+            disabled={state.isLoading}
+          />
+        </div>
+
+        <AIImageAttachments
+          images={state.images}
+          onChange={(images) =>
+            onChangeState((previous) => ({
+              ...previous,
+              images,
+            }))
+          }
+          disabled={interactionsDisabled}
+          disabledReason={aiCapabilityMessage}
+        />
+
+        {state.source === "url" ? (
+          <div className="template-assistant-panel__fetch-options">
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={state.headless}
+                onChange={(event) =>
+                  onChangeState((previous) => ({
+                    ...previous,
+                    headless: event.target.checked,
+                    playwright: event.target.checked
+                      ? previous.playwright
+                      : false,
+                    visual: event.target.checked ? previous.visual : false,
+                  }))
+                }
+                disabled={state.isLoading}
+              />
+              Use headless browser
+            </label>
+
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={state.playwright}
+                onChange={(event) =>
+                  onChangeState((previous) => ({
+                    ...previous,
+                    playwright: event.target.checked,
+                  }))
+                }
+                disabled={!state.headless || state.isLoading}
+              />
+              Use Playwright
+            </label>
+
+            <label className="checkbox-label checkbox-label--small">
+              <input
+                type="checkbox"
+                checked={state.visual}
+                onChange={(event) =>
+                  onChangeState((previous) => ({
+                    ...previous,
+                    visual: event.target.checked,
+                    headless: event.target.checked ? true : previous.headless,
+                  }))
+                }
+                disabled={state.isLoading}
+              />
+              Include screenshot context
+            </label>
+          </div>
+        ) : null}
+
+        {state.error ? <div className="form-error">{state.error}</div> : null}
+
+        {state.result ? (
+          <div className="template-assistant-panel__result">
+            <div className="results-viewer__badge-row">
+              <span>
+                Confidence {Math.round((state.result.confidence ?? 0) * 100)}%
+              </span>
+              <span>
+                Tokens {(state.result.tokens_used ?? 0).toLocaleString()}
+              </span>
+              <span>Cache {state.result.cached ? "Hit" : "Miss"}</span>
+            </div>
+
+            {state.result.explanation ? (
+              <div className="template-assistant-panel__callout">
+                {state.result.explanation}
+              </div>
+            ) : null}
+
+            <div className="template-assistant-panel__json-block">
+              <h5>Extracted fields</h5>
+              <div className="job-list">
+                {resultFields.map(([name, field]) => (
+                  <div key={name} className="job-item">
+                    <strong>{name}</strong>
+                    {formatFieldValues(field).map((value) => (
+                      <div key={`${name}-${value}`}>{value}</div>
+                    ))}
+                    {field.rawObject ? <pre>{field.rawObject}</pre> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </fieldset>
     </AIAssistantPanel>
   );
 }

@@ -1,3 +1,11 @@
+/**
+ * Purpose: Verify the export-shape AI modal guards required inputs and self-defends when AI assistance is unavailable.
+ * Responsibilities: Mock the AI export-shape API, exercise explicit apply flows, and cover unavailable-state rendering.
+ * Scope: Component coverage for `AIExportShapeAssistant` only.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: Generated shapes are only applied after an operator click, and unavailable AI should disable generation clearly.
+ */
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -117,5 +125,25 @@ describe("AIExportShapeAssistant", () => {
       await screen.findByText(/representative job id is required/i),
     ).toBeInTheDocument();
     expect(api.aiExportShape).not.toHaveBeenCalled();
+  });
+
+  it("shows an unavailable notice and disables generation when ai is off", () => {
+    render(
+      <AIExportShapeAssistant
+        isOpen
+        onClose={vi.fn()}
+        aiStatus={{
+          status: "disabled",
+          message: "AI helpers are disabled.",
+        }}
+        format="csv"
+        onApplyShape={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/AI helpers are disabled\./i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate shape/i }),
+    ).toBeDisabled();
   });
 });

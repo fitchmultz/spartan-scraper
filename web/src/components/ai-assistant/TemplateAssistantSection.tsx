@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo } from "react";
-import type { Template } from "../../api";
+import type { ComponentStatus, Template } from "../../api";
 import { TemplatePreviewPane } from "../templates/TemplatePreviewPane";
 import { TemplateAssistantWorkspace } from "../templates/TemplateAssistantWorkspace";
 import type { AssistantContext } from "./AIAssistantProvider";
@@ -23,6 +23,7 @@ interface TemplateAssistantSectionProps {
   previewUrl: string;
   onPreviewUrlChange: (value: string) => void;
   onApplyTemplate: (template: Template) => void;
+  aiStatus?: ComponentStatus | null;
 }
 
 export function TemplateAssistantSection({
@@ -32,6 +33,7 @@ export function TemplateAssistantSection({
   previewUrl,
   onPreviewUrlChange,
   onApplyTemplate,
+  aiStatus = null,
 }: TemplateAssistantSectionProps) {
   const { setContext } = useAIAssistant();
 
@@ -53,6 +55,8 @@ export function TemplateAssistantSection({
     <AIAssistantPanel
       title="Template assistant"
       routeLabel="/templates"
+      aiStatus={mode === "preview" ? null : aiStatus}
+      aiManualFallback="Edit the template manually in the main workspace."
       suggestedActions={
         <>
           <button
@@ -90,6 +94,7 @@ export function TemplateAssistantSection({
           mode={mode === "generate" ? "generate" : "debug"}
           draftTemplate={draftTemplate}
           url={previewUrl}
+          aiStatus={aiStatus}
           onUrlChange={onPreviewUrlChange}
           onApplyTemplate={onApplyTemplate}
         />

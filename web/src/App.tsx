@@ -1191,6 +1191,7 @@ function AppShell() {
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 formState={formState}
+                aiStatus={health?.components?.ai ?? null}
                 onSubmitScrape={handleSubmitScrape}
                 onSubmitCrawl={handleSubmitCrawl}
                 onSubmitResearch={handleSubmitResearch}
@@ -1227,6 +1228,7 @@ function AppShell() {
           <div data-tour="templates-workspace">
             <TemplateManager
               templateNames={templates}
+              aiStatus={health?.components?.ai ?? null}
               onTemplatesChanged={() => {
                 void refreshTemplates();
               }}

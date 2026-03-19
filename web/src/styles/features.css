@@ -3521,6 +3521,32 @@
   background: var(--surface-subtle);
 }
 
+.ai-unavailable-notice {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text);
+}
+
+.ai-unavailable-notice__eyebrow {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-unavailable-notice__title {
+  font-weight: 600;
+}
+
+.ai-unavailable-notice__message {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
 @media (max-width: 720px) {
   .system-status__header,
   .route-help__header,
