@@ -52,6 +52,61 @@ describe("ProxyPoolStatusPanel", () => {
     expect(screen.getByText(/loading proxy pool status/i)).toBeInTheDocument();
   });
 
+  it("renders disabled guidance when proxy pooling is unconfigured", async () => {
+    vi.mocked(getProxyPoolStatus).mockResolvedValue({
+      data: {
+        strategy: "none",
+        total_proxies: 0,
+        healthy_proxies: 0,
+        regions: [],
+        tags: [],
+        proxies: [],
+      },
+      request: new Request("http://localhost:8741/v1/proxy-pool/status"),
+      response: new Response(),
+    } as never);
+
+    const health: HealthResponse = {
+      status: "ok",
+      version: "test",
+      components: {
+        proxy_pool: {
+          status: "disabled",
+          message:
+            "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.",
+          actions: [
+            {
+              label: "Set PROXY_POOL_FILE when you need pooled routing",
+              kind: "env",
+              value: "PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json",
+            },
+          ],
+        },
+      },
+      notices: [],
+    };
+
+    render(
+      <ProxyPoolStatusPanel
+        health={health}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Proxy pooling is currently off"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json"),
+    ).toBeInTheDocument();
+  });
+
   it("renders degraded health guidance and runs inline diagnostics", async () => {
     const user = userEvent.setup();
     const onRefreshHealth = vi.fn().mockResolvedValue(undefined);

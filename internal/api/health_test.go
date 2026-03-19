@@ -67,8 +67,12 @@ func TestHealth(t *testing.T) {
 	if _, ok := health.Components["ai"]; !ok {
 		t.Fatalf("expected ai component in health response")
 	}
-	if _, ok := health.Components["proxy_pool"]; !ok {
+	proxyPool, ok := health.Components["proxy_pool"]
+	if !ok {
 		t.Fatalf("expected proxy_pool component in health response")
+	}
+	if proxyPool.Status != "disabled" {
+		t.Fatalf("expected disabled proxy_pool component by default, got %#v", proxyPool)
 	}
 }
 
@@ -166,6 +170,26 @@ func TestSetupServerHealth(t *testing.T) {
 	}
 	if queue := health.Components["queue"]; queue.Status != "setup_required" {
 		t.Fatalf("expected setup-required queue component, got %#v", queue)
+	}
+}
+
+func TestSetupServerHealthLeavesProxyPoolDisabledWhenUnconfigured(t *testing.T) {
+	srv := NewSetupServer(config.Config{DataDir: "/tmp/spartan"}, SetupStatus{
+		Required: true,
+		Code:     "legacy_data_dir",
+		Title:    "Stored data needs a one-time reset",
+		Message:  "Detected legacy persisted state.",
+		DataDir:  "/tmp/spartan",
+	})
+	defer srv.Stop()
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	health := decodeHealthResponse(t, rr)
+	if proxy := health.Components["proxy_pool"]; proxy.Status != "disabled" {
+		t.Fatalf("expected disabled proxy_pool status in setup mode without config, got %#v", proxy)
 	}
 }
 

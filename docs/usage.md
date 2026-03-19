@@ -705,7 +705,7 @@ spartan mcp
 spartan version
 ```
 
-`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints. `spartan proxy-pool status` and `spartan retention status` likewise lead with capability-aware explanations and next steps before listing raw configuration and runtime detail.
+`spartan health` now renders the same structured setup/runtime notices used by the Web UI. When the API server is offline it falls back to local checks instead of hiding recovery guidance, and `spartan health --check <browser|ai|proxy_pool>` runs the same read-only re-checks exposed by the HTTP diagnostics endpoints. `spartan proxy-pool status` and `spartan retention status` likewise lead with capability-aware explanations and next steps before listing raw configuration and runtime detail. Proxy pooling stays off by default unless you explicitly set `PROXY_POOL_FILE`.
 
 ### TUI scope
 

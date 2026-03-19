@@ -48,6 +48,32 @@ func TestDiagnosticsToolsList(t *testing.T) {
 	}
 }
 
+func TestHealthStatusLeavesProxyPoolDisabledWhenUnconfigured(t *testing.T) {
+	srv := NewSetupServer(testConfig(config.Config{DataDir: t.TempDir()}), api.SetupStatus{
+		Required: true,
+		Code:     "legacy_data_dir",
+		Title:    "Stored data needs a one-time reset",
+		Message:  "Detected legacy persisted state.",
+	})
+	defer srv.Close()
+
+	result, callErr := srv.handleToolCall(context.Background(), map[string]json.RawMessage{
+		"params": mustMarshalJSON(callParams{Name: "health_status", Arguments: map[string]interface{}{}}),
+	})
+	if callErr != nil {
+		t.Fatalf("health_status failed: %v", callErr)
+	}
+
+	health, ok := result.(api.HealthResponse)
+	if !ok {
+		t.Fatalf("unexpected response type %T", result)
+	}
+	proxy := health.Components[api.DiagnosticTargetProxyPool]
+	if proxy.Status != "disabled" {
+		t.Fatalf("unexpected proxy status %#v", proxy)
+	}
+}
+
 func TestHealthStatusReturnsMCPTranslatedActions(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfg := testConfig(config.Config{DataDir: tmpDir, ProxyPoolFile: "/definitely/missing/proxy-pool.json"})

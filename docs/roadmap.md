@@ -16,7 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Vet proxy-pool optionality end to end so missing proxy-pool files/config do not degrade startup, health, diagnostics, or the Web UI for normal users. Treat proxy-pool as fully opt-in: only surface warnings/errors when operators explicitly enable it, and align config/docs/settings copy with that model.
+- Dogfood the fresh-start operator experience across Web/CLI/MCP health and Settings with optional capabilities turned off, then eliminate any remaining false-degraded or noisy "feature feels required" states before more settings-surface expansion.
 
 ## Later / Deprioritized
 

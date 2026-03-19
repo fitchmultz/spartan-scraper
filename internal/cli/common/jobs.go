@@ -14,7 +14,7 @@
 //   - Call InitJobManager from CLI entrypoints after config/store initialization.
 //
 // Invariants/Assumptions:
-//   - Missing optional default proxy-pool files stay silent on startup.
+//   - Proxy pooling stays off unless operators explicitly configure a pool file.
 //   - Explicit proxy-pool misconfiguration fails fast instead of silently disabling proxies.
 package common
 

@@ -66,6 +66,9 @@ func TestBuildLocalHealthResponseIncludesOfflineRuntimeNotice(t *testing.T) {
 	if queue := health.Components["queue"]; queue.Status != "degraded" {
 		t.Fatalf("queue status = %#v, want degraded", queue)
 	}
+	if proxy := health.Components[api.DiagnosticTargetProxyPool]; proxy.Status != "disabled" {
+		t.Fatalf("expected disabled proxy_pool status when unconfigured, got %#v", proxy)
+	}
 	if len(health.Notices) == 0 || health.Notices[0].ID != "server_offline" {
 		t.Fatalf("expected offline notice, got %#v", health.Notices)
 	}

@@ -15,7 +15,7 @@
 //   - ProxyPoolFromConfig(path, explicit) for optional startup loading.
 //
 // Invariants/Assumptions:
-//   - Missing default optional proxy-pool files are silent.
+//   - Startup callers may choose silent missing-file handling for non-required pool paths.
 //   - Explicit proxy-pool paths still surface errors.
 package fetch
 
@@ -47,7 +47,7 @@ func LoadProxyPoolFromFile(path string) (*ProxyPool, error) {
 }
 
 // ProxyPoolFromConfig creates a proxy pool from configured startup settings.
-// Missing files are silent only when the default optional path is implied.
+// Missing files are silent only when callers mark the path as non-required.
 func ProxyPoolFromConfig(path string, explicit bool) (*ProxyPool, error) {
 	if path == "" {
 		return nil, nil

@@ -248,7 +248,7 @@ func BuildProxyPoolComponentStatus(cfg config.Config, runtimeState ProxyPoolRunt
 	if path == "" {
 		return ComponentStatus{
 			Status:  "disabled",
-			Message: "Proxy pool is intentionally disabled. This is optional unless you need pooled proxy routing.",
+			Message: "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation.",
 			Actions: proxyPoolEnableActions(),
 		}
 	}
@@ -421,8 +421,8 @@ func BuildProxyPoolDiagnosticResponse(cfg config.Config, runtimeState ProxyPoolR
 	if path == "" {
 		return DiagnosticActionResponse{
 			Status:  "disabled",
-			Title:   "Proxy pool is disabled",
-			Message: "PROXY_POOL_FILE is empty, so pooled proxy routing is intentionally disabled.",
+			Title:   "Proxy pool is off",
+			Message: "No proxy-pool file is configured. Spartan does not need pooled proxy routing unless you explicitly opt into it.",
 			Actions: proxyPoolEnableActions(),
 		}
 	}
@@ -590,7 +590,7 @@ func proxyPoolEnableActions() []RecommendedAction {
 		{
 			Label: "Set PROXY_POOL_FILE when you need pooled routing",
 			Kind:  ActionKindEnv,
-			Value: "PROXY_POOL_FILE=/absolute/path/to/proxy-pool.txt",
+			Value: "PROXY_POOL_FILE=/absolute/path/to/proxy-pool.json",
 		},
 		{
 			Label: "Re-check proxy pool configuration",

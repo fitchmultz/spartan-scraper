@@ -71,7 +71,7 @@ This boundary is deliberate to avoid building a second interactive AI workbench 
 - `internal/store`
   - SQLite-backed persistence for jobs, crawl state, automation records, and analytics still retained in the core product.
 - `internal/runtime`
-  - Shared local-runtime wiring for job managers, proxy-pool loading, and AI initialization. Explicit proxy-pool misconfiguration fails fast instead of silently disabling proxy-backed execution.
+  - Shared local-runtime wiring for job managers, proxy-pool loading, and AI initialization. Proxy pooling stays off unless explicitly configured, and explicit proxy-pool misconfiguration fails fast instead of silently disabling proxy-backed execution.
 - `internal/mcp`
   - MCP tool definitions and handlers.
 - `web`

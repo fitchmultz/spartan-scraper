@@ -1,9 +1,9 @@
 /*
-Purpose: Verify runtime job-manager bootstrap handles optional proxy-pool startup correctly.
-Responsibilities: Cover missing default proxy-pool tolerance, explicit custom-path failures, and successful proxy-pool attachment.
+Purpose: Verify runtime job-manager bootstrap handles proxy-pool optionality correctly.
+Responsibilities: Cover the disabled-by-default path, explicit missing-path failures, and successful proxy-pool attachment.
 Scope: Runtime bootstrap behavior only.
 Usage: Run with `go test ./internal/runtime`.
-Invariants/Assumptions: Missing default proxy-pool files must not block startup, while explicit custom proxy-pool paths still surface configuration mistakes.
+Invariants/Assumptions: Proxy pooling stays off unless operators explicitly configure a pool file, while explicit proxy-pool paths still surface configuration mistakes.
 */
 package runtime
 
@@ -32,7 +32,7 @@ func testRuntimeConfig(dataDir string) config.Config {
 	}
 }
 
-func TestInitJobManager_IgnoresMissingDefaultProxyPoolFileEvenWhenEnvSet(t *testing.T) {
+func TestInitJobManager_LeavesProxyPoolDisabledWhenUnconfigured(t *testing.T) {
 	dataDir := t.TempDir()
 	st, err := store.Open(dataDir)
 	if err != nil {
@@ -41,8 +41,6 @@ func TestInitJobManager_IgnoresMissingDefaultProxyPoolFileEvenWhenEnvSet(t *test
 	defer st.Close()
 
 	cfg := testRuntimeConfig(dataDir)
-	cfg.ProxyPoolFile = filepath.Join(dataDir, "proxy_pool.json")
-	t.Setenv("PROXY_POOL_FILE", cfg.ProxyPoolFile)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -54,13 +52,13 @@ func TestInitJobManager_IgnoresMissingDefaultProxyPoolFileEvenWhenEnvSet(t *test
 	defer manager.Wait()
 
 	if manager.GetProxyPool() != nil {
-		t.Fatal("expected missing default proxy pool file to leave proxy pool disabled")
+		t.Fatal("expected unconfigured proxy pool to stay disabled")
 	}
 
 	cancel()
 }
 
-func TestInitJobManager_FailsForExplicitMissingCustomProxyPoolFile(t *testing.T) {
+func TestInitJobManager_FailsForExplicitMissingProxyPoolFile(t *testing.T) {
 	dataDir := t.TempDir()
 	st, err := store.Open(dataDir)
 	if err != nil {
@@ -69,7 +67,7 @@ func TestInitJobManager_FailsForExplicitMissingCustomProxyPoolFile(t *testing.T)
 	defer st.Close()
 
 	cfg := testRuntimeConfig(dataDir)
-	cfg.ProxyPoolFile = filepath.Join(dataDir, "missing-proxy-pool-custom.json")
+	cfg.ProxyPoolFile = filepath.Join(dataDir, "missing-proxy-pool.json")
 	t.Setenv("PROXY_POOL_FILE", cfg.ProxyPoolFile)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -81,7 +79,7 @@ func TestInitJobManager_FailsForExplicitMissingCustomProxyPoolFile(t *testing.T)
 			cancel()
 			manager.Wait()
 		}
-		t.Fatal("expected explicit missing custom proxy pool file to fail")
+		t.Fatal("expected explicit missing proxy pool file to fail")
 	}
 }
 

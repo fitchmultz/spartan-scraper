@@ -111,6 +111,19 @@ func TestBuildProxyPoolComponentStatusDisabledIncludesActions(t *testing.T) {
 	if len(component.Actions) == 0 {
 		t.Fatal("expected disabled proxy-pool guidance actions")
 	}
+	if component.Message != "Proxy pooling is currently off. Spartan does not need a proxy pool for normal operation." {
+		t.Fatalf("unexpected disabled message: %q", component.Message)
+	}
+}
+
+func TestBuildProxyPoolDiagnosticResponseDisabledWhenUnconfigured(t *testing.T) {
+	response := BuildProxyPoolDiagnosticResponse(config.Config{}, ProxyPoolRuntimeUnavailable)
+	if response.Status != "disabled" {
+		t.Fatalf("status = %q, want disabled", response.Status)
+	}
+	if response.Title != "Proxy pool is off" {
+		t.Fatalf("title = %q, want proxy pool off", response.Title)
+	}
 }
 
 func TestProxyPoolDiagnosticResponseHandlesUnavailableRuntime(t *testing.T) {

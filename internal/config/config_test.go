@@ -295,6 +295,20 @@ func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
 	}
 }
 
+func TestLoad_LeavesProxyPoolDisabledByDefault(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if cfg.ProxyPoolFile != "" {
+		t.Fatalf("expected proxy pool to stay disabled by default, got %q", cfg.ProxyPoolFile)
+	}
+}
+
 func TestLoad_AllowsEmptyProxyPoolFileOverride(t *testing.T) {
 	dataDir := t.TempDir()
 	t.Setenv("DATA_DIR", dataDir)

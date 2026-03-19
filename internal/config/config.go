@@ -115,7 +115,7 @@ type Config struct {
 	ProxyURL      string
 	ProxyUsername string
 	ProxyPassword string
-	ProxyPoolFile string // Path to proxy pool JSON config
+	ProxyPoolFile string // Explicit path to proxy pool JSON config; empty disables proxy pooling
 
 	// Webhook configuration
 	Webhook WebhookConfig
@@ -314,7 +314,7 @@ func Load() (Config, error) {
 		ProxyURL:      getenv("PROXY_URL", ""),
 		ProxyUsername: getenv("PROXY_USERNAME", ""),
 		ProxyPassword: getenv("PROXY_PASSWORD", ""),
-		ProxyPoolFile: getenvAllowEmpty("PROXY_POOL_FILE", filepath.Join(dataDir, "proxy_pool.json")),
+		ProxyPoolFile: getenvAllowEmpty("PROXY_POOL_FILE", ""),
 
 		// Webhook configuration
 		Webhook: WebhookConfig{

@@ -3,15 +3,13 @@ Purpose: Initialize the fully wired runtime job manager used by local execution 
 Responsibilities: Build fetch/runtime controls, attach optional proxy-pool and AI services, connect store-backed capabilities, and start manager lifecycle processing.
 Scope: Runtime bootstrap for CLI, API server, and MCP entrypoints.
 Usage: Call `InitJobManager` after loading config and opening the store.
-Invariants/Assumptions: Missing default `DATA_DIR/proxy_pool.json` must never block startup, explicit custom proxy-pool paths still fail fast, and the returned manager is already started.
+Invariants/Assumptions: Proxy pooling is fully opt-in, explicit proxy-pool paths fail fast when broken, and the returned manager is already started.
 */
 package runtime
 
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
@@ -21,14 +19,6 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 	"golang.org/x/time/rate"
 )
-
-func isDefaultProxyPoolPath(path string, dataDir string) bool {
-	if path == "" {
-		return false
-	}
-
-	return filepath.Clean(path) == filepath.Clean(filepath.Join(dataDir, "proxy_pool.json"))
-}
 
 // InitJobManager builds a fully wired job manager for local runtime surfaces such as
 // CLI commands, the API server, and MCP.
@@ -71,11 +61,7 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) (*j
 	)
 
 	if cfg.ProxyPoolFile != "" {
-		_, proxyPoolExplicit := os.LookupEnv("PROXY_POOL_FILE")
-		proxyPool, err := fetch.ProxyPoolFromConfig(
-			cfg.ProxyPoolFile,
-			proxyPoolExplicit && !isDefaultProxyPoolPath(cfg.ProxyPoolFile, cfg.DataDir),
-		)
+		proxyPool, err := fetch.ProxyPoolFromConfig(cfg.ProxyPoolFile, true)
 		if err != nil {
 			return nil, err
 		}
