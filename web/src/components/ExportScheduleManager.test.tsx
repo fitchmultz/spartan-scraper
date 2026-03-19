@@ -9,7 +9,8 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type {
-  ExportHistoryRecord,
+  ExportInspection,
+  ExportOutcomeListResponse,
   ExportSchedule,
   ExportScheduleRequest,
 } from "../api";
@@ -33,17 +34,35 @@ function makeSchedule(overrides: Partial<ExportSchedule> = {}): ExportSchedule {
 }
 
 function makeHistoryRecord(
-  overrides: Partial<ExportHistoryRecord> = {},
-): ExportHistoryRecord {
+  overrides: Partial<ExportInspection> = {},
+): ExportInspection {
   return {
     id: "history-1",
-    schedule_id: "schedule-1",
-    job_id: "job-123456789abc",
-    status: "success",
+    scheduleId: "schedule-1",
+    jobId: "job-123456789abc",
+    trigger: "schedule",
+    status: "succeeded",
+    title: "Export ready",
+    message: "JSON export completed successfully with 3 record(s).",
     destination: "/tmp/exports/run-1.json",
-    exported_at: "2026-03-05T00:05:00Z",
-    record_count: 3,
-    export_size: 512,
+    exportedAt: "2026-03-05T00:05:00Z",
+    completedAt: "2026-03-05T00:05:01Z",
+    retryCount: 0,
+    request: { format: "json" },
+    artifact: {
+      format: "json",
+      filename: "run-1.json",
+      contentType: "application/json",
+      recordCount: 3,
+      size: 512,
+    },
+    actions: [
+      {
+        label: "Inspect export from the CLI",
+        kind: "command",
+        value: "spartan export --inspect-id history-1",
+      },
+    ],
     ...overrides,
   };
 }
@@ -63,7 +82,7 @@ function createManagerProps(
         id: string,
         limit?: number,
         offset?: number,
-      ) => Promise<{ records: ExportHistoryRecord[]; total: number }>
+      ) => Promise<ExportOutcomeListResponse>
     >();
 
   onCreate.mockResolvedValue(undefined);
@@ -71,8 +90,10 @@ function createManagerProps(
   onDelete.mockResolvedValue(undefined);
   onToggleEnabled.mockResolvedValue(undefined);
   onGetHistory.mockResolvedValue({
-    records: [makeHistoryRecord()],
+    exports: [makeHistoryRecord()],
     total: 1,
+    limit: 10,
+    offset: 0,
   });
 
   return {
@@ -89,7 +110,7 @@ function createManagerProps(
 }
 
 describe("ExportScheduleManager", () => {
-  it("loads and displays export history when History is clicked", async () => {
+  it("loads and displays guided export history when History is clicked", async () => {
     const user = userEvent.setup();
     const props = createManagerProps();
 
@@ -106,8 +127,10 @@ describe("ExportScheduleManager", () => {
         name: "Export History: Nightly Export",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("success")).toBeInTheDocument();
+    expect(screen.getByText("Export ready")).toBeInTheDocument();
+    expect(screen.getByText("succeeded")).toBeInTheDocument();
     expect(screen.getByText("Showing 1-1 of 1")).toBeInTheDocument();
+    expect(screen.getByText("Inspect export from the CLI")).toBeInTheDocument();
   });
 
   it("requests the next history page when a pagination button is clicked", async () => {
@@ -116,18 +139,29 @@ describe("ExportScheduleManager", () => {
       onGetHistory: vi
         .fn()
         .mockResolvedValueOnce({
-          records: [makeHistoryRecord()],
+          exports: [makeHistoryRecord()],
           total: 11,
+          limit: 10,
+          offset: 0,
         })
         .mockResolvedValueOnce({
-          records: [
+          exports: [
             makeHistoryRecord({
               id: "history-2",
-              job_id: "job-222222222222",
+              jobId: "job-222222222222",
               destination: "/tmp/exports/run-2.json",
+              artifact: {
+                format: "json",
+                filename: "run-2.json",
+                contentType: "application/json",
+                recordCount: 1,
+                size: 256,
+              },
             }),
           ],
           total: 11,
+          limit: 10,
+          offset: 10,
         }),
     });
 

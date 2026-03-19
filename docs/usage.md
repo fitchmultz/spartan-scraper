@@ -577,28 +577,37 @@ Direct export:
 
 ```bash
 spartan export --job-id <id> [flags]
+spartan export --inspect-id <export-id>
+spartan export --history-job-id <job-id>
+spartan export --history-schedule-id <schedule-id>
 ```
 
 Key flags:
 
 - `--format <json|jsonl|csv|md|xlsx>`
-- `--out <path>`
+- `--out <path>` (defaults to `./exports/<job>.<format>`)
 - `--schedule-id <export-schedule-id>` to seed format/shape/transform from a persisted recurring export
 - `--shape-file <path>` to apply a saved `ExportShapeConfig`
 - `--transform-file <path>` to apply a saved `ResultTransformConfig`
 - `--transform-expression "..."`
 - `--transform-language jmespath|jsonata`
+- `--inspect-id <export-id>` to inspect one persisted export outcome
+- `--history-job-id <job-id>` to inspect recent export outcomes for a job
+- `--history-schedule-id <schedule-id>` to inspect recent export outcomes for a recurring schedule
+- `--json` to emit the canonical export outcome envelope instead of the guided text view
 
 Examples:
 
 ```bash
 spartan export --job-id 123 --format jsonl --out ./out/results.jsonl
 spartan export --job-id 123 --format md --shape-file ./out/report-shape.json --out ./out/report.md
-spartan export --job-id 123 --schedule-id <export-schedule-id> --out ./out/projected.csv
+spartan export --job-id 123 --schedule-id <export-schedule-id>
 spartan export --job-id 123 --format json --transform-language jmespath --transform-expression '{title: title, url: url}'
+spartan export --inspect-id <export-id>
+spartan export --history-job-id 123 --limit 5
 ```
 
-Direct exports use the same bounded `format` / `shape` / `transform` contract as recurring export schedules. `shape` and `transform` remain mutually exclusive.
+Direct exports now persist a shared export outcome record before returning. The CLI writes the artifact to disk, prints operator-friendly inspection and recovery guidance, and can re-open the same outcome later with `--inspect-id`. Direct exports use the same bounded `format` / `shape` / `transform` contract as recurring export schedules. `shape` and `transform` remain mutually exclusive.
 
 ### Export schedules
 
@@ -615,7 +624,7 @@ Commands:
 - `spartan export-schedule delete --id <id>`
 - `spartan export-schedule enable --id <id>`
 - `spartan export-schedule disable --id <id>`
-- `spartan export-schedule history --id <id>`
+- `spartan export-schedule history --id <id> [--json]`
 
 Example:
 
@@ -850,6 +859,8 @@ Core tools:
 - `batch_status`
 - `batch_cancel`
 - `job_export`
+- `job_export_history`
+- `export_outcome_get`
 - `watch_list`
 - `watch_get`
 - `watch_create`
@@ -892,17 +903,17 @@ That means AI extraction rides inside `extract.ai.*`, proxy transport rides insi
 
 `shape` and `transform` are mutually exclusive for direct exports just as they are for recurring export schedules.
 
-`job_export` returns an object with:
+`job_export` now returns `{ export }`, where `export` is the same guided inspection envelope used by `POST /v1/jobs/{id}/export`:
 
-- `format`
-- `filename`
-- `contentType`
-- `encoding: "utf8" | "base64"`
-- `content`
+- identity and lifecycle: `id`, `jobId`, `trigger`, `status`, `exportedAt`, `completedAt`, `retryCount`
+- request and artifact metadata: `request`, `artifact.format`, `artifact.filename`, `artifact.contentType`, `artifact.encoding`, `artifact.content`
+- operator guidance: `title`, `message`, optional `failure`, and `actions`
+
+`job_export_history` returns `{ exports, total, limit, offset }` for a job, and `export_outcome_get` returns one `{ export }` envelope by export id.
 
 The watch tools expose the stored watch-management workflow already available in the other primary operator surfaces: `watch_list`, `watch_get`, `watch_create`, `watch_update`, `watch_delete`, and `watch_check`. `watch_check` returns the recorded `WatchCheckResult` even when the underlying check fails, with `error` populated in the result payload.
 
-The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive).
+The export-schedule tools use the same persisted `filters`, `export`, and `retry` objects as `/v1/export-schedules*`, including optional `export.transform` and `export.shape` (mutually exclusive). `export_schedule_history` now returns the same guided `{ exports, total, limit, offset }` outcome envelope used by the job-scoped inspection routes.
 
 `webhook_delivery_list` returns `{ deliveries, total, limit, offset }` with optional `jobId`, `limit`, and `offset` arguments. `webhook_delivery_get` returns one sanitized delivery record by id.
 

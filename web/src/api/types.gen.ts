@@ -129,67 +129,53 @@ export type ExportRetryConfig = {
     base_delay_ms?: number;
 };
 
-export type ExportHistoryResponse = {
-    records?: Array<ExportHistoryRecord>;
+export type ExportArtifact = {
+    format: 'json' | 'jsonl' | 'md' | 'csv' | 'xlsx';
+    filename: string;
+    contentType: string;
+    recordCount?: number;
+    size?: number;
+    encoding?: 'utf8' | 'base64';
     /**
-     * Total number of records
+     * Inline artifact content. UTF-8 for text formats and base64 for binary formats.
      */
-    total?: number;
-    /**
-     * Limit used for query
-     */
-    limit?: number;
-    /**
-     * Offset used for query
-     */
-    offset?: number;
+    content?: string;
 };
 
-export type ExportHistoryRecord = {
-    /**
-     * Unique record identifier
-     */
-    id?: string;
-    /**
-     * Export schedule ID
-     */
-    schedule_id?: string;
-    /**
-     * Job ID that was exported
-     */
-    job_id?: string;
-    /**
-     * Export status
-     */
-    status?: 'pending' | 'success' | 'failed';
-    /**
-     * Destination where export was sent
-     */
+export type ExportFailureContext = {
+    category: string;
+    summary: string;
+    retryable: boolean;
+    terminal: boolean;
+};
+
+export type ExportInspection = {
+    id: string;
+    scheduleId?: string;
+    jobId: string;
+    trigger: 'api' | 'cli' | 'mcp' | 'schedule';
+    status: 'pending' | 'succeeded' | 'failed';
+    title: string;
+    message: string;
     destination?: string;
-    /**
-     * When export was initiated
-     */
-    exported_at?: string;
-    /**
-     * When export completed (null if pending)
-     */
-    completed_at?: string;
-    /**
-     * Error message if export failed
-     */
-    error_message?: string;
-    /**
-     * Number of retry attempts
-     */
-    retry_count?: number;
-    /**
-     * Size of exported data in bytes
-     */
-    export_size?: number;
-    /**
-     * Number of records exported
-     */
-    record_count?: number;
+    exportedAt: string;
+    completedAt?: string;
+    retryCount: number;
+    request: ResultExportRequest;
+    artifact?: ExportArtifact;
+    failure?: ExportFailureContext;
+    actions?: Array<RecommendedAction>;
+};
+
+export type ExportOutcomeResponse = {
+    export: ExportInspection;
+};
+
+export type ExportOutcomeListResponse = {
+    exports: Array<ExportInspection>;
+    total: number;
+    limit: number;
+    offset: number;
 };
 
 export type ExtractOptions = {
@@ -5575,14 +5561,77 @@ export type PostV1JobsByIdExportError = PostV1JobsByIdExportErrors[keyof PostV1J
 
 export type PostV1JobsByIdExportResponses = {
     /**
-     * Exported result payload
+     * Export outcome
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: ExportOutcomeResponse;
 };
 
 export type PostV1JobsByIdExportResponse = PostV1JobsByIdExportResponses[keyof PostV1JobsByIdExportResponses];
+
+export type GetV1JobsByIdExportsData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        limit?: number;
+        offset?: number;
+    };
+    url: '/v1/jobs/{id}/exports';
+};
+
+export type GetV1JobsByIdExportsErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type GetV1JobsByIdExportsError = GetV1JobsByIdExportsErrors[keyof GetV1JobsByIdExportsErrors];
+
+export type GetV1JobsByIdExportsResponses = {
+    /**
+     * Export outcome history for the job
+     */
+    200: ExportOutcomeListResponse;
+};
+
+export type GetV1JobsByIdExportsResponse = GetV1JobsByIdExportsResponses[keyof GetV1JobsByIdExportsResponses];
+
+export type GetV1ExportsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/v1/exports/{id}';
+};
+
+export type GetV1ExportsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Method Not Allowed
+     */
+    405: ErrorResponse;
+};
+
+export type GetV1ExportsByIdError = GetV1ExportsByIdErrors[keyof GetV1ExportsByIdErrors];
+
+export type GetV1ExportsByIdResponses = {
+    /**
+     * Export outcome
+     */
+    200: ExportOutcomeResponse;
+};
+
+export type GetV1ExportsByIdResponse = GetV1ExportsByIdResponses[keyof GetV1ExportsByIdResponses];
 
 export type PostV1JobsByIdPreviewTransformData = {
     body: TransformPreviewRequest;
@@ -6213,9 +6262,9 @@ export type GetExportScheduleHistoryError = GetExportScheduleHistoryErrors[keyof
 
 export type GetExportScheduleHistoryResponses = {
     /**
-     * Export history
+     * Export outcome history
      */
-    200: ExportHistoryResponse;
+    200: ExportOutcomeListResponse;
 };
 
 export type GetExportScheduleHistoryResponse = GetExportScheduleHistoryResponses[keyof GetExportScheduleHistoryResponses];

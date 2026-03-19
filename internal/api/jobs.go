@@ -130,6 +130,11 @@ func (s *Server) handleJob(w http.ResponseWriter, r *http.Request) {
 	}) {
 		return
 	}
+	if handlePathSuffix(r.URL.Path, "/exports", func() {
+		s.handleJobExportHistory(w, r)
+	}) {
+		return
+	}
 	if handlePathSuffix(r.URL.Path, "/export", func() {
 		s.handleJobExport(w, r)
 	}) {

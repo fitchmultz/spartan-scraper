@@ -49,21 +49,6 @@ type ExportScheduleResponse struct {
 	Retry     scheduler.ExportRetryConfig `json:"retry"`
 }
 
-// ExportHistoryResponse represents an export history record in API responses.
-type ExportHistoryResponse struct {
-	ID           string     `json:"id"`
-	ScheduleID   string     `json:"schedule_id"`
-	JobID        string     `json:"job_id"`
-	Status       string     `json:"status"`
-	Destination  string     `json:"destination"`
-	ExportedAt   time.Time  `json:"exported_at"`
-	CompletedAt  *time.Time `json:"completed_at,omitempty"`
-	ErrorMessage string     `json:"error_message,omitempty"`
-	RetryCount   int        `json:"retry_count"`
-	ExportSize   int64      `json:"export_size,omitempty"`
-	RecordCount  int        `json:"record_count,omitempty"`
-}
-
 func (s *Server) handleExportSchedules(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -130,21 +115,7 @@ func (s *Server) handleExportScheduleHistory(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	writeRecordsPageJSON(w, mapSlice(records, func(record scheduler.ExportRecord) ExportHistoryResponse {
-		return ExportHistoryResponse{
-			ID:           record.ID,
-			ScheduleID:   record.ScheduleID,
-			JobID:        record.JobID,
-			Status:       record.Status,
-			Destination:  record.Destination,
-			ExportedAt:   record.ExportedAt,
-			CompletedAt:  record.CompletedAt,
-			ErrorMessage: record.ErrorMessage,
-			RetryCount:   record.RetryCount,
-			ExportSize:   record.ExportSize,
-			RecordCount:  record.RecordCount,
-		}
-	}), total, page.Limit, page.Offset)
+	writeJSON(w, BuildExportOutcomeListResponse(records, total, page.Limit, page.Offset))
 }
 
 func (s *Server) listExportSchedules(w http.ResponseWriter, r *http.Request) {

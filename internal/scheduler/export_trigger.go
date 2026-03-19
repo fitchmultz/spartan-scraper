@@ -21,13 +21,13 @@
 package scheduler
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -234,7 +234,13 @@ func (et *ExportTrigger) matchSchedule(job *model.Job, schedule *ExportSchedule)
 
 // executeExport performs the actual export.
 func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, schedule *ExportSchedule) error {
-	record, err := et.historyStore.CreateRecord(schedule.ID, job.ID, schedule.Export.DestinationType)
+	record, err := et.historyStore.CreateRecord(CreateRecordInput{
+		ScheduleID:  schedule.ID,
+		JobID:       job.ID,
+		Trigger:     exporter.OutcomeTriggerSchedule,
+		Destination: et.destinationForSchedule(job, schedule),
+		Request:     resultExportConfigForSchedule(schedule),
+	})
 	if err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to create export record", err)
 	}
@@ -261,7 +267,7 @@ func (et *ExportTrigger) executeExportAttempt(ctx context.Context, job *model.Jo
 	}
 
 	if exportErr != nil {
-		if err := et.historyStore.MarkFailed(record.ID, exportErr.Error()); err != nil {
+		if err := et.historyStore.MarkFailed(record.ID, exportErr); err != nil {
 			slog.Error("failed to mark export as failed", "recordID", record.ID, "error", err)
 		}
 
@@ -282,57 +288,31 @@ func (et *ExportTrigger) executeExportAttempt(ctx context.Context, job *model.Jo
 
 // exportToLocal exports job results to local file.
 func (et *ExportTrigger) exportToLocal(ctx context.Context, job *model.Job, schedule *ExportSchedule, record *ExportRecord) error {
-	// Determine output path
-	pathTemplate := schedule.Export.PathTemplate
-	if pathTemplate == "" {
-		pathTemplate = schedule.Export.LocalPath
-	}
-	if pathTemplate == "" {
-		pathTemplate = "exports/{kind}/{job_id}.{format}"
+	_ = ctx
+
+	outputPath := record.Destination
+	if outputPath == "" {
+		outputPath = et.destinationForSchedule(job, schedule)
 	}
 
-	outputPath := exporter.RenderPathTemplate(pathTemplate, *job, schedule.Export.Format)
-
-	// Ensure absolute path
-	if !filepath.IsAbs(outputPath) {
-		outputPath = filepath.Join(et.dataDir, outputPath)
-	}
-
-	// Create directory if needed
-	dir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return apperrors.Wrap(apperrors.KindInternal, "failed to create export directory", err)
 	}
 
-	// Read job results
 	resultData, err := et.readJobResults(job)
 	if err != nil {
 		return err
 	}
 
-	// Export to file
-	file, err := os.Create(outputPath)
+	rendered, err := exporter.RenderResultExport(*job, resultData, resultExportConfigForSchedule(schedule))
 	if err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create export file", err)
-	}
-	defer file.Close()
-
-	if err := exporter.ExportStreamWithShapeAndTransform(*job, bytes.NewReader(resultData), schedule.Export.Format, schedule.Export.Shape, schedule.Export.Transform, file); err != nil {
 		return err
 	}
-
-	// Get file size
-	info, err := file.Stat()
-	if err != nil {
-		slog.Warn("failed to get export file size", "path", outputPath, "error", err)
+	if err := os.WriteFile(outputPath, rendered.Content, 0o644); err != nil {
+		return apperrors.Wrap(apperrors.KindInternal, "failed to write export file", err)
 	}
 
-	// Mark as successful
-	var size int64
-	if info != nil {
-		size = info.Size()
-	}
-	return et.historyStore.MarkSuccess(record.ID, size, 0)
+	return et.historyStore.MarkSuccess(record.ID, rendered)
 }
 
 // exportToWebhook exports job results via webhook.
@@ -349,11 +329,7 @@ func (et *ExportTrigger) exportToWebhook(ctx context.Context, job *model.Job, sc
 		return err
 	}
 
-	rendered, err := exporter.RenderResultExport(*job, resultData, exporter.ResultExportConfig{
-		Format:    schedule.Export.Format,
-		Shape:     schedule.Export.Shape,
-		Transform: schedule.Export.Transform,
-	})
+	rendered, err := exporter.RenderResultExport(*job, resultData, resultExportConfigForSchedule(schedule))
 	if err != nil {
 		return err
 	}
@@ -377,7 +353,7 @@ func (et *ExportTrigger) exportToWebhook(ctx context.Context, job *model.Job, sc
 	}
 
 	// Mark as successful only after delivery completes.
-	return et.historyStore.MarkSuccess(record.ID, rendered.Size, rendered.RecordCount)
+	return et.historyStore.MarkSuccess(record.ID, rendered)
 }
 
 // retryExport retries a failed export with exponential backoff.
@@ -406,6 +382,34 @@ func (et *ExportTrigger) retryExport(ctx context.Context, job *model.Job, schedu
 		return et.executeExportAttempt(ctx, job, schedule, record)
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+func resultExportConfigForSchedule(schedule *ExportSchedule) exporter.ResultExportConfig {
+	return exporter.NormalizeResultExportConfig(exporter.ResultExportConfig{
+		Format:    schedule.Export.Format,
+		Shape:     schedule.Export.Shape,
+		Transform: schedule.Export.Transform,
+	})
+}
+
+func (et *ExportTrigger) destinationForSchedule(job *model.Job, schedule *ExportSchedule) string {
+	switch schedule.Export.DestinationType {
+	case "webhook":
+		return strings.TrimSpace(schedule.Export.WebhookURL)
+	default:
+		pathTemplate := schedule.Export.PathTemplate
+		if pathTemplate == "" {
+			pathTemplate = schedule.Export.LocalPath
+		}
+		if pathTemplate == "" {
+			pathTemplate = "exports/{kind}/{job_id}.{format}"
+		}
+		outputPath := exporter.RenderPathTemplate(pathTemplate, *job, schedule.Export.Format)
+		if !filepath.IsAbs(outputPath) {
+			outputPath = filepath.Join(et.dataDir, outputPath)
+		}
+		return outputPath
 	}
 }
 

@@ -1,25 +1,80 @@
 /**
  * ExportScheduleHistory Component
  *
- * Renders a modal showing export history for a schedule.
- * Displays a table with job ID, status, destination, timestamps, and stats.
+ * Purpose:
+ * - Render guided export outcome inspection for a schedule inside a modal.
  *
- * This component does NOT handle:
- * - API calls for fetching history (parent handles via onGetHistory)
- * - State management for pagination (controlled via props)
+ * Responsibilities:
+ * - Show export status, narrative, artifact metadata, failures, and next steps.
+ * - Preserve offset-based pagination driven by parent callbacks.
+ * - Keep history readable even when outcomes include no artifact or failure details.
  *
- * @module components/export-schedules/ExportScheduleHistory
+ * Scope:
+ * - Modal presentation only; data loading and pagination state stay in parent components.
+ *
+ * Usage:
+ * - Render from ExportScheduleManager once schedule history has been loaded.
+ *
+ * Invariants/Assumptions:
+ * - Records are already sanitized and transport-safe.
+ * - Unknown statuses and failure categories should still render gracefully.
  */
 
+import type { RecommendedAction } from "../../api";
 import type { ExportScheduleHistoryProps } from "../../types/export-schedule";
 import { formatDateTime } from "../../lib/formatting";
 import { formatFileSize } from "../../lib/export-schedule-utils";
 import { getExportHistoryStatusTone } from "../../lib/status-display";
 import { StatusPill } from "../StatusPill";
 
-/**
- * Modal component for displaying export history
- */
+function formatFailureCategory(category?: string) {
+  if (!category) {
+    return "Unknown";
+  }
+  return category
+    .split("-")
+    .join(" ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+async function copyValue(value?: string) {
+  if (!value || !navigator?.clipboard) {
+    return;
+  }
+  await navigator.clipboard.writeText(value);
+}
+
+function ActionChip({ action }: { action: RecommendedAction }) {
+  const isCopyable = Boolean(action.value);
+
+  return (
+    <button
+      type="button"
+      className="secondary"
+      onClick={() => {
+        void copyValue(action.value);
+      }}
+      disabled={!isCopyable}
+      style={{ textAlign: "left" }}
+      title={action.value || "No value available"}
+    >
+      <strong>{action.label}</strong>
+      {action.value ? (
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--muted)",
+            marginTop: 4,
+            wordBreak: "break-word",
+          }}
+        >
+          {action.kind}: {action.value}
+        </div>
+      ) : null}
+    </button>
+  );
+}
+
 export function ExportScheduleHistory({
   scheduleName,
   records,
@@ -31,7 +86,7 @@ export function ExportScheduleHistory({
   onPageChange,
 }: ExportScheduleHistoryProps) {
   const currentPage = Math.floor(offset / limit) + 1;
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
     <div
@@ -49,7 +104,7 @@ export function ExportScheduleHistory({
       <div
         className="panel"
         style={{
-          maxWidth: 900,
+          maxWidth: 960,
           width: "100%",
           maxHeight: "90vh",
           overflow: "auto",
@@ -63,7 +118,13 @@ export function ExportScheduleHistory({
             marginBottom: 16,
           }}
         >
-          <h3 style={{ margin: 0 }}>Export History: {scheduleName}</h3>
+          <div>
+            <h3 style={{ margin: 0 }}>Export History: {scheduleName}</h3>
+            <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
+              Inspect outcomes, understand failures quickly, and copy the next
+              recovery step without leaving the history view.
+            </p>
+          </div>
           <button type="button" onClick={onClose} className="secondary">
             Close
           </button>
@@ -91,7 +152,7 @@ export function ExportScheduleHistory({
               style={{
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 12,
+                marginBottom: 16,
                 fontSize: 13,
                 color: "var(--muted)",
               }}
@@ -105,77 +166,155 @@ export function ExportScheduleHistory({
               </span>
             </div>
 
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--stroke)" }}>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Job ID
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Status
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Destination
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Exported At
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Records
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    Size
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr
-                    key={record.id}
-                    style={{ borderBottom: "1px solid var(--stroke)" }}
+            <div style={{ display: "grid", gap: 12 }}>
+              {records.map((record) => (
+                <article
+                  key={record.id}
+                  className="panel"
+                  style={{
+                    padding: 16,
+                    border: "1px solid var(--stroke)",
+                    background: "rgba(255, 255, 255, 0.02)",
+                  }}
+                >
+                  <div
+                    className="row"
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 16,
+                    }}
                   >
-                    <td
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        className="row"
+                        style={{
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <StatusPill
+                          label={record.status}
+                          tone={getExportHistoryStatusTone(record.status)}
+                        />
+                        <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                          {record.trigger} export
+                        </span>
+                      </div>
+                      <h4 style={{ margin: 0 }}>{record.title}</h4>
+                      <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
+                        {record.message}
+                      </p>
+                    </div>
+                    <div
                       style={{
-                        padding: "12px",
                         fontFamily: "monospace",
                         fontSize: 12,
+                        color: "var(--muted)",
+                        textAlign: "right",
                       }}
                     >
-                      {record.job_id?.substring(0, 12)}...
-                    </td>
-                    <td style={{ padding: "12px" }}>
-                      <StatusPill
-                        label={record.status ?? "unknown"}
-                        tone={getExportHistoryStatusTone(record.status)}
-                      />
-                    </td>
-                    <td
-                      style={{
-                        padding: "12px",
-                        fontSize: 13,
-                        maxWidth: 200,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {record.destination || "-"}
-                    </td>
-                    <td style={{ padding: "12px", fontSize: 13 }}>
-                      {formatDateTime(record.exported_at)}
-                    </td>
-                    <td style={{ padding: "12px", fontSize: 13 }}>
-                      {record.record_count ?? "-"}
-                    </td>
-                    <td style={{ padding: "12px", fontSize: 13 }}>
-                      {formatFileSize(record.export_size)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div>{record.id}</div>
+                      <div>{record.jobId}</div>
+                    </div>
+                  </div>
 
-            {totalPages > 1 && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: 12,
+                      marginTop: 16,
+                    }}
+                  >
+                    <div>
+                      <strong>Requested format</strong>
+                      <div>{record.request.format}</div>
+                    </div>
+                    <div>
+                      <strong>Destination</strong>
+                      <div style={{ wordBreak: "break-word" }}>
+                        {record.destination || "-"}
+                      </div>
+                    </div>
+                    <div>
+                      <strong>Exported at</strong>
+                      <div>{formatDateTime(record.exportedAt)}</div>
+                    </div>
+                    <div>
+                      <strong>Completed at</strong>
+                      <div>
+                        {record.completedAt
+                          ? formatDateTime(record.completedAt)
+                          : "-"}
+                      </div>
+                    </div>
+                    <div>
+                      <strong>Retries</strong>
+                      <div>{record.retryCount}</div>
+                    </div>
+                    <div>
+                      <strong>Artifact</strong>
+                      <div>
+                        {record.artifact
+                          ? `${record.artifact.filename} · ${formatFileSize(record.artifact.size)}`
+                          : "Not available"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {record.failure ? (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        background: "rgba(239, 68, 68, 0.08)",
+                      }}
+                    >
+                      <strong>
+                        {formatFailureCategory(record.failure.category)} issue
+                      </strong>
+                      <p style={{ margin: "8px 0 0" }}>
+                        {record.failure.summary}
+                      </p>
+                      <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                        {record.failure.retryable
+                          ? "This outcome looks retryable."
+                          : "This outcome needs a config or data change before retrying."}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {record.actions?.length ? (
+                    <div style={{ marginTop: 16 }}>
+                      <strong>Recommended next steps</strong>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(220px, 1fr))",
+                          gap: 8,
+                          marginTop: 8,
+                        }}
+                      >
+                        {record.actions.map((action) => (
+                          <ActionChip
+                            key={`${record.id}-${action.label}-${action.value}`}
+                            action={action}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+
+            {totalPages > 1 ? (
               <div
                 className="row"
                 style={{
@@ -217,7 +356,7 @@ export function ExportScheduleHistory({
                   Next
                 </button>
               </div>
-            )}
+            ) : null}
           </>
         )}
       </div>

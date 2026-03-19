@@ -14,9 +14,9 @@ import {
   updateExportSchedule,
   deleteExportSchedule,
   getExportScheduleHistory,
+  type ExportOutcomeListResponse,
   type ExportSchedule,
   type ExportScheduleRequest,
-  type ExportHistoryRecord,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
@@ -247,7 +247,7 @@ export function ExportScheduleContainer() {
       id: string,
       limit = 10,
       offset = 0,
-    ): Promise<{ records: ExportHistoryRecord[]; total: number }> => {
+    ): Promise<ExportOutcomeListResponse> => {
       const { data, error } = await getExportScheduleHistory({
         baseUrl: getApiBaseUrl(),
         path: { id },
@@ -266,8 +266,10 @@ export function ExportScheduleContainer() {
         throw error;
       }
       return {
-        records: data?.records || [],
+        exports: data?.exports || [],
         total: data?.total || 0,
+        limit: data?.limit || limit,
+        offset: data?.offset || offset,
       };
     },
     [toast],

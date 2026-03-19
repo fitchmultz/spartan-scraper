@@ -30,16 +30,12 @@ func TestHandleJobExportWithTransform_JMESPath(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
-		t.Fatalf("expected application/json, got %q", ct)
-	}
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "application/json")
 
 	var results []map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &results); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
+	if err := json.Unmarshal([]byte(response.Export.Artifact.Content), &results); err != nil {
+		t.Fatalf("failed to parse export content: %v", err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
@@ -65,13 +61,12 @@ func TestHandleJobExportWithTransform_JSONata(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
-	}
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "application/json")
 
 	var results []map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &results); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
+	if err := json.Unmarshal([]byte(response.Export.Artifact.Content), &results); err != nil {
+		t.Fatalf("failed to parse export content: %v", err)
 	}
 	if len(results) != 1 || results[0]["item"] != "Product A" || results[0]["total"] != float64(200) {
 		t.Fatalf("unexpected transformed results: %#v", results)
@@ -127,13 +122,9 @@ func TestHandleJobExportWithTransform_CSVFormat(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "text/csv; charset=utf-8" {
-		t.Fatalf("expected text/csv; charset=utf-8, got %q", ct)
-	}
-	if body := rr.Body.String(); !strings.Contains(body, "title") || strings.Contains(body, "status") {
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "text/csv; charset=utf-8")
+	if body := response.Export.Artifact.Content; !strings.Contains(body, "title") || strings.Contains(body, "status") {
 		t.Fatalf("unexpected csv export: %s", body)
 	}
 }
@@ -154,14 +145,10 @@ func TestHandleJobExportWithTransform_JSONL(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/x-ndjson" {
-		t.Fatalf("expected application/x-ndjson, got %q", ct)
-	}
-	if strings.Contains(rr.Body.String(), "status") {
-		t.Fatalf("expected transformed jsonl to omit status: %s", rr.Body.String())
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "application/x-ndjson")
+	if strings.Contains(response.Export.Artifact.Content, "status") {
+		t.Fatalf("expected transformed jsonl to omit status: %s", response.Export.Artifact.Content)
 	}
 }
 
@@ -178,14 +165,10 @@ func TestHandleJobExportWithShape(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
-	}
-	if ct := rr.Header().Get("Content-Type"); ct != "text/markdown; charset=utf-8" {
-		t.Fatalf("expected markdown content type, got %q", ct)
-	}
-	if !strings.Contains(rr.Body.String(), "Test Page") || !strings.Contains(rr.Body.String(), "$10") {
-		t.Fatalf("unexpected shaped markdown: %s", rr.Body.String())
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "text/markdown; charset=utf-8")
+	if !strings.Contains(response.Export.Artifact.Content, "Test Page") || !strings.Contains(response.Export.Artifact.Content, "$10") {
+		t.Fatalf("unexpected shaped markdown: %s", response.Export.Artifact.Content)
 	}
 }
 
@@ -219,14 +202,83 @@ func TestHandleJobExportXLSX(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
+	response := decodeExportOutcomeResponse(t, rr)
+	assertExportSucceeded(t, response.Export, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	if response.Export.Artifact.Encoding != "base64" {
+		t.Fatalf("expected base64 xlsx payload, got %#v", response.Export.Artifact)
+	}
+	if response.Export.Artifact.Content == "" {
+		t.Fatal("expected xlsx bytes")
+	}
+}
+
+func TestHandleJobExportHistoryAndOutcomeLookup(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	jobID := "test-job-export-history"
+	createSucceededJobWithResult(t, srv, ctx, jobID, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Test Page"}`)
+
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), `{"format":"json"}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+	response := decodeExportOutcomeResponse(t, rr)
+
+	historyReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/jobs/%s/exports?limit=10&offset=0", jobID), nil)
+	historyRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(historyRes, historyReq)
+	if historyRes.Code != http.StatusOK {
+		t.Fatalf("expected history 200, got %d: %s", historyRes.Code, historyRes.Body.String())
+	}
+	var history ExportOutcomeListResponse
+	if err := json.Unmarshal(historyRes.Body.Bytes(), &history); err != nil {
+		t.Fatalf("failed to decode history response: %v", err)
+	}
+	if len(history.Exports) != 1 || history.Exports[0].ID != response.Export.ID {
+		t.Fatalf("unexpected export history: %#v", history)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/v1/exports/"+response.Export.ID, nil)
+	getRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(getRes, getReq)
+	if getRes.Code != http.StatusOK {
+		t.Fatalf("expected outcome 200, got %d: %s", getRes.Code, getRes.Body.String())
+	}
+	var single ExportOutcomeResponse
+	if err := json.Unmarshal(getRes.Body.Bytes(), &single); err != nil {
+		t.Fatalf("failed to decode single export response: %v", err)
+	}
+	if single.Export.ID != response.Export.ID || single.Export.Artifact == nil || single.Export.Artifact.Content != "" {
+		t.Fatalf("unexpected export lookup payload: %#v", single)
+	}
+}
+
+func decodeExportOutcomeResponse(t *testing.T, rr *httptest.ResponseRecorder) ExportOutcomeResponse {
+	t.Helper()
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" {
-		t.Fatalf("unexpected xlsx content type: %q", ct)
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("expected application/json, got %q", ct)
 	}
-	if len(rr.Body.Bytes()) == 0 {
-		t.Fatal("expected xlsx bytes")
+	var response ExportOutcomeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to decode export outcome response: %v", err)
+	}
+	return response
+}
+
+func assertExportSucceeded(t *testing.T, outcome ExportInspection, contentType string) {
+	t.Helper()
+	if outcome.Status != "succeeded" {
+		t.Fatalf("expected succeeded export, got %#v", outcome)
+	}
+	if outcome.Artifact == nil {
+		t.Fatalf("expected export artifact, got %#v", outcome)
+	}
+	if outcome.Artifact.ContentType != contentType {
+		t.Fatalf("expected content type %q, got %#v", contentType, outcome.Artifact)
 	}
 }
 

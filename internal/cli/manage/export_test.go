@@ -2,6 +2,7 @@ package manage
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,6 +91,43 @@ func TestRunExportRejectsShapeAndTransform(t *testing.T) {
 	}
 }
 
+func TestRunExportInspectAndHistory(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := config.Config{DataDir: tmpDir}
+	jobID := writeExportTestJob(t, tmpDir, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Example"}`)
+	outPath := filepath.Join(tmpDir, "out", "results.json")
+	if code := RunExport(context.Background(), cfg, []string{"--job-id", jobID, "--format", "json", "--out", outPath}); code != 0 {
+		t.Fatalf("RunExport returned %d", code)
+	}
+
+	historyStore := scheduler.NewExportHistoryStore(tmpDir)
+	records, total, err := historyStore.GetByJob(jobID, 10, 0)
+	if err != nil {
+		t.Fatalf("GetByJob failed: %v", err)
+	}
+	if total != 1 || len(records) != 1 {
+		t.Fatalf("unexpected export history: total=%d records=%#v", total, records)
+	}
+
+	historyJSON := captureStdout(t, func() {
+		if code := RunExport(context.Background(), cfg, []string{"--history-job-id", jobID, "--json"}); code != 0 {
+			t.Fatalf("history command returned %d", code)
+		}
+	})
+	if !strings.Contains(historyJSON, `"exports"`) || !strings.Contains(historyJSON, records[0].ID) {
+		t.Fatalf("unexpected history json: %s", historyJSON)
+	}
+
+	inspectText := captureStdout(t, func() {
+		if code := RunExport(context.Background(), cfg, []string{"--inspect-id", records[0].ID}); code != 0 {
+			t.Fatalf("inspect command returned %d", code)
+		}
+	})
+	if !strings.Contains(inspectText, "EXPORT READY") || !strings.Contains(inspectText, records[0].ID) {
+		t.Fatalf("unexpected inspect output: %s", inspectText)
+	}
+}
+
 func writeExportTestJob(t *testing.T, dataDir string, kind model.Kind, resultContent string) string {
 	t.Helper()
 	jobID := "job-export-test"
@@ -117,4 +155,31 @@ func writeExportTestJob(t *testing.T, dataDir string, kind model.Kind, resultCon
 		t.Fatalf("create job: %v", err)
 	}
 	return jobID
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	originalStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = originalStdout
+	}()
+
+	fn()
+
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close: %v", err)
+	}
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("io.ReadAll: %v", err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatalf("reader.Close: %v", err)
+	}
+	return string(output)
 }

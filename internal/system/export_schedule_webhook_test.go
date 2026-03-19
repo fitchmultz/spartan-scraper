@@ -182,10 +182,10 @@ func waitForExportHistorySuccess(t *testing.T, client *http.Client, port int, sc
 		var payload map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
 		_ = resp.Body.Close()
-		records, _ := payload["records"].([]any)
+		records, _ := payload["exports"].([]any)
 		if len(records) == 1 {
 			record, _ := records[0].(map[string]any)
-			if record["job_id"] == jobID && record["status"] == "success" {
+			if record["jobId"] == jobID && record["status"] == "succeeded" {
 				return
 			}
 		}

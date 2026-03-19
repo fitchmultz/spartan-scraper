@@ -84,7 +84,7 @@ func TestExportTriggerExportAppliesConfiguredTransform(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBySchedule() failed: %v", err)
 	}
-	if total != 1 || len(records) != 1 || records[0].Status != "success" {
+	if total != 1 || len(records) != 1 || records[0].Status != "succeeded" {
 		t.Fatalf("unexpected export history: %#v total=%d", records, total)
 	}
 }
@@ -221,7 +221,7 @@ func TestExportTriggerWebhookExportDeliversViaDispatcher(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBySchedule() failed: %v", err)
 	}
-	if total != 1 || len(records) != 1 || records[0].Status != "success" {
+	if total != 1 || len(records) != 1 || records[0].Status != "succeeded" {
 		t.Fatalf("unexpected export history: %#v total=%d", records, total)
 	}
 

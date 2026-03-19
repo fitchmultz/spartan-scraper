@@ -99,7 +99,15 @@ These tools return structured authoring results immediately and do not create jo
   - `format: "jsonl" | "json" | "md" | "csv" | "xlsx"` optional, defaults to `jsonl`
   - `shape: { ... }` optional `ExportShapeConfig` for markdown/tabular exports
   - `transform: { expression: "...", language: "jmespath" | "jsonata" }` optional saved-result projection/filter
-  - returns `{ format, filename, contentType, encoding, content }` where `encoding` is `utf8` for text exports and `base64` for `xlsx`
+  - returns `{ export }`, where `export` includes lifecycle (`id`, `status`, `trigger`, `exportedAt`, `retryCount`), artifact metadata (`artifact.format`, `artifact.filename`, `artifact.contentType`, `artifact.encoding`, `artifact.content`), and guided recovery fields (`title`, `message`, optional `failure`, `actions`)
+- `job_export_history`
+  - `id: "..."`
+  - `limit: number` optional
+  - `offset: number` optional
+  - returns `{ exports, total, limit, offset }`
+- `export_outcome_get`
+  - `id: "..."`
+  - returns one `{ export }` outcome envelope by export id
 - `export_schedule_list`
   - no arguments
 - `export_schedule_get`
@@ -123,6 +131,7 @@ These tools return structured authoring results immediately and do not create jo
   - `id: "..."`
   - `limit: number` optional
   - `offset: number` optional
+  - returns the same guided `{ exports, total, limit, offset }` envelope used by `job_export_history`
 
 Direct `job_export` calls and recurring export schedules can persist either `transform` / `export.transform` or `shape` / `export.shape`, but not both. Spartan enforces that mutual exclusion so ad hoc and recurring exports keep one deterministic projection contract.
 

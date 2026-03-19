@@ -18,13 +18,32 @@ describe("results utilities", () => {
 
   it("exports text results using the direct export endpoint", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response('{"title":"Example"}', {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Disposition": 'attachment; filename="job-1.json"',
+      new Response(
+        JSON.stringify({
+          export: {
+            id: "export-1",
+            jobId: "job-1",
+            trigger: "api",
+            status: "succeeded",
+            title: "Export ready",
+            message: "JSON export completed successfully.",
+            exportedAt: "2026-03-18T00:00:00Z",
+            retryCount: 0,
+            request: { format: "json" },
+            artifact: {
+              format: "json",
+              filename: "job-1.json",
+              contentType: "application/json",
+              encoding: "utf8",
+              content: '{"title":"Example"}',
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
         },
-      }),
+      ),
     );
 
     const result = await exportResults("job-1", {
@@ -37,6 +56,7 @@ describe("results utilities", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(result).toEqual({
+      outcome: expect.objectContaining({ id: "export-1", status: "succeeded" }),
       content: '{"title":"Example"}',
       filename: "job-1.json",
       contentType: "application/json",
@@ -45,16 +65,34 @@ describe("results utilities", () => {
   });
 
   it("exports binary xlsx results as base64 payloads", async () => {
-    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(bytes, {
-        status: 200,
-        headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": 'attachment; filename="job-1.xlsx"',
+      new Response(
+        JSON.stringify({
+          export: {
+            id: "export-2",
+            jobId: "job-1",
+            trigger: "api",
+            status: "succeeded",
+            title: "Export ready",
+            message: "XLSX export completed successfully.",
+            exportedAt: "2026-03-18T00:00:00Z",
+            retryCount: 0,
+            request: { format: "xlsx" },
+            artifact: {
+              format: "xlsx",
+              filename: "job-1.xlsx",
+              contentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              encoding: "base64",
+              content: "UEsDBA==",
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
         },
-      }),
+      ),
     );
 
     const result = await exportResults("job-1", { format: "xlsx" });

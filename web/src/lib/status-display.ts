@@ -20,7 +20,7 @@
  * - Success, warning, danger, neutral, and info tones share one palette.
  */
 
-import type { ExportHistoryRecord, Watch } from "../api";
+import type { ExportInspection, Watch } from "../api";
 
 export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
 
@@ -69,9 +69,10 @@ export function getWatchStatusTone(status?: Watch["status"]): StatusTone {
 }
 
 export function getExportHistoryStatusTone(
-  status?: ExportHistoryRecord["status"],
+  status?: ExportInspection["status"] | "success",
 ): StatusTone {
   switch (status) {
+    case "succeeded":
     case "success":
       return "success";
     case "pending":

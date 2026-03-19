@@ -12,16 +12,16 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Treat interface asymmetry as intentional only when this roadmap says so explicitly.
 - Prefer roadmap ordering that limits churn in shared contracts, generated clients, and operator-facing docs.
 - Put meaningful operator-facing product work ahead of maintenance, cleanup, and policy reminders.
+- Treat focused failure-path dogfooding as acceptance criteria for major operator workflow cutovers, not as a standalone roadmap epic.
 
 ## After
 
-- Resume export outcome inspection across API, Web UI, CLI, and MCP after the core Web operator workflows above stop imposing major usability cost.
-- Resume watch outcome and check-history inspection across the primary operator surfaces after the Automation Hub redesign clarifies where that information should live in the Web UI.
+- Resume watch outcome and check-history inspection across API, Web UI, CLI, and MCP as the next product cutover now that the Automation Hub redesign has clarified where that workflow belongs in the Web UI.
 
 ## Later / Deprioritized
 
-- Keep docs and examples aligned with major UI workflow changes and future parity cuts so the canonical operator workflow stays current as surfaces evolve.
-- Polish cross-surface contract consistency discovered during workflow redesign, including pagination, filters, envelope naming, and generated client/doc sync where needed.
+- Immediately after the watch inspection cutover, update docs and examples so the canonical operator workflow matches the shipped cross-surface experience.
+- Then polish any cross-surface contract consistency issues discovered during the watch work, including pagination, filters, envelope naming, and generated client/doc sync where needed.
 
 ## Ongoing Constraints
 

@@ -1925,7 +1925,7 @@ paths:
   "/v1/jobs/{id}/export":
     post:
       summary: Export saved job results
-      description: Export persisted saved results with optional direct shape or transform controls.
+      description: Run a direct export, persist an export outcome record, and return guided inspection with inline artifact content.
       parameters:
       - in: path
         name: id
@@ -1940,30 +1940,88 @@ paths:
               "$ref": "#/components/schemas/ResultExportRequest"
       responses:
         '200':
-          description: Exported result payload
+          description: Export outcome
           content:
-            application/x-ndjson:
-              schema:
-                type: string
             application/json:
               schema:
-                type: object
-            text/markdown:
-              schema:
-                type: string
-            text/csv:
-              schema:
-                type: string
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema:
-                type: string
-                format: binary
+                "$ref": "#/components/schemas/ExportOutcomeResponse"
         '400':
           description: Bad Request
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/jobs/{id}/exports":
+    get:
+      summary: List persisted export outcomes for a job
+      description: Returns guided export outcome inspection records for a specific job.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 1000
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      responses:
+        '200':
+          description: Export outcome history for the job
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ExportOutcomeListResponse"
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/v1/exports/{id}":
+    get:
+      summary: Get a persisted export outcome
+      description: Returns a single guided export outcome record by export id.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Export outcome
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ExportOutcomeResponse"
         '404':
           description: Not Found
           content:
@@ -2609,7 +2667,7 @@ paths:
   "/v1/export-schedules/{id}/history":
     get:
       summary: Get export schedule history
-      description: Returns export history for a specific schedule
+      description: Returns guided export outcome inspection records for a specific schedule.
       operationId: getExportScheduleHistory
       parameters:
       - in: path
@@ -2632,11 +2690,11 @@ paths:
           minimum: 0
       responses:
         '200':
-          description: Export history
+          description: Export outcome history
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ExportHistoryResponse"
+                "$ref": "#/components/schemas/ExportOutcomeListResponse"
         '404':
           description: Not Found
           content:
@@ -3833,64 +3891,135 @@ components:
           default: 1000
           minimum: 100
           description: Base retry delay in milliseconds
-    ExportHistoryResponse:
+    ExportArtifact:
       type: object
+      required:
+      - format
+      - filename
+      - contentType
       properties:
-        records:
-          type: array
-          items:
-            "$ref": "#/components/schemas/ExportHistoryRecord"
-        total:
+        format:
+          type: string
+          enum:
+          - json
+          - jsonl
+          - md
+          - csv
+          - xlsx
+        filename:
+          type: string
+        contentType:
+          type: string
+        recordCount:
           type: integer
-          description: Total number of records
-        limit:
+        size:
           type: integer
-          description: Limit used for query
-        offset:
-          type: integer
-          description: Offset used for query
-    ExportHistoryRecord:
+          format: int64
+        encoding:
+          type: string
+          enum:
+          - utf8
+          - base64
+        content:
+          type: string
+          description: Inline artifact content. UTF-8 for text formats and base64 for binary formats.
+    ExportFailureContext:
       type: object
+      required:
+      - category
+      - summary
+      - retryable
+      - terminal
+      properties:
+        category:
+          type: string
+        summary:
+          type: string
+        retryable:
+          type: boolean
+        terminal:
+          type: boolean
+    ExportInspection:
+      type: object
+      required:
+      - id
+      - jobId
+      - trigger
+      - status
+      - title
+      - message
+      - exportedAt
+      - retryCount
+      - request
       properties:
         id:
           type: string
-          description: Unique record identifier
-        schedule_id:
+        scheduleId:
           type: string
-          description: Export schedule ID
-        job_id:
+        jobId:
           type: string
-          description: Job ID that was exported
+        trigger:
+          type: string
+          enum:
+          - api
+          - cli
+          - mcp
+          - schedule
         status:
           type: string
           enum:
           - pending
-          - success
+          - succeeded
           - failed
-          description: Export status
+        title:
+          type: string
+        message:
+          type: string
         destination:
           type: string
-          description: Destination where export was sent
-        exported_at:
+        exportedAt:
           type: string
           format: date-time
-          description: When export was initiated
-        completed_at:
+        completedAt:
           type: string
           format: date-time
-          description: When export completed (null if pending)
-        error_message:
-          type: string
-          description: Error message if export failed
-        retry_count:
+        retryCount:
           type: integer
-          description: Number of retry attempts
-        export_size:
+        request:
+          "$ref": "#/components/schemas/ResultExportRequest"
+        artifact:
+          "$ref": "#/components/schemas/ExportArtifact"
+        failure:
+          "$ref": "#/components/schemas/ExportFailureContext"
+        actions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RecommendedAction"
+    ExportOutcomeResponse:
+      type: object
+      required:
+      - export
+      properties:
+        export:
+          "$ref": "#/components/schemas/ExportInspection"
+    ExportOutcomeListResponse:
+      type: object
+      required:
+      - exports
+      - total
+      - limit
+      - offset
+      properties:
+        exports:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExportInspection"
+        total:
           type: integer
-          description: Size of exported data in bytes
-        record_count:
+        limit:
           type: integer
-          description: Number of records exported
+        offset:
+          type: integer
     ExtractOptions:
       type: object
       properties:

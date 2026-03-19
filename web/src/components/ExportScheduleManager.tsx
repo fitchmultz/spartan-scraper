@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type { ExportSchedule, ExportHistoryRecord } from "../api";
+import type { ExportInspection, ExportSchedule } from "../api";
 import type { ExportScheduleManagerProps } from "../types/export-schedule";
 import { useExportScheduleForm } from "../hooks/useExportScheduleForm";
 import { ActionEmptyState } from "./ActionEmptyState";
@@ -32,9 +32,7 @@ export function ExportScheduleManager({
   const [historySchedule, setHistorySchedule] = useState<ExportSchedule | null>(
     null,
   );
-  const [historyRecords, setHistoryRecords] = useState<ExportHistoryRecord[]>(
-    [],
-  );
+  const [historyRecords, setHistoryRecords] = useState<ExportInspection[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -113,7 +111,7 @@ export function ExportScheduleManager({
           HISTORY_PAGE_SIZE,
           offset,
         );
-        setHistoryRecords(result.records);
+        setHistoryRecords(result.exports);
         setHistoryTotal(result.total);
         setShowHistory(true);
       } catch (err) {

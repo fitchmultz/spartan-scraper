@@ -5,7 +5,6 @@
  * export schedule management components and hooks.
  *
  * This module does NOT handle:
- * - API response types (those come from ../api)
  * - Runtime validation or type guards
  * - Business logic or state management
  *
@@ -13,9 +12,10 @@
  */
 
 import type {
+  ExportInspection,
+  ExportOutcomeListResponse,
   ExportSchedule,
   ExportScheduleRequest,
-  ExportHistoryRecord,
 } from "../api";
 
 /**
@@ -32,10 +32,7 @@ export interface ExportScheduleManagerProps {
     id: string,
     limit?: number,
     offset?: number,
-  ) => Promise<{
-    records: ExportHistoryRecord[];
-    total: number;
-  }>;
+  ) => Promise<ExportOutcomeListResponse>;
   loading?: boolean;
 }
 
@@ -120,7 +117,7 @@ export interface ExportScheduleFormProps {
  */
 export interface ExportScheduleHistoryProps {
   scheduleName: string;
-  records: ExportHistoryRecord[];
+  records: ExportInspection[];
   total: number;
   limit: number;
   offset: number;

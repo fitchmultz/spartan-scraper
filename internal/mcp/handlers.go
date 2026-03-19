@@ -23,7 +23,6 @@ package mcp
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -536,7 +535,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		}
 		return api.BuildStoreBackedBatchResponse(ctx, s.store, batch, stats, jobs, batch.JobCount, limit, offset)
 	case "job_export":
-		id := paramdecode.String(params.Arguments, "id")
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
 		if id == "" {
 			return nil, apperrors.Validation("id is required")
 		}
@@ -555,27 +554,72 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if job.ResultPath == "" {
 			return nil, apperrors.NotFound("job has no results")
 		}
+
+		historyStore := scheduler.NewExportHistoryStore(s.cfg.DataDir)
+		record, err := historyStore.CreateRecord(scheduler.CreateRecordInput{
+			JobID:       job.ID,
+			Trigger:     exporter.OutcomeTriggerMCP,
+			Destination: "mcp response",
+			Request:     exportConfig,
+		})
+		if err != nil {
+			return nil, err
+		}
+
 		rawBytes, err := os.ReadFile(job.ResultPath)
 		if err != nil {
-			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)
+			if markErr := historyStore.MarkFailed(record.ID, apperrors.Wrap(apperrors.KindInternal, "failed to read result file", err)); markErr != nil {
+				return nil, markErr
+			}
+			failed, getErr := historyStore.GetByID(record.ID)
+			if getErr != nil {
+				return nil, getErr
+			}
+			return api.ExportOutcomeResponse{Export: api.BuildExportInspection(*failed, nil)}, nil
 		}
-		exported, err := exporter.ExportResult(job, rawBytes, exportConfig)
+
+		rendered, err := exporter.RenderResultExport(job, rawBytes, exportConfig)
 		if err != nil {
-			return nil, apperrors.Wrap(apperrors.KindInternal, "failed to export job", err)
+			if markErr := historyStore.MarkFailed(record.ID, err); markErr != nil {
+				return nil, markErr
+			}
+			failed, getErr := historyStore.GetByID(record.ID)
+			if getErr != nil {
+				return nil, getErr
+			}
+			return api.ExportOutcomeResponse{Export: api.BuildExportInspection(*failed, nil)}, nil
 		}
-		result := map[string]interface{}{
-			"format":      exportConfig.Format,
-			"filename":    exporter.ResultExportFilename(job, exportConfig),
-			"contentType": exporter.ResultExportContentType(exportConfig.Format),
+
+		if err := historyStore.MarkSuccess(record.ID, rendered); err != nil {
+			return nil, err
 		}
-		if exporter.ResultExportIsBinary(exportConfig.Format) {
-			result["encoding"] = "base64"
-			result["content"] = encodeBase64(exported)
-		} else {
-			result["encoding"] = "utf8"
-			result["content"] = string(exported)
+		stored, err := historyStore.GetByID(record.ID)
+		if err != nil {
+			return nil, err
 		}
-		return result, nil
+		return api.ExportOutcomeResponse{Export: api.BuildExportInspection(*stored, rendered.Content)}, nil
+	case "job_export_history":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		limit := paramdecode.PositiveInt(params.Arguments, "limit", 50)
+		offset := paramdecode.PositiveInt(params.Arguments, "offset", 0)
+		records, total, err := scheduler.NewExportHistoryStore(s.cfg.DataDir).GetByJob(id, limit, offset)
+		if err != nil {
+			return nil, err
+		}
+		return api.BuildExportOutcomeListResponse(records, total, limit, offset), nil
+	case "export_outcome_get":
+		id := strings.TrimSpace(paramdecode.String(params.Arguments, "id"))
+		if id == "" {
+			return nil, apperrors.Validation("id is required")
+		}
+		record, err := scheduler.NewExportHistoryStore(s.cfg.DataDir).GetByID(id)
+		if err != nil {
+			return nil, apperrors.NotFound("export outcome not found")
+		}
+		return api.ExportOutcomeResponse{Export: api.BuildExportInspection(*record, nil)}, nil
 	case "watch_list":
 		watches, err := watch.NewFileStorage(s.cfg.DataDir).List()
 		if err != nil {
@@ -753,7 +797,7 @@ func (s *Server) handleToolCall(ctx context.Context, base map[string]json.RawMes
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"records": records, "total": total}, nil
+		return api.BuildExportOutcomeListResponse(records, total, limit, offset), nil
 	case "webhook_delivery_list":
 		jobID := strings.TrimSpace(paramdecode.String(params.Arguments, "jobId"))
 		if jobID == "" {
@@ -873,8 +917,4 @@ func decodeTransportOverrides(args map[string]interface{}) fetch.AuthOptions {
 			ExcludeProxyIDs: paramdecode.StringSlice(args, "excludeProxyIds"),
 		}),
 	}
-}
-
-func encodeBase64(value []byte) string {
-	return base64.StdEncoding.EncodeToString(value)
 }

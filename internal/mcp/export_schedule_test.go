@@ -161,11 +161,15 @@ func TestHandleExportScheduleLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("export_schedule_history failed: %v", err)
 	}
-	historyMap, ok := historyResult.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected history map, got %#v", historyResult)
+	payload, err := json.Marshal(historyResult)
+	if err != nil {
+		t.Fatalf("marshal history result: %v", err)
 	}
-	if total, ok := historyMap["total"].(int); !ok || total != 0 {
+	var historyMap map[string]interface{}
+	if err := json.Unmarshal(payload, &historyMap); err != nil {
+		t.Fatalf("decode history result: %v", err)
+	}
+	if total, ok := historyMap["total"].(float64); !ok || total != 0 {
 		t.Fatalf("unexpected history total: %#v", historyMap["total"])
 	}
 

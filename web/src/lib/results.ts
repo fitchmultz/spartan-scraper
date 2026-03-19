@@ -4,7 +4,12 @@
  * @module results
  */
 
-import type { ExportShapeConfig, ResultTransformConfig } from "../api";
+import type {
+  ExportInspection,
+  ExportOutcomeResponse,
+  ExportShapeConfig,
+  ResultTransformConfig,
+} from "../api";
 import { buildApiUrl } from "./api-config";
 
 /**
@@ -25,6 +30,7 @@ export interface ResultExportRequest {
 }
 
 export interface ResultExportResponse {
+  outcome: ExportInspection;
   content: string;
   filename: string;
   contentType: string;
@@ -80,74 +86,29 @@ export function buildResultsUrl(
   limit?: number,
   offset?: number,
 ): string {
-  let path = `/v1/jobs/${jobId}/results?format=${format}`;
-
-  if (format === "jsonl" && limit !== undefined && offset !== undefined) {
-    path += `&limit=${limit}&offset=${offset}`;
+  const params = new URLSearchParams({ format });
+  if (format === "jsonl" && typeof limit === "number") {
+    params.set("limit", String(limit));
   }
-
-  return buildApiUrl(path);
+  if (format === "jsonl" && typeof offset === "number") {
+    params.set("offset", String(offset));
+  }
+  return `/v1/jobs/${jobId}/results?${params.toString()}`;
 }
 
-/**
- * Parse error response from API.
- */
-export async function parseErrorResponse(
-  response: Response,
-  status: number,
-  statusText: string,
-): Promise<string> {
-  try {
-    const errorData = (await response.json()) as { error?: string };
-    if (errorData.error) {
-      return errorData.error;
-    }
-  } catch {
-    // If parsing error body fails, use default message
-  }
-  return `Failed to load results (${status} ${statusText})`;
-}
-
-/**
- * Parse JSONL formatted results.
- */
-export function parseJsonlResults(text: string): JsonlParseResult {
-  const lines = text.split("\n").filter((line) => line.trim());
-
-  const parsedItems: unknown[] = [];
-  for (const line of lines) {
-    try {
-      const parsed = JSON.parse(line);
-      parsedItems.push(parsed);
-    } catch {
-      // Skip malformed JSON lines
-    }
-  }
-
-  if (parsedItems.length === 0 && lines.length > 0) {
-    return {
-      error: "No valid results found. Results file may be corrupted.",
-      raw: text,
-    };
-  }
-
-  return { data: parsedItems, raw: text };
-}
-
-/**
- * Load raw saved results for a job from the API.
- */
 export async function loadResults(
   jobId: string,
-  format: string = "jsonl",
-  page: number = 1,
-  resultsPerPage: number = 100,
+  format: string,
+  page?: number,
+  perPage?: number,
 ): Promise<ResultsResponse> {
   try {
-    const offset = (page - 1) * resultsPerPage;
-    const response = await fetch(
-      buildResultsUrl(jobId, format, resultsPerPage, offset),
-    );
+    const url =
+      format === "jsonl" && page && perPage
+        ? buildResultsUrl(jobId, format, perPage, (page - 1) * perPage)
+        : buildResultsUrl(jobId, format);
+
+    const response = await fetch(buildApiUrl(url));
 
     if (!response.ok) {
       const errorMessage = await parseErrorResponse(
@@ -200,57 +161,61 @@ export async function exportResults(
     throw new Error(errorMessage);
   }
 
-  const contentType =
-    response.headers.get("Content-Type") ?? "application/octet-stream";
-  const requestedFormat = request.format || "jsonl";
-  const filename = parseExportFilename(
-    response.headers.get("Content-Disposition"),
-    `${jobId}.${requestedFormat}`,
-  );
-  const isBinary = contentType.includes(
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  );
-
-  if (isBinary) {
-    const buffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return {
-      content: btoa(binary),
-      filename,
-      contentType,
-      isBinary: true,
-    };
+  const payload = (await response.json()) as ExportOutcomeResponse;
+  const outcome = payload.export;
+  if (!outcome) {
+    throw new Error("Export response did not include an export outcome.");
   }
 
+  const artifact = outcome.artifact;
   return {
-    content: await response.text(),
-    filename,
-    contentType,
-    isBinary: false,
+    outcome,
+    content: artifact?.content ?? "",
+    filename: artifact?.filename ?? `${jobId}.${request.format || "jsonl"}`,
+    contentType: artifact?.contentType ?? "application/octet-stream",
+    isBinary: artifact?.encoding === "base64",
   };
 }
 
-function parseExportFilename(
-  contentDisposition: string | null,
-  fallback: string,
-): string {
-  if (!contentDisposition) {
-    return fallback;
+function parseJsonlResults(text: string): JsonlParseResult {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { data: [], raw: text };
   }
 
-  const starMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (starMatch?.[1]) {
-    try {
-      return decodeURIComponent(starMatch[1]);
-    } catch {
-      return starMatch[1];
+  const lines = trimmed.split(/\r?\n/).filter(Boolean);
+  try {
+    const data = lines.map((line) => JSON.parse(line));
+    return {
+      data,
+      raw: JSON.stringify(data, null, 2),
+    };
+  } catch {
+    return {
+      error: "Failed to parse JSONL results response.",
+      raw: text,
+    };
+  }
+}
+
+async function parseErrorResponse(
+  response: Response,
+  status: number,
+  statusText: string,
+): Promise<string> {
+  const text = await response.text();
+  if (!text) {
+    return `${status} ${statusText}`;
+  }
+
+  try {
+    const parsed = JSON.parse(text) as { error?: string };
+    if (parsed.error) {
+      return parsed.error;
     }
+  } catch {
+    // Fall through and return the raw text.
   }
 
-  const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-  return match?.[1] || fallback;
+  return text;
 }

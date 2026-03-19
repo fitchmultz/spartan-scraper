@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/api"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
@@ -298,6 +299,7 @@ func getExportScheduleHistory(cfg config.Config, args []string) int {
 	fs := flag.NewFlagSet("export-schedule history", flag.ExitOnError)
 	id := fs.String("id", "", "Schedule ID (required)")
 	limit := fs.Int("limit", 50, "Maximum number of records to show")
+	jsonOut := fs.Bool("json", false, "Emit JSON export outcome history instead of the guided text view")
 	_ = fs.Parse(args)
 
 	if *id == "" {
@@ -312,27 +314,7 @@ func getExportScheduleHistory(cfg config.Config, args []string) int {
 		return 1
 	}
 
-	if len(records) == 0 {
-		fmt.Println("No export history found for this schedule.")
-		return 0
-	}
-
-	fmt.Printf("Export history (showing %d of %d):\n", len(records), total)
-	fmt.Printf("%-36s %-36s %-10s %-15s %-20s\n", "RECORD ID", "JOB ID", "STATUS", "DESTINATION", "EXPORTED AT")
-	fmt.Println(strings.Repeat("-", 125))
-	for _, r := range records {
-		fmt.Printf("%-36s %-36s %-10s %-15s %-20s\n",
-			r.ID,
-			truncate(r.JobID, 36),
-			r.Status,
-			r.Destination,
-			r.ExportedAt.Format(time.RFC3339))
-		if r.ErrorMessage != "" {
-			fmt.Printf("  Error: %s\n", truncate(r.ErrorMessage, 100))
-		}
-	}
-
-	return 0
+	return printOutcomeList(api.BuildExportOutcomeListResponse(records, total, *limit, 0), fmt.Sprintf("schedule %s", *id), *jsonOut)
 }
 
 func printExportScheduleHelp() {

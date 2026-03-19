@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { ExportShapeConfig } from "../api";
+import type { ExportInspection, ExportShapeConfig } from "../api";
 import {
   type CrawlDiffResult,
   diffResults,
@@ -312,6 +312,83 @@ function GuidedExportDrawer({
   );
 }
 
+function ExportOutcomeSummary({ outcome }: { outcome: ExportInspection }) {
+  return (
+    <div
+      className="panel"
+      style={{
+        marginBottom: 16,
+        border: "1px solid var(--stroke)",
+        background: "rgba(255, 255, 255, 0.02)",
+      }}
+    >
+      <div className="results-viewer__section-label">Latest export outcome</div>
+      <div
+        className="row"
+        style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+      >
+        <div>
+          <h4 style={{ margin: 0 }}>{outcome.title}</h4>
+          <p className="form-help" style={{ marginTop: 8 }}>
+            {outcome.message}
+          </p>
+        </div>
+        <strong>{outcome.status}</strong>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          marginTop: 16,
+        }}
+      >
+        <div>
+          <strong>Export ID</strong>
+          <div style={{ fontFamily: "monospace", fontSize: 12 }}>
+            {outcome.id}
+          </div>
+        </div>
+        <div>
+          <strong>Requested format</strong>
+          <div>{outcome.request.format}</div>
+        </div>
+        <div>
+          <strong>Destination</strong>
+          <div style={{ wordBreak: "break-word" }}>
+            {outcome.destination || "-"}
+          </div>
+        </div>
+        <div>
+          <strong>Artifact</strong>
+          <div>{outcome.artifact?.filename || "Not available"}</div>
+        </div>
+      </div>
+
+      {outcome.failure ? (
+        <div className="transform-error" style={{ marginTop: 16 }}>
+          {outcome.failure.category}: {outcome.failure.summary}
+        </div>
+      ) : null}
+
+      {outcome.actions?.length ? (
+        <div style={{ marginTop: 16 }}>
+          <strong>Suggested next steps</strong>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+            {outcome.actions.map((action) => (
+              <li key={`${action.kind}-${action.label}-${action.value}`}>
+                <strong>{action.label}</strong>
+                {action.value ? ` — ${action.value}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ExplorerTreeControls({
   treeNodes,
   onExpandAll,
@@ -410,6 +487,8 @@ export function ResultsExplorer({
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [latestExportOutcome, setLatestExportOutcome] =
+    useState<ExportInspection | null>(null);
   const [shapeExportFormat, setShapeExportFormat] = useState<
     "md" | "csv" | "xlsx"
   >("md");
@@ -615,15 +694,19 @@ export function ResultsExplorer({
     }
 
     setExportError(null);
+    setLatestExportOutcome(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, { format });
-      downloadFile(
-        result.content,
-        result.filename,
-        result.contentType,
-        result.isBinary,
-      );
+      setLatestExportOutcome(result.outcome);
+      if (result.outcome.status === "succeeded" && result.content) {
+        downloadFile(
+          result.content,
+          result.filename,
+          result.contentType,
+          result.isBinary,
+        );
+      }
     } catch (err) {
       setExportError(
         getApiErrorMessage(err, "Failed to export the saved result."),
@@ -644,6 +727,7 @@ export function ResultsExplorer({
 
     setExportError(null);
     setShapeConfigError(null);
+    setLatestExportOutcome(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, {
@@ -653,12 +737,15 @@ export function ResultsExplorer({
           language,
         },
       });
-      downloadFile(
-        result.content,
-        result.filename,
-        result.contentType,
-        result.isBinary,
-      );
+      setLatestExportOutcome(result.outcome);
+      if (result.outcome.status === "succeeded" && result.content) {
+        downloadFile(
+          result.content,
+          result.filename,
+          result.contentType,
+          result.isBinary,
+        );
+      }
     } catch (err) {
       setExportError(
         getApiErrorMessage(err, "Failed to export the transformed result."),
@@ -689,18 +776,22 @@ export function ResultsExplorer({
 
     setShapeConfigError(null);
     setExportError(null);
+    setLatestExportOutcome(null);
     setIsExporting(true);
     try {
       const result = await exportResults(jobId, {
         format: shapeExportFormat,
         shape,
       });
-      downloadFile(
-        result.content,
-        result.filename,
-        result.contentType,
-        result.isBinary,
-      );
+      setLatestExportOutcome(result.outcome);
+      if (result.outcome.status === "succeeded" && result.content) {
+        downloadFile(
+          result.content,
+          result.filename,
+          result.contentType,
+          result.isBinary,
+        );
+      }
     } catch (err) {
       setShapeConfigError(
         getApiErrorMessage(err, "Failed to export the shaped result."),
@@ -821,6 +912,10 @@ export function ResultsExplorer({
                 setActiveTool("transform");
               }}
             />
+          ) : null}
+
+          {latestExportOutcome ? (
+            <ExportOutcomeSummary outcome={latestExportOutcome} />
           ) : null}
 
           <ResultsViewer

@@ -193,7 +193,8 @@ make install-bin
 
 # Export results
 ./bin/spartan export --job-id <id> --format md --out ./out/report.md
-./bin/spartan export --job-id <id> --schedule-id <export-schedule-id> --out ./out/projected.csv
+./bin/spartan export --job-id <id> --schedule-id <export-schedule-id>
+./bin/spartan export --inspect-id <export-id>
 
 # Schedules
 ./bin/spartan schedule add --kind scrape --interval 3600 --url https://example.com

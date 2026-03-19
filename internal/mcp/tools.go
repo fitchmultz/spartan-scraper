@@ -161,8 +161,18 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "job_export",
-			Description: "Export saved job results in jsonl, json, md, csv, or xlsx with optional shape or transform controls",
+			Description: "Run an export, persist an export outcome, and return guided inspection with inline artifact content when available",
 			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"format": "string", "shape": "object", "transform": "object"}),
+		},
+		{
+			Name:        "job_export_history",
+			Description: "List persisted export outcomes for a job with pagination metadata",
+			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"limit": "number", "offset": "number"}),
+		},
+		{
+			Name:        "export_outcome_get",
+			Description: "Get a single persisted export outcome by export id",
+			InputSchema: schema(map[string]string{"id": "string"}, nil),
 		},
 		{
 			Name:        "watch_list",
@@ -221,7 +231,7 @@ func (s *Server) toolsList() []tool {
 		},
 		{
 			Name:        "export_schedule_history",
-			Description: "Get export history for an automated export schedule",
+			Description: "Get guided export outcome history for an automated export schedule",
 			InputSchema: schema(map[string]string{"id": "string"}, map[string]string{"limit": "number", "offset": "number"}),
 		},
 		{

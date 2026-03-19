@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/submission"
 )
@@ -234,6 +235,52 @@ type CapabilityGuidance struct {
 	Title   string              `json:"title,omitempty"`
 	Message string              `json:"message,omitempty"`
 	Actions []RecommendedAction `json:"actions,omitempty"`
+}
+
+// ExportArtifact describes a rendered export artifact and optional inline content.
+type ExportArtifact struct {
+	Format      string `json:"format"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"contentType"`
+	RecordCount int    `json:"recordCount,omitempty"`
+	Size        int64  `json:"size,omitempty"`
+	Encoding    string `json:"encoding,omitempty"`
+	Content     string `json:"content,omitempty"`
+}
+
+// ExportFailureContext aliases the shared exporter failure context for transport-safe responses.
+type ExportFailureContext = exporter.FailureContext
+
+// ExportInspection represents a persisted, operator-facing export outcome.
+type ExportInspection struct {
+	ID          string                      `json:"id"`
+	ScheduleID  string                      `json:"scheduleId,omitempty"`
+	JobID       string                      `json:"jobId"`
+	Trigger     string                      `json:"trigger"`
+	Status      string                      `json:"status"`
+	Title       string                      `json:"title"`
+	Message     string                      `json:"message"`
+	Destination string                      `json:"destination,omitempty"`
+	ExportedAt  time.Time                   `json:"exportedAt"`
+	CompletedAt *time.Time                  `json:"completedAt,omitempty"`
+	RetryCount  int                         `json:"retryCount"`
+	Request     exporter.ResultExportConfig `json:"request"`
+	Artifact    *ExportArtifact             `json:"artifact,omitempty"`
+	Failure     *ExportFailureContext       `json:"failure,omitempty"`
+	Actions     []RecommendedAction         `json:"actions,omitempty"`
+}
+
+// ExportOutcomeResponse represents a single export outcome envelope.
+type ExportOutcomeResponse struct {
+	Export ExportInspection `json:"export"`
+}
+
+// ExportOutcomeListResponse represents a paginated export outcome collection.
+type ExportOutcomeListResponse struct {
+	Exports []ExportInspection `json:"exports"`
+	Total   int                `json:"total"`
+	Limit   int                `json:"limit"`
+	Offset  int                `json:"offset"`
 }
 
 // RetentionStatusResponse represents the retention system status.

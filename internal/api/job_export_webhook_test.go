@@ -2,10 +2,10 @@
 //
 // Purpose:
 //   - Prove direct exports use the same multipart webhook delivery contract as
-//     scheduled webhook exports.
+//     scheduled webhook exports while returning a guided outcome envelope.
 //
 // Responsibilities:
-//   - Verify rendered direct-export bytes are returned to the caller.
+//   - Verify rendered direct-export bytes are returned inline inside the outcome envelope.
 //   - Verify the same rendered bytes are sent to export_completed webhook
 //     receivers with stable metadata and without local filesystem paths.
 //
@@ -75,14 +75,18 @@ func TestHandleJobExportDispatchesMultipartExportWebhook(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Routes().ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
+	response := decodeExportOutcomeResponse(t, rr)
+	if response.Export.Status != "succeeded" {
+		t.Fatalf("expected succeeded export, got %#v", response.Export)
 	}
-	if ct := rr.Header().Get("Content-Type"); ct != "text/csv; charset=utf-8" {
-		t.Fatalf("expected csv content type, got %q", ct)
+	if response.Export.Artifact == nil {
+		t.Fatalf("expected export artifact, got %#v", response.Export)
 	}
-	if body := rr.Body.String(); body != "title\nExample Domain\n" {
-		t.Fatalf("unexpected direct export body: %q", body)
+	if response.Export.Artifact.ContentType != "text/csv; charset=utf-8" {
+		t.Fatalf("expected csv content type, got %#v", response.Export.Artifact)
+	}
+	if response.Export.Artifact.Content != "title\nExample Domain\n" {
+		t.Fatalf("unexpected direct export body: %q", response.Export.Artifact.Content)
 	}
 
 	select {
@@ -117,8 +121,8 @@ func TestHandleJobExportDispatchesMultipartExportWebhook(t *testing.T) {
 		if request.exportContentType != "text/csv; charset=utf-8" {
 			t.Fatalf("expected export part content type text/csv; charset=utf-8, got %q", request.exportContentType)
 		}
-		if string(request.exportBody) != rr.Body.String() {
-			t.Fatalf("expected webhook export body to match HTTP response: body=%q webhook=%q", rr.Body.String(), string(request.exportBody))
+		if string(request.exportBody) != response.Export.Artifact.Content {
+			t.Fatalf("expected webhook export body to match HTTP response: body=%q webhook=%q", response.Export.Artifact.Content, string(request.exportBody))
 		}
 		if request.payloadType != "export-multipart" {
 			t.Fatalf("expected export-multipart payload type header, got %q", request.payloadType)

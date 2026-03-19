@@ -32,6 +32,26 @@ spartan retention status
 - If the API server is already running, the CLI reads `/healthz` and the diagnostic endpoints directly.
 - If the API server is offline, the CLI falls back to local checks instead of hiding recovery guidance.
 
+## Export Outcome Inspection
+
+Direct exports and recurring export schedules now share one persisted outcome history.
+
+Canonical operator workflow:
+
+```bash
+spartan export --job-id <job-id> --format json
+spartan export --inspect-id <export-id>
+spartan export --history-job-id <job-id>
+spartan export-schedule history --id <schedule-id>
+```
+
+Cross-surface expectations:
+
+- `POST /v1/jobs/{id}/export` returns `{ export }` with inline artifact content and guided recovery actions.
+- `GET /v1/jobs/{id}/exports`, `GET /v1/exports/{id}`, and `GET /v1/export-schedules/{id}/history` all return the same outcome envelope shape.
+- `spartan mcp` exposes the same model through `job_export`, `job_export_history`, `export_outcome_get`, and `export_schedule_history`.
+- The Web UI now surfaces the same titles, messages, artifact metadata, failure context, and recommended next steps inside export history and direct-export flows.
+
 ## Setup Recovery
 
 If startup blocks on legacy or unsupported persisted state, Spartan now stays in setup mode and keeps diagnostics available.
