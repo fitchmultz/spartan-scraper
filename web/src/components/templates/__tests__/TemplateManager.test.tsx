@@ -187,6 +187,148 @@ describe("TemplateManager", () => {
     });
   });
 
+  it("saves a promotion-seeded template draft and previews the saved selectors", async () => {
+    vi.mocked(api.getTemplate).mockImplementation(async ({ path }) => ({
+      data:
+        path.name === "article-copy"
+          ? {
+              name: "article-copy",
+              is_built_in: false,
+              template: {
+                name: "article-copy",
+                selectors: [
+                  { name: "title", selector: "article h1", attr: "text" },
+                ],
+              },
+            }
+          : {
+              name: "article",
+              is_built_in: true,
+              template: {
+                name: "article",
+                selectors: [
+                  { name: "title", selector: "article h1", attr: "text" },
+                ],
+              },
+            },
+      error: undefined as never,
+      request: new Request(`http://127.0.0.1:8741/v1/templates/${path.name}`),
+      response: new Response(),
+    }));
+
+    vi.mocked(api.createTemplate).mockResolvedValue({
+      data: {
+        name: "article-copy",
+        is_built_in: false,
+        template: {
+          name: "article-copy",
+          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.testSelector).mockResolvedValue({
+      data: {
+        selector: "article h1",
+        matches: 1,
+        elements: [{ tag: "h1", text: "Promoted headline" }],
+      },
+      error: undefined as never,
+      request: new Request(
+        "http://127.0.0.1:8741/v1/template-preview/test-selector",
+      ),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["article"]}
+            onTemplatesChanged={onTemplatesChanged}
+            promotionSeed={{
+              kind: "template",
+              mode: "named-template",
+              source: {
+                jobId: "job-123",
+                jobKind: "scrape",
+                jobStatus: "succeeded",
+                label: "Source URL",
+                value: "https://example.com/article",
+              },
+              suggestedName: "article-copy",
+              previewUrl: "https://example.com/article",
+              templateName: "article",
+              carriedForward: [
+                "The saved extraction rules from template “article”.",
+              ],
+              remainingDecisions: [
+                "Review the duplicated template name before saving.",
+              ],
+              unsupportedCarryForward: [
+                "Runtime execution settings and auth do not become part of the duplicated template automatically.",
+              ],
+            }}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "article-copy",
+    );
+    expect(
+      screen.getByText(/template draft seeded from a verified job/i),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save template/i }));
+
+    await waitFor(() => {
+      expect(api.createTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            name: "article-copy",
+            selectors: [
+              expect.objectContaining({
+                name: "title",
+                selector: "article h1",
+              }),
+            ],
+          }),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(api.getTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ path: { name: "article-copy" } }),
+      );
+    });
+    expect(screen.getByLabelText(/preview target url/i)).toHaveValue(
+      "https://example.com/article",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /run preview/i }));
+
+    await waitFor(() => {
+      expect(api.testSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            url: "https://example.com/article",
+            selector: "article h1",
+          }),
+        }),
+      );
+    });
+
+    expect(await screen.findByText(/1 match/i)).toBeInTheDocument();
+    expect(screen.getByText(/promoted headline/i)).toBeInTheDocument();
+  });
+
   it("duplicates a built-in template into an editable draft instead of opening a modal", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {
