@@ -1,5 +1,13 @@
+/**
+ * Purpose: Verify SDK backend route fallback and tolerant response extraction behavior.
+ * Responsibilities: Assert tool-call selection, text fallback, multimodal handling, and strict failure cases.
+ * Scope: SDK backend tests only.
+ * Usage: Run with `pnpm --dir tools/pi-bridge test`.
+ * Invariants/Assumptions: `validation.ts` remains strict, matching tool calls beat text fallback, and empty or malformed assistant content still fails.
+ */
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import {
   SDKBackend,
@@ -46,9 +54,8 @@ function createFakeModelRegistry(options: {
   } as unknown as ModelRegistry;
 }
 
-function createToolResponse(options: {
-  toolName: string;
-  arguments: Record<string, unknown>;
+function createAssistantResponse(options: {
+  content: AssistantMessage["content"];
   provider: string;
   model: string;
   tokens?: number;
@@ -57,6 +64,21 @@ function createToolResponse(options: {
     provider: options.provider,
     model: options.model,
     usage: { totalTokens: options.tokens ?? 123 },
+    content: options.content,
+  };
+}
+
+function createToolResponse(options: {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  provider: string;
+  model: string;
+  tokens?: number;
+}) {
+  return createAssistantResponse({
+    provider: options.provider,
+    model: options.model,
+    tokens: options.tokens,
     content: [
       {
         type: "toolCall",
@@ -65,7 +87,35 @@ function createToolResponse(options: {
         arguments: options.arguments,
       },
     ],
-  };
+  });
+}
+
+function createExtractBackend(content: AssistantMessage["content"]) {
+  return new SDKBackend(
+    {
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": {
+            provider: "openai",
+            id: "gpt-5.4",
+            input: ["text", "image"],
+          },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async () =>
+        createAssistantResponse({
+          provider: "openai",
+          model: "gpt-5.4",
+          content,
+        })) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
 }
 
 test("ModelRegistry resolves preferred default pi model IDs", () => {
@@ -187,6 +237,142 @@ test("runWithFallback aggregates ordered route failures", async () => {
         { capability: CAPABILITY_EXTRACT_NATURAL },
       ),
     /all routes failed for capability extract\.natural_language after 2 attempts: openai\/gpt-5\.4: provider outage \| kimi-coding\/k2p5: rate limited/,
+  );
+});
+
+test("extract prefers the last valid matching tool call", async () => {
+  const backend = createExtractBackend([
+    {
+      type: "toolCall",
+      id: "call-1",
+      name: "submit_extraction",
+      arguments: {
+        fields: { title: "First attempt" },
+        confidence: 0.31,
+      },
+    },
+    {
+      type: "toolCall",
+      id: "call-2",
+      name: "submit_extraction",
+      arguments: {
+        fields: { title: "Corrected attempt" },
+        confidence: 0.93,
+      },
+    },
+  ]);
+
+  const result = await backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+    html: "<html><h1>Corrected attempt</h1></html>",
+    url: "https://example.com/corrected",
+    mode: "natural_language",
+    prompt: "Extract the title",
+  });
+
+  assert.deepEqual(result.fields.title.values, ["Corrected attempt"]);
+  assert.equal(result.confidence, 0.93);
+});
+
+test("extract skips malformed matching tool calls and uses the later schema-valid one", async () => {
+  const backend = createExtractBackend([
+    {
+      type: "toolCall",
+      id: "call-1",
+      name: "submit_extraction",
+      arguments: {
+        fields: { title: "Broken attempt" },
+        confidence: "not-a-number",
+      },
+    },
+    {
+      type: "toolCall",
+      id: "call-2",
+      name: "submit_extraction",
+      arguments: {
+        fields: { title: "Recovered attempt" },
+        confidence: 0.89,
+      },
+    },
+  ]);
+
+  const result = await backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+    html: "<html><h1>Recovered attempt</h1></html>",
+    url: "https://example.com/recovered",
+    mode: "natural_language",
+    prompt: "Extract the title",
+  });
+
+  assert.deepEqual(result.fields.title.values, ["Recovered attempt"]);
+  assert.equal(result.confidence, 0.89);
+});
+
+test("extract falls back to structured JSON returned in text blocks", async () => {
+  const backend = createExtractBackend([
+    {
+      type: "text",
+      text: "```json\n{\n  \"fields\": {\n    \"title\": \"JSON fallback\"\n  },",
+    },
+    {
+      type: "text",
+      text: "  \"confidence\": 0.87,\n  \"explanation\": \"Returned as plain JSON text.\"\n}\n```",
+    },
+  ]);
+
+  const result = await backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+    html: "<html><h1>JSON fallback</h1></html>",
+    url: "https://example.com/json-fallback",
+    mode: "natural_language",
+    prompt: "Extract the title",
+  });
+
+  assert.deepEqual(result.fields.title.values, ["JSON fallback"]);
+  assert.equal(result.confidence, 0.87);
+  assert.equal(result.explanation, "Returned as plain JSON text.");
+});
+
+test("extract prefers a matching tool call over text fallback when both are present", async () => {
+  const backend = createExtractBackend([
+    {
+      type: "text",
+      text: JSON.stringify({
+        fields: { title: "Text fallback result" },
+        confidence: 0.41,
+      }),
+    },
+    {
+      type: "toolCall",
+      id: "call-1",
+      name: "submit_extraction",
+      arguments: {
+        fields: { title: "Tool call result" },
+        confidence: 0.96,
+      },
+    },
+  ]);
+
+  const result = await backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+    html: "<html><h1>Tool call result</h1></html>",
+    url: "https://example.com/mixed",
+    mode: "natural_language",
+    prompt: "Extract the title",
+  });
+
+  assert.deepEqual(result.fields.title.values, ["Tool call result"]);
+  assert.equal(result.confidence, 0.96);
+});
+
+test("extract rejects completely empty assistant content", async () => {
+  const backend = createExtractBackend([]);
+
+  await assert.rejects(
+    () =>
+      backend.extract(CAPABILITY_EXTRACT_NATURAL, {
+        html: "<html></html>",
+        url: "https://example.com/empty",
+        mode: "natural_language",
+        prompt: "Extract the title",
+      }),
+    /model did not call submit_extraction/,
   );
 });
 

@@ -1,7 +1,15 @@
+/**
+ * Purpose: Execute SDK-backed pi-bridge capability calls against configured LLM routes.
+ * Responsibilities: Select routes, build prompts/tools, tolerate valid stochastic response shapes, and normalize validated results.
+ * Scope: SDK-backed bridge execution only.
+ * Usage: Instantiated by `main.ts` when bridge mode is `sdk`.
+ * Invariants/Assumptions: `validation.ts` remains the strict result boundary, matching tool calls beat text fallback, and text fallback only runs when no matching tool call exists.
+ */
 import {
   Type,
   complete,
   validateToolCall,
+  type AssistantMessage,
   type Tool,
   type ToolCall,
   type Context,
@@ -127,7 +135,7 @@ export class SDKBackend {
             userPrompt: buildExtractPrompt(payload),
             images: payload.images,
             systemPrompt:
-              "You extract structured data from HTML. Call the submit_extraction tool exactly once with concise, precise field values.",
+              "You extract structured data from HTML. Call the submit_extraction tool once with concise, precise field values.",
             tools: [tool],
           }),
           {
@@ -137,7 +145,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return normalizeExtractResult(args, {
           route_id: routeId,
@@ -167,7 +175,7 @@ export class SDKBackend {
             userPrompt: buildTemplatePrompt(payload),
             images: payload.images,
             systemPrompt:
-              "You generate extraction templates from HTML. Call the submit_template tool exactly once. Prefer robust CSS selectors and only use jsonld/regex when they add real value.",
+              "You generate extraction templates from HTML. Use the submit_template tool to submit your result. Prefer robust CSS selectors and only use jsonld/regex when they add real value.",
             tools: [tool],
           }),
           {
@@ -177,7 +185,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validateTemplateResult({
           ...(args as TemplateResult),
@@ -207,7 +215,7 @@ export class SDKBackend {
             userPrompt: buildRenderProfilePrompt(payload),
             images: payload.images,
             systemPrompt:
-              "You author Spartan render profile patches for difficult sites. Call the submit_render_profile tool exactly once. Prefer omission over speculative settings and only set fields that materially improve fetch behavior.",
+              "You author Spartan render profile patches for difficult sites. Use the submit_render_profile tool to submit your result. Prefer omission over speculative settings and only set fields that materially improve fetch behavior.",
             tools: [tool],
           }),
           {
@@ -217,7 +225,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validateRenderProfileResult({
           ...(args as RenderProfileResult),
@@ -247,7 +255,7 @@ export class SDKBackend {
             userPrompt: buildPipelineJsPrompt(payload),
             images: payload.images,
             systemPrompt:
-              "You author Spartan pipeline JS scripts for page automation. Call the submit_pipeline_js tool exactly once. Keep scripts focused, deterministic, and minimal; prefer wait selectors unless JavaScript is clearly necessary.",
+              "You author Spartan pipeline JS scripts for page automation. Use the submit_pipeline_js tool to submit your result. Keep scripts focused, deterministic, and minimal; prefer wait selectors unless JavaScript is clearly necessary.",
             tools: [tool],
           }),
           {
@@ -257,7 +265,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validatePipelineJsResult({
           ...(args as PipelineJsResult),
@@ -286,7 +294,7 @@ export class SDKBackend {
           this.buildContext({
             userPrompt: buildResearchRefinePrompt(payload),
             systemPrompt:
-              "You refine bounded Spartan research outputs. Use only the supplied research result. Do not invent sources, URLs, or evidence. Call the submit_research_refinement tool exactly once with a grounded rewrite that preserves uncertainty.",
+              "You refine bounded Spartan research outputs. Use only the supplied research result. Do not invent sources, URLs, or evidence. Use the submit_research_refinement tool to submit your result with a grounded rewrite that preserves uncertainty.",
             tools: [tool],
           }),
           {
@@ -296,7 +304,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validateResearchRefineResult({
           ...(args as ResearchRefineResult),
@@ -325,7 +333,7 @@ export class SDKBackend {
           this.buildContext({
             userPrompt: buildExportShapePrompt(payload),
             systemPrompt:
-              "You shape bounded Spartan export configurations. Use only the supplied field catalog and existing shape. Do not invent field keys. Call the submit_export_shape tool exactly once with a deterministic export shape configuration.",
+              "You shape bounded Spartan export configurations. Use only the supplied field catalog and existing shape. Do not invent field keys. Use the submit_export_shape tool to submit your result as a deterministic export shape configuration.",
             tools: [tool],
           }),
           {
@@ -335,7 +343,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validateExportShapeResult({
           ...(args as ExportShapeResult),
@@ -364,7 +372,7 @@ export class SDKBackend {
           this.buildContext({
             userPrompt: buildTransformPrompt(payload),
             systemPrompt:
-              "You author bounded Spartan result transformations. Use only the supplied sample records, field paths, and optional current transform. Do not invent fields outside the provided samples. Call the submit_transform tool exactly once with a deterministic JMESPath or JSONata transform.",
+              "You author bounded Spartan result transformations. Use only the supplied sample records, field paths, and optional current transform. Do not invent fields outside the provided samples. Use the submit_transform tool to submit your result as a deterministic JMESPath or JSONata transform.",
             tools: [tool],
           }),
           {
@@ -374,7 +382,7 @@ export class SDKBackend {
           },
         );
 
-        const call = getRequiredToolCall(response.content, tool.name);
+        const call = getLastValidToolCall(response.content, tool);
         const args = validateToolCall([tool], call);
         return validateTransformResult({
           ...(args as TransformResult),
@@ -687,24 +695,128 @@ export function modelSupportsImages(model: { input: string[] }): boolean {
   return model.input.includes("image");
 }
 
+type AssistantContent = AssistantMessage["content"];
+
 const WORD_BOUNDARY_THRESHOLD = 0.8;
 
-function getRequiredToolCall(
-  content: Array<{ type: string; id?: string; name?: string; arguments?: Record<string, unknown> }>,
-  toolName: string,
-): ToolCall {
-  const toolCall = content.find(
+function getLastValidToolCall(content: AssistantContent, tool: Tool): ToolCall {
+  const matchingToolCalls = content.filter(
     (block): block is ToolCall =>
       block.type === "toolCall" &&
       typeof block.id === "string" &&
       typeof block.name === "string" &&
+      block.name === tool.name &&
       !!block.arguments &&
-      block.name === toolName,
+      typeof block.arguments === "object" &&
+      !Array.isArray(block.arguments),
   );
-  if (!toolCall) {
-    throw new Error(`model did not call ${toolName}`);
+
+  if (matchingToolCalls.length > 0) {
+    for (let index = matchingToolCalls.length - 1; index >= 0; index -= 1) {
+      const candidate = matchingToolCalls[index];
+      try {
+        validateToolCall([tool], candidate);
+        return candidate;
+      } catch {
+        // Models can self-correct with a later tool call; keep searching backwards.
+      }
+    }
+
+    return matchingToolCalls[matchingToolCalls.length - 1];
   }
-  return toolCall;
+
+  const fallbackToolCall = getStructuredResponseFallback(content, tool);
+  if (fallbackToolCall) {
+    return fallbackToolCall;
+  }
+
+  throw new Error(`model did not call ${tool.name}`);
+}
+
+function getStructuredResponseFallback(
+  content: AssistantContent,
+  tool: Tool,
+): ToolCall | null {
+  const textBlocks = content.filter(
+    (block): block is TextContent =>
+      block.type === "text" &&
+      typeof block.text === "string" &&
+      block.text.trim().length > 0,
+  );
+  if (textBlocks.length === 0) {
+    return null;
+  }
+
+  const candidates = textBlocks
+    .slice()
+    .reverse()
+    .map((block) => block.text);
+  if (textBlocks.length > 1) {
+    candidates.push(textBlocks.map((block) => block.text).join("\n"));
+  }
+
+  for (const candidate of candidates) {
+    const parsed = tryParseStructuredJson(candidate);
+    if (!parsed) {
+      continue;
+    }
+
+    const syntheticToolCall: ToolCall = {
+      type: "toolCall",
+      id: `text-fallback-${tool.name}`,
+      name: tool.name,
+      arguments: parsed,
+    };
+
+    try {
+      validateToolCall([tool], syntheticToolCall);
+      return syntheticToolCall;
+    } catch {
+      // Ignore JSON blobs that do not satisfy the tool schema.
+    }
+  }
+
+  return null;
+}
+
+function tryParseStructuredJson(text: string): Record<string, unknown> | null {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const candidates = [
+    trimmed,
+    stripMarkdownCodeFence(trimmed),
+    extractJSONObject(stripMarkdownCodeFence(trimmed)),
+  ].filter((candidate): candidate is string => Boolean(candidate?.trim()));
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Keep trying alternate structured text shapes.
+    }
+  }
+
+  return null;
+}
+
+function stripMarkdownCodeFence(text: string): string {
+  const match = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match?.[1] ?? text;
+}
+
+function extractJSONObject(text: string): string | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+  return text.slice(start, end + 1);
 }
 
 function buildExtractPrompt(payload: ExtractPayload): string {

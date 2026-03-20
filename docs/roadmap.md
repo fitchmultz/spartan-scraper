@@ -16,24 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Bridge Output-Tolerance Hardening
-   - Keep strict schema validation at the deterministic handoff boundary, but stop requiring one exact stochastic response path when multiple equivalent paths can yield the same valid payload.
-   - Change bridge result extraction to prefer the last valid matching tool call rather than assuming the first matching call is canonical.
-   - Where the underlying SDK/tooling supports it, add a structured-response fallback path for cases where the model returns valid structured content without the one expected tool call.
-   - Preserve strong rejection for genuinely unsafe or unusable outputs:
-     - wrong tool name
-     - malformed argument object
-     - schema-invalid payload
-     - references to unsupported fields or categories
-   - Revisit bridge prompts so they remain outcome-oriented and tool-preferred without overfitting to “exactly once” wording unless the SDK itself truly requires it.
-   - Expand tests to cover:
-     - corrected second tool calls
-     - equivalent structured outputs from different models/providers
-     - fallback behavior when a preferred tool-call path is absent
-     - continued hard failure on malformed payloads
-
-## Later / Deprioritized
-
 1. AI Template Validation Flexibility
    - Align bridge-side template validation with the real template model used by Spartan: valid generated templates may be selector-driven, JSON-LD-driven, regex-driven, or mixed.
    - Remove the selector-only assumption from bridge validation while preserving strict checks that templates still have a name and at least one real extraction rule.
@@ -45,7 +27,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
      - still-invalid empty templates
    - Ensure error messages explain the real invariant being enforced rather than implying selectors are the only valid extraction strategy.
 
-2. Optional Goal Defaults for AI Automation Generators
+1. Optional Goal Defaults for AI Automation Generators
    - Let render-profile and pipeline-JS generation bootstrap from page context when explicit operator instructions are omitted, instead of hard-failing before the model can attempt a reasonable starter configuration.
    - Preserve explicit operator guidance as the preferred path, but provide a sensible default objective derived from the page URL, fetched HTML, JS-heaviness signals, and any attached screenshots.
    - Keep deterministic validation strict after generation:
