@@ -1,0 +1,51 @@
+{
+  "exports": [
+    {
+      "id": "a8fd3821-3a11-48e6-9491-3c009ff8b02b",
+      "scheduleId": "38c6ae77-155d-4180-b639-7af6aaed2f19",
+      "jobId": "02aa3856-96dd-4ccf-b285-4332ab44552a",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-automation-state-audit.BqJA9E/exports/scrape/02aa3856-96dd-4ccf-b285-4332ab44552a.json.",
+      "destination": "/tmp/spartan-automation-state-audit.BqJA9E/exports/scrape/02aa3856-96dd-4ccf-b285-4332ab44552a.json",
+      "exportedAt": "2026-03-20T13:43:56.148438-06:00",
+      "completedAt": "2026-03-20T13:43:56.149448-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "02aa3856-96dd-4ccf-b285-4332ab44552a.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 867
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id a8fd3821-3a11-48e6-9491-3c009ff8b02b"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/02aa3856-96dd-4ccf-b285-4332ab44552a"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation"
+        }
+      ]
+    }
+  ],
+  "total": 1,
+  "limit": 10,
+  "offset": 0
+}

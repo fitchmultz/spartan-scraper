@@ -258,6 +258,10 @@ export function WatchManager({
     [historyRecords, historyWatch, loadHistoryDetail],
   );
 
+  const hasWatches = watches.length > 0;
+  const showLoadingState = loading && !hasWatches;
+  const showEmptyState = !loading && !hasWatches;
+
   return (
     <div className="panel">
       <div
@@ -297,7 +301,15 @@ export function WatchManager({
         />
       ) : null}
 
-      {watches.length === 0 && !loading ? (
+      {showLoadingState ? (
+        <div role="status" aria-live="polite">
+          <ActionEmptyState
+            eyebrow="Automation"
+            title="Loading watches"
+            description="Fetching saved watch configurations for this workspace."
+          />
+        </div>
+      ) : showEmptyState ? (
         <ActionEmptyState
           eyebrow="Automation"
           title="No watches configured yet"

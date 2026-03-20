@@ -44,7 +44,7 @@ export function WatchContainer({
 }: WatchContainerProps) {
   const toast = useToast();
   const [watches, setWatches] = useState<Watch[]>([]);
-  const [watchesLoading, setWatchesLoading] = useState(false);
+  const [watchesLoading, setWatchesLoading] = useState(true);
 
   const refreshWatches = useCallback(async () => {
     setWatchesLoading(true);

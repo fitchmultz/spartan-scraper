@@ -1,0 +1,23 @@
+{
+  "watches": [
+    {
+      "id": "91071252-579f-4332-a7e2-b3582238365b",
+      "url": "https://example.com",
+      "intervalSeconds": 3600,
+      "enabled": true,
+      "createdAt": "2026-03-20T13:43:55.811396-06:00",
+      "lastCheckedAt": "2026-03-20T13:43:56.040706-06:00",
+      "lastChangedAt": "0001-01-01T00:00:00Z",
+      "changeCount": 0,
+      "diffFormat": "unified",
+      "notifyOnChange": false,
+      "headless": false,
+      "usePlaywright": false,
+      "status": "active",
+      "visualDiffThreshold": 0.1
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
+}

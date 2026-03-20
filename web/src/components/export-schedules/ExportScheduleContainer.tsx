@@ -45,7 +45,7 @@ export function ExportScheduleContainer({
 }: ExportScheduleContainerProps) {
   const toast = useToast();
   const [schedules, setSchedules] = useState<ExportSchedule[]>([]);
-  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [schedulesLoading, setSchedulesLoading] = useState(true);
 
   const refreshSchedules = useCallback(async () => {
     setSchedulesLoading(true);

@@ -128,6 +128,45 @@ function createProps(
 }
 
 describe("WatchManager", () => {
+  it("shows a guided loading state when watches are still loading for the first time", () => {
+    render(<WatchManager {...createProps({ watches: [], loading: true })} />);
+
+    expect(screen.getByText("Loading watches")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Fetching saved watch configurations for this workspace.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No watches configured yet"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+  });
+
+  it("shows the guided empty state when no watches have been configured yet", () => {
+    render(<WatchManager {...createProps({ watches: [], loading: false })} />);
+
+    expect(screen.getByText("No watches configured yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Add a watch to monitor a page for content changes and inspect every saved check from the same workspace.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add watch" })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(2);
+    expect(screen.queryByText("Loading watches")).not.toBeInTheDocument();
+  });
+
+  it("keeps the table visible while refreshing when watch rows already exist", () => {
+    render(<WatchManager {...createProps({ loading: true })} />);
+
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByText("https://example.com/pricing")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+    expect(screen.queryByText("Loading watches")).not.toBeInTheDocument();
+  });
+
   it("opens a promotion-seeded watch draft with source context", async () => {
     render(
       <WatchManager

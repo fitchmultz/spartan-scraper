@@ -1,0 +1,47 @@
+{
+  "job": {
+    "id": "02aa3856-96dd-4ccf-b285-4332ab44552a",
+    "kind": "scrape",
+    "status": "succeeded",
+    "createdAt": "2026-03-20T13:43:56.04496-06:00",
+    "updatedAt": "2026-03-20T13:43:56.147742-06:00",
+    "startedAt": "2026-03-20T13:43:56.046164-06:00",
+    "finishedAt": "2026-03-20T13:43:56.147742-06:00",
+    "specVersion": 1,
+    "spec": {
+      "execution": {
+        "auth": "[REDACTED]",
+        "extract": {
+          "inline": {
+            "name": "automation-state-audit-template",
+            "normalize": {
+              "titleField": "heading"
+            },
+            "selectors": [
+              {
+                "name": "heading",
+                "selector": "h1",
+                "trim": true
+              }
+            ]
+          }
+        },
+        "headless": false,
+        "pipeline": {},
+        "playwright": false,
+        "requestId": "56bf83ea-5b8d-4e71-968f-7a9af75133bc",
+        "timeoutSeconds": 30
+      },
+      "method": "GET",
+      "url": "https://example.com",
+      "version": 1
+    },
+    "error": "",
+    "dependencyStatus": "ready",
+    "run": {
+      "waitMs": 1,
+      "runMs": 101,
+      "totalMs": 102
+    }
+  }
+}

@@ -183,6 +183,10 @@ export function ExportScheduleManager({
     setHistoryLoadingId(null);
   }, []);
 
+  const hasSchedules = schedules.length > 0;
+  const showLoadingState = loading && !hasSchedules;
+  const showEmptyState = !loading && !hasSchedules;
+
   return (
     <div className="panel">
       <div
@@ -209,11 +213,15 @@ export function ExportScheduleManager({
         </div>
       </div>
 
-      <p style={{ color: "var(--muted)", marginBottom: 16, fontSize: 14 }}>
-        Automatically export job results when future matching jobs complete.
-      </p>
-
-      {schedules.length === 0 && !loading ? (
+      {showLoadingState ? (
+        <div role="status" aria-live="polite">
+          <ActionEmptyState
+            eyebrow="Automation"
+            title="Loading export schedules"
+            description="Fetching recurring export configurations for this workspace."
+          />
+        </div>
+      ) : showEmptyState ? (
         <ActionEmptyState
           eyebrow="Automation"
           title="No export schedules yet"

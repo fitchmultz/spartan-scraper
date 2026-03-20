@@ -16,8 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Automation Workspace State Audit — sweep watches and exports for remaining empty, loading, zero-state, and notice-copy edge cases so the automation routes stay trustworthy after the promotion cutover.
-2. Automation Workspace Deterministic Regression — codify the post-promotion save-and-inspect path so template preview, watch inspection, and export history stay covered after the acceptance dogfood fixes.
+1. Automation Workspace Deterministic Regression — codify the post-promotion save-and-inspect path so template preview, watch inspection, export history, and the audited loading/empty state branches stay covered after the acceptance dogfood fixes.
+2. Populated Automation Workspace Acceptance Dogfood — validate watches and exports with real saved rows, manual history entry points, and persisted history modals under authoritative data without relying on the artificial delay harness.
 
 ## Later / Deprioritized
 

@@ -120,6 +120,61 @@ function createManagerProps(
 }
 
 describe("ExportScheduleManager", () => {
+  it("shows a guided loading state when schedules are still loading for the first time", () => {
+    render(
+      <ExportScheduleManager
+        {...createManagerProps({ schedules: [], loading: true })}
+      />,
+    );
+
+    expect(screen.getByText("Loading export schedules")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Fetching recurring export configurations for this workspace.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No export schedules yet"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+  });
+
+  it("shows the guided empty state without redundant copy when no schedules exist", () => {
+    render(
+      <ExportScheduleManager
+        {...createManagerProps({ schedules: [], loading: false })}
+      />,
+    );
+
+    expect(screen.getByText("No export schedules yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Create a recurring export when you want completed jobs to automatically fan out into files or downstream systems.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add schedule" })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(2);
+    expect(
+      screen.queryByText(
+        "Automatically export job results when future matching jobs complete.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the table visible while refreshing when schedules already exist", () => {
+    render(
+      <ExportScheduleManager {...createManagerProps({ loading: true })} />,
+    );
+
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByText("Nightly Export")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+    expect(
+      screen.queryByText("Loading export schedules"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens a promotion-seeded export schedule draft with source context", async () => {
     render(
       <ExportScheduleManager

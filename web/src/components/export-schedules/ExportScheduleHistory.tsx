@@ -26,6 +26,7 @@ import { formatDateTime } from "../../lib/formatting";
 import { formatFileSize } from "../../lib/export-schedule-utils";
 import { getExportHistoryStatusTone } from "../../lib/status-display";
 import { StatusPill } from "../StatusPill";
+import { ActionEmptyState } from "../ActionEmptyState";
 
 function formatFailureCategory(category?: string) {
   if (!category) {
@@ -131,19 +132,20 @@ export function ExportScheduleHistory({
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>Loading...</div>
+          <div role="status" aria-live="polite" style={{ padding: 24 }}>
+            <ActionEmptyState
+              eyebrow="History"
+              title="Loading export history"
+              description="Fetching recent export outcomes for this schedule."
+            />
+          </div>
         ) : records.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "40px 20px",
-              color: "var(--muted)",
-            }}
-          >
-            <p>No export history found.</p>
-            <p>
-              History will appear when jobs matching this schedule are exported.
-            </p>
+          <div style={{ padding: 24 }}>
+            <ActionEmptyState
+              eyebrow="History"
+              title="No export history found"
+              description="History will appear when jobs matching this schedule are exported."
+            />
           </div>
         ) : (
           <>

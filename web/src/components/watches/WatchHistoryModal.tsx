@@ -16,6 +16,7 @@ import {
 import { getWatchCheckStatusTone } from "../../lib/status-display";
 import { CapabilityActionList } from "../CapabilityActionList";
 import { StatusPill } from "../StatusPill";
+import { ActionEmptyState } from "../ActionEmptyState";
 
 function WatchArtifactGrid({ artifacts }: { artifacts: WatchArtifact[] }) {
   if (!artifacts?.length) {
@@ -146,17 +147,20 @@ export function WatchHistoryModal({
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>Loading...</div>
+          <div role="status" aria-live="polite" style={{ padding: 24 }}>
+            <ActionEmptyState
+              eyebrow="History"
+              title="Loading watch history"
+              description="Fetching saved checks and inspection summaries for this watch."
+            />
+          </div>
         ) : records.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "40px 20px",
-              color: "var(--muted)",
-            }}
-          >
-            <p>No watch history found yet.</p>
-            <p>Run a manual check or wait for the scheduler to record one.</p>
+          <div style={{ padding: 24 }}>
+            <ActionEmptyState
+              eyebrow="History"
+              title="No watch history found yet"
+              description="Run a manual check or wait for the scheduler to record one."
+            />
           </div>
         ) : (
           <>
@@ -265,8 +269,12 @@ export function WatchHistoryModal({
                 }}
               >
                 {selectedCheckLoading ? (
-                  <div style={{ textAlign: "center", padding: 40 }}>
-                    Loading selected check...
+                  <div role="status" aria-live="polite" style={{ padding: 24 }}>
+                    <ActionEmptyState
+                      eyebrow="History"
+                      title="Loading check details"
+                      description="Fetching saved artifacts, diff output, and recommended next steps for this run."
+                    />
                   </div>
                 ) : selectedCheck ? (
                   <>

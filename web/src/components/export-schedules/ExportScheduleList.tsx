@@ -2,12 +2,12 @@
  * ExportScheduleList Component
  *
  * Renders the table of export schedules with headers and individual rows.
- * Handles empty state and delegates row rendering to ExportScheduleListItem.
+ * Sorts schedules newest-first and delegates row rendering to ExportScheduleListItem.
  *
  * This component does NOT handle:
  * - API calls for export schedule operations
  * - Modal dialogs (those are handled by parent)
- * - Sorting logic (schedules should be pre-sorted by parent)
+ * - Empty or loading states (those are handled by ExportScheduleManager)
  *
  * @module components/export-schedules/ExportScheduleList
  */

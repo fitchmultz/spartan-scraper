@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "id": "5a647a46-42c0-4ac0-85e8-9c3184825d12",
+      "watchId": "91071252-579f-4332-a7e2-b3582238365b",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T13:43:55.813703-06:00",
+      "status": "baseline",
+      "changed": false,
+      "baseline": true,
+      "title": "Baseline recorded",
+      "message": "The first successful check saved a comparison baseline for this watch. Future checks will surface deltas from this snapshot.",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 91071252-579f-4332-a7e2-b3582238365b --check-id 5a647a46-42c0-4ac0-85e8-9c3184825d12"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 91071252-579f-4332-a7e2-b3582238365b"
+        }
+      ]
+    }
+  ],
+  "total": 1,
+  "limit": 10,
+  "offset": 0
+}

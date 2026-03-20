@@ -2,12 +2,12 @@
  * WatchList Component
  *
  * Renders the table of watches with headers and individual watch rows.
- * Handles empty state and delegates row rendering to WatchListItem.
+ * Sorts watches newest-first and delegates row rendering to WatchListItem.
  *
  * This component does NOT handle:
  * - API calls for watch operations
  * - Modal dialogs (those are handled by parent)
- * - Sorting logic (watches should be pre-sorted by parent)
+ * - Empty or loading states (those are handled by WatchManager)
  *
  * @module components/watches/WatchList
  */
