@@ -494,6 +494,13 @@ describe("FreshStartOperatorFlow", () => {
       ).not.toBeInTheDocument();
     });
 
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem("spartan-onboarding") ?? "null")
+          ?.hasDismissedFirstRunHint,
+      ).toBe(true);
+    });
+
     rendered.unmount();
 
     appDataState.jobsTotal = 0;

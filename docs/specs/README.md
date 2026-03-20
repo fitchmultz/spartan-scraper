@@ -5,10 +5,11 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 ## Audit
 
 - [Web UI/UX Audit](web-ui-ux-audit.md) — findings from code inspection plus live app walkthroughs and screenshot-based review.
+- [Verified Job Promotion Contract Audit](job-to-automation-promotion-contract-audit.md) — confirmed what the current backend and web contracts can already reuse from a completed job, where the redaction boundary must stay intact, and which destination semantics need explicit handling in the cutover.
 
 ## Next Up
 
-- [Verified Job Promotion Flow](job-to-automation-promotion.md) — let operators turn a completed, trusted job into a reusable template, watch, or export schedule without re-entering known-good configuration.
+- [Verified Job Promotion Flow](job-to-automation-promotion.md) — implement the audited cutover so operators can turn a completed, trusted job into a reusable template, watch, or export schedule without re-entering known-good configuration.
 - [Promotion Flow Deterministic Regression Coverage](promotion-flow-deterministic-regression.md) — define system-first regression coverage and targeted browser proof for the promotion cutover.
 
 ## Recently Completed

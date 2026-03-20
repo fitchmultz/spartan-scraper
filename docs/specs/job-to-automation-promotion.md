@@ -30,7 +30,9 @@ This keeps the route model intact while removing the manual re-entry tax that cu
   - `/automation/watches` for watch creation and maintenance
   - `/automation/exports` for export schedule creation and maintenance
 - The promotion flow should navigate into those destination workspaces with a seeded draft rather than silently creating an artifact without review.
-- Prefill should draw first from the original operator-facing job request, then from destination-relevant outcome context when available.
+- Prefill should draw first from safely recoverable operator-facing job data, then from destination-relevant outcome context when available. Redacted secrets, paths, and unsupported destination fields should remain explicit operator decisions rather than hidden defaults.
+- Watch promotion in the first cut should be limited to source jobs that can meaningfully seed a single-target monitoring flow, with scrape-job sources as the default supported path.
+- Export schedule promotion must be framed as automated export of future matching completed jobs, not as rerunning the source job on a cadence.
 - Missing destination-specific decisions should stay visible and explicit. The system should not hide uncertainty behind silent defaults or a fully blank form.
 - Before implementation, product and API work should confirm what source-job-based draft or cloning support already exists and only add new contracts where necessary to preserve a clean promotion experience.
 
@@ -67,8 +69,8 @@ The promotion interaction itself should stay in-context to the job route. It sho
 The chooser should present three destination options with plain-language guidance:
 
 - **Save as Template** — best when the operator wants to preserve a successful extraction or request recipe for reuse and adaptation.
-- **Create Watch** — best when the operator wants Spartan to monitor the target over time for change.
-- **Create Export Schedule** — best when the operator wants to rerun and deliver results on a recurring cadence.
+- **Create Watch** — best when the operator wants Spartan to monitor a single verified target over time for change.
+- **Create Export Schedule** — best when the operator wants future matching completed jobs to export automatically without repeating manual export setup.
 
 Each option should explain two things clearly:
 
@@ -98,9 +100,9 @@ Template creation should carry forward the parts of the source job that define r
 That can include:
 
 - the source target or representative input
-- extraction instructions, rules, or template-relevant configuration
-- runtime, auth, and render context that materially affects extraction repeatability
-- source-job context that helps preview and debugging workflows stay grounded in a real successful run
+- extraction instructions, rules, or template-relevant configuration already present as reusable template structure
+- non-secret preview context that helps the template workspace stay grounded in a real successful run
+- source-job context that helps preview and debugging workflows stay anchored to the successful job without silently turning runtime-only settings into template payload
 
 The destination should suggest a sensible name and metadata based on the source job, but still require operator review before save.
 
@@ -108,19 +110,21 @@ One-off run artifacts or transient execution details should not be silently bake
 
 #### Watch promotion
 
-Watch creation should carry forward the target, request shape, runtime context, auth context, and extraction context that define what the operator wants to monitor.
+Watch creation should carry forward the parts of the source job that actually map to the current watch contract: the target URL, browser/runtime choices such as headless or Playwright when relevant, and any screenshot-related settings that help monitor the same target.
 
 The product should also make the relationship to the source job obvious so the operator understands what known-good baseline they are starting from.
 
-Watch-specific decisions should remain explicit. Promotion from a completed job should not pretend the source job can fully answer questions like monitoring cadence, notification behavior, or change sensitivity if those decisions were never part of the original manual run.
+The current watch contract is a single-target monitoring configuration, not a full reusable job clone. It does not currently carry general auth context, extraction templates, or broader pipeline configuration. Promotion from a completed job should therefore stay explicit about what was preserved, what still needs operator input, and what is unsupported in the first cut.
 
 #### Export schedule promotion
 
 Export schedule creation should begin from the source job context and any destination-relevant export choices that already exist from the completed run.
 
+Export schedules in Spartan automate export for future matching completed jobs; they do not rerun the source job on a cadence. The promoted draft should therefore focus on sensible filters, export intent, and delivery defaults rather than pretending it can recreate the entire manual workflow.
+
 If the operator already chose an export format or similar result-delivery setup from the job context, the destination should preserve that where it makes sense. If that information does not exist, the product should still launch a real schedule draft from the source job and clearly highlight the missing export-specific decisions instead of dumping the operator into a blank create flow.
 
-Schedule cadence and delivery-specific choices still require explicit operator confirmation.
+Matching filters, destination settings, and delivery-specific choices still require explicit operator confirmation.
 
 ### Handoff and review
 
@@ -141,18 +145,27 @@ Any result-side recommendation that implies “turn this into automation” must
 
 Where the recommendation context is already specific, the product can deep-link directly into the most natural destination draft. The main promotion action on the job detail surface should still remain available for operators who want to choose among all three destinations.
 
-### Pre-implementation contract audit
+### Contract audit findings
 
-Before implementation, the team should audit existing contracts and request-normalization layers to determine whether template, watch, and export schedule creation can already be seeded from a completed job.
+See [Verified Job Promotion Contract Audit](job-to-automation-promotion-contract-audit.md) for the confirmed source-of-truth and gap analysis that now governs implementation.
 
-If that support is incomplete, extend the product-facing contracts in the cleanest way that preserves one source of truth for job request reuse. The Web UI should not be forced to reconstruct complex promotion state from scattered local heuristics when the platform can provide a stronger source-job-based handoff.
+The audit locked in these constraints:
+
+- `GET /v1/jobs/{id}` already exists and should become the authoritative route-level source when `/jobs/:id` is opened for a job outside the current paged jobs list.
+- The Web UI should continue to treat `SanitizeJob` output as the trusted browser contract. Promotion must not depend on exposing unsanitized job detail or raw secrets in the browser.
+- Template promotion is high-confidence only when the source job already contains reusable extraction structure, such as a named template or inline template rules. Other extraction modes should fall back to a guided blank or AI-assisted template draft.
+- Watch promotion is not a full job clone. The current watch contract is a single-target monitoring model with no general auth or pipeline support, so the first cut should be scrape-first and explicit about unsupported carry-forward.
+- Export schedule promotion must represent future-job export automation, not repeated execution of the source job.
+- If sanitized source-job data plus existing destination lookups prove insufficient, prefer narrow server-generated draft endpoints over any unsanitized raw job-detail contract.
 
 ## Acceptance Criteria
 
 - From a succeeded `/jobs/:id` view, an operator can initiate promotion to a template, watch, or export schedule without manually navigating blind into a blank create flow.
 - Result-side recommendations that imply reusable automation land in a real promotion path instead of dead-ending as advisory text.
 - `/templates`, `/automation/watches`, and `/automation/exports` can each open in a source-job-seeded create state with visible source context.
+- Promotion still works when `/jobs/:id` is opened directly for a job that is not already present in the current paged jobs list.
 - Supported reusable fields are prefilled from the source job where appropriate for the chosen destination.
 - Destination-specific required fields that cannot be inferred from the source job are clearly identified instead of silently defaulted or left unexplained.
+- Promotion preserves the existing redaction boundary and never requires unsanitized browser-visible job detail.
 - Promotion never silently persists an artifact without operator review.
 - Existing product language about promoting successful manual work into automation is backed by real product behavior once this spec is delivered.

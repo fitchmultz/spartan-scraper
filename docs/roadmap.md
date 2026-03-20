@@ -13,6 +13,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - [Template Editor Rework](specs/template-editor-rework.md) — inline `/templates` workspace with persistent list/detail, preview, and AI-assisted authoring.
 - [Integrated AI Assistant Panel](specs/ai-assistant-panel.md) — persistent route-aware AI surface across job creation, templates, and results.
 - [Toast Notification System](specs/toast-notification-system.md) — consistent transient feedback across the Web UI.
+- [Verified Job Promotion Contract Audit](specs/job-to-automation-promotion-contract-audit.md) — confirmed the real source-job reuse boundary, destination overlap, redaction constraints, and route-level data requirements before the promotion cutover begins.
 
 ## Planning Principles
 
@@ -28,9 +29,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-1. [Verified Job Promotion Flow](specs/job-to-automation-promotion.md) — use the new spec as the implementation contract, resolve any remaining source-job handoff or backend-contract ambiguity first, and lock the product decisions before code changes.
-2. [Verified Job Promotion Cutover](specs/job-to-automation-promotion.md) — deliver the approved path from a completed, trusted job into templates, watches, and export schedules so operators can turn manual success into reusable automation without blank create flows or duplicate data entry.
-3. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — once the promotion path is stable, lock it down with system-first deterministic regression coverage and narrow browser proof.
+1. [Verified Job Promotion Cutover](specs/job-to-automation-promotion.md) — implement the audited product path from a completed, trusted job into templates, watches, and export schedules, including authoritative job-detail loading, destination-specific seeded drafts, and explicit treatment of unsupported carry-forward.
+2. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — once the promotion path is stable, lock it down with system-first deterministic regression coverage and narrow browser proof that also protects the detail-fetch fallback and redaction boundary.
 
 ## Later / Deprioritized
 

@@ -22,6 +22,7 @@ The primary guarantee should live in deterministic system tests that run in `mak
 - Deterministic system tests in `internal/system/` are the primary owner of promotion regression coverage.
 - Primary promotion regression must run without Playwright and belong in the normal `make test-ci` path.
 - Browser coverage is secondary and should stay intentionally small. Its job is to prove operator-visible affordances and route handoff, not to duplicate all system coverage.
+- Regression coverage must preserve the current redaction boundary. Promotion work must not leak auth secrets, cookies, tokens, or host-local paths while reconstructing destination drafts.
 - Regression means more than “the request returned 200.” It includes:
   - promotion eligibility
   - route or contract handoff from source job to destination
@@ -57,9 +58,11 @@ A promotion regression is any change that causes one of the following:
 - a succeeded job can no longer be used as a valid promotion source when it should be
 - an ineligible job is incorrectly treated as promotable
 - a promotion entry or handoff no longer reaches the intended destination
+- direct `/jobs/:id` promotion depends on the current paged jobs list instead of an authoritative job-detail fetch
 - reusable source-job request or outcome context is lost during handoff
 - a created draft or artifact no longer contains the expected reusable configuration
 - destination-specific missing information stops being explicit
+- redacted secrets or host-local paths become visible through promotion handoff or seeded drafts
 - the source job is mutated as a side effect of promotion
 - a created template, watch, or export schedule no longer behaves like a real promoted artifact and instead degrades into a blank or detached object
 
@@ -133,6 +136,7 @@ Browser coverage is still useful, but it should remain intentionally narrow.
 The browser layer should prove:
 
 - a succeeded job visibly exposes the main promotion affordance on `/jobs/:id`
+- invoking that affordance still works when the source job is opened directly and is not already present in the current paged jobs list
 - invoking that affordance reaches the correct destination route
 - the destination visibly reflects source-job context and representative prefilled state
 - if the results surface exposes contextual automation recommendations, at least one such recommendation reaches the intended destination
@@ -147,6 +151,7 @@ Promotion regression coverage is enough when all of the following are true:
 - `make test-ci` includes at least one ineligible-source or guardrail case
 - at least one operator-journey system test proves manual success can become reusable automation
 - browser coverage exists for the visible job-detail promotion entry and at least one source-job-to-destination handoff
+- regression assertions explicitly protect the route-level detail-fetch fallback and redaction boundary
 - regressions in source-job reuse, destination seeding, or promotion eligibility produce deterministic failures instead of depending on manual discovery
 
 ## Acceptance Criteria
