@@ -1,0 +1,498 @@
+{
+    "exports": [
+        {
+            "id": "4e131665-7610-4964-a472-49d9716b9e4f",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-12",
+            "trigger": "schedule",
+            "status": "failed",
+            "title": "Export failed",
+            "message": "Webhook delivery timed out.",
+            "destination": "exports/scrape/seed-job-12.json",
+            "exportedAt": "2026-03-20T23:11:00Z",
+            "completedAt": "2026-03-20T23:11:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "",
+                "contentType": "application/json"
+            },
+            "failure": {
+                "category": "timeout",
+                "summary": "Webhook delivery timed out.",
+                "retryable": true,
+                "terminal": true
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 4e131665-7610-4964-a472-49d9716b9e4f"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-12"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                },
+                {
+                    "label": "Retry export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --job-id seed-job-12 --format json"
+                },
+                {
+                    "label": "Review export automation settings",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "4dea7bde-404b-46a7-99a6-c6f760a3a1e9",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-11",
+            "trigger": "schedule",
+            "status": "failed",
+            "title": "Export failed",
+            "message": "invalid jmespath expression",
+            "destination": "exports/scrape/seed-job-11.json",
+            "exportedAt": "2026-03-20T23:10:00Z",
+            "completedAt": "2026-03-20T23:10:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "csv",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "",
+                "contentType": "application/json"
+            },
+            "failure": {
+                "category": "transform",
+                "summary": "invalid jmespath expression",
+                "retryable": false,
+                "terminal": true
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 4dea7bde-404b-46a7-99a6-c6f760a3a1e9"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-11"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                },
+                {
+                    "label": "Retry without the transform",
+                    "kind": "command",
+                    "value": "spartan export --job-id seed-job-11 --format csv"
+                },
+                {
+                    "label": "Retry as JSONL",
+                    "kind": "command",
+                    "value": "spartan export --job-id seed-job-11 --format jsonl"
+                }
+            ]
+        },
+        {
+            "id": "603e731b-feeb-4ce0-a2f7-8f5bf38d8f19",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-10",
+            "trigger": "schedule",
+            "status": "failed",
+            "title": "Export failed",
+            "message": "Webhook delivery failed: dial tcp 127.0.0.1:9: connect: connection refused",
+            "destination": "exports/scrape/seed-job-10.json",
+            "exportedAt": "2026-03-20T23:09:00Z",
+            "completedAt": "2026-03-20T23:09:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "",
+                "contentType": "application/json"
+            },
+            "failure": {
+                "category": "network",
+                "summary": "Webhook delivery failed: dial tcp 127.0.0.1:9: connect: connection refused",
+                "retryable": true,
+                "terminal": true
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 603e731b-feeb-4ce0-a2f7-8f5bf38d8f19"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-10"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                },
+                {
+                    "label": "Retry export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --job-id seed-job-10 --format json"
+                },
+                {
+                    "label": "Review export automation settings",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "91b417c4-a0bf-455f-a53d-ee4a6d85132a",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-9",
+            "trigger": "schedule",
+            "status": "failed",
+            "title": "Export failed",
+            "message": "job result file is missing",
+            "destination": "exports/scrape/seed-job-9.json",
+            "exportedAt": "2026-03-20T23:08:00Z",
+            "completedAt": "2026-03-20T23:08:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "",
+                "contentType": "application/json"
+            },
+            "failure": {
+                "category": "result",
+                "summary": "job result file is missing",
+                "retryable": false,
+                "terminal": true
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 91b417c4-a0bf-455f-a53d-ee4a6d85132a"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-9"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                },
+                {
+                    "label": "Inspect the saved result in the Web UI",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-9"
+                }
+            ]
+        },
+        {
+            "id": "1e86e9b0-73fd-47aa-9be2-2ce1f66b7238",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-8",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-8.json.",
+            "destination": "exports/scrape/seed-job-8.json",
+            "exportedAt": "2026-03-20T23:07:00Z",
+            "completedAt": "2026-03-20T23:07:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-8.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 263
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 1e86e9b0-73fd-47aa-9be2-2ce1f66b7238"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-8"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "959ee3df-f63d-4178-ac60-4892fc4d7379",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-7",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-7.json.",
+            "destination": "exports/scrape/seed-job-7.json",
+            "exportedAt": "2026-03-20T23:06:00Z",
+            "completedAt": "2026-03-20T23:06:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-7.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 262
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 959ee3df-f63d-4178-ac60-4892fc4d7379"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-7"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "1f4fc90b-465f-4984-9259-2b9690f2116c",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-6",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-6.json.",
+            "destination": "exports/scrape/seed-job-6.json",
+            "exportedAt": "2026-03-20T23:05:00Z",
+            "completedAt": "2026-03-20T23:05:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-6.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 261
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 1f4fc90b-465f-4984-9259-2b9690f2116c"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-6"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "1628a63c-6c56-40f1-bd09-49043df7cade",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-5",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-5.json.",
+            "destination": "exports/scrape/seed-job-5.json",
+            "exportedAt": "2026-03-20T23:04:00Z",
+            "completedAt": "2026-03-20T23:04:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-5.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 260
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 1628a63c-6c56-40f1-bd09-49043df7cade"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-5"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "4f5e2a9f-cec1-4b3f-ab65-a209daf3ba8c",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-4",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-4.json.",
+            "destination": "exports/scrape/seed-job-4.json",
+            "exportedAt": "2026-03-20T23:03:00Z",
+            "completedAt": "2026-03-20T23:03:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-4.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 259
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 4f5e2a9f-cec1-4b3f-ab65-a209daf3ba8c"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-4"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        },
+        {
+            "id": "3720f0b8-3548-4264-95be-bbe7ec61bc65",
+            "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+            "jobId": "seed-job-3",
+            "trigger": "schedule",
+            "status": "succeeded",
+            "title": "Export ready",
+            "message": "JSON export completed successfully with 1 record(s) and is ready at exports/scrape/seed-job-3.json.",
+            "destination": "exports/scrape/seed-job-3.json",
+            "exportedAt": "2026-03-20T23:02:00Z",
+            "completedAt": "2026-03-20T23:02:10Z",
+            "retryCount": 0,
+            "request": {
+                "format": "json",
+                "shape": {
+                    "formatting": {}
+                },
+                "transform": {}
+            },
+            "artifact": {
+                "format": "json",
+                "filename": "seed-job-3.json",
+                "contentType": "application/json",
+                "recordCount": 1,
+                "size": 258
+            },
+            "actions": [
+                {
+                    "label": "Inspect export from the CLI",
+                    "kind": "command",
+                    "value": "spartan export --inspect-id 3720f0b8-3548-4264-95be-bbe7ec61bc65"
+                },
+                {
+                    "label": "Inspect saved job results",
+                    "kind": "route",
+                    "value": "/jobs/seed-job-3"
+                },
+                {
+                    "label": "Inspect schedule history",
+                    "kind": "route",
+                    "value": "/automation/exports"
+                }
+            ]
+        }
+    ],
+    "total": 12,
+    "limit": 10,
+    "offset": 0
+}

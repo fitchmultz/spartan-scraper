@@ -112,7 +112,7 @@ func buildExportNarrative(outcome ExportInspection) (string, string) {
 }
 
 func buildExportRecommendedActions(outcome ExportInspection) []RecommendedAction {
-	actions := make([]RecommendedAction, 0, 4)
+	actions := make([]RecommendedAction, 0, 6)
 	baseCommand := buildExportRetryCommand(outcome)
 
 	actions = append(actions, RecommendedAction{
@@ -152,11 +152,18 @@ func buildExportRecommendedActions(outcome ExportInspection) []RecommendedAction
 
 	switch outcome.Failure.Category {
 	case "transform":
-		actions = append(actions, RecommendedAction{
-			Label: "Retry without the transform",
-			Kind:  ActionKindCommand,
-			Value: fmt.Sprintf("spartan export --job-id %s --format %s", outcome.JobID, outcome.Request.Format),
-		})
+		actions = append(actions,
+			RecommendedAction{
+				Label: "Retry without the transform",
+				Kind:  ActionKindCommand,
+				Value: fmt.Sprintf("spartan export --job-id %s --format %s", outcome.JobID, outcome.Request.Format),
+			},
+			RecommendedAction{
+				Label: "Retry as JSONL",
+				Kind:  ActionKindCommand,
+				Value: fmt.Sprintf("spartan export --job-id %s --format jsonl", outcome.JobID),
+			},
+		)
 	case "format":
 		actions = append(actions, RecommendedAction{
 			Label: "Retry as JSONL",
@@ -169,7 +176,7 @@ func buildExportRecommendedActions(outcome ExportInspection) []RecommendedAction
 			Kind:  ActionKindCommand,
 			Value: fmt.Sprintf("spartan export --job-id %s --format %s --out ./exports/%s.%s", outcome.JobID, outcome.Request.Format, outcome.JobID, outcome.Request.Format),
 		})
-	case "webhook", "network":
+	case "webhook", "network", "timeout":
 		actions = append(actions, RecommendedAction{
 			Label: "Review export automation settings",
 			Kind:  ActionKindRoute,

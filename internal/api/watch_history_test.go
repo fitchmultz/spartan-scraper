@@ -131,6 +131,61 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	assertActionValue(t, detailResp.Check.Actions, "Open watch automation workspace", "/automation/watches")
 }
 
+func TestHandleWatchCheckFailurePersistsFailedHistory(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	createBody, _ := json.Marshal(WatchRequest{URL: "http://127.0.0.1:1", IntervalSeconds: 1800})
+	createReq := httptest.NewRequest(http.MethodPost, "/v1/watch", bytes.NewReader(createBody))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(createRR, createReq)
+	if createRR.Code != http.StatusCreated {
+		t.Fatalf("expected create 201, got %d: %s", createRR.Code, createRR.Body.String())
+	}
+
+	var created WatchResponse
+	if err := json.Unmarshal(createRR.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	checkReq := httptest.NewRequest(http.MethodPost, "/v1/watch/"+created.ID+"/check", nil)
+	checkRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(checkRR, checkReq)
+	if checkRR.Code != http.StatusOK {
+		t.Fatalf("expected check 200, got %d: %s", checkRR.Code, checkRR.Body.String())
+	}
+
+	var inspection WatchCheckInspectionResponse
+	if err := json.Unmarshal(checkRR.Body.Bytes(), &inspection); err != nil {
+		t.Fatalf("decode check response: %v", err)
+	}
+	if inspection.Check.Status != "failed" {
+		t.Fatalf("status = %q, want failed", inspection.Check.Status)
+	}
+	if inspection.Check.Error == "" {
+		t.Fatal("expected failure error message")
+	}
+
+	historyReq := httptest.NewRequest(http.MethodGet, "/v1/watch/"+created.ID+"/history?limit=10", nil)
+	historyRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(historyRR, historyReq)
+	if historyRR.Code != http.StatusOK {
+		t.Fatalf("expected history 200, got %d: %s", historyRR.Code, historyRR.Body.String())
+	}
+
+	var history WatchCheckHistoryResponse
+	if err := json.Unmarshal(historyRR.Body.Bytes(), &history); err != nil {
+		t.Fatalf("decode history response: %v", err)
+	}
+	if len(history.Checks) != 1 {
+		t.Fatalf("expected one history record, got %#v", history.Checks)
+	}
+	if history.Checks[0].Status != "failed" {
+		t.Fatalf("persisted status = %q, want failed", history.Checks[0].Status)
+	}
+}
+
 func TestHandleWatchHistoryArtifact(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

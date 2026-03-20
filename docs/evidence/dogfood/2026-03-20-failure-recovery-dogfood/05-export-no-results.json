@@ -1,0 +1,49 @@
+{
+    "export": {
+        "id": "0fb49fb3-824f-41be-8b5b-762f7daedb59",
+        "jobId": "7eb93435-2699-4283-8464-4599fa1398c9",
+        "trigger": "api",
+        "status": "failed",
+        "title": "Export failed",
+        "message": "job is queued and has no results yet",
+        "destination": "api response",
+        "exportedAt": "2026-03-20T16:59:58.720933-06:00",
+        "completedAt": "2026-03-20T16:59:58.721401-06:00",
+        "retryCount": 0,
+        "request": {
+            "format": "json",
+            "shape": {
+                "formatting": {}
+            },
+            "transform": {}
+        },
+        "artifact": {
+            "format": "json",
+            "filename": "",
+            "contentType": "application/json"
+        },
+        "failure": {
+            "category": "result",
+            "summary": "job is queued and has no results yet",
+            "retryable": false,
+            "terminal": true
+        },
+        "actions": [
+            {
+                "label": "Inspect export from the CLI",
+                "kind": "command",
+                "value": "spartan export --inspect-id 0fb49fb3-824f-41be-8b5b-762f7daedb59"
+            },
+            {
+                "label": "Inspect saved job results",
+                "kind": "route",
+                "value": "/jobs/7eb93435-2699-4283-8464-4599fa1398c9"
+            },
+            {
+                "label": "Inspect the saved result in the Web UI",
+                "kind": "route",
+                "value": "/jobs/7eb93435-2699-4283-8464-4599fa1398c9"
+            }
+        ]
+    }
+}

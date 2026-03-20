@@ -124,6 +124,21 @@ export function CheckResultModal({
           </div>
         ) : null}
 
+        {inspection.error ? (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              background: "rgba(239, 68, 68, 0.08)",
+            }}
+          >
+            <strong>Error</strong>
+            <p style={{ margin: "8px 0 0" }}>{inspection.error}</p>
+          </div>
+        ) : null}
+
         {artifacts.length > 0 ? (
           <div style={{ marginBottom: 16 }}>
             <h4 style={{ marginBottom: 8 }}>Artifacts</h4>
@@ -200,7 +215,7 @@ export function CheckResultModal({
           </div>
         ) : null}
 
-        {inspection.diffText ? (
+        {inspection.status !== "failed" && inspection.diffText ? (
           <div>
             <h4 style={{ marginBottom: 8 }}>Diff</h4>
             <pre

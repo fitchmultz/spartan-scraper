@@ -84,4 +84,47 @@ describe("ExportScheduleHistory", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("renders failure recovery actions with correct action semantics", () => {
+    renderHistory({
+      records: [
+        makeHistoryRecord({
+          status: "failed",
+          title: "Export failed",
+          message: "Webhook delivery timed out.",
+          failure: {
+            category: "timeout",
+            summary: "Webhook delivery timed out.",
+            retryable: true,
+            terminal: true,
+          },
+          actions: [
+            {
+              label: "Review export automation settings",
+              kind: "route",
+              value: "/automation/exports",
+            },
+            {
+              label: "Retry export from the CLI",
+              kind: "command",
+              value: "spartan export --job-id job-123 --format json",
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(screen.getByText("Timeout issue")).toBeInTheDocument();
+    expect(
+      screen.getByText("This outcome looks retryable."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Review export automation settings",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Copy Retry export from the CLI"),
+    ).toBeInTheDocument();
+  });
 });

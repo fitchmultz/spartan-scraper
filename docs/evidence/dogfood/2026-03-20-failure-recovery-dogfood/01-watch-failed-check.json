@@ -1,0 +1,31 @@
+{
+    "check": {
+        "id": "dd625ff2-6561-4d58-b2cd-95f9fd2d7f31",
+        "watchId": "c932a807-6585-42ce-9d67-368fb38f6da4",
+        "url": "http://127.0.0.1:1",
+        "checkedAt": "2026-03-20T16:59:49.95215-06:00",
+        "status": "failed",
+        "changed": false,
+        "title": "Check failed",
+        "message": "fetch failed: Get \"http://127.0.0.1:1\": dial tcp 127.0.0.1:1: connect: connection refused",
+        "error": "fetch failed: Get \"http://127.0.0.1:1\": dial tcp 127.0.0.1:1: connect: connection refused",
+        "visualChanged": false,
+        "actions": [
+            {
+                "label": "Inspect this check from the CLI",
+                "kind": "command",
+                "value": "spartan watch history c932a807-6585-42ce-9d67-368fb38f6da4 --check-id dd625ff2-6561-4d58-b2cd-95f9fd2d7f31"
+            },
+            {
+                "label": "Open watch automation workspace",
+                "kind": "route",
+                "value": "/automation/watches"
+            },
+            {
+                "label": "Run the watch check again",
+                "kind": "command",
+                "value": "spartan watch check c932a807-6585-42ce-9d67-368fb38f6da4"
+            }
+        ]
+    }
+}

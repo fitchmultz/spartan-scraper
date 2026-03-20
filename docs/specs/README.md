@@ -9,8 +9,11 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## Next Up
 
+- Automation Workspace Operator Docs Refresh — refresh the README/demo/operator flow docs now that the populated-state and failure-path acceptance passes have locked the final watch/export inspection workflow and screenshots.
+
 ## Recently Completed
 
+- Automation Workspace Failure Recovery Dogfood — failed watch checks and failed export outcomes now surface trustworthy recovery actions, persisted failure history, selector validation, and route-aware export action rendering across the automation workspaces.
 - Web UI optional-capability follow-through — first-run docs, onboarding, help text, and Settings copy now consistently treat AI, proxy pooling, and retention as optional, off-by-default capabilities instead of prerequisites.
 - [Web Shell Simplification](web-shell-simplification.md) — thinner global chrome so routes spend their first screen on work instead of repeated framing.
 - [Guided Job Submission Wizard](guided-job-wizard.md) — `/jobs/new` now uses a guided 4-step wizard with Expert mode, per-job draft persistence, and review-before-submit.

@@ -1,0 +1,60 @@
+{
+  "export": {
+    "id": "4e131665-7610-4964-a472-49d9716b9e4f",
+    "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+    "jobId": "seed-job-12",
+    "trigger": "schedule",
+    "status": "failed",
+    "title": "Export failed",
+    "message": "Webhook delivery timed out.",
+    "destination": "exports/scrape/seed-job-12.json",
+    "exportedAt": "2026-03-20T23:11:00Z",
+    "completedAt": "2026-03-20T23:11:10Z",
+    "retryCount": 0,
+    "request": {
+      "format": "json",
+      "shape": {
+        "formatting": {}
+      },
+      "transform": {}
+    },
+    "artifact": {
+      "format": "json",
+      "filename": "",
+      "contentType": "application/json"
+    },
+    "failure": {
+      "category": "timeout",
+      "summary": "Webhook delivery timed out.",
+      "retryable": true,
+      "terminal": true
+    },
+    "actions": [
+      {
+        "label": "Inspect export from the CLI",
+        "kind": "command",
+        "value": "spartan export --inspect-id 4e131665-7610-4964-a472-49d9716b9e4f"
+      },
+      {
+        "label": "Inspect saved job results",
+        "kind": "route",
+        "value": "/jobs/seed-job-12"
+      },
+      {
+        "label": "Inspect schedule history",
+        "kind": "route",
+        "value": "/automation/exports"
+      },
+      {
+        "label": "Retry export from the CLI",
+        "kind": "command",
+        "value": "spartan export --job-id seed-job-12 --format json"
+      },
+      {
+        "label": "Review export automation settings",
+        "kind": "route",
+        "value": "/automation/exports"
+      }
+    ]
+  }
+}

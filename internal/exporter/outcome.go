@@ -75,8 +75,6 @@ func classifyFailure(summary string, kind apperrors.Kind) (string, bool) {
 	lower := strings.ToLower(strings.TrimSpace(summary))
 
 	switch {
-	case kind == apperrors.KindValidation:
-		return "validation", false
 	case strings.Contains(lower, "jmespath"),
 		strings.Contains(lower, "jsonata"),
 		strings.Contains(lower, "transform"):
@@ -115,6 +113,8 @@ func classifyFailure(summary string, kind apperrors.Kind) (string, bool) {
 		strings.Contains(lower, "eof"),
 		strings.Contains(lower, "no such host"):
 		return "network", true
+	case kind == apperrors.KindValidation:
+		return "validation", false
 	default:
 		return "unknown", false
 	}

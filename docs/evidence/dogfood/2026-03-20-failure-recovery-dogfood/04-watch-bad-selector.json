@@ -1,0 +1,32 @@
+{
+    "check": {
+        "id": "0a93fbf5-defc-48cb-a3fa-c724a9ccabf7",
+        "watchId": "c2c0becd-10d7-4bae-af86-3f323e1a4cce",
+        "url": "http://127.0.0.1:8767/",
+        "checkedAt": "2026-03-20T16:59:50.002099-06:00",
+        "status": "failed",
+        "changed": false,
+        "title": "Check failed",
+        "message": "selector extraction failed: invalid selector \"[\": expected identifier, found EOF instead",
+        "error": "selector extraction failed: invalid selector \"[\": expected identifier, found EOF instead",
+        "selector": "[",
+        "visualChanged": false,
+        "actions": [
+            {
+                "label": "Inspect this check from the CLI",
+                "kind": "command",
+                "value": "spartan watch history c2c0becd-10d7-4bae-af86-3f323e1a4cce --check-id 0a93fbf5-defc-48cb-a3fa-c724a9ccabf7"
+            },
+            {
+                "label": "Open watch automation workspace",
+                "kind": "route",
+                "value": "/automation/watches"
+            },
+            {
+                "label": "Run the watch check again",
+                "kind": "command",
+                "value": "spartan watch check c2c0becd-10d7-4bae-af86-3f323e1a4cce"
+            }
+        ]
+    }
+}

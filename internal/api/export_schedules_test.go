@@ -397,6 +397,35 @@ func TestBuildExportRecommendedActionsUseExportsRoute(t *testing.T) {
 		},
 	})
 	assertActionValue(t, failureActions, "Review export automation settings", "/automation/exports")
+
+	timeoutActions := buildExportRecommendedActions(ExportInspection{
+		ID:     "export-3",
+		JobID:  "job-3",
+		Status: string(exporter.OutcomeFailed),
+		Request: exporter.ResultExportConfig{
+			Format: "json",
+		},
+		Failure: &exporter.FailureContext{
+			Category: "timeout",
+			Summary:  "delivery timed out",
+		},
+	})
+	assertActionValue(t, timeoutActions, "Review export automation settings", "/automation/exports")
+
+	transformActions := buildExportRecommendedActions(ExportInspection{
+		ID:     "export-4",
+		JobID:  "job-4",
+		Status: string(exporter.OutcomeFailed),
+		Request: exporter.ResultExportConfig{
+			Format: "csv",
+		},
+		Failure: &exporter.FailureContext{
+			Category: "transform",
+			Summary:  "invalid jmespath expression",
+		},
+	})
+	assertActionValue(t, transformActions, "Retry without the transform", "spartan export --job-id job-4 --format csv")
+	assertActionValue(t, transformActions, "Retry as JSONL", "spartan export --job-id job-4 --format jsonl")
 }
 
 type captureExportScheduleRuntime struct {

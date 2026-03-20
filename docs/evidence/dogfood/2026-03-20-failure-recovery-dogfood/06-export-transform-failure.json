@@ -1,0 +1,60 @@
+{
+  "export": {
+    "id": "4dea7bde-404b-46a7-99a6-c6f760a3a1e9",
+    "scheduleId": "aeb38327-e0ca-4696-9676-4d871580e9ee",
+    "jobId": "seed-job-11",
+    "trigger": "schedule",
+    "status": "failed",
+    "title": "Export failed",
+    "message": "invalid jmespath expression",
+    "destination": "exports/scrape/seed-job-11.json",
+    "exportedAt": "2026-03-20T23:10:00Z",
+    "completedAt": "2026-03-20T23:10:10Z",
+    "retryCount": 0,
+    "request": {
+      "format": "csv",
+      "shape": {
+        "formatting": {}
+      },
+      "transform": {}
+    },
+    "artifact": {
+      "format": "json",
+      "filename": "",
+      "contentType": "application/json"
+    },
+    "failure": {
+      "category": "transform",
+      "summary": "invalid jmespath expression",
+      "retryable": false,
+      "terminal": true
+    },
+    "actions": [
+      {
+        "label": "Inspect export from the CLI",
+        "kind": "command",
+        "value": "spartan export --inspect-id 4dea7bde-404b-46a7-99a6-c6f760a3a1e9"
+      },
+      {
+        "label": "Inspect saved job results",
+        "kind": "route",
+        "value": "/jobs/seed-job-11"
+      },
+      {
+        "label": "Inspect schedule history",
+        "kind": "route",
+        "value": "/automation/exports"
+      },
+      {
+        "label": "Retry without the transform",
+        "kind": "command",
+        "value": "spartan export --job-id seed-job-11 --format csv"
+      },
+      {
+        "label": "Retry as JSONL",
+        "kind": "command",
+        "value": "spartan export --job-id seed-job-11 --format jsonl"
+      }
+    ]
+  }
+}

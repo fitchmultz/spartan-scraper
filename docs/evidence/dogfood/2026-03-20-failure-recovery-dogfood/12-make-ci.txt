@@ -1,0 +1,209 @@
+Toolchain contract (/Users/mitchfultz/Projects/spartan-scraper/.tool-versions)
+  Go:   expected 1.26.1 | actual 1.26.1
+  Node: expected 25.8.1 | actual 25.8.1
+  pnpm: expected 10.32.1 | actual 10.32.1
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/public_audit.mjs
+public_audit: no findings detected in tracked files.
+go mod download
+cd tools/pi-bridge && pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 376ms using pnpm v10.32.1
+cd web && pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 532ms using pnpm v10.32.1
+cd web && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
+[90m@hey-api/openapi-ts v0.94.2[39m
+
+[90m[Job 1] [39m⏳ [36mGenerating from 1 input:[39m
+[90m[Job 1] [39m[36m  [1] [39m../api/openapi.yaml
+[90m[Job 1] [39m[32m✅ Done![39m Your output is in [96m/Users/mitchfultz/Projects/spartan-scraper/web/src/api[39m
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/strip_openapi_todos.mjs --path web/src/api
+gofmt -w ./cmd ./internal
+cd web && pnpm exec biome format . --write
+Formatted 269 files in 140ms. No fixes applied.
+cd web && pnpm exec tsc --noEmit
+go vet ./...
+cd web && pnpm exec biome lint .
+Checked 270 files in 159ms. No fixes applied.
+mkdir -p bin
+cd tools/pi-bridge && pnpm run build
+
+> @spartan/pi-bridge@0.1.0 build /Users/mitchfultz/Projects/spartan-scraper/tools/pi-bridge
+> tsc -p tsconfig.json
+
+go build -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=1.0.0-rc1 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=f2ee8e1 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=2026-03-20T23:03:48Z" -o bin/spartan ./cmd/spartan
+cd web && pnpm run build
+
+> spartan-scraper-web@1.0.0-rc1 build /Users/mitchfultz/Projects/spartan-scraper/web
+> tsc -p tsconfig.json && vite build
+
+vite v8.0.0 building client environment for production...
+[2Ktransforming...✓ 263 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                     2.07 kB │ gzip:  0.68 kB
+dist/assets/index-DB_ZQO1V.css                    100.28 kB │ gzip: 15.86 kB
+dist/assets/WebhookDeliveries-dISCZp3R.js           0.15 kB │ gzip:  0.13 kB
+dist/assets/rolldown-runtime-DF2fYuay.js            0.55 kB │ gzip:  0.35 kB
+dist/assets/feature-shared-BQ8KZUCP.js              2.92 kB │ gzip:  1.07 kB
+dist/assets/ExportScheduleManager-CS3tk0HI.js       4.78 kB │ gzip:  1.96 kB
+dist/assets/feature-results-DKjmxD6U.js             5.18 kB │ gzip:  2.15 kB
+dist/assets/WatchManager-CyEe-kY2.js                5.72 kB │ gzip:  2.31 kB
+dist/assets/ChainBuilder-BUU1EVG3.js                5.89 kB │ gzip:  1.99 kB
+dist/assets/ScrapeForm-CTqSe1lb.js                  6.05 kB │ gzip:  2.13 kB
+dist/assets/ResearchForm-CckvKP1a.js                7.33 kB │ gzip:  2.47 kB
+dist/assets/CrawlForm-DWNfN4B6.js                   7.88 kB │ gzip:  2.62 kB
+dist/assets/feature-presets-DqAkXrNA.js             9.44 kB │ gzip:  3.15 kB
+dist/assets/feature-chains-CC74RP_O.js             10.29 kB │ gzip:  3.58 kB
+dist/assets/feature-webhooks-BN6rpnGb.js           14.03 kB │ gzip:  3.74 kB
+dist/assets/feature-api-z1OM7PwO.js                18.74 kB │ gzip:  4.78 kB
+dist/assets/feature-templates-DpnsLQMO.js          27.96 kB │ gzip:  7.16 kB
+dist/assets/feature-watches-CInBn3PB.js            28.25 kB │ gzip:  6.14 kB
+dist/assets/feature-jobs-BKKH1rDF.js               40.41 kB │ gzip: 10.60 kB
+dist/assets/vendor-ui-CnVmpyxS.js                  44.77 kB │ gzip: 14.90 kB
+dist/assets/ResultsExplorer-B0VY-GU1.js            73.28 kB │ gzip: 18.20 kB
+dist/assets/feature-batches-BLtD2zjE.js            92.77 kB │ gzip: 23.81 kB
+dist/assets/feature-export-schedules-IQVWd9rm.js   99.95 kB │ gzip: 22.37 kB
+dist/assets/vendor-onboarding-DPtZF_GP.js         101.28 kB │ gzip: 31.33 kB
+dist/assets/index-oE0p5nxi.js                     164.10 kB │ gzip: 38.31 kB
+dist/assets/vendor-react-cWwiS2bP.js              178.37 kB │ gzip: 56.35 kB
+
+✓ built in 196ms
+CI=1 go test $(go list ./... | grep -v /e2e) -p=1 -timeout 5m
+?   	github.com/fitchmultz/spartan-scraper/cmd/spartan	[no test files]
+ok  	github.com/fitchmultz/spartan-scraper/internal/ai	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/aiauthoring	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/analytics	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/api	5.042s
+ok  	github.com/fitchmultz/spartan-scraper/internal/apperrors	(cached)
+?   	github.com/fitchmultz/spartan-scraper/internal/artifacts	[no test files]
+ok  	github.com/fitchmultz/spartan-scraper/internal/auth	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/buildinfo	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/captcha	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/ai	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/batch	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/common	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/manage	0.131s
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/scrape	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/cli/server	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/config	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/crawl	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/dedup	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/diff	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/exporter	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/extract	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/fetch	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/fsutil	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/hostmatch	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/jobs	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/mcp	8.778s
+ok  	github.com/fitchmultz/spartan-scraper/internal/model	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/paramdecode	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/pipeline	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/queue	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/research	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/retention	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/runtime	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/scheduler	1.718s
+ok  	github.com/fitchmultz/spartan-scraper/internal/scrape	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/simhash	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/store	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/submission	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/system	(cached)
+?   	github.com/fitchmultz/spartan-scraper/internal/testsite	[no test files]
+ok  	github.com/fitchmultz/spartan-scraper/internal/ui/tui	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/validate	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/watch	0.335s
+ok  	github.com/fitchmultz/spartan-scraper/internal/webassets	(cached)
+ok  	github.com/fitchmultz/spartan-scraper/internal/webhook	(cached)
+?   	github.com/fitchmultz/spartan-scraper/scripts	[no test files]
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/strip_openapi_todos.test.mjs
+✓ Script removes TODO lines from files
+✓ Script preserves non-TODO lines
+✓ Script handles directory recursively
+✓ Script processes .ts and .mts files only
+✓ Script handles files with no TODOs
+✓ Script displays help on --help flag
+
+Tests: 6 passed, 0 failed
+node /Users/mitchfultz/Projects/spartan-scraper/scripts/public_audit.test.mjs
+✓ isTrackedEnvFile returns true for tracked env files
+✓ isTrackedEnvFile excludes example env files
+✓ shouldScanContent only scans expected metadata/docs paths
+✓ shouldScanSecrets scans source and config surfaces
+✓ findPathFindings catches tracked artifact directories
+✓ findPathFindings catches tracked binary artifacts
+✓ findContentFindings catches absolute paths and placeholders
+✓ findSecretFindings catches high-confidence secret patterns
+✓ parseArgs supports branch and history toggles
+✓ parseArgs defaults to HEAD history scanning
+✓ branchExists returns expected values
+✓ HISTORY_PATH_RULES includes compiled binary path scanning
+✓ dedupeFindings removes exact duplicates
+✓ listHistoryRevisionsForFile returns revisions for tracked files
+✓ public_audit.mjs --help exits successfully and prints usage
+
+Tests: 15 passed, 0 failed
+cd tools/pi-bridge && pnpm test
+
+> @spartan/pi-bridge@0.1.0 test /Users/mitchfultz/Projects/spartan-scraper/tools/pi-bridge
+> pnpm run build && node --test dist/**/*.test.js
+
+
+> @spartan/pi-bridge@0.1.0 build /Users/mitchfultz/Projects/spartan-scraper/tools/pi-bridge
+> tsc -p tsconfig.json
+
+✔ loadBridgeConfig uses defaults without config file (1.84075ms)
+✔ loadBridgeConfig loads route overrides from PI_CONFIG_PATH (0.984584ms)
+✔ loadBridgeConfig preserves explicit empty capability overrides (0.540708ms)
+✔ parseRouteId validates provider/model IDs (0.194625ms)
+✔ FixtureBackend produces deterministic extract output (0.95425ms)
+✔ validation helpers reject malformed outputs (0.3875ms)
+✔ ModelRegistry resolves preferred default pi model IDs (1.978833ms)
+✔ health reports only auth-ready routes as available (1.213167ms)
+✔ health reports missing models distinctly (0.231667ms)
+✔ runWithFallback returns the first successful route (0.233875ms)
+✔ runWithFallback reports empty capabilities clearly (0.276084ms)
+✔ runWithFallback aggregates ordered route failures (0.1265ms)
+✔ extract falls back to the next route after provider failure (16.828458ms)
+✔ extract falls back after malformed model output (0.885ms)
+✔ generateTemplate reports aggregated fallback failures (5.353666ms)
+✔ generateRenderProfile validates structured profile output (4.873583ms)
+✔ refineResearch validates structured bounded research output (3.399583ms)
+✔ shapeExport validates bounded export shape output (2.573625ms)
+✔ generateTransform validates bounded transform output (1.037458ms)
+✔ generatePipelineJs sends screenshot context as multimodal user content (1.600833ms)
+✔ extract sends screenshot context as multimodal user content (0.716958ms)
+✔ modelSupportsImages matches current verified model capabilities (0.1955ms)
+✔ truncateHTMLForPrompt respects max_content_chars (0.072083ms)
+✔ normalizeExtractResult canonicalizes primitive field values (9.087583ms)
+✔ normalizeExtractResult preserves structured field data as rawObject (0.420333ms)
+✔ normalizeExtractResult rejects invalid nested values (0.578ms)
+✔ normalizeExtractResult clamps confidence into the documented range (0.125083ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1304.166458
+cd web && CI=1 NODE_OPTIONS=--localstorage-file=.vitest-localstorage pnpm run test -- --run --maxWorkers=2
+
+> spartan-scraper-web@1.0.0-rc1 test /Users/mitchfultz/Projects/spartan-scraper/web
+> vitest -- --run --maxWorkers=2
+
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90m/Users/mitchfultz/Projects/spartan-scraper/web[39m
+
+
+[2m Test Files [22m [1m[32m79 passed[39m[22m[90m (79)[39m
+[2m      Tests [22m [1m[32m402 passed[39m[22m[90m (402)[39m
+[2m   Start at [22m 17:04:42
+[2m   Duration [22m 23.68s[2m (transform 6.99s, setup 7.59s, import 22.14s, tests 36.33s, environment 111.75s)[22m
+

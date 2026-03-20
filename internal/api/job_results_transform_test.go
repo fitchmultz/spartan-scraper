@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 )
@@ -107,6 +108,70 @@ func TestHandleJobExportWithTransform_InvalidExpression(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d: %s", rr.Code, rr.Body.String())
 	}
+}
+
+func TestHandleJobExportPersistsNoResultFailure(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	jobID := "test-job-export-no-results"
+	createQueuedJobWithoutResult(t, srv, ctx, jobID, model.KindScrape)
+
+	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), `{"format":"json"}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	response := decodeExportOutcomeResponse(t, rr)
+	if response.Export.Status != "failed" {
+		t.Fatalf("expected failed export, got %#v", response.Export)
+	}
+	if response.Export.Failure == nil {
+		t.Fatalf("expected failure context, got %#v", response.Export)
+	}
+	if response.Export.Failure.Category != "result" {
+		t.Fatalf("failure category = %q, want result", response.Export.Failure.Category)
+	}
+	if response.Export.Failure.Retryable {
+		t.Fatalf("expected non-retryable failure, got %#v", response.Export.Failure)
+	}
+	assertActionValue(t, response.Export.Actions, "Inspect saved job results", "/jobs/"+jobID)
+
+	historyReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/jobs/%s/exports?limit=10&offset=0", jobID), nil)
+	historyRR := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(historyRR, historyReq)
+	if historyRR.Code != http.StatusOK {
+		t.Fatalf("expected history 200, got %d: %s", historyRR.Code, historyRR.Body.String())
+	}
+	var history ExportOutcomeListResponse
+	if err := json.Unmarshal(historyRR.Body.Bytes(), &history); err != nil {
+		t.Fatalf("decode history response: %v", err)
+	}
+	if len(history.Exports) != 1 {
+		t.Fatalf("expected one persisted failure record, got %#v", history.Exports)
+	}
+	if history.Exports[0].Failure == nil || history.Exports[0].Failure.Category != "result" {
+		t.Fatalf("unexpected persisted failure: %#v", history.Exports[0])
+	}
+}
+
+func TestBuildExportRecommendedActionsForTransformFailure(t *testing.T) {
+	actions := buildExportRecommendedActions(ExportInspection{
+		ID:     "export-1",
+		JobID:  "job-1",
+		Status: string(exporter.OutcomeFailed),
+		Request: exporter.ResultExportConfig{
+			Format: "csv",
+		},
+		Failure: &exporter.FailureContext{
+			Category:  "transform",
+			Summary:   "invalid jmespath expression",
+			Retryable: false,
+		},
+	})
+
+	assertActionValue(t, actions, "Retry without the transform", "spartan export --job-id job-1 --format csv")
+	assertActionValue(t, actions, "Retry as JSONL", "spartan export --job-id job-1 --format jsonl")
 }
 
 func TestHandleJobExportWithTransform_CSVFormat(t *testing.T) {
@@ -282,7 +347,7 @@ func assertExportSucceeded(t *testing.T, outcome ExportInspection, contentType s
 	}
 }
 
-func createSucceededJobWithResult(t *testing.T, srv *Server, ctx context.Context, jobID string, kind model.Kind, resultContent string) {
+func createQueuedJobWithoutResult(t *testing.T, srv *Server, ctx context.Context, jobID string, kind model.Kind) {
 	t.Helper()
 	job := model.Job{
 		ID:        jobID,
@@ -295,6 +360,11 @@ func createSucceededJobWithResult(t *testing.T, srv *Server, ctx context.Context
 	if err := srv.store.Create(ctx, job); err != nil {
 		t.Fatalf("failed to create job: %v", err)
 	}
+}
+
+func createSucceededJobWithResult(t *testing.T, srv *Server, ctx context.Context, jobID string, kind model.Kind, resultContent string) {
+	t.Helper()
+	createQueuedJobWithoutResult(t, srv, ctx, jobID, kind)
 	resultDir := filepath.Join(srv.store.DataDir(), "jobs", jobID)
 	if err := fsutil.MkdirAllSecure(resultDir); err != nil {
 		t.Fatalf("failed to create result directory: %v", err)

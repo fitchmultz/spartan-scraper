@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/andybalholm/cascadia"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/diff"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
@@ -367,18 +368,31 @@ func generateEventID() string {
 
 // extractSelector extracts content from HTML using a CSS selector.
 func extractSelector(html, selector string) (string, error) {
+	compiled, err := cascadia.Compile(selector)
+	if err != nil {
+		return "", fmt.Errorf("invalid selector %q: %w", selector, err)
+	}
+
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return "", err
 	}
 
-	var results []string
-	doc.Find(selector).Each(func(_ int, s *goquery.Selection) {
+	matches := doc.FindMatcher(compiled)
+	if matches.Length() == 0 {
+		return "", fmt.Errorf("no elements matched selector %q", selector)
+	}
+
+	results := make([]string, 0, matches.Length())
+	matches.Each(func(_ int, s *goquery.Selection) {
 		text := strings.TrimSpace(s.Text())
 		if text != "" {
 			results = append(results, text)
 		}
 	})
+	if len(results) == 0 {
+		return "", fmt.Errorf("selector %q matched elements but extracted no text", selector)
+	}
 
 	return strings.Join(results, "\n"), nil
 }

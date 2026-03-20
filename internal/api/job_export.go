@@ -50,14 +50,6 @@ func (s *Server) handleJobExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	if err := s.requireJobResultFile(job, jobResultFileMessages{
-		MissingPath: "job has no results",
-		MissingFile: "job result file is missing",
-		EmptyFile:   "job result file is empty",
-	}); err != nil {
-		writeError(w, r, err)
-		return
-	}
 
 	var req exporter.ResultExportConfig
 	if err := decodeJSONBody(w, r, &req); err != nil {
@@ -85,6 +77,15 @@ func (s *Server) handleJobExport(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeError(w, r, err)
+		return
+	}
+
+	if err := s.requireJobResultFile(job, jobResultFileMessages{
+		MissingPath: "job has no results",
+		MissingFile: "job result file is missing",
+		EmptyFile:   "job result file is empty",
+	}); err != nil {
+		s.writeFailedExportOutcome(w, r, historyStore, record.ID, err)
 		return
 	}
 

@@ -20,13 +20,13 @@
  * - Unknown statuses and failure categories should still render gracefully.
  */
 
-import type { RecommendedAction } from "../../api";
 import type { ExportScheduleHistoryProps } from "../../types/export-schedule";
 import { formatDateTime } from "../../lib/formatting";
 import { formatFileSize } from "../../lib/export-schedule-utils";
 import { getExportHistoryStatusTone } from "../../lib/status-display";
-import { StatusPill } from "../StatusPill";
 import { ActionEmptyState } from "../ActionEmptyState";
+import { CapabilityActionList } from "../CapabilityActionList";
+import { StatusPill } from "../StatusPill";
 
 function formatFailureCategory(category?: string) {
   if (!category) {
@@ -36,44 +36,6 @@ function formatFailureCategory(category?: string) {
     .split("-")
     .join(" ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-async function copyValue(value?: string) {
-  if (!value || !navigator?.clipboard) {
-    return;
-  }
-  await navigator.clipboard.writeText(value);
-}
-
-function ActionChip({ action }: { action: RecommendedAction }) {
-  const isCopyable = Boolean(action.value);
-
-  return (
-    <button
-      type="button"
-      className="secondary"
-      onClick={() => {
-        void copyValue(action.value);
-      }}
-      disabled={!isCopyable}
-      style={{ textAlign: "left" }}
-      title={action.value || "No value available"}
-    >
-      <strong>{action.label}</strong>
-      {action.value ? (
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--muted)",
-            marginTop: 4,
-            wordBreak: "break-word",
-          }}
-        >
-          {action.kind}: {action.value}
-        </div>
-      ) : null}
-    </button>
-  );
 }
 
 export function ExportScheduleHistory({
@@ -122,7 +84,7 @@ export function ExportScheduleHistory({
           <div>
             <h3 style={{ margin: 0 }}>Export History: {scheduleName}</h3>
             <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
-              Inspect outcomes, understand failures quickly, and copy the next
+              Inspect outcomes, understand failures quickly, and follow the next
               recovery step without leaving the history view.
             </p>
           </div>
@@ -294,21 +256,14 @@ export function ExportScheduleHistory({
                   {record.actions?.length ? (
                     <div style={{ marginTop: 16 }}>
                       <strong>Recommended next steps</strong>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(220px, 1fr))",
-                          gap: 8,
-                          marginTop: 8,
-                        }}
-                      >
-                        {record.actions.map((action) => (
-                          <ActionChip
-                            key={`${record.id}-${action.label}-${action.value}`}
-                            action={action}
-                          />
-                        ))}
+                      <div style={{ marginTop: 8 }}>
+                        <CapabilityActionList
+                          actions={record.actions}
+                          onNavigate={(path) => {
+                            window.location.assign(path);
+                          }}
+                          onRefresh={async () => undefined}
+                        />
                       </div>
                     </div>
                   ) : null}
