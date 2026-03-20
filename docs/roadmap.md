@@ -16,10 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Automation Workspace Operator Docs Refresh — update the README/demo/operator flow docs now that the populated-state and failure-path acceptance passes have confirmed the final watch/export inspection path and screenshots.
-
-## Later / Deprioritized
-
 1. AI Bridge Output-Tolerance Hardening
    - Keep strict schema validation at the deterministic handoff boundary, but stop requiring one exact stochastic response path when multiple equivalent paths can yield the same valid payload.
    - Change bridge result extraction to prefer the last valid matching tool call rather than assuming the first matching call is canonical.
@@ -36,7 +32,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
      - fallback behavior when a preferred tool-call path is absent
      - continued hard failure on malformed payloads
 
-2. AI Template Validation Flexibility
+## Later / Deprioritized
+
+1. AI Template Validation Flexibility
    - Align bridge-side template validation with the real template model used by Spartan: valid generated templates may be selector-driven, JSON-LD-driven, regex-driven, or mixed.
    - Remove the selector-only assumption from bridge validation while preserving strict checks that templates still have a name and at least one real extraction rule.
    - Keep downstream validation strict about malformed selectors, malformed regex rules, invalid JSON-LD paths, or templates that cannot pass local structural validation.
@@ -47,7 +45,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
      - still-invalid empty templates
    - Ensure error messages explain the real invariant being enforced rather than implying selectors are the only valid extraction strategy.
 
-3. Optional Goal Defaults for AI Automation Generators
+2. Optional Goal Defaults for AI Automation Generators
    - Let render-profile and pipeline-JS generation bootstrap from page context when explicit operator instructions are omitted, instead of hard-failing before the model can attempt a reasonable starter configuration.
    - Preserve explicit operator guidance as the preferred path, but provide a sensible default objective derived from the page URL, fetched HTML, JS-heaviness signals, and any attached screenshots.
    - Keep deterministic validation strict after generation:

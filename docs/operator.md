@@ -14,6 +14,24 @@
 DATA_DIR=.data spartan server
 ```
 
+## The Validated Operator Loop
+
+The canonical operator workflow is:
+
+1. submit and verify a real job
+2. promote the verified job into a template, watch, or export schedule draft
+3. save the automation from its destination surface
+4. use `/templates`, `/automation/watches`, and `/automation/exports` as the canonical homes for future inspection
+5. reopen persisted watch checks and export outcomes from history
+6. recover from failures using the saved guidance instead of starting from scratch
+
+This workflow is validated by:
+
+- `docs/evidence/dogfood/2026-03-20-promotion-flow-acceptance/README.md`
+- `docs/evidence/dogfood/2026-03-20-saved-automation-inspection/README.md`
+- `docs/evidence/dogfood/2026-03-20-populated-automation-workspace/README.md`
+- `docs/evidence/dogfood/2026-03-20-failure-recovery-dogfood/README.md`
+
 ## Canonical Diagnostics Workflow
 
 Use the same recovery model everywhere:
@@ -37,7 +55,94 @@ spartan retention status
 - If the API server is already running, the CLI reads `/healthz` and the diagnostic endpoints directly.
 - If the API server is offline, the CLI falls back to local checks instead of hiding recovery guidance.
 
+## Job To Automation Workflow
+
+### 1. Create And Verify The Source Job
+
+A successful job is the promotion source of truth.
+
+```bash
+spartan scrape --url https://example.com --out ./out/example.json
+spartan jobs list
+spartan jobs get <job-id>
+```
+
+In the Web UI, the operator path starts on `/jobs/new`, then continues to `/jobs/:id` once the run succeeds.
+
+Verify before promoting:
+
+- the saved result is the one you want to reuse
+- the target URL and runtime settings are trustworthy
+- any extraction choices you want to preserve are visible on the job detail route
+
+### 2. Promote From `/jobs/:id`
+
+The promotion entry point is the job detail route.
+
+Validated destinations:
+
+- **Template** → opens a seeded draft in `/templates`
+- **Watch** → opens a seeded draft in `/automation/watches`
+- **Export schedule** → opens a seeded draft in `/automation/exports`
+
+Promotion behavior that is now validated:
+
+- the operator does not need to re-enter the verified target
+- destination drafts explain what carried forward and what still needs review
+- watch promotion does not silently carry screenshot-based visual diff forward from a non-browser job
+- export promotion is framed as future matching job exports, not rerunning the original job
+
+### 3. Save And Inspect From The Destination Surface
+
+After promotion, the destination surface becomes the canonical home.
+
+#### Templates
+
+Use `/templates` to save and preview the promoted template.
+
+Expected outcome:
+
+- the saved template appears in the template library
+- preview still renders the verified selectors or rules against the source page
+
+#### Watches
+
+Use `/automation/watches` to save the promoted watch, then run a manual check.
+
+```bash
+spartan watch check <watch-id>
+spartan watch history <watch-id>
+spartan watch history <watch-id> --check-id <check-id>
+```
+
+Expected outcome:
+
+- the saved watch appears immediately in the watches workspace
+- a manual check opens an immediate result summary
+- `View history` reopens the same saved check through persisted history
+- pagination remains correct as history grows
+
+#### Export Schedules
+
+Use `/automation/exports` to save the promoted export schedule, then inspect outcome history once matching exports exist.
+
+```bash
+spartan export --job-id <job-id> --schedule-id <schedule-id>
+spartan export-schedule history --id <schedule-id>
+spartan export --inspect-id <export-id>
+spartan export --history-job-id <job-id>
+```
+
+Expected outcome:
+
+- the saved export schedule appears immediately in the exports workspace
+- export history remains inspectable from the saved schedule
+- direct exports and recurring exports share one outcome-inspection model
+- pagination remains correct across larger history sets
+
 ## Export Outcome Inspection
+
+Use these commands after the save-and-inspect loop above; they are the canonical persisted-history inspection paths.
 
 Direct exports and recurring export schedules now share one persisted outcome history.
 
@@ -59,6 +164,8 @@ Cross-surface expectations:
 
 ## Watch Outcome Inspection
 
+Use these commands after the save-and-inspect loop above; they are the canonical persisted-history inspection paths.
+
 Manual and scheduled watch checks now share one persisted history.
 
 Canonical operator workflow:
@@ -77,6 +184,47 @@ Cross-surface expectations:
 - Historical artifact snapshots live under `/v1/watch/{id}/history/{checkId}/artifacts/{artifactKind}` so older checks stay inspectable after later runs rotate the latest watch artifacts.
 - `spartan mcp` exposes the same model through `watch_check`, `watch_check_history`, and `watch_check_get`.
 - The Web UI now lets operators jump from an immediate manual check into the saved history modal without leaving Automation.
+
+## Failure Recovery In Automation Workspaces
+
+Failures are now part of the normal persisted operator model.
+
+### Watch Failures
+
+Validated failure cases:
+
+- fetch failure, for example `http://127.0.0.1:1`, persists a failed check
+- invalid selectors fail instead of silently recording empty baselines
+
+Recovery expectations:
+
+- the immediate result and saved history agree on the failed outcome
+- failed checks do not render misleading diffs
+- history keeps the recovery actions attached to the saved check
+- operators can fix the selector or target, save, and rerun from `/automation/watches`
+
+### Export Failures
+
+Validated failure cases:
+
+- direct export with no result file persists a failure outcome with `category=result`
+- transform failures persist `category=transform` and guide the operator toward retrying without the transform or falling back to JSONL
+- retryable network and timeout failures point back to `/automation/exports` with route-aware actions
+
+Recovery expectations:
+
+- failures are persisted in the same history model as successes
+- direct and scheduled export failures stay inspectable later by export id, job history, or schedule history
+- mixed success and failure pagination remains correct
+
+Canonical inspection commands:
+
+```bash
+spartan watch history <watch-id> --check-id <check-id>
+spartan export --inspect-id <export-id>
+spartan export --history-job-id <job-id>
+spartan export-schedule history --id <schedule-id>
+```
 
 ## Setup Recovery
 

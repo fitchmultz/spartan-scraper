@@ -5,8 +5,11 @@ This index helps contributors, operators, and maintainers navigate documentation
 ## Start Here
 
 - [README](../README.md) — project overview, value proposition, and quick demo.
-- [5-Minute Demo](demo.md) — fastest path from clone to a visible scrape result.
+- [5-Minute Demo](demo.md) — fastest path from clone to first result, then into promotion and saved automation.
+- [Operator Guide](operator.md) — canonical scrape → promote → automate → inspect history → recover workflow.
 - [Validation Checklist](validation_checklist.md) — copy/paste validation steps for setup, runtime checks, and public-readiness smoke tests.
+
+If you are learning the product as an operator, read the docs in this order: README → Demo → Operator Guide → Validation Checklist.
 
 ## Product Planning
 

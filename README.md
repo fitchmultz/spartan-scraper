@@ -9,7 +9,7 @@
 
 Spartan Scraper is a local-first scraping workbench for turning a URL into a clean result, a bounded crawl, or a research job without standing up cloud infrastructure.
 
-It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, and only reach for headless browsers when a target actually needs them.
+It is built for people who want one dependable workflow from fetch to stored artifacts: open the UI or CLI, submit work, inspect results locally, promote a verified job into reusable automation, and reopen saved watch/export history when daily operations or failure recovery matter.
 
 A healthy first run works without any AI, proxy-pool, or retention setup. Those are optional subsystems you can enable later when a workflow actually calls for them.
 
@@ -62,6 +62,22 @@ cat ./out/example.json
 Expected output includes the page title text `Example Domain`.
 
 For a more guided version with expected checkpoints, see [docs/demo.md](docs/demo.md).
+
+## Validated Operator Workflow
+
+The current operator path is:
+
+1. submit a scrape, crawl, or research job
+2. inspect the saved result on the job detail route
+3. promote that verified job into a template, watch, or export schedule draft
+4. save the automation from its destination surface
+5. inspect persisted watch checks and export outcomes from `/automation/watches` and `/automation/exports`
+6. follow guided recovery actions when a watch check or export run fails
+
+The README keeps the fast first-success path near the top. For the guided continuation into promotion, saved automation, history inspection, and failure recovery, use:
+
+- [docs/demo.md](docs/demo.md)
+- [docs/operator.md](docs/operator.md)
 
 ## What It Covers
 
@@ -136,7 +152,8 @@ make install-bin
 - [docs/README.md](docs/README.md): docs index and navigation.
 - [docs/usage.md](docs/usage.md): CLI/API/Web/MCP entry points and flags.
 - [docs/architecture.md](docs/architecture.md): system structure and flow.
-- [docs/demo.md](docs/demo.md): a fast clone-to-value walkthrough with expected output.
+- [docs/demo.md](docs/demo.md): a fast clone-to-value walkthrough that continues into promotion and saved automation.
+- [docs/operator.md](docs/operator.md): canonical operator workflow for promotion, saved automation, history inspection, and failure recovery.
 - [docs/validation_checklist.md](docs/validation_checklist.md): copy/paste validation steps for setup, runtime checks, and public-readiness smoke tests.
 - [RELEASING.md](RELEASING.md): release workflow and pre-tag checklist.
 - [docs/ci.md](docs/ci.md): CI tiers, runtime expectations, and resource profile guidance.
@@ -199,6 +216,13 @@ make install-bin
 ./bin/spartan export --job-id <id> --format md --out ./out/report.md
 ./bin/spartan export --job-id <id> --schedule-id <export-schedule-id>
 ./bin/spartan export --inspect-id <export-id>
+./bin/spartan export --history-job-id <job-id>
+./bin/spartan export-schedule history --id <export-schedule-id>
+
+# Watch inspection
+./bin/spartan watch check <watch-id>
+./bin/spartan watch history <watch-id>
+./bin/spartan watch history <watch-id> --check-id <check-id>
 
 # Schedules
 ./bin/spartan schedule add --kind scrape --interval 3600 --url https://example.com
@@ -227,6 +251,13 @@ make web-dev
 ```
 
 Open `http://localhost:5173` for the UI.
+
+Validated operator continuation after a successful job:
+
+- `/jobs/:id` is the promotion starting point for templates, watches, and export schedules
+- `/templates` is where promoted templates are saved and previewed
+- `/automation/watches` is where promoted watches are saved, checked, and inspected through persisted history
+- `/automation/exports` is where promoted export schedules are saved and where export outcome history stays inspectable across success and failure states
 
 The dev server proxies API requests to `http://localhost:8741` by default.
 WebSocket upgrades to `/v1/ws` accept browser origins from loopback hosts only (`localhost`, `127.0.0.1`, `::1`).
