@@ -278,7 +278,7 @@ export function buildWatchPromotionSeed(job: Job): WatchPromotionSeed {
   const source = buildPromotionSourceContext(job);
   const unsupportedCarryForward: string[] = [];
 
-  if (asString(exec?.authProfile) || asRecord(exec?.auth)) {
+  if (asString(exec?.authProfile) || exec?.auth !== undefined) {
     unsupportedCarryForward.push(
       "Authentication settings are not carried into watches in this cut.",
     );

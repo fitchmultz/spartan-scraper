@@ -616,6 +616,24 @@ describe("FreshStartOperatorFlow", () => {
     expect(screen.getByText("Watch seed job-promote")).toBeInTheDocument();
   });
 
+  it("hands template promotion drafts off to the templates workspace", async () => {
+    const user = userEvent.setup();
+    appDataState.detailJob = makeJobEntry({ id: "job-template" });
+
+    renderAppAt("/jobs/job-template");
+
+    await waitFor(() => {
+      expect(screen.getByText("job-template")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /promote template/i }));
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/templates");
+    });
+    expect(screen.getByText("Template seed job-template")).toBeInTheDocument();
+  });
+
   it("shows first-visit Settings guidance, then retires the overview after the first job", async () => {
     const user = userEvent.setup();
 

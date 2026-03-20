@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import type { Job } from "../api";
 import {
   buildExportSchedulePromotionSeed,
+  buildPromotionOptions,
   buildTemplatePromotionSeed,
   buildWatchPromotionSeed,
 } from "./promotion";
@@ -93,7 +94,40 @@ describe("promotion", () => {
     );
   });
 
-  it("rejects non-scrape watch promotion in the first cut", () => {
+  it("keeps sanitized auth placeholders and secret fields out of promotion seeds", () => {
+    const options = buildPromotionOptions(
+      makeJob({
+        spec: {
+          version: 1,
+          url: "https://example.com/private",
+          execution: {
+            headless: true,
+            playwright: false,
+            auth: "[REDACTED]",
+            authProfile: "private-site",
+            screenshot: { enabled: true, fullPage: true, format: "png" },
+          },
+        },
+      }),
+    );
+
+    const serialized = JSON.stringify(options);
+
+    expect(serialized).not.toContain("[REDACTED]");
+    expect(serialized).not.toContain("Authorization");
+    expect(serialized).not.toContain("cookies");
+    expect(serialized).not.toContain("loginPass");
+    expect(serialized).not.toContain("proxy");
+    expect(
+      options.find((option) => option.destination === "watch")?.seed,
+    ).toMatchObject({
+      unsupportedCarryForward: expect.arrayContaining([
+        "Authentication settings are not carried into watches in this cut.",
+      ]),
+    });
+  });
+
+  it("rejects non-scrape watch promotion in the first cut with an explicit scrape-first guardrail", () => {
     const seed = buildWatchPromotionSeed(
       makeJob({
         kind: "research",

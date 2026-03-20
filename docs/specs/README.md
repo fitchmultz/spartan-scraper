@@ -9,8 +9,6 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## Next Up
 
-- [Promotion Flow Deterministic Regression Coverage](promotion-flow-deterministic-regression.md) — define system-first regression coverage and targeted browser proof for the delivered promotion cutover.
-
 ## Recently Completed
 
 - Web UI optional-capability follow-through — first-run docs, onboarding, help text, and Settings copy now consistently treat AI, proxy pooling, and retention as optional, off-by-default capabilities instead of prerequisites.
@@ -23,3 +21,4 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 - [Integrated AI Assistant Panel](ai-assistant-panel.md) — `/jobs/new`, `/templates`, and `/jobs/:id` now share a persistent, route-aware AI rail instead of modal-first entry points.
 - [Toast Notification System](toast-notification-system.md) — the Web UI now has one reusable transient feedback layer for success, error, loading, and progress states.
 - [Verified Job Promotion Flow](job-to-automation-promotion.md) — `/jobs/:id` now loads authoritative job detail, surfaces one shared promotion chooser, and hands operators into seeded template, watch, or export-schedule drafts without weakening the browser redaction boundary.
+- [Promotion Flow Deterministic Regression Coverage](promotion-flow-deterministic-regression.md) — `make test-ci` now includes deterministic system coverage for template, watch, and export-schedule promotion plus focused app-shell and mapping assertions for handoff and redaction safety.

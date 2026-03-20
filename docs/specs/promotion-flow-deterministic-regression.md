@@ -1,6 +1,6 @@
 # Promotion Flow Deterministic Regression Coverage
 
-**Status:** Planned  
+**Status:** Completed  
 **Primary surfaces:** `internal/system/`, targeted browser coverage for `/jobs/:id`, `/templates`, `/automation/watches`, and `/automation/exports`
 
 ## Summary

@@ -16,8 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — lock the delivered promotion path down with system-first deterministic regression coverage and narrow browser proof that protects detail-fetch fallback, seeded-draft handoff, and the redaction boundary.
-2. Promotion Flow Acceptance Dogfood — run a focused operator pass across `/jobs/:id`, `/templates`, `/automation/watches`, and `/automation/exports`, capture updated evidence, and tighten any copy or affordances that still make promotion feel indirect.
+1. Promotion Flow Acceptance Dogfood — run a focused operator pass across `/jobs/:id`, `/templates`, `/automation/watches`, and `/automation/exports`, capture updated evidence, and tighten any copy or affordances that still make promotion feel indirect.
 
 ## Later / Deprioritized
 
