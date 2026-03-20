@@ -4,7 +4,7 @@
  * Verifies schedule list actions trigger the expected callbacks and that the
  * export history modal loads and paginates correctly.
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -65,6 +65,16 @@ function makeHistoryRecord(
     ],
     ...overrides,
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 function createManagerProps(
@@ -174,6 +184,35 @@ describe("ExportScheduleManager", () => {
     ).toHaveLength(1);
   });
 
+  it("shows row-level loading feedback while export history is loading", async () => {
+    const user = userEvent.setup();
+    const deferred = createDeferred<ExportOutcomeListResponse>();
+    const props = createManagerProps({
+      onGetHistory: vi.fn().mockReturnValue(deferred.promise),
+    });
+
+    render(<ExportScheduleManager {...props} />);
+
+    await user.click(screen.getByRole("button", { name: "History" }));
+
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+
+    await act(async () => {
+      deferred.resolve({
+        exports: [makeHistoryRecord()],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      });
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Export History: Nightly Export",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("loads and displays guided export history when History is clicked", async () => {
     const user = userEvent.setup();
     const props = createManagerProps();
@@ -195,6 +234,94 @@ describe("ExportScheduleManager", () => {
     expect(screen.getByText("succeeded")).toBeInTheDocument();
     expect(screen.getByText("Showing 1-1 of 1")).toBeInTheDocument();
     expect(screen.getByText("Inspect export from the CLI")).toBeInTheDocument();
+  });
+
+  it("ignores stale earlier export-history responses when the operator switches rows", async () => {
+    const user = userEvent.setup();
+    const olderDeferred = createDeferred<ExportOutcomeListResponse>();
+    const newerDeferred = createDeferred<ExportOutcomeListResponse>();
+    const olderSchedule = makeSchedule({
+      id: "schedule-older",
+      name: "Older Export",
+      created_at: "2026-03-04T00:00:00Z",
+    });
+    const newerSchedule = makeSchedule({
+      id: "schedule-newer",
+      name: "Newer Export",
+      created_at: "2026-03-05T00:00:00Z",
+    });
+    const onGetHistory = vi.fn(
+      (id: string): Promise<ExportOutcomeListResponse> => {
+        if (id === olderSchedule.id) {
+          return olderDeferred.promise;
+        }
+        return newerDeferred.promise;
+      },
+    );
+
+    render(
+      <ExportScheduleManager
+        {...createManagerProps({
+          schedules: [olderSchedule, newerSchedule],
+          onGetHistory,
+        })}
+      />,
+    );
+
+    await user.click(
+      within(
+        screen.getByText("Older Export").closest("tr") as HTMLElement,
+      ).getByRole("button", { name: "History" }),
+    );
+    await user.click(
+      within(
+        screen.getByText("Newer Export").closest("tr") as HTMLElement,
+      ).getByRole("button", { name: "History" }),
+    );
+
+    await act(async () => {
+      olderDeferred.resolve({
+        exports: [
+          makeHistoryRecord({
+            id: "history-older",
+            scheduleId: olderSchedule.id,
+            title: "Older response",
+          }),
+        ],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      });
+    });
+
+    expect(
+      screen.queryByRole("heading", {
+        name: "Export History: Older Export",
+      }),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      newerDeferred.resolve({
+        exports: [
+          makeHistoryRecord({
+            id: "history-newer",
+            scheduleId: newerSchedule.id,
+            title: "Newer response",
+          }),
+        ],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      });
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Export History: Newer Export",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Newer response")).toBeInTheDocument();
+    expect(screen.queryByText("Older response")).not.toBeInTheDocument();
   });
 
   it("requests the next history page when a pagination button is clicked", async () => {

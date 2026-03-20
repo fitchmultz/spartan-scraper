@@ -127,6 +127,28 @@ describe("promotion", () => {
     });
   });
 
+  it("leaves visual change detection off when the source job never validated a browser screenshot runtime", () => {
+    const seed = buildWatchPromotionSeed(
+      makeJob({
+        spec: {
+          version: 1,
+          url: "https://example.com/pricing",
+          execution: {
+            headless: false,
+            playwright: false,
+            screenshot: { enabled: true, fullPage: true, format: "png" },
+          },
+        },
+      }),
+    );
+
+    expect(seed.eligible).toBe(true);
+    expect(seed.formData.screenshotEnabled).toBe(false);
+    expect(seed.unsupportedCarryForward).toContain(
+      "Visual change detection stays off until you choose a browser-backed watch runtime. The source job did not validate screenshots through headless Chromium or Playwright.",
+    );
+  });
+
   it("rejects non-scrape watch promotion in the first cut with an explicit scrape-first guardrail", () => {
     const seed = buildWatchPromotionSeed(
       makeJob({

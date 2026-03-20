@@ -294,6 +294,20 @@ export function buildWatchPromotionSeed(job: Job): WatchPromotionSeed {
     );
   }
 
+  const headless = asBoolean(exec?.headless) ?? defaultWatchFormData.headless;
+  const usePlaywright =
+    asBoolean(exec?.playwright) ?? defaultWatchFormData.usePlaywright;
+  const browserRuntimeVerified = headless || usePlaywright;
+  const screenshotRequested =
+    asBoolean(screenshot?.enabled) ?? defaultWatchFormData.screenshotEnabled;
+  const screenshotEnabled = screenshotRequested && browserRuntimeVerified;
+
+  if (screenshotRequested && !browserRuntimeVerified) {
+    unsupportedCarryForward.push(
+      "Visual change detection stays off until you choose a browser-backed watch runtime. The source job did not validate screenshots through headless Chromium or Playwright.",
+    );
+  }
+
   const eligible = job.kind === "scrape" && Boolean(url);
   const eligibilityMessage = eligible
     ? undefined
@@ -309,22 +323,18 @@ export function buildWatchPromotionSeed(job: Job): WatchPromotionSeed {
     formData: {
       ...defaultWatchFormData,
       url,
-      headless: asBoolean(exec?.headless) ?? defaultWatchFormData.headless,
-      usePlaywright:
-        asBoolean(exec?.playwright) ?? defaultWatchFormData.usePlaywright,
-      screenshotEnabled:
-        asBoolean(screenshot?.enabled) ??
-        defaultWatchFormData.screenshotEnabled,
-      screenshotFullPage:
-        asBoolean(screenshot?.fullPage) ??
-        defaultWatchFormData.screenshotFullPage,
-      screenshotFormat:
-        (asString(screenshot?.format) as "png" | "jpeg" | undefined) ??
-        defaultWatchFormData.screenshotFormat,
-      visualDiffThreshold:
-        typeof screenshot?.enabled === "boolean" && screenshot.enabled
-          ? defaultWatchFormData.visualDiffThreshold
-          : defaultWatchFormData.visualDiffThreshold,
+      headless,
+      usePlaywright,
+      screenshotEnabled,
+      screenshotFullPage: screenshotEnabled
+        ? (asBoolean(screenshot?.fullPage) ??
+          defaultWatchFormData.screenshotFullPage)
+        : defaultWatchFormData.screenshotFullPage,
+      screenshotFormat: screenshotEnabled
+        ? ((asString(screenshot?.format) as "png" | "jpeg" | undefined) ??
+          defaultWatchFormData.screenshotFormat)
+        : defaultWatchFormData.screenshotFormat,
+      visualDiffThreshold: defaultWatchFormData.visualDiffThreshold,
     },
     carriedForward: [
       "The verified target URL from the successful job.",

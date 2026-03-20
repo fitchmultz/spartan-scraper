@@ -84,6 +84,7 @@ export interface ExportScheduleFormData {
  */
 export interface ExportScheduleListProps {
   schedules: ExportSchedule[];
+  historyLoadingId: string | null;
   deleteConfirmId: string | null;
   onEdit: (schedule: ExportSchedule) => void;
   onDelete: (id: string) => void;
@@ -97,6 +98,7 @@ export interface ExportScheduleListProps {
  */
 export interface ExportScheduleListItemProps {
   schedule: ExportSchedule;
+  isHistoryLoading: boolean;
   isDeleting: boolean;
   onEdit: () => void;
   onDelete: () => void;

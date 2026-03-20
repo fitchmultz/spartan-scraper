@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Empty schedule state should still suggest a next step, history pagination is offset-based, and only one editor modal is open at a time.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { ExportInspection, ExportSchedule } from "../api";
 import type { ExportScheduleManagerProps } from "../types/export-schedule";
 import { useExportScheduleForm } from "../hooks/useExportScheduleForm";
@@ -40,7 +40,9 @@ export function ExportScheduleManager({
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const historyRequestSeqRef = useRef(0);
 
   const {
     formData,
@@ -122,22 +124,33 @@ export function ExportScheduleManager({
 
   const loadHistory = useCallback(
     async (schedule: ExportSchedule, offset = 0) => {
+      const requestSeq = historyRequestSeqRef.current + 1;
+      historyRequestSeqRef.current = requestSeq;
       setHistoryLoading(true);
+      setHistoryLoadingId(schedule.id);
       setHistorySchedule(schedule);
-      setHistoryOffset(offset);
       try {
         const result = await onGetHistory(
           schedule.id,
           HISTORY_PAGE_SIZE,
           offset,
         );
+        if (requestSeq !== historyRequestSeqRef.current) {
+          return;
+        }
         setHistoryRecords(result.exports);
         setHistoryTotal(result.total);
+        setHistoryOffset(result.offset ?? offset);
         setShowHistory(true);
       } catch (err) {
-        console.error("Failed to load export history:", err);
+        if (requestSeq === historyRequestSeqRef.current) {
+          console.error("Failed to load export history:", err);
+        }
       } finally {
-        setHistoryLoading(false);
+        if (requestSeq === historyRequestSeqRef.current) {
+          setHistoryLoading(false);
+          setHistoryLoadingId(null);
+        }
       }
     },
     [onGetHistory],
@@ -160,11 +173,14 @@ export function ExportScheduleManager({
   );
 
   const handleCloseHistory = useCallback(() => {
+    historyRequestSeqRef.current += 1;
     setShowHistory(false);
     setHistorySchedule(null);
     setHistoryRecords([]);
     setHistoryTotal(0);
     setHistoryOffset(0);
+    setHistoryLoading(false);
+    setHistoryLoadingId(null);
   }, []);
 
   return (
@@ -210,6 +226,7 @@ export function ExportScheduleManager({
       ) : (
         <ExportScheduleList
           schedules={schedules}
+          historyLoadingId={historyLoadingId}
           deleteConfirmId={deleteConfirmId}
           onEdit={handleEditClick}
           onDelete={handleDelete}

@@ -27,6 +27,7 @@ import { StatusPill } from "../StatusPill";
  */
 export function ExportScheduleListItem({
   schedule,
+  isHistoryLoading,
   isDeleting,
   onEdit,
   onDelete,
@@ -82,11 +83,12 @@ export function ExportScheduleListItem({
           <button
             type="button"
             onClick={onViewHistory}
+            disabled={isHistoryLoading}
             className="secondary"
             style={{ padding: "6px 12px", fontSize: 12 }}
             title="View export history"
           >
-            History
+            {isHistoryLoading ? "Loading..." : "History"}
           </button>
           <button
             type="button"

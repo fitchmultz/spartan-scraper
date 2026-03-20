@@ -1,0 +1,1 @@
+{"name":"saved-automation-preview-template","is_built_in":false,"template":{"name":"saved-automation-preview-template","selectors":[{"name":"heading","selector":"h1","attr":"text","trim":true}],"normalize":{"titleField":"heading"}}}

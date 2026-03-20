@@ -21,6 +21,7 @@ import { ExportScheduleListItem } from "./ExportScheduleListItem";
  */
 export function ExportScheduleList({
   schedules,
+  historyLoadingId,
   deleteConfirmId,
   onEdit,
   onDelete,
@@ -56,6 +57,7 @@ export function ExportScheduleList({
             <ExportScheduleListItem
               key={schedule.id}
               schedule={schedule}
+              isHistoryLoading={historyLoadingId === schedule.id}
               isDeleting={deleteConfirmId === schedule.id}
               onEdit={() => onEdit(schedule)}
               onDelete={() => onDelete(schedule.id)}

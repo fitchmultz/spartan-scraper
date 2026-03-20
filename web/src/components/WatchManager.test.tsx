@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Persisted watch history is the source of truth for detailed post-check inspection.
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -70,6 +70,16 @@ function makeHistoryResponse(
     offset: 0,
     ...overrides,
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | undefined) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T | undefined>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 function createProps(
@@ -191,6 +201,43 @@ describe("WatchManager", () => {
 
     expect(screen.getByText("Never")).toBeInTheDocument();
     expect(screen.queryByText(/12\/31\/1/)).not.toBeInTheDocument();
+  });
+
+  it("ignores late watch-history detail responses after the modal closes", async () => {
+    const user = userEvent.setup();
+    const detailDeferred = createDeferred<WatchCheckInspection>();
+    const props = createProps({
+      onLoadHistoryDetail: vi.fn().mockReturnValue(detailDeferred.promise),
+    });
+
+    render(<WatchManager {...props} />);
+
+    await user.click(screen.getByRole("button", { name: "History" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Watch History: https://example.com/pricing",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    await act(async () => {
+      detailDeferred.resolve(
+        makeInspection({
+          id: "check-1",
+          title: "Late detail response",
+          message: "This detail should be ignored after close.",
+        }),
+      );
+    });
+
+    expect(
+      screen.queryByRole("heading", {
+        name: "Watch History: https://example.com/pricing",
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Late detail response")).not.toBeInTheDocument();
   });
 
   it("loads persisted watch history from the list view", async () => {

@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Empty watch state should still suggest a next step, only one edit form is open at a time, and persisted history remains the source of truth for post-check inspection.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Watch, WatchCheckInspection } from "../api";
 import type { WatchManagerProps } from "../types/watch";
 import { useWatchForm } from "../hooks/useWatchForm";
@@ -50,6 +50,8 @@ export function WatchManager({
     useState<WatchCheckInspection | null>(null);
   const [selectedHistoryCheckLoading, setSelectedHistoryCheckLoading] =
     useState(false);
+  const historyPageRequestSeqRef = useRef(0);
+  const historyDetailRequestSeqRef = useRef(0);
 
   const {
     formData,
@@ -80,17 +82,24 @@ export function WatchManager({
       checkId: string,
       fallback: WatchCheckInspection | null,
     ) => {
+      const requestSeq = historyDetailRequestSeqRef.current + 1;
+      historyDetailRequestSeqRef.current = requestSeq;
       setSelectedHistoryCheckLoading(true);
       if (fallback) {
         setSelectedHistoryCheck(fallback);
       }
       try {
         const detail = await onLoadHistoryDetail(watchId, checkId);
+        if (requestSeq !== historyDetailRequestSeqRef.current) {
+          return;
+        }
         if (detail) {
           setSelectedHistoryCheck(detail);
         }
       } finally {
-        setSelectedHistoryCheckLoading(false);
+        if (requestSeq === historyDetailRequestSeqRef.current) {
+          setSelectedHistoryCheckLoading(false);
+        }
       }
     },
     [onLoadHistoryDetail],
@@ -98,15 +107,22 @@ export function WatchManager({
 
   const loadHistoryPage = useCallback(
     async (watchItem: Watch, offset: number, preferredCheckId?: string) => {
+      const requestSeq = historyPageRequestSeqRef.current + 1;
+      historyPageRequestSeqRef.current = requestSeq;
+      historyDetailRequestSeqRef.current += 1;
       setHistoryWatch(watchItem);
       setHistoryLoading(true);
       setHistoryLoadingId(watchItem.id);
+      setSelectedHistoryCheckLoading(false);
       try {
         const response = await onLoadHistory(
           watchItem.id,
           WATCH_HISTORY_PAGE_SIZE,
           offset,
         );
+        if (requestSeq !== historyPageRequestSeqRef.current) {
+          return;
+        }
         const records = response?.checks || [];
         setHistoryRecords(records);
         setHistoryTotal(response?.total ?? 0);
@@ -124,8 +140,10 @@ export function WatchManager({
           );
         }
       } finally {
-        setHistoryLoading(false);
-        setHistoryLoadingId(null);
+        if (requestSeq === historyPageRequestSeqRef.current) {
+          setHistoryLoading(false);
+          setHistoryLoadingId(null);
+        }
       }
     },
     [loadHistoryDetail, onLoadHistory],
@@ -328,11 +346,16 @@ export function WatchManager({
           selectedCheck={selectedHistoryCheck}
           selectedCheckLoading={selectedHistoryCheckLoading}
           onClose={() => {
+            historyPageRequestSeqRef.current += 1;
+            historyDetailRequestSeqRef.current += 1;
             setHistoryWatch(null);
             setHistoryRecords([]);
             setSelectedHistoryCheck(null);
             setHistoryOffset(0);
             setHistoryTotal(0);
+            setHistoryLoading(false);
+            setHistoryLoadingId(null);
+            setSelectedHistoryCheckLoading(false);
           }}
           onSelectCheck={(checkId) => {
             void handleHistorySelect(checkId);

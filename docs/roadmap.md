@@ -16,8 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Saved Automation Inspection Acceptance Dogfood — validate the first-save follow-up loop for the artifacts created from promotion by checking template preview, watch check/history, and export schedule history from their canonical management surfaces.
-2. Automation Workspace State Audit — sweep watches and exports for remaining empty, loading, zero-state, and notice-copy edge cases so the automation routes stay trustworthy after the promotion cutover.
+1. Automation Workspace State Audit — sweep watches and exports for remaining empty, loading, zero-state, and notice-copy edge cases so the automation routes stay trustworthy after the promotion cutover.
+2. Automation Workspace Deterministic Regression — codify the post-promotion save-and-inspect path so template preview, watch inspection, and export history stay covered after the acceptance dogfood fixes.
 
 ## Later / Deprioritized
 
