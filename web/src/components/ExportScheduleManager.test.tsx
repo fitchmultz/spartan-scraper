@@ -165,8 +165,13 @@ describe("ExportScheduleManager", () => {
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("verified-export")).toBeInTheDocument();
     expect(
-      screen.getAllByText(/do not rerun this source job on a cadence/i).length,
-    ).toBeGreaterThan(0);
+      screen.getByText(/do not rerun this source job on a cadence/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("region", {
+        name: /recurring export draft seeded from a verified job/i,
+      }),
+    ).toHaveLength(1);
   });
 
   it("loads and displays guided export history when History is clicked", async () => {

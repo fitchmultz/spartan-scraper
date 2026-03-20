@@ -175,6 +175,24 @@ describe("WatchManager", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows never checked instead of rendering Go zero timestamps", () => {
+    render(
+      <WatchManager
+        {...createProps({
+          watches: [
+            makeWatch({
+              lastCheckedAt: "0001-01-01T00:00:00Z",
+              lastChangedAt: "0001-01-01T00:00:00Z",
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Never")).toBeInTheDocument();
+    expect(screen.queryByText(/12\/31\/1/)).not.toBeInTheDocument();
+  });
+
   it("loads persisted watch history from the list view", async () => {
     const user = userEvent.setup();
     const props = createProps();

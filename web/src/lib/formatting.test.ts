@@ -24,6 +24,10 @@ describe("formatDateTime", () => {
   it("returns the original string for invalid dates", () => {
     expect(formatDateTime("not-a-date")).toBe("not-a-date");
   });
+
+  it("treats Go zero timestamps as empty values", () => {
+    expect(formatDateTime("0001-01-01T00:00:00Z", "Never")).toBe("Never");
+  });
 });
 
 describe("formatSecondsAsDuration", () => {

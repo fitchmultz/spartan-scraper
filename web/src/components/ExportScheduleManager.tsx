@@ -14,7 +14,6 @@ import { ActionEmptyState } from "./ActionEmptyState";
 import { ExportScheduleList } from "./export-schedules/ExportScheduleList";
 import { ExportScheduleForm } from "./export-schedules/ExportScheduleForm";
 import { ExportScheduleHistory } from "./export-schedules/ExportScheduleHistory";
-import { PromotionDraftNotice } from "./promotion/PromotionDraftNotice";
 
 const HISTORY_PAGE_SIZE = 10;
 
@@ -197,16 +196,6 @@ export function ExportScheduleManager({
       <p style={{ color: "var(--muted)", marginBottom: 16, fontSize: 14 }}>
         Automatically export job results when future matching jobs complete.
       </p>
-
-      {promotionSeed ? (
-        <PromotionDraftNotice
-          title="Recurring export draft seeded from a verified job"
-          description="This draft carries forward future-job filter intent from the successful source job. Review the destination and export policy before saving."
-          seed={promotionSeed}
-          onOpenSourceJob={onOpenSourceJob}
-          onClear={onClearPromotionSeed}
-        />
-      ) : null}
 
       {schedules.length === 0 && !loading ? (
         <ActionEmptyState

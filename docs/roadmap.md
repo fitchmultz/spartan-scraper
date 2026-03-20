@@ -16,7 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Promotion Flow Acceptance Dogfood — run a focused operator pass across `/jobs/:id`, `/templates`, `/automation/watches`, and `/automation/exports`, capture updated evidence, and tighten any copy or affordances that still make promotion feel indirect.
+1. Saved Automation Inspection Acceptance Dogfood — validate the first-save follow-up loop for the artifacts created from promotion by checking template preview, watch check/history, and export schedule history from their canonical management surfaces.
+2. Automation Workspace State Audit — sweep watches and exports for remaining empty, loading, zero-state, and notice-copy edge cases so the automation routes stay trustworthy after the promotion cutover.
 
 ## Later / Deprioritized
 

@@ -1,0 +1,1 @@
+No browser console messages observed during the focused promotion acceptance pass.

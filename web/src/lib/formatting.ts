@@ -36,6 +36,17 @@ export function formatDateTime(
     return value;
   }
 
+  if (
+    date.getUTCFullYear() === 1 &&
+    date.getUTCMonth() === 0 &&
+    date.getUTCDate() === 1 &&
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0
+  ) {
+    return emptyLabel;
+  }
+
   return date.toLocaleString();
 }
 

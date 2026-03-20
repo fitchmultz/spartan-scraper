@@ -1,0 +1,1 @@
+No browser errors observed during the focused promotion acceptance pass.
