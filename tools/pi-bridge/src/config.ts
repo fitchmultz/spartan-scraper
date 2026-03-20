@@ -1,3 +1,18 @@
+/*
+Purpose:
+- Load pi bridge routing configuration and preserve explicit per-capability overrides.
+Responsibilities:
+- Define bridge config shapes and default route ordering.
+- Apply environment and JSON-file overrides consistently with Go config loading.
+- Normalize route lists while preserving explicit empty arrays as disabled capabilities.
+Scope:
+- Bridge config parsing only; runtime health and request handling live elsewhere.
+Usage:
+- Imported by bridge startup and tests.
+Invariants/Assumptions:
+- Missing capability keys inherit defaults.
+- Explicit empty capability route arrays mean that capability is intentionally disabled.
+*/
 import { readFileSync } from "node:fs";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import {
@@ -51,10 +66,7 @@ export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCo
     const parsed = JSON.parse(readFileSync(configPath, "utf8")) as BridgeConfigFile;
     if (parsed.routes) {
       for (const [capability, routeList] of Object.entries(parsed.routes)) {
-        const normalized = normalizeRouteList(routeList);
-        if (normalized.length > 0) {
-          routes[capability] = normalized;
-        }
+        routes[capability] = normalizeRouteList(routeList);
       }
     }
     if (parsed.mode?.trim()) {
@@ -79,7 +91,8 @@ export function normalizeRouteList(routeList: string[] | undefined): string[] {
   if (!routeList) {
     return [];
   }
-  return routeList.map((route) => route.trim()).filter(Boolean);
+  const normalized = routeList.map((route) => route.trim()).filter(Boolean);
+  return normalized.length > 0 ? normalized : [];
 }
 
 export function parseRouteId(routeId: string): { provider: string; model: string } {

@@ -63,8 +63,17 @@ func (f *fakeAuthoringProvider) GenerateTemplate(ctx context.Context, req extrac
 	return f.templateResults[idx], nil
 }
 
+func (f *fakeAuthoringProvider) HealthStatus(ctx context.Context) (extract.AIHealthSnapshot, error) {
+	return extract.BuildConfiguredAIHealth(config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}), nil
+}
+
 func (f *fakeAuthoringProvider) HealthCheck(ctx context.Context) error {
-	return nil
+	_, err := f.HealthStatus(ctx)
+	return err
 }
 
 func (f *fakeAuthoringProvider) RouteFingerprint(capability string) string {

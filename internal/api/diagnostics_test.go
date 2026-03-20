@@ -20,13 +20,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/fitchmultz/spartan-scraper/internal/config"
+	"github.com/fitchmultz/spartan-scraper/internal/extract"
 )
 
 func decodeDiagnosticResponse(t *testing.T, rr *httptest.ResponseRecorder) DiagnosticActionResponse {
@@ -36,6 +39,15 @@ func decodeDiagnosticResponse(t *testing.T, rr *httptest.ResponseRecorder) Diagn
 		t.Fatalf("failed to decode diagnostic response: %v", err)
 	}
 	return response
+}
+
+type stubAIHealthChecker struct {
+	snapshot extract.AIHealthSnapshot
+	err      error
+}
+
+func (s stubAIHealthChecker) HealthStatus(context.Context) (extract.AIHealthSnapshot, error) {
+	return s.snapshot, s.err
 }
 
 func TestBrowserRecoveryActionsIncludeOneClickAndPlaywrightInstall(t *testing.T) {
@@ -151,6 +163,81 @@ func TestBuildAIDiagnosticResponseDisabledWhenUnconfigured(t *testing.T) {
 	}
 	if response.Message == "" {
 		t.Fatal("expected disabled AI message")
+	}
+}
+
+func TestBuildAIComponentStatusIncludesCapabilityDetails(t *testing.T) {
+	cfg := config.Config{
+		AI: config.AIConfig{
+			Enabled: true,
+			Mode:    "sdk",
+			Routing: config.DefaultAIRoutingConfig(),
+		},
+	}
+
+	snapshot := extract.AIHealthSnapshot{
+		Status:  "degraded",
+		Mode:    "sdk",
+		Message: "AI helpers are partially available. Ready: extract.natural_language. Degraded: template.generate.",
+		Capabilities: map[string]extract.AICapabilityHealth{
+			config.AICapabilityExtractNatural: {
+				Status:          "ok",
+				AvailableRoutes: []string{"openai/gpt-5.4"},
+			},
+			config.AICapabilityTemplateGeneration: {
+				Status:           "degraded",
+				ConfiguredRoutes: []string{"kimi-coding/k2p5"},
+			},
+		},
+	}
+
+	component := BuildAIComponentStatus(t.Context(), cfg, stubAIHealthChecker{snapshot: snapshot})
+	if component.Status != "degraded" {
+		t.Fatalf("status = %q, want degraded", component.Status)
+	}
+	if component.Message != snapshot.Message {
+		t.Fatalf("message = %q, want %q", component.Message, snapshot.Message)
+	}
+
+	details, ok := component.Details.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map details, got %#v", component.Details)
+	}
+	capabilities, ok := details["capabilities"].(map[string]extract.AICapabilityHealth)
+	if !ok {
+		t.Fatalf("expected capability map, got %#v", details["capabilities"])
+	}
+	if capabilities[config.AICapabilityExtractNatural].Status != "ok" {
+		t.Fatalf("expected extract capability ok, got %#v", capabilities)
+	}
+	if capabilities[config.AICapabilityTemplateGeneration].Status != "degraded" {
+		t.Fatalf("expected template capability degraded, got %#v", capabilities)
+	}
+}
+
+func TestBuildAIDiagnosticResponseDisabledWhenAllCapabilitiesDisabled(t *testing.T) {
+	routing := config.DefaultAIRoutingConfig()
+	for _, capability := range config.AllAICapabilities() {
+		routing.Routes[capability] = []string{}
+	}
+
+	cfg := config.Config{
+		AI: config.AIConfig{
+			Enabled: true,
+			Mode:    "fixture",
+			Routing: routing,
+		},
+	}
+
+	response := BuildAIDiagnosticResponse(t.Context(), cfg, nil)
+	if response.Status != "disabled" {
+		t.Fatalf("status = %q, want disabled", response.Status)
+	}
+	if response.Title != "All AI capabilities are disabled" {
+		t.Fatalf("title = %q, want all capabilities disabled", response.Title)
+	}
+	if !strings.Contains(response.Message, "intentionally disabled") {
+		t.Fatalf("unexpected disabled message: %q", response.Message)
 	}
 }
 

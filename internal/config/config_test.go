@@ -295,6 +295,39 @@ func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
 	}
 }
 
+func TestLoad_PreservesExplicitEmptyCapabilityOverride(t *testing.T) {
+	dataDir := t.TempDir()
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("PI_ENABLED", "true")
+	configPath := filepath.Join(dataDir, "pi-config.json")
+	configFile := map[string]any{
+		"mode": "fixture",
+		"routes": map[string][]string{
+			AICapabilityTemplateGeneration: {},
+		},
+	}
+	data, err := json.Marshal(configFile)
+	if err != nil {
+		t.Fatalf("failed to marshal pi config: %v", err)
+	}
+	if err := os.WriteFile(configPath, data, 0o644); err != nil {
+		t.Fatalf("failed to write pi config: %v", err)
+	}
+	t.Setenv("PI_CONFIG_PATH", configPath)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	if got := cfg.AI.Routing.RoutesFor(AICapabilityTemplateGeneration); got == nil || len(got) != 0 {
+		t.Fatalf("expected template.generate to stay explicitly disabled, got %#v", got)
+	}
+	if got := cfg.AI.Routing.RoutesFor(AICapabilityExtractNatural); len(got) == 0 {
+		t.Fatalf("expected unrelated capabilities to keep defaults, got %#v", got)
+	}
+}
+
 func TestLoad_LeavesProxyPoolDisabledByDefault(t *testing.T) {
 	dataDir := t.TempDir()
 	t.Setenv("DATA_DIR", dataDir)

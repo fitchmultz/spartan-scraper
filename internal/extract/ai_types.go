@@ -1,5 +1,22 @@
-// Package extract provides AI-powered intelligent data extraction capabilities.
-// This file defines types and interfaces for LLM-based extraction.
+// Package extract defines the AI-provider contracts used by Spartan extraction flows.
+//
+// Purpose:
+// - Hold shared request, result, cache, and provider types for AI-backed extraction.
+//
+// Responsibilities:
+// - Define transport-safe AI extract and template payloads.
+// - Expose the provider interface consumed by extract, research, and API layers.
+// - Map product-facing extraction modes to configured AI routing capabilities.
+//
+// Scope:
+// - Shared AI extraction types only; orchestration and bridge implementations live elsewhere.
+//
+// Usage:
+// - Imported by provider implementations, extract orchestration, and tests.
+//
+// Invariants/Assumptions:
+// - Provider implementations return normalized field values and health snapshots.
+// - AI capability routing stays aligned with config capability constants.
 package extract
 
 import (
@@ -32,17 +49,17 @@ type AIExtractRequest struct {
 	HTML            string                 `json:"html"`
 	URL             string                 `json:"url"`
 	Mode            AIExtractionMode       `json:"mode"`
-	Prompt          string                 `json:"prompt,omitempty"`         // For natural language mode
-	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"` // For schema-guided mode
-	Fields          []string               `json:"fields,omitempty"`         // Specific fields to extract
+	Prompt          string                 `json:"prompt,omitempty"`
+	SchemaExample   map[string]interface{} `json:"schema_example,omitempty"`
+	Fields          []string               `json:"fields,omitempty"`
 	Images          []AIImageInput         `json:"images,omitempty"`
-	MaxContentChars int                    `json:"max_content_chars,omitempty"` // Truncate HTML if needed
+	MaxContentChars int                    `json:"max_content_chars,omitempty"`
 }
 
 // AIExtractResult contains the AI extraction output.
 type AIExtractResult struct {
 	Fields      map[string]FieldValue `json:"fields"`
-	Confidence  float64               `json:"confidence"` // 0.0-1.0
+	Confidence  float64               `json:"confidence"`
 	Explanation string                `json:"explanation,omitempty"`
 	TokensUsed  int                   `json:"tokens_used,omitempty"`
 	RouteID     string                `json:"route_id,omitempty"`
@@ -74,6 +91,7 @@ type AITemplateGenerateResult struct {
 type LLMProvider interface {
 	Extract(ctx context.Context, req AIExtractRequest) (AIExtractResult, error)
 	GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error)
+	HealthStatus(ctx context.Context) (AIHealthSnapshot, error)
 	HealthCheck(ctx context.Context) error
 	RouteFingerprint(capability string) string
 }

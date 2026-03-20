@@ -179,17 +179,31 @@ const (
 	AICapabilityTransformGenerate  = "transform.generate"
 )
 
+var aiCapabilities = []string{
+	AICapabilityExtractNatural,
+	AICapabilityExtractSchema,
+	AICapabilityTemplateGeneration,
+	AICapabilityRenderProfile,
+	AICapabilityPipelineJS,
+	AICapabilityResearchRefine,
+	AICapabilityExportShape,
+	AICapabilityTransformGenerate,
+}
+
+// AllAICapabilities returns the canonical list of capability keys used across Go and bridge config.
+func AllAICapabilities() []string {
+	return append([]string(nil), aiCapabilities...)
+}
+
 // AIRoutingConfig maps AI capabilities to ordered provider/model routes.
 type AIRoutingConfig struct {
 	Routes map[string][]string `json:"routes"`
 }
 
-// RoutesFor returns the configured routes for a capability.
-func (r AIRoutingConfig) RoutesFor(capability string) []string {
-	if len(r.Routes) == 0 {
+func normalizeAIRouteList(routes []string) []string {
+	if routes == nil {
 		return nil
 	}
-	routes := r.Routes[capability]
 	out := make([]string, 0, len(routes))
 	for _, route := range routes {
 		trimmed := strings.TrimSpace(route)
@@ -197,7 +211,23 @@ func (r AIRoutingConfig) RoutesFor(capability string) []string {
 			out = append(out, trimmed)
 		}
 	}
+	if len(out) == 0 {
+		return []string{}
+	}
 	return out
+}
+
+// RoutesFor returns the configured routes for a capability.
+// It returns nil when the capability is absent and an empty slice when explicitly disabled.
+func (r AIRoutingConfig) RoutesFor(capability string) []string {
+	if len(r.Routes) == 0 {
+		return nil
+	}
+	routes, ok := r.Routes[capability]
+	if !ok {
+		return nil
+	}
+	return normalizeAIRouteList(routes)
 }
 
 // RouteFingerprint returns a stable cache fingerprint for the configured route order.
@@ -953,16 +983,7 @@ func loadAIRoutingConfig(path string) (loadedAIRoutingConfig, error) {
 
 	routing := DefaultAIRoutingConfig()
 	for capability, routes := range file.Routes {
-		normalized := make([]string, 0, len(routes))
-		for _, route := range routes {
-			trimmed := strings.TrimSpace(route)
-			if trimmed != "" {
-				normalized = append(normalized, trimmed)
-			}
-		}
-		if len(normalized) > 0 {
-			routing.Routes[capability] = normalized
-		}
+		routing.Routes[capability] = normalizeAIRouteList(routes)
 	}
 
 	return loadedAIRoutingConfig{

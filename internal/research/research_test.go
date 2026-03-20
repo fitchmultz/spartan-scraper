@@ -167,8 +167,17 @@ func (f *fakeResearchAIProvider) GenerateTemplate(ctx context.Context, req extra
 	return extract.AITemplateGenerateResult{}, nil
 }
 
+func (f *fakeResearchAIProvider) HealthStatus(ctx context.Context) (extract.AIHealthSnapshot, error) {
+	return extract.BuildConfiguredAIHealth(config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}), nil
+}
+
 func (f *fakeResearchAIProvider) HealthCheck(ctx context.Context) error {
-	return nil
+	_, err := f.HealthStatus(ctx)
+	return err
 }
 
 func (f *fakeResearchAIProvider) RouteFingerprint(capability string) string {
@@ -198,8 +207,17 @@ func (q *queuedResearchAIProvider) GenerateTemplate(ctx context.Context, req ext
 	return extract.AITemplateGenerateResult{}, nil
 }
 
+func (q *queuedResearchAIProvider) HealthStatus(ctx context.Context) (extract.AIHealthSnapshot, error) {
+	return extract.BuildConfiguredAIHealth(config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}), nil
+}
+
 func (q *queuedResearchAIProvider) HealthCheck(ctx context.Context) error {
-	return nil
+	_, err := q.HealthStatus(ctx)
+	return err
 }
 
 func (q *queuedResearchAIProvider) RouteFingerprint(capability string) string {

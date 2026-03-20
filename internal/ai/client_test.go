@@ -1,3 +1,22 @@
+// Package ai tests bridge client startup, timeout, and capability-aware health behavior.
+//
+// Purpose:
+// - Verify bridge client startup validation, timeout handling, and health snapshot recovery.
+//
+// Responsibilities:
+// - Assert bridge script discovery across expected roots.
+// - Keep startup/request timeout behavior deterministic.
+// - Confirm partial capability degradation does not block unrelated AI capabilities.
+//
+// Scope:
+// - Bridge client behavior only; higher-level diagnostics are tested elsewhere.
+//
+// Usage:
+// - Run with go test ./internal/ai.
+//
+// Invariants/Assumptions:
+// - Startup should fail only when no enabled capability is auth-ready.
+// - Fatal startup validation should still preserve the raw health snapshot for diagnostics.
 package ai
 
 import (
@@ -23,12 +42,7 @@ func TestResolveBridgeScriptPathFindsExecutableParent(t *testing.T) {
 		t.Fatalf("write bridge script: %v", err)
 	}
 
-	searchRoots := bridgeScriptSearchRoots(
-		"",
-		filepath.Join(rootDir, "bin", "spartan"),
-		"",
-	)
-
+	searchRoots := bridgeScriptSearchRoots("", filepath.Join(rootDir, "bin", "spartan"), "")
 	resolved, err := resolveBridgeScriptPath(config.DefaultPIBridgeScript, searchRoots)
 	if err != nil {
 		t.Fatalf("resolveBridgeScriptPath() failed: %v", err)
@@ -48,12 +62,7 @@ func TestResolveBridgeScriptPathPrefersConfigDirectory(t *testing.T) {
 		t.Fatalf("write bridge script: %v", err)
 	}
 
-	searchRoots := bridgeScriptSearchRoots(
-		"",
-		"",
-		filepath.Join(configDir, "routes.json"),
-	)
-
+	searchRoots := bridgeScriptSearchRoots("", "", filepath.Join(configDir, "routes.json"))
 	resolved, err := resolveBridgeScriptPath(config.DefaultPIBridgeScript, searchRoots)
 	if err != nil {
 		t.Fatalf("resolveBridgeScriptPath() failed: %v", err)
@@ -136,7 +145,7 @@ rl.on("line", (line) => {
 	}
 }
 
-func TestClientHealthFailsWhenNoAuthReadyRoutesExist(t *testing.T) {
+func TestClientHealthFailsWhenNoEnabledCapabilityIsReady(t *testing.T) {
 	nodeBin := requireNode(t)
 	scriptPath := writeBridgeScript(t, `
 const readline = require("node:readline");
@@ -198,6 +207,110 @@ rl.on("line", (line) => {
 	}
 	if !strings.Contains(err.Error(), "openai/gpt-5.4") {
 		t.Fatalf("expected route diagnostics in error, got %v", err)
+	}
+}
+
+func TestClientHealthAllowsPartialCapabilityAvailability(t *testing.T) {
+	nodeBin := requireNode(t)
+	scriptPath := writeBridgeScript(t, `
+const readline = require("node:readline");
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+const result = {
+  mode: "sdk",
+  resolved: {
+    "extract.natural_language": ["openai/gpt-5.4"],
+    "template.generate": ["kimi-coding/k2p5"]
+  },
+  available: {
+    "extract.natural_language": ["openai/gpt-5.4"],
+    "template.generate": []
+  },
+  route_status: {
+    "template.generate": [
+      {
+        route_id: "kimi-coding/k2p5",
+        provider: "kimi-coding",
+        model: "k2p5",
+        status: "missing_auth",
+        message: "no auth configured for provider kimi-coding",
+        model_found: true,
+        auth_configured: false
+      }
+    ]
+  }
+};
+rl.on("line", (line) => {
+  const request = JSON.parse(line);
+  if (request.op === "health") {
+    process.stdout.write(JSON.stringify({ id: request.id, ok: true, result }) + "\n");
+  }
+});
+`)
+
+	client := NewClient(config.AIConfig{
+		Enabled:            true,
+		NodeBin:            nodeBin,
+		BridgeScript:       scriptPath,
+		StartupTimeoutSecs: 1,
+		RequestTimeoutSecs: 5,
+	})
+	defer func() { _ = client.Close() }()
+
+	if err := client.HealthCheck(context.Background()); err != nil {
+		t.Fatalf("expected partial capability availability to pass startup, got %v", err)
+	}
+}
+
+func TestClientHealthReturnsStartupSnapshotOnFatalCapabilityFailure(t *testing.T) {
+	nodeBin := requireNode(t)
+	scriptPath := writeBridgeScript(t, `
+const readline = require("node:readline");
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+const result = {
+  mode: "sdk",
+  resolved: {
+    "extract.natural_language": ["openai/gpt-5.4"]
+  },
+  available: {
+    "extract.natural_language": []
+  },
+  route_status: {
+    "extract.natural_language": [
+      {
+        route_id: "openai/gpt-5.4",
+        provider: "openai",
+        model: "gpt-5.4",
+        status: "missing_auth",
+        message: "no auth configured for provider openai",
+        model_found: true,
+        auth_configured: false
+      }
+    ]
+  }
+};
+rl.on("line", (line) => {
+  const request = JSON.parse(line);
+  if (request.op === "health") {
+    process.stdout.write(JSON.stringify({ id: request.id, ok: true, result }) + "\n");
+  }
+});
+`)
+
+	client := NewClient(config.AIConfig{
+		Enabled:            true,
+		NodeBin:            nodeBin,
+		BridgeScript:       scriptPath,
+		StartupTimeoutSecs: 1,
+		RequestTimeoutSecs: 5,
+	})
+	defer func() { _ = client.Close() }()
+
+	health, err := client.Health(context.Background())
+	if err == nil {
+		t.Fatal("expected startup diagnostics error")
+	}
+	if got := len(health.Resolved[config.AICapabilityExtractNatural]); got != 1 {
+		t.Fatalf("expected raw health snapshot on error, got %#v", health)
 	}
 }
 

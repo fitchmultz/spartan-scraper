@@ -1,4 +1,22 @@
-// Package extract provides the pi-backed LLM provider for AI extraction.
+// Package extract provides the pi-backed AI provider implementation.
+//
+// Purpose:
+// - Adapt the internal pi bridge client to Spartan's shared LLMProvider interface.
+//
+// Responsibilities:
+// - Convert extract/template requests and results between bridge and domain types.
+// - Surface capability-aware AI health snapshots for diagnostics.
+// - Expose stable route fingerprints for cache keys.
+//
+// Scope:
+// - Provider adaptation only; bridge process management lives in internal/ai.
+//
+// Usage:
+// - Constructed by NewAIExtractor for ai-enabled runtime flows.
+//
+// Invariants/Assumptions:
+// - Bridge result payloads are already validated before reaching this adapter.
+// - Health snapshots should preserve partial availability rather than collapsing to binary healthy/unhealthy.
 package extract
 
 import (
@@ -134,8 +152,17 @@ func (p *PIProvider) GenerateTemplate(ctx context.Context, req AITemplateGenerat
 	}, nil
 }
 
+func (p *PIProvider) HealthStatus(ctx context.Context) (AIHealthSnapshot, error) {
+	health, err := p.client.Health(ctx)
+	if err != nil && len(health.Resolved) == 0 && len(health.Available) == 0 && len(health.RouteStatus) == 0 {
+		return BuildConfiguredAIHealth(p.cfg), err
+	}
+	return BuildAIHealthSnapshot(p.cfg, health), err
+}
+
 func (p *PIProvider) HealthCheck(ctx context.Context) error {
-	return p.client.HealthCheck(ctx)
+	_, err := p.HealthStatus(ctx)
+	return err
 }
 
 func (p *PIProvider) RouteFingerprint(capability string) string {

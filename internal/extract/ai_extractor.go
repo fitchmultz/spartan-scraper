@@ -1,4 +1,22 @@
 // Package extract provides the main AI extraction orchestrator.
+//
+// Purpose:
+// - Coordinate AI-backed extraction and template generation with caching.
+//
+// Responsibilities:
+// - Initialize an LLM provider from runtime config.
+// - Normalize/cap cacheable extract requests before provider execution.
+// - Expose provider health snapshots for shared diagnostics.
+//
+// Scope:
+// - AI extraction orchestration only; bridge transport and diagnostics rendering live elsewhere.
+//
+// Usage:
+// - Construct via NewAIExtractor when AI is enabled and pass into API or pipeline flows.
+//
+// Invariants/Assumptions:
+// - Provider route fingerprints are stable for equivalent routing configuration.
+// - AI remains optional and may degrade without blocking core scraping flows.
 package extract
 
 import (
@@ -42,12 +60,9 @@ func NewAIExtractorWithDataDir(cfg config.AIConfig, dataDir string) (*AIExtracto
 		return nil, fmt.Errorf("failed to create LLM provider: %w", err)
 	}
 
-	// Create cache with default TTL
-	cache := NewFileAICache(dataDir, DefaultAICacheTTL)
-
 	return &AIExtractor{
 		provider: provider,
-		cache:    cache,
+		cache:    NewFileAICache(dataDir, DefaultAICacheTTL),
 		config:   cfg,
 	}, nil
 }
@@ -67,34 +82,26 @@ func (a *AIExtractor) Extract(ctx context.Context, req AIExtractRequest) (AIExtr
 		return AIExtractResult{}, fmt.Errorf("AI extractor not initialized")
 	}
 
-	// Set default max content chars if not specified
 	if req.MaxContentChars <= 0 {
 		req.MaxContentChars = DefaultMaxContentChars
 	}
 
-	// Pre-clean HTML to reduce token usage
 	req.HTML = cleanHTMLForExtraction(req.HTML)
-
-	// Generate cache key
 	cacheKey := GenerateCacheKey(req, a.provider.RouteFingerprint(CapabilityForExtractMode(req.Mode)))
 
-	// Check cache
 	if cached, ok := a.cache.Get(cacheKey); ok {
 		slog.Debug("AI extraction cache hit", "key", cacheKey[:16])
 		return *cached, nil
 	}
 
-	// Call provider
 	slog.Debug("AI extraction cache miss, calling pi bridge", "capability", CapabilityForExtractMode(req.Mode))
 	result, err := a.provider.Extract(ctx, req)
 	if err != nil {
 		return AIExtractResult{}, fmt.Errorf("LLM extraction failed: %w", err)
 	}
 
-	// Store in cache
 	result.Cached = false
 	a.cache.Set(cacheKey, &result)
-
 	return result, nil
 }
 
@@ -114,12 +121,18 @@ func (a *AIExtractor) GenerateTemplate(ctx context.Context, req AITemplateGenera
 	return result, nil
 }
 
+// HealthStatus returns a structured AI health snapshot.
+func (a *AIExtractor) HealthStatus(ctx context.Context) (AIHealthSnapshot, error) {
+	if a == nil || a.provider == nil {
+		return AIHealthSnapshot{}, fmt.Errorf("AI extractor not initialized")
+	}
+	return a.provider.HealthStatus(ctx)
+}
+
 // HealthCheck checks if the AI provider is healthy.
 func (a *AIExtractor) HealthCheck(ctx context.Context) error {
-	if a == nil || a.provider == nil {
-		return fmt.Errorf("AI extractor not initialized")
-	}
-	return a.provider.HealthCheck(ctx)
+	_, err := a.HealthStatus(ctx)
+	return err
 }
 
 // cleanHTMLForExtraction removes unnecessary elements to reduce token usage.
@@ -128,47 +141,39 @@ func cleanHTMLForExtraction(html string) string {
 		return html
 	}
 
-	// Remove script tags and content
 	scriptRe := regexp.MustCompile(`(?s)<script[^>]*>.*?</script>`)
 	html = scriptRe.ReplaceAllString(html, "")
 
-	// Remove style tags and content
 	styleRe := regexp.MustCompile(`(?s)<style[^>]*>.*?</style>`)
 	html = styleRe.ReplaceAllString(html, "")
 
-	// Remove noscript tags
 	noscriptRe := regexp.MustCompile(`(?s)<noscript[^>]*>.*?</noscript>`)
 	html = noscriptRe.ReplaceAllString(html, "")
 
-	// Remove comments
 	commentRe := regexp.MustCompile(`(?s)<!--.*?-->`)
 	html = commentRe.ReplaceAllString(html, "")
 
-	// Remove inline event handlers (onclick, onload, etc.)
 	eventRe := regexp.MustCompile(`\son\w+="[^"]*"`)
 	html = eventRe.ReplaceAllString(html, "")
 
-	// Remove data attributes (often large)
 	dataAttrRe := regexp.MustCompile(`\sdata-[\w-]+="[^"]*"`)
 	html = dataAttrRe.ReplaceAllString(html, "")
 
-	// Collapse multiple whitespace
 	wsRe := regexp.MustCompile(`\s+`)
 	html = wsRe.ReplaceAllString(html, " ")
 
 	return strings.TrimSpace(html)
 }
 
-// truncateHTML limits HTML content to avoid token limits.
+// TruncateHTML limits HTML content to avoid token limits.
 func TruncateHTML(html string, maxChars int) string {
 	if len(html) <= maxChars {
 		return html
 	}
 
-	// Try to truncate at a word boundary
 	truncated := html[:maxChars]
 	lastSpace := strings.LastIndex(truncated, " ")
-	if lastSpace > int(float64(maxChars)*0.8) { // Only truncate at word if not losing too much
+	if lastSpace > int(float64(maxChars)*0.8) {
 		truncated = truncated[:lastSpace]
 	}
 

@@ -1,3 +1,17 @@
+/*
+Purpose:
+- Verify bridge config loading and route normalization behavior.
+Responsibilities:
+- Assert defaults, config-file overrides, and route parsing semantics.
+- Preserve explicit empty capability overrides as intentional disables.
+Scope:
+- Bridge config tests only.
+Usage:
+- Run with pnpm --dir tools/pi-bridge test.
+Invariants/Assumptions:
+- Missing config keys inherit defaults.
+- Explicit empty route arrays remain empty instead of restoring defaults.
+*/
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -50,6 +64,33 @@ test("loadBridgeConfig loads route overrides from PI_CONFIG_PATH", () => {
     assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], [
       "kimi-coding/k2p5",
       "zai/glm-5",
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("loadBridgeConfig preserves explicit empty capability overrides", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pi-bridge-config-"));
+  try {
+    const path = join(dir, "bridge.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        mode: "fixture",
+        routes: {
+          [CAPABILITY_TEMPLATE_GENERATE]: [],
+        },
+      }),
+    );
+
+    const config = loadBridgeConfig({ PI_CONFIG_PATH: path });
+    assert.equal(config.mode, "fixture");
+    assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], []);
+    assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
+      "kimi-coding/k2p5",
+      "zai/glm-5",
+      "openai-codex/gpt-5.4",
     ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });

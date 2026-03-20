@@ -124,6 +124,63 @@ func TestHealthIncludesAIComponentWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestHealthIncludesCapabilityAwareAIDetails(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	srv.aiExtractor = extract.NewAIExtractorWithProvider(
+		config.AIConfig{Enabled: true, Mode: "sdk", Routing: config.DefaultAIRoutingConfig()},
+		srv.cfg.DataDir,
+		&fakeAIProvider{
+			healthSnapshot: extract.AIHealthSnapshot{
+				Status:  "degraded",
+				Mode:    "sdk",
+				Message: "AI helpers are partially available. Ready: extract.natural_language. Degraded: template.generate.",
+				Capabilities: map[string]extract.AICapabilityHealth{
+					config.AICapabilityExtractNatural: {
+						Status:          "ok",
+						AvailableRoutes: []string{"openai/gpt-5.4"},
+					},
+					config.AICapabilityTemplateGeneration: {
+						Status:           "degraded",
+						ConfiguredRoutes: []string{"kimi-coding/k2p5"},
+					},
+				},
+			},
+		},
+	)
+	srv.cfg.AI = config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	health := decodeHealthResponse(t, rr)
+	ai := health.Components["ai"]
+	if ai.Status != "degraded" {
+		t.Fatalf("expected degraded ai component, got %#v", ai)
+	}
+	details, ok := ai.Details.(map[string]any)
+	if !ok {
+		t.Fatalf("expected ai details map, got %#v", ai.Details)
+	}
+	capabilities, ok := details["capabilities"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected capability details map, got %#v", details["capabilities"])
+	}
+	templateCapability, ok := capabilities[config.AICapabilityTemplateGeneration].(map[string]any)
+	if !ok {
+		t.Fatalf("expected template capability map, got %#v", capabilities[config.AICapabilityTemplateGeneration])
+	}
+	if status, _ := templateCapability["status"].(string); status != "degraded" {
+		t.Fatalf("expected template capability degraded, got %#v", templateCapability)
+	}
+}
+
 func TestHealthIncludesConfigNotices(t *testing.T) {
 	srv, cleanup := setupTestServer(t)
 	defer cleanup()

@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -418,13 +419,40 @@ type Client struct {
 	nextID uint64
 }
 
+// BridgeHealthError preserves the bridge health snapshot that caused startup to fail.
+type BridgeHealthError struct {
+	Health HealthResponse
+	Err    error
+}
+
+func (e *BridgeHealthError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *BridgeHealthError) Unwrap() error {
+	return e.Err
+}
+
 func NewClient(cfg config.AIConfig) *Client {
 	return &Client{cfg: cfg}
 }
 
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *Client) Health(ctx context.Context) (HealthResponse, error) {
 	var resp HealthResponse
-	return c.call(ctx, OperationHealth, nil, &resp)
+	err := c.call(ctx, OperationHealth, nil, &resp)
+	if err == nil {
+		return resp, nil
+	}
+	var healthErr *BridgeHealthError
+	if errors.As(err, &healthErr) {
+		return healthErr.Health, err
+	}
+	return HealthResponse{}, err
+}
+
+func (c *Client) HealthCheck(ctx context.Context) error {
+	_, err := c.Health(ctx)
+	return err
 }
 
 func (c *Client) Extract(ctx context.Context, req ExtractRequest) (ExtractResult, error) {
@@ -586,7 +614,7 @@ func (c *Client) ensureStarted(ctx context.Context) error {
 	logBridgeHealth(health)
 	if err := validateBridgeHealth(health); err != nil {
 		_ = c.stopLocked()
-		return err
+		return &BridgeHealthError{Health: health, Err: err}
 	}
 	return nil
 }
@@ -743,13 +771,30 @@ func logBridgeHealth(health HealthResponse) {
 		return
 	}
 
+	degraded := make(map[string]string)
+	disabled := make([]string, 0)
+	for capability, routes := range health.Resolved {
+		resolved := trimHealthRoutes(routes)
+		switch {
+		case len(resolved) == 0:
+			disabled = append(disabled, capability)
+		case len(trimHealthRoutes(health.Available[capability])) == 0:
+			degraded[capability] = formatRouteStatuses(health.RouteStatus[capability], resolved)
+		}
+	}
+
 	slog.Info(
 		"pi bridge startup health",
 		"mode", health.Mode,
 		"ready_routes", summarizeRouteCounts(health.Available),
 		"configured_routes", summarizeRouteCounts(health.Resolved),
+		"degraded_capabilities", degraded,
+		"disabled_capabilities", disabled,
 	)
 
+	if len(degraded) > 0 {
+		slog.Warn("pi bridge capability degradation", "capabilities", degraded)
+	}
 	if health.LoadError != "" || len(health.AuthErrors) > 0 {
 		slog.Warn(
 			"pi bridge startup diagnostics",
@@ -760,22 +805,28 @@ func logBridgeHealth(health HealthResponse) {
 }
 
 func validateBridgeHealth(health HealthResponse) error {
-	var issues []string
+	enabled := 0
+	ready := 0
+	issues := make([]string, 0)
 	for capability, routes := range health.Resolved {
-		if len(routes) == 0 {
+		resolved := trimHealthRoutes(routes)
+		if len(resolved) == 0 {
 			continue
 		}
-		if len(health.Available[capability]) > 0 {
+		enabled++
+		available := trimHealthRoutes(health.Available[capability])
+		if len(available) > 0 {
+			ready++
 			continue
 		}
-		issues = append(issues, fmt.Sprintf("%s: %s", capability, formatRouteStatuses(health.RouteStatus[capability], routes)))
+		issues = append(issues, fmt.Sprintf("%s: %s", capability, formatRouteStatuses(health.RouteStatus[capability], resolved)))
 	}
-	if len(issues) == 0 {
+	if enabled == 0 || ready > 0 {
 		return nil
 	}
 
 	parts := make([]string, 0, 2+len(health.AuthErrors))
-	parts = append(parts, "no auth-ready pi routes available for "+strings.Join(issues, "; "))
+	parts = append(parts, "no auth-ready pi routes available for any enabled capability: "+strings.Join(issues, "; "))
 	if health.LoadError != "" {
 		parts = append(parts, "models.json: "+health.LoadError)
 	}
@@ -786,6 +837,22 @@ func validateBridgeHealth(health HealthResponse) error {
 		parts = append(parts, "auth: "+authErr)
 	}
 	return fmt.Errorf("bridge startup diagnostics: %s", strings.Join(parts, " | "))
+}
+
+func trimHealthRoutes(routes []string) []string {
+	if routes == nil {
+		return nil
+	}
+	trimmed := make([]string, 0, len(routes))
+	for _, route := range routes {
+		if value := strings.TrimSpace(route); value != "" {
+			trimmed = append(trimmed, value)
+		}
+	}
+	if len(trimmed) == 0 {
+		return []string{}
+	}
+	return trimmed
 }
 
 func summarizeRouteCounts(routes map[string][]string) map[string]string {

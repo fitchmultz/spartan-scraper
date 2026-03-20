@@ -49,6 +49,7 @@ func TestAIExtractPreviewBodySize(t *testing.T) {
 type fakeAIProvider struct {
 	extractResult     extract.AIExtractResult
 	templateResponses []extract.AITemplateGenerateResult
+	healthSnapshot    extract.AIHealthSnapshot
 	templateCalls     int
 	extractCalls      int
 	lastExtractReq    extract.AIExtractRequest
@@ -92,8 +93,31 @@ func (f *fakeAIProvider) GenerateTemplate(ctx context.Context, req extract.AITem
 	return f.templateResponses[index], nil
 }
 
+func (f *fakeAIProvider) HealthStatus(ctx context.Context) (extract.AIHealthSnapshot, error) {
+	if len(f.healthSnapshot.Capabilities) == 0 {
+		routing := config.DefaultAIRoutingConfig()
+		resolved := make(map[string][]string, len(routing.Routes))
+		available := make(map[string][]string, len(routing.Routes))
+		for capability, routes := range routing.Routes {
+			resolved[capability] = append([]string(nil), routes...)
+			available[capability] = append([]string(nil), routes...)
+		}
+		return extract.BuildAIHealthSnapshot(config.AIConfig{
+			Enabled: true,
+			Mode:    "sdk",
+			Routing: routing,
+		}, piai.HealthResponse{
+			Mode:      "sdk",
+			Resolved:  resolved,
+			Available: available,
+		}), nil
+	}
+	return f.healthSnapshot, nil
+}
+
 func (f *fakeAIProvider) HealthCheck(ctx context.Context) error {
-	return nil
+	_, err := f.HealthStatus(ctx)
+	return err
 }
 
 func (f *fakeAIProvider) RouteFingerprint(capability string) string {

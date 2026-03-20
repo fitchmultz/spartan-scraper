@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/config"
 )
 
 func TestApplyTemplate(t *testing.T) {
@@ -212,8 +214,17 @@ func (m *mockLLMProvider) Extract(ctx context.Context, req AIExtractRequest) (AI
 	return m.result, m.err
 }
 
+func (m *mockLLMProvider) HealthStatus(ctx context.Context) (AIHealthSnapshot, error) {
+	return BuildConfiguredAIHealth(config.AIConfig{
+		Enabled: true,
+		Mode:    "sdk",
+		Routing: config.DefaultAIRoutingConfig(),
+	}), nil
+}
+
 func (m *mockLLMProvider) HealthCheck(ctx context.Context) error {
-	return nil
+	_, err := m.HealthStatus(ctx)
+	return err
 }
 
 func (m *mockLLMProvider) GenerateTemplate(ctx context.Context, req AITemplateGenerateRequest) (AITemplateGenerateResult, error) {

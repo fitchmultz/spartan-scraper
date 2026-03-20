@@ -49,7 +49,7 @@ const (
 
 // AIHealthChecker represents the minimal AI extractor health contract shared across surfaces.
 type AIHealthChecker interface {
-	HealthCheck(ctx context.Context) error
+	HealthStatus(ctx context.Context) (extract.AIHealthSnapshot, error)
 }
 
 func DiagnosticActionPath(target string) string {
@@ -204,6 +204,37 @@ func BuildBrowserComponentStatus(cfg config.Config) ComponentStatus {
 	}
 }
 
+func aiDetails(cfg config.Config, snapshot extract.AIHealthSnapshot) map[string]any {
+	details := map[string]any{
+		"enabled":      true,
+		"mode":         snapshot.Mode,
+		"configPath":   strings.TrimSpace(cfg.AI.ConfigPath),
+		"capabilities": snapshot.Capabilities,
+	}
+	if details["mode"] == "" {
+		details["mode"] = cfg.AI.Mode
+	}
+	if snapshot.LoadError != "" {
+		details["loadError"] = snapshot.LoadError
+	}
+	if len(snapshot.AuthErrors) > 0 {
+		details["authErrors"] = snapshot.AuthErrors
+	}
+	return details
+}
+
+func addAIDiagnosticRuntimeDetails(details map[string]any, cfg config.Config, nodeBin string, nodePath string) map[string]any {
+	if details == nil {
+		details = map[string]any{}
+	}
+	details["nodeBinary"] = nodeBin
+	details["bridgeScript"] = strings.TrimSpace(cfg.AI.BridgeScript)
+	if strings.TrimSpace(nodePath) != "" {
+		details["nodePath"] = nodePath
+	}
+	return details
+}
+
 func BuildAIComponentStatus(ctx context.Context, cfg config.Config, aiExtractor AIHealthChecker) ComponentStatus {
 	if !extract.IsAIEnabled(cfg.AI) {
 		return ComponentStatus{
@@ -215,29 +246,43 @@ func BuildAIComponentStatus(ctx context.Context, cfg config.Config, aiExtractor 
 		}
 	}
 
+	configured := extract.BuildConfiguredAIHealth(cfg.AI)
+	if configured.Status == "disabled" {
+		return ComponentStatus{
+			Status:  "disabled",
+			Message: configured.Message,
+			Details: aiDetails(cfg, configured),
+		}
+	}
+
 	if aiExtractor == nil {
 		return ComponentStatus{
 			Status:  "degraded",
 			Message: "AI failed to initialize; core scraping still works without it.",
-			Details: map[string]any{
-				"enabled": true,
-				"mode":    cfg.AI.Mode,
-			},
+			Details: aiDetails(cfg, configured),
+			Actions: aiRecoveryActions(cfg),
+		}
+	}
+
+	snapshot, err := aiExtractor.HealthStatus(ctx)
+	if err != nil {
+		if len(snapshot.Capabilities) == 0 {
+			snapshot = configured
+		}
+		return ComponentStatus{
+			Status:  "degraded",
+			Message: err.Error(),
+			Details: aiDetails(cfg, snapshot),
 			Actions: aiRecoveryActions(cfg),
 		}
 	}
 
 	status := ComponentStatus{
-		Status:  "ok",
-		Message: "AI helpers are ready.",
-		Details: map[string]any{
-			"enabled": true,
-			"mode":    cfg.AI.Mode,
-		},
+		Status:  snapshot.Status,
+		Message: snapshot.Message,
+		Details: aiDetails(cfg, snapshot),
 	}
-	if err := aiExtractor.HealthCheck(ctx); err != nil {
-		status.Status = "degraded"
-		status.Message = err.Error()
+	if snapshot.Status == "degraded" {
 		status.Actions = aiRecoveryActions(cfg)
 	}
 	return status
@@ -352,23 +397,30 @@ func BuildAIDiagnosticResponse(ctx context.Context, cfg config.Config, aiExtract
 		}
 	}
 
+	configured := extract.BuildConfiguredAIHealth(cfg.AI)
+	if configured.Status == "disabled" {
+		return DiagnosticActionResponse{
+			Status:  "disabled",
+			Title:   "All AI capabilities are disabled",
+			Message: configured.Message,
+			Details: aiDetails(cfg, configured),
+		}
+	}
+
 	nodeBin := strings.TrimSpace(cfg.AI.NodeBin)
 	if nodeBin == "" {
 		nodeBin = "node"
 	}
 
-	details := map[string]any{
-		"enabled":      true,
-		"mode":         cfg.AI.Mode,
-		"nodeBinary":   nodeBin,
-		"bridgeScript": strings.TrimSpace(cfg.AI.BridgeScript),
-	}
+	nodePath := ""
+	details := addAIDiagnosticRuntimeDetails(aiDetails(cfg, configured), cfg, nodeBin, nodePath)
 	issues := make([]string, 0, 2)
 
-	nodePath, err := exec.LookPath(nodeBin)
+	resolvedNodePath, err := exec.LookPath(nodeBin)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("Node.js binary %q is not available on PATH", nodeBin))
 	} else {
+		nodePath = resolvedNodePath
 		details["nodePath"] = nodePath
 	}
 
@@ -392,28 +444,44 @@ func BuildAIDiagnosticResponse(ctx context.Context, cfg config.Config, aiExtract
 		return DiagnosticActionResponse{
 			Status:  "degraded",
 			Title:   "AI failed to initialize",
-			Message: "Node.js and the configured bridge path look reachable, but the AI extractor is not initialized yet.",
+			Message: "Node.js and bridge prerequisites look reachable, but the AI extractor is not initialized.",
 			Details: details,
 			Actions: aiRecoveryActions(cfg),
 		}
 	}
 
-	if err := aiExtractor.HealthCheck(ctx); err != nil {
+	snapshot, err := aiExtractor.HealthStatus(ctx)
+	if err != nil {
+		if len(snapshot.Capabilities) == 0 {
+			snapshot = configured
+		}
 		return DiagnosticActionResponse{
 			Status:  "degraded",
 			Title:   "AI health check failed",
 			Message: err.Error(),
-			Details: details,
+			Details: addAIDiagnosticRuntimeDetails(aiDetails(cfg, snapshot), cfg, nodeBin, nodePath),
 			Actions: aiRecoveryActions(cfg),
 		}
 	}
 
-	return DiagnosticActionResponse{
-		Status:  "ok",
-		Title:   "AI helpers are ready",
-		Message: "AI prerequisites look healthy.",
-		Details: details,
+	title := "AI helpers are ready"
+	switch snapshot.Status {
+	case "degraded":
+		title = "AI helpers are partially available"
+	case "disabled":
+		title = "All AI capabilities are disabled"
 	}
+
+	response := DiagnosticActionResponse{
+		Status:  snapshot.Status,
+		Title:   title,
+		Message: snapshot.Message,
+		Details: addAIDiagnosticRuntimeDetails(aiDetails(cfg, snapshot), cfg, nodeBin, nodePath),
+	}
+	if snapshot.Status == "degraded" {
+		response.Actions = aiRecoveryActions(cfg)
+	}
+	return response
 }
 
 func BuildProxyPoolDiagnosticResponse(cfg config.Config, runtimeState ProxyPoolRuntimeState) DiagnosticActionResponse {
@@ -579,6 +647,13 @@ func aiRecoveryActions(cfg config.Config) []RecommendedAction {
 			Label: "Inspect configured bridge script",
 			Kind:  ActionKindCopy,
 			Value: fmt.Sprintf("ls -l %q", bridgeScript),
+		})
+	}
+	if configPath := strings.TrimSpace(cfg.AI.ConfigPath); configPath != "" {
+		actions = append(actions, RecommendedAction{
+			Label: "Inspect AI route overrides",
+			Kind:  ActionKindCopy,
+			Value: fmt.Sprintf("ls -l %q", configPath),
 		})
 	}
 
