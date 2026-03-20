@@ -40,7 +40,7 @@ describe("RouteHelpPanel", () => {
     );
 
     const createJobButton = screen.getByRole("button", {
-      name: /create first job/i,
+      name: /create job/i,
     });
     expect(
       screen.getByRole("button", { name: /open automation/i }),

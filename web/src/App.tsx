@@ -102,6 +102,7 @@ import { getApiBaseUrl } from "./lib/api-config";
 import { getApiErrorMessage } from "./lib/api-errors";
 import { saveJobsViewState } from "./lib/job-monitoring";
 import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
+import { shouldShowSettingsOverviewPanel } from "./lib/settings-overview";
 import type { JobPreset, JobType } from "./types/presets";
 
 type RouteKind =
@@ -253,20 +254,6 @@ function AppShell() {
   const previousRouteKeyRef = useRef<OnboardingRouteKey | null>(null);
 
   const {
-    shouldShowFirstRunHint,
-    isTourActive,
-    currentStep,
-    startOnboarding,
-    skipOnboarding,
-    resetOnboarding,
-    goToStep,
-    finishOnboarding,
-    dismissFirstRunHint,
-    markRouteVisited,
-    visitedRoutes,
-  } = useOnboarding();
-
-  const {
     isCommandPaletteOpen,
     isHelpOpen,
     openCommandPalette,
@@ -302,6 +289,20 @@ function AppShell() {
     setCrawlStatesPage,
     setJobStatusFilter,
   } = appData;
+
+  const {
+    shouldShowFirstRunHint,
+    isTourActive,
+    currentStep,
+    startOnboarding,
+    skipOnboarding,
+    resetOnboarding,
+    goToStep,
+    finishOnboarding,
+    dismissFirstRunHint,
+    markRouteVisited,
+    visitedRoutes,
+  } = useOnboarding({ hasStartedWork: jobsTotal > 0 });
 
   const { selectedJobId, loadResults } = resultsState;
 
@@ -407,6 +408,16 @@ function AppShell() {
       navigate("/jobs");
     },
     [navigate, persistJobsViewState, route.kind, selectedJobId],
+  );
+
+  const handlePaletteNavigate = useCallback(
+    (path: string) => {
+      if (route.kind === "jobs" && path.startsWith("/jobs/")) {
+        persistJobsViewState();
+      }
+      navigate(path);
+    },
+    [navigate, persistJobsViewState, route.kind],
   );
 
   useEffect(() => {
@@ -877,41 +888,33 @@ function AppShell() {
     }
   }, [route.jobId, route.kind]);
 
-  const showSettingsOverview = useMemo(() => {
-    if (route.kind !== "settings" || setupRequired) {
-      return false;
-    }
-
-    if (renderProfileCount === null || pipelineScriptCount === null) {
-      return false;
-    }
-
-    const proxyStatus = health?.components?.proxy_pool?.status;
-    const retentionStatus = health?.components?.retention?.status;
-    const optionalSubsystemsQuiet = [proxyStatus, retentionStatus].every(
-      (status) =>
-        status === undefined || status === "disabled" || status === "ok",
-    );
-
-    return (
-      optionalSubsystemsQuiet &&
-      profiles.length === 0 &&
-      schedules.length === 0 &&
-      crawlStatesTotal === 0 &&
-      renderProfileCount === 0 &&
-      pipelineScriptCount === 0
-    );
-  }, [
-    crawlStatesTotal,
-    health?.components?.proxy_pool?.status,
-    health?.components?.retention?.status,
-    pipelineScriptCount,
-    profiles.length,
-    renderProfileCount,
-    route.kind,
-    schedules.length,
-    setupRequired,
-  ]);
+  const showSettingsOverview = useMemo(
+    () =>
+      shouldShowSettingsOverviewPanel({
+        isSettingsRoute: route.kind === "settings",
+        setupRequired,
+        jobsTotal,
+        profilesCount: profiles.length,
+        schedulesCount: schedules.length,
+        crawlStatesTotal,
+        renderProfileCount,
+        pipelineScriptCount,
+        proxyStatus: health?.components?.proxy_pool?.status,
+        retentionStatus: health?.components?.retention?.status,
+      }),
+    [
+      crawlStatesTotal,
+      health?.components?.proxy_pool?.status,
+      health?.components?.retention?.status,
+      jobsTotal,
+      pipelineScriptCount,
+      profiles.length,
+      renderProfileCount,
+      route.kind,
+      schedules.length,
+      setupRequired,
+    ],
+  );
 
   const detailJob =
     route.kind === "job-detail"
@@ -1065,7 +1068,7 @@ function AppShell() {
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
         jobs={jobs}
-        onNavigate={handleNavigate}
+        onNavigateToPath={handlePaletteNavigate}
         onSubmitForm={handleSubmitForm}
         onCancelJob={cancelJob}
         activeJobId={activeJob?.id}

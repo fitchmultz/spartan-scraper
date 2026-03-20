@@ -16,6 +16,7 @@ import {
   type RenderProfile,
   type RenderProfileInput,
 } from "../../api";
+import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
@@ -58,7 +59,9 @@ export function RenderProfileEditor({
     try {
       setLoading(true);
       setError(null);
-      const response = await getV1RenderProfiles();
+      const response = await getV1RenderProfiles({
+        baseUrl: getApiBaseUrl(),
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to load profiles"),
@@ -88,7 +91,10 @@ export function RenderProfileEditor({
     });
     try {
       setError(null);
-      const response = await postV1RenderProfiles({ body: input });
+      const response = await postV1RenderProfiles({
+        baseUrl: getApiBaseUrl(),
+        body: input,
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to create profile"),
@@ -122,6 +128,7 @@ export function RenderProfileEditor({
     try {
       setError(null);
       const response = await putV1RenderProfilesByName({
+        baseUrl: getApiBaseUrl(),
         path: { name },
         body: input,
       });
@@ -167,7 +174,10 @@ export function RenderProfileEditor({
     });
     try {
       setError(null);
-      const response = await deleteV1RenderProfilesByName({ path: { name } });
+      const response = await deleteV1RenderProfilesByName({
+        baseUrl: getApiBaseUrl(),
+        path: { name },
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to delete profile"),

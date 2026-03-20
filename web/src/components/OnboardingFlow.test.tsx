@@ -73,7 +73,7 @@ describe("OnboardingFlow", () => {
       expect.arrayContaining([
         '[data-tour="jobs-dashboard"], body',
         '[data-tour="command-palette"], body',
-        '[data-tour="quickstart"], body',
+        '[data-tour="job-wizard-header"], body',
         '[data-tour="wizard-steps"], body',
         '[data-tour="job-results"], body',
         '[data-tour="templates-workspace"], body',

@@ -62,7 +62,7 @@ export function SettingsOverviewPanel({
         title="Most Settings controls can wait until a workflow proves it needs them"
         description="Start by getting one real job working end to end. Come back here when you need saved auth, reusable runtime overrides, optional proxy pooling, or cleanup policy—everything else works out of the box."
         actions={[
-          { label: "Create first job", onClick: onCreateJob },
+          { label: "Create job", onClick: onCreateJob },
           {
             label: "Open automation",
             onClick: onOpenAutomation,

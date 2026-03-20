@@ -66,6 +66,24 @@ describe("useOnboarding", () => {
     expect(refreshed.current.hasVisitedRoute("templates")).toBe(true);
   });
 
+  it("retires the first-run hint after work has started", () => {
+    const { result, rerender, unmount } = renderHook(
+      ({ hasStartedWork }) => useOnboarding({ hasStartedWork }),
+      { initialProps: { hasStartedWork: false } },
+    );
+
+    expect(result.current.shouldShowFirstRunHint).toBe(true);
+
+    rerender({ hasStartedWork: true });
+
+    expect(result.current.shouldShowFirstRunHint).toBe(false);
+
+    unmount();
+
+    const { result: refreshed } = renderHook(() => useOnboarding());
+    expect(refreshed.current.shouldShowFirstRunHint).toBe(false);
+  });
+
   it("resetOnboarding restarts the full tour immediately", () => {
     const { result } = renderHook(() => useOnboarding());
 

@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ToastProvider } from "../toast";
+import { getApiBaseUrl } from "../../lib/api-config";
 import { PipelineJSEditor } from "./PipelineJSEditor";
 import * as api from "../../api";
 
@@ -17,6 +18,10 @@ vi.mock("../../api", () => ({
   postV1PipelineJs: vi.fn(),
   putV1PipelineJsByName: vi.fn(),
   deleteV1PipelineJsByName: vi.fn(),
+}));
+
+vi.mock("../../lib/api-config", () => ({
+  getApiBaseUrl: vi.fn(() => "http://localhost:8741"),
 }));
 
 describe("PipelineJSEditor", () => {
@@ -56,6 +61,9 @@ describe("PipelineJSEditor", () => {
     expect(
       await screen.findByText(/no pipeline scripts yet/i),
     ).toBeInTheDocument();
+    expect(api.getV1PipelineJs).toHaveBeenCalledWith({
+      baseUrl: getApiBaseUrl(),
+    });
     expect(
       screen.getByText(
         /most sites do not need custom javascript in the fetch pipeline/i,

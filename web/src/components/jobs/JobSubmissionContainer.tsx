@@ -187,7 +187,10 @@ export const JobSubmissionContainer = forwardRef<
     >
       <div className="ai-assistant-surface">
         <div className="ai-assistant-surface__main">
-          <div className="panel job-workflow__header job-wizard__header">
+          <div
+            className="panel job-workflow__header job-wizard__header"
+            data-tour="job-wizard-header"
+          >
             <div className="job-workflow__header-copy">
               <div className="job-workflow__eyebrow">Workflow</div>
               <h2>Create a job with a guided workflow</h2>
@@ -219,11 +222,13 @@ export const JobSubmissionContainer = forwardRef<
 
           {!wizard.expertMode ? (
             <>
-              <WizardStepper
-                activeStep={wizard.activeStep}
-                completedSteps={wizard.completedSteps}
-                onStepChange={wizard.setActiveStep}
-              />
+              <div data-tour="wizard-steps">
+                <WizardStepper
+                  activeStep={wizard.activeStep}
+                  completedSteps={wizard.completedSteps}
+                  onStepChange={wizard.setActiveStep}
+                />
+              </div>
 
               {wizard.activeStep === "basics" ? (
                 <BasicsStep

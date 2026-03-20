@@ -1,0 +1,9 @@
+time=2026-03-19T18:08:33.095-06:00 level=INFO msg="content index initialized for cross-job deduplication"
+time=2026-03-19T18:08:33.095-06:00 level=INFO msg="starting job manager" concurrency=4
+time=2026-03-19T18:08:33.095-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-03-19T18:08:33.095-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-03-19T18:08:33.095-06:00 level=INFO msg="running job" jobID=b67385cc-79ef-4050-9167-798d4669e2b9 kind=scrape request_id=b67385cc-79ef-4050-9167-798d4669e2b9
+time=2026-03-19T18:08:33.096-06:00 level=INFO msg="processing scrape job" jobID=b67385cc-79ef-4050-9167-798d4669e2b9 url=https://example.com request_id=""
+time=2026-03-19T18:08:33.217-06:00 level=INFO msg="scrape complete" url=https://example.com status=200 title="Example Domain"
+time=2026-03-19T18:08:33.217-06:00 level=INFO msg="job succeeded" jobID=b67385cc-79ef-4050-9167-798d4669e2b9
+b67385cc-79ef-4050-9167-798d4669e2b9

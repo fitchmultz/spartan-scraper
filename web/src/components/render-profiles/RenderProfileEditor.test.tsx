@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ToastProvider } from "../toast";
+import { getApiBaseUrl } from "../../lib/api-config";
 import { RenderProfileEditor } from "./RenderProfileEditor";
 import * as api from "../../api";
 
@@ -17,6 +18,10 @@ vi.mock("../../api", () => ({
   postV1RenderProfiles: vi.fn(),
   putV1RenderProfilesByName: vi.fn(),
   deleteV1RenderProfilesByName: vi.fn(),
+}));
+
+vi.mock("../../lib/api-config", () => ({
+  getApiBaseUrl: vi.fn(() => "http://localhost:8741"),
 }));
 
 describe("RenderProfileEditor", () => {
@@ -41,6 +46,9 @@ describe("RenderProfileEditor", () => {
     expect(
       await screen.findByText(/no saved render profiles yet/i),
     ).toBeInTheDocument();
+    expect(api.getV1RenderProfiles).toHaveBeenCalledWith({
+      baseUrl: getApiBaseUrl(),
+    });
     expect(
       screen.getByText(
         /most jobs can use spartan's default runtime selection/i,
@@ -122,6 +130,7 @@ describe("RenderProfileEditor", () => {
 
     await waitFor(() => {
       expect(api.postV1RenderProfiles).toHaveBeenCalledWith({
+        baseUrl: getApiBaseUrl(),
         body: expect.objectContaining({
           name: "news",
           hostPatterns: ["bad pattern"],

@@ -67,7 +67,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Go to New Job", shortcut: "navigateForms" },
       ],
       nextActions: [
-        { id: "create-job", label: "Create first job" },
+        { id: "create-job", label: "Create job" },
         { id: "open-templates", label: "Browse templates" },
       ],
     },
@@ -121,7 +121,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
       nextActions: [
-        { id: "create-job", label: "Create first job" },
+        { id: "create-job", label: "Create job" },
         { id: "open-automation", label: "Open automation" },
       ],
     },
@@ -159,7 +159,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
       nextActions: [
-        { id: "create-job", label: "Create first job" },
+        { id: "create-job", label: "Create job" },
         { id: "open-automation", label: "Open automation" },
       ],
     },
@@ -186,7 +186,7 @@ export const ONBOARDING_TOUR_STEPS: readonly OnboardingTourStepConfig[] = [
   {
     id: "new-job-quickstart",
     route: "new-job",
-    target: '[data-tour="quickstart"], body',
+    target: '[data-tour="job-wizard-header"], body',
     title: "Quick Start keeps job creation fast",
     body: "Use presets and workflow switching immediately, then open optional AI helpers only when you want assisted authoring.",
     placement: "bottom",

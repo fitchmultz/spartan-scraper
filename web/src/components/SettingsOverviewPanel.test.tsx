@@ -35,7 +35,7 @@ describe("SettingsOverviewPanel", () => {
     expect(screen.getByText("Proxy Pool")).toBeInTheDocument();
     expect(screen.getByText("Retention")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /create first job/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create job/i }));
     fireEvent.click(screen.getByRole("button", { name: /open automation/i }));
 
     expect(onCreateJob).toHaveBeenCalledTimes(1);

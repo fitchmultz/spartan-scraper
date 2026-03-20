@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Restarting onboarding should launch the full tour immediately, route help stays available after tour skip, and `?showHelp` forces a fresh tour without restoring the old blocking modal model.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ONBOARDING_TOTAL_STEPS,
   type OnboardingRouteKey,
@@ -42,6 +42,10 @@ export interface OnboardingActions {
 }
 
 export type UseOnboardingReturn = OnboardingState & OnboardingActions;
+
+export interface UseOnboardingOptions {
+  hasStartedWork?: boolean;
+}
 
 const DEFAULT_STATE: OnboardingState = {
   hasCompletedOnboarding: false,
@@ -136,7 +140,10 @@ function buildInitialState(): OnboardingState {
   };
 }
 
-export function useOnboarding(): UseOnboardingReturn {
+export function useOnboarding(
+  options: UseOnboardingOptions = {},
+): UseOnboardingReturn {
+  const { hasStartedWork = false } = options;
   const [state, setState] = useState<OnboardingState>(() =>
     buildInitialState(),
   );
@@ -264,13 +271,27 @@ export function useOnboarding(): UseOnboardingReturn {
     [state.visitedRoutes],
   );
 
+  useEffect(() => {
+    if (!hasStartedWork || state.hasDismissedFirstRunHint) {
+      return;
+    }
+
+    updateState((previous) => ({
+      ...previous,
+      hasDismissedFirstRunHint: true,
+      isFirstLoad: false,
+    }));
+  }, [hasStartedWork, state.hasDismissedFirstRunHint, updateState]);
+
   const shouldShowFirstRunHint = useMemo(
     () =>
+      !hasStartedWork &&
       !state.hasCompletedOnboarding &&
       !state.hasSkippedOnboarding &&
       !state.hasDismissedFirstRunHint &&
       state.isFirstLoad,
     [
+      hasStartedWork,
       state.hasCompletedOnboarding,
       state.hasDismissedFirstRunHint,
       state.hasSkippedOnboarding,

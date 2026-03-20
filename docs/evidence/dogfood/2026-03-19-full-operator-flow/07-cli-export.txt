@@ -1,0 +1,15 @@
+EXPORT READY
+Export ID: 94a4bed4-3629-48fc-8111-67829c6f9637
+Job: 014b7798-ccf7-4fc7-bd37-a9010b965c28
+Trigger: cli
+Status: succeeded
+Requested format: md
+Destination: docs/evidence/dogfood/2026-03-19-full-operator-flow/07-cli-export.md
+Artifact: 014b7798-ccf7-4fc7-bd37-a9010b965c28.md (text/markdown; charset=utf-8)
+Records: 1
+Size: 284 bytes
+Message: MD export completed successfully with 1 record(s) and is ready at docs/evidence/dogfood/2026-03-19-full-operator-flow/07-cli-export.md.
+Next steps:
+- Inspect export from the CLI [command]: spartan export --inspect-id 94a4bed4-3629-48fc-8111-67829c6f9637
+- Inspect saved job results [route]: /jobs/014b7798-ccf7-4fc7-bd37-a9010b965c28
+

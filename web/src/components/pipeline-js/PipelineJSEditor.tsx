@@ -16,6 +16,7 @@ import {
   type JsTargetScript,
   type PipelineJsInput,
 } from "../../api";
+import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
@@ -59,7 +60,9 @@ export function PipelineJSEditor({
     try {
       setLoading(true);
       setError(null);
-      const response = await getV1PipelineJs();
+      const response = await getV1PipelineJs({
+        baseUrl: getApiBaseUrl(),
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to load scripts"),
@@ -89,7 +92,10 @@ export function PipelineJSEditor({
     });
     try {
       setError(null);
-      const response = await postV1PipelineJs({ body: input });
+      const response = await postV1PipelineJs({
+        baseUrl: getApiBaseUrl(),
+        body: input,
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to create script"),
@@ -123,6 +129,7 @@ export function PipelineJSEditor({
     try {
       setError(null);
       const response = await putV1PipelineJsByName({
+        baseUrl: getApiBaseUrl(),
         path: { name },
         body: input,
       });
@@ -168,7 +175,10 @@ export function PipelineJSEditor({
     });
     try {
       setError(null);
-      const response = await deleteV1PipelineJsByName({ path: { name } });
+      const response = await deleteV1PipelineJsByName({
+        baseUrl: getApiBaseUrl(),
+        path: { name },
+      });
       if (response.error) {
         throw new Error(
           getApiErrorMessage(response.error, "Failed to delete script"),

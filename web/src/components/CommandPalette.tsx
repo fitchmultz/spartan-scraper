@@ -1,11 +1,9 @@
 /**
- * Command Palette Component
- *
- * Provides a fuzzy-searchable command palette UI using the cmdk library.
- * Allows quick navigation between views, form submissions, and job management.
- * Groups commands by category: Actions, Navigation, and Jobs.
- *
- * @module CommandPalette
+ * Purpose: Render the global fuzzy-searchable command palette for route jumps and high-frequency actions.
+ * Responsibilities: Surface top-level navigation, automation-section navigation, preset selection, recent-job drill-down, and fast job actions.
+ * Scope: Command palette presentation and command composition only.
+ * Usage: Mount once from `App.tsx` and supply current jobs plus navigation/action callbacks.
+ * Invariants/Assumptions: Commands must reach every major operator surface, recent-job entries drill into the actual job detail route, and closing the palette must not drop the selected action.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -14,29 +12,24 @@ import { getJobStatusIcon } from "../lib/job-status";
 import type { JobEntry } from "../types";
 import type { JobPreset } from "../types/presets";
 
-export type CommandPaletteProps = {
-  /** Whether the palette is visible */
-  isOpen: boolean;
-  /** Callback when palette should close */
-  onClose: () => void;
-  /** List of jobs to display */
-  jobs: JobEntry[];
-  /** Navigate to a specific view */
-  onNavigate: (view: "jobs" | "results" | "forms") => void;
-  /** Submit a form by type */
-  onSubmitForm: (formType: "scrape" | "crawl" | "research") => void;
-  /** Cancel a job by ID */
-  onCancelJob: (jobId: string) => void;
+type CommandGroup =
+  | "actions"
+  | "navigation"
+  | "automation"
+  | "jobs"
+  | "presets";
 
-  /** Currently active/running job ID */
+export type CommandPaletteProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  jobs: JobEntry[];
+  onNavigateToPath: (path: string) => void;
+  onSubmitForm: (formType: "scrape" | "crawl" | "research") => void;
+  onCancelJob: (jobId: string) => void;
   activeJobId?: string;
-  /** Platform indicator for shortcut display */
   isMac?: boolean;
-  /** Available presets to select from */
   presets?: JobPreset[];
-  /** Callback when a preset is selected */
   onSelectPreset?: (preset: JobPreset) => void;
-  /** Callback to restart the onboarding tour */
   onRestartTour?: () => void;
 };
 
@@ -45,22 +38,92 @@ type CommandItem = {
   label: string;
   shortcut?: string;
   icon?: string;
-  group: "actions" | "navigation" | "jobs" | "presets";
+  group: CommandGroup;
   disabled?: boolean;
   onSelect: () => void;
 };
 
-/**
- * Command Palette Component
- *
- * A modal command interface for quick access to all app features.
- * Uses cmdk for fuzzy search and keyboard navigation.
- */
+const GROUP_ORDER: Array<{ key: CommandGroup; heading: string }> = [
+  { key: "actions", heading: "Actions" },
+  { key: "navigation", heading: "Navigation" },
+  { key: "automation", heading: "Automation" },
+  { key: "presets", heading: "Presets" },
+  { key: "jobs", heading: "Recent Jobs" },
+];
+
+const ROUTE_COMMANDS = [
+  {
+    id: "nav-jobs",
+    label: "Open Jobs",
+    path: "/jobs",
+    shortcut: "G J",
+    icon: "📋",
+    group: "navigation" as const,
+  },
+  {
+    id: "nav-new-job",
+    label: "Open New Job",
+    path: "/jobs/new",
+    shortcut: "G F",
+    icon: "📝",
+    group: "navigation" as const,
+  },
+  {
+    id: "nav-templates",
+    label: "Open Templates",
+    path: "/templates",
+    icon: "🧩",
+    group: "navigation" as const,
+  },
+  {
+    id: "nav-settings",
+    label: "Open Settings",
+    path: "/settings",
+    icon: "⚙️",
+    group: "navigation" as const,
+  },
+  {
+    id: "nav-automation-batches",
+    label: "Open Automation / Batches",
+    path: "/automation/batches",
+    icon: "📦",
+    group: "automation" as const,
+  },
+  {
+    id: "nav-automation-chains",
+    label: "Open Automation / Chains",
+    path: "/automation/chains",
+    icon: "🔗",
+    group: "automation" as const,
+  },
+  {
+    id: "nav-automation-watches",
+    label: "Open Automation / Watches",
+    path: "/automation/watches",
+    icon: "👀",
+    group: "automation" as const,
+  },
+  {
+    id: "nav-automation-exports",
+    label: "Open Automation / Exports",
+    path: "/automation/exports",
+    icon: "📤",
+    group: "automation" as const,
+  },
+  {
+    id: "nav-automation-webhooks",
+    label: "Open Automation / Webhooks",
+    path: "/automation/webhooks",
+    icon: "🪝",
+    group: "automation" as const,
+  },
+] as const;
+
 export function CommandPalette({
   isOpen,
   onClose,
   jobs,
-  onNavigate,
+  onNavigateToPath,
   onSubmitForm,
   onCancelJob,
   activeJobId,
@@ -72,7 +135,6 @@ export function CommandPalette({
   const [search, setSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset search when opening
   useEffect(() => {
     if (isOpen) {
       setSearch("");
@@ -80,7 +142,9 @@ export function CommandPalette({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
 
     const raf = window.requestAnimationFrame(() => {
       inputRef.current?.focus({ preventScroll: true });
@@ -90,23 +154,21 @@ export function CommandPalette({
     return () => window.cancelAnimationFrame(raf);
   }, [isOpen]);
 
-  // Handle keyboard shortcuts within palette
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Close on Escape
-      if (e.key === "Escape") {
-        e.preventDefault();
+    (event: React.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
         onClose();
-        return;
       }
     },
     [onClose],
   );
 
-  // Build command list
+  const latestResultJob =
+    jobs.find((job) => job.status === "succeeded") ?? jobs[0] ?? null;
+
   const commands = useMemo((): CommandItem[] => {
     const list: CommandItem[] = [
-      // Actions
       {
         id: "submit-scrape",
         label: "Submit Scrape Job",
@@ -145,10 +207,11 @@ export function CommandPalette({
         group: "actions",
         disabled: !activeJobId,
         onSelect: () => {
-          if (activeJobId) {
-            onCancelJob(activeJobId);
-            onClose();
+          if (!activeJobId) {
+            return;
           }
+          onCancelJob(activeJobId);
+          onClose();
         },
       },
       {
@@ -161,103 +224,96 @@ export function CommandPalette({
           onClose();
         },
       },
-
-      // Navigation
       {
-        id: "nav-jobs",
-        label: "Go to Jobs",
-        shortcut: "G J",
-        icon: "📋",
-        group: "navigation",
-        onSelect: () => {
-          onNavigate("jobs");
-          onClose();
-        },
-      },
-      {
-        id: "nav-results",
-        label: "Go to Results",
-        shortcut: "G R",
+        id: "nav-latest-results",
+        label: latestResultJob
+          ? `Open Latest Results (${latestResultJob.id.slice(0, 8)})`
+          : "Open Latest Results",
         icon: "📊",
         group: "navigation",
+        disabled: !latestResultJob,
         onSelect: () => {
-          onNavigate("results");
-          onClose();
-        },
-      },
-      {
-        id: "nav-forms",
-        label: "Go to Forms",
-        shortcut: "G F",
-        icon: "📝",
-        group: "navigation",
-        onSelect: () => {
-          onNavigate("forms");
+          if (!latestResultJob) {
+            return;
+          }
+          onNavigateToPath(`/jobs/${latestResultJob.id}`);
           onClose();
         },
       },
     ];
 
-    // Add recent jobs (last 10)
-    const recentJobs = jobs.slice(0, 10);
-    for (const job of recentJobs) {
+    for (const route of ROUTE_COMMANDS) {
+      list.push({
+        id: route.id,
+        label: route.label,
+        shortcut: "shortcut" in route ? route.shortcut : undefined,
+        icon: route.icon,
+        group: route.group,
+        onSelect: () => {
+          onNavigateToPath(route.path);
+          onClose();
+        },
+      });
+    }
+
+    for (const preset of [...presets]
+      .sort((a, b) =>
+        a.isBuiltIn === b.isBuiltIn
+          ? a.name.localeCompare(b.name)
+          : a.isBuiltIn
+            ? -1
+            : 1,
+      )
+      .slice(0, 20)) {
+      list.push({
+        id: `preset-${preset.id}`,
+        label: `${preset.name} (${preset.jobType})`,
+        icon: preset.icon,
+        group: "presets",
+        onSelect: () => {
+          onSelectPreset?.(preset);
+          onClose();
+        },
+      });
+    }
+
+    for (const job of jobs.slice(0, 10)) {
       list.push({
         id: `job-${job.id}`,
         label: `${getJobStatusIcon(job.status)} ${job.kind}: ${job.id.slice(0, 8)}`,
         icon: job.id === activeJobId ? "▶️" : undefined,
         group: "jobs",
         onSelect: () => {
-          onNavigate("jobs");
+          onNavigateToPath(`/jobs/${job.id}`);
           onClose();
         },
       });
     }
 
-    // Add presets (built-in first, then custom)
-    if (presets.length > 0 && onSelectPreset) {
-      const sortedPresets = [...presets].sort((a, b) => {
-        // Built-in first
-        if (a.isBuiltIn && !b.isBuiltIn) return -1;
-        if (!a.isBuiltIn && b.isBuiltIn) return 1;
-        // Then alphabetically
-        return a.name.localeCompare(b.name);
-      });
-
-      for (const preset of sortedPresets.slice(0, 20)) {
-        list.push({
-          id: `preset-${preset.id}`,
-          label: `${preset.name} (${preset.jobType})`,
-          icon: preset.icon,
-          group: "presets",
-          onSelect: () => {
-            onSelectPreset(preset);
-            onClose();
-          },
-        });
-      }
-    }
-
     return list;
   }, [
-    jobs,
-    presets,
     activeJobId,
     isMac,
-    onNavigate,
-    onSubmitForm,
+    jobs,
+    latestResultJob,
     onCancelJob,
-    onSelectPreset,
-    onRestartTour,
     onClose,
+    onNavigateToPath,
+    onRestartTour,
+    onSelectPreset,
+    onSubmitForm,
+    presets,
   ]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div
       className="command-palette-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
           onClose();
         }
       }}
@@ -288,81 +344,25 @@ export function CommandPalette({
             No commands found.
           </Command.Empty>
 
-          {/* Actions Group */}
-          <Command.Group
-            heading={
-              <span className="command-palette-group-header">Actions</span>
+          {GROUP_ORDER.map(({ key, heading }) => {
+            const groupCommands = commands.filter(
+              (command) => command.group === key,
+            );
+            if (groupCommands.length === 0) {
+              return null;
             }
-            className="command-palette-group"
-          >
-            {commands
-              .filter((c) => c.group === "actions")
-              .map((command) => (
-                <Command.Item
-                  key={command.id}
-                  value={command.label}
-                  disabled={command.disabled}
-                  onSelect={command.onSelect}
-                  className="command-palette-item"
-                >
-                  <span className="command-palette-item-icon">
-                    {command.icon}
-                  </span>
-                  <span className="command-palette-item-label">
-                    {command.label}
-                  </span>
-                  {command.shortcut && (
-                    <kbd className="command-palette-shortcut">
-                      {command.shortcut}
-                    </kbd>
-                  )}
-                </Command.Item>
-              ))}
-          </Command.Group>
 
-          {/* Navigation Group */}
-          <Command.Group
-            heading={
-              <span className="command-palette-group-header">Navigation</span>
-            }
-            className="command-palette-group"
-          >
-            {commands
-              .filter((c) => c.group === "navigation")
-              .map((command) => (
-                <Command.Item
-                  key={command.id}
-                  value={command.label}
-                  disabled={command.disabled}
-                  onSelect={command.onSelect}
-                  className="command-palette-item"
-                >
-                  <span className="command-palette-item-icon">
-                    {command.icon}
+            return (
+              <Command.Group
+                key={key}
+                heading={
+                  <span className="command-palette-group-header">
+                    {heading}
                   </span>
-                  <span className="command-palette-item-label">
-                    {command.label}
-                  </span>
-                  {command.shortcut && (
-                    <kbd className="command-palette-shortcut">
-                      {command.shortcut}
-                    </kbd>
-                  )}
-                </Command.Item>
-              ))}
-          </Command.Group>
-
-          {/* Presets Group */}
-          {presets.length > 0 && (
-            <Command.Group
-              heading={
-                <span className="command-palette-group-header">Presets</span>
-              }
-              className="command-palette-group"
-            >
-              {commands
-                .filter((c) => c.group === "presets")
-                .map((command) => (
+                }
+                className="command-palette-group"
+              >
+                {groupCommands.map((command) => (
                   <Command.Item
                     key={command.id}
                     value={command.label}
@@ -376,38 +376,16 @@ export function CommandPalette({
                     <span className="command-palette-item-label">
                       {command.label}
                     </span>
+                    {command.shortcut ? (
+                      <kbd className="command-palette-shortcut">
+                        {command.shortcut}
+                      </kbd>
+                    ) : null}
                   </Command.Item>
                 ))}
-            </Command.Group>
-          )}
-
-          {/* Jobs Group */}
-          {jobs.length > 0 && (
-            <Command.Group
-              heading={
-                <span className="command-palette-group-header">
-                  Recent Jobs
-                </span>
-              }
-              className="command-palette-group"
-            >
-              {commands
-                .filter((c) => c.group === "jobs")
-                .map((command) => (
-                  <Command.Item
-                    key={command.id}
-                    value={command.label}
-                    disabled={command.disabled}
-                    onSelect={command.onSelect}
-                    className="command-palette-item"
-                  >
-                    <span className="command-palette-item-label">
-                      {command.label}
-                    </span>
-                  </Command.Item>
-                ))}
-            </Command.Group>
-          )}
+              </Command.Group>
+            );
+          })}
         </Command.List>
 
         <div className="command-palette-footer">

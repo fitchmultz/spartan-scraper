@@ -248,4 +248,15 @@ describe("JobSubmissionContainer wizard", () => {
       (await screen.findAllByDisplayValue("https://example.com/docs"))[0],
     ).toBeInTheDocument();
   });
+
+  it("renders stable onboarding targets for the new-job tour", () => {
+    const { container } = renderHarness();
+
+    expect(
+      container.querySelector('[data-tour="job-wizard-header"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-tour="wizard-steps"]'),
+    ).not.toBeNull();
+  });
 });
