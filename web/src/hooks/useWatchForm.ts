@@ -33,6 +33,7 @@ interface UseWatchFormReturn {
   setFormDataPartial: (data: Partial<WatchFormData>) => void;
   resetForm: () => void;
   initFormForEdit: (watch: Watch) => void;
+  initFormFromDraft: (draft: WatchFormData) => void;
   submitForm: (
     onCreate: (input: WatchInput) => Promise<void>,
     onUpdate: (id: string, input: WatchInput) => Promise<void>,
@@ -69,6 +70,12 @@ export function useWatchForm(): UseWatchFormReturn {
   const initFormForEdit = useCallback((watch: Watch) => {
     setFormData(watchToFormData(watch));
     setEditingId(watch.id);
+    setFormError(null);
+  }, []);
+
+  const initFormFromDraft = useCallback((draft: WatchFormData) => {
+    setFormData(draft);
+    setEditingId(null);
     setFormError(null);
   }, []);
 
@@ -151,6 +158,7 @@ export function useWatchForm(): UseWatchFormReturn {
     setFormDataPartial,
     resetForm,
     initFormForEdit,
+    initFormFromDraft,
     submitForm,
   };
 }

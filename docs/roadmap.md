@@ -2,19 +2,6 @@
 
 This is the canonical source of truth for planned work, exploratory ideas, and sequencing.
 
-## Completed
-
-- [Web UI/UX Audit](specs/web-ui-ux-audit.md) — findings from live product review and code inspection that set the direction for the current Web UI cutover.
-- [Web Shell Simplification](specs/web-shell-simplification.md) — thinner, route-first global chrome so operators reach real work faster.
-- [Guided Job Submission Wizard](specs/guided-job-wizard.md) — guided 4-step job creation on `/jobs/new` with Expert mode and review-before-submit.
-- [Job Monitoring Dashboard](specs/job-monitoring-dashboard.md) — scan-first `/jobs` dashboard with lane-based monitoring and return-context preservation.
-- [Results View System Overhaul](specs/results-view-system-overhaul.md) — dominant reader on `/jobs/:id` with quieter secondary tools and guided export.
-- [Automation Hub Redesign](specs/automation-hub-redesign.md) — `/automation/:section` hub with explicit in-route sub-navigation for batches, chains, watches, exports, and webhooks.
-- [Template Editor Rework](specs/template-editor-rework.md) — inline `/templates` workspace with persistent list/detail, preview, and AI-assisted authoring.
-- [Integrated AI Assistant Panel](specs/ai-assistant-panel.md) — persistent route-aware AI surface across job creation, templates, and results.
-- [Toast Notification System](specs/toast-notification-system.md) — consistent transient feedback across the Web UI.
-- [Verified Job Promotion Contract Audit](specs/job-to-automation-promotion-contract-audit.md) — confirmed the real source-job reuse boundary, destination overlap, redaction constraints, and route-level data requirements before the promotion cutover begins.
-
 ## Planning Principles
 
 - Treat the Web UI as a first-class operator surface. When parity work and workflow clarity compete, prioritize the product workflow that helps operators complete real tasks faster and with less confusion.
@@ -27,10 +14,10 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Put meaningful operator-facing product work ahead of maintenance, cleanup, and policy reminders.
 - Treat focused failure-path dogfooding as acceptance criteria for major operator workflow cutovers, not as a standalone roadmap epic.
 
-## After
+## Next
 
-1. [Verified Job Promotion Cutover](specs/job-to-automation-promotion.md) — implement the audited product path from a completed, trusted job into templates, watches, and export schedules, including authoritative job-detail loading, destination-specific seeded drafts, and explicit treatment of unsupported carry-forward.
-2. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — once the promotion path is stable, lock it down with system-first deterministic regression coverage and narrow browser proof that also protects the detail-fetch fallback and redaction boundary.
+1. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — lock the delivered promotion path down with system-first deterministic regression coverage and narrow browser proof that protects detail-fetch fallback, seeded-draft handoff, and the redaction boundary.
+2. Promotion Flow Acceptance Dogfood — run a focused operator pass across `/jobs/:id`, `/templates`, `/automation/watches`, and `/automation/exports`, capture updated evidence, and tighten any copy or affordances that still make promotion feel indirect.
 
 ## Later / Deprioritized
 

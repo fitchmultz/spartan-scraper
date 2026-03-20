@@ -22,6 +22,7 @@ import {
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { useToast } from "../toast";
+import type { ExportSchedulePromotionSeed } from "../../types/promotion";
 
 const ExportScheduleManager = lazy(() =>
   import("../../components/ExportScheduleManager").then((mod) => ({
@@ -31,10 +32,16 @@ const ExportScheduleManager = lazy(() =>
 
 interface ExportScheduleContainerProps {
   aiStatus?: ComponentStatus | null;
+  promotionSeed?: ExportSchedulePromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 export function ExportScheduleContainer({
   aiStatus = null,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: ExportScheduleContainerProps) {
   const toast = useToast();
   const [schedules, setSchedules] = useState<ExportSchedule[]>([]);
@@ -305,6 +312,9 @@ export function ExportScheduleContainer({
           onGetHistory={handleGetHistory}
           loading={schedulesLoading}
           aiStatus={aiStatus}
+          promotionSeed={promotionSeed}
+          onClearPromotionSeed={onClearPromotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
         />
       </Suspense>
     </section>

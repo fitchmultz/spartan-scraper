@@ -28,6 +28,7 @@ import {
 import { useToast } from "../toast";
 import { ActionEmptyState } from "../ActionEmptyState";
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
+import { PromotionDraftNotice } from "../promotion/PromotionDraftNotice";
 import { TemplateEditorInline } from "./TemplateEditorInline";
 import {
   BUILT_IN_TEMPLATE_NAMES,
@@ -39,11 +40,15 @@ import {
   getDuplicateName,
   type TemplateDraftState,
 } from "./templateEditorUtils";
+import type { TemplatePromotionSeed } from "../../types/promotion";
 
 interface TemplateManagerProps {
   templateNames: string[];
   onTemplatesChanged: () => void;
   aiStatus?: ComponentStatus | null;
+  promotionSeed?: TemplatePromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 type DraftSource = "selected" | "create" | "duplicate";
@@ -52,6 +57,9 @@ export function TemplateManager({
   templateNames,
   onTemplatesChanged,
   aiStatus = null,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: TemplateManagerProps) {
   const aiAssistant = useAIAssistant();
   const toast = useToast();
@@ -122,6 +130,97 @@ export function TemplateManager({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!promotionSeed) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const applyPromotionSeed = async () => {
+      setShouldAutoSelectFirst(false);
+      setSelectedName(null);
+      setSelectedTemplate(null);
+      setDetailError(null);
+      setPreviewUrl(promotionSeed.previewUrl ?? "");
+      setRailTab("preview");
+
+      if (promotionSeed.mode === "inline-template" && promotionSeed.template) {
+        loadDraft(
+          {
+            ...promotionSeed.template,
+            name: promotionSeed.suggestedName,
+          },
+          "create",
+        );
+        return;
+      }
+
+      if (
+        promotionSeed.mode === "named-template" &&
+        promotionSeed.templateName
+      ) {
+        setIsLoadingDetail(true);
+        try {
+          const response = await getTemplate({
+            baseUrl: getApiBaseUrl(),
+            path: { name: promotionSeed.templateName },
+          });
+
+          if (response.error) {
+            throw new Error(
+              getApiErrorMessage(
+                response.error,
+                "Failed to load template details.",
+              ),
+            );
+          }
+
+          if (cancelled) {
+            return;
+          }
+
+          const detail = response.data ?? null;
+          setSelectedTemplate(detail);
+          loadDraft(
+            {
+              ...detail?.template,
+              name: promotionSeed.suggestedName,
+            },
+            "duplicate",
+            detail?.template?.name,
+          );
+        } catch (error) {
+          if (!cancelled) {
+            setDetailError(
+              error instanceof Error
+                ? error.message
+                : "Failed to load template details.",
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setIsLoadingDetail(false);
+          }
+        }
+        return;
+      }
+
+      loadDraft(
+        {
+          name: promotionSeed.suggestedName,
+        },
+        "create",
+      );
+    };
+
+    void applyPromotionSeed();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadDraft, promotionSeed]);
 
   useEffect(() => {
     if (templateNames.length === 0) {
@@ -291,6 +390,7 @@ export function TemplateManager({
         is_built_in: false,
         template: payload,
       });
+      onClearPromotionSeed?.();
       setShouldAutoSelectFirst(false);
       loadDraft(payload, "selected", payload.name);
       setSaveNotice("Template saved.");
@@ -378,6 +478,7 @@ export function TemplateManager({
       return;
     }
 
+    onClearPromotionSeed?.();
     setShouldAutoSelectFirst(false);
     loadDraft(undefined, "create");
   };
@@ -387,6 +488,7 @@ export function TemplateManager({
       return;
     }
 
+    onClearPromotionSeed?.();
     setShouldAutoSelectFirst(false);
     loadDraft(
       {
@@ -409,6 +511,7 @@ export function TemplateManager({
       return;
     }
 
+    onClearPromotionSeed?.();
     setDraftSource("selected");
     setShouldAutoSelectFirst(false);
     setSelectedName(name);
@@ -418,6 +521,7 @@ export function TemplateManager({
   };
 
   const handleApplyTemplate = (template: Template, source: DraftSource) => {
+    onClearPromotionSeed?.();
     setShouldAutoSelectFirst(false);
     loadDraft(template, source, template.name);
     setRailTab("preview");
@@ -554,6 +658,7 @@ export function TemplateManager({
                   is_built_in: false,
                   template,
                 });
+                onClearPromotionSeed?.();
                 setShouldAutoSelectFirst(false);
                 setSelectedName(template.name ?? null);
                 loadDraft(template, "selected", template.name);
@@ -618,6 +723,16 @@ export function TemplateManager({
                   )}
                 </div>
               </div>
+
+              {promotionSeed ? (
+                <PromotionDraftNotice
+                  title="Template draft seeded from a verified job"
+                  description="This workspace starts from the reusable extraction structure Spartan could safely recover from the successful source job."
+                  seed={promotionSeed}
+                  onOpenSourceJob={onOpenSourceJob}
+                  onClear={onClearPromotionSeed}
+                />
+              ) : null}
 
               {isLoadingDetail && draftSource === "selected" ? (
                 <div className="template-manager__empty">

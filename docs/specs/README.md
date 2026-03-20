@@ -9,8 +9,7 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 
 ## Next Up
 
-- [Verified Job Promotion Flow](job-to-automation-promotion.md) — implement the audited cutover so operators can turn a completed, trusted job into a reusable template, watch, or export schedule without re-entering known-good configuration.
-- [Promotion Flow Deterministic Regression Coverage](promotion-flow-deterministic-regression.md) — define system-first regression coverage and targeted browser proof for the promotion cutover.
+- [Promotion Flow Deterministic Regression Coverage](promotion-flow-deterministic-regression.md) — define system-first regression coverage and targeted browser proof for the delivered promotion cutover.
 
 ## Recently Completed
 
@@ -23,3 +22,4 @@ These specs back the roadmap and capture the UI/UX direction for the current cut
 - [Template Editor Rework](template-editor-rework.md) — `/templates` now runs as an inline authoring workspace with a persistent library rail, center editor, right-side preview/AI tools, and inline visual-builder mode.
 - [Integrated AI Assistant Panel](ai-assistant-panel.md) — `/jobs/new`, `/templates`, and `/jobs/:id` now share a persistent, route-aware AI rail instead of modal-first entry points.
 - [Toast Notification System](toast-notification-system.md) — the Web UI now has one reusable transient feedback layer for success, error, loading, and progress states.
+- [Verified Job Promotion Flow](job-to-automation-promotion.md) — `/jobs/:id` now loads authoritative job detail, surfaces one shared promotion chooser, and hands operators into seeded template, watch, or export-schedule drafts without weakening the browser redaction boundary.

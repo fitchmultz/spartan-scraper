@@ -110,6 +110,65 @@ function createManagerProps(
 }
 
 describe("ExportScheduleManager", () => {
+  it("opens a promotion-seeded export schedule draft with source context", async () => {
+    render(
+      <ExportScheduleManager
+        {...createManagerProps({ schedules: [] })}
+        promotionSeed={{
+          kind: "export-schedule",
+          source: {
+            jobId: "job-123",
+            jobKind: "scrape",
+            jobStatus: "succeeded",
+            label: "Source URL",
+            value: "https://example.com/pricing",
+          },
+          formData: {
+            name: "verified-export",
+            enabled: true,
+            filterJobKinds: ["scrape"],
+            filterJobStatus: ["succeeded"],
+            filterTags: "",
+            filterHasResults: true,
+            format: "md",
+            destinationType: "local",
+            pathTemplate: "exports/{kind}/{job_id}.{format}",
+            localPath: "exports/{kind}/{job_id}.{format}",
+            webhookUrl: "",
+            maxRetries: 3,
+            baseDelayMs: 1000,
+            transformExpression: "",
+            transformLanguage: "jmespath",
+            shapeTopLevelFields: "",
+            shapeNormalizedFields: "",
+            shapeEvidenceFields: "",
+            shapeSummaryFields: "",
+            shapeFieldLabels: "",
+            shapeEmptyValue: "",
+            shapeMultiValueJoin: "",
+            shapeMarkdownTitle: "",
+          },
+          seededFormat: "md",
+          carriedForward: [
+            "A scrape filter scoped to future successful jobs like this one.",
+          ],
+          remainingDecisions: ["Confirm the destination before saving."],
+          unsupportedCarryForward: [
+            "Export schedules automate future matching completed jobs; they do not rerun this source job on a cadence.",
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /create export schedule/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("verified-export")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/do not rerun this source job on a cadence/i).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("loads and displays guided export history when History is clicked", async () => {
     const user = userEvent.setup();
     const props = createManagerProps();

@@ -13,12 +13,12 @@ import { SettingsOverviewPanel } from "./SettingsOverviewPanel";
 describe("SettingsOverviewPanel", () => {
   it("summarizes each major Settings capability and exposes first-run actions", () => {
     const onCreateJob = vi.fn();
-    const onOpenAutomation = vi.fn();
+    const onOpenJobs = vi.fn();
 
     render(
       <SettingsOverviewPanel
         onCreateJob={onCreateJob}
-        onOpenAutomation={onOpenAutomation}
+        onOpenJobs={onOpenJobs}
       />,
     );
 
@@ -36,9 +36,9 @@ describe("SettingsOverviewPanel", () => {
     expect(screen.getByText("Retention")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /create job/i }));
-    fireEvent.click(screen.getByRole("button", { name: /open automation/i }));
+    fireEvent.click(screen.getByRole("button", { name: /review jobs/i }));
 
     expect(onCreateJob).toHaveBeenCalledTimes(1);
-    expect(onOpenAutomation).toHaveBeenCalledTimes(1);
+    expect(onOpenJobs).toHaveBeenCalledTimes(1);
   });
 });

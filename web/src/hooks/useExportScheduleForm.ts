@@ -35,6 +35,7 @@ interface UseExportScheduleFormReturn {
   setFormDataPartial: (data: Partial<ExportScheduleFormData>) => void;
   resetForm: () => void;
   initFormForEdit: (schedule: ExportSchedule) => void;
+  initFormFromDraft: (draft: ExportScheduleFormData) => void;
   submitForm: (
     onCreate: (request: ExportScheduleRequest) => Promise<void>,
     onUpdate: (id: string, request: ExportScheduleRequest) => Promise<void>,
@@ -78,6 +79,12 @@ export function useExportScheduleForm(): UseExportScheduleFormReturn {
   const initFormForEdit = useCallback((schedule: ExportSchedule) => {
     setFormData(scheduleToFormData(schedule));
     setEditingId(schedule.id);
+    setFormError(null);
+  }, []);
+
+  const initFormFromDraft = useCallback((draft: ExportScheduleFormData) => {
+    setFormData(draft);
+    setEditingId(null);
     setFormError(null);
   }, []);
 
@@ -170,6 +177,7 @@ export function useExportScheduleForm(): UseExportScheduleFormReturn {
     setFormDataPartial,
     resetForm,
     initFormForEdit,
+    initFormFromDraft,
     submitForm,
   };
 }

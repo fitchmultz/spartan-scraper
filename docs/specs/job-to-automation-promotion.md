@@ -1,6 +1,6 @@
 # Verified Job Promotion Flow
 
-**Status:** Planned  
+**Status:** Completed  
 **Primary surfaces:** Web UI `/jobs/:id`, `/templates`, `/automation/watches`, `/automation/exports`
 
 ## Summary

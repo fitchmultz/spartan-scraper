@@ -116,11 +116,31 @@ vi.mock("../../components/automation/AutomationSubnav", () => ({
 }));
 
 vi.mock("../../components/watches/WatchContainer", () => ({
-  WatchContainer: () => <div>Watch container</div>,
+  WatchContainer: ({
+    promotionSeed,
+  }: {
+    promotionSeed?: { source?: { jobId?: string } } | null;
+  }) => (
+    <div>
+      {promotionSeed?.source?.jobId
+        ? `Watch seed ${promotionSeed.source.jobId}`
+        : "Watch container"}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/export-schedules/ExportScheduleContainer", () => ({
-  ExportScheduleContainer: () => <div>Export schedules</div>,
+  ExportScheduleContainer: ({
+    promotionSeed,
+  }: {
+    promotionSeed?: { source?: { jobId?: string } } | null;
+  }) => (
+    <div>
+      {promotionSeed?.source?.jobId
+        ? `Export seed ${promotionSeed.source.jobId}`
+        : "Export schedules"}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/webhooks/WebhookDeliveryContainer", () => ({
@@ -144,8 +164,16 @@ vi.mock("../../components/batches/BatchContainer", () => ({
 }));
 
 vi.mock("../../components/templates/TemplateManager", () => ({
-  TemplateManager: () => (
-    <div data-testid="templates-workspace">Template manager</div>
+  TemplateManager: ({
+    promotionSeed,
+  }: {
+    promotionSeed?: { source?: { jobId?: string } } | null;
+  }) => (
+    <div data-testid="templates-workspace">
+      {promotionSeed?.source?.jobId
+        ? `Template seed ${promotionSeed.source.jobId}`
+        : "Template manager"}
+    </div>
   ),
 }));
 
@@ -165,7 +193,36 @@ vi.mock("../../components/jobs/JobMonitoringDashboard", () => ({
 }));
 
 vi.mock("../../components/results/ResultsContainer", () => ({
-  ResultsContainer: () => <div data-testid="results-container" />,
+  ResultsContainer: ({
+    currentJob,
+    onPromote,
+  }: {
+    currentJob?: { id?: string } | null;
+    onPromote?: (
+      destination: "template" | "watch" | "export-schedule",
+      options?: {
+        preferredExportFormat?: "json" | "jsonl" | "md" | "csv" | "xlsx";
+      },
+    ) => void;
+  }) => (
+    <div data-testid="results-container">
+      <div>{currentJob?.id ?? "no-job"}</div>
+      <button type="button" onClick={() => onPromote?.("template")}>
+        Promote template
+      </button>
+      <button type="button" onClick={() => onPromote?.("watch")}>
+        Promote watch
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onPromote?.("export-schedule", { preferredExportFormat: "md" })
+        }
+      >
+        Promote export
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../../components/render-profiles", async () => {
@@ -359,6 +416,33 @@ function buildHealth() {
   };
 }
 
+function makeJobEntry(overrides: Partial<JobEntry> = {}): JobEntry {
+  return {
+    id: "job-1",
+    kind: "scrape",
+    status: "succeeded",
+    createdAt: "2026-03-20T10:00:00Z",
+    updatedAt: "2026-03-20T10:05:00Z",
+    finishedAt: "2026-03-20T10:05:00Z",
+    specVersion: 1,
+    spec: {
+      version: 1,
+      url: "https://example.com/pricing",
+      execution: {
+        headless: true,
+        playwright: true,
+        screenshot: { enabled: true, fullPage: true, format: "png" },
+      },
+    },
+    run: {
+      waitMs: 0,
+      runMs: 1000,
+      totalMs: 1000,
+    },
+    ...overrides,
+  };
+}
+
 function createAppDataState() {
   return {
     jobs: [] as JobEntry[],
@@ -382,9 +466,14 @@ function createAppDataState() {
     connectionState: "connected" as const,
     health: buildHealth(),
     setupRequired: false,
+    detailJob: null as JobEntry | null,
+    detailJobLoading: false,
+    detailJobError: null,
     refreshHealth: vi.fn(async () => buildHealth()),
     refreshJobs: vi.fn(async () => {}),
     refreshTemplates: vi.fn(async () => {}),
+    refreshJobDetail: vi.fn(async () => null),
+    clearJobDetail: vi.fn(),
     setJobsPage: vi.fn(),
     setCrawlStatesPage: vi.fn(),
     setJobStatusFilter: vi.fn(),
@@ -494,21 +583,37 @@ describe("FreshStartOperatorFlow", () => {
       ).not.toBeInTheDocument();
     });
 
+    rendered.unmount();
+  });
+
+  it("loads authoritative job detail for direct result routes outside the paged jobs list", async () => {
+    appDataState.detailJob = makeJobEntry({ id: "job-direct" });
+
+    renderAppAt("/jobs/job-direct");
+
     await waitFor(() => {
-      expect(
-        JSON.parse(localStorage.getItem("spartan-onboarding") ?? "null")
-          ?.hasDismissedFirstRunHint,
-      ).toBe(true);
+      expect(appDataState.refreshJobDetail).toHaveBeenCalledWith("job-direct");
     });
 
-    rendered.unmount();
+    expect(screen.getByText("job-direct")).toBeInTheDocument();
+  });
 
-    appDataState.jobsTotal = 0;
-    renderAppAt("/jobs");
+  it("hands off promotion drafts from results into the canonical destination workspaces", async () => {
+    const user = userEvent.setup();
+    appDataState.detailJob = makeJobEntry({ id: "job-promote" });
 
-    expect(
-      screen.queryByRole("heading", { name: /start with one working job/i }),
-    ).not.toBeInTheDocument();
+    renderAppAt("/jobs/job-promote");
+
+    await waitFor(() => {
+      expect(screen.getByText("job-promote")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /promote watch/i }));
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/automation/watches");
+    });
+    expect(screen.getByText("Watch seed job-promote")).toBeInTheDocument();
   });
 
   it("shows first-visit Settings guidance, then retires the overview after the first job", async () => {
@@ -541,7 +646,7 @@ describe("FreshStartOperatorFlow", () => {
     const secondRender = renderAppAt("/settings");
 
     expect(
-      screen.getByRole("button", { name: /what can i do here\?/i }),
+      screen.getByLabelText(/what can i do here\? for this route/i),
     ).toBeInTheDocument();
 
     appDataState.jobsTotal = 1;

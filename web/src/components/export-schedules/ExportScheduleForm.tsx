@@ -31,6 +31,7 @@ import {
   supportsExportShapeFormat,
   transformConfigToFormData,
 } from "../../lib/export-schedule-utils";
+import { PromotionDraftNotice } from "../promotion/PromotionDraftNotice";
 
 const JOB_KIND_OPTIONS = [
   { value: "scrape", label: "Scrape" },
@@ -70,6 +71,9 @@ export function ExportScheduleForm({
   onSubmit,
   onCancel,
   aiStatus = null,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: ExportScheduleFormProps) {
   const [showShapeAssistant, setShowShapeAssistant] = useState(false);
   const [showTransformAssistant, setShowTransformAssistant] = useState(false);
@@ -185,6 +189,18 @@ export function ExportScheduleForm({
               {formError}
             </div>
           )}
+
+          {promotionSeed ? (
+            <div style={{ marginBottom: 16 }}>
+              <PromotionDraftNotice
+                title="Recurring export draft seeded from a verified job"
+                description="This draft automates export for future matching jobs, not a rerun cadence for the source job."
+                seed={promotionSeed}
+                onOpenSourceJob={onOpenSourceJob}
+                onClear={onClearPromotionSeed}
+              />
+            </div>
+          ) : null}
 
           <form
             onSubmit={(e) => {

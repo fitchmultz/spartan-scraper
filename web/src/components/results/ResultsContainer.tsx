@@ -8,6 +8,7 @@
 
 import { lazy, Suspense, useMemo } from "react";
 import type { ComponentStatus, Job } from "../../api";
+import type { PromotionDestination } from "../../types/promotion";
 import {
   RESULTS_PER_PAGE,
   type ResultsActions,
@@ -23,13 +24,22 @@ const ResultsExplorer = lazy(() =>
 interface ResultsContainerProps {
   resultsState: ResultsState & ResultsActions;
   jobs: Job[];
+  currentJob: Job | null;
   aiStatus?: ComponentStatus | null;
+  onPromote: (
+    destination: PromotionDestination,
+    options?: {
+      preferredExportFormat?: "json" | "jsonl" | "md" | "csv" | "xlsx";
+    },
+  ) => void;
 }
 
 export function ResultsContainer({
   resultsState,
   jobs,
+  currentJob,
   aiStatus = null,
+  onPromote,
 }: ResultsContainerProps) {
   const {
     selectedJobId,
@@ -49,9 +59,17 @@ export function ResultsContainer({
     loadResults,
   } = resultsState;
 
+  const availableJobs = useMemo(() => {
+    if (!currentJob || jobs.some((job) => job.id === currentJob.id)) {
+      return jobs;
+    }
+
+    return [currentJob, ...jobs];
+  }, [currentJob, jobs]);
+
   const selectedJob = useMemo(
-    () => jobs.find((job) => job.id === selectedJobId) ?? null,
-    [jobs, selectedJobId],
+    () => currentJob ?? jobs.find((job) => job.id === selectedJobId) ?? null,
+    [currentJob, jobs, selectedJobId],
   );
 
   return (
@@ -83,9 +101,11 @@ export function ResultsContainer({
             }
             void loadResults(selectedJobId, resultFormat, page);
           }}
-          availableJobs={jobs}
+          availableJobs={availableJobs}
+          currentJob={selectedJob}
           jobType={selectedJob?.kind as "scrape" | "crawl" | "research"}
           aiStatus={aiStatus}
+          onPromote={onPromote}
         />
       </Suspense>
     </section>

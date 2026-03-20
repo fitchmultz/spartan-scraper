@@ -54,6 +54,9 @@ import {
 } from "./results-explorer/resultsExplorerUtils";
 import { TransformPreview } from "./TransformPreview";
 import { TreeView } from "./TreeView";
+import { JobPromotionPanel } from "./promotion/JobPromotionPanel";
+import { buildPromotionOptions } from "../lib/promotion";
+import type { PromotionDestination } from "../types/promotion";
 
 interface ResultsExplorerProps {
   jobId: string | null;
@@ -73,8 +76,15 @@ interface ResultsExplorerProps {
   resultsPerPage: number;
   onLoadPage: (page: number) => void;
   availableJobs: Job[];
+  currentJob: Job | null;
   jobType?: "scrape" | "crawl" | "research";
   aiStatus?: ComponentStatus | null;
+  onPromote: (
+    destination: PromotionDestination,
+    options?: {
+      preferredExportFormat?: "json" | "jsonl" | "md" | "csv" | "xlsx";
+    },
+  ) => void;
 }
 
 interface ReaderToolbarProps {
@@ -317,7 +327,15 @@ function GuidedExportDrawer({
   );
 }
 
-function ExportOutcomeSummary({ outcome }: { outcome: ExportInspection }) {
+function ExportOutcomeSummary({
+  outcome,
+  onPromoteExportSchedule,
+}: {
+  outcome: ExportInspection;
+  onPromoteExportSchedule?: (
+    format?: "json" | "jsonl" | "md" | "csv" | "xlsx",
+  ) => void;
+}) {
   return (
     <div
       className="panel"
@@ -390,6 +408,28 @@ function ExportOutcomeSummary({ outcome }: { outcome: ExportInspection }) {
           </ul>
         </div>
       ) : null}
+
+      {onPromoteExportSchedule ? (
+        <div style={{ marginTop: 16 }}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() =>
+              onPromoteExportSchedule(
+                outcome.request.format as
+                  | "json"
+                  | "jsonl"
+                  | "md"
+                  | "csv"
+                  | "xlsx"
+                  | undefined,
+              )
+            }
+          >
+            Create recurring export from this result
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -458,8 +498,10 @@ export function ResultsExplorer({
   resultsPerPage,
   onLoadPage,
   availableJobs,
+  currentJob,
   jobType = "crawl",
   aiStatus = null,
+  onPromote,
 }: ResultsExplorerProps) {
   const aiAssistant = useAIAssistant();
   const [assistantMode, setAssistantMode] = useState<ResultsAssistantMode>(
@@ -551,11 +593,6 @@ export function ResultsExplorer({
     filteredSourceIndexes.indexOf(selectedResultIndex),
   );
 
-  const currentJob = useMemo(
-    () => getJobByID(availableJobs, jobId),
-    [availableJobs, jobId],
-  );
-
   const compareJob = useMemo(
     () => getJobByID(availableJobs, compareJobId),
     [availableJobs, compareJobId],
@@ -597,6 +634,23 @@ export function ResultsExplorer({
       statusFilter,
       totalResults,
     ],
+  );
+
+  const promotionOptions = useMemo(
+    () =>
+      currentJob
+        ? buildPromotionOptions(
+            currentJob,
+            latestExportOutcome?.request.format as
+              | "json"
+              | "jsonl"
+              | "md"
+              | "csv"
+              | "xlsx"
+              | undefined,
+          )
+        : [],
+    [currentJob, latestExportOutcome?.request.format],
   );
 
   const currentShapeConfig = useMemo<ExportShapeConfig | undefined>(() => {
@@ -872,6 +926,13 @@ export function ResultsExplorer({
             </div>
           </div>
 
+          {currentJob?.status === "succeeded" ? (
+            <JobPromotionPanel
+              options={promotionOptions}
+              onPromote={(destination) => onPromote(destination)}
+            />
+          ) : null}
+
           <ReaderToolbar
             searchQuery={searchQuery}
             statusFilter={statusFilter}
@@ -921,7 +982,12 @@ export function ResultsExplorer({
           ) : null}
 
           {latestExportOutcome ? (
-            <ExportOutcomeSummary outcome={latestExportOutcome} />
+            <ExportOutcomeSummary
+              outcome={latestExportOutcome}
+              onPromoteExportSchedule={(preferredExportFormat) =>
+                onPromote("export-schedule", { preferredExportFormat })
+              }
+            />
           ) : null}
 
           <ResultsViewer

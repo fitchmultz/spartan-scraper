@@ -67,6 +67,64 @@ describe("TemplateManager", () => {
     );
   });
 
+  it("duplicates a named-template promotion seed into the workspace", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "article",
+        is_built_in: true,
+        template: {
+          name: "article",
+          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["article"]}
+            onTemplatesChanged={onTemplatesChanged}
+            promotionSeed={{
+              kind: "template",
+              mode: "named-template",
+              source: {
+                jobId: "job-123",
+                jobKind: "scrape",
+                jobStatus: "succeeded",
+                label: "Source URL",
+                value: "https://example.com/article",
+              },
+              suggestedName: "article-copy",
+              previewUrl: "https://example.com/article",
+              templateName: "article",
+              carriedForward: [
+                "The saved extraction rules from template “article”.",
+              ],
+              remainingDecisions: [
+                "Review the duplicated template name before saving.",
+              ],
+              unsupportedCarryForward: [
+                "Runtime execution settings and auth do not become part of the duplicated template automatically.",
+              ],
+            }}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "article-copy",
+    );
+    expect(
+      screen.getByText(/template draft seeded from a verified job/i),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
+  });
+
   it("renders a custom template as an inline editable workspace", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {

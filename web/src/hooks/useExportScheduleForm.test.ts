@@ -51,6 +51,25 @@ describe("useExportScheduleForm", () => {
     expect(result.current.formData.destinationType).toBe("webhook");
   });
 
+  it("loads a promotion draft as a fresh create form", () => {
+    const { result } = renderHook(() => useExportScheduleForm());
+
+    act(() => {
+      result.current.initFormFromDraft({
+        ...result.current.formData,
+        name: "verified-export",
+        filterJobKinds: ["scrape"],
+        filterJobStatus: ["succeeded"],
+        format: "md",
+      });
+    });
+
+    expect(result.current.editingId).toBeNull();
+    expect(result.current.formData.name).toBe("verified-export");
+    expect(result.current.formData.filterJobStatus).toEqual(["succeeded"]);
+    expect(result.current.formData.format).toBe("md");
+  });
+
   it("loads form state for editing an existing local schedule", () => {
     const { result } = renderHook(() => useExportScheduleForm());
 

@@ -118,6 +118,63 @@ function createProps(
 }
 
 describe("WatchManager", () => {
+  it("opens a promotion-seeded watch draft with source context", async () => {
+    render(
+      <WatchManager
+        {...createProps({ watches: [] })}
+        onOpenSourceJob={vi.fn()}
+        promotionSeed={{
+          kind: "watch",
+          source: {
+            jobId: "job-123",
+            jobKind: "scrape",
+            jobStatus: "succeeded",
+            label: "Source URL",
+            value: "https://example.com/pricing",
+          },
+          eligible: true,
+          formData: {
+            url: "https://example.com/pricing",
+            selector: "",
+            intervalSeconds: 3600,
+            enabled: true,
+            diffFormat: "unified",
+            notifyOnChange: false,
+            webhookUrl: "",
+            webhookSecret: "",
+            headless: true,
+            usePlaywright: true,
+            extractMode: "",
+            minChangeSize: "",
+            ignorePatterns: "",
+            screenshotEnabled: true,
+            screenshotFullPage: true,
+            screenshotFormat: "png",
+            visualDiffThreshold: "0.1",
+            jobTriggerKind: "",
+            jobTriggerRequest: "",
+          },
+          carriedForward: ["The verified target URL from the successful job."],
+          remainingDecisions: ["Set interval and notifications before saving."],
+          unsupportedCarryForward: [
+            "Authentication settings are not carried into watches in this cut.",
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /create watch/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("https://example.com/pricing"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/open source job/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/authentication settings are not carried into watches/i),
+    ).toBeInTheDocument();
+  });
+
   it("loads persisted watch history from the list view", async () => {
     const user = userEvent.setup();
     const props = createProps();

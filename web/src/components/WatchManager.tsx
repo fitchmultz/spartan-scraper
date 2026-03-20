@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Empty watch state should still suggest a next step, only one edit form is open at a time, and persisted history remains the source of truth for post-check inspection.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Watch, WatchCheckInspection } from "../api";
 import type { WatchManagerProps } from "../types/watch";
 import { useWatchForm } from "../hooks/useWatchForm";
@@ -15,6 +15,7 @@ import { WatchList } from "./watches/WatchList";
 import { WatchForm } from "./watches/WatchForm";
 import { CheckResultModal } from "./watches/CheckResultModal";
 import { WatchHistoryModal } from "./watches/WatchHistoryModal";
+import { PromotionDraftNotice } from "./promotion/PromotionDraftNotice";
 
 const WATCH_HISTORY_PAGE_SIZE = 10;
 
@@ -28,6 +29,9 @@ export function WatchManager({
   onLoadHistory,
   onLoadHistoryDetail,
   loading,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: WatchManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [checkInspection, setCheckInspection] =
@@ -55,8 +59,20 @@ export function WatchManager({
     setFormDataPartial,
     resetForm,
     initFormForEdit,
+    initFormFromDraft,
     submitForm,
   } = useWatchForm();
+
+  useEffect(() => {
+    if (!promotionSeed || !promotionSeed.eligible) {
+      return;
+    }
+
+    initFormFromDraft(promotionSeed.formData);
+    setShowForm(true);
+    setDeleteConfirmId(null);
+    setCheckInspection(null);
+  }, [initFormFromDraft, promotionSeed]);
 
   const loadHistoryDetail = useCallback(
     async (
@@ -116,30 +132,34 @@ export function WatchManager({
   );
 
   const handleCreateClick = useCallback(() => {
+    onClearPromotionSeed?.();
     resetForm();
     setShowForm(true);
-  }, [resetForm]);
+  }, [onClearPromotionSeed, resetForm]);
 
   const handleEditClick = useCallback(
     (watch: Watch) => {
+      onClearPromotionSeed?.();
       initFormForEdit(watch);
       setShowForm(true);
     },
-    [initFormForEdit],
+    [initFormForEdit, onClearPromotionSeed],
   );
 
   const handleCloseForm = useCallback(() => {
+    onClearPromotionSeed?.();
     setShowForm(false);
     resetForm();
-  }, [resetForm]);
+  }, [onClearPromotionSeed, resetForm]);
 
   const handleSubmit = useCallback(async () => {
     const success = await submitForm(onCreate, onUpdate);
     if (success) {
+      onClearPromotionSeed?.();
       setShowForm(false);
       onRefresh();
     }
-  }, [submitForm, onCreate, onUpdate, onRefresh]);
+  }, [onClearPromotionSeed, onCreate, onRefresh, onUpdate, submitForm]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -246,6 +266,19 @@ export function WatchManager({
         </div>
       </div>
 
+      {promotionSeed && !promotionSeed.eligible ? (
+        <PromotionDraftNotice
+          title="Watch promotion is limited for this source job"
+          description={
+            promotionSeed.eligibilityMessage ??
+            "This source job cannot seed a watch draft in the current watch model."
+          }
+          seed={promotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
+          onClear={onClearPromotionSeed}
+        />
+      ) : null}
+
       {watches.length === 0 && !loading ? (
         <ActionEmptyState
           eyebrow="Automation"
@@ -319,6 +352,11 @@ export function WatchManager({
           onChange={setFormDataPartial}
           onSubmit={handleSubmit}
           onCancel={handleCloseForm}
+          promotionSeed={
+            editingId ? null : promotionSeed?.eligible ? promotionSeed : null
+          }
+          onClearPromotionSeed={onClearPromotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
         />
       ) : null}
     </div>

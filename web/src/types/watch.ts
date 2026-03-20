@@ -12,6 +12,7 @@ import type {
   WatchCheckInspection,
   WatchInput,
 } from "../api";
+import type { WatchPromotionSeed } from "./promotion";
 
 export interface WatchManagerProps {
   watches: Watch[];
@@ -30,6 +31,9 @@ export interface WatchManagerProps {
     checkId: string,
   ) => Promise<WatchCheckInspection | undefined>;
   loading?: boolean;
+  promotionSeed?: WatchPromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 export interface WatchFormData {
@@ -86,6 +90,9 @@ export interface WatchFormProps {
   onChange: (data: Partial<WatchFormData>) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  promotionSeed?: WatchPromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 export interface CheckResultModalProps {

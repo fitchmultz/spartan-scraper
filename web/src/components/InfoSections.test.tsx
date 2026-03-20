@@ -23,6 +23,7 @@ describe("InfoSections", () => {
         onCrawlStatesPageChange={vi.fn()}
         onCreateJob={vi.fn()}
         onOpenAutomation={vi.fn()}
+        onOpenJobs={vi.fn()}
       />,
     );
 

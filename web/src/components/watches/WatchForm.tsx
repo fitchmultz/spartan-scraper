@@ -16,6 +16,7 @@
 import type { WatchFormProps } from "../../types/watch";
 import { formatSecondsAsDuration } from "../../lib/formatting";
 import type { CSSProperties } from "react";
+import { PromotionDraftNotice } from "../promotion/PromotionDraftNotice";
 
 const maskedSecretStyle = {
   width: "100%",
@@ -33,6 +34,9 @@ export function WatchForm({
   onChange,
   onSubmit,
   onCancel,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: WatchFormProps) {
   return (
     <div
@@ -85,6 +89,18 @@ export function WatchForm({
             {formError}
           </div>
         )}
+
+        {promotionSeed ? (
+          <div style={{ marginBottom: 16 }}>
+            <PromotionDraftNotice
+              title="Watch draft seeded from a verified job"
+              description="Review the monitoring-specific settings below before you save this watch."
+              seed={promotionSeed}
+              onOpenSourceJob={onOpenSourceJob}
+              onClear={onClearPromotionSeed}
+            />
+          </div>
+        ) : null}
 
         <form
           onSubmit={(e) => {

@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Empty schedule state should still suggest a next step, history pagination is offset-based, and only one editor modal is open at a time.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ExportInspection, ExportSchedule } from "../api";
 import type { ExportScheduleManagerProps } from "../types/export-schedule";
 import { useExportScheduleForm } from "../hooks/useExportScheduleForm";
@@ -14,6 +14,7 @@ import { ActionEmptyState } from "./ActionEmptyState";
 import { ExportScheduleList } from "./export-schedules/ExportScheduleList";
 import { ExportScheduleForm } from "./export-schedules/ExportScheduleForm";
 import { ExportScheduleHistory } from "./export-schedules/ExportScheduleHistory";
+import { PromotionDraftNotice } from "./promotion/PromotionDraftNotice";
 
 const HISTORY_PAGE_SIZE = 10;
 
@@ -27,6 +28,9 @@ export function ExportScheduleManager({
   onGetHistory,
   loading,
   aiStatus = null,
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
 }: ExportScheduleManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -47,34 +51,50 @@ export function ExportScheduleManager({
     setFormDataPartial,
     resetForm,
     initFormForEdit,
+    initFormFromDraft,
     submitForm,
   } = useExportScheduleForm();
 
+  useEffect(() => {
+    if (!promotionSeed) {
+      return;
+    }
+
+    initFormFromDraft(promotionSeed.formData);
+    setShowForm(true);
+    setDeleteConfirmId(null);
+    setShowHistory(false);
+  }, [initFormFromDraft, promotionSeed]);
+
   const handleCreateClick = useCallback(() => {
+    onClearPromotionSeed?.();
     resetForm();
     setShowForm(true);
-  }, [resetForm]);
+  }, [onClearPromotionSeed, resetForm]);
 
   const handleEditClick = useCallback(
     (schedule: ExportSchedule) => {
+      onClearPromotionSeed?.();
       initFormForEdit(schedule);
       setShowForm(true);
     },
-    [initFormForEdit],
+    [initFormForEdit, onClearPromotionSeed],
   );
 
   const handleCloseForm = useCallback(() => {
+    onClearPromotionSeed?.();
     setShowForm(false);
     resetForm();
-  }, [resetForm]);
+  }, [onClearPromotionSeed, resetForm]);
 
   const handleSubmit = useCallback(async () => {
     const success = await submitForm(onCreate, onUpdate);
     if (success) {
+      onClearPromotionSeed?.();
       setShowForm(false);
       onRefresh();
     }
-  }, [submitForm, onCreate, onUpdate, onRefresh]);
+  }, [onClearPromotionSeed, onCreate, onRefresh, onUpdate, submitForm]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -175,9 +195,18 @@ export function ExportScheduleManager({
       </div>
 
       <p style={{ color: "var(--muted)", marginBottom: 16, fontSize: 14 }}>
-        Automatically export job results when jobs complete matching specified
-        filter criteria.
+        Automatically export job results when future matching jobs complete.
       </p>
+
+      {promotionSeed ? (
+        <PromotionDraftNotice
+          title="Recurring export draft seeded from a verified job"
+          description="This draft carries forward future-job filter intent from the successful source job. Review the destination and export policy before saving."
+          seed={promotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
+          onClear={onClearPromotionSeed}
+        />
+      ) : null}
 
       {schedules.length === 0 && !loading ? (
         <ActionEmptyState
@@ -211,6 +240,9 @@ export function ExportScheduleManager({
           onSubmit={handleSubmit}
           onCancel={handleCloseForm}
           aiStatus={aiStatus}
+          promotionSeed={editingId ? null : promotionSeed}
+          onClearPromotionSeed={onClearPromotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
         />
       )}
 

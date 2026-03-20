@@ -10,7 +10,7 @@ import { ActionEmptyState } from "./ActionEmptyState";
 
 interface SettingsOverviewPanelProps {
   onCreateJob: () => void;
-  onOpenAutomation: () => void;
+  onOpenJobs: () => void;
 }
 
 const SETTINGS_CAPABILITIES = [
@@ -22,7 +22,7 @@ const SETTINGS_CAPABILITIES = [
   {
     title: "Schedules",
     description:
-      "Promote a manually verified job into recurring automation once the output is stable enough to trust.",
+      "Open a succeeded job you trust, then promote it into recurring automation once the output is stable enough to reuse.",
   },
   {
     title: "Crawl States",
@@ -53,7 +53,7 @@ const SETTINGS_CAPABILITIES = [
 
 export function SettingsOverviewPanel({
   onCreateJob,
-  onOpenAutomation,
+  onOpenJobs,
 }: SettingsOverviewPanelProps) {
   return (
     <section className="panel">
@@ -64,8 +64,8 @@ export function SettingsOverviewPanel({
         actions={[
           { label: "Create job", onClick: onCreateJob },
           {
-            label: "Open automation",
-            onClick: onOpenAutomation,
+            label: "Review jobs",
+            onClick: onOpenJobs,
             tone: "secondary",
           },
         ]}

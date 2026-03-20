@@ -23,6 +23,7 @@ import {
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { useToast } from "../toast";
+import type { WatchPromotionSeed } from "../../types/promotion";
 
 const WatchManager = lazy(() =>
   import("../../components/WatchManager").then((mod) => ({
@@ -30,7 +31,17 @@ const WatchManager = lazy(() =>
   })),
 );
 
-export function WatchContainer() {
+interface WatchContainerProps {
+  promotionSeed?: WatchPromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
+}
+
+export function WatchContainer({
+  promotionSeed = null,
+  onClearPromotionSeed,
+  onOpenSourceJob,
+}: WatchContainerProps) {
   const toast = useToast();
   const [watches, setWatches] = useState<Watch[]>([]);
   const [watchesLoading, setWatchesLoading] = useState(false);
@@ -265,6 +276,9 @@ export function WatchContainer() {
           onLoadHistory={handleLoadWatchHistory}
           onLoadHistoryDetail={handleLoadWatchHistoryDetail}
           loading={watchesLoading}
+          promotionSeed={promotionSeed}
+          onClearPromotionSeed={onClearPromotionSeed}
+          onOpenSourceJob={onOpenSourceJob}
         />
       </Suspense>
     </section>

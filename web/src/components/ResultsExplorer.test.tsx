@@ -130,7 +130,9 @@ function renderExplorer() {
         resultsPerPage={100}
         onLoadPage={vi.fn()}
         availableJobs={jobs}
+        currentJob={jobs[0]}
         jobType="crawl"
+        onPromote={vi.fn()}
       />
     </AIAssistantProvider>,
   );

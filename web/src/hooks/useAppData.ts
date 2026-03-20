@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getV1Jobs,
+  getV1JobsById,
   getV1JobsFailures,
   getHealthz,
   getMetrics,
@@ -69,6 +70,9 @@ export interface AppDataState {
   connectionState: "connected" | "disconnected" | "reconnecting" | "polling";
   health: HealthResponse | null;
   setupRequired: boolean;
+  detailJob: JobEntry | null;
+  detailJobLoading: boolean;
+  detailJobError: string | null;
 }
 
 export interface AppDataActions {
@@ -79,6 +83,8 @@ export interface AppDataActions {
   refreshTemplates: () => Promise<void>;
   refreshCrawlStates: (page?: number) => Promise<void>;
   refreshHealth: () => Promise<HealthResponse | null>;
+  refreshJobDetail: (jobId: string) => Promise<JobEntry | null>;
+  clearJobDetail: () => void;
   setJobsPage: (page: number) => void;
   setCrawlStatesPage: (page: number) => void;
   setJobStatusFilter: (status: JobStatusFilter) => void;
@@ -119,6 +125,9 @@ export function useAppData(): AppDataState & AppDataActions {
   );
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [detailJob, setDetailJob] = useState<JobEntry | null>(null);
+  const [detailJobLoading, setDetailJobLoading] = useState(false);
+  const [detailJobError, setDetailJobError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
@@ -168,6 +177,46 @@ export function useAppData(): AppDataState & AppDataActions {
     },
     [jobStatusFilter, jobsPage],
   );
+
+  const refreshJobDetail = useCallback(async (jobId: string) => {
+    if (!jobId) {
+      setDetailJob(null);
+      setDetailJobError(null);
+      return null;
+    }
+
+    setDetailJobLoading(true);
+    try {
+      const { data, error: apiError } = await getV1JobsById({
+        baseUrl: getApiBaseUrl(),
+        path: { id: jobId },
+      });
+      if (apiError) {
+        const message = getApiErrorMessage(apiError, "Failed to load job.");
+        setDetailJobError(message);
+        setDetailJob(null);
+        return null;
+      }
+
+      const nextJob = data?.job ?? null;
+      setDetailJob(nextJob);
+      setDetailJobError(null);
+      return nextJob;
+    } catch (err) {
+      const message = getApiErrorMessage(err, "Failed to load job.");
+      setDetailJobError(message);
+      setDetailJob(null);
+      return null;
+    } finally {
+      setDetailJobLoading(false);
+    }
+  }, []);
+
+  const clearJobDetail = useCallback(() => {
+    setDetailJob(null);
+    setDetailJobError(null);
+    setDetailJobLoading(false);
+  }, []);
 
   const refreshJobFailures = useCallback(async () => {
     try {
@@ -339,6 +388,9 @@ export function useAppData(): AppDataState & AppDataActions {
             refreshJobs(),
             refreshJobFailures(),
             refreshHealth(),
+            detailJob?.id
+              ? refreshJobDetail(detailJob.id)
+              : Promise.resolve(null),
           ]);
           break;
         case "manager_status": {
@@ -361,7 +413,13 @@ export function useAppData(): AppDataState & AppDataActions {
           break;
       }
     },
-    [refreshHealth, refreshJobFailures, refreshJobs],
+    [
+      detailJob?.id,
+      refreshHealth,
+      refreshJobDetail,
+      refreshJobFailures,
+      refreshJobs,
+    ],
   );
 
   const setupRequired = health?.setup?.required ?? false;
@@ -400,6 +458,7 @@ export function useAppData(): AppDataState & AppDataActions {
         setTemplates([]);
         setCrawlStates([]);
         setMetrics(null);
+        clearJobDetail();
         setLoading(false);
         return;
       }
@@ -416,6 +475,7 @@ export function useAppData(): AppDataState & AppDataActions {
       setLoading(false);
     })();
   }, [
+    clearJobDetail,
     refreshCrawlStates,
     refreshHealth,
     refreshJobFailures,
@@ -436,11 +496,16 @@ export function useAppData(): AppDataState & AppDataActions {
       void refreshJobs();
       void refreshJobFailures();
       void refreshMetrics();
+      if (detailJob?.id) {
+        void refreshJobDetail(detailJob.id);
+      }
     }, POLL_INTERVAL);
 
     return () => window.clearInterval(handle);
   }, [
+    detailJob?.id,
     refreshHealth,
+    refreshJobDetail,
     refreshJobFailures,
     refreshJobs,
     refreshMetrics,
@@ -467,6 +532,9 @@ export function useAppData(): AppDataState & AppDataActions {
     connectionState,
     health,
     setupRequired,
+    detailJob,
+    detailJobLoading,
+    detailJobError,
     refreshJobs,
     refreshJobFailures,
     refreshProfiles,
@@ -474,6 +542,8 @@ export function useAppData(): AppDataState & AppDataActions {
     refreshTemplates,
     refreshCrawlStates,
     refreshHealth,
+    refreshJobDetail,
+    clearJobDetail,
     setJobsPage,
     setCrawlStatesPage,
     setJobStatusFilter,

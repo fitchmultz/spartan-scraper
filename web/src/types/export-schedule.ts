@@ -18,6 +18,7 @@ import type {
   ExportSchedule,
   ExportScheduleRequest,
 } from "../api";
+import type { ExportSchedulePromotionSeed } from "./promotion";
 
 /**
  * Props for the ExportScheduleManager component
@@ -36,6 +37,9 @@ export interface ExportScheduleManagerProps {
   ) => Promise<ExportOutcomeListResponse>;
   loading?: boolean;
   aiStatus?: ComponentStatus | null;
+  promotionSeed?: ExportSchedulePromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 /**
@@ -113,6 +117,9 @@ export interface ExportScheduleFormProps {
   onSubmit: () => void;
   onCancel: () => void;
   aiStatus?: ComponentStatus | null;
+  promotionSeed?: ExportSchedulePromotionSeed | null;
+  onClearPromotionSeed?: () => void;
+  onOpenSourceJob?: (jobId: string) => void;
 }
 
 /**

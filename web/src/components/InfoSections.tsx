@@ -26,6 +26,7 @@ interface InfoSectionsProps {
   onCrawlStatesPageChange: (page: number) => void;
   onCreateJob: () => void;
   onOpenAutomation: () => void;
+  onOpenJobs: () => void;
 }
 
 interface SectionFrameProps {
@@ -56,6 +57,7 @@ export function InfoSections({
   onCrawlStatesPageChange,
   onCreateJob,
   onOpenAutomation,
+  onOpenJobs,
 }: InfoSectionsProps) {
   const [jumpInputValue, setJumpInputValue] = useState(
     crawlStatesPage.toString(),
@@ -104,8 +106,15 @@ export function InfoSections({
           <ActionEmptyState
             eyebrow="Automation-ready later"
             title="No recurring schedules yet"
-            description="Schedules are optional. Run a job manually first, confirm the output, then promote the flow into automation when you want hands-off repetition."
-            actions={[{ label: "Open automation", onClick: onOpenAutomation }]}
+            description="Schedules are optional. Run a job manually first, open the succeeded job you trust, then promote that verified result into automation when you want hands-off repetition."
+            actions={[
+              { label: "Review jobs", onClick: onOpenJobs },
+              {
+                label: "Open automation",
+                onClick: onOpenAutomation,
+                tone: "secondary",
+              },
+            ]}
           />
         ) : (
           <div className="job-list">
