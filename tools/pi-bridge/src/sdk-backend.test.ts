@@ -532,7 +532,7 @@ test("generateTemplate reports aggregated fallback failures", async () => {
         url: "https://example.com/product",
         description: "Generate a product template",
       }),
-    /all routes failed for capability template\.generate after 2 attempts: openai\/gpt-5\.4: model did not call submit_template \| kimi-coding\/k2p5: template result must include at least one selector/,
+    /all routes failed for capability template\.generate after 2 attempts: openai\/gpt-5\.4: model did not call submit_template \| kimi-coding\/k2p5: template result must include at least one selector, jsonld rule, or regex rule/,
   );
 });
 

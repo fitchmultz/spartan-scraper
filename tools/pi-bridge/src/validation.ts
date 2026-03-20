@@ -1,3 +1,10 @@
+/**
+ * Purpose: Enforce strict bridge-side validation and normalization for AI-generated capability outputs.
+ * Responsibilities: Normalize extract payloads, validate structured results, and reject malformed content before Spartan consumes it.
+ * Scope: pi-bridge result validation only.
+ * Usage: Called by fixture and SDK backends before returning model output to the rest of Spartan.
+ * Invariants/Assumptions: Validation stays aligned with Spartan's product contracts, bridge outputs remain deterministic after validation, and malformed payloads fail fast.
+ */
 import type {
   BridgeFieldValue,
   ExportShapeConfig,
@@ -64,15 +71,27 @@ export function validateExtractResult(result: ExtractResult): ExtractResult {
 }
 
 export function validateTemplateResult(result: TemplateResult): TemplateResult {
-  if (!result.template || typeof result.template !== "object") {
+  if (!result.template || typeof result.template !== "object" || Array.isArray(result.template)) {
     throw new Error("template result must include a template object");
   }
   if (!result.template.name?.trim()) {
     throw new Error("template result must include a template.name");
   }
-  if (!Array.isArray(result.template.selectors) || result.template.selectors.length === 0) {
-    throw new Error("template result must include at least one selector");
+
+  const selectors = expectOptionalArray(result.template.selectors, "template selectors");
+  const jsonld = expectOptionalArray(result.template.jsonld, "template jsonld");
+  const regex = expectOptionalArray(result.template.regex, "template regex");
+
+  if (selectors.length === 0 && jsonld.length === 0 && regex.length === 0) {
+    throw new Error(
+      "template result must include at least one selector, jsonld rule, or regex rule",
+    );
   }
+
+  selectors.forEach((rule, index) => validateSelectorRule(rule, index));
+  jsonld.forEach((rule, index) => validateJsonLdRule(rule, index));
+  regex.forEach((rule, index) => validateRegexRule(rule, index));
+
   return result;
 }
 
@@ -138,6 +157,44 @@ export function validateTransformResult(
   }
   result.transform = { expression, language };
   return result;
+}
+
+function validateSelectorRule(raw: unknown, index: number) {
+  const rule = expectRecord(raw, `template selector[${index}]`);
+  const name = expectRuleName(rule.name, `selector rule at index ${index}`);
+  expectRuleString(rule.selector, `selector ${name}`, "selector");
+  validateOptionalRuleString(rule.attr, `selector ${name}`, "attr");
+  validateOptionalRuleString(rule.join, `selector ${name}`, "join");
+}
+
+function validateJsonLdRule(raw: unknown, index: number) {
+  const rule = expectRecord(raw, `template jsonld[${index}]`);
+  const name = expectRuleName(rule.name, `jsonld rule at index ${index}`);
+  validateOptionalRuleString(rule.type, `jsonld ${name}`, "type");
+  validateOptionalRuleString(rule.path, `jsonld ${name}`, "path");
+}
+
+function validateRegexRule(raw: unknown, index: number) {
+  const rule = expectRecord(raw, `template regex[${index}]`);
+  const name = expectRuleName(rule.name, `regex rule at index ${index}`);
+  expectRuleString(rule.pattern, `regex ${name}`, "pattern");
+
+  if (rule.source !== undefined) {
+    const source = expectRuleString(rule.source, `regex ${name}`, "source");
+    if (source !== "text" && source !== "html" && source !== "url") {
+      throw new Error(`regex ${name} source must be text, html, or url`);
+    }
+  }
+
+  if (rule.group !== undefined) {
+    if (
+      typeof rule.group !== "number" ||
+      !Number.isInteger(rule.group) ||
+      rule.group < 0
+    ) {
+      throw new Error(`regex ${name} group must be a non-negative integer`);
+    }
+  }
 }
 
 function validateFieldValue(fieldName: string, value: BridgeFieldValue) {
@@ -405,6 +462,37 @@ function expectNonEmptyString(raw: unknown, label: string): string {
     throw new Error(`${label} must be a non-empty string`);
   }
   return raw.trim();
+}
+
+function expectOptionalArray(raw: unknown, label: string): unknown[] {
+  if (raw == null) {
+    return [];
+  }
+  if (!Array.isArray(raw)) {
+    throw new Error(`${label} must be an array`);
+  }
+  return raw;
+}
+
+function expectRuleName(raw: unknown, label: string): string {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`${label} must include a name`);
+  }
+  return raw.trim();
+}
+
+function expectRuleString(raw: unknown, label: string, field: string): string {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`${label} must include a ${field}`);
+  }
+  return raw.trim();
+}
+
+function validateOptionalRuleString(raw: unknown, label: string, field: string) {
+  if (raw === undefined) {
+    return;
+  }
+  expectRuleString(raw, label, field);
 }
 
 function normalizeUnitInterval(raw: unknown, label: string): number {

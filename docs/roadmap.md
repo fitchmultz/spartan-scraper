@@ -16,17 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Template Validation Flexibility
-   - Align bridge-side template validation with the real template model used by Spartan: valid generated templates may be selector-driven, JSON-LD-driven, regex-driven, or mixed.
-   - Remove the selector-only assumption from bridge validation while preserving strict checks that templates still have a name and at least one real extraction rule.
-   - Keep downstream validation strict about malformed selectors, malformed regex rules, invalid JSON-LD paths, or templates that cannot pass local structural validation.
-   - Add targeted tests for:
-     - JSON-LD-only template generation
-     - regex-only template generation
-     - mixed templates
-     - still-invalid empty templates
-   - Ensure error messages explain the real invariant being enforced rather than implying selectors are the only valid extraction strategy.
-
 1. Optional Goal Defaults for AI Automation Generators
    - Let render-profile and pipeline-JS generation bootstrap from page context when explicit operator instructions are omitted, instead of hard-failing before the model can attempt a reasonable starter configuration.
    - Preserve explicit operator guidance as the preferred path, but provide a sensible default objective derived from the page URL, fetched HTML, JS-heaviness signals, and any attached screenshots.
