@@ -1,0 +1,307 @@
+{
+  "checks": [
+    {
+      "id": "34ea7488-0a36-4d45-a463-cab6a71e7fd5",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:42.734398-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 34ea7488-0a36-4d45-a463-cab6a71e7fd5"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "8c362c47-8f71-4972-9f70-e327dd724e7b",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:06.634586-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 8c362c47-8f71-4972-9f70-e327dd724e7b"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "fb3423e4-3e3e-454f-9e18-0be53b42225c",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:06.504095-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id fb3423e4-3e3e-454f-9e18-0be53b42225c"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "ccff3620-d3ba-4e86-96a8-e87b1fdd4a91",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:06.395566-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id ccff3620-d3ba-4e86-96a8-e87b1fdd4a91"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "9e65f55a-2b1d-4290-b461-ef5ca1305ac4",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:06.286077-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 9e65f55a-2b1d-4290-b461-ef5ca1305ac4"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "9f99a401-0e12-4456-a2ac-7e709dbcdc37",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:06.083233-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 9f99a401-0e12-4456-a2ac-7e709dbcdc37"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "7eacd92f-8710-4fe2-880d-cb5e239239bd",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.948838-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 7eacd92f-8710-4fe2-880d-cb5e239239bd"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "36d75bba-1a06-4540-a928-6ea70db7dc18",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.839574-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 36d75bba-1a06-4540-a928-6ea70db7dc18"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "199b0049-5d58-48c3-919d-8ee2ca28241d",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.731796-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 199b0049-5d58-48c3-919d-8ee2ca28241d"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "d72cc632-4f12-477b-93fa-8e708565be2f",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.625666-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id d72cc632-4f12-477b-93fa-8e708565be2f"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    }
+  ],
+  "total": 12,
+  "limit": 10,
+  "offset": 0
+}

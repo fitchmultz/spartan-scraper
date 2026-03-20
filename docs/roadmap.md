@@ -16,8 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Populated Automation Workspace Acceptance Dogfood — validate watches and exports with real saved rows, manual history entry points, and persisted history modals under authoritative data without relying on the artificial delay harness.
-2. Automation Workspace Operator Docs Refresh — update the README/demo/operator flow docs only after the populated-state acceptance pass confirms the final watch/export inspection path and screenshots.
+1. Automation Workspace Failure Recovery Dogfood — validate failed watch checks and failed export outcomes through the new automation workspaces so operator guidance, route actions, and recovery steps stay trustworthy when automation fails.
+2. Automation Workspace Operator Docs Refresh — update the README/demo/operator flow docs only after the populated-state and failure-path acceptance passes confirm the final watch/export inspection path and screenshots.
 
 ## Later / Deprioritized
 

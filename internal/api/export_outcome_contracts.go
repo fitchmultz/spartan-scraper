@@ -131,7 +131,7 @@ func buildExportRecommendedActions(outcome ExportInspection) []RecommendedAction
 		actions = append(actions, RecommendedAction{
 			Label: "Inspect schedule history",
 			Kind:  ActionKindRoute,
-			Value: "/automation",
+			Value: "/automation/exports",
 		})
 	}
 
@@ -173,7 +173,7 @@ func buildExportRecommendedActions(outcome ExportInspection) []RecommendedAction
 		actions = append(actions, RecommendedAction{
 			Label: "Review export automation settings",
 			Kind:  ActionKindRoute,
-			Value: "/automation",
+			Value: "/automation/exports",
 		})
 	case "result":
 		actions = append(actions, RecommendedAction{

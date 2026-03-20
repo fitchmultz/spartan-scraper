@@ -109,6 +109,7 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if historyResp.Checks[0].Status != "changed" {
 		t.Fatalf("expected changed status, got %q", historyResp.Checks[0].Status)
 	}
+	assertActionValue(t, historyResp.Checks[0].Actions, "Open watch automation workspace", "/automation/watches")
 
 	detailReq := httptest.NewRequest(http.MethodGet, "/v1/watch/"+created.ID+"/history/"+firstCheck.Check.ID, nil)
 	detailRR := httptest.NewRecorder()
@@ -126,6 +127,8 @@ func TestHandleWatchHistoryLifecycle(t *testing.T) {
 	if detailResp.Check.Status != "baseline" {
 		t.Fatalf("expected baseline status, got %q", detailResp.Check.Status)
 	}
+	assertActionValue(t, firstCheck.Check.Actions, "Open watch automation workspace", "/automation/watches")
+	assertActionValue(t, detailResp.Check.Actions, "Open watch automation workspace", "/automation/watches")
 }
 
 func TestHandleWatchHistoryArtifact(t *testing.T) {
@@ -169,4 +172,17 @@ func TestHandleWatchHistoryArtifact(t *testing.T) {
 	if got := artifactRR.Body.String(); got != "artifact-bytes" {
 		t.Fatalf("unexpected artifact body: %q", got)
 	}
+}
+
+func assertActionValue(t *testing.T, actions []RecommendedAction, label, want string) {
+	t.Helper()
+	for _, action := range actions {
+		if action.Label == label {
+			if action.Value != want {
+				t.Fatalf("action %q value = %q, want %q", label, action.Value, want)
+			}
+			return
+		}
+	}
+	t.Fatalf("missing action %q in %#v", label, actions)
 }

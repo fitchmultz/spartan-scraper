@@ -1,0 +1,1 @@
+No browser console messages were emitted while loading /automation/watches and /automation/exports during the final populated-workspace acceptance pass.

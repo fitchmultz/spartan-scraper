@@ -117,7 +117,7 @@ func buildWatchCheckRecommendedActions(inspection WatchCheckInspection) []Recomm
 		{
 			Label: "Open watch automation workspace",
 			Kind:  ActionKindRoute,
-			Value: "/automation",
+			Value: "/automation/watches",
 		},
 		{
 			Label: "Run the watch check again",

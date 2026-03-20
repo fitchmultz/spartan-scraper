@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
@@ -309,6 +310,93 @@ func TestExportScheduleHandlersSynchronizeLiveRuntime(t *testing.T) {
 	if runtime.removedID != created.ID {
 		t.Fatalf("expected runtime remove call for %s, got %q", created.ID, runtime.removedID)
 	}
+}
+
+func TestExportScheduleHistoryUsesExportsRouteActions(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	store := scheduler.NewExportStorage(srv.cfg.DataDir)
+	schedule, err := store.Add(scheduler.ExportSchedule{
+		Name:    "history route target",
+		Enabled: true,
+		Filters: scheduler.ExportFilters{JobKinds: []string{"scrape"}},
+		Export: scheduler.ExportConfig{
+			Format:          "json",
+			DestinationType: "local",
+			LocalPath:       "exports/{kind}/{job_id}.{format}",
+			PathTemplate:    "exports/{kind}/{job_id}.{format}",
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create export schedule: %v", err)
+	}
+
+	historyStore := scheduler.NewExportHistoryStore(srv.cfg.DataDir)
+	record, err := historyStore.CreateRecord(scheduler.CreateRecordInput{
+		ScheduleID:  schedule.ID,
+		JobID:       "job-history-1",
+		Trigger:     exporter.OutcomeTriggerSchedule,
+		Destination: "exports/scrape/job-history-1.json",
+		Request: exporter.ResultExportConfig{
+			Format: "json",
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create export history record: %v", err)
+	}
+	if err := historyStore.MarkSuccess(record.ID, exporter.RenderedResultExport{
+		Format:      "json",
+		Filename:    "job-history-1.json",
+		ContentType: "application/json",
+		Size:        128,
+		RecordCount: 1,
+	}); err != nil {
+		t.Fatalf("failed to mark export success: %v", err)
+	}
+
+	historyReq := httptest.NewRequest(http.MethodGet, "/v1/export-schedules/"+schedule.ID+"/history?limit=10&offset=0", nil)
+	historyRes := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(historyRes, historyReq)
+	if historyRes.Code != http.StatusOK {
+		t.Fatalf("expected history status 200, got %d: %s", historyRes.Code, historyRes.Body.String())
+	}
+
+	var history ExportOutcomeListResponse
+	if err := json.Unmarshal(historyRes.Body.Bytes(), &history); err != nil {
+		t.Fatalf("failed to decode export history response: %v", err)
+	}
+	if len(history.Exports) != 1 {
+		t.Fatalf("expected 1 export history record, got %#v", history)
+	}
+	assertActionValue(t, history.Exports[0].Actions, "Inspect schedule history", "/automation/exports")
+}
+
+func TestBuildExportRecommendedActionsUseExportsRoute(t *testing.T) {
+	successActions := buildExportRecommendedActions(ExportInspection{
+		ID:         "export-1",
+		ScheduleID: "schedule-1",
+		JobID:      "job-1",
+		Status:     string(exporter.OutcomeSucceeded),
+		Request: exporter.ResultExportConfig{
+			Format: "json",
+		},
+	})
+	assertActionValue(t, successActions, "Inspect schedule history", "/automation/exports")
+
+	failureActions := buildExportRecommendedActions(ExportInspection{
+		ID:     "export-2",
+		JobID:  "job-2",
+		Status: string(exporter.OutcomeFailed),
+		Request: exporter.ResultExportConfig{
+			Format: "json",
+		},
+		Failure: &exporter.FailureContext{
+			Category: "network",
+			Summary:  "delivery failed",
+		},
+	})
+	assertActionValue(t, failureActions, "Review export automation settings", "/automation/exports")
 }
 
 type captureExportScheduleRuntime struct {

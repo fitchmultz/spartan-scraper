@@ -1,0 +1,67 @@
+{
+  "checks": [
+    {
+      "id": "2283a94a-16f6-43c8-ac99-c9c9bcbc92b3",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.528627-06:00",
+      "status": "unchanged",
+      "changed": false,
+      "title": "No change detected",
+      "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+      "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 2283a94a-16f6-43c8-ac99-c9c9bcbc92b3"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    },
+    {
+      "id": "6da10f3d-7db5-45f8-96cd-f6da78f1d3b7",
+      "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+      "url": "https://example.com",
+      "checkedAt": "2026-03-20T14:36:05.40714-06:00",
+      "status": "baseline",
+      "changed": false,
+      "baseline": true,
+      "title": "Baseline recorded",
+      "message": "The first successful check saved a comparison baseline for this watch. Future checks will surface deltas from this snapshot.",
+      "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+      "visualChanged": false,
+      "actions": [
+        {
+          "label": "Inspect this check from the CLI",
+          "kind": "command",
+          "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 6da10f3d-7db5-45f8-96cd-f6da78f1d3b7"
+        },
+        {
+          "label": "Open watch automation workspace",
+          "kind": "route",
+          "value": "/automation/watches"
+        },
+        {
+          "label": "Run the watch check again",
+          "kind": "command",
+          "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+        }
+      ]
+    }
+  ],
+  "total": 12,
+  "limit": 10,
+  "offset": 10
+}

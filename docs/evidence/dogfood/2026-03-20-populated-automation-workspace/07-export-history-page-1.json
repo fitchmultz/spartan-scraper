@@ -1,0 +1,447 @@
+{
+  "exports": [
+    {
+      "id": "dace3097-f64e-4055-b747-793b07367898",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "25f727f0-975a-48c8-8529-b496955a9fdd",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/25f727f0-975a-48c8-8529-b496955a9fdd.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/25f727f0-975a-48c8-8529-b496955a9fdd.json",
+      "exportedAt": "2026-03-20T14:36:16.962818-06:00",
+      "completedAt": "2026-03-20T14:36:16.964485-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "25f727f0-975a-48c8-8529-b496955a9fdd.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id dace3097-f64e-4055-b747-793b07367898"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/25f727f0-975a-48c8-8529-b496955a9fdd"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "f205108f-4f17-44f6-837d-12a7e189b52d",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "83a0f9d8-12a2-4403-b9ce-85578ba317c2",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/83a0f9d8-12a2-4403-b9ce-85578ba317c2.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/83a0f9d8-12a2-4403-b9ce-85578ba317c2.json",
+      "exportedAt": "2026-03-20T14:36:15.9408-06:00",
+      "completedAt": "2026-03-20T14:36:15.942305-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "83a0f9d8-12a2-4403-b9ce-85578ba317c2.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id f205108f-4f17-44f6-837d-12a7e189b52d"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/83a0f9d8-12a2-4403-b9ce-85578ba317c2"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "59594eb7-2ff6-458d-b617-e90fd2a7c276",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "8b6637e9-de70-4229-9d90-df4fda7ab1aa",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/8b6637e9-de70-4229-9d90-df4fda7ab1aa.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/8b6637e9-de70-4229-9d90-df4fda7ab1aa.json",
+      "exportedAt": "2026-03-20T14:36:14.933593-06:00",
+      "completedAt": "2026-03-20T14:36:14.934259-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "8b6637e9-de70-4229-9d90-df4fda7ab1aa.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 59594eb7-2ff6-458d-b617-e90fd2a7c276"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/8b6637e9-de70-4229-9d90-df4fda7ab1aa"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "7f8a872a-5ef0-4399-ac79-ac2cd945c4b9",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "e60af3d1-88f4-47b5-85c7-0f6b21d6bb61",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/e60af3d1-88f4-47b5-85c7-0f6b21d6bb61.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/e60af3d1-88f4-47b5-85c7-0f6b21d6bb61.json",
+      "exportedAt": "2026-03-20T14:36:13.934017-06:00",
+      "completedAt": "2026-03-20T14:36:13.934994-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "e60af3d1-88f4-47b5-85c7-0f6b21d6bb61.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 7f8a872a-5ef0-4399-ac79-ac2cd945c4b9"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/e60af3d1-88f4-47b5-85c7-0f6b21d6bb61"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "609c6e4b-008e-44ea-8d48-25128c7c1e53",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "8f41ac39-d287-4502-b8b9-77ab89ce82b1",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/8f41ac39-d287-4502-b8b9-77ab89ce82b1.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/8f41ac39-d287-4502-b8b9-77ab89ce82b1.json",
+      "exportedAt": "2026-03-20T14:36:12.933801-06:00",
+      "completedAt": "2026-03-20T14:36:12.934405-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "8f41ac39-d287-4502-b8b9-77ab89ce82b1.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 609c6e4b-008e-44ea-8d48-25128c7c1e53"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/8f41ac39-d287-4502-b8b9-77ab89ce82b1"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "4822b534-9695-4f47-824b-724f624257b4",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "d59fe058-c3a7-491f-b0a0-f9f06839ee0a",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/d59fe058-c3a7-491f-b0a0-f9f06839ee0a.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/d59fe058-c3a7-491f-b0a0-f9f06839ee0a.json",
+      "exportedAt": "2026-03-20T14:36:11.915713-06:00",
+      "completedAt": "2026-03-20T14:36:11.916586-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "d59fe058-c3a7-491f-b0a0-f9f06839ee0a.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 4822b534-9695-4f47-824b-724f624257b4"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/d59fe058-c3a7-491f-b0a0-f9f06839ee0a"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "4eacb3e9-3b16-4583-9e78-a1eaf5b249e7",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "def42a04-b6f8-4119-b53c-49e7d1a47090",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/def42a04-b6f8-4119-b53c-49e7d1a47090.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/def42a04-b6f8-4119-b53c-49e7d1a47090.json",
+      "exportedAt": "2026-03-20T14:36:10.884136-06:00",
+      "completedAt": "2026-03-20T14:36:10.884626-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "def42a04-b6f8-4119-b53c-49e7d1a47090.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 4eacb3e9-3b16-4583-9e78-a1eaf5b249e7"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/def42a04-b6f8-4119-b53c-49e7d1a47090"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "31715e53-e420-4ecc-9bf7-8fa5c069082b",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "f4ca5e76-b7af-44c7-acc7-d830a01569da",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/f4ca5e76-b7af-44c7-acc7-d830a01569da.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/f4ca5e76-b7af-44c7-acc7-d830a01569da.json",
+      "exportedAt": "2026-03-20T14:36:09.881739-06:00",
+      "completedAt": "2026-03-20T14:36:09.882222-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "f4ca5e76-b7af-44c7-acc7-d830a01569da.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 31715e53-e420-4ecc-9bf7-8fa5c069082b"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/f4ca5e76-b7af-44c7-acc7-d830a01569da"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "2ac7a716-4d9f-4ea3-ab13-458b9ec991b2",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "cee393cd-8a8b-4980-aaa1-6014059bff11",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/cee393cd-8a8b-4980-aaa1-6014059bff11.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/cee393cd-8a8b-4980-aaa1-6014059bff11.json",
+      "exportedAt": "2026-03-20T14:36:08.881919-06:00",
+      "completedAt": "2026-03-20T14:36:08.882433-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "cee393cd-8a8b-4980-aaa1-6014059bff11.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 2ac7a716-4d9f-4ea3-ab13-458b9ec991b2"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/cee393cd-8a8b-4980-aaa1-6014059bff11"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    },
+    {
+      "id": "2143b482-d922-4b78-a2b3-d29e6b49b6d7",
+      "scheduleId": "adb3829e-4366-4c69-bc62-a25358318398",
+      "jobId": "a4ab6f83-210b-4a1f-97e7-f3fee2594af9",
+      "trigger": "schedule",
+      "status": "succeeded",
+      "title": "Export ready",
+      "message": "JSON export completed successfully with 1 record(s) and is ready at /tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/a4ab6f83-210b-4a1f-97e7-f3fee2594af9.json.",
+      "destination": "/tmp/spartan-populated-automation-workspace.mqLAGY/exports/scrape/a4ab6f83-210b-4a1f-97e7-f3fee2594af9.json",
+      "exportedAt": "2026-03-20T14:36:07.854681-06:00",
+      "completedAt": "2026-03-20T14:36:07.857165-06:00",
+      "retryCount": 0,
+      "request": {
+        "format": "json",
+        "shape": {
+          "formatting": {}
+        },
+        "transform": {}
+      },
+      "artifact": {
+        "format": "json",
+        "filename": "a4ab6f83-210b-4a1f-97e7-f3fee2594af9.json",
+        "contentType": "application/json",
+        "recordCount": 1,
+        "size": 951
+      },
+      "actions": [
+        {
+          "label": "Inspect export from the CLI",
+          "kind": "command",
+          "value": "spartan export --inspect-id 2143b482-d922-4b78-a2b3-d29e6b49b6d7"
+        },
+        {
+          "label": "Inspect saved job results",
+          "kind": "route",
+          "value": "/jobs/a4ab6f83-210b-4a1f-97e7-f3fee2594af9"
+        },
+        {
+          "label": "Inspect schedule history",
+          "kind": "route",
+          "value": "/automation/exports"
+        }
+      ]
+    }
+  ],
+  "total": 11,
+  "limit": 10,
+  "offset": 0
+}

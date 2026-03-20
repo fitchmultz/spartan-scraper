@@ -1,0 +1,32 @@
+{
+  "check": {
+    "id": "34ea7488-0a36-4d45-a463-cab6a71e7fd5",
+    "watchId": "6b83de29-08d0-4ce5-b6bd-5581f437f6ba",
+    "url": "https://example.com",
+    "checkedAt": "2026-03-20T14:36:42.734398-06:00",
+    "status": "unchanged",
+    "changed": false,
+    "title": "No change detected",
+    "message": "The latest check matched the saved baseline, so there is nothing new to review yet.",
+    "previousHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+    "currentHash": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+    "visualChanged": false,
+    "actions": [
+      {
+        "label": "Inspect this check from the CLI",
+        "kind": "command",
+        "value": "spartan watch history 6b83de29-08d0-4ce5-b6bd-5581f437f6ba --check-id 34ea7488-0a36-4d45-a463-cab6a71e7fd5"
+      },
+      {
+        "label": "Open watch automation workspace",
+        "kind": "route",
+        "value": "/automation/watches"
+      },
+      {
+        "label": "Run the watch check again",
+        "kind": "command",
+        "value": "spartan watch check 6b83de29-08d0-4ce5-b6bd-5581f437f6ba"
+      }
+    ]
+  }
+}
