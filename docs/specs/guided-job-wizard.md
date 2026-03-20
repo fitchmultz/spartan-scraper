@@ -237,7 +237,7 @@ Do not fork three entirely separate wizard stacks if a shared shell can host job
 
 - Replace generic `Submitting...` with stronger state feedback.
 - On submit, show a progress state in the sticky action area.
-- Pair successful submission with the Toast Notification System once available.
+- Pair successful submission with the Toast Notification System.
 - After success, navigate to `/jobs` and preserve a success confirmation.
 
 ## Onboarding Hooks

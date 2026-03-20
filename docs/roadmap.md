@@ -2,6 +2,18 @@
 
 This is the canonical source of truth for planned work, exploratory ideas, and sequencing.
 
+## Completed
+
+- [Web UI/UX Audit](specs/web-ui-ux-audit.md) — findings from live product review and code inspection that set the direction for the current Web UI cutover.
+- [Web Shell Simplification](specs/web-shell-simplification.md) — thinner, route-first global chrome so operators reach real work faster.
+- [Guided Job Submission Wizard](specs/guided-job-wizard.md) — guided 4-step job creation on `/jobs/new` with Expert mode and review-before-submit.
+- [Job Monitoring Dashboard](specs/job-monitoring-dashboard.md) — scan-first `/jobs` dashboard with lane-based monitoring and return-context preservation.
+- [Results View System Overhaul](specs/results-view-system-overhaul.md) — dominant reader on `/jobs/:id` with quieter secondary tools and guided export.
+- [Automation Hub Redesign](specs/automation-hub-redesign.md) — `/automation/:section` hub with explicit in-route sub-navigation for batches, chains, watches, exports, and webhooks.
+- [Template Editor Rework](specs/template-editor-rework.md) — inline `/templates` workspace with persistent list/detail, preview, and AI-assisted authoring.
+- [Integrated AI Assistant Panel](specs/ai-assistant-panel.md) — persistent route-aware AI surface across job creation, templates, and results.
+- [Toast Notification System](specs/toast-notification-system.md) — consistent transient feedback across the Web UI.
+
 ## Planning Principles
 
 - Treat the Web UI as a first-class operator surface. When parity work and workflow clarity compete, prioritize the product workflow that helps operators complete real tasks faster and with less confusion.
@@ -16,8 +28,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Dogfood the next-step promotion flow from a verified single job into templates, schedules, and watches so operators can move from manual success to reusable automation without new friction.
-- Convert that template/schedule/watch promotion flow into deterministic browser and system regression coverage once the product path is stable.
+1. [Verified Job Promotion Flow](specs/job-to-automation-promotion.md) — use the new spec as the implementation contract, resolve any remaining source-job handoff or backend-contract ambiguity first, and lock the product decisions before code changes.
+2. [Verified Job Promotion Cutover](specs/job-to-automation-promotion.md) — deliver the approved path from a completed, trusted job into templates, watches, and export schedules so operators can turn manual success into reusable automation without blank create flows or duplicate data entry.
+3. [Promotion Flow Deterministic Regression Coverage](specs/promotion-flow-deterministic-regression.md) — once the promotion path is stable, lock it down with system-first deterministic regression coverage and narrow browser proof.
 
 ## Later / Deprioritized
 
