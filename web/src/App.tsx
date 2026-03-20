@@ -105,7 +105,7 @@ import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
 import { shouldShowSettingsOverviewPanel } from "./lib/settings-overview";
 import type { JobPreset, JobType } from "./types/presets";
 
-type RouteKind =
+export type RouteKind =
   | "jobs"
   | "new-job"
   | "job-detail"
@@ -113,7 +113,7 @@ type RouteKind =
   | "automation"
   | "settings";
 
-interface AppRoute {
+export interface AppRoute {
   kind: RouteKind;
   path: string;
   jobId?: string;
@@ -168,7 +168,7 @@ const NAV_ITEMS = [
   },
 ] as const satisfies readonly NavItem[];
 
-function normalizePath(pathname: string): string {
+export function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") {
     return "/jobs";
   }
@@ -177,7 +177,7 @@ function normalizePath(pathname: string): string {
   return trimmed === "" ? "/jobs" : trimmed;
 }
 
-function parseRoute(pathname: string): AppRoute {
+export function parseRoute(pathname: string): AppRoute {
   const path = normalizePath(pathname);
   if (path === "/jobs") {
     return { kind: "jobs", path };

@@ -16,8 +16,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## After
 
-- Convert the fresh-start-to-daily-use operator flow into deterministic browser and system regression coverage so route, onboarding, and Settings cutovers stay locked in.
 - Dogfood the next-step promotion flow from a verified single job into templates, schedules, and watches so operators can move from manual success to reusable automation without new friction.
+- Convert that template/schedule/watch promotion flow into deterministic browser and system regression coverage once the product path is stable.
 
 ## Later / Deprioritized
 
