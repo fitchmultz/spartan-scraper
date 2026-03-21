@@ -1,21 +1,25 @@
 /**
  * Purpose: Provide the Settings-route editor for stored pipeline JavaScript configurations.
- * Responsibilities: Load the script inventory, coordinate create/edit/delete flows, surface operator feedback through inline state and toasts, and host the existing AI generation/debug helpers.
+ * Responsibilities: Load the script inventory, coordinate create/edit/delete flows, preserve AI authoring sessions across Settings handoff, and surface operator feedback through inline state and toasts.
  * Scope: Browser-side pipeline-script management only; runtime execution and matching logic stay on the backend.
  * Usage: Render inside the Settings route without additional providers beyond the app-level toast boundary.
- * Invariants/Assumptions: Script persistence goes through the generated API client, errors remain user-safe, and destructive actions must use the shared confirmation dialog instead of browser-native prompts.
+ * Invariants/Assumptions: Script persistence goes through the generated API client, manual AI handoff returns to the same in-session history, and destructive actions use the shared confirmation dialog instead of browser-native prompts.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  deleteV1PipelineJsByName,
   getV1PipelineJs,
   postV1PipelineJs,
   putV1PipelineJsByName,
-  deleteV1PipelineJsByName,
   type ComponentStatus,
   type JsTargetScript,
   type PipelineJsInput,
 } from "../../api";
+import {
+  type AIAttempt,
+  useAIAttemptHistory,
+} from "../../hooks/useAIAttemptHistory";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
@@ -24,10 +28,31 @@ import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
+type AISessionSource = "generator" | "debugger";
+
+interface ScriptManualEditSession {
+  source: AISessionSource;
+  attemptId: string;
+  mode: "create" | "edit";
+  originalName: string | null;
+  initialValue: PipelineJsInput;
+}
+
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
   onInventoryChange?: (count: number) => void;
+}
+
+function toPipelineJsInput(script: JsTargetScript): PipelineJsInput {
+  return {
+    name: script.name,
+    hostPatterns: [...script.hostPatterns],
+    engine: script.engine,
+    preNav: script.preNav,
+    postNav: script.postNav,
+    selectors: script.selectors ? [...script.selectors] : undefined,
+  };
 }
 
 export function PipelineJSEditor({
@@ -47,7 +72,12 @@ export function PipelineJSEditor({
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+  const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
+  const [manualEditSession, setManualEditSession] =
+    useState<ScriptManualEditSession | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const generatorHistory = useAIAttemptHistory<JsTargetScript>();
+  const debuggerHistory = useAIAttemptHistory<JsTargetScript>();
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -83,6 +113,12 @@ export function PipelineJSEditor({
   useEffect(() => {
     loadScripts();
   }, [loadScripts]);
+
+  const closeNativeForms = () => {
+    setIsCreating(false);
+    setEditingScript(null);
+    setManualEditSession(null);
+  };
 
   const handleCreate = async (input: PipelineJsInput) => {
     const toastId = toast.show({
@@ -202,6 +238,126 @@ export function PipelineJSEditor({
     }
   };
 
+  const openAttemptInSettings = (
+    source: AISessionSource,
+    attempt: AIAttempt<JsTargetScript>,
+  ) => {
+    if (!attempt.artifact) {
+      return;
+    }
+
+    closeNativeForms();
+    setError(null);
+
+    if (source === "generator") {
+      generatorHistory.selectAttempt(attempt.id);
+      setIsAIGeneratorOpen(false);
+    } else {
+      debuggerHistory.selectAttempt(attempt.id);
+      setIsAIDebuggerOpen(false);
+    }
+
+    setManualEditSession({
+      source,
+      attemptId: attempt.id,
+      mode: source === "generator" ? "create" : "edit",
+      originalName:
+        source === "debugger"
+          ? (debuggingScript?.name ?? attempt.artifact.name)
+          : null,
+      initialValue: toPipelineJsInput(attempt.artifact),
+    });
+  };
+
+  const returnToAISession = (source: AISessionSource) => {
+    setManualEditSession(null);
+    if (source === "generator") {
+      setIsAIGeneratorOpen(true);
+      return;
+    }
+    setIsAIDebuggerOpen(true);
+  };
+
+  const handleManualEditSubmit = async (
+    session: ScriptManualEditSession,
+    input: PipelineJsInput,
+  ) => {
+    const actionLabel =
+      session.mode === "create"
+        ? `Creating ${input.name}`
+        : `Updating ${input.name}`;
+    const toastId = toast.show({
+      tone: "loading",
+      title: actionLabel,
+      description:
+        "Saving the manually edited script and preserving the AI attempt history.",
+    });
+
+    try {
+      setError(null);
+      const response =
+        session.mode === "edit"
+          ? await putV1PipelineJsByName({
+              baseUrl: getApiBaseUrl(),
+              path: { name: session.originalName ?? input.name },
+              body: input,
+            })
+          : await postV1PipelineJs({
+              baseUrl: getApiBaseUrl(),
+              body: input,
+            });
+
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to save script"),
+        );
+      }
+
+      const savedScript = (response.data ?? input) as JsTargetScript;
+      const history =
+        session.source === "generator" ? generatorHistory : debuggerHistory;
+      history.replaceArtifact(session.attemptId, savedScript, {
+        markManualEdit: true,
+      });
+
+      if (session.source === "debugger") {
+        setDebuggingScript(savedScript);
+      }
+
+      await loadScripts();
+      setManualEditSession(null);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Manual edits saved",
+        description:
+          "The AI attempt now uses your saved script as the retry baseline.",
+      });
+      returnToAISession(session.source);
+    } catch (err) {
+      const message = getApiErrorMessage(err, "Failed to save script");
+      setError(message);
+      onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to save script",
+        description: message,
+      });
+    }
+  };
+
+  const handleOpenGenerator = () => {
+    closeNativeForms();
+    generatorHistory.reset();
+    setIsAIGeneratorOpen(true);
+  };
+
+  const handleOpenDebugger = (script: JsTargetScript) => {
+    closeNativeForms();
+    debuggerHistory.reset();
+    setDebuggingScript(script);
+    setIsAIDebuggerOpen(true);
+  };
+
   if (loading) {
     return <div className="p-4 text-center">Loading scripts...</div>;
   }
@@ -234,14 +390,21 @@ export function PipelineJSEditor({
           </button>
           <button
             type="button"
-            onClick={() => setIsAIGeneratorOpen(true)}
+            onClick={handleOpenGenerator}
             disabled={aiUnavailable}
             title={aiUnavailableMessage ?? undefined}
             className={aiUnavailable ? "secondary" : undefined}
           >
             Generate with AI
           </button>
-          <button type="button" onClick={() => setIsCreating(true)}>
+          <button
+            type="button"
+            onClick={() => {
+              setManualEditSession(null);
+              setEditingScript(null);
+              setIsCreating(true);
+            }}
+          >
             Create Script
           </button>
         </div>
@@ -251,13 +414,44 @@ export function PipelineJSEditor({
         <AIUnavailableNotice message={aiUnavailableMessage} />
       ) : null}
 
-      {error && (
+      {error ? (
         <div className="error" role="alert">
           {error}
         </div>
-      )}
+      ) : null}
 
-      {scripts.length === 0 && !isCreating ? (
+      {manualEditSession ? (
+        <ScriptForm
+          key={`manual-${manualEditSession.source}-${manualEditSession.attemptId}`}
+          initialValue={manualEditSession.initialValue}
+          lockName={manualEditSession.mode === "edit"}
+          title={
+            manualEditSession.mode === "edit"
+              ? "Edit Script from AI Session"
+              : "Create Script from AI Session"
+          }
+          contextNotice={`You are editing Attempt ${manualEditSession.attemptId.replace("attempt-", "")} from the AI session. Saving marks that attempt as manually edited and keeps later attempts available when you return to AI.`}
+          cancelLabel="Back to AI session"
+          submitLabel={manualEditSession.mode === "edit" ? "Update" : "Create"}
+          onSubmit={(input) => {
+            void handleManualEditSubmit(manualEditSession, input);
+          }}
+          onCancel={() => returnToAISession(manualEditSession.source)}
+        />
+      ) : isCreating ? (
+        <ScriptForm
+          onSubmit={handleCreate}
+          onCancel={() => setIsCreating(false)}
+        />
+      ) : editingScript ? (
+        <ScriptForm
+          script={editingScript}
+          onSubmit={(input) => handleUpdate(editingScript.name, input)}
+          onCancel={() => setEditingScript(null)}
+        />
+      ) : null}
+
+      {scripts.length === 0 && !isCreating && !manualEditSession ? (
         <ActionEmptyState
           eyebrow="Optional page-specific hook"
           title="No pipeline scripts yet"
@@ -271,30 +465,19 @@ export function PipelineJSEditor({
         />
       ) : null}
 
-      {isCreating && (
-        <ScriptForm
-          onSubmit={handleCreate}
-          onCancel={() => setIsCreating(false)}
-        />
-      )}
-
-      {editingScript && (
-        <ScriptForm
-          script={editingScript}
-          onSubmit={(input) => handleUpdate(editingScript.name, input)}
-          onCancel={() => setEditingScript(null)}
-        />
-      )}
-
-      {showJson && scripts.length > 0 && (
-        <div className="bg-gray-900 text-green-400 p-4 rounded overflow-auto max-h-96">
+      {showJson && scripts.length > 0 ? (
+        <div className="max-h-96 overflow-auto rounded bg-gray-900 p-4 text-green-400">
           <pre className="text-sm">{JSON.stringify(scripts, null, 2)}</pre>
         </div>
-      )}
+      ) : null}
 
       <AIPipelineJSGenerator
         isOpen={isAIGeneratorOpen}
         aiStatus={aiStatus}
+        history={generatorHistory}
+        onEditInSettings={(attempt) =>
+          openAttemptInSettings("generator", attempt)
+        }
         onClose={() => setIsAIGeneratorOpen(false)}
         onSaved={() => {
           void loadScripts();
@@ -302,10 +485,17 @@ export function PipelineJSEditor({
       />
 
       <AIPipelineJSDebugger
-        isOpen={debuggingScript !== null}
+        isOpen={isAIDebuggerOpen}
         aiStatus={aiStatus}
         script={debuggingScript}
-        onClose={() => setDebuggingScript(null)}
+        history={debuggerHistory}
+        onEditInSettings={(attempt) =>
+          openAttemptInSettings("debugger", attempt)
+        }
+        onClose={() => {
+          setIsAIDebuggerOpen(false);
+          setDebuggingScript(null);
+        }}
         onSaved={() => {
           void loadScripts();
         }}
@@ -315,44 +505,44 @@ export function PipelineJSEditor({
         {scripts.map((script) => (
           <div
             key={script.name}
-            className="p-4 border rounded hover:bg-gray-50 flex justify-between items-start"
+            className="flex items-start justify-between rounded border p-4 hover:bg-gray-50"
           >
             <div className="flex-1">
               <h3 className="font-medium">{script.name}</h3>
               <p className="text-sm text-gray-600">
                 Hosts: {script.hostPatterns.join(", ")}
               </p>
-              {script.engine && (
-                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded mr-2">
+              {script.engine ? (
+                <span className="mr-2 rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-800">
                   {script.engine}
                 </span>
-              )}
-              {script.preNav && (
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded mr-2">
+              ) : null}
+              {script.preNav ? (
+                <span className="mr-2 rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
                   pre-nav
                 </span>
-              )}
-              {script.postNav && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded mr-2">
+              ) : null}
+              {script.postNav ? (
+                <span className="mr-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                   post-nav
                 </span>
-              )}
-              {script.selectors && script.selectors.length > 0 && (
-                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded">
+              ) : null}
+              {script.selectors && script.selectors.length > 0 ? (
+                <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-800">
                   {script.selectors.length} selector
                   {script.selectors.length !== 1 ? "s" : ""}
                 </span>
-              )}
+              ) : null}
             </div>
             <div className="space-x-2">
               <button
                 type="button"
-                onClick={() => setDebuggingScript(script)}
+                onClick={() => handleOpenDebugger(script)}
                 disabled={aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
                 className={`text-sm ${
                   aiUnavailable
-                    ? "text-gray-400 cursor-not-allowed"
+                    ? "cursor-not-allowed text-gray-400"
                     : "text-purple-600 hover:underline"
                 }`}
               >
@@ -360,7 +550,11 @@ export function PipelineJSEditor({
               </button>
               <button
                 type="button"
-                onClick={() => setEditingScript(script)}
+                onClick={() => {
+                  setManualEditSession(null);
+                  setIsCreating(false);
+                  setEditingScript(script);
+                }}
                 className="text-sm text-blue-600 hover:underline"
               >
                 Edit
@@ -382,25 +576,46 @@ export function PipelineJSEditor({
 
 interface ScriptFormProps {
   script?: JsTargetScript;
+  initialValue?: PipelineJsInput;
+  lockName?: boolean;
+  title?: string;
+  contextNotice?: string;
+  cancelLabel?: string;
+  submitLabel?: string;
   onSubmit: (input: PipelineJsInput) => void;
   onCancel: () => void;
 }
 
-function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
-  const [formData, setFormData] = useState<PipelineJsInput>({
-    name: script?.name || "",
-    hostPatterns: script?.hostPatterns || [],
-    engine: script?.engine,
-    preNav: script?.preNav,
-    postNav: script?.postNav,
-    selectors: script?.selectors,
-  });
+function ScriptForm({
+  script,
+  initialValue,
+  lockName = false,
+  title,
+  contextNotice,
+  cancelLabel = "Cancel",
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: ScriptFormProps) {
+  const seed =
+    initialValue ??
+    (script
+      ? toPipelineJsInput(script)
+      : {
+          name: "",
+          hostPatterns: [],
+          engine: undefined,
+          preNav: undefined,
+          postNav: undefined,
+          selectors: undefined,
+        });
 
+  const [formData, setFormData] = useState<PipelineJsInput>(seed);
   const [hostPatternInput, setHostPatternInput] = useState(
-    script?.hostPatterns.join(", ") || "",
+    seed.hostPatterns.join(", "),
   );
   const [selectorInput, setSelectorInput] = useState(
-    script?.selectors?.join(", ") || "",
+    seed.selectors?.join(", ") || "",
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -423,14 +638,20 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 border rounded bg-gray-50 space-y-4"
+      className="space-y-4 rounded border bg-gray-50 p-4"
     >
       <h3 className="font-medium">
-        {script ? "Edit Script" : "Create New Script"}
+        {title ?? (script ? "Edit Script" : "Create New Script")}
       </h3>
 
+      {contextNotice ? (
+        <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
+          {contextNotice}
+        </div>
+      ) : null}
+
       <div>
-        <label htmlFor="script-name" className="block text-sm font-medium mb-1">
+        <label htmlFor="script-name" className="mb-1 block text-sm font-medium">
           Name
         </label>
         <input
@@ -438,16 +659,16 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
           required
-          disabled={!!script}
+          disabled={lockName || !!script}
         />
       </div>
 
       <div>
         <label
           htmlFor="script-host-patterns"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Host Patterns (comma-separated)
         </label>
@@ -457,10 +678,10 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
           value={hostPatternInput}
           onChange={(e) => setHostPatternInput(e.target.value)}
           placeholder="example.com, *.example.com"
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
           required
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="mt-1 text-xs text-gray-500">
           Examples: example.com, *.example.com
         </p>
       </div>
@@ -468,7 +689,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
       <div>
         <label
           htmlFor="script-engine"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Engine
         </label>
@@ -481,7 +702,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
               engine: e.target.value as PipelineJsInput["engine"],
             })
           }
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
         >
           <option value="">Any</option>
           <option value="chromedp">ChromeDP</option>
@@ -492,7 +713,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
       <div>
         <label
           htmlFor="script-pre-nav"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Pre-Navigation JavaScript
         </label>
@@ -503,7 +724,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
             setFormData({ ...formData, preNav: e.target.value || undefined })
           }
           placeholder="// JavaScript to run before navigation"
-          className="w-full px-3 py-2 border rounded font-mono text-sm"
+          className="w-full rounded border px-3 py-2 font-mono text-sm"
           rows={4}
         />
       </div>
@@ -511,7 +732,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
       <div>
         <label
           htmlFor="script-post-nav"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Post-Navigation JavaScript
         </label>
@@ -522,7 +743,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
             setFormData({ ...formData, postNav: e.target.value || undefined })
           }
           placeholder="// JavaScript to run after navigation"
-          className="w-full px-3 py-2 border rounded font-mono text-sm"
+          className="w-full rounded border px-3 py-2 font-mono text-sm"
           rows={4}
         />
       </div>
@@ -530,7 +751,7 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
       <div>
         <label
           htmlFor="script-selectors"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Wait Selectors (comma-separated)
         </label>
@@ -540,9 +761,9 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
           value={selectorInput}
           onChange={(e) => setSelectorInput(e.target.value)}
           placeholder="#content, .article, [data-loaded]"
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="mt-1 text-xs text-gray-500">
           CSS selectors to wait for before considering page loaded
         </p>
       </div>
@@ -551,15 +772,15 @@ function ScriptForm({ script, onSubmit, onCancel }: ScriptFormProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-100"
+          className="rounded border px-4 py-2 hover:bg-gray-100"
         >
-          Cancel
+          {cancelLabel}
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
-          {script ? "Update" : "Create"}
+          {submitLabel ?? (script ? "Update" : "Create")}
         </button>
       </div>
     </form>

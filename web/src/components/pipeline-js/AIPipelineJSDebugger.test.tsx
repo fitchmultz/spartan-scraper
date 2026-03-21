@@ -260,7 +260,9 @@ describe("AIPipelineJSDebugger", () => {
         expect.objectContaining({
           body: expect.objectContaining({
             url: "https://example.com/app",
-            script,
+            script: expect.objectContaining({
+              selectors: ["main"],
+            }),
             instructions: "Prefer #app-root over main",
             images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
             headless: true,

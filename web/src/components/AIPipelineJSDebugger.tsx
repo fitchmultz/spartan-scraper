@@ -1,13 +1,12 @@
 /**
  * Purpose: Present the modal AI helper that debugs saved pipeline JavaScript scripts against representative pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, retain full session attempt history, and save the operator-selected suggested script.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, retain full session attempt history, hand selected attempts off to Settings, and save the operator-selected suggested script.
  * Scope: Modal debugging flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted tuning.
- * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
+ * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, normal modal close resets the session, and retry/save always target the selected attempt when one exists.
  */
 
 import { useState } from "react";
-
 import {
   aiPipelineJsDebug,
   putV1PipelineJsByName,
@@ -15,7 +14,11 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
-import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import {
+  useAIAttemptHistory,
+  type AIAttempt,
+  type AIAttemptHistoryController,
+} from "../hooks/useAIAttemptHistory";
 import { toPipelineJsDebugAttempt } from "../lib/ai-authoring-attempts";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -32,6 +35,8 @@ interface AIPipelineJSDebuggerProps {
   script: JsTargetScript | null;
   onClose: () => void;
   onSaved: () => void;
+  history?: AIAttemptHistoryController<JsTargetScript>;
+  onEditInSettings?: (attempt: AIAttempt<JsTargetScript>) => void;
 }
 
 interface DebugState {
@@ -66,18 +71,22 @@ export function AIPipelineJSDebugger({
   script,
   onClose,
   onSaved,
+  history: providedHistory,
+  onEditInSettings,
 }: AIPipelineJSDebuggerProps) {
   const [state, setState] = useState<DebugState>(createInitialState);
+  const ownedHistory = useAIAttemptHistory<JsTargetScript>();
+  const history = providedHistory ?? ownedHistory;
   const aiCapability = describeAICapability(
     aiStatus,
     "Tune pipeline scripts manually in Settings.",
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const history = useAIAttemptHistory<JsTargetScript>();
   const activeAttempt = history.activeAttempt;
   const baselineAttempt = history.baselineAttempt;
   const latestAttempt = history.latestAttempt;
+  const effectiveScript = activeAttempt?.artifact ?? script;
 
   if (!isOpen || !script) {
     return null;
@@ -103,6 +112,10 @@ export function AIPipelineJSDebugger({
       setState((prev) => ({ ...prev, error: "Please enter a valid URL" }));
       return;
     }
+    if (!effectiveScript) {
+      setState((prev) => ({ ...prev, error: "A pipeline script is required" }));
+      return;
+    }
 
     const requestState = state;
 
@@ -117,7 +130,7 @@ export function AIPipelineJSDebugger({
         baseUrl: getApiBaseUrl(),
         body: {
           url: requestState.url.trim(),
-          script,
+          script: effectiveScript,
           ...(requestState.instructions.trim()
             ? { instructions: requestState.instructions.trim() }
             : {}),
@@ -158,7 +171,7 @@ export function AIPipelineJSDebugger({
   };
 
   const handleRetry = () => {
-    if (!latestAttempt || aiUnavailable) {
+    if (history.attempts.length === 0 || aiUnavailable) {
       return;
     }
     void handleDebug();
@@ -231,12 +244,22 @@ export function AIPipelineJSDebugger({
           >
             <div className="rounded-md border border-slate-700 bg-slate-900/60 p-4">
               <h3 className="mb-2 text-sm font-medium text-slate-200">
-                Current pipeline JS script
+                Current pipeline JS baseline
               </h3>
-              <p className="text-sm text-slate-400">
-                Tuning <code>{script.name}</code> for hosts{" "}
-                {script.hostPatterns.join(", ")}
-              </p>
+              {activeAttempt?.artifact ? (
+                <p className="text-sm text-slate-400">
+                  Retrying from Attempt {activeAttempt.ordinal}
+                  {activeAttempt.manualEdit.edited
+                    ? " (manually edited in Settings)"
+                    : ""}
+                  . The last saved script stays untouched until you choose Save.
+                </p>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Tuning <code>{script.name}</code> for hosts{" "}
+                  {script.hostPatterns.join(", ")}
+                </p>
+              )}
             </div>
 
             <div className="form-group">
@@ -361,6 +384,7 @@ export function AIPipelineJSDebugger({
                   error: null,
                 }))
               }
+              onEditInSettings={onEditInSettings}
             />
 
             {baselineAttempt ? (
@@ -378,6 +402,7 @@ export function AIPipelineJSDebugger({
                 resolvedGoal={baselineAttempt.resolvedGoal}
                 explanation={baselineAttempt.explanation}
                 rawResponse={baselineAttempt.rawResponse}
+                manualEdit={baselineAttempt.manualEdit}
                 muted
               >
                 {baselineAttempt.artifact ? (
@@ -409,6 +434,7 @@ export function AIPipelineJSDebugger({
                 resolvedGoal={activeAttempt.resolvedGoal}
                 explanation={activeAttempt.explanation}
                 rawResponse={activeAttempt.rawResponse}
+                manualEdit={activeAttempt.manualEdit}
               >
                 {activeAttempt.artifact ? (
                   <AICandidateDiffView

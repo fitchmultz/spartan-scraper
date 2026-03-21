@@ -1,13 +1,19 @@
 /**
  * Purpose: Manage full per-session AI authoring attempt history for generator and debugger modals.
- * Responsibilities: Store ordered attempts, track the selected attempt and comparison baseline, and expose deterministic append/select/reset behavior.
+ * Responsibilities: Store ordered attempts, track the selected attempt and comparison baseline, and support in-place manual-edit replacement.
  * Scope: Web-only session state for AI authoring flows.
- * Usage: Call from AI generation/debugging modals and append a normalized attempt after each successful AI response.
- * Invariants/Assumptions: History resets when the modal closes, new attempts become selected automatically, and baselines must always be older than the selected attempt.
+ * Usage: Call from parent editors or AI modals and append a normalized attempt after each successful AI response.
+ * Invariants/Assumptions: New attempts become selected automatically, baselines must always be older than the selected attempt, and replacing an attempt keeps later history intact.
  */
 
 import { useMemo, useReducer } from "react";
 import type { ResolvedGoal } from "../api";
+
+export interface AIAttemptManualEdit {
+  edited: boolean;
+  count: number;
+  updatedAt: string | null;
+}
 
 export interface AIAttemptDraft<TArtifact> {
   artifact: TArtifact | null;
@@ -23,11 +29,13 @@ export interface AIAttemptDraft<TArtifact> {
   recheckEngine?: string;
   recheckError?: string;
   rawResponse: unknown;
+  manualEdit?: Partial<AIAttemptManualEdit>;
 }
 
 export interface AIAttempt<TArtifact> extends AIAttemptDraft<TArtifact> {
   id: string;
   ordinal: number;
+  manualEdit: AIAttemptManualEdit;
 }
 
 interface AttemptHistoryState<TArtifact> {
@@ -40,7 +48,19 @@ type AttemptHistoryAction<TArtifact> =
   | { type: "append"; draft: AIAttemptDraft<TArtifact> }
   | { type: "select-active"; attemptId: string }
   | { type: "select-baseline"; attemptId: string | null }
+  | {
+      type: "replace-artifact";
+      attemptId: string;
+      artifact: TArtifact;
+      markManualEdit: boolean;
+    }
   | { type: "reset" };
+
+const EMPTY_MANUAL_EDIT: AIAttemptManualEdit = {
+  edited: false,
+  count: 0,
+  updatedAt: null,
+};
 
 const INITIAL_STATE: AttemptHistoryState<never> = {
   attempts: [],
@@ -85,6 +105,10 @@ function attemptHistoryReducer<TArtifact>(
         ...action.draft,
         id: `attempt-${state.attempts.length + 1}`,
         ordinal: state.attempts.length + 1,
+        manualEdit: {
+          ...EMPTY_MANUAL_EDIT,
+          ...action.draft.manualEdit,
+        },
       };
       const nextAttempts = [...state.attempts, nextAttempt];
 
@@ -146,12 +170,58 @@ function attemptHistoryReducer<TArtifact>(
       };
     }
 
+    case "replace-artifact": {
+      const nextAttempts = state.attempts.map((attempt) => {
+        if (attempt.id !== action.attemptId) {
+          return attempt;
+        }
+
+        return {
+          ...attempt,
+          artifact: action.artifact,
+          manualEdit: action.markManualEdit
+            ? {
+                edited: true,
+                count: attempt.manualEdit.count + 1,
+                updatedAt: new Date().toISOString(),
+              }
+            : attempt.manualEdit,
+        };
+      });
+
+      return {
+        attempts: nextAttempts,
+        activeAttemptId: action.attemptId,
+        baselineAttemptId: getDefaultBaselineId(nextAttempts, action.attemptId),
+      };
+    }
+
     case "reset":
       return INITIAL_STATE as AttemptHistoryState<TArtifact>;
   }
 }
 
-export function useAIAttemptHistory<TArtifact>() {
+export interface AIAttemptHistoryController<TArtifact> {
+  attempts: AIAttempt<TArtifact>[];
+  activeAttemptId: string | null;
+  baselineAttemptId: string | null;
+  activeAttempt: AIAttempt<TArtifact> | null;
+  baselineAttempt: AIAttempt<TArtifact> | null;
+  latestAttempt: AIAttempt<TArtifact> | null;
+  appendAttempt: (draft: AIAttemptDraft<TArtifact>) => void;
+  selectAttempt: (attemptId: string) => void;
+  selectBaseline: (attemptId: string | null) => void;
+  replaceArtifact: (
+    attemptId: string,
+    artifact: TArtifact,
+    options?: { markManualEdit?: boolean },
+  ) => void;
+  reset: () => void;
+}
+
+export function useAIAttemptHistory<
+  TArtifact,
+>(): AIAttemptHistoryController<TArtifact> {
   const [state, dispatch] = useReducer(
     attemptHistoryReducer<TArtifact>,
     INITIAL_STATE as AttemptHistoryState<TArtifact>,
@@ -180,6 +250,13 @@ export function useAIAttemptHistory<TArtifact>() {
       dispatch({ type: "select-active", attemptId }),
     selectBaseline: (attemptId: string | null) =>
       dispatch({ type: "select-baseline", attemptId }),
+    replaceArtifact: (attemptId, artifact, options) =>
+      dispatch({
+        type: "replace-artifact",
+        attemptId,
+        artifact,
+        markManualEdit: options?.markManualEdit ?? true,
+      }),
     reset: () => dispatch({ type: "reset" }),
   };
 }

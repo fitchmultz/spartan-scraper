@@ -1,21 +1,25 @@
 /**
  * Purpose: Provide the Settings-route editor for saved render profiles.
- * Responsibilities: Load the render-profile inventory, coordinate create/edit/delete flows, expose JSON inspection and AI helpers, and route transient operator feedback through the shared toast system.
+ * Responsibilities: Load the render-profile inventory, coordinate create/edit/delete flows, preserve AI authoring sessions across Settings handoff, and route transient operator feedback through the shared toast system.
  * Scope: Browser-side render-profile management only; fetch execution and runtime matching stay outside this component.
  * Usage: Render inside the Settings route with the app-level toast provider already mounted.
- * Invariants/Assumptions: Profiles are persisted through the generated API client, destructive actions require the shared confirmation dialog, and API errors should remain visible in both inline state and toasts.
+ * Invariants/Assumptions: Profiles are persisted through the generated API client, manual AI handoff returns to the same in-session history, and API errors remain visible in both inline state and toasts.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  deleteV1RenderProfilesByName,
   getV1RenderProfiles,
   postV1RenderProfiles,
   putV1RenderProfilesByName,
-  deleteV1RenderProfilesByName,
   type ComponentStatus,
   type RenderProfile,
   type RenderProfileInput,
 } from "../../api";
+import {
+  type AIAttempt,
+  useAIAttemptHistory,
+} from "../../hooks/useAIAttemptHistory";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
@@ -24,10 +28,72 @@ import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
+type AISessionSource = "generator" | "debugger";
+
+interface ProfileManualEditSession {
+  source: AISessionSource;
+  attemptId: string;
+  mode: "create" | "edit";
+  originalName: string | null;
+  initialValue: RenderProfileInput;
+}
+
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
   onInventoryChange?: (count: number) => void;
+}
+
+function toRenderProfileInput(profile: RenderProfile): RenderProfileInput {
+  return {
+    name: profile.name,
+    hostPatterns: [...profile.hostPatterns],
+    forceEngine: profile.forceEngine,
+    preferHeadless: profile.preferHeadless,
+    neverHeadless: profile.neverHeadless,
+    assumeJsHeavy: profile.assumeJsHeavy,
+    jsHeavyThreshold: profile.jsHeavyThreshold,
+    rateLimitQPS: profile.rateLimitQPS,
+    rateLimitBurst: profile.rateLimitBurst,
+    block: profile.block,
+    wait: profile.wait,
+    timeouts: profile.timeouts,
+    screenshot: profile.screenshot,
+    device: profile.device,
+  };
+}
+
+function stringifyOptionalJSON(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function parseOptionalJSON<T>(label: string, value: string): T | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch (error) {
+    throw new Error(
+      `${label} must be valid JSON${
+        error instanceof Error && error.message ? `: ${error.message}` : ""
+      }`,
+    );
+  }
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export function RenderProfileEditor({
@@ -46,7 +112,12 @@ export function RenderProfileEditor({
     useState<RenderProfile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
+  const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
+  const [manualEditSession, setManualEditSession] =
+    useState<ProfileManualEditSession | null>(null);
   const [showJson, setShowJson] = useState(false);
+  const generatorHistory = useAIAttemptHistory<RenderProfile>();
+  const debuggerHistory = useAIAttemptHistory<RenderProfile>();
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -82,6 +153,12 @@ export function RenderProfileEditor({
   useEffect(() => {
     loadProfiles();
   }, [loadProfiles]);
+
+  const closeNativeForms = () => {
+    setIsCreating(false);
+    setEditingProfile(null);
+    setManualEditSession(null);
+  };
 
   const handleCreate = async (input: RenderProfileInput) => {
     const toastId = toast.show({
@@ -201,6 +278,125 @@ export function RenderProfileEditor({
     }
   };
 
+  const openAttemptInSettings = (
+    source: AISessionSource,
+    attempt: AIAttempt<RenderProfile>,
+  ) => {
+    if (!attempt.artifact) {
+      return;
+    }
+
+    closeNativeForms();
+    setError(null);
+
+    if (source === "generator") {
+      generatorHistory.selectAttempt(attempt.id);
+      setIsAIGeneratorOpen(false);
+    } else {
+      debuggerHistory.selectAttempt(attempt.id);
+      setIsAIDebuggerOpen(false);
+    }
+
+    setManualEditSession({
+      source,
+      attemptId: attempt.id,
+      mode: source === "generator" ? "create" : "edit",
+      originalName:
+        source === "debugger"
+          ? (debuggingProfile?.name ?? attempt.artifact.name)
+          : null,
+      initialValue: toRenderProfileInput(attempt.artifact),
+    });
+  };
+
+  const returnToAISession = (source: AISessionSource) => {
+    setManualEditSession(null);
+    if (source === "generator") {
+      setIsAIGeneratorOpen(true);
+      return;
+    }
+    setIsAIDebuggerOpen(true);
+  };
+
+  const handleManualEditSubmit = async (
+    session: ProfileManualEditSession,
+    input: RenderProfileInput,
+  ) => {
+    const toastId = toast.show({
+      tone: "loading",
+      title:
+        session.mode === "create"
+          ? `Creating ${input.name}`
+          : `Updating ${input.name}`,
+      description:
+        "Saving the manually edited render profile and preserving the AI attempt history.",
+    });
+
+    try {
+      setError(null);
+      const response =
+        session.mode === "edit"
+          ? await putV1RenderProfilesByName({
+              baseUrl: getApiBaseUrl(),
+              path: { name: session.originalName ?? input.name },
+              body: input,
+            })
+          : await postV1RenderProfiles({
+              baseUrl: getApiBaseUrl(),
+              body: input,
+            });
+
+      if (response.error) {
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to save render profile"),
+        );
+      }
+
+      const savedProfile = (response.data ?? input) as RenderProfile;
+      const history =
+        session.source === "generator" ? generatorHistory : debuggerHistory;
+      history.replaceArtifact(session.attemptId, savedProfile, {
+        markManualEdit: true,
+      });
+
+      if (session.source === "debugger") {
+        setDebuggingProfile(savedProfile);
+      }
+
+      await loadProfiles();
+      setManualEditSession(null);
+      toast.update(toastId, {
+        tone: "success",
+        title: "Manual edits saved",
+        description:
+          "The AI attempt now uses your saved render profile as the retry baseline.",
+      });
+      returnToAISession(session.source);
+    } catch (err) {
+      const message = getApiErrorMessage(err, "Failed to save render profile");
+      setError(message);
+      onError?.(message);
+      toast.update(toastId, {
+        tone: "error",
+        title: "Failed to save render profile",
+        description: message,
+      });
+    }
+  };
+
+  const handleOpenGenerator = () => {
+    closeNativeForms();
+    generatorHistory.reset();
+    setIsAIGeneratorOpen(true);
+  };
+
+  const handleOpenDebugger = (profile: RenderProfile) => {
+    closeNativeForms();
+    debuggerHistory.reset();
+    setDebuggingProfile(profile);
+    setIsAIDebuggerOpen(true);
+  };
+
   if (loading) {
     return <div className="p-4 text-center">Loading profiles...</div>;
   }
@@ -233,14 +429,21 @@ export function RenderProfileEditor({
           </button>
           <button
             type="button"
-            onClick={() => setIsAIGeneratorOpen(true)}
+            onClick={handleOpenGenerator}
             disabled={aiUnavailable}
             title={aiUnavailableMessage ?? undefined}
             className={aiUnavailable ? "secondary" : undefined}
           >
             Generate with AI
           </button>
-          <button type="button" onClick={() => setIsCreating(true)}>
+          <button
+            type="button"
+            onClick={() => {
+              setManualEditSession(null);
+              setEditingProfile(null);
+              setIsCreating(true);
+            }}
+          >
             Create Profile
           </button>
         </div>
@@ -250,13 +453,44 @@ export function RenderProfileEditor({
         <AIUnavailableNotice message={aiUnavailableMessage} />
       ) : null}
 
-      {error && (
+      {error ? (
         <div className="error" role="alert">
           {error}
         </div>
-      )}
+      ) : null}
 
-      {profiles.length === 0 && !isCreating ? (
+      {manualEditSession ? (
+        <ProfileForm
+          key={`manual-${manualEditSession.source}-${manualEditSession.attemptId}`}
+          initialValue={manualEditSession.initialValue}
+          lockName={manualEditSession.mode === "edit"}
+          title={
+            manualEditSession.mode === "edit"
+              ? "Edit Profile from AI Session"
+              : "Create Profile from AI Session"
+          }
+          contextNotice={`You are editing Attempt ${manualEditSession.attemptId.replace("attempt-", "")} from the AI session. Saving marks that attempt as manually edited and keeps later attempts available when you return to AI.`}
+          cancelLabel="Back to AI session"
+          submitLabel={manualEditSession.mode === "edit" ? "Update" : "Create"}
+          onSubmit={(input) => {
+            void handleManualEditSubmit(manualEditSession, input);
+          }}
+          onCancel={() => returnToAISession(manualEditSession.source)}
+        />
+      ) : isCreating ? (
+        <ProfileForm
+          onSubmit={handleCreate}
+          onCancel={() => setIsCreating(false)}
+        />
+      ) : editingProfile ? (
+        <ProfileForm
+          profile={editingProfile}
+          onSubmit={(input) => handleUpdate(editingProfile.name, input)}
+          onCancel={() => setEditingProfile(null)}
+        />
+      ) : null}
+
+      {profiles.length === 0 && !isCreating && !manualEditSession ? (
         <ActionEmptyState
           eyebrow="Optional runtime override"
           title="No saved render profiles yet"
@@ -270,30 +504,19 @@ export function RenderProfileEditor({
         />
       ) : null}
 
-      {isCreating && (
-        <ProfileForm
-          onSubmit={handleCreate}
-          onCancel={() => setIsCreating(false)}
-        />
-      )}
-
-      {editingProfile && (
-        <ProfileForm
-          profile={editingProfile}
-          onSubmit={(input) => handleUpdate(editingProfile.name, input)}
-          onCancel={() => setEditingProfile(null)}
-        />
-      )}
-
-      {showJson && profiles.length > 0 && (
-        <div className="bg-gray-900 text-green-400 p-4 rounded overflow-auto max-h-96">
+      {showJson && profiles.length > 0 ? (
+        <div className="max-h-96 overflow-auto rounded bg-gray-900 p-4 text-green-400">
           <pre className="text-sm">{JSON.stringify(profiles, null, 2)}</pre>
         </div>
-      )}
+      ) : null}
 
       <AIRenderProfileGenerator
         isOpen={isAIGeneratorOpen}
         aiStatus={aiStatus}
+        history={generatorHistory}
+        onEditInSettings={(attempt) =>
+          openAttemptInSettings("generator", attempt)
+        }
         onClose={() => setIsAIGeneratorOpen(false)}
         onSaved={() => {
           void loadProfiles();
@@ -301,10 +524,17 @@ export function RenderProfileEditor({
       />
 
       <AIRenderProfileDebugger
-        isOpen={debuggingProfile !== null}
+        isOpen={isAIDebuggerOpen}
         aiStatus={aiStatus}
         profile={debuggingProfile}
-        onClose={() => setDebuggingProfile(null)}
+        history={debuggerHistory}
+        onEditInSettings={(attempt) =>
+          openAttemptInSettings("debugger", attempt)
+        }
+        onClose={() => {
+          setIsAIDebuggerOpen(false);
+          setDebuggingProfile(null);
+        }}
         onSaved={() => {
           void loadProfiles();
         }}
@@ -314,28 +544,28 @@ export function RenderProfileEditor({
         {profiles.map((profile) => (
           <div
             key={profile.name}
-            className="p-4 border rounded hover:bg-gray-50 flex justify-between items-start"
+            className="flex items-start justify-between rounded border p-4 hover:bg-gray-50"
           >
             <div>
               <h3 className="font-medium">{profile.name}</h3>
               <p className="text-sm text-gray-600">
                 Hosts: {profile.hostPatterns.join(", ")}
               </p>
-              {profile.forceEngine && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+              {profile.forceEngine ? (
+                <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                   {profile.forceEngine}
                 </span>
-              )}
+              ) : null}
             </div>
             <div className="space-x-2">
               <button
                 type="button"
-                onClick={() => setDebuggingProfile(profile)}
+                onClick={() => handleOpenDebugger(profile)}
                 disabled={aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
                 className={`text-sm ${
                   aiUnavailable
-                    ? "text-gray-400 cursor-not-allowed"
+                    ? "cursor-not-allowed text-gray-400"
                     : "text-purple-600 hover:underline"
                 }`}
               >
@@ -343,7 +573,11 @@ export function RenderProfileEditor({
               </button>
               <button
                 type="button"
-                onClick={() => setEditingProfile(profile)}
+                onClick={() => {
+                  setManualEditSession(null);
+                  setIsCreating(false);
+                  setEditingProfile(profile);
+                }}
                 className="text-sm text-blue-600 hover:underline"
               >
                 Edit
@@ -365,49 +599,143 @@ export function RenderProfileEditor({
 
 interface ProfileFormProps {
   profile?: RenderProfile;
+  initialValue?: RenderProfileInput;
+  lockName?: boolean;
+  title?: string;
+  contextNotice?: string;
+  cancelLabel?: string;
+  submitLabel?: string;
   onSubmit: (input: RenderProfileInput) => void;
   onCancel: () => void;
 }
 
-function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
-  const [formData, setFormData] = useState<RenderProfileInput>({
-    name: profile?.name || "",
-    hostPatterns: profile?.hostPatterns || [],
-    forceEngine: profile?.forceEngine,
-    preferHeadless: profile?.preferHeadless,
-    neverHeadless: profile?.neverHeadless,
-    assumeJsHeavy: profile?.assumeJsHeavy,
-    jsHeavyThreshold: profile?.jsHeavyThreshold,
-    rateLimitQPS: profile?.rateLimitQPS,
-    rateLimitBurst: profile?.rateLimitBurst,
-  });
+function ProfileForm({
+  profile,
+  initialValue,
+  lockName = false,
+  title,
+  contextNotice,
+  cancelLabel = "Cancel",
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: ProfileFormProps) {
+  const seed =
+    initialValue ??
+    (profile
+      ? toRenderProfileInput(profile)
+      : {
+          name: "",
+          hostPatterns: [],
+          forceEngine: undefined,
+          preferHeadless: undefined,
+          neverHeadless: undefined,
+          assumeJsHeavy: undefined,
+          jsHeavyThreshold: undefined,
+          rateLimitQPS: undefined,
+          rateLimitBurst: undefined,
+          block: undefined,
+          wait: undefined,
+          timeouts: undefined,
+          screenshot: undefined,
+          device: undefined,
+        });
 
+  const [formData, setFormData] = useState<RenderProfileInput>(seed);
   const [hostPatternInput, setHostPatternInput] = useState(
-    profile?.hostPatterns.join(", ") || "",
+    seed.hostPatterns.join(", "),
   );
+  const [jsHeavyThresholdInput, setJsHeavyThresholdInput] = useState(
+    seed.jsHeavyThreshold?.toString() || "",
+  );
+  const [rateLimitQPSInput, setRateLimitQPSInput] = useState(
+    seed.rateLimitQPS?.toString() || "",
+  );
+  const [rateLimitBurstInput, setRateLimitBurstInput] = useState(
+    seed.rateLimitBurst?.toString() || "",
+  );
+  const [waitJSON, setWaitJSON] = useState(stringifyOptionalJSON(seed.wait));
+  const [blockJSON, setBlockJSON] = useState(stringifyOptionalJSON(seed.block));
+  const [timeoutsJSON, setTimeoutsJSON] = useState(
+    stringifyOptionalJSON(seed.timeouts),
+  );
+  const [screenshotJSON, setScreenshotJSON] = useState(
+    stringifyOptionalJSON(seed.screenshot),
+  );
+  const [deviceJSON, setDeviceJSON] = useState(
+    stringifyOptionalJSON(seed.device),
+  );
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const patterns = hostPatternInput
-      .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-    onSubmit({ ...formData, hostPatterns: patterns });
+    setFormError(null);
+
+    try {
+      const patterns = hostPatternInput
+        .split(",")
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+
+      onSubmit({
+        ...formData,
+        hostPatterns: patterns,
+        jsHeavyThreshold: parseOptionalNumber(jsHeavyThresholdInput),
+        rateLimitQPS: parseOptionalNumber(rateLimitQPSInput),
+        rateLimitBurst: parseOptionalNumber(rateLimitBurstInput),
+        wait: parseOptionalJSON<RenderProfileInput["wait"]>(
+          "Wait configuration",
+          waitJSON,
+        ),
+        block: parseOptionalJSON<RenderProfileInput["block"]>(
+          "Block configuration",
+          blockJSON,
+        ),
+        timeouts: parseOptionalJSON<RenderProfileInput["timeouts"]>(
+          "Timeout configuration",
+          timeoutsJSON,
+        ),
+        screenshot: parseOptionalJSON<RenderProfileInput["screenshot"]>(
+          "Screenshot configuration",
+          screenshotJSON,
+        ),
+        device: parseOptionalJSON<RenderProfileInput["device"]>(
+          "Device configuration",
+          deviceJSON,
+        ),
+      });
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Invalid render profile input",
+      );
+    }
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 border rounded bg-gray-50 space-y-4"
+      className="space-y-4 rounded border bg-gray-50 p-4"
     >
       <h3 className="font-medium">
-        {profile ? "Edit Profile" : "Create New Profile"}
+        {title ?? (profile ? "Edit Profile" : "Create New Profile")}
       </h3>
+
+      {contextNotice ? (
+        <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
+          {contextNotice}
+        </div>
+      ) : null}
+
+      {formError ? (
+        <div className="error" role="alert">
+          {formError}
+        </div>
+      ) : null}
 
       <div>
         <label
           htmlFor="profile-name"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Name
         </label>
@@ -416,16 +744,16 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
           required
-          disabled={!!profile}
+          disabled={lockName || !!profile}
         />
       </div>
 
       <div>
         <label
           htmlFor="host-patterns"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Host Patterns (comma-separated)
         </label>
@@ -435,10 +763,10 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
           value={hostPatternInput}
           onChange={(e) => setHostPatternInput(e.target.value)}
           placeholder="example.com, *.example.com"
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
           required
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="mt-1 text-xs text-gray-500">
           Examples: example.com, *.example.com, *.api.example.com
         </p>
       </div>
@@ -446,7 +774,7 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
       <div>
         <label
           htmlFor="force-engine"
-          className="block text-sm font-medium mb-1"
+          className="mb-1 block text-sm font-medium"
         >
           Force Engine
         </label>
@@ -459,7 +787,7 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
               forceEngine: e.target.value as RenderProfileInput["forceEngine"],
             })
           }
-          className="w-full px-3 py-2 border rounded"
+          className="w-full rounded border px-3 py-2"
         >
           <option value="">Auto-detect</option>
           <option value="http">HTTP</option>
@@ -468,7 +796,7 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <label className="flex items-center space-x-2">
           <input
             type="checkbox"
@@ -503,21 +831,158 @@ function ProfileForm({ profile, onSubmit, onCancel }: ProfileFormProps) {
         </label>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <div>
+          <label
+            htmlFor="js-heavy-threshold"
+            className="mb-1 block text-sm font-medium"
+          >
+            JS-Heavy Threshold
+          </label>
+          <input
+            id="js-heavy-threshold"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            value={jsHeavyThresholdInput}
+            onChange={(e) => setJsHeavyThresholdInput(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            placeholder="0.50"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="rate-limit-qps"
+            className="mb-1 block text-sm font-medium"
+          >
+            Rate Limit QPS
+          </label>
+          <input
+            id="rate-limit-qps"
+            type="number"
+            min="0"
+            step="0.1"
+            value={rateLimitQPSInput}
+            onChange={(e) => setRateLimitQPSInput(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            placeholder="0 = global default"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="rate-limit-burst"
+            className="mb-1 block text-sm font-medium"
+          >
+            Rate Limit Burst
+          </label>
+          <input
+            id="rate-limit-burst"
+            type="number"
+            min="0"
+            step="1"
+            value={rateLimitBurstInput}
+            onChange={(e) => setRateLimitBurstInput(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            placeholder="0 = global default"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <JSONTextarea
+          id="render-profile-wait-json"
+          label="Wait configuration JSON"
+          value={waitJSON}
+          onChange={setWaitJSON}
+          placeholder={`{\n  "mode": "selector",\n  "selector": "main"\n}`}
+          helpText="Optional advanced wait configuration. Leave blank to omit."
+        />
+        <JSONTextarea
+          id="render-profile-block-json"
+          label="Block configuration JSON"
+          value={blockJSON}
+          onChange={setBlockJSON}
+          placeholder={`{\n  "resourceTypes": ["image", "font"],\n  "urlPatterns": ["*.tracker.com/*"]\n}`}
+          helpText="Optional request blocking rules. Leave blank to omit."
+        />
+        <JSONTextarea
+          id="render-profile-timeouts-json"
+          label="Timeout configuration JSON"
+          value={timeoutsJSON}
+          onChange={setTimeoutsJSON}
+          placeholder={`{\n  "maxRenderMs": 30000,\n  "navigationMs": 15000\n}`}
+          helpText="Optional per-profile timeout overrides. Leave blank to omit."
+        />
+        <JSONTextarea
+          id="render-profile-screenshot-json"
+          label="Screenshot configuration JSON"
+          value={screenshotJSON}
+          onChange={setScreenshotJSON}
+          placeholder={`{\n  "enabled": true,\n  "fullPage": true,\n  "format": "png"\n}`}
+          helpText="Optional screenshot capture defaults. Leave blank to omit."
+        />
+      </div>
+
+      <JSONTextarea
+        id="render-profile-device-json"
+        label="Device configuration JSON"
+        value={deviceJSON}
+        onChange={setDeviceJSON}
+        placeholder={`{\n  "name": "iPhone 14 Pro",\n  "viewportWidth": 393,\n  "viewportHeight": 852,\n  "deviceScaleFactor": 3,\n  "isMobile": true\n}`}
+        helpText="Optional device emulation. Leave blank to omit."
+      />
+
       <div className="flex justify-end space-x-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-100"
+          className="rounded border px-4 py-2 hover:bg-gray-100"
         >
-          Cancel
+          {cancelLabel}
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
-          {profile ? "Update" : "Create"}
+          {submitLabel ?? (profile ? "Update" : "Create")}
         </button>
       </div>
     </form>
+  );
+}
+
+interface JSONTextareaProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  helpText: string;
+}
+
+function JSONTextarea({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  helpText,
+}: JSONTextareaProps) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded border px-3 py-2 font-mono text-sm"
+        rows={8}
+      />
+      <p className="mt-1 text-xs text-gray-500">{helpText}</p>
+    </div>
   );
 }

@@ -272,7 +272,9 @@ describe("AIRenderProfileDebugger", () => {
         expect.objectContaining({
           body: expect.objectContaining({
             url: "https://example.com/app",
-            profile,
+            profile: expect.objectContaining({
+              wait: { mode: "selector", selector: "main" },
+            }),
             instructions: "Prefer #app-root over main",
             images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
             headless: true,

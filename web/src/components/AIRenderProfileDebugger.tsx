@@ -1,13 +1,12 @@
 /**
  * Purpose: Present the modal AI helper that debugs saved render profiles against representative pages.
- * Responsibilities: Collect bounded AI inputs, call the render-profile debug endpoint, retain full session attempt history, and save the operator-selected suggested profile.
+ * Responsibilities: Collect bounded AI inputs, call the render-profile debug endpoint, retain full session attempt history, hand selected attempts off to Settings, and save the operator-selected suggested profile.
  * Scope: Modal debugging flow for Settings render profiles only.
  * Usage: Mount from `RenderProfileEditor` when operators opt into AI-assisted tuning.
- * Invariants/Assumptions: Suggested profiles are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
+ * Invariants/Assumptions: Suggested profiles are never auto-saved, image attachments stay request-scoped, normal modal close resets the session, and retry/save always target the selected attempt when one exists.
  */
 
 import { useState } from "react";
-
 import {
   aiRenderProfileDebug,
   putV1RenderProfilesByName,
@@ -15,7 +14,11 @@ import {
   type ComponentStatus,
   type RenderProfile,
 } from "../api";
-import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import {
+  useAIAttemptHistory,
+  type AIAttempt,
+  type AIAttemptHistoryController,
+} from "../hooks/useAIAttemptHistory";
 import { toRenderProfileDebugAttempt } from "../lib/ai-authoring-attempts";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -32,6 +35,8 @@ interface AIRenderProfileDebuggerProps {
   profile: RenderProfile | null;
   onClose: () => void;
   onSaved: () => void;
+  history?: AIAttemptHistoryController<RenderProfile>;
+  onEditInSettings?: (attempt: AIAttempt<RenderProfile>) => void;
 }
 
 interface DebugState {
@@ -66,18 +71,22 @@ export function AIRenderProfileDebugger({
   profile,
   onClose,
   onSaved,
+  history: providedHistory,
+  onEditInSettings,
 }: AIRenderProfileDebuggerProps) {
   const [state, setState] = useState<DebugState>(createInitialState);
+  const ownedHistory = useAIAttemptHistory<RenderProfile>();
+  const history = providedHistory ?? ownedHistory;
   const aiCapability = describeAICapability(
     aiStatus,
     "Tune render profiles manually in Settings.",
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const history = useAIAttemptHistory<RenderProfile>();
   const activeAttempt = history.activeAttempt;
   const baselineAttempt = history.baselineAttempt;
   const latestAttempt = history.latestAttempt;
+  const effectiveProfile = activeAttempt?.artifact ?? profile;
 
   if (!isOpen || !profile) {
     return null;
@@ -103,6 +112,10 @@ export function AIRenderProfileDebugger({
       setState((prev) => ({ ...prev, error: "Please enter a valid URL" }));
       return;
     }
+    if (!effectiveProfile) {
+      setState((prev) => ({ ...prev, error: "A render profile is required" }));
+      return;
+    }
 
     const requestState = state;
 
@@ -117,7 +130,7 @@ export function AIRenderProfileDebugger({
         baseUrl: getApiBaseUrl(),
         body: {
           url: requestState.url.trim(),
-          profile,
+          profile: effectiveProfile,
           ...(requestState.instructions.trim()
             ? { instructions: requestState.instructions.trim() }
             : {}),
@@ -158,7 +171,7 @@ export function AIRenderProfileDebugger({
   };
 
   const handleRetry = () => {
-    if (!latestAttempt || aiUnavailable) {
+    if (history.attempts.length === 0 || aiUnavailable) {
       return;
     }
     void handleDebug();
@@ -231,12 +244,23 @@ export function AIRenderProfileDebugger({
           >
             <div className="rounded-md border border-slate-700 bg-slate-900/60 p-4">
               <h3 className="mb-2 text-sm font-medium text-slate-200">
-                Current render profile
+                Current render profile baseline
               </h3>
-              <p className="text-sm text-slate-400">
-                Tuning <code>{profile.name}</code> for hosts{" "}
-                {profile.hostPatterns.join(", ")}
-              </p>
+              {activeAttempt?.artifact ? (
+                <p className="text-sm text-slate-400">
+                  Retrying from Attempt {activeAttempt.ordinal}
+                  {activeAttempt.manualEdit.edited
+                    ? " (manually edited in Settings)"
+                    : ""}
+                  . The last saved profile stays untouched until you choose
+                  Save.
+                </p>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Tuning <code>{profile.name}</code> for hosts{" "}
+                  {profile.hostPatterns.join(", ")}
+                </p>
+              )}
             </div>
 
             <div className="form-group">
@@ -364,6 +388,7 @@ export function AIRenderProfileDebugger({
                   error: null,
                 }))
               }
+              onEditInSettings={onEditInSettings}
             />
 
             {baselineAttempt ? (
@@ -381,6 +406,7 @@ export function AIRenderProfileDebugger({
                 resolvedGoal={baselineAttempt.resolvedGoal}
                 explanation={baselineAttempt.explanation}
                 rawResponse={baselineAttempt.rawResponse}
+                manualEdit={baselineAttempt.manualEdit}
                 muted
               >
                 {baselineAttempt.artifact ? (
@@ -412,6 +438,7 @@ export function AIRenderProfileDebugger({
                 resolvedGoal={activeAttempt.resolvedGoal}
                 explanation={activeAttempt.explanation}
                 rawResponse={activeAttempt.rawResponse}
+                manualEdit={activeAttempt.manualEdit}
               >
                 {activeAttempt.artifact ? (
                   <AICandidateDiffView

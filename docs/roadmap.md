@@ -16,12 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Editor Handoff and Round-Trip Editing
-   - Let operators open the currently selected render-profile or pipeline-JS attempt directly in the native Settings editor without losing the in-session AI attempt history.
-   - Preserve the selected attempt as the editable baseline so manual changes are visibly distinct from the last AI candidate, not silently flattened into a save.
-   - Support a round trip back into the AI modal so operators can keep retrying from their manually edited candidate instead of restarting from the saved artifact.
-   - Keep the workflow consistent across generator and debugger modals, including clear copy for when the editable candidate differs from the last saved profile or script.
-   - Add tests for opening an older selected attempt in the editor, keeping later AI attempts in history after manual edits, and resuming retries from the manually adjusted candidate.
+1. AI Automation Session Reset and Saved-vs-Working State Clarity
+   - Add explicit reset-session controls in all four AI automation modals so operators can intentionally start fresh instead of relying on cancel/close semantics.
+   - Surface saved-vs-working status everywhere the selected AI candidate differs from the last persisted profile or script, including older-attempt restores and manual-edit round trips.
+   - Make Save and Back-to-AI copy unambiguous about whether operators are writing the selected working candidate or the last saved artifact.
+   - Add focused workflow tests for abandoning a handoff, resetting an AI session after multiple attempts, and recovering cleanly from save failures without losing the working candidate.
 
 ## Ongoing Constraints
 

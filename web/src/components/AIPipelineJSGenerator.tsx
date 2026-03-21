@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator guidance and sample pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, retain full session attempt history, and save the operator-selected attempt.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, retain full session attempt history, hand selected attempts off to Settings, and save the operator-selected attempt.
  * Scope: Modal generation flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted authoring.
- * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
+ * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, normal modal close resets the session, and save always targets the selected attempt.
  */
 
 import { useState } from "react";
@@ -14,8 +14,13 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
-import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import {
+  useAIAttemptHistory,
+  type AIAttempt,
+  type AIAttemptHistoryController,
+} from "../hooks/useAIAttemptHistory";
 import { toPipelineJsGenerateAttempt } from "../lib/ai-authoring-attempts";
+import { buildManualEditContinuationGuidance } from "../lib/ai-authoring-roundtrip";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
@@ -30,6 +35,8 @@ interface AIPipelineJSGeneratorProps {
   aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
+  history?: AIAttemptHistoryController<JsTargetScript>;
+  onEditInSettings?: (attempt: AIAttempt<JsTargetScript>) => void;
 }
 
 interface GeneratorState {
@@ -65,8 +72,12 @@ export function AIPipelineJSGenerator({
   aiStatus = null,
   onClose,
   onSaved,
+  history: providedHistory,
+  onEditInSettings,
 }: AIPipelineJSGeneratorProps) {
   const [state, setState] = useState<GeneratorState>(INITIAL_STATE);
+  const ownedHistory = useAIAttemptHistory<JsTargetScript>();
+  const history = providedHistory ?? ownedHistory;
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -74,18 +85,13 @@ export function AIPipelineJSGenerator({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const history = useAIAttemptHistory<JsTargetScript>();
   const activeAttempt = history.activeAttempt;
   const baselineAttempt = history.baselineAttempt;
   const latestAttempt = history.latestAttempt;
 
-  const resetState = () => {
+  const handleClose = () => {
     setState(INITIAL_STATE);
     history.reset();
-  };
-
-  const handleClose = () => {
-    resetState();
     onClose();
   };
 
@@ -124,6 +130,13 @@ export function AIPipelineJSGenerator({
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean);
+      const continuationInstructions = buildManualEditContinuationGuidance({
+        operatorInstructions: requestState.instructions,
+        artifact: activeAttempt?.manualEdit.edited
+          ? activeAttempt.artifact
+          : null,
+        artifactLabel: "pipeline JS script",
+      });
 
       const { data, error } = await aiPipelineJsGenerate({
         baseUrl: getApiBaseUrl(),
@@ -133,8 +146,8 @@ export function AIPipelineJSGenerator({
             ? { name: requestState.name.trim() }
             : {}),
           ...(hostPatterns.length > 0 ? { host_patterns: hostPatterns } : {}),
-          ...(requestState.instructions.trim()
-            ? { instructions: requestState.instructions.trim() }
+          ...(continuationInstructions
+            ? { instructions: continuationInstructions }
             : {}),
           ...(requestState.images.length > 0
             ? { images: toAIImagePayloads(requestState.images) }
@@ -175,7 +188,7 @@ export function AIPipelineJSGenerator({
   };
 
   const handleRetry = () => {
-    if (!latestAttempt || aiUnavailable) {
+    if (history.attempts.length === 0 || aiUnavailable) {
       return;
     }
     void handleGenerate();
@@ -227,7 +240,7 @@ export function AIPipelineJSGenerator({
       >
         <div className="modal-header">
           <h2 className="modal-title">
-            <span className="text-purple-400 mr-2">✨</span>
+            <span className="mr-2 text-purple-400">✨</span>
             Generate Pipeline JS with AI
           </h2>
           <button
@@ -330,6 +343,13 @@ export function AIPipelineJSGenerator({
               />
             </div>
 
+            {activeAttempt?.manualEdit.edited ? (
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+                Retry will continue from Attempt {activeAttempt.ordinal}'s
+                manually edited script instead of starting from scratch.
+              </div>
+            ) : null}
+
             <AIImageAttachments
               images={state.images}
               onChange={(images) => setState((prev) => ({ ...prev, images }))}
@@ -404,6 +424,7 @@ export function AIPipelineJSGenerator({
                   error: null,
                 }))
               }
+              onEditInSettings={onEditInSettings}
             />
 
             {baselineAttempt ? (
@@ -417,6 +438,7 @@ export function AIPipelineJSGenerator({
                 resolvedGoal={baselineAttempt.resolvedGoal}
                 explanation={baselineAttempt.explanation}
                 rawResponse={baselineAttempt.rawResponse}
+                manualEdit={baselineAttempt.manualEdit}
                 muted
               >
                 {baselineAttempt.artifact ? (
@@ -444,6 +466,7 @@ export function AIPipelineJSGenerator({
                 resolvedGoal={activeAttempt.resolvedGoal}
                 explanation={activeAttempt.explanation}
                 rawResponse={activeAttempt.rawResponse}
+                manualEdit={activeAttempt.manualEdit}
               >
                 {activeAttempt.artifact ? (
                   <AICandidateDiffView

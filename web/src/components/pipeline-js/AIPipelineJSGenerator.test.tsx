@@ -1,6 +1,6 @@
 /**
- * Purpose: Verify the AI pipeline-JS generator modal request, retry, and save flows.
- * Responsibilities: Assert guided and instructionless submissions, resolved-goal rendering, retry preservation, and save handoff behavior.
+ * Purpose: Verify the AI pipeline-JS generator modal request, retry, save, and Settings handoff flows.
+ * Responsibilities: Assert guided and instructionless submissions, resolved-goal rendering, retry preservation, and older-attempt handoff behavior.
  * Scope: `AIPipelineJSGenerator` tests only.
  * Usage: Run with `pnpm --dir web test`.
  * Invariants/Assumptions: URL remains required, retry keeps request-scoped inputs intact, and generated scripts are only persisted after explicit save.
@@ -397,5 +397,99 @@ describe("AIPipelineJSGenerator", () => {
         }),
       });
     });
+  });
+
+  it("hands off an older attempt to Settings without losing the visible AI session", async () => {
+    vi.mocked(api.aiPipelineJsGenerate)
+      .mockResolvedValueOnce({
+        data: {
+          script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["main"],
+          },
+          resolved_goal: {
+            source: "derived",
+            text: "Derived pipeline goal v1",
+          },
+          route_id: "route-1",
+        },
+        request: new Request(
+          "http://localhost:8741/v1/ai/pipeline-js-generate",
+        ),
+        response: new Response(),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["#app-root"],
+          },
+          resolved_goal: {
+            source: "explicit",
+            text: "Use the visible app shell",
+          },
+          route_id: "route-2",
+        },
+        request: new Request(
+          "http://localhost:8741/v1/ai/pipeline-js-generate",
+        ),
+        response: new Response(),
+      });
+
+    const onEditInSettings = vi.fn();
+
+    render(
+      <AIPipelineJSGenerator
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        onEditInSettings={onEditInSettings}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/^script name$/i), {
+      target: { value: "example-app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
+
+    const instructions = screen.getByLabelText(/instructions/i);
+    await waitFor(() => {
+      expect(instructions).toHaveValue("Derived pipeline goal v1");
+    });
+
+    fireEvent.change(instructions, {
+      target: { value: "Use the visible app shell" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /retry with changes/i }),
+    );
+
+    const history = await screen.findByRole("region", {
+      name: /attempt history/i,
+    });
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    expect(onEditInSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "attempt-1",
+        ordinal: 1,
+        artifact: expect.objectContaining({
+          name: "example-app",
+          selectors: ["main"],
+        }),
+      }),
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,9 +1,9 @@
 /**
- * Purpose: Render full AI attempt history with explicit selection, baseline, and restore actions.
+ * Purpose: Render full AI attempt history with explicit selection, baseline, restore, and native-editor handoff actions.
  * Responsibilities: Show every attempt in the current modal session and provide a consistent control surface across all AI authoring modals.
  * Scope: Shared presentation for AI generator/debugger history only.
  * Usage: Mount above the candidate panels and wire it to `useAIAttemptHistory`.
- * Invariants/Assumptions: Attempts render newest-first, the selected attempt drives save behavior, and only older attempts can become the active baseline.
+ * Invariants/Assumptions: Attempts render newest-first, the selected attempt drives save and retry behavior, and only older attempts can become the active baseline.
  */
 
 import type { AIAttempt } from "../hooks/useAIAttemptHistory";
@@ -15,6 +15,7 @@ interface AIAttemptHistoryListProps<TArtifact> {
   onSelectAttempt: (attemptId: string) => void;
   onSelectBaseline: (attemptId: string) => void;
   onRestoreGuidance: (attempt: AIAttempt<TArtifact>) => void;
+  onEditInSettings?: (attempt: AIAttempt<TArtifact>) => void;
 }
 
 export function AIAttemptHistoryList<TArtifact>({
@@ -24,6 +25,7 @@ export function AIAttemptHistoryList<TArtifact>({
   onSelectAttempt,
   onSelectBaseline,
   onRestoreGuidance,
+  onEditInSettings,
 }: AIAttemptHistoryListProps<TArtifact>) {
   const activeAttempt =
     attempts.find((attempt) => attempt.id === activeAttemptId) ?? null;
@@ -81,6 +83,11 @@ export function AIAttemptHistoryList<TArtifact>({
                           Baseline
                         </span>
                       ) : null}
+                      {attempt.manualEdit.edited ? (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] text-emerald-200">
+                          Manually edited
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="text-xs text-slate-400">
@@ -126,6 +133,18 @@ export function AIAttemptHistoryList<TArtifact>({
                     >
                       Restore guidance
                     </button>
+
+                    {onEditInSettings ? (
+                      <button
+                        type="button"
+                        className="button-secondary"
+                        aria-label={`Edit attempt ${attempt.ordinal} in Settings`}
+                        onClick={() => onEditInSettings(attempt)}
+                        disabled={!attempt.artifact}
+                      >
+                        Edit in Settings
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </section>

@@ -1,14 +1,16 @@
 /**
  * Purpose: Render a consistent comparison panel for AI authoring attempts.
- * Responsibilities: Show attempt labels, request metadata, diagnostics, resolved goals, explanations, operator-controlled response JSON, and caller-supplied artifact previews.
+ * Responsibilities: Show attempt labels, request metadata, diagnostics, resolved goals, explanations, manual-edit trust signals, operator-controlled response JSON, and caller-supplied artifact previews.
  * Scope: Shared Web UI presentation for AI automation generator and debugger results.
  * Usage: Mount for selected and baseline candidates inside AI authoring modals.
  * Invariants/Assumptions: The caller owns artifact-specific preview markup, and raw-response inspection must remain operator-controlled.
  */
 
 import { useState, type ReactNode } from "react";
-import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
 import type { ResolvedGoal } from "../api";
+import { formatDateTime } from "../lib/formatting";
+import type { AIAttemptManualEdit } from "../hooks/useAIAttemptHistory";
+import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
 
 interface AIAuthoringAttemptPanelProps {
   label: string;
@@ -23,6 +25,7 @@ interface AIAuthoringAttemptPanelProps {
   resolvedGoal?: ResolvedGoal | null;
   explanation?: string;
   rawResponse?: unknown;
+  manualEdit?: AIAttemptManualEdit;
   muted?: boolean;
   children?: ReactNode;
 }
@@ -40,6 +43,7 @@ export function AIAuthoringAttemptPanel({
   resolvedGoal,
   explanation,
   rawResponse,
+  manualEdit,
   muted = false,
   children,
 }: AIAuthoringAttemptPanelProps) {
@@ -83,6 +87,17 @@ export function AIAuthoringAttemptPanel({
           {visualContextUsed ? <span>Visual context used</span> : null}
         </div>
       </div>
+
+      {manualEdit?.edited ? (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+          Manually edited in Settings
+          {manualEdit.updatedAt
+            ? ` · ${formatDateTime(manualEdit.updatedAt)}`
+            : ""}
+          . Artifact preview reflects the saved manual version. Response JSON
+          below remains the original AI response.
+        </div>
+      ) : null}
 
       {issues.length > 0 ? (
         <div>
