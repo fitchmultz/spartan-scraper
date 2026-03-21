@@ -1,11 +1,17 @@
 /**
- * Purpose: Verify the AI pipeline-JS debugger modal request, transparency, and save flows.
- * Responsibilities: Assert tuning payload shaping, resolved-goal rendering, and save handoff behavior.
+ * Purpose: Verify the AI pipeline-JS debugger modal request, retry, transparency, and save flows.
+ * Responsibilities: Assert tuning payload shaping, resolved-goal rendering, retry preservation, and save handoff behavior.
  * Scope: `AIPipelineJSDebugger` tests only.
  * Usage: Run with `pnpm --dir web test`.
- * Invariants/Assumptions: Tuning results must expose the resolved AI goal before operators choose to save.
+ * Invariants/Assumptions: Tuning results must expose the resolved AI goal before operators choose to save, and retry must preserve request-scoped inputs.
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
@@ -98,13 +104,21 @@ describe("AIPipelineJSDebugger", () => {
       });
     });
 
-    expect(screen.getByText(/detected issues/i)).toBeInTheDocument();
+    const latestCandidate = await screen.findByRole("region", {
+      name: /latest candidate/i,
+    });
     expect(
-      screen.getByText(/selectors\[0\] matched no elements/i),
+      within(latestCandidate).getByText(/detected issues/i),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Explicit")).toBeInTheDocument();
     expect(
-      screen.getByText(
+      within(latestCandidate).getByText(/selectors\[0\] matched no elements/i),
+    ).toBeInTheDocument();
+    const resolvedGoal = within(latestCandidate).getByRole("region", {
+      name: /resolved goal/i,
+    });
+    expect(within(resolvedGoal).getByText("Explicit")).toBeInTheDocument();
+    expect(
+      within(resolvedGoal).getByText(
         /operator guidance: prefer selector waits over custom javascript/i,
       ),
     ).toBeInTheDocument();
@@ -130,44 +144,170 @@ describe("AIPipelineJSDebugger", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a system-derived resolved goal when no tuning guidance is supplied", async () => {
-    vi.mocked(api.aiPipelineJsDebug).mockResolvedValue({
-      data: {
-        issues: ["selectors[0] matched no elements"],
-        resolved_goal: {
-          source: "derived",
-          text: 'Tune the pipeline JS script named "example-app" for the supplied page while preserving its purpose and keeping changes minimal, deterministic, and operationally useful.',
+  it("retries script debugging with preserved request-scoped state and clean metadata replacement", async () => {
+    vi.mocked(api.aiPipelineJsDebug)
+      .mockResolvedValueOnce({
+        data: {
+          issues: ["selectors[0] matched no elements"],
+          resolved_goal: { source: "derived", text: "Derived tuning goal v1" },
+          suggested_script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["main"],
+          },
+          route_id: "route-1",
+          provider: "openai",
+          model: "gpt-5.4",
+          visual_context_used: true,
         },
-        suggested_script: {
-          name: "example-app",
-          hostPatterns: ["example.com"],
-          selectors: ["main"],
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+        response: new Response(),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          issues: ["selector verified"],
+          resolved_goal: {
+            source: "explicit",
+            text: "Prefer #app-root over main",
+          },
+          suggested_script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["#app-root"],
+          },
+          route_id: "route-2",
+          provider: "anthropic",
+          model: "claude-sonnet-4-5",
         },
-      },
-      error: undefined,
-      request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
-      response: new Response(),
-    });
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+        response: new Response(),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          issues: ["script stabilized"],
+          resolved_goal: {
+            source: "explicit",
+            text: "Wait for #app-root",
+          },
+          suggested_script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["#app-root"],
+            postNav: "window.scrollTo(0, 0);",
+          },
+          route_id: "route-3",
+          provider: "openai",
+          model: "gpt-5.4",
+        },
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+        response: new Response(),
+      });
 
     render(
       <AIPipelineJSDebugger
         isOpen={true}
         script={script}
-        onClose={onClose}
-        onSaved={onSaved}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
       />,
     );
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
     });
+    const image = new File(["fake"], "debug-script.png", {
+      type: "image/png",
+    });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("debug-script.png");
+    fireEvent.click(screen.getByLabelText(/use headless browser/i));
+    fireEvent.click(screen.getByLabelText(/use playwright/i));
+    fireEvent.click(screen.getByLabelText(/include screenshot context/i));
     fireEvent.click(screen.getByRole("button", { name: /tune script/i }));
 
-    expect(await screen.findByText("System-derived")).toBeInTheDocument();
+    const instructions = screen.getByLabelText(/tuning instructions/i);
+    await waitFor(() => {
+      expect(instructions).toHaveValue("Derived tuning goal v1");
+    });
+
+    fireEvent.change(instructions, {
+      target: { value: "Prefer #app-root over main" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /retry with changes/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.aiPipelineJsDebug).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          body: expect.objectContaining({
+            url: "https://example.com/app",
+            script,
+            instructions: "Prefer #app-root over main",
+            images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
+            headless: true,
+            playwright: true,
+            visual: true,
+          }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(instructions).toHaveValue("Prefer #app-root over main");
+    });
+
+    const previousCandidate = await screen.findByRole("region", {
+      name: /previous candidate/i,
+    });
+    const latestCandidate = await screen.findByRole("region", {
+      name: /latest candidate/i,
+    });
     expect(
-      screen.getByText(
-        'Tune the pipeline JS script named "example-app" for the supplied page while preserving its purpose and keeping changes minimal, deterministic, and operationally useful.',
-      ),
+      within(previousCandidate).getByText(/route: route-1/i),
+    ).toBeInTheDocument();
+    expect(
+      within(latestCandidate).getByText(/route: route-2/i),
+    ).toBeInTheDocument();
+
+    fireEvent.change(instructions, {
+      target: { value: "Wait for #app-root" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /retry with changes/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.aiPipelineJsDebug).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          body: expect.objectContaining({
+            instructions: "Wait for #app-root",
+            images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
+            headless: true,
+            playwright: true,
+            visual: true,
+          }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(instructions).toHaveValue("Wait for #app-root");
+    });
+
+    expect(
+      within(previousCandidate).queryByText(/route: route-1/i),
+    ).not.toBeInTheDocument();
+    expect(
+      within(previousCandidate).getByText(/route: route-2/i),
+    ).toBeInTheDocument();
+    expect(
+      within(latestCandidate).getByText(/route: route-3/i),
     ).toBeInTheDocument();
   });
 });

@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that debugs saved pipeline JavaScript scripts against representative pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, surface diagnostics and suggestions, and require explicit save confirmation.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, preserve retry context, and require explicit save confirmation.
  * Scope: Modal debugging flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted tuning.
- * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, and AI-unavailable states must remain self-explanatory.
+ * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, and retrying must preserve operator inputs.
  */
 
 import { useState } from "react";
@@ -15,8 +15,8 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
+import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AIImageAttachments } from "./AIImageAttachments";
-import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -41,6 +41,7 @@ interface DebugState {
   isSaving: boolean;
   error: string | null;
   result: AiPipelineJsDebugResponse | null;
+  previousResult: AiPipelineJsDebugResponse | null;
 }
 
 function createInitialState(): DebugState {
@@ -55,6 +56,7 @@ function createInitialState(): DebugState {
     isSaving: false,
     error: null,
     result: null,
+    previousResult: null,
   };
 }
 
@@ -82,7 +84,9 @@ export function AIPipelineJSDebugger({
     onClose();
   };
 
-  const handleDebug = async () => {
+  const handleDebug = async (options?: {
+    preserveCurrentAsPrevious?: boolean;
+  }) => {
     if (aiUnavailable) {
       return;
     }
@@ -97,28 +101,34 @@ export function AIPipelineJSDebugger({
       return;
     }
 
+    const requestState = state;
+    const nextPreviousResult = options?.preserveCurrentAsPrevious
+      ? requestState.result
+      : requestState.previousResult;
+
     setState((prev) => ({
       ...prev,
       isLoading: true,
       error: null,
-      result: null,
     }));
 
     try {
       const { data, error } = await aiPipelineJsDebug({
         baseUrl: getApiBaseUrl(),
         body: {
-          url: state.url.trim(),
+          url: requestState.url.trim(),
           script,
-          ...(state.instructions.trim()
-            ? { instructions: state.instructions.trim() }
+          ...(requestState.instructions.trim()
+            ? { instructions: requestState.instructions.trim() }
             : {}),
-          ...(state.images.length > 0
-            ? { images: toAIImagePayloads(state.images) }
+          ...(requestState.images.length > 0
+            ? { images: toAIImagePayloads(requestState.images) }
             : {}),
-          headless: state.headless,
-          ...(state.headless ? { playwright: state.playwright } : {}),
-          visual: state.visual,
+          headless: requestState.headless,
+          ...(requestState.headless
+            ? { playwright: requestState.playwright }
+            : {}),
+          visual: requestState.visual,
         },
       });
       if (error) {
@@ -126,10 +136,13 @@ export function AIPipelineJSDebugger({
           getApiErrorMessage(error, "Failed to debug pipeline JS script"),
         );
       }
+      const nextResult = (data as AiPipelineJsDebugResponse) ?? null;
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        result: (data as AiPipelineJsDebugResponse) ?? null,
+        instructions: nextResult?.resolved_goal?.text ?? prev.instructions,
+        result: nextResult,
+        previousResult: nextPreviousResult,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -141,6 +154,13 @@ export function AIPipelineJSDebugger({
             : "Failed to debug pipeline JS script",
       }));
     }
+  };
+
+  const handleRetry = () => {
+    if (!state.result || aiUnavailable) {
+      return;
+    }
+    void handleDebug({ preserveCurrentAsPrevious: true });
   };
 
   const handleSave = async () => {
@@ -327,64 +347,53 @@ export function AIPipelineJSDebugger({
               </div>
             ) : null}
 
+            {state.previousResult ? (
+              <AIAuthoringAttemptPanel
+                label="Previous candidate"
+                routeId={state.previousResult.route_id}
+                provider={state.previousResult.provider}
+                model={state.previousResult.model}
+                visualContextUsed={state.previousResult.visual_context_used}
+                recheckStatus={state.previousResult.recheck_status}
+                recheckEngine={state.previousResult.recheck_engine}
+                recheckError={state.previousResult.recheck_error}
+                issues={state.previousResult.issues}
+                resolvedGoal={state.previousResult.resolved_goal}
+                explanation={state.previousResult.explanation}
+                muted
+              >
+                {state.previousResult.suggested_script ? (
+                  <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
+                    {JSON.stringify(
+                      state.previousResult.suggested_script,
+                      null,
+                      2,
+                    )}
+                  </pre>
+                ) : null}
+              </AIAuthoringAttemptPanel>
+            ) : null}
+
             {state.result ? (
-              <div className="space-y-4 rounded-md border border-slate-700 bg-slate-900/60 p-4">
-                <div className="space-y-2 text-sm text-slate-300">
-                  {state.result.recheck_status ? (
-                    <div>
-                      <span className="font-medium text-slate-100">
-                        Recheck:
-                      </span>{" "}
-                      HTTP {state.result.recheck_status}
-                      {state.result.recheck_engine
-                        ? ` via ${state.result.recheck_engine}`
-                        : ""}
-                    </div>
-                  ) : null}
-                  {state.result.recheck_error ? (
-                    <div>{state.result.recheck_error}</div>
-                  ) : null}
-                  {state.result.route_id ? (
-                    <div>Route: {state.result.route_id}</div>
-                  ) : null}
-                  {state.result.provider ? (
-                    <div>Provider: {state.result.provider}</div>
-                  ) : null}
-                  {state.result.model ? (
-                    <div>Model: {state.result.model}</div>
-                  ) : null}
-                  {state.result.visual_context_used ? (
-                    <div>Used screenshot context</div>
-                  ) : null}
-                </div>
-
-                {state.result.issues?.length ? (
-                  <div>
-                    <h3 className="mb-2 text-sm font-medium text-slate-100">
-                      Detected issues
-                    </h3>
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-slate-300">
-                      {state.result.issues.map((issue) => (
-                        <li key={issue}>{issue}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-
-                <AIResolvedGoalCard resolvedGoal={state.result.resolved_goal} />
-
-                {state.result.explanation ? (
-                  <p className="text-sm text-slate-200">
-                    {state.result.explanation}
-                  </p>
-                ) : null}
-
+              <AIAuthoringAttemptPanel
+                label="Latest candidate"
+                routeId={state.result.route_id}
+                provider={state.result.provider}
+                model={state.result.model}
+                visualContextUsed={state.result.visual_context_used}
+                recheckStatus={state.result.recheck_status}
+                recheckEngine={state.result.recheck_engine}
+                recheckError={state.result.recheck_error}
+                issues={state.result.issues}
+                resolvedGoal={state.result.resolved_goal}
+                explanation={state.result.explanation}
+              >
                 {state.result.suggested_script ? (
                   <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
                     {JSON.stringify(state.result.suggested_script, null, 2)}
                   </pre>
                 ) : null}
-              </div>
+              </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>
 
@@ -396,21 +405,36 @@ export function AIPipelineJSDebugger({
             >
               Cancel
             </button>
-            {state.result?.suggested_script ? (
-              <button
-                type="button"
-                className="button-primary"
-                onClick={handleSave}
-                disabled={state.isSaving || aiUnavailable}
-                title={aiUnavailableMessage ?? undefined}
-              >
-                {state.isSaving ? "Saving..." : "Save tuned script"}
-              </button>
+            {state.result ? (
+              <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={handleRetry}
+                  disabled={state.isLoading || state.isSaving || aiUnavailable}
+                  title={aiUnavailableMessage ?? undefined}
+                >
+                  {state.isLoading ? "Retrying..." : "Retry with changes"}
+                </button>
+                {state.result.suggested_script ? (
+                  <button
+                    type="button"
+                    className="button-primary"
+                    onClick={handleSave}
+                    disabled={
+                      state.isLoading || state.isSaving || aiUnavailable
+                    }
+                    title={aiUnavailableMessage ?? undefined}
+                  >
+                    {state.isSaving ? "Saving..." : "Save tuned script"}
+                  </button>
+                ) : null}
+              </>
             ) : (
               <button
                 type="button"
                 className="button-primary"
-                onClick={handleDebug}
+                onClick={() => void handleDebug()}
                 disabled={state.isLoading || state.isSaving || aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
               >

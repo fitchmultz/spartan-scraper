@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator guidance and sample pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, surface generated script details, and require explicit save confirmation.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, preserve retry context, and require explicit save confirmation.
  * Scope: Modal generation flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted authoring.
- * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, and AI-unavailable states must remain self-explanatory.
+ * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, and retrying must preserve operator inputs.
  */
 
 import { useState } from "react";
@@ -15,8 +15,8 @@ import {
   type JsTargetScript,
   type ResolvedGoal,
 } from "../api";
+import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AIImageAttachments } from "./AIImageAttachments";
-import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -27,6 +27,16 @@ interface AIPipelineJSGeneratorProps {
   aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
+}
+
+interface PipelineJSAttempt {
+  script: JsTargetScript;
+  resolvedGoal: ResolvedGoal | null;
+  explanation: string;
+  routeId: string;
+  provider: string;
+  model: string;
+  visualContextUsed: boolean;
 }
 
 interface GeneratorState {
@@ -46,6 +56,7 @@ interface GeneratorState {
   provider: string;
   model: string;
   visualContextUsed: boolean;
+  previousResult: PipelineJSAttempt | null;
   isSaving: boolean;
   error: string | null;
 }
@@ -67,9 +78,46 @@ const INITIAL_STATE: GeneratorState = {
   provider: "",
   model: "",
   visualContextUsed: false,
+  previousResult: null,
   isSaving: false,
   error: null,
 };
+
+function buildPipelineJSAttempt(
+  response: AiPipelineJsGenerateResponse,
+): PipelineJSAttempt {
+  if (!response.script) {
+    throw new Error("No pipeline JS script was generated. Please try again.");
+  }
+
+  return {
+    script: response.script,
+    resolvedGoal: response.resolved_goal ?? null,
+    explanation: response.explanation || "",
+    routeId: response.route_id || "",
+    provider: response.provider || "",
+    model: response.model || "",
+    visualContextUsed: response.visual_context_used || false,
+  };
+}
+
+function getCurrentPipelineJSAttempt(
+  state: GeneratorState,
+): PipelineJSAttempt | null {
+  if (!state.generatedScript) {
+    return null;
+  }
+
+  return {
+    script: state.generatedScript,
+    resolvedGoal: state.resolvedGoal,
+    explanation: state.explanation,
+    routeId: state.routeId,
+    provider: state.provider,
+    model: state.model,
+    visualContextUsed: state.visualContextUsed,
+  };
+}
 
 export function AIPipelineJSGenerator({
   isOpen,
@@ -85,6 +133,7 @@ export function AIPipelineJSGenerator({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
+  const latestAttempt = getCurrentPipelineJSAttempt(state);
   const resetState = () => setState(INITIAL_STATE);
 
   const handleClose = () => {
@@ -104,7 +153,9 @@ export function AIPipelineJSGenerator({
     return null;
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (options?: {
+    preserveCurrentAsPrevious?: boolean;
+  }) => {
     if (aiUnavailable) {
       return;
     }
@@ -114,21 +165,19 @@ export function AIPipelineJSGenerator({
       return;
     }
 
+    const requestState = state;
+    const nextPreviousResult = options?.preserveCurrentAsPrevious
+      ? getCurrentPipelineJSAttempt(requestState)
+      : requestState.previousResult;
+
     setState((prev) => ({
       ...prev,
       isGenerating: true,
-      generatedScript: null,
-      resolvedGoal: null,
-      explanation: "",
-      routeId: "",
-      provider: "",
-      model: "",
-      visualContextUsed: false,
       error: null,
     }));
 
     try {
-      const hostPatterns = state.hostPatterns
+      const hostPatterns = requestState.hostPatterns
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean);
@@ -136,18 +185,22 @@ export function AIPipelineJSGenerator({
       const { data, error } = await aiPipelineJsGenerate({
         baseUrl: getApiBaseUrl(),
         body: {
-          url: state.url,
-          ...(state.name.trim() ? { name: state.name.trim() } : {}),
+          url: requestState.url,
+          ...(requestState.name.trim()
+            ? { name: requestState.name.trim() }
+            : {}),
           ...(hostPatterns.length > 0 ? { host_patterns: hostPatterns } : {}),
-          ...(state.instructions.trim()
-            ? { instructions: state.instructions.trim() }
+          ...(requestState.instructions.trim()
+            ? { instructions: requestState.instructions.trim() }
             : {}),
-          ...(state.images.length > 0
-            ? { images: toAIImagePayloads(state.images) }
+          ...(requestState.images.length > 0
+            ? { images: toAIImagePayloads(requestState.images) }
             : {}),
-          headless: state.headless,
-          ...(state.headless ? { playwright: state.playwright } : {}),
-          visual: state.visual,
+          headless: requestState.headless,
+          ...(requestState.headless
+            ? { playwright: requestState.playwright }
+            : {}),
+          visual: requestState.visual,
         },
       });
       if (error) {
@@ -155,22 +208,23 @@ export function AIPipelineJSGenerator({
           getApiErrorMessage(error, "Failed to generate pipeline JS script"),
         );
       }
-      const response = data as AiPipelineJsGenerateResponse;
-      if (!response.script) {
-        throw new Error(
-          "No pipeline JS script was generated. Please try again.",
-        );
-      }
+
+      const attempt = buildPipelineJSAttempt(
+        data as AiPipelineJsGenerateResponse,
+      );
+
       setState((prev) => ({
         ...prev,
         isGenerating: false,
-        generatedScript: response.script || null,
-        resolvedGoal: response.resolved_goal ?? null,
-        explanation: response.explanation || "",
-        routeId: response.route_id || "",
-        provider: response.provider || "",
-        model: response.model || "",
-        visualContextUsed: response.visual_context_used || false,
+        instructions: attempt.resolvedGoal?.text ?? prev.instructions,
+        generatedScript: attempt.script,
+        resolvedGoal: attempt.resolvedGoal,
+        explanation: attempt.explanation,
+        routeId: attempt.routeId,
+        provider: attempt.provider,
+        model: attempt.model,
+        visualContextUsed: attempt.visualContextUsed,
+        previousResult: nextPreviousResult,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -182,6 +236,13 @@ export function AIPipelineJSGenerator({
             : "Failed to generate pipeline JS script",
       }));
     }
+  };
+
+  const handleRetry = () => {
+    if (!latestAttempt || aiUnavailable) {
+      return;
+    }
+    void handleGenerate({ preserveCurrentAsPrevious: true });
   };
 
   const handleSave = async () => {
@@ -394,26 +455,37 @@ export function AIPipelineJSGenerator({
               </div>
             ) : null}
 
-            {state.generatedScript ? (
-              <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                  {state.routeId ? <span>Route: {state.routeId}</span> : null}
-                  {state.provider ? (
-                    <span>Provider: {state.provider}</span>
-                  ) : null}
-                  {state.model ? <span>Model: {state.model}</span> : null}
-                  {state.visualContextUsed ? (
-                    <span>Visual context used</span>
-                  ) : null}
-                </div>
-                <AIResolvedGoalCard resolvedGoal={state.resolvedGoal} />
-                {state.explanation ? (
-                  <p className="text-sm text-slate-200">{state.explanation}</p>
-                ) : null}
+            {state.previousResult ? (
+              <AIAuthoringAttemptPanel
+                label="Previous candidate"
+                routeId={state.previousResult.routeId}
+                provider={state.previousResult.provider}
+                model={state.previousResult.model}
+                visualContextUsed={state.previousResult.visualContextUsed}
+                resolvedGoal={state.previousResult.resolvedGoal}
+                explanation={state.previousResult.explanation}
+                muted
+              >
                 <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                  {JSON.stringify(state.generatedScript, null, 2)}
+                  {JSON.stringify(state.previousResult.script, null, 2)}
                 </pre>
-              </div>
+              </AIAuthoringAttemptPanel>
+            ) : null}
+
+            {latestAttempt ? (
+              <AIAuthoringAttemptPanel
+                label="Latest candidate"
+                routeId={latestAttempt.routeId}
+                provider={latestAttempt.provider}
+                model={latestAttempt.model}
+                visualContextUsed={latestAttempt.visualContextUsed}
+                resolvedGoal={latestAttempt.resolvedGoal}
+                explanation={latestAttempt.explanation}
+              >
+                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
+                  {JSON.stringify(latestAttempt.script, null, 2)}
+                </pre>
+              </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>
 
@@ -426,20 +498,35 @@ export function AIPipelineJSGenerator({
               Cancel
             </button>
             {state.generatedScript ? (
-              <button
-                type="button"
-                className="button-primary"
-                onClick={handleSave}
-                disabled={state.isSaving || aiUnavailable}
-                title={aiUnavailableMessage ?? undefined}
-              >
-                {state.isSaving ? "Saving..." : "Save Script"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={handleRetry}
+                  disabled={
+                    state.isGenerating || state.isSaving || aiUnavailable
+                  }
+                  title={aiUnavailableMessage ?? undefined}
+                >
+                  {state.isGenerating ? "Retrying..." : "Retry with changes"}
+                </button>
+                <button
+                  type="button"
+                  className="button-primary"
+                  onClick={handleSave}
+                  disabled={
+                    state.isGenerating || state.isSaving || aiUnavailable
+                  }
+                  title={aiUnavailableMessage ?? undefined}
+                >
+                  {state.isSaving ? "Saving..." : "Save Script"}
+                </button>
+              </>
             ) : (
               <button
                 type="button"
                 className="button-primary"
-                onClick={handleGenerate}
+                onClick={() => void handleGenerate()}
                 disabled={state.isGenerating || aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
               >

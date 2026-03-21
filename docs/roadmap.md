@@ -16,15 +16,14 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Generator Guided Retry Loop
-   - Let operators retry render-profile and pipeline-JS generate/debug flows directly from the last result without re-entering the URL, fetch toggles, images, or guidance from scratch.
-   - Prefill retry guidance from the last visible `resolved_goal`, but keep it editable so operators can tighten or replace Spartan-derived defaults before re-running the model.
-   - Preserve the original saved artifact preview alongside the retried candidate so operators can compare before choosing what to save.
-   - Keep API and MCP contracts stable unless new retry metadata clearly improves non-Web workflows; prefer a Web-first UX cut that reuses the current authoring endpoints.
-   - Add tests for:
-     - retry preserving request-scoped images and fetch toggles
-     - editing a derived goal into explicit guidance before retry
-     - multiple retries replacing stale result metadata cleanly
+1. AI Automation Candidate Diff Views
+   - Replace raw JSON-only comparison in render-profile and pipeline-JS generate/debug retry flows with operator-friendly field-level diffs that highlight what changed between the previous and latest candidate.
+   - Preserve access to the raw JSON payloads, but make the primary comparison view answer the operator question "what actually changed and why should I trust it?" without manual scanning.
+   - Use artifact-specific summaries for the highest-signal fields first:
+     - render profiles: wait mode/selector, engine preferences, blocking rules, timeouts, screenshot settings
+     - pipeline JS: selectors, engine, pre-nav, post-nav, and any added or removed browser-side logic
+   - Keep the new diff view consistent across generator and debugger modals so retry review feels like one coherent AI authoring workspace.
+   - Add tests for changed-field highlighting, unchanged-field omission, and fallback to raw JSON when a comparison cannot be summarized cleanly.
 
 ## Ongoing Constraints
 
