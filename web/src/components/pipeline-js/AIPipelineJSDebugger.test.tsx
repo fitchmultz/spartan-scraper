@@ -354,4 +354,88 @@ describe("AIPipelineJSDebugger", () => {
       });
     });
   });
+
+  it("resets a multi-attempt tuning session without closing the modal or losing request-scoped inputs", async () => {
+    vi.mocked(api.aiPipelineJsDebug)
+      .mockResolvedValueOnce({
+        data: {
+          issues: ["selectors[0] matched no elements"],
+          resolved_goal: { source: "derived", text: "First pass" },
+          suggested_script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["main"],
+          },
+          route_id: "route-1",
+        },
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+        response: new Response(),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          issues: ["selector verified"],
+          resolved_goal: { source: "explicit", text: "Second pass" },
+          suggested_script: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            selectors: ["#app-root"],
+          },
+          route_id: "route-2",
+        },
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+        response: new Response(),
+      });
+
+    const closeSpy = vi.fn();
+
+    render(
+      <AIPipelineJSDebugger
+        isOpen={true}
+        script={script}
+        onClose={closeSpy}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+
+    const image = new File(["fake"], "debug-script.png", {
+      type: "image/png",
+    });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("debug-script.png");
+
+    fireEvent.click(screen.getByLabelText(/use headless browser/i));
+    fireEvent.click(screen.getByLabelText(/include screenshot context/i));
+
+    fireEvent.click(screen.getByRole("button", { name: /tune script/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /retry with changes/i }),
+    );
+    await screen.findByRole("region", { name: /latest candidate/i });
+
+    fireEvent.click(screen.getByRole("button", { name: /reset session/i }));
+
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("region", { name: /attempt history/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /tune script/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByText("debug-script.png")).toBeInTheDocument();
+    expect(screen.getByLabelText(/use headless browser/i)).toBeChecked();
+    expect(screen.getByLabelText(/include screenshot context/i)).toBeChecked();
+  });
 });

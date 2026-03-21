@@ -494,4 +494,81 @@ describe("AIRenderProfileGenerator", () => {
       screen.getByRole("region", { name: /attempt history/i }),
     ).toBeInTheDocument();
   });
+
+  it("resets a multi-attempt session without closing the modal or losing request-scoped inputs", async () => {
+    vi.mocked(api.aiRenderProfileGenerate)
+      .mockResolvedValueOnce({
+        data: {
+          profile: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            wait: { mode: "selector", selector: "main" },
+          },
+          resolved_goal: { source: "derived", text: "First pass" },
+        },
+        request: new Request(
+          "http://localhost:8741/v1/ai/render-profile-generate",
+        ),
+        response: new Response(),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          profile: {
+            name: "example-app",
+            hostPatterns: ["example.com"],
+            wait: { mode: "selector", selector: "#app-root" },
+          },
+          resolved_goal: { source: "explicit", text: "Second pass" },
+        },
+        request: new Request(
+          "http://localhost:8741/v1/ai/render-profile-generate",
+        ),
+        response: new Response(),
+      });
+
+    const onClose = vi.fn();
+
+    render(
+      <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+
+    const image = new File(["fake"], "retry-profile.png", {
+      type: "image/png",
+    });
+    fireEvent.change(screen.getByLabelText(/upload images/i), {
+      target: { files: [image] },
+    });
+    await screen.findByText("retry-profile.png");
+
+    fireEvent.click(screen.getByLabelText(/fetch headless/i));
+    fireEvent.click(screen.getByLabelText(/include screenshot context/i));
+
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /retry with changes/i }),
+    );
+    await screen.findByRole("region", { name: /latest candidate/i });
+
+    fireEvent.click(screen.getByRole("button", { name: /reset session/i }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("region", { name: /attempt history/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate profile/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByText("retry-profile.png")).toBeInTheDocument();
+    expect(screen.getByLabelText(/fetch headless/i)).toBeChecked();
+    expect(screen.getByLabelText(/include screenshot context/i)).toBeChecked();
+  });
 });

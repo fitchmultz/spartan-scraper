@@ -194,6 +194,14 @@ export function AIRenderProfileGenerator({
     void handleGenerate();
   };
 
+  const handleResetSession = () => {
+    history.reset();
+    setState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+  };
+
   const handleSave = async () => {
     if (!activeAttempt?.artifact) {
       return;
@@ -499,6 +507,14 @@ export function AIRenderProfileGenerator({
             </button>
             {history.attempts.length > 0 ? (
               <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={handleResetSession}
+                  disabled={state.isGenerating || state.isSaving}
+                >
+                  Reset session
+                </button>
                 <button
                   type="button"
                   className="button-secondary"

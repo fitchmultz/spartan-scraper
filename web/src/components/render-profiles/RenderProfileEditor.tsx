@@ -6,7 +6,13 @@
  * Invariants/Assumptions: Profiles are persisted through the generated API client, manual AI handoff returns to the same in-session history, and API errors remain visible in both inline state and toasts.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   deleteV1RenderProfilesByName,
   getV1RenderProfiles,
@@ -22,6 +28,7 @@ import {
 } from "../../hooks/useAIAttemptHistory";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { deepEqual } from "../../lib/diff-utils";
 import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 import { ActionEmptyState } from "../ActionEmptyState";
@@ -30,12 +37,27 @@ import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
 
+interface ProfileFormDraft {
+  formData: RenderProfileInput;
+  hostPatternInput: string;
+  jsHeavyThresholdInput: string;
+  rateLimitQPSInput: string;
+  rateLimitBurstInput: string;
+  waitJSON: string;
+  blockJSON: string;
+  timeoutsJSON: string;
+  screenshotJSON: string;
+  deviceJSON: string;
+}
+
 interface ProfileManualEditSession {
   source: AISessionSource;
   attemptId: string;
   mode: "create" | "edit";
   originalName: string | null;
   initialValue: RenderProfileInput;
+  draft: ProfileFormDraft;
+  visible: boolean;
 }
 
 interface RenderProfileEditorProps {
@@ -96,6 +118,90 @@ function parseOptionalNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function createProfileFormDraft(seed: RenderProfileInput): ProfileFormDraft {
+  return {
+    formData: seed,
+    hostPatternInput: seed.hostPatterns.join(", "),
+    jsHeavyThresholdInput: seed.jsHeavyThreshold?.toString() || "",
+    rateLimitQPSInput: seed.rateLimitQPS?.toString() || "",
+    rateLimitBurstInput: seed.rateLimitBurst?.toString() || "",
+    waitJSON: stringifyOptionalJSON(seed.wait),
+    blockJSON: stringifyOptionalJSON(seed.block),
+    timeoutsJSON: stringifyOptionalJSON(seed.timeouts),
+    screenshotJSON: stringifyOptionalJSON(seed.screenshot),
+    deviceJSON: stringifyOptionalJSON(seed.device),
+  };
+}
+
+function buildRenderProfileInputFromDraft(
+  draft: ProfileFormDraft,
+): RenderProfileInput {
+  const patterns = draft.hostPatternInput
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return {
+    ...draft.formData,
+    hostPatterns: patterns,
+    forceEngine: draft.formData.forceEngine || undefined,
+    preferHeadless: draft.formData.preferHeadless ? true : undefined,
+    neverHeadless: draft.formData.neverHeadless ? true : undefined,
+    assumeJsHeavy: draft.formData.assumeJsHeavy ? true : undefined,
+    jsHeavyThreshold: parseOptionalNumber(draft.jsHeavyThresholdInput),
+    rateLimitQPS: parseOptionalNumber(draft.rateLimitQPSInput),
+    rateLimitBurst: parseOptionalNumber(draft.rateLimitBurstInput),
+    wait: parseOptionalJSON<RenderProfileInput["wait"]>(
+      "Wait configuration",
+      draft.waitJSON,
+    ),
+    block: parseOptionalJSON<RenderProfileInput["block"]>(
+      "Block configuration",
+      draft.blockJSON,
+    ),
+    timeouts: parseOptionalJSON<RenderProfileInput["timeouts"]>(
+      "Timeout configuration",
+      draft.timeoutsJSON,
+    ),
+    screenshot: parseOptionalJSON<RenderProfileInput["screenshot"]>(
+      "Screenshot configuration",
+      draft.screenshotJSON,
+    ),
+    device: parseOptionalJSON<RenderProfileInput["device"]>(
+      "Device configuration",
+      draft.deviceJSON,
+    ),
+  };
+}
+
+function ManualEditContextNotice({
+  attemptId,
+  submitLabel,
+}: {
+  attemptId: string;
+  submitLabel: string;
+}) {
+  const attemptOrdinal = attemptId.replace("attempt-", "");
+
+  return (
+    <div className="space-y-2">
+      <p>You are editing Attempt {attemptOrdinal} from the AI session.</p>
+      <p>
+        Back to AI session returns to the modal with this working candidate
+        preserved locally as-is, even if it is unsaved.
+      </p>
+      <p>
+        {submitLabel} saves to the API, updates the AI attempt, and then returns
+        to the modal.
+      </p>
+      <p>
+        Unsaved edits are preserved locally, but they are not reflected in the
+        AI attempt history until you save.
+      </p>
+    </div>
+  );
+}
+
 export function RenderProfileEditor({
   onError,
   aiStatus = null,
@@ -154,10 +260,15 @@ export function RenderProfileEditor({
     loadProfiles();
   }, [loadProfiles]);
 
-  const closeNativeForms = () => {
+  const closeNativeForms = (options?: {
+    preserveManualEditSession?: boolean;
+  }) => {
     setIsCreating(false);
     setEditingProfile(null);
-    setManualEditSession(null);
+
+    if (!options?.preserveManualEditSession) {
+      setManualEditSession(null);
+    }
   };
 
   const handleCreate = async (input: RenderProfileInput) => {
@@ -286,7 +397,7 @@ export function RenderProfileEditor({
       return;
     }
 
-    closeNativeForms();
+    closeNativeForms({ preserveManualEditSession: true });
     setError(null);
 
     if (source === "generator") {
@@ -297,26 +408,69 @@ export function RenderProfileEditor({
       setIsAIDebuggerOpen(false);
     }
 
-    setManualEditSession({
-      source,
-      attemptId: attempt.id,
-      mode: source === "generator" ? "create" : "edit",
-      originalName:
-        source === "debugger"
-          ? (debuggingProfile?.name ?? attempt.artifact.name)
-          : null,
-      initialValue: toRenderProfileInput(attempt.artifact),
+    const nextMode = source === "generator" ? "create" : "edit";
+    const nextOriginalName =
+      source === "debugger"
+        ? (debuggingProfile?.name ?? attempt.artifact.name)
+        : null;
+    const nextInitialValue = toRenderProfileInput(attempt.artifact);
+
+    setManualEditSession((current) => {
+      if (
+        current &&
+        current.source === source &&
+        current.attemptId === attempt.id
+      ) {
+        return {
+          ...current,
+          originalName: nextOriginalName,
+          visible: true,
+        };
+      }
+
+      return {
+        source,
+        attemptId: attempt.id,
+        mode: nextMode,
+        originalName: nextOriginalName,
+        initialValue: nextInitialValue,
+        draft: createProfileFormDraft(nextInitialValue),
+        visible: true,
+      };
     });
   };
 
-  const returnToAISession = (source: AISessionSource) => {
-    setManualEditSession(null);
+  const returnToAISession = (
+    source: AISessionSource,
+    options?: { preserveDraft?: boolean },
+  ) => {
+    setManualEditSession((current) => {
+      if (!current || current.source !== source) {
+        return current;
+      }
+
+      return options?.preserveDraft === false
+        ? null
+        : { ...current, visible: false };
+    });
+
     if (source === "generator") {
       setIsAIGeneratorOpen(true);
       return;
     }
+
     setIsAIDebuggerOpen(true);
   };
+
+  const handleManualDraftChange = useCallback((draft: ProfileFormDraft) => {
+    setManualEditSession((current) => {
+      if (!current || deepEqual(current.draft, draft)) {
+        return current;
+      }
+
+      return { ...current, draft };
+    });
+  }, []);
 
   const handleManualEditSubmit = async (
     session: ProfileManualEditSession,
@@ -364,14 +518,13 @@ export function RenderProfileEditor({
       }
 
       await loadProfiles();
-      setManualEditSession(null);
       toast.update(toastId, {
         tone: "success",
         title: "Manual edits saved",
         description:
           "The AI attempt now uses your saved render profile as the retry baseline.",
       });
-      returnToAISession(session.source);
+      returnToAISession(session.source, { preserveDraft: false });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to save render profile");
       setError(message);
@@ -459,17 +612,27 @@ export function RenderProfileEditor({
         </div>
       ) : null}
 
-      {manualEditSession ? (
+      {manualEditSession?.visible ? (
         <ProfileForm
           key={`manual-${manualEditSession.source}-${manualEditSession.attemptId}`}
           initialValue={manualEditSession.initialValue}
+          draft={manualEditSession.draft}
+          savedValue={manualEditSession.initialValue}
+          onDraftChange={handleManualDraftChange}
           lockName={manualEditSession.mode === "edit"}
           title={
             manualEditSession.mode === "edit"
               ? "Edit Profile from AI Session"
               : "Create Profile from AI Session"
           }
-          contextNotice={`You are editing Attempt ${manualEditSession.attemptId.replace("attempt-", "")} from the AI session. Saving marks that attempt as manually edited and keeps later attempts available when you return to AI.`}
+          contextNotice={
+            <ManualEditContextNotice
+              attemptId={manualEditSession.attemptId}
+              submitLabel={
+                manualEditSession.mode === "edit" ? "Update" : "Create"
+              }
+            />
+          }
           cancelLabel="Back to AI session"
           submitLabel={manualEditSession.mode === "edit" ? "Update" : "Create"}
           onSubmit={(input) => {
@@ -600,11 +763,14 @@ export function RenderProfileEditor({
 interface ProfileFormProps {
   profile?: RenderProfile;
   initialValue?: RenderProfileInput;
+  draft?: ProfileFormDraft;
+  savedValue?: RenderProfileInput;
   lockName?: boolean;
   title?: string;
-  contextNotice?: string;
+  contextNotice?: ReactNode;
   cancelLabel?: string;
   submitLabel?: string;
+  onDraftChange?: (draft: ProfileFormDraft) => void;
   onSubmit: (input: RenderProfileInput) => void;
   onCancel: () => void;
 }
@@ -612,11 +778,14 @@ interface ProfileFormProps {
 function ProfileForm({
   profile,
   initialValue,
+  draft,
+  savedValue,
   lockName = false,
   title,
   contextNotice,
   cancelLabel = "Cancel",
   submitLabel,
+  onDraftChange,
   onSubmit,
   onCancel,
 }: ProfileFormProps) {
@@ -640,70 +809,82 @@ function ProfileForm({
           screenshot: undefined,
           device: undefined,
         });
+  const seedDraft = draft ?? createProfileFormDraft(seed);
 
-  const [formData, setFormData] = useState<RenderProfileInput>(seed);
+  const [formData, setFormData] = useState<RenderProfileInput>(
+    seedDraft.formData,
+  );
   const [hostPatternInput, setHostPatternInput] = useState(
-    seed.hostPatterns.join(", "),
+    seedDraft.hostPatternInput,
   );
   const [jsHeavyThresholdInput, setJsHeavyThresholdInput] = useState(
-    seed.jsHeavyThreshold?.toString() || "",
+    seedDraft.jsHeavyThresholdInput,
   );
   const [rateLimitQPSInput, setRateLimitQPSInput] = useState(
-    seed.rateLimitQPS?.toString() || "",
+    seedDraft.rateLimitQPSInput,
   );
   const [rateLimitBurstInput, setRateLimitBurstInput] = useState(
-    seed.rateLimitBurst?.toString() || "",
+    seedDraft.rateLimitBurstInput,
   );
-  const [waitJSON, setWaitJSON] = useState(stringifyOptionalJSON(seed.wait));
-  const [blockJSON, setBlockJSON] = useState(stringifyOptionalJSON(seed.block));
-  const [timeoutsJSON, setTimeoutsJSON] = useState(
-    stringifyOptionalJSON(seed.timeouts),
-  );
+  const [waitJSON, setWaitJSON] = useState(seedDraft.waitJSON);
+  const [blockJSON, setBlockJSON] = useState(seedDraft.blockJSON);
+  const [timeoutsJSON, setTimeoutsJSON] = useState(seedDraft.timeoutsJSON);
   const [screenshotJSON, setScreenshotJSON] = useState(
-    stringifyOptionalJSON(seed.screenshot),
+    seedDraft.screenshotJSON,
   );
-  const [deviceJSON, setDeviceJSON] = useState(
-    stringifyOptionalJSON(seed.device),
-  );
+  const [deviceJSON, setDeviceJSON] = useState(seedDraft.deviceJSON);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const currentDraft = useMemo<ProfileFormDraft>(
+    () => ({
+      formData,
+      hostPatternInput,
+      jsHeavyThresholdInput,
+      rateLimitQPSInput,
+      rateLimitBurstInput,
+      waitJSON,
+      blockJSON,
+      timeoutsJSON,
+      screenshotJSON,
+      deviceJSON,
+    }),
+    [
+      formData,
+      hostPatternInput,
+      jsHeavyThresholdInput,
+      rateLimitQPSInput,
+      rateLimitBurstInput,
+      waitJSON,
+      blockJSON,
+      timeoutsJSON,
+      screenshotJSON,
+      deviceJSON,
+    ],
+  );
+
+  useEffect(() => {
+    onDraftChange?.(currentDraft);
+  }, [currentDraft, onDraftChange]);
+
+  const syncState = useMemo<"clean" | "dirty" | null>(() => {
+    if (!savedValue) {
+      return null;
+    }
+
+    try {
+      const workingValue = buildRenderProfileInputFromDraft(currentDraft);
+      return deepEqual(workingValue, savedValue) ? "clean" : "dirty";
+    } catch {
+      return "dirty";
+    }
+  }, [currentDraft, savedValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
     try {
-      const patterns = hostPatternInput
-        .split(",")
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0);
-
-      onSubmit({
-        ...formData,
-        hostPatterns: patterns,
-        jsHeavyThreshold: parseOptionalNumber(jsHeavyThresholdInput),
-        rateLimitQPS: parseOptionalNumber(rateLimitQPSInput),
-        rateLimitBurst: parseOptionalNumber(rateLimitBurstInput),
-        wait: parseOptionalJSON<RenderProfileInput["wait"]>(
-          "Wait configuration",
-          waitJSON,
-        ),
-        block: parseOptionalJSON<RenderProfileInput["block"]>(
-          "Block configuration",
-          blockJSON,
-        ),
-        timeouts: parseOptionalJSON<RenderProfileInput["timeouts"]>(
-          "Timeout configuration",
-          timeoutsJSON,
-        ),
-        screenshot: parseOptionalJSON<RenderProfileInput["screenshot"]>(
-          "Screenshot configuration",
-          screenshotJSON,
-        ),
-        device: parseOptionalJSON<RenderProfileInput["device"]>(
-          "Device configuration",
-          deviceJSON,
-        ),
-      });
+      onSubmit(buildRenderProfileInputFromDraft(currentDraft));
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : "Invalid render profile input",
@@ -719,6 +900,20 @@ function ProfileForm({
       <h3 className="font-medium">
         {title ?? (profile ? "Edit Profile" : "Create New Profile")}
       </h3>
+
+      {syncState ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-md border px-3 py-2 text-sm ${
+            syncState === "dirty"
+              ? "border-amber-300 bg-amber-50 text-amber-900"
+              : "border-emerald-300 bg-emerald-50 text-emerald-900"
+          }`}
+        >
+          {syncState === "dirty" ? "Unsaved changes" : "In sync with saved"}
+        </div>
+      ) : null}
 
       {contextNotice ? (
         <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
@@ -784,7 +979,9 @@ function ProfileForm({
           onChange={(e) =>
             setFormData({
               ...formData,
-              forceEngine: e.target.value as RenderProfileInput["forceEngine"],
+              forceEngine: e.target.value
+                ? (e.target.value as RenderProfileInput["forceEngine"])
+                : undefined,
             })
           }
           className="w-full rounded border px-3 py-2"

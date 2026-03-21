@@ -16,11 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Session Reset and Saved-vs-Working State Clarity
-   - Add explicit reset-session controls in all four AI automation modals so operators can intentionally start fresh instead of relying on cancel/close semantics.
-   - Surface saved-vs-working status everywhere the selected AI candidate differs from the last persisted profile or script, including older-attempt restores and manual-edit round trips.
-   - Make Save and Back-to-AI copy unambiguous about whether operators are writing the selected working candidate or the last saved artifact.
-   - Add focused workflow tests for abandoning a handoff, resetting an AI session after multiple attempts, and recovering cleanly from save failures without losing the working candidate.
+1. AI Automation Draft Persistence and Intentional Discard
+   - Preserve in-progress AI modal sessions across close/reopen and route-level Settings navigation until operators explicitly reset or discard them.
+   - Add an explicit discard path that distinguishes closing the modal from throwing away the working candidate and request-scoped context.
+   - Surface unsaved-session warnings before operators lose a selected AI candidate or a native-editor draft by accident.
+   - Add focused workflow tests for close/reopen recovery, discard confirmation, and route navigation with in-progress AI work.
 
 ## Ongoing Constraints
 

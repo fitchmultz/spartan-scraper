@@ -302,4 +302,197 @@ describe("RenderProfileEditor", () => {
       );
     });
   });
+
+  it("keeps unsaved handoff edits local when returning to AI, while preserving the local draft", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: { profiles: [] },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.aiRenderProfileGenerate).mockResolvedValue({
+      data: {
+        profile: {
+          name: "news",
+          hostPatterns: ["example.com"],
+          wait: { mode: "selector", selector: "main" },
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Generate a stable render profile",
+        },
+        route_id: "route-1",
+      },
+      request: new Request(
+        "http://localhost:8741/v1/ai/render-profile-generate",
+      ),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+
+    const history = await screen.findByRole("region", {
+      name: /attempt history/i,
+    });
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    expect(
+      await screen.findByText(/back to ai session returns to the modal/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/in sync with saved/i);
+
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com, *.example.com" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /back to ai session/i }),
+    );
+
+    const latestCandidate = await screen.findByRole("region", {
+      name: /latest candidate/i,
+    });
+
+    expect(
+      within(latestCandidate).getByText(/example\.com/i),
+    ).toBeInTheDocument();
+    expect(
+      within(latestCandidate).queryByText(/\*\.example\.com/i),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /edit attempt 1 in settings/i }),
+    );
+
+    expect(await screen.findByLabelText(/host patterns/i)).toHaveValue(
+      "example.com, *.example.com",
+    );
+  });
+
+  it("keeps the working profile draft after a save failure so the operator can retry", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: {
+        profiles: [
+          {
+            name: "news",
+            hostPatterns: ["example.com"],
+            wait: { mode: "selector", selector: ".missing" },
+          },
+        ],
+      },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.aiRenderProfileDebug).mockResolvedValue({
+      data: {
+        issues: ["wait.selector matched no elements"],
+        resolved_goal: {
+          source: "explicit",
+          text: "Use the visible main shell",
+        },
+        suggested_profile: {
+          name: "news",
+          hostPatterns: ["example.com"],
+          preferHeadless: true,
+          wait: { mode: "selector", selector: "main" },
+        },
+        route_id: "route-1",
+      },
+      error: undefined,
+      request: new Request("http://localhost:8741/v1/ai/render-profile-debug"),
+      response: new Response(),
+    });
+
+    vi.mocked(api.putV1RenderProfilesByName)
+      .mockResolvedValueOnce({
+        data: undefined,
+        error: { error: "save failed" },
+        request: new Request("http://localhost:8741/v1/render-profiles/news"),
+        response: new Response(null, { status: 500 }),
+      })
+      .mockResolvedValueOnce({
+        data: {
+          name: "news",
+          hostPatterns: ["example.com"],
+          preferHeadless: false,
+          wait: { mode: "selector", selector: "main" },
+        },
+        error: undefined,
+        request: new Request("http://localhost:8741/v1/render-profiles/news"),
+        response: new Response(),
+      });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /tune with ai/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tune profile/i }));
+
+    const history = await screen.findByRole("region", {
+      name: /attempt history/i,
+    });
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    fireEvent.click(screen.getByLabelText(/prefer headless/i));
+
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
+
+    expect(await screen.findAllByText(/save failed/i)).not.toHaveLength(0);
+    expect(screen.getByLabelText(/prefer headless/i)).not.toBeChecked();
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
+
+    await waitFor(() => {
+      expect(api.putV1RenderProfilesByName).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          path: { name: "news" },
+          body: expect.objectContaining({
+            name: "news",
+            hostPatterns: ["example.com"],
+            wait: { mode: "selector", selector: "main" },
+            preferHeadless: undefined,
+          }),
+        }),
+      );
+    });
+  });
 });

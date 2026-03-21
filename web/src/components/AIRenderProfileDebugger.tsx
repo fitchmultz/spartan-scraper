@@ -177,6 +177,14 @@ export function AIRenderProfileDebugger({
     void handleDebug();
   };
 
+  const handleResetSession = () => {
+    history.reset();
+    setState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+  };
+
   const handleSave = async () => {
     if (!activeAttempt?.artifact) {
       return;
@@ -471,6 +479,14 @@ export function AIRenderProfileDebugger({
             </button>
             {history.attempts.length > 0 ? (
               <>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={handleResetSession}
+                  disabled={state.isLoading || state.isSaving}
+                >
+                  Reset session
+                </button>
                 <button
                   type="button"
                   className="button-secondary"

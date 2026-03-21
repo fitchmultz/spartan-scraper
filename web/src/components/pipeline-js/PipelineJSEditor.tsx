@@ -6,7 +6,13 @@
  * Invariants/Assumptions: Script persistence goes through the generated API client, manual AI handoff returns to the same in-session history, and destructive actions use the shared confirmation dialog instead of browser-native prompts.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   deleteV1PipelineJsByName,
   getV1PipelineJs,
@@ -22,6 +28,7 @@ import {
 } from "../../hooks/useAIAttemptHistory";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { deepEqual } from "../../lib/diff-utils";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import { ActionEmptyState } from "../ActionEmptyState";
@@ -30,12 +37,20 @@ import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
 
+interface ScriptFormDraft {
+  formData: PipelineJsInput;
+  hostPatternInput: string;
+  selectorInput: string;
+}
+
 interface ScriptManualEditSession {
   source: AISessionSource;
   attemptId: string;
   mode: "create" | "edit";
   originalName: string | null;
   initialValue: PipelineJsInput;
+  draft: ScriptFormDraft;
+  visible: boolean;
 }
 
 interface PipelineJSEditorProps {
@@ -53,6 +68,62 @@ function toPipelineJsInput(script: JsTargetScript): PipelineJsInput {
     postNav: script.postNav,
     selectors: script.selectors ? [...script.selectors] : undefined,
   };
+}
+
+function createScriptFormDraft(seed: PipelineJsInput): ScriptFormDraft {
+  return {
+    formData: seed,
+    hostPatternInput: seed.hostPatterns.join(", "),
+    selectorInput: seed.selectors?.join(", ") || "",
+  };
+}
+
+function buildPipelineJsInputFromDraft(
+  draft: ScriptFormDraft,
+): PipelineJsInput {
+  const hostPatterns = draft.hostPatternInput
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const selectors = draft.selectorInput
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return {
+    ...draft.formData,
+    engine: draft.formData.engine || undefined,
+    hostPatterns,
+    selectors: selectors.length > 0 ? selectors : undefined,
+  };
+}
+
+function ManualEditContextNotice({
+  attemptId,
+  submitLabel,
+}: {
+  attemptId: string;
+  submitLabel: string;
+}) {
+  const attemptOrdinal = attemptId.replace("attempt-", "");
+
+  return (
+    <div className="space-y-2">
+      <p>You are editing Attempt {attemptOrdinal} from the AI session.</p>
+      <p>
+        Back to AI session returns to the modal with this working candidate
+        preserved locally as-is, even if it is unsaved.
+      </p>
+      <p>
+        {submitLabel} saves to the API, updates the AI attempt, and then returns
+        to the modal.
+      </p>
+      <p>
+        Unsaved edits are preserved locally, but they are not reflected in the
+        AI attempt history until you save.
+      </p>
+    </div>
+  );
 }
 
 export function PipelineJSEditor({
@@ -114,10 +185,15 @@ export function PipelineJSEditor({
     loadScripts();
   }, [loadScripts]);
 
-  const closeNativeForms = () => {
+  const closeNativeForms = (options?: {
+    preserveManualEditSession?: boolean;
+  }) => {
     setIsCreating(false);
     setEditingScript(null);
-    setManualEditSession(null);
+
+    if (!options?.preserveManualEditSession) {
+      setManualEditSession(null);
+    }
   };
 
   const handleCreate = async (input: PipelineJsInput) => {
@@ -246,7 +322,7 @@ export function PipelineJSEditor({
       return;
     }
 
-    closeNativeForms();
+    closeNativeForms({ preserveManualEditSession: true });
     setError(null);
 
     if (source === "generator") {
@@ -257,26 +333,69 @@ export function PipelineJSEditor({
       setIsAIDebuggerOpen(false);
     }
 
-    setManualEditSession({
-      source,
-      attemptId: attempt.id,
-      mode: source === "generator" ? "create" : "edit",
-      originalName:
-        source === "debugger"
-          ? (debuggingScript?.name ?? attempt.artifact.name)
-          : null,
-      initialValue: toPipelineJsInput(attempt.artifact),
+    const nextMode = source === "generator" ? "create" : "edit";
+    const nextOriginalName =
+      source === "debugger"
+        ? (debuggingScript?.name ?? attempt.artifact.name)
+        : null;
+    const nextInitialValue = toPipelineJsInput(attempt.artifact);
+
+    setManualEditSession((current) => {
+      if (
+        current &&
+        current.source === source &&
+        current.attemptId === attempt.id
+      ) {
+        return {
+          ...current,
+          originalName: nextOriginalName,
+          visible: true,
+        };
+      }
+
+      return {
+        source,
+        attemptId: attempt.id,
+        mode: nextMode,
+        originalName: nextOriginalName,
+        initialValue: nextInitialValue,
+        draft: createScriptFormDraft(nextInitialValue),
+        visible: true,
+      };
     });
   };
 
-  const returnToAISession = (source: AISessionSource) => {
-    setManualEditSession(null);
+  const returnToAISession = (
+    source: AISessionSource,
+    options?: { preserveDraft?: boolean },
+  ) => {
+    setManualEditSession((current) => {
+      if (!current || current.source !== source) {
+        return current;
+      }
+
+      return options?.preserveDraft === false
+        ? null
+        : { ...current, visible: false };
+    });
+
     if (source === "generator") {
       setIsAIGeneratorOpen(true);
       return;
     }
+
     setIsAIDebuggerOpen(true);
   };
+
+  const handleManualDraftChange = useCallback((draft: ScriptFormDraft) => {
+    setManualEditSession((current) => {
+      if (!current || deepEqual(current.draft, draft)) {
+        return current;
+      }
+
+      return { ...current, draft };
+    });
+  }, []);
 
   const handleManualEditSubmit = async (
     session: ScriptManualEditSession,
@@ -325,14 +444,13 @@ export function PipelineJSEditor({
       }
 
       await loadScripts();
-      setManualEditSession(null);
       toast.update(toastId, {
         tone: "success",
         title: "Manual edits saved",
         description:
           "The AI attempt now uses your saved script as the retry baseline.",
       });
-      returnToAISession(session.source);
+      returnToAISession(session.source, { preserveDraft: false });
     } catch (err) {
       const message = getApiErrorMessage(err, "Failed to save script");
       setError(message);
@@ -420,17 +538,27 @@ export function PipelineJSEditor({
         </div>
       ) : null}
 
-      {manualEditSession ? (
+      {manualEditSession?.visible ? (
         <ScriptForm
           key={`manual-${manualEditSession.source}-${manualEditSession.attemptId}`}
           initialValue={manualEditSession.initialValue}
+          draft={manualEditSession.draft}
+          savedValue={manualEditSession.initialValue}
+          onDraftChange={handleManualDraftChange}
           lockName={manualEditSession.mode === "edit"}
           title={
             manualEditSession.mode === "edit"
               ? "Edit Script from AI Session"
               : "Create Script from AI Session"
           }
-          contextNotice={`You are editing Attempt ${manualEditSession.attemptId.replace("attempt-", "")} from the AI session. Saving marks that attempt as manually edited and keeps later attempts available when you return to AI.`}
+          contextNotice={
+            <ManualEditContextNotice
+              attemptId={manualEditSession.attemptId}
+              submitLabel={
+                manualEditSession.mode === "edit" ? "Update" : "Create"
+              }
+            />
+          }
           cancelLabel="Back to AI session"
           submitLabel={manualEditSession.mode === "edit" ? "Update" : "Create"}
           onSubmit={(input) => {
@@ -577,11 +705,14 @@ export function PipelineJSEditor({
 interface ScriptFormProps {
   script?: JsTargetScript;
   initialValue?: PipelineJsInput;
+  draft?: ScriptFormDraft;
+  savedValue?: PipelineJsInput;
   lockName?: boolean;
   title?: string;
-  contextNotice?: string;
+  contextNotice?: ReactNode;
   cancelLabel?: string;
   submitLabel?: string;
+  onDraftChange?: (draft: ScriptFormDraft) => void;
   onSubmit: (input: PipelineJsInput) => void;
   onCancel: () => void;
 }
@@ -589,11 +720,14 @@ interface ScriptFormProps {
 function ScriptForm({
   script,
   initialValue,
+  draft,
+  savedValue,
   lockName = false,
   title,
   contextNotice,
   cancelLabel = "Cancel",
   submitLabel,
+  onDraftChange,
   onSubmit,
   onCancel,
 }: ScriptFormProps) {
@@ -609,30 +743,39 @@ function ScriptForm({
           postNav: undefined,
           selectors: undefined,
         });
+  const seedDraft = draft ?? createScriptFormDraft(seed);
 
-  const [formData, setFormData] = useState<PipelineJsInput>(seed);
+  const [formData, setFormData] = useState<PipelineJsInput>(seedDraft.formData);
   const [hostPatternInput, setHostPatternInput] = useState(
-    seed.hostPatterns.join(", "),
+    seedDraft.hostPatternInput,
   );
-  const [selectorInput, setSelectorInput] = useState(
-    seed.selectors?.join(", ") || "",
+  const [selectorInput, setSelectorInput] = useState(seedDraft.selectorInput);
+
+  const currentDraft = useMemo<ScriptFormDraft>(
+    () => ({
+      formData,
+      hostPatternInput,
+      selectorInput,
+    }),
+    [formData, hostPatternInput, selectorInput],
   );
+
+  useEffect(() => {
+    onDraftChange?.(currentDraft);
+  }, [currentDraft, onDraftChange]);
+
+  const syncState = useMemo<"clean" | "dirty" | null>(() => {
+    if (!savedValue) {
+      return null;
+    }
+
+    const workingValue = buildPipelineJsInputFromDraft(currentDraft);
+    return deepEqual(workingValue, savedValue) ? "clean" : "dirty";
+  }, [currentDraft, savedValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const patterns = hostPatternInput
-      .split(",")
-      .map((p: string) => p.trim())
-      .filter((p) => p.length > 0);
-    const selectors = selectorInput
-      .split(",")
-      .map((s: string) => s.trim())
-      .filter((s) => s.length > 0);
-    onSubmit({
-      ...formData,
-      hostPatterns: patterns,
-      selectors: selectors.length > 0 ? selectors : undefined,
-    });
+    onSubmit(buildPipelineJsInputFromDraft(currentDraft));
   };
 
   return (
@@ -643,6 +786,20 @@ function ScriptForm({
       <h3 className="font-medium">
         {title ?? (script ? "Edit Script" : "Create New Script")}
       </h3>
+
+      {syncState ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-md border px-3 py-2 text-sm ${
+            syncState === "dirty"
+              ? "border-amber-300 bg-amber-50 text-amber-900"
+              : "border-emerald-300 bg-emerald-50 text-emerald-900"
+          }`}
+        >
+          {syncState === "dirty" ? "Unsaved changes" : "In sync with saved"}
+        </div>
+      ) : null}
 
       {contextNotice ? (
         <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
@@ -699,7 +856,9 @@ function ScriptForm({
           onChange={(e) =>
             setFormData({
               ...formData,
-              engine: e.target.value as PipelineJsInput["engine"],
+              engine: e.target.value
+                ? (e.target.value as PipelineJsInput["engine"])
+                : undefined,
             })
           }
           className="w-full rounded border px-3 py-2"
