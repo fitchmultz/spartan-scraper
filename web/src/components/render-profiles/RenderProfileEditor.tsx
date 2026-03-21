@@ -26,6 +26,7 @@ import {
   type AIAttempt,
   useAIAttemptHistory,
 } from "../../hooks/useAIAttemptHistory";
+import { useBeforeUnloadPrompt } from "../../hooks/useBeforeUnloadPrompt";
 import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
@@ -34,6 +35,7 @@ import { AIRenderProfileDebugger } from "../AIRenderProfileDebugger";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
+import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraftNotice";
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
@@ -46,6 +48,8 @@ const RENDER_PROFILE_DEBUGGER_TARGET_KEY =
   "spartan.render-profile.ai-debugger-target";
 const RENDER_PROFILE_MANUAL_EDIT_SESSION_KEY =
   "spartan.render-profile.ai-manual-edit-session";
+const RENDER_PROFILE_NATIVE_EDIT_SESSION_KEY =
+  "spartan.render-profile.native-edit-session";
 
 interface ProfileFormDraft {
   formData: RenderProfileInput;
@@ -70,10 +74,37 @@ interface ProfileManualEditSession {
   visible: boolean;
 }
 
+interface ProfileNativeEditSession {
+  mode: "create" | "edit";
+  originalName: string | null;
+  initialValue: RenderProfileInput;
+  draft: ProfileFormDraft;
+  visible: boolean;
+}
+
 interface RenderProfileEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
   onInventoryChange?: (count: number) => void;
+}
+
+function createEmptyRenderProfileInput(): RenderProfileInput {
+  return {
+    name: "",
+    hostPatterns: [],
+    forceEngine: undefined,
+    preferHeadless: undefined,
+    neverHeadless: undefined,
+    assumeJsHeavy: undefined,
+    jsHeavyThreshold: undefined,
+    rateLimitQPS: undefined,
+    rateLimitBurst: undefined,
+    block: undefined,
+    wait: undefined,
+    timeouts: undefined,
+    screenshot: undefined,
+    device: undefined,
+  };
 }
 
 function toRenderProfileInput(profile: RenderProfile): RenderProfileInput {
@@ -184,17 +215,27 @@ function buildRenderProfileInputFromDraft(
   };
 }
 
-function isProfileManualEditSessionDirty(
-  session: ProfileManualEditSession,
+function isProfileDraftDirty(
+  draft: ProfileFormDraft,
+  initialValue: RenderProfileInput,
 ): boolean {
   try {
-    return !deepEqual(
-      buildRenderProfileInputFromDraft(session.draft),
-      session.initialValue,
-    );
+    return !deepEqual(buildRenderProfileInputFromDraft(draft), initialValue);
   } catch {
     return true;
   }
+}
+
+function isProfileManualEditSessionDirty(
+  session: ProfileManualEditSession,
+): boolean {
+  return isProfileDraftDirty(session.draft, session.initialValue);
+}
+
+function isProfileNativeEditSessionDirty(
+  session: ProfileNativeEditSession,
+): boolean {
+  return isProfileDraftDirty(session.draft, session.initialValue);
 }
 
 function ManualEditContextNotice({
@@ -234,15 +275,16 @@ export function RenderProfileEditor({
   const [profiles, setProfiles] = useState<RenderProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingProfile, setEditingProfile] = useState<RenderProfile | null>(
-    null,
-  );
+  const [nativeEditSession, setNativeEditSession, clearNativeEditSession] =
+    useSessionStorageState<ProfileNativeEditSession | null>(
+      RENDER_PROFILE_NATIVE_EDIT_SESSION_KEY,
+      null,
+    );
   const [debuggingProfile, setDebuggingProfile, clearDebuggingProfile] =
     useSessionStorageState<RenderProfile | null>(
       RENDER_PROFILE_DEBUGGER_TARGET_KEY,
       null,
     );
-  const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
   const [debuggerResetSignal, setDebuggerResetSignal] = useState(0);
@@ -267,6 +309,17 @@ export function RenderProfileEditor({
   const aiUnavailableMessage = aiCapability.message;
   const hiddenManualEditSession =
     manualEditSession && !manualEditSession.visible ? manualEditSession : null;
+  const hiddenNativeEditSession =
+    nativeEditSession && !nativeEditSession.visible ? nativeEditSession : null;
+  const hasDirtySettingsDraft =
+    (manualEditSession
+      ? isProfileManualEditSessionDirty(manualEditSession)
+      : false) ||
+    (nativeEditSession
+      ? isProfileNativeEditSessionDirty(nativeEditSession)
+      : false);
+
+  useBeforeUnloadPrompt(hasDirtySettingsDraft);
 
   const loadProfiles = useCallback(async () => {
     try {
@@ -298,9 +351,13 @@ export function RenderProfileEditor({
 
   const closeNativeForms = (options?: {
     preserveManualEditSession?: boolean;
+    preserveNativeEditSession?: boolean;
   }) => {
-    setIsCreating(false);
-    setEditingProfile(null);
+    if (!options?.preserveNativeEditSession) {
+      setNativeEditSession((current) =>
+        current ? { ...current, visible: false } : current,
+      );
+    }
 
     if (options?.preserveManualEditSession) {
       return;
@@ -311,74 +368,64 @@ export function RenderProfileEditor({
     );
   };
 
-  const handleCreate = async (input: RenderProfileInput) => {
+  const handleSaveNativeEditSession = async (
+    session: ProfileNativeEditSession,
+    input: RenderProfileInput,
+  ) => {
+    const isCreate = session.mode === "create";
+    const actionLabel = isCreate
+      ? input.name
+        ? `Creating ${input.name}`
+        : "Creating render profile"
+      : `Updating ${session.originalName ?? input.name}`;
     const toastId = toast.show({
       tone: "loading",
-      title: input.name ? `Creating ${input.name}` : "Creating render profile",
-      description: "Saving the new render profile configuration.",
+      title: actionLabel,
+      description: isCreate
+        ? "Saving the new render profile configuration."
+        : "Saving the latest render profile changes.",
     });
     try {
       setError(null);
-      const response = await postV1RenderProfiles({
-        baseUrl: getApiBaseUrl(),
-        body: input,
-      });
+      const response = isCreate
+        ? await postV1RenderProfiles({
+            baseUrl: getApiBaseUrl(),
+            body: input,
+          })
+        : await putV1RenderProfilesByName({
+            baseUrl: getApiBaseUrl(),
+            path: { name: session.originalName ?? input.name },
+            body: input,
+          });
       if (response.error) {
         throw new Error(
-          getApiErrorMessage(response.error, "Failed to create profile"),
+          getApiErrorMessage(
+            response.error,
+            isCreate ? "Failed to create profile" : "Failed to update profile",
+          ),
         );
       }
       await loadProfiles();
-      setIsCreating(false);
+      clearNativeEditSession();
       toast.update(toastId, {
         tone: "success",
-        title: "Render profile created",
-        description: `${input.name} is now available for fetch configuration.`,
+        title: isCreate ? "Render profile created" : "Render profile updated",
+        description: isCreate
+          ? `${input.name} is now available for fetch configuration.`
+          : `${session.originalName ?? input.name} now reflects the latest configuration.`,
       });
     } catch (err) {
-      const message = getApiErrorMessage(err, "Failed to create profile");
+      const message = getApiErrorMessage(
+        err,
+        isCreate ? "Failed to create profile" : "Failed to update profile",
+      );
       setError(message);
       onError?.(message);
       toast.update(toastId, {
         tone: "error",
-        title: "Failed to create render profile",
-        description: message,
-      });
-    }
-  };
-
-  const handleUpdate = async (name: string, input: RenderProfileInput) => {
-    const toastId = toast.show({
-      tone: "loading",
-      title: `Updating ${name}`,
-      description: "Saving the latest render profile changes.",
-    });
-    try {
-      setError(null);
-      const response = await putV1RenderProfilesByName({
-        baseUrl: getApiBaseUrl(),
-        path: { name },
-        body: input,
-      });
-      if (response.error) {
-        throw new Error(
-          getApiErrorMessage(response.error, "Failed to update profile"),
-        );
-      }
-      await loadProfiles();
-      setEditingProfile(null);
-      toast.update(toastId, {
-        tone: "success",
-        title: "Render profile updated",
-        description: `${name} now reflects the latest configuration.`,
-      });
-    } catch (err) {
-      const message = getApiErrorMessage(err, "Failed to update profile");
-      setError(message);
-      onError?.(message);
-      toast.update(toastId, {
-        tone: "error",
-        title: "Failed to update render profile",
+        title: isCreate
+          ? "Failed to create render profile"
+          : "Failed to update render profile",
         description: message,
       });
     }
@@ -455,6 +502,79 @@ export function RenderProfileEditor({
     },
     [clearManualEditSession, manualEditSession, toast],
   );
+
+  const discardNativeEditSession = useCallback(
+    async (options?: { reason?: string; title?: string }) => {
+      if (!nativeEditSession) {
+        return true;
+      }
+
+      const confirmed = await toast.confirm({
+        title: options?.title ?? "Discard the local Settings draft?",
+        description:
+          options?.reason ??
+          (isProfileNativeEditSessionDirty(nativeEditSession)
+            ? "This removes the in-progress local Settings draft. Your unsaved edits will be lost."
+            : "This removes the current local Settings draft from this tab."),
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+      if (!confirmed) {
+        return false;
+      }
+
+      clearNativeEditSession();
+      return true;
+    },
+    [clearNativeEditSession, nativeEditSession, toast],
+  );
+
+  const openNativeEditSession = async (options: {
+    mode: "create" | "edit";
+    profile?: RenderProfile;
+  }) => {
+    const nextOriginalName =
+      options.mode === "edit" ? (options.profile?.name ?? null) : null;
+    const nextInitialValue =
+      options.mode === "edit" && options.profile
+        ? toRenderProfileInput(options.profile)
+        : createEmptyRenderProfileInput();
+
+    if (
+      nativeEditSession &&
+      nativeEditSession.mode === options.mode &&
+      nativeEditSession.originalName === nextOriginalName
+    ) {
+      closeNativeForms({ preserveNativeEditSession: true });
+      setNativeEditSession((current) =>
+        current ? { ...current, visible: true } : current,
+      );
+      return;
+    }
+
+    if (
+      nativeEditSession &&
+      isProfileNativeEditSessionDirty(nativeEditSession) &&
+      !(await discardNativeEditSession({
+        title: "Replace the current Settings draft?",
+        reason:
+          "This opens another local Settings draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
+      return;
+    }
+
+    closeNativeForms({ preserveNativeEditSession: true });
+    setError(null);
+    setNativeEditSession({
+      mode: options.mode,
+      originalName: nextOriginalName,
+      initialValue: nextInitialValue,
+      draft: createProfileFormDraft(nextInitialValue),
+      visible: true,
+    });
+  };
 
   const openAttemptInSettings = async (
     source: AISessionSource,
@@ -553,6 +673,19 @@ export function RenderProfileEditor({
       });
     },
     [setManualEditSession],
+  );
+
+  const handleNativeDraftChange = useCallback(
+    (draft: ProfileFormDraft) => {
+      setNativeEditSession((current) => {
+        if (!current || deepEqual(current.draft, draft)) {
+          return current;
+        }
+
+        return { ...current, draft };
+      });
+    },
+    [setNativeEditSession],
   );
 
   const handleManualEditSubmit = async (
@@ -692,8 +825,7 @@ export function RenderProfileEditor({
           <button
             type="button"
             onClick={() => {
-              closeNativeForms();
-              setIsCreating(true);
+              void openNativeEditSession({ mode: "create" });
             }}
           >
             Create Profile
@@ -711,40 +843,51 @@ export function RenderProfileEditor({
         </div>
       ) : null}
 
+      {hiddenNativeEditSession ? (
+        <ResumableSettingsDraftNotice
+          title={`Local Settings draft for ${
+            hiddenNativeEditSession.originalName ?? "a new render profile"
+          }${
+            isProfileNativeEditSessionDirty(hiddenNativeEditSession)
+              ? " has unsaved edits."
+              : " is still available in this tab."
+          }`}
+          description="Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
+          resumeLabel="Resume Settings draft"
+          discardLabel="Discard Settings draft"
+          onResume={() =>
+            setNativeEditSession((current) =>
+              current ? { ...current, visible: true } : current,
+            )
+          }
+          onDiscard={() => {
+            void discardNativeEditSession();
+          }}
+        />
+      ) : null}
+
       {hiddenManualEditSession ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <p>
-            AI handoff draft for Attempt{" "}
-            {hiddenManualEditSession.attemptId.replace("attempt-", "")}
-            {isProfileManualEditSessionDirty(hiddenManualEditSession)
+        <ResumableSettingsDraftNotice
+          title={`AI handoff draft for Attempt ${hiddenManualEditSession.attemptId.replace(
+            "attempt-",
+            "",
+          )}${
+            isProfileManualEditSessionDirty(hiddenManualEditSession)
               ? " has unsaved Settings edits."
-              : " is still available in Settings."}
-          </p>
-          <p className="mt-2">
-            Resume it when you want to keep editing the local draft, or discard
-            it explicitly once you no longer need it.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() =>
-                setManualEditSession((current) =>
-                  current ? { ...current, visible: true } : current,
-                )
-              }
-            >
-              Resume AI handoff draft
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => void discardManualEditSession()}
-            >
-              Discard handoff draft
-            </button>
-          </div>
-        </div>
+              : " is still available in Settings."
+          }`}
+          description="Close keeps this draft available in the current tab. Resume it when you want to keep editing the local handoff draft, or discard it explicitly once you no longer need it."
+          resumeLabel="Resume AI handoff draft"
+          discardLabel="Discard handoff draft"
+          onResume={() =>
+            setManualEditSession((current) =>
+              current ? { ...current, visible: true } : current,
+            )
+          }
+          onDiscard={() => {
+            void discardManualEditSession();
+          }}
+        />
       ) : null}
 
       {manualEditSession?.visible ? (
@@ -775,20 +918,38 @@ export function RenderProfileEditor({
           }}
           onCancel={() => returnToAISession(manualEditSession.source)}
         />
-      ) : isCreating ? (
+      ) : nativeEditSession?.visible ? (
         <ProfileForm
-          onSubmit={handleCreate}
-          onCancel={() => setIsCreating(false)}
-        />
-      ) : editingProfile ? (
-        <ProfileForm
-          profile={editingProfile}
-          onSubmit={(input) => handleUpdate(editingProfile.name, input)}
-          onCancel={() => setEditingProfile(null)}
+          key={`native-${nativeEditSession.mode}-${nativeEditSession.originalName ?? "create"}`}
+          initialValue={nativeEditSession.initialValue}
+          draft={nativeEditSession.draft}
+          savedValue={
+            nativeEditSession.mode === "edit"
+              ? nativeEditSession.initialValue
+              : undefined
+          }
+          lockName={nativeEditSession.mode === "edit"}
+          title={
+            nativeEditSession.mode === "edit"
+              ? "Edit Saved Profile"
+              : "Create New Profile"
+          }
+          cancelLabel="Close"
+          submitLabel={nativeEditSession.mode === "edit" ? "Update" : "Create"}
+          onDraftChange={handleNativeDraftChange}
+          onSubmit={(input) => {
+            void handleSaveNativeEditSession(nativeEditSession, input);
+          }}
+          onCancel={() =>
+            closeNativeForms({ preserveNativeEditSession: false })
+          }
+          onDiscard={() => {
+            void discardNativeEditSession();
+          }}
         />
       ) : null}
 
-      {profiles.length === 0 && !isCreating && !manualEditSession?.visible ? (
+      {profiles.length === 0 && !nativeEditSession && !manualEditSession ? (
         <ActionEmptyState
           eyebrow="Optional runtime override"
           title="No saved render profiles yet"
@@ -796,7 +957,9 @@ export function RenderProfileEditor({
           actions={[
             {
               label: "Create your first profile",
-              onClick: () => setIsCreating(true),
+              onClick: () => {
+                void openNativeEditSession({ mode: "create" });
+              },
             },
           ]}
         />
@@ -879,8 +1042,7 @@ export function RenderProfileEditor({
               <button
                 type="button"
                 onClick={() => {
-                  closeNativeForms();
-                  setEditingProfile(profile);
+                  void openNativeEditSession({ mode: "edit", profile });
                 }}
                 className="text-sm text-blue-600 hover:underline"
               >
@@ -910,10 +1072,12 @@ interface ProfileFormProps {
   title?: string;
   contextNotice?: ReactNode;
   cancelLabel?: string;
+  discardLabel?: string;
   submitLabel?: string;
   onDraftChange?: (draft: ProfileFormDraft) => void;
   onSubmit: (input: RenderProfileInput) => void;
   onCancel: () => void;
+  onDiscard?: () => void;
 }
 
 function ProfileForm({
@@ -925,31 +1089,16 @@ function ProfileForm({
   title,
   contextNotice,
   cancelLabel = "Cancel",
+  discardLabel = "Discard draft",
   submitLabel,
   onDraftChange,
   onSubmit,
   onCancel,
+  onDiscard,
 }: ProfileFormProps) {
   const seed =
     initialValue ??
-    (profile
-      ? toRenderProfileInput(profile)
-      : {
-          name: "",
-          hostPatterns: [],
-          forceEngine: undefined,
-          preferHeadless: undefined,
-          neverHeadless: undefined,
-          assumeJsHeavy: undefined,
-          jsHeavyThreshold: undefined,
-          rateLimitQPS: undefined,
-          rateLimitBurst: undefined,
-          block: undefined,
-          wait: undefined,
-          timeouts: undefined,
-          screenshot: undefined,
-          device: undefined,
-        });
+    (profile ? toRenderProfileInput(profile) : createEmptyRenderProfileInput());
   const seedDraft = draft ?? createProfileFormDraft(seed);
 
   const [formData, setFormData] = useState<RenderProfileInput>(
@@ -1008,17 +1157,21 @@ function ProfileForm({
   }, [currentDraft, onDraftChange]);
 
   const syncState = useMemo<"clean" | "dirty" | null>(() => {
-    if (!savedValue) {
-      return null;
-    }
+    const baselineValue = savedValue ?? seed;
 
     try {
       const workingValue = buildRenderProfileInputFromDraft(currentDraft);
-      return deepEqual(workingValue, savedValue) ? "clean" : "dirty";
+      const isDirty = !deepEqual(workingValue, baselineValue);
+
+      if (isDirty) {
+        return "dirty";
+      }
+
+      return savedValue ? "clean" : null;
     } catch {
       return "dirty";
     }
-  }, [currentDraft, savedValue]);
+  }, [currentDraft, savedValue, seed]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1272,6 +1425,15 @@ function ProfileForm({
       />
 
       <div className="flex justify-end space-x-2">
+        {onDiscard ? (
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="rounded border px-4 py-2 hover:bg-gray-100"
+          >
+            {discardLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onCancel}

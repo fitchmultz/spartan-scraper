@@ -16,11 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Settings Draft Recovery and Navigation Guards Beyond AI Handoffs
-   - Add dirty-state tracking and explicit discard confirmations for the standard create/edit forms in Settings, not just AI handoff drafts.
-   - Preserve or warn on route changes and capability switching when operators have unsaved native Settings edits outside the AI modal flows.
-   - Standardize resumable-draft banners, close/cancel copy, and destructive-action language across Settings surfaces that mix local drafts with persisted artifacts.
-   - Add focused workflow tests for canceling dirty native forms, switching between saved artifacts with local edits, and leaving `/settings` with unsaved non-AI drafts.
+1. Template Workspace Draft Persistence and Intentional Discard
+   - Preserve in-progress template workspace drafts across close/reopen and route-level navigation so `/templates` matches the resilient Settings editing model.
+   - Split close versus discard semantics for template creation, duplication, promotion-seeded drafts, and visual-builder handoffs instead of silently resetting the workspace.
+   - Add resumable-draft notices and replacement confirmations when operators switch templates or builder sessions with unsaved local workspace edits.
+   - Add focused workflow tests for route remount recovery, switching between saved templates with dirty local edits, and intentionally discarding a hidden template draft.
 
 ## Ongoing Constraints
 

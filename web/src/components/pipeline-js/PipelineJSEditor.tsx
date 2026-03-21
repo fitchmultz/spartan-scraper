@@ -26,6 +26,7 @@ import {
   type AIAttempt,
   useAIAttemptHistory,
 } from "../../hooks/useAIAttemptHistory";
+import { useBeforeUnloadPrompt } from "../../hooks/useBeforeUnloadPrompt";
 import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
@@ -34,6 +35,7 @@ import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
+import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraftNotice";
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
@@ -46,6 +48,8 @@ const PIPELINE_JS_DEBUGGER_TARGET_KEY =
   "spartan.pipeline-js.ai-debugger-target";
 const PIPELINE_JS_MANUAL_EDIT_SESSION_KEY =
   "spartan.pipeline-js.ai-manual-edit-session";
+const PIPELINE_JS_NATIVE_EDIT_SESSION_KEY =
+  "spartan.pipeline-js.native-edit-session";
 
 interface ScriptFormDraft {
   formData: PipelineJsInput;
@@ -63,10 +67,29 @@ interface ScriptManualEditSession {
   visible: boolean;
 }
 
+interface ScriptNativeEditSession {
+  mode: "create" | "edit";
+  originalName: string | null;
+  initialValue: PipelineJsInput;
+  draft: ScriptFormDraft;
+  visible: boolean;
+}
+
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
   aiStatus?: ComponentStatus | null;
   onInventoryChange?: (count: number) => void;
+}
+
+function createEmptyPipelineJsInput(): PipelineJsInput {
+  return {
+    name: "",
+    hostPatterns: [],
+    engine: undefined,
+    preNav: undefined,
+    postNav: undefined,
+    selectors: undefined,
+  };
 }
 
 function toPipelineJsInput(script: JsTargetScript): PipelineJsInput {
@@ -108,13 +131,23 @@ function buildPipelineJsInputFromDraft(
   };
 }
 
+function isScriptDraftDirty(
+  draft: ScriptFormDraft,
+  initialValue: PipelineJsInput,
+): boolean {
+  return !deepEqual(buildPipelineJsInputFromDraft(draft), initialValue);
+}
+
 function isScriptManualEditSessionDirty(
   session: ScriptManualEditSession,
 ): boolean {
-  return !deepEqual(
-    buildPipelineJsInputFromDraft(session.draft),
-    session.initialValue,
-  );
+  return isScriptDraftDirty(session.draft, session.initialValue);
+}
+
+function isScriptNativeEditSessionDirty(
+  session: ScriptNativeEditSession,
+): boolean {
+  return isScriptDraftDirty(session.draft, session.initialValue);
 }
 
 function ManualEditContextNotice({
@@ -154,15 +187,16 @@ export function PipelineJSEditor({
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingScript, setEditingScript] = useState<JsTargetScript | null>(
-    null,
-  );
+  const [nativeEditSession, setNativeEditSession, clearNativeEditSession] =
+    useSessionStorageState<ScriptNativeEditSession | null>(
+      PIPELINE_JS_NATIVE_EDIT_SESSION_KEY,
+      null,
+    );
   const [debuggingScript, setDebuggingScript, clearDebuggingScript] =
     useSessionStorageState<JsTargetScript | null>(
       PIPELINE_JS_DEBUGGER_TARGET_KEY,
       null,
     );
-  const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
   const [debuggerResetSignal, setDebuggerResetSignal] = useState(0);
@@ -187,6 +221,17 @@ export function PipelineJSEditor({
   const aiUnavailableMessage = aiCapability.message;
   const hiddenManualEditSession =
     manualEditSession && !manualEditSession.visible ? manualEditSession : null;
+  const hiddenNativeEditSession =
+    nativeEditSession && !nativeEditSession.visible ? nativeEditSession : null;
+  const hasDirtySettingsDraft =
+    (manualEditSession
+      ? isScriptManualEditSessionDirty(manualEditSession)
+      : false) ||
+    (nativeEditSession
+      ? isScriptNativeEditSessionDirty(nativeEditSession)
+      : false);
+
+  useBeforeUnloadPrompt(hasDirtySettingsDraft);
 
   const loadScripts = useCallback(async () => {
     try {
@@ -218,9 +263,13 @@ export function PipelineJSEditor({
 
   const closeNativeForms = (options?: {
     preserveManualEditSession?: boolean;
+    preserveNativeEditSession?: boolean;
   }) => {
-    setIsCreating(false);
-    setEditingScript(null);
+    if (!options?.preserveNativeEditSession) {
+      setNativeEditSession((current) =>
+        current ? { ...current, visible: false } : current,
+      );
+    }
 
     if (options?.preserveManualEditSession) {
       return;
@@ -231,74 +280,63 @@ export function PipelineJSEditor({
     );
   };
 
-  const handleCreate = async (input: PipelineJsInput) => {
+  const handleSaveNativeEditSession = async (
+    session: ScriptNativeEditSession,
+    input: PipelineJsInput,
+  ) => {
+    const isCreate = session.mode === "create";
+    const actionLabel = isCreate
+      ? input.name
+        ? `Creating ${input.name}`
+        : "Creating script"
+      : `Updating ${session.originalName ?? input.name}`;
     const toastId = toast.show({
       tone: "loading",
-      title: input.name ? `Creating ${input.name}` : "Creating script",
-      description: "Saving the new pipeline JavaScript configuration.",
+      title: actionLabel,
+      description: isCreate
+        ? "Saving the new pipeline JavaScript configuration."
+        : "Saving the latest pipeline JavaScript changes.",
     });
-    try {
-      setError(null);
-      const response = await postV1PipelineJs({
-        baseUrl: getApiBaseUrl(),
-        body: input,
-      });
-      if (response.error) {
-        throw new Error(
-          getApiErrorMessage(response.error, "Failed to create script"),
-        );
-      }
-      await loadScripts();
-      setIsCreating(false);
-      toast.update(toastId, {
-        tone: "success",
-        title: "Script created",
-        description: `${input.name} is ready for pipeline matching.`,
-      });
-    } catch (err) {
-      const message = getApiErrorMessage(err, "Failed to create script");
-      setError(message);
-      onError?.(message);
-      toast.update(toastId, {
-        tone: "error",
-        title: "Failed to create script",
-        description: message,
-      });
-    }
-  };
 
-  const handleUpdate = async (name: string, input: PipelineJsInput) => {
-    const toastId = toast.show({
-      tone: "loading",
-      title: `Updating ${name}`,
-      description: "Saving the latest pipeline JavaScript changes.",
-    });
     try {
       setError(null);
-      const response = await putV1PipelineJsByName({
-        baseUrl: getApiBaseUrl(),
-        path: { name },
-        body: input,
-      });
+      const response = isCreate
+        ? await postV1PipelineJs({
+            baseUrl: getApiBaseUrl(),
+            body: input,
+          })
+        : await putV1PipelineJsByName({
+            baseUrl: getApiBaseUrl(),
+            path: { name: session.originalName ?? input.name },
+            body: input,
+          });
       if (response.error) {
         throw new Error(
-          getApiErrorMessage(response.error, "Failed to update script"),
+          getApiErrorMessage(
+            response.error,
+            isCreate ? "Failed to create script" : "Failed to update script",
+          ),
         );
       }
       await loadScripts();
-      setEditingScript(null);
+      clearNativeEditSession();
       toast.update(toastId, {
         tone: "success",
-        title: "Script updated",
-        description: `${name} now reflects the latest configuration.`,
+        title: isCreate ? "Script created" : "Script updated",
+        description: isCreate
+          ? `${input.name} is ready for pipeline matching.`
+          : `${session.originalName ?? input.name} now reflects the latest configuration.`,
       });
     } catch (err) {
-      const message = getApiErrorMessage(err, "Failed to update script");
+      const message = getApiErrorMessage(
+        err,
+        isCreate ? "Failed to create script" : "Failed to update script",
+      );
       setError(message);
       onError?.(message);
       toast.update(toastId, {
         tone: "error",
-        title: "Failed to update script",
+        title: isCreate ? "Failed to create script" : "Failed to update script",
         description: message,
       });
     }
@@ -375,6 +413,79 @@ export function PipelineJSEditor({
     },
     [clearManualEditSession, manualEditSession, toast],
   );
+
+  const discardNativeEditSession = useCallback(
+    async (options?: { reason?: string; title?: string }) => {
+      if (!nativeEditSession) {
+        return true;
+      }
+
+      const confirmed = await toast.confirm({
+        title: options?.title ?? "Discard the local Settings draft?",
+        description:
+          options?.reason ??
+          (isScriptNativeEditSessionDirty(nativeEditSession)
+            ? "This removes the in-progress local Settings draft. Your unsaved edits will be lost."
+            : "This removes the current local Settings draft from this tab."),
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+      if (!confirmed) {
+        return false;
+      }
+
+      clearNativeEditSession();
+      return true;
+    },
+    [clearNativeEditSession, nativeEditSession, toast],
+  );
+
+  const openNativeEditSession = async (options: {
+    mode: "create" | "edit";
+    script?: JsTargetScript;
+  }) => {
+    const nextOriginalName =
+      options.mode === "edit" ? (options.script?.name ?? null) : null;
+    const nextInitialValue =
+      options.mode === "edit" && options.script
+        ? toPipelineJsInput(options.script)
+        : createEmptyPipelineJsInput();
+
+    if (
+      nativeEditSession &&
+      nativeEditSession.mode === options.mode &&
+      nativeEditSession.originalName === nextOriginalName
+    ) {
+      closeNativeForms({ preserveNativeEditSession: true });
+      setNativeEditSession((current) =>
+        current ? { ...current, visible: true } : current,
+      );
+      return;
+    }
+
+    if (
+      nativeEditSession &&
+      isScriptNativeEditSessionDirty(nativeEditSession) &&
+      !(await discardNativeEditSession({
+        title: "Replace the current Settings draft?",
+        reason:
+          "This opens another local Settings draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
+      return;
+    }
+
+    closeNativeForms({ preserveNativeEditSession: true });
+    setError(null);
+    setNativeEditSession({
+      mode: options.mode,
+      originalName: nextOriginalName,
+      initialValue: nextInitialValue,
+      draft: createScriptFormDraft(nextInitialValue),
+      visible: true,
+    });
+  };
 
   const openAttemptInSettings = async (
     source: AISessionSource,
@@ -473,6 +584,19 @@ export function PipelineJSEditor({
       });
     },
     [setManualEditSession],
+  );
+
+  const handleNativeDraftChange = useCallback(
+    (draft: ScriptFormDraft) => {
+      setNativeEditSession((current) => {
+        if (!current || deepEqual(current.draft, draft)) {
+          return current;
+        }
+
+        return { ...current, draft };
+      });
+    },
+    [setNativeEditSession],
   );
 
   const handleManualEditSubmit = async (
@@ -613,8 +737,7 @@ export function PipelineJSEditor({
           <button
             type="button"
             onClick={() => {
-              closeNativeForms();
-              setIsCreating(true);
+              void openNativeEditSession({ mode: "create" });
             }}
           >
             Create Script
@@ -632,40 +755,51 @@ export function PipelineJSEditor({
         </div>
       ) : null}
 
+      {hiddenNativeEditSession ? (
+        <ResumableSettingsDraftNotice
+          title={`Local Settings draft for ${
+            hiddenNativeEditSession.originalName ?? "a new pipeline script"
+          }${
+            isScriptNativeEditSessionDirty(hiddenNativeEditSession)
+              ? " has unsaved edits."
+              : " is still available in this tab."
+          }`}
+          description="Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
+          resumeLabel="Resume Settings draft"
+          discardLabel="Discard Settings draft"
+          onResume={() =>
+            setNativeEditSession((current) =>
+              current ? { ...current, visible: true } : current,
+            )
+          }
+          onDiscard={() => {
+            void discardNativeEditSession();
+          }}
+        />
+      ) : null}
+
       {hiddenManualEditSession ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <p>
-            AI handoff draft for Attempt{" "}
-            {hiddenManualEditSession.attemptId.replace("attempt-", "")}
-            {isScriptManualEditSessionDirty(hiddenManualEditSession)
+        <ResumableSettingsDraftNotice
+          title={`AI handoff draft for Attempt ${hiddenManualEditSession.attemptId.replace(
+            "attempt-",
+            "",
+          )}${
+            isScriptManualEditSessionDirty(hiddenManualEditSession)
               ? " has unsaved Settings edits."
-              : " is still available in Settings."}
-          </p>
-          <p className="mt-2">
-            Resume it when you want to keep editing the local draft, or discard
-            it explicitly once you no longer need it.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() =>
-                setManualEditSession((current) =>
-                  current ? { ...current, visible: true } : current,
-                )
-              }
-            >
-              Resume AI handoff draft
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => void discardManualEditSession()}
-            >
-              Discard handoff draft
-            </button>
-          </div>
-        </div>
+              : " is still available in Settings."
+          }`}
+          description="Close keeps this draft available in the current tab. Resume it when you want to keep editing the local handoff draft, or discard it explicitly once you no longer need it."
+          resumeLabel="Resume AI handoff draft"
+          discardLabel="Discard handoff draft"
+          onResume={() =>
+            setManualEditSession((current) =>
+              current ? { ...current, visible: true } : current,
+            )
+          }
+          onDiscard={() => {
+            void discardManualEditSession();
+          }}
+        />
       ) : null}
 
       {manualEditSession?.visible ? (
@@ -696,20 +830,38 @@ export function PipelineJSEditor({
           }}
           onCancel={() => returnToAISession(manualEditSession.source)}
         />
-      ) : isCreating ? (
+      ) : nativeEditSession?.visible ? (
         <ScriptForm
-          onSubmit={handleCreate}
-          onCancel={() => setIsCreating(false)}
-        />
-      ) : editingScript ? (
-        <ScriptForm
-          script={editingScript}
-          onSubmit={(input) => handleUpdate(editingScript.name, input)}
-          onCancel={() => setEditingScript(null)}
+          key={`native-${nativeEditSession.mode}-${nativeEditSession.originalName ?? "create"}`}
+          initialValue={nativeEditSession.initialValue}
+          draft={nativeEditSession.draft}
+          savedValue={
+            nativeEditSession.mode === "edit"
+              ? nativeEditSession.initialValue
+              : undefined
+          }
+          lockName={nativeEditSession.mode === "edit"}
+          title={
+            nativeEditSession.mode === "edit"
+              ? "Edit Saved Script"
+              : "Create New Script"
+          }
+          cancelLabel="Close"
+          submitLabel={nativeEditSession.mode === "edit" ? "Update" : "Create"}
+          onDraftChange={handleNativeDraftChange}
+          onSubmit={(input) => {
+            void handleSaveNativeEditSession(nativeEditSession, input);
+          }}
+          onCancel={() =>
+            closeNativeForms({ preserveNativeEditSession: false })
+          }
+          onDiscard={() => {
+            void discardNativeEditSession();
+          }}
         />
       ) : null}
 
-      {scripts.length === 0 && !isCreating && !manualEditSession?.visible ? (
+      {scripts.length === 0 && !nativeEditSession && !manualEditSession ? (
         <ActionEmptyState
           eyebrow="Optional page-specific hook"
           title="No pipeline scripts yet"
@@ -717,7 +869,9 @@ export function PipelineJSEditor({
           actions={[
             {
               label: "Create your first script",
-              onClick: () => setIsCreating(true),
+              onClick: () => {
+                void openNativeEditSession({ mode: "create" });
+              },
             },
           ]}
         />
@@ -816,8 +970,7 @@ export function PipelineJSEditor({
               <button
                 type="button"
                 onClick={() => {
-                  closeNativeForms();
-                  setEditingScript(script);
+                  void openNativeEditSession({ mode: "edit", script });
                 }}
                 className="text-sm text-blue-600 hover:underline"
               >
@@ -847,10 +1000,12 @@ interface ScriptFormProps {
   title?: string;
   contextNotice?: ReactNode;
   cancelLabel?: string;
+  discardLabel?: string;
   submitLabel?: string;
   onDraftChange?: (draft: ScriptFormDraft) => void;
   onSubmit: (input: PipelineJsInput) => void;
   onCancel: () => void;
+  onDiscard?: () => void;
 }
 
 function ScriptForm({
@@ -862,23 +1017,16 @@ function ScriptForm({
   title,
   contextNotice,
   cancelLabel = "Cancel",
+  discardLabel = "Discard draft",
   submitLabel,
   onDraftChange,
   onSubmit,
   onCancel,
+  onDiscard,
 }: ScriptFormProps) {
   const seed =
     initialValue ??
-    (script
-      ? toPipelineJsInput(script)
-      : {
-          name: "",
-          hostPatterns: [],
-          engine: undefined,
-          preNav: undefined,
-          postNav: undefined,
-          selectors: undefined,
-        });
+    (script ? toPipelineJsInput(script) : createEmptyPipelineJsInput());
   const seedDraft = draft ?? createScriptFormDraft(seed);
 
   const [formData, setFormData] = useState<PipelineJsInput>(seedDraft.formData);
@@ -901,13 +1049,16 @@ function ScriptForm({
   }, [currentDraft, onDraftChange]);
 
   const syncState = useMemo<"clean" | "dirty" | null>(() => {
-    if (!savedValue) {
-      return null;
+    const baselineValue = savedValue ?? seed;
+    const workingValue = buildPipelineJsInputFromDraft(currentDraft);
+    const isDirty = !deepEqual(workingValue, baselineValue);
+
+    if (isDirty) {
+      return "dirty";
     }
 
-    const workingValue = buildPipelineJsInputFromDraft(currentDraft);
-    return deepEqual(workingValue, savedValue) ? "clean" : "dirty";
-  }, [currentDraft, savedValue]);
+    return savedValue ? "clean" : null;
+  }, [currentDraft, savedValue, seed]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1064,6 +1215,15 @@ function ScriptForm({
       </div>
 
       <div className="flex justify-end space-x-2">
+        {onDiscard ? (
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="rounded border px-4 py-2 hover:bg-gray-100"
+          >
+            {discardLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onCancel}

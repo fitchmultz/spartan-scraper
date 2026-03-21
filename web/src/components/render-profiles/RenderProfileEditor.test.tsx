@@ -111,6 +111,123 @@ describe("RenderProfileEditor", () => {
     ).toBeEnabled();
   });
 
+  it("restores a closed native profile draft after the Settings editor remounts and lets operators discard it intentionally", async () => {
+    const firstRender = render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create profile/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "draft-profile" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /resume settings draft/i }),
+    ).toBeInTheDocument();
+
+    firstRender.unmount();
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /resume settings draft/i }),
+    );
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("draft-profile");
+    expect(screen.getByLabelText(/host patterns/i)).toHaveValue("example.com");
+
+    fireEvent.click(screen.getByRole("button", { name: /discard draft/i }));
+
+    const confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /resume settings draft/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("warns before replacing a dirty native profile draft when switching to another saved profile", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: {
+        profiles: [
+          {
+            name: "news",
+            hostPatterns: ["example.com"],
+            preferHeadless: true,
+          },
+          {
+            name: "docs",
+            hostPatterns: ["example.org"],
+            preferHeadless: false,
+          },
+        ],
+      },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: /edit/i }))[0],
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /edit saved profile/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/prefer headless/i));
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[1]);
+
+    let confirmDialog = await screen.findByRole("alertdialog");
+    expect(confirmDialog).toHaveTextContent(
+      /replace the current settings draft/i,
+    );
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /keep draft/i }),
+    );
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("news");
+    expect(screen.getByLabelText(/prefer headless/i)).not.toBeChecked();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[1]);
+
+    confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue("docs");
+    });
+    expect(screen.getByLabelText(/prefer headless/i)).not.toBeChecked();
+  });
+
   it("keeps the create form open and shows the API error when create fails", async () => {
     vi.mocked(api.postV1RenderProfiles).mockResolvedValue({
       data: undefined,

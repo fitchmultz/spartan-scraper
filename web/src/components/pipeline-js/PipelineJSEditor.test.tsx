@@ -112,6 +112,127 @@ describe("PipelineJSEditor", () => {
     ).toBeEnabled();
   });
 
+  it("restores a closed native script draft after the Settings editor remounts and lets operators discard it intentionally", async () => {
+    const firstRender = render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create script/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "draft-script" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /resume settings draft/i }),
+    ).toBeInTheDocument();
+
+    firstRender.unmount();
+
+    render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /resume settings draft/i }),
+    );
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("draft-script");
+    expect(screen.getByLabelText(/host patterns/i)).toHaveValue("example.com");
+
+    fireEvent.click(screen.getByRole("button", { name: /discard draft/i }));
+
+    const confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /resume settings draft/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("warns before replacing a dirty native script draft when switching to another saved script", async () => {
+    vi.mocked(api.getV1PipelineJs).mockResolvedValue({
+      data: {
+        scripts: [
+          {
+            name: "normalize-app-shell",
+            hostPatterns: ["example.com"],
+            selectors: ["main"],
+          },
+          {
+            name: "secondary-script",
+            hostPatterns: ["example.org"],
+            selectors: ["#content"],
+          },
+        ],
+      },
+      request: new Request("http://localhost:8741/v1/pipeline-js"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      (await screen.findAllByRole("button", { name: /edit/i }))[0],
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /edit saved script/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/wait selectors/i), {
+      target: { value: "main, #app-root" },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/unsaved changes/i);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[1]);
+
+    let confirmDialog = await screen.findByRole("alertdialog");
+    expect(confirmDialog).toHaveTextContent(
+      /replace the current settings draft/i,
+    );
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /keep draft/i }),
+    );
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("normalize-app-shell");
+    expect(screen.getByLabelText(/wait selectors/i)).toHaveValue(
+      "main, #app-root",
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[1]);
+
+    confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^name$/i)).toHaveValue("secondary-script");
+    });
+    expect(screen.getByLabelText(/wait selectors/i)).toHaveValue("#content");
+  });
+
   it("preserves AI history after manual Settings edits and retries from the edited script", async () => {
     vi.mocked(api.getV1PipelineJs)
       .mockResolvedValueOnce({
