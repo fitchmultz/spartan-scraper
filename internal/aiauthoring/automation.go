@@ -48,8 +48,14 @@ type RenderProfileRequest struct {
 	Visual        bool
 }
 
+type ResolvedGoal struct {
+	Text   string `json:"text"`
+	Source string `json:"source"`
+}
+
 type RenderProfileResult struct {
 	Profile           fetch.RenderProfile `json:"profile"`
+	ResolvedGoal      *ResolvedGoal       `json:"resolved_goal,omitempty"`
 	Explanation       string              `json:"explanation,omitempty"`
 	RouteID           string              `json:"route_id,omitempty"`
 	Provider          string              `json:"provider,omitempty"`
@@ -69,6 +75,7 @@ type RenderProfileDebugRequest struct {
 
 type RenderProfileDebugResult struct {
 	Issues            []string             `json:"issues,omitempty"`
+	ResolvedGoal      *ResolvedGoal        `json:"resolved_goal,omitempty"`
 	Explanation       string               `json:"explanation,omitempty"`
 	SuggestedProfile  *fetch.RenderProfile `json:"suggested_profile,omitempty"`
 	RouteID           string               `json:"route_id,omitempty"`
@@ -93,6 +100,7 @@ type PipelineJSRequest struct {
 
 type PipelineJSResult struct {
 	Script            pipeline.JSTargetScript `json:"script"`
+	ResolvedGoal      *ResolvedGoal           `json:"resolved_goal,omitempty"`
 	Explanation       string                  `json:"explanation,omitempty"`
 	RouteID           string                  `json:"route_id,omitempty"`
 	Provider          string                  `json:"provider,omitempty"`
@@ -112,6 +120,7 @@ type PipelineJSDebugRequest struct {
 
 type PipelineJSDebugResult struct {
 	Issues            []string                 `json:"issues,omitempty"`
+	ResolvedGoal      *ResolvedGoal            `json:"resolved_goal,omitempty"`
 	Explanation       string                   `json:"explanation,omitempty"`
 	SuggestedScript   *pipeline.JSTargetScript `json:"suggested_script,omitempty"`
 	RouteID           string                   `json:"route_id,omitempty"`
@@ -121,6 +130,23 @@ type PipelineJSDebugResult struct {
 	RecheckStatus     int                      `json:"recheck_status,omitempty"`
 	RecheckEngine     string                   `json:"recheck_engine,omitempty"`
 	RecheckError      string                   `json:"recheck_error,omitempty"`
+}
+
+const (
+	resolvedGoalSourceExplicit = "explicit"
+	resolvedGoalSourceDerived  = "derived"
+)
+
+func buildResolvedGoal(text string, explicit string) *ResolvedGoal {
+	trimmedText := strings.TrimSpace(text)
+	if trimmedText == "" {
+		return nil
+	}
+	source := resolvedGoalSourceDerived
+	if strings.TrimSpace(explicit) != "" {
+		source = resolvedGoalSourceExplicit
+	}
+	return &ResolvedGoal{Text: trimmedText, Source: source}
 }
 
 type automationDiagnostics struct {
@@ -156,6 +182,7 @@ func (s *Service) GenerateRenderProfile(ctx context.Context, req RenderProfileRe
 	}
 
 	instructions := resolveAutomationInstructions(automationGoalRenderProfile, req.Instructions, name, hostPatterns, page)
+	resolvedGoal := buildResolvedGoal(instructions, req.Instructions)
 	suggestion, err := s.generateRenderProfileSuggestion(ctx, page, renderProfilePromptInput{
 		Name:           name,
 		HostPatterns:   hostPatterns,
@@ -171,6 +198,7 @@ func (s *Service) GenerateRenderProfile(ctx context.Context, req RenderProfileRe
 
 	return RenderProfileResult{
 		Profile:           suggestion.Profile,
+		ResolvedGoal:      resolvedGoal,
 		Explanation:       suggestion.Explanation,
 		RouteID:           suggestion.RouteID,
 		Provider:          suggestion.Provider,
@@ -203,8 +231,10 @@ func (s *Service) DebugRenderProfile(ctx context.Context, req RenderProfileDebug
 	}
 
 	diagnostics := s.collectRenderProfileDiagnostics(ctx, req.URL, req.Profile)
+	instructions := buildRenderProfileDebugInstructions(req.Profile, req.Instructions)
 	result := RenderProfileDebugResult{
 		Issues:            diagnostics.Issues,
+		ResolvedGoal:      buildResolvedGoal(instructions, req.Instructions),
 		VisualContextUsed: baselinePage.VisualContextUsed,
 		RecheckStatus:     diagnostics.RecheckStatus,
 		RecheckEngine:     diagnostics.RecheckEngine,
@@ -218,7 +248,7 @@ func (s *Service) DebugRenderProfile(ctx context.Context, req RenderProfileDebug
 	suggestion, err := s.generateRenderProfileSuggestion(ctx, baselinePage, renderProfilePromptInput{
 		Name:              req.Profile.Name,
 		HostPatterns:      append([]string(nil), req.Profile.HostPatterns...),
-		Instructions:      buildRenderProfileDebugInstructions(req.Profile, req.Instructions),
+		Instructions:      instructions,
 		ContextSummary:    buildRenderProfileDebugContextSummary(req.Profile, baselinePage, diagnostics),
 		Feedback:          buildRenderProfileDebugFeedback(req.Profile, diagnostics),
 		ValidateCandidate: validateRenderProfileStructure,
@@ -265,6 +295,7 @@ func (s *Service) GeneratePipelineJS(ctx context.Context, req PipelineJSRequest)
 	}
 
 	instructions := resolveAutomationInstructions(automationGoalPipelineJS, req.Instructions, name, hostPatterns, page)
+	resolvedGoal := buildResolvedGoal(instructions, req.Instructions)
 	suggestion, err := s.generatePipelineJSSuggestion(ctx, page, pipelineJSPromptInput{
 		Name:           name,
 		HostPatterns:   hostPatterns,
@@ -280,6 +311,7 @@ func (s *Service) GeneratePipelineJS(ctx context.Context, req PipelineJSRequest)
 
 	return PipelineJSResult{
 		Script:            suggestion.Script,
+		ResolvedGoal:      resolvedGoal,
 		Explanation:       suggestion.Explanation,
 		RouteID:           suggestion.RouteID,
 		Provider:          suggestion.Provider,
@@ -312,8 +344,10 @@ func (s *Service) DebugPipelineJS(ctx context.Context, req PipelineJSDebugReques
 	}
 
 	diagnostics := s.collectPipelineJSDiagnostics(ctx, baselinePage, req.Script)
+	instructions := buildPipelineJSDebugInstructions(req.Script, req.Instructions)
 	result := PipelineJSDebugResult{
 		Issues:            diagnostics.Issues,
+		ResolvedGoal:      buildResolvedGoal(instructions, req.Instructions),
 		VisualContextUsed: baselinePage.VisualContextUsed,
 		RecheckStatus:     diagnostics.RecheckStatus,
 		RecheckEngine:     diagnostics.RecheckEngine,
@@ -327,7 +361,7 @@ func (s *Service) DebugPipelineJS(ctx context.Context, req PipelineJSDebugReques
 	suggestion, err := s.generatePipelineJSSuggestion(ctx, baselinePage, pipelineJSPromptInput{
 		Name:              req.Script.Name,
 		HostPatterns:      append([]string(nil), req.Script.HostPatterns...),
-		Instructions:      buildPipelineJSDebugInstructions(req.Script, req.Instructions),
+		Instructions:      instructions,
 		ContextSummary:    buildPipelineJSDebugContextSummary(req.Script, baselinePage, diagnostics),
 		Feedback:          buildPipelineJSDebugFeedback(req.Script, diagnostics),
 		ValidateCandidate: validatePipelineJSStructure,

@@ -15,8 +15,9 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
-import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { AIImageAttachments } from "./AIImageAttachments";
+import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
+import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
@@ -369,6 +370,8 @@ export function AIPipelineJSDebugger({
                     </ul>
                   </div>
                 ) : null}
+
+                <AIResolvedGoalCard resolvedGoal={state.result.resolved_goal} />
 
                 {state.result.explanation ? (
                   <p className="text-sm text-slate-200">

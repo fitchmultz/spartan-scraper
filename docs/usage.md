@@ -228,7 +228,7 @@ spartan ai export-shape [flags]
 
 These commands are optional. Core scraping, crawling, research, template editing, and export workflows still work when AI stays off.
 
-These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs. Preview/template/render-profile/pipeline authoring commands also accept repeatable `--image-file <path>` flags for request-scoped reference images. Those attachments are bounded visual context only and are not persisted as job artifacts.
+These commands run the same bounded AI authoring workflows as the REST and Web surfaces, but without creating jobs. Preview/template/render-profile/pipeline authoring commands also accept repeatable `--image-file <path>` flags for request-scoped reference images. Those attachments are bounded visual context only and are not persisted as job artifacts. Render-profile and pipeline-JS generate/debug commands return a `resolved_goal` object in their JSON output so operators can inspect the exact goal Spartan sent to the model and whether it was `explicit` operator guidance or a `derived` default.
 
 Preview flags:
 
@@ -798,7 +798,7 @@ Webhook contract notes:
 - Create/update flows syntax-validate webhook URLs early; runtime delivery separately re-validates the destination, pins outbound dialing to the validated IP set, and refuses redirect hops to a different host.
 - Export/job webhook metadata no longer exposes host-local filesystem paths; consumers should use `resultUrl` when they need to fetch persisted job results.
 
-Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts:
+Bounded AI authoring endpoints live under `/v1/ai/*`. Preview/template/render-profile/pipeline request bodies accept optional `images` arrays of request-scoped `{data, mime_type}` attachments, which are used only for the current authoring request and are not persisted as job artifacts. Render-profile and pipeline-JS generate/debug responses also return `resolved_goal: { text, source }` so API clients can distinguish explicit operator guidance from Spartan-derived defaults:
 
 - `/v1/ai/extract-preview`
 - `/v1/ai/template-generate`

@@ -90,7 +90,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
   - `preferredLanguage: "jmespath" | "jsonata"` optional preferred output language
   - `instructions: "..."` optional projection/filter guidance
 
-These tools return structured authoring results immediately and do not create jobs. Attached `images` are bounded, request-scoped visual context only and are not persisted as job artifacts.
+These tools return structured authoring results immediately and do not create jobs. Attached `images` are bounded, request-scoped visual context only and are not persisted as job artifacts. Render-profile and pipeline-JS generate/debug tool results also include `resolved_goal: { text, source }` so MCP clients can inspect the exact goal Spartan sent to the model and whether it came from explicit operator guidance or a derived default.
 
 ## Export tools
 

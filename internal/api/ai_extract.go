@@ -122,12 +122,13 @@ type AIRenderProfileGenerateRequest struct {
 }
 
 type AIRenderProfileGenerateResponse struct {
-	Profile           fetch.RenderProfile `json:"profile"`
-	Explanation       string              `json:"explanation,omitempty"`
-	RouteID           string              `json:"route_id,omitempty"`
-	Provider          string              `json:"provider,omitempty"`
-	Model             string              `json:"model,omitempty"`
-	VisualContextUsed bool                `json:"visual_context_used"`
+	Profile           fetch.RenderProfile       `json:"profile"`
+	ResolvedGoal      *aiauthoring.ResolvedGoal `json:"resolved_goal,omitempty"`
+	Explanation       string                    `json:"explanation,omitempty"`
+	RouteID           string                    `json:"route_id,omitempty"`
+	Provider          string                    `json:"provider,omitempty"`
+	Model             string                    `json:"model,omitempty"`
+	VisualContextUsed bool                      `json:"visual_context_used"`
 }
 
 type AIRenderProfileDebugRequest struct {
@@ -141,16 +142,17 @@ type AIRenderProfileDebugRequest struct {
 }
 
 type AIRenderProfileDebugResponse struct {
-	Issues            []string             `json:"issues,omitempty"`
-	Explanation       string               `json:"explanation,omitempty"`
-	SuggestedProfile  *fetch.RenderProfile `json:"suggested_profile,omitempty"`
-	RouteID           string               `json:"route_id,omitempty"`
-	Provider          string               `json:"provider,omitempty"`
-	Model             string               `json:"model,omitempty"`
-	VisualContextUsed bool                 `json:"visual_context_used"`
-	RecheckStatus     int                  `json:"recheck_status,omitempty"`
-	RecheckEngine     string               `json:"recheck_engine,omitempty"`
-	RecheckError      string               `json:"recheck_error,omitempty"`
+	Issues            []string                  `json:"issues,omitempty"`
+	ResolvedGoal      *aiauthoring.ResolvedGoal `json:"resolved_goal,omitempty"`
+	Explanation       string                    `json:"explanation,omitempty"`
+	SuggestedProfile  *fetch.RenderProfile      `json:"suggested_profile,omitempty"`
+	RouteID           string                    `json:"route_id,omitempty"`
+	Provider          string                    `json:"provider,omitempty"`
+	Model             string                    `json:"model,omitempty"`
+	VisualContextUsed bool                      `json:"visual_context_used"`
+	RecheckStatus     int                       `json:"recheck_status,omitempty"`
+	RecheckEngine     string                    `json:"recheck_engine,omitempty"`
+	RecheckError      string                    `json:"recheck_error,omitempty"`
 }
 
 type AIPipelineJSGenerateRequest struct {
@@ -165,12 +167,13 @@ type AIPipelineJSGenerateRequest struct {
 }
 
 type AIPipelineJSGenerateResponse struct {
-	Script            pipeline.JSTargetScript `json:"script"`
-	Explanation       string                  `json:"explanation,omitempty"`
-	RouteID           string                  `json:"route_id,omitempty"`
-	Provider          string                  `json:"provider,omitempty"`
-	Model             string                  `json:"model,omitempty"`
-	VisualContextUsed bool                    `json:"visual_context_used"`
+	Script            pipeline.JSTargetScript   `json:"script"`
+	ResolvedGoal      *aiauthoring.ResolvedGoal `json:"resolved_goal,omitempty"`
+	Explanation       string                    `json:"explanation,omitempty"`
+	RouteID           string                    `json:"route_id,omitempty"`
+	Provider          string                    `json:"provider,omitempty"`
+	Model             string                    `json:"model,omitempty"`
+	VisualContextUsed bool                      `json:"visual_context_used"`
 }
 
 type AIPipelineJSDebugRequest struct {
@@ -184,16 +187,17 @@ type AIPipelineJSDebugRequest struct {
 }
 
 type AIPipelineJSDebugResponse struct {
-	Issues            []string                 `json:"issues,omitempty"`
-	Explanation       string                   `json:"explanation,omitempty"`
-	SuggestedScript   *pipeline.JSTargetScript `json:"suggested_script,omitempty"`
-	RouteID           string                   `json:"route_id,omitempty"`
-	Provider          string                   `json:"provider,omitempty"`
-	Model             string                   `json:"model,omitempty"`
-	VisualContextUsed bool                     `json:"visual_context_used"`
-	RecheckStatus     int                      `json:"recheck_status,omitempty"`
-	RecheckEngine     string                   `json:"recheck_engine,omitempty"`
-	RecheckError      string                   `json:"recheck_error,omitempty"`
+	Issues            []string                  `json:"issues,omitempty"`
+	ResolvedGoal      *aiauthoring.ResolvedGoal `json:"resolved_goal,omitempty"`
+	Explanation       string                    `json:"explanation,omitempty"`
+	SuggestedScript   *pipeline.JSTargetScript  `json:"suggested_script,omitempty"`
+	RouteID           string                    `json:"route_id,omitempty"`
+	Provider          string                    `json:"provider,omitempty"`
+	Model             string                    `json:"model,omitempty"`
+	VisualContextUsed bool                      `json:"visual_context_used"`
+	RecheckStatus     int                       `json:"recheck_status,omitempty"`
+	RecheckEngine     string                    `json:"recheck_engine,omitempty"`
+	RecheckError      string                    `json:"recheck_error,omitempty"`
 }
 
 type AIResearchRefineRequest struct {
@@ -404,6 +408,7 @@ func (s *Server) handleAIRenderProfileGenerate(w http.ResponseWriter, r *http.Re
 
 	resp := AIRenderProfileGenerateResponse{
 		Profile:           result.Profile,
+		ResolvedGoal:      result.ResolvedGoal,
 		Explanation:       result.Explanation,
 		RouteID:           result.RouteID,
 		Provider:          result.Provider,
@@ -444,6 +449,7 @@ func (s *Server) handleAIPipelineJSGenerate(w http.ResponseWriter, r *http.Reque
 
 	resp := AIPipelineJSGenerateResponse{
 		Script:            result.Script,
+		ResolvedGoal:      result.ResolvedGoal,
 		Explanation:       result.Explanation,
 		RouteID:           result.RouteID,
 		Provider:          result.Provider,
@@ -483,6 +489,7 @@ func (s *Server) handleAIRenderProfileDebug(w http.ResponseWriter, r *http.Reque
 
 	resp := AIRenderProfileDebugResponse{
 		Issues:            result.Issues,
+		ResolvedGoal:      result.ResolvedGoal,
 		Explanation:       result.Explanation,
 		SuggestedProfile:  result.SuggestedProfile,
 		RouteID:           result.RouteID,
@@ -526,6 +533,7 @@ func (s *Server) handleAIPipelineJSDebug(w http.ResponseWriter, r *http.Request)
 
 	resp := AIPipelineJSDebugResponse{
 		Issues:            result.Issues,
+		ResolvedGoal:      result.ResolvedGoal,
 		Explanation:       result.Explanation,
 		SuggestedScript:   result.SuggestedScript,
 		RouteID:           result.RouteID,

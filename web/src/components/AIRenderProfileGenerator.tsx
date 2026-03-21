@@ -13,9 +13,11 @@ import {
   type AiRenderProfileGenerateResponse,
   type ComponentStatus,
   type RenderProfile,
+  type ResolvedGoal,
 } from "../api";
-import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { AIImageAttachments } from "./AIImageAttachments";
+import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
+import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
@@ -38,6 +40,7 @@ interface GeneratorState {
   visual: boolean;
   isGenerating: boolean;
   generatedProfile: RenderProfile | null;
+  resolvedGoal: ResolvedGoal | null;
   explanation: string;
   routeId: string;
   provider: string;
@@ -58,6 +61,7 @@ const INITIAL_STATE: GeneratorState = {
   visual: false,
   isGenerating: false,
   generatedProfile: null,
+  resolvedGoal: null,
   explanation: "",
   routeId: "",
   provider: "",
@@ -114,6 +118,7 @@ export function AIRenderProfileGenerator({
       ...prev,
       isGenerating: true,
       generatedProfile: null,
+      resolvedGoal: null,
       explanation: "",
       routeId: "",
       provider: "",
@@ -158,6 +163,7 @@ export function AIRenderProfileGenerator({
         ...prev,
         isGenerating: false,
         generatedProfile: response.profile || null,
+        resolvedGoal: response.resolved_goal ?? null,
         explanation: response.explanation || "",
         routeId: response.route_id || "",
         provider: response.provider || "",
@@ -398,6 +404,7 @@ export function AIRenderProfileGenerator({
                     <span>Visual context used</span>
                   ) : null}
                 </div>
+                <AIResolvedGoalCard resolvedGoal={state.resolvedGoal} />
                 {state.explanation ? (
                   <p className="text-sm text-slate-200">{state.explanation}</p>
                 ) : null}

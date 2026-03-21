@@ -484,6 +484,20 @@ export type AiExtractTemplateDebugResponse = {
 };
 
 /**
+ * Exact goal text Spartan sent to the AI model and whether it came from explicit operator guidance or a system-derived default.
+ */
+export type ResolvedGoal = {
+    /**
+     * Exact instruction text sent to the AI model.
+     */
+    text: string;
+    /**
+     * Whether the goal came from operator guidance or Spartan-derived defaults.
+     */
+    source: 'explicit' | 'derived';
+};
+
+/**
  * Request for AI render profile generation from a live URL.
  */
 export type AiRenderProfileGenerateRequest = {
@@ -526,6 +540,7 @@ export type AiRenderProfileGenerateRequest = {
  */
 export type AiRenderProfileGenerateResponse = {
     profile?: RenderProfile;
+    resolved_goal?: ResolvedGoal;
     /**
      * Explanation of the generated render profile
      */
@@ -587,6 +602,7 @@ export type AiRenderProfileDebugResponse = {
      * Deterministic local issues found while rechecking the current render profile
      */
     issues?: Array<string>;
+    resolved_goal?: ResolvedGoal;
     /**
      * Explanation of the suggested render profile changes
      */
@@ -665,6 +681,7 @@ export type AiPipelineJsGenerateRequest = {
  */
 export type AiPipelineJsGenerateResponse = {
     script?: JsTargetScript;
+    resolved_goal?: ResolvedGoal;
     /**
      * Explanation of the generated pipeline JS script
      */
@@ -726,6 +743,7 @@ export type AiPipelineJsDebugResponse = {
      * Deterministic local issues found while rechecking the current pipeline JS script
      */
     issues?: Array<string>;
+    resolved_goal?: ResolvedGoal;
     /**
      * Explanation of the suggested pipeline JS changes
      */

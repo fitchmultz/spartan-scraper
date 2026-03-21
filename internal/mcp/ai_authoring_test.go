@@ -391,6 +391,12 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if renderProfileResp.Profile.Wait.Selector != "main" {
 		t.Fatalf("unexpected render profile wait selector: %#v", renderProfileResp.Profile.Wait)
 	}
+	if renderProfileResp.ResolvedGoal == nil || renderProfileResp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal, got %#v", renderProfileResp.ResolvedGoal)
+	}
+	if renderProfileResp.ResolvedGoal.Text != "Wait for the main shell and prefer headless mode" {
+		t.Fatalf("unexpected render profile resolved goal: %q", renderProfileResp.ResolvedGoal.Text)
+	}
 	if automationClient.renderProfileCalls != 1 {
 		t.Fatalf("expected single render profile generation call, got %d", automationClient.renderProfileCalls)
 	}
@@ -443,6 +449,12 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if renderProfileDebugResp.SuggestedProfile == nil || renderProfileDebugResp.SuggestedProfile.Wait.Selector != "main" {
 		t.Fatalf("unexpected render profile suggestion: %#v", renderProfileDebugResp.SuggestedProfile)
 	}
+	if renderProfileDebugResp.ResolvedGoal == nil || renderProfileDebugResp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal, got %#v", renderProfileDebugResp.ResolvedGoal)
+	}
+	if !strings.Contains(renderProfileDebugResp.ResolvedGoal.Text, "Operator guidance: Prefer the visible main shell") {
+		t.Fatalf("unexpected render profile debug resolved goal: %q", renderProfileDebugResp.ResolvedGoal.Text)
+	}
 	if automationClient.renderProfileCalls != 2 {
 		t.Fatalf("expected debug call to reuse automation client, got %d total calls", automationClient.renderProfileCalls)
 	}
@@ -476,6 +488,12 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if len(pipelineResp.Script.Selectors) != 1 || pipelineResp.Script.Selectors[0] != "main" {
 		t.Fatalf("unexpected pipeline JS selectors: %#v", pipelineResp.Script.Selectors)
+	}
+	if pipelineResp.ResolvedGoal == nil || pipelineResp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal, got %#v", pipelineResp.ResolvedGoal)
+	}
+	if pipelineResp.ResolvedGoal.Text != "Wait for the main shell and reset scroll position" {
+		t.Fatalf("unexpected pipeline JS resolved goal: %q", pipelineResp.ResolvedGoal.Text)
 	}
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
@@ -517,6 +535,12 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if pipelineDebugResp.SuggestedScript == nil || len(pipelineDebugResp.SuggestedScript.Selectors) != 1 || pipelineDebugResp.SuggestedScript.Selectors[0] != "main" {
 		t.Fatalf("unexpected pipeline JS suggestion: %#v", pipelineDebugResp.SuggestedScript)
+	}
+	if pipelineDebugResp.ResolvedGoal == nil || pipelineDebugResp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", pipelineDebugResp.ResolvedGoal)
+	}
+	if !strings.Contains(pipelineDebugResp.ResolvedGoal.Text, `Tune the pipeline JS script named "example-app"`) {
+		t.Fatalf("unexpected pipeline JS debug resolved goal: %q", pipelineDebugResp.ResolvedGoal.Text)
 	}
 	if automationClient.pipelineJSCalls != 2 {
 		t.Fatalf("expected debug call to reuse automation client, got %d total calls", automationClient.pipelineJSCalls)
@@ -702,8 +726,14 @@ func TestHandleToolCallAIRenderProfileGenerateDerivesInstructionsWhenOmitted(t *
 	if resp.Profile.Wait.Selector != "main" {
 		t.Fatalf("unexpected render profile suggestion: %#v", resp.Profile)
 	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", resp.ResolvedGoal)
+	}
 	if strings.TrimSpace(automationClient.renderProfileReq.Instructions) == "" {
 		t.Fatal("expected derived render profile instructions to reach the automation client")
+	}
+	if resp.ResolvedGoal.Text != automationClient.renderProfileReq.Instructions {
+		t.Fatalf("expected derived render profile goal to match request instructions, got %q", resp.ResolvedGoal.Text)
 	}
 }
 
@@ -743,7 +773,13 @@ func TestHandleToolCallAIPipelineJSGenerateDerivesInstructionsWhenOmitted(t *tes
 	if len(resp.Script.Selectors) != 1 || resp.Script.Selectors[0] != "main" {
 		t.Fatalf("unexpected pipeline JS suggestion: %#v", resp.Script)
 	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", resp.ResolvedGoal)
+	}
 	if strings.TrimSpace(automationClient.pipelineJSReq.Instructions) == "" {
 		t.Fatal("expected derived pipeline JS instructions to reach the automation client")
+	}
+	if resp.ResolvedGoal.Text != automationClient.pipelineJSReq.Instructions {
+		t.Fatalf("expected derived pipeline JS goal to match request instructions, got %q", resp.ResolvedGoal.Text)
 	}
 }

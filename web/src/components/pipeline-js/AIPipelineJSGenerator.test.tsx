@@ -6,7 +6,13 @@
  * Invariants/Assumptions: URL remains required, operator guidance is optional, and generated scripts are only persisted after explicit save.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import * as api from "../../api";
 
@@ -28,6 +34,10 @@ describe("AIPipelineJSGenerator", () => {
           hostPatterns: ["example.com"],
           selectors: ["main"],
           postNav: "window.scrollTo(0, 0);",
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Wait for the main dashboard and reset scroll position",
         },
         explanation: "Wait for the main app shell and normalize scroll.",
         route_id: "openai/gpt-5.4",
@@ -94,6 +104,16 @@ describe("AIPipelineJSGenerator", () => {
       });
     });
 
+    const resolvedGoal = await screen.findByRole("region", {
+      name: /resolved goal/i,
+    });
+    expect(within(resolvedGoal).getByText("Explicit")).toBeInTheDocument();
+    expect(
+      within(resolvedGoal).getByText(
+        "Wait for the main dashboard and reset scroll position",
+      ),
+    ).toBeInTheDocument();
+
     fireEvent.click(
       await screen.findByRole("button", { name: /save script/i }),
     );
@@ -122,6 +142,10 @@ describe("AIPipelineJSGenerator", () => {
           hostPatterns: ["example.com"],
           selectors: ["main"],
         },
+        resolved_goal: {
+          source: "derived",
+          text: 'Generate the minimal deterministic pipeline JS needed for "example-app" on example.com.',
+        },
       },
       request: new Request("http://localhost:8741/v1/ai/pipeline-js-generate"),
       response: new Response(),
@@ -146,5 +170,12 @@ describe("AIPipelineJSGenerator", () => {
         },
       });
     });
+
+    expect(await screen.findByText("System-derived")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Generate the minimal deterministic pipeline JS needed for "example-app" on example.com.',
+      ),
+    ).toBeInTheDocument();
   });
 });

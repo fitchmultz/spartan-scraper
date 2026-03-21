@@ -16,15 +16,15 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Generator Goal Transparency
-   - Surface the final resolved operator goal for render-profile and pipeline-JS generation so operators can see what Spartan actually asked the model to do when instructions were omitted.
-   - Distinguish explicit operator guidance from Spartan-derived defaults in API, Web, CLI, and MCP responses without leaking irrelevant prompt scaffolding.
-   - Show the resolved goal inside the Web AI generator results so operators can quickly decide whether to save, retry with edits, or add custom guidance.
-   - Preserve current deterministic validation and route metadata while extending responses with goal-origin metadata only where it materially improves operator trust.
+1. AI Automation Generator Guided Retry Loop
+   - Let operators retry render-profile and pipeline-JS generate/debug flows directly from the last result without re-entering the URL, fetch toggles, images, or guidance from scratch.
+   - Prefill retry guidance from the last visible `resolved_goal`, but keep it editable so operators can tighten or replace Spartan-derived defaults before re-running the model.
+   - Preserve the original saved artifact preview alongside the retried candidate so operators can compare before choosing what to save.
+   - Keep API and MCP contracts stable unless new retry metadata clearly improves non-Web workflows; prefer a Web-first UX cut that reuses the current authoring endpoints.
    - Add tests for:
-     - explicit guidance remaining visible as operator-supplied
-     - derived defaults being returned as system-derived
-     - retry/debug flows not losing the resolved goal context
+     - retry preserving request-scoped images and fetch toggles
+     - editing a derived goal into explicit guidance before retry
+     - multiple retries replacing stale result metadata cleanly
 
 ## Ongoing Constraints
 

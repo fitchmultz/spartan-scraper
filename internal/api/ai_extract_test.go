@@ -545,6 +545,15 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	if !resp.Profile.PreferHeadless {
 		t.Fatal("expected preferHeadless to be preserved")
 	}
+	if resp.ResolvedGoal == nil {
+		t.Fatal("expected resolved goal in response")
+	}
+	if resp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal source, got %#v", resp.ResolvedGoal)
+	}
+	if resp.ResolvedGoal.Text != "Wait for the dashboard shell and prefer headless mode" {
+		t.Fatalf("unexpected resolved goal text: %q", resp.ResolvedGoal.Text)
+	}
 	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
 		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
 	}
@@ -584,6 +593,17 @@ func TestAIRenderProfileGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
 	}
 	if !strings.Contains(automationClient.renderProfileReq.Instructions, "render profile") {
 		t.Fatalf("expected derived render profile instructions to mention render profile goal, got %q", automationClient.renderProfileReq.Instructions)
+	}
+
+	var resp AIRenderProfileGenerateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", resp.ResolvedGoal)
+	}
+	if resp.ResolvedGoal.Text != automationClient.renderProfileReq.Instructions {
+		t.Fatalf("expected derived resolved goal to match request instructions, got %q", resp.ResolvedGoal.Text)
 	}
 }
 
@@ -637,6 +657,15 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	if len(resp.Script.Selectors) != 1 || resp.Script.Selectors[0] != "main" {
 		t.Fatalf("unexpected selectors: %#v", resp.Script.Selectors)
 	}
+	if resp.ResolvedGoal == nil {
+		t.Fatal("expected resolved goal in response")
+	}
+	if resp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal source, got %#v", resp.ResolvedGoal)
+	}
+	if resp.ResolvedGoal.Text != "Wait for the dashboard shell and reset scroll position" {
+		t.Fatalf("unexpected resolved goal text: %q", resp.ResolvedGoal.Text)
+	}
 }
 
 func TestAIPipelineJSGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
@@ -670,6 +699,17 @@ func TestAIPipelineJSGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
 	}
 	if !strings.Contains(automationClient.pipelineJSReq.Instructions, "pipeline JS") {
 		t.Fatalf("expected derived pipeline JS instructions to mention pipeline JS goal, got %q", automationClient.pipelineJSReq.Instructions)
+	}
+
+	var resp AIPipelineJSGenerateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", resp.ResolvedGoal)
+	}
+	if resp.ResolvedGoal.Text != automationClient.pipelineJSReq.Instructions {
+		t.Fatalf("expected derived resolved goal to match request instructions, got %q", resp.ResolvedGoal.Text)
 	}
 }
 
@@ -722,6 +762,12 @@ func TestAIRenderProfileDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}
 	if resp.SuggestedProfile == nil || resp.SuggestedProfile.Wait.Selector != "main" {
 		t.Fatalf("unexpected suggested profile: %#v", resp.SuggestedProfile)
+	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "explicit" {
+		t.Fatalf("expected explicit resolved goal, got %#v", resp.ResolvedGoal)
+	}
+	if !strings.Contains(resp.ResolvedGoal.Text, "Operator guidance: Prefer the visible main shell") {
+		t.Fatalf("unexpected resolved goal text: %q", resp.ResolvedGoal.Text)
 	}
 	if resp.RecheckStatus != http.StatusOK {
 		t.Fatalf("expected recheck status 200, got %d", resp.RecheckStatus)
@@ -777,6 +823,12 @@ func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
 	}
 	if resp.SuggestedScript == nil || len(resp.SuggestedScript.Selectors) != 1 || resp.SuggestedScript.Selectors[0] != "main" {
 		t.Fatalf("unexpected suggested script: %#v", resp.SuggestedScript)
+	}
+	if resp.ResolvedGoal == nil || resp.ResolvedGoal.Source != "derived" {
+		t.Fatalf("expected derived resolved goal, got %#v", resp.ResolvedGoal)
+	}
+	if !strings.Contains(resp.ResolvedGoal.Text, `Tune the pipeline JS script named "example-app"`) {
+		t.Fatalf("unexpected resolved goal text: %q", resp.ResolvedGoal.Text)
 	}
 }
 

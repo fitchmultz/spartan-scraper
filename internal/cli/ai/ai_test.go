@@ -1,3 +1,19 @@
+// Package ai verifies CLI AI authoring command behavior.
+//
+// Purpose:
+// - Ensure AI CLI commands forward bounded inputs and print the structured authoring results users rely on.
+//
+// Responsibilities:
+// - Cover request wiring, file loading, and JSON output contracts for AI authoring commands.
+//
+// Scope:
+// - `spartan ai ...` command tests only.
+//
+// Usage:
+// - Run with `go test ./internal/cli/ai`.
+//
+// Invariants/Assumptions:
+// - Successful commands print the full structured result payload, including resolved automation goals.
 package ai
 
 import (
@@ -308,6 +324,10 @@ func TestRunRenderProfileForwardsOptions(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		renderProfileResult: aiauthoring.RenderProfileResult{
 			Profile: fetch.RenderProfile{Name: "example.com", HostPatterns: []string{"example.com"}, PreferHeadless: true},
+			ResolvedGoal: &aiauthoring.ResolvedGoal{
+				Text:   "Wait for the dashboard shell",
+				Source: "explicit",
+			},
 		},
 	}
 	withFakeRunner(t, runner)
@@ -333,12 +353,19 @@ func TestRunRenderProfileForwardsOptions(t *testing.T) {
 	if !strings.Contains(stdout, `"profile":`) {
 		t.Fatalf("expected profile JSON output, got %s", stdout)
 	}
+	if !strings.Contains(stdout, `"resolved_goal": {`) || !strings.Contains(stdout, `"source": "explicit"`) {
+		t.Fatalf("expected resolved goal JSON output, got %s", stdout)
+	}
 }
 
 func TestRunPipelineJSForwardsOptions(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		pipelineJSResult: aiauthoring.PipelineJSResult{
 			Script: pipeline.JSTargetScript{Name: "example.com", HostPatterns: []string{"example.com"}, Selectors: []string{"main"}},
+			ResolvedGoal: &aiauthoring.ResolvedGoal{
+				Text:   "Generate the minimal deterministic pipeline JS needed for \"example.com\" on example.com.",
+				Source: "derived",
+			},
 		},
 	}
 	withFakeRunner(t, runner)
@@ -361,12 +388,19 @@ func TestRunPipelineJSForwardsOptions(t *testing.T) {
 	if !strings.Contains(stdout, `"script":`) {
 		t.Fatalf("expected script JSON output, got %s", stdout)
 	}
+	if !strings.Contains(stdout, `"resolved_goal": {`) || !strings.Contains(stdout, `"source": "derived"`) {
+		t.Fatalf("expected resolved goal JSON output, got %s", stdout)
+	}
 }
 
 func TestRunRenderProfileDebugLoadsSavedProfile(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		renderProfileDebugResult: aiauthoring.RenderProfileDebugResult{
 			Issues: []string{"wait.selector matched no elements"},
+			ResolvedGoal: &aiauthoring.ResolvedGoal{
+				Text:   "Tune the render profile named \"example-app\" for the supplied page while preserving its purpose and keeping changes minimal, deterministic, and operationally useful. Operator guidance: Prefer a stable wait selector",
+				Source: "explicit",
+			},
 			SuggestedProfile: &fetch.RenderProfile{
 				Name:           "example-app",
 				HostPatterns:   []string{"example.com"},
@@ -403,12 +437,19 @@ func TestRunRenderProfileDebugLoadsSavedProfile(t *testing.T) {
 	if !strings.Contains(stdout, `"suggested_profile":`) {
 		t.Fatalf("expected debug JSON output, got %s", stdout)
 	}
+	if !strings.Contains(stdout, `"resolved_goal": {`) || !strings.Contains(stdout, `"source": "explicit"`) {
+		t.Fatalf("expected resolved goal JSON output, got %s", stdout)
+	}
 }
 
 func TestRunPipelineJSDebugLoadsScriptFile(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		pipelineJSDebugResult: aiauthoring.PipelineJSDebugResult{
 			Issues: []string{"selectors[0] matched no elements"},
+			ResolvedGoal: &aiauthoring.ResolvedGoal{
+				Text:   "Tune the pipeline JS script named \"example-app\" for the supplied page while preserving its purpose and keeping changes minimal, deterministic, and operationally useful.",
+				Source: "derived",
+			},
 			SuggestedScript: &pipeline.JSTargetScript{
 				Name:         "example-app",
 				HostPatterns: []string{"example.com"},
@@ -441,6 +482,9 @@ func TestRunPipelineJSDebugLoadsScriptFile(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"suggested_script":`) {
 		t.Fatalf("expected debug JSON output, got %s", stdout)
+	}
+	if !strings.Contains(stdout, `"resolved_goal": {`) || !strings.Contains(stdout, `"source": "derived"`) {
+		t.Fatalf("expected resolved goal JSON output, got %s", stdout)
 	}
 }
 

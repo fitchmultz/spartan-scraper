@@ -4472,6 +4472,22 @@ components:
         visual_context_used:
           type: boolean
           description: Whether image-based visual context was included in the AI request
+    ResolvedGoal:
+      type: object
+      description: Exact goal text Spartan sent to the AI model and whether it came from explicit operator guidance or a system-derived default.
+      required:
+        - text
+        - source
+      properties:
+        text:
+          type: string
+          description: Exact instruction text sent to the AI model.
+        source:
+          type: string
+          enum:
+            - explicit
+            - derived
+          description: Whether the goal came from operator guidance or Spartan-derived defaults.
     AIRenderProfileGenerateRequest:
       type: object
       description: Request for AI render profile generation from a live URL.
@@ -4513,6 +4529,8 @@ components:
       properties:
         profile:
           "$ref": "#/components/schemas/RenderProfile"
+        resolved_goal:
+          "$ref": "#/components/schemas/ResolvedGoal"
         explanation:
           type: string
           description: Explanation of the generated render profile
@@ -4567,6 +4585,8 @@ components:
           items:
             type: string
           description: Deterministic local issues found while rechecking the current render profile
+        resolved_goal:
+          "$ref": "#/components/schemas/ResolvedGoal"
         explanation:
           type: string
           description: Explanation of the suggested render profile changes
@@ -4634,6 +4654,8 @@ components:
       properties:
         script:
           "$ref": "#/components/schemas/JSTargetScript"
+        resolved_goal:
+          "$ref": "#/components/schemas/ResolvedGoal"
         explanation:
           type: string
           description: Explanation of the generated pipeline JS script
@@ -4688,6 +4710,8 @@ components:
           items:
             type: string
           description: Deterministic local issues found while rechecking the current pipeline JS script
+        resolved_goal:
+          "$ref": "#/components/schemas/ResolvedGoal"
         explanation:
           type: string
           description: Explanation of the suggested pipeline JS changes

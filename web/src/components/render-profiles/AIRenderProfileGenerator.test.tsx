@@ -6,7 +6,13 @@
  * Invariants/Assumptions: URL remains required, operator guidance is optional, and generated profiles are only persisted after explicit save.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 import * as api from "../../api";
 
@@ -27,6 +33,10 @@ describe("AIRenderProfileGenerator", () => {
           name: "example-app",
           hostPatterns: ["example.com"],
           preferHeadless: true,
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Wait for the dashboard shell and prefer headless mode",
         },
         explanation: "Use headless mode for the app shell.",
         route_id: "openai/gpt-5.4",
@@ -96,6 +106,16 @@ describe("AIRenderProfileGenerator", () => {
       });
     });
 
+    const resolvedGoal = await screen.findByRole("region", {
+      name: /resolved goal/i,
+    });
+    expect(within(resolvedGoal).getByText("Explicit")).toBeInTheDocument();
+    expect(
+      within(resolvedGoal).getByText(
+        "Wait for the dashboard shell and prefer headless mode",
+      ),
+    ).toBeInTheDocument();
+
     fireEvent.click(
       await screen.findByRole("button", { name: /save profile/i }),
     );
@@ -123,6 +143,10 @@ describe("AIRenderProfileGenerator", () => {
           hostPatterns: ["example.com"],
           preferHeadless: true,
         },
+        resolved_goal: {
+          source: "derived",
+          text: 'Generate a render profile for "example-app" on example.com.',
+        },
       },
       request: new Request(
         "http://localhost:8741/v1/ai/render-profile-generate",
@@ -149,5 +173,12 @@ describe("AIRenderProfileGenerator", () => {
         },
       });
     });
+
+    expect(await screen.findByText("System-derived")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Generate a render profile for "example-app" on example.com.',
+      ),
+    ).toBeInTheDocument();
   });
 });
