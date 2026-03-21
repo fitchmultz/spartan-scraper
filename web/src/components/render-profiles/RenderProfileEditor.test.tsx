@@ -35,6 +35,7 @@ vi.mock("../../lib/api-config", () => ({
 describe("RenderProfileEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
       data: { profiles: [] },
       request: new Request("http://localhost:8741/v1/render-profiles"),
@@ -494,5 +495,71 @@ describe("RenderProfileEditor", () => {
         }),
       );
     });
+  });
+
+  it("restores a closed generator session after the Settings editor remounts", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: { profiles: [] },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+    vi.mocked(api.aiRenderProfileGenerate).mockResolvedValue({
+      data: {
+        profile: {
+          name: "news",
+          hostPatterns: ["example.com"],
+          wait: { mode: "selector", selector: "main" },
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Keep the visible app shell",
+        },
+      },
+      request: new Request(
+        "http://localhost:8741/v1/ai/render-profile-generate",
+      ),
+      response: new Response(),
+    });
+
+    const firstRender = render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/instructions/i), {
+      target: { value: "Keep the visible app shell" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^close$/i })[0]);
+    firstRender.unmount();
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByLabelText(/instructions/i)).toHaveValue(
+      "Keep the visible app shell",
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
   });
 });

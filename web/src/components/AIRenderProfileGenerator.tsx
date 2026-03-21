@@ -3,10 +3,10 @@
  * Responsibilities: Collect bounded AI inputs, call the render-profile generation endpoint, retain full session attempt history, hand selected attempts off to Settings, and save the operator-selected attempt.
  * Scope: Modal generation flow for Settings render profiles only.
  * Usage: Mount from `RenderProfileEditor` when operators opt into AI-assisted authoring.
- * Invariants/Assumptions: Generated profiles are never auto-saved, image attachments stay request-scoped, normal modal close resets the session, and save always targets the selected attempt.
+ * Invariants/Assumptions: Generated profiles are never auto-saved, image attachments stay request-scoped, closing preserves the current tab-scoped session until operators explicitly reset or discard it, and save always targets the selected attempt.
  */
 
-import { useState } from "react";
+import { useMemo } from "react";
 import {
   aiRenderProfileGenerate,
   postV1RenderProfiles,
@@ -19,6 +19,7 @@ import {
   type AIAttempt,
   type AIAttemptHistoryController,
 } from "../hooks/useAIAttemptHistory";
+import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toRenderProfileGenerateAttempt } from "../lib/ai-authoring-attempts";
 import { buildManualEditContinuationGuidance } from "../lib/ai-authoring-roundtrip";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -29,6 +30,7 @@ import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
+import { useToast } from "./toast";
 
 interface AIRenderProfileGeneratorProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ interface AIRenderProfileGeneratorProps {
   onSaved: () => void;
   history?: AIAttemptHistoryController<RenderProfile>;
   onEditInSettings?: (attempt: AIAttempt<RenderProfile>) => void;
+  storageKey?: string;
 }
 
 interface GeneratorState {
@@ -74,9 +77,16 @@ export function AIRenderProfileGenerator({
   onSaved,
   history: providedHistory,
   onEditInSettings,
+  storageKey,
 }: AIRenderProfileGeneratorProps) {
-  const [state, setState] = useState<GeneratorState>(INITIAL_STATE);
-  const ownedHistory = useAIAttemptHistory<RenderProfile>();
+  const toast = useToast();
+  const [state, setState, clearState] = useSessionStorageState<GeneratorState>(
+    storageKey ?? null,
+    INITIAL_STATE,
+  );
+  const ownedHistory = useAIAttemptHistory<RenderProfile>(
+    storageKey ? { storageKey: `${storageKey}.history` } : undefined,
+  );
   const history = providedHistory ?? ownedHistory;
 
   const aiCapability = describeAICapability(
@@ -88,10 +98,28 @@ export function AIRenderProfileGenerator({
   const activeAttempt = history.activeAttempt;
   const baselineAttempt = history.baselineAttempt;
   const latestAttempt = history.latestAttempt;
+  const hasSessionDraft = useMemo(
+    () =>
+      Boolean(
+        state.url.trim() ||
+          state.name.trim() ||
+          state.hostPatterns.trim() ||
+          state.instructions.trim() ||
+          state.images.length > 0 ||
+          state.headless ||
+          state.playwright ||
+          state.visual ||
+          history.attempts.length > 0,
+      ),
+    [state, history.attempts.length],
+  );
+
+  const clearSession = () => {
+    clearState();
+    history.reset();
+  };
 
   const handleClose = () => {
-    setState(INITIAL_STATE);
-    history.reset();
     onClose();
   };
 
@@ -194,12 +222,47 @@ export function AIRenderProfileGenerator({
     void handleGenerate();
   };
 
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
+    const confirmed = await toast.confirm({
+      title: "Reset this AI session?",
+      description:
+        "This clears the generated attempt history and selected candidate, but keeps the current URL, instructions, browser options, and uploaded images so you can start a fresh pass without re-entering them.",
+      confirmLabel: "Reset session",
+      cancelLabel: "Keep session",
+      tone: "warning",
+    });
+    if (!confirmed) {
+      return;
+    }
+
     history.reset();
     setState((prev) => ({
       ...prev,
       error: null,
     }));
+  };
+
+  const handleDiscardSession = async () => {
+    if (!hasSessionDraft) {
+      clearSession();
+      onClose();
+      return;
+    }
+
+    const confirmed = await toast.confirm({
+      title: "Discard this AI session?",
+      description:
+        "This removes the in-progress AI request draft, selected candidate, attempt history, and uploaded images from this browser tab.",
+      confirmLabel: "Discard session",
+      cancelLabel: "Keep session",
+      tone: "warning",
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    clearSession();
+    onClose();
   };
 
   const handleSave = async () => {
@@ -218,8 +281,9 @@ export function AIRenderProfileGenerator({
           getApiErrorMessage(error, "Failed to save render profile"),
         );
       }
+      clearSession();
       onSaved();
-      handleClose();
+      onClose();
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -264,6 +328,14 @@ export function AIRenderProfileGenerator({
         <div className="modal-body space-y-4">
           {aiUnavailableMessage ? (
             <AIUnavailableNotice message={aiUnavailableMessage} />
+          ) : null}
+
+          {hasSessionDraft ? (
+            <div className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+              Close keeps this AI session available in the current browser tab.
+              Reset session keeps the request inputs but clears generated
+              attempts. Discard session removes everything.
+            </div>
           ) : null}
 
           <fieldset
@@ -503,14 +575,24 @@ export function AIRenderProfileGenerator({
               className="button-secondary"
               onClick={handleClose}
             >
-              Cancel
+              Close
             </button>
+            {hasSessionDraft ? (
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => void handleDiscardSession()}
+                disabled={state.isGenerating || state.isSaving}
+              >
+                Discard session
+              </button>
+            ) : null}
             {history.attempts.length > 0 ? (
               <>
                 <button
                   type="button"
                   className="button-secondary"
-                  onClick={handleResetSession}
+                  onClick={() => void handleResetSession()}
                   disabled={state.isGenerating || state.isSaving}
                 >
                   Reset session

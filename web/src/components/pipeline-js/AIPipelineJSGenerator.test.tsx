@@ -5,6 +5,7 @@
  * Usage: Run with `pnpm --dir web test`.
  * Invariants/Assumptions: URL remains required, retry keeps request-scoped inputs intact, and generated scripts are only persisted after explicit save.
  */
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fireEvent,
@@ -13,6 +14,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { ToastProvider } from "../toast";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import * as api from "../../api";
 
@@ -21,9 +23,25 @@ vi.mock("../../api", () => ({
   postV1PipelineJs: vi.fn(),
 }));
 
+function renderGenerator(
+  props: Partial<ComponentProps<typeof AIPipelineJSGenerator>> = {},
+) {
+  return render(
+    <ToastProvider>
+      <AIPipelineJSGenerator
+        isOpen={true}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        {...props}
+      />
+    </ToastProvider>,
+  );
+}
+
 describe("AIPipelineJSGenerator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   it("calls aiPipelineJsGenerate with URL mode options and saves the result", async () => {
@@ -62,9 +80,7 @@ describe("AIPipelineJSGenerator", () => {
 
     const onSaved = vi.fn();
     const onClose = vi.fn();
-    render(
-      <AIPipelineJSGenerator isOpen onClose={onClose} onSaved={onSaved} />,
-    );
+    renderGenerator({ onClose, onSaved });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -154,9 +170,7 @@ describe("AIPipelineJSGenerator", () => {
       response: new Response(),
     });
 
-    render(
-      <AIPipelineJSGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
-    );
+    renderGenerator();
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -265,9 +279,7 @@ describe("AIPipelineJSGenerator", () => {
       response: new Response(),
     });
 
-    render(
-      <AIPipelineJSGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
-    );
+    renderGenerator();
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -440,14 +452,7 @@ describe("AIPipelineJSGenerator", () => {
 
     const onEditInSettings = vi.fn();
 
-    render(
-      <AIPipelineJSGenerator
-        isOpen
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onEditInSettings={onEditInSettings}
-      />,
-    );
+    renderGenerator({ onEditInSettings });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -526,9 +531,7 @@ describe("AIPipelineJSGenerator", () => {
 
     const onClose = vi.fn();
 
-    render(
-      <AIPipelineJSGenerator isOpen onClose={onClose} onSaved={vi.fn()} />,
-    );
+    renderGenerator({ onClose });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -554,11 +557,18 @@ describe("AIPipelineJSGenerator", () => {
     await screen.findByRole("region", { name: /latest candidate/i });
 
     fireEvent.click(screen.getByRole("button", { name: /reset session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^reset session$/i,
+      }),
+    );
 
-    expect(onClose).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("region", { name: /attempt history/i }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(onClose).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("region", { name: /attempt history/i }),
+      ).not.toBeInTheDocument();
+    });
     expect(
       screen.getByRole("button", { name: /generate script/i }),
     ).toBeInTheDocument();
@@ -568,5 +578,95 @@ describe("AIPipelineJSGenerator", () => {
     expect(screen.getByText("retry-script.png")).toBeInTheDocument();
     expect(screen.getByLabelText(/fetch headless/i)).toBeChecked();
     expect(screen.getByLabelText(/include screenshot context/i)).toBeChecked();
+  });
+
+  it("closes without discarding and only clears the session after explicit discard", async () => {
+    vi.mocked(api.aiPipelineJsGenerate).mockResolvedValue({
+      data: {
+        script: {
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          selectors: ["main"],
+        },
+        resolved_goal: { source: "explicit", text: "Keep the app shell" },
+      },
+      request: new Request("http://localhost:8741/v1/ai/pipeline-js-generate"),
+      response: new Response(),
+    });
+
+    const onClose = vi.fn();
+    const onSaved = vi.fn();
+    const { rerender } = render(
+      <ToastProvider>
+        <AIPipelineJSGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/instructions/i), {
+      target: { value: "Keep the app shell" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^close$/i })[0]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSGenerator
+          isOpen={false}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByLabelText(/instructions/i)).toHaveValue(
+      "Keep the app shell",
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /discard session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^discard session$/i,
+      }),
+    );
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSGenerator
+          isOpen={false}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    expect(
+      screen.queryByRole("region", { name: /attempt history/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/target url/i)).toHaveValue("");
   });
 });

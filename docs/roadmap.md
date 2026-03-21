@@ -16,11 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Draft Persistence and Intentional Discard
-   - Preserve in-progress AI modal sessions across close/reopen and route-level Settings navigation until operators explicitly reset or discard them.
-   - Add an explicit discard path that distinguishes closing the modal from throwing away the working candidate and request-scoped context.
-   - Surface unsaved-session warnings before operators lose a selected AI candidate or a native-editor draft by accident.
-   - Add focused workflow tests for close/reopen recovery, discard confirmation, and route navigation with in-progress AI work.
+1. Settings Draft Recovery and Navigation Guards Beyond AI Handoffs
+   - Add dirty-state tracking and explicit discard confirmations for the standard create/edit forms in Settings, not just AI handoff drafts.
+   - Preserve or warn on route changes and capability switching when operators have unsaved native Settings edits outside the AI modal flows.
+   - Standardize resumable-draft banners, close/cancel copy, and destructive-action language across Settings surfaces that mix local drafts with persisted artifacts.
+   - Add focused workflow tests for canceling dirty native forms, switching between saved artifacts with local edits, and leaving `/settings` with unsaved non-AI drafts.
 
 ## Ongoing Constraints
 

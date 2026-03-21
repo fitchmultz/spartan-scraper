@@ -61,6 +61,7 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Webhook validation is split intentionally: use `webhook.ValidateConfigURL` for create-time syntax checks, and keep SSRF/private-target enforcement in dispatch-time delivery planning (`ValidateURL` / pinned dialing). `WEBHOOK_ALLOW_INTERNAL=true` is a trusted-environment escape hatch only.
 - `internal/submission` is the canonical operator-facing request-to-spec and validation layer for single and batch scrape/crawl/research flows. API handlers, CLI batch preflight, and direct batch execution should delegate there instead of rebuilding `jobs.JobSpec` defaults or validation locally.
 - In React 19 code, prefer `useEffectEvent` for effect-owned listeners/timers that need latest render values without re-subscribing the effect.
+- AI authoring modals in Settings should treat Close as non-destructive, Reset session as history-only clearing, and Discard session as full tab-scoped removal; persist resumable AI sessions and handoff drafts in `sessionStorage` so route navigation and close/reopen flows do not silently lose request-scoped work.
 
 ### Testing Guidelines
 

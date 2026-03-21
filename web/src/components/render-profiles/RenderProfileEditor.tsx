@@ -26,6 +26,7 @@ import {
   type AIAttempt,
   useAIAttemptHistory,
 } from "../../hooks/useAIAttemptHistory";
+import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { deepEqual } from "../../lib/diff-utils";
@@ -36,6 +37,15 @@ import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
+
+const RENDER_PROFILE_GENERATOR_SESSION_KEY =
+  "spartan.render-profile.ai-generator-session";
+const RENDER_PROFILE_DEBUGGER_SESSION_KEY =
+  "spartan.render-profile.ai-debugger-session";
+const RENDER_PROFILE_DEBUGGER_TARGET_KEY =
+  "spartan.render-profile.ai-debugger-target";
+const RENDER_PROFILE_MANUAL_EDIT_SESSION_KEY =
+  "spartan.render-profile.ai-manual-edit-session";
 
 interface ProfileFormDraft {
   formData: RenderProfileInput;
@@ -174,6 +184,19 @@ function buildRenderProfileInputFromDraft(
   };
 }
 
+function isProfileManualEditSessionDirty(
+  session: ProfileManualEditSession,
+): boolean {
+  try {
+    return !deepEqual(
+      buildRenderProfileInputFromDraft(session.draft),
+      session.initialValue,
+    );
+  } catch {
+    return true;
+  }
+}
+
 function ManualEditContextNotice({
   attemptId,
   submitLabel,
@@ -214,16 +237,27 @@ export function RenderProfileEditor({
   const [editingProfile, setEditingProfile] = useState<RenderProfile | null>(
     null,
   );
-  const [debuggingProfile, setDebuggingProfile] =
-    useState<RenderProfile | null>(null);
+  const [debuggingProfile, setDebuggingProfile, clearDebuggingProfile] =
+    useSessionStorageState<RenderProfile | null>(
+      RENDER_PROFILE_DEBUGGER_TARGET_KEY,
+      null,
+    );
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
-  const [manualEditSession, setManualEditSession] =
-    useState<ProfileManualEditSession | null>(null);
+  const [debuggerResetSignal, setDebuggerResetSignal] = useState(0);
+  const [manualEditSession, setManualEditSession, clearManualEditSession] =
+    useSessionStorageState<ProfileManualEditSession | null>(
+      RENDER_PROFILE_MANUAL_EDIT_SESSION_KEY,
+      null,
+    );
   const [showJson, setShowJson] = useState(false);
-  const generatorHistory = useAIAttemptHistory<RenderProfile>();
-  const debuggerHistory = useAIAttemptHistory<RenderProfile>();
+  const generatorHistory = useAIAttemptHistory<RenderProfile>({
+    storageKey: `${RENDER_PROFILE_GENERATOR_SESSION_KEY}.history`,
+  });
+  const debuggerHistory = useAIAttemptHistory<RenderProfile>({
+    storageKey: `${RENDER_PROFILE_DEBUGGER_SESSION_KEY}.history`,
+  });
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -231,6 +265,8 @@ export function RenderProfileEditor({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
+  const hiddenManualEditSession =
+    manualEditSession && !manualEditSession.visible ? manualEditSession : null;
 
   const loadProfiles = useCallback(async () => {
     try {
@@ -266,9 +302,13 @@ export function RenderProfileEditor({
     setIsCreating(false);
     setEditingProfile(null);
 
-    if (!options?.preserveManualEditSession) {
-      setManualEditSession(null);
+    if (options?.preserveManualEditSession) {
+      return;
     }
+
+    setManualEditSession((current) =>
+      current ? { ...current, visible: false } : current,
+    );
   };
 
   const handleCreate = async (input: RenderProfileInput) => {
@@ -389,11 +429,51 @@ export function RenderProfileEditor({
     }
   };
 
-  const openAttemptInSettings = (
+  const discardManualEditSession = useCallback(
+    async (options?: { reason?: string; title?: string }) => {
+      if (!manualEditSession) {
+        return true;
+      }
+
+      const confirmed = await toast.confirm({
+        title: options?.title ?? "Discard the AI handoff draft?",
+        description:
+          options?.reason ??
+          (isProfileManualEditSessionDirty(manualEditSession)
+            ? "This removes the local Settings draft for the current AI attempt. Your unsaved edits will be lost."
+            : "This removes the current AI handoff draft from Settings. You can still reopen the AI modal itself if you keep that session."),
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+      if (!confirmed) {
+        return false;
+      }
+
+      clearManualEditSession();
+      return true;
+    },
+    [clearManualEditSession, manualEditSession, toast],
+  );
+
+  const openAttemptInSettings = async (
     source: AISessionSource,
     attempt: AIAttempt<RenderProfile>,
   ) => {
     if (!attempt.artifact) {
+      return;
+    }
+
+    if (
+      manualEditSession &&
+      (manualEditSession.source !== source ||
+        manualEditSession.attemptId !== attempt.id) &&
+      !(await discardManualEditSession({
+        title: "Replace the current AI handoff draft?",
+        reason:
+          "This attempt will replace the current Settings draft for another AI handoff. Discard the older draft only if you no longer need it.",
+      }))
+    ) {
       return;
     }
 
@@ -462,15 +542,18 @@ export function RenderProfileEditor({
     setIsAIDebuggerOpen(true);
   };
 
-  const handleManualDraftChange = useCallback((draft: ProfileFormDraft) => {
-    setManualEditSession((current) => {
-      if (!current || deepEqual(current.draft, draft)) {
-        return current;
-      }
+  const handleManualDraftChange = useCallback(
+    (draft: ProfileFormDraft) => {
+      setManualEditSession((current) => {
+        if (!current || deepEqual(current.draft, draft)) {
+          return current;
+        }
 
-      return { ...current, draft };
-    });
-  }, []);
+        return { ...current, draft };
+      });
+    },
+    [setManualEditSession],
+  );
 
   const handleManualEditSubmit = async (
     session: ProfileManualEditSession,
@@ -539,13 +622,30 @@ export function RenderProfileEditor({
 
   const handleOpenGenerator = () => {
     closeNativeForms();
-    generatorHistory.reset();
     setIsAIGeneratorOpen(true);
   };
 
-  const handleOpenDebugger = (profile: RenderProfile) => {
+  const handleOpenDebugger = async (profile: RenderProfile) => {
+    if (
+      debuggingProfile &&
+      debuggingProfile.name !== profile.name &&
+      !(await toast.confirm({
+        title: `Start tuning ${profile.name}?`,
+        description: `This replaces the in-progress AI tuning session for ${debuggingProfile.name}. Keep the existing session if you still need that candidate or request draft.`,
+        confirmLabel: "Start new tuning session",
+        cancelLabel: "Keep existing session",
+        tone: "warning",
+      }))
+    ) {
+      return;
+    }
+
     closeNativeForms();
-    debuggerHistory.reset();
+
+    if (debuggingProfile && debuggingProfile.name !== profile.name) {
+      setDebuggerResetSignal((current) => current + 1);
+    }
+
     setDebuggingProfile(profile);
     setIsAIDebuggerOpen(true);
   };
@@ -592,8 +692,7 @@ export function RenderProfileEditor({
           <button
             type="button"
             onClick={() => {
-              setManualEditSession(null);
-              setEditingProfile(null);
+              closeNativeForms();
               setIsCreating(true);
             }}
           >
@@ -609,6 +708,42 @@ export function RenderProfileEditor({
       {error ? (
         <div className="error" role="alert">
           {error}
+        </div>
+      ) : null}
+
+      {hiddenManualEditSession ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p>
+            AI handoff draft for Attempt{" "}
+            {hiddenManualEditSession.attemptId.replace("attempt-", "")}
+            {isProfileManualEditSessionDirty(hiddenManualEditSession)
+              ? " has unsaved Settings edits."
+              : " is still available in Settings."}
+          </p>
+          <p className="mt-2">
+            Resume it when you want to keep editing the local draft, or discard
+            it explicitly once you no longer need it.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() =>
+                setManualEditSession((current) =>
+                  current ? { ...current, visible: true } : current,
+                )
+              }
+            >
+              Resume AI handoff draft
+            </button>
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => void discardManualEditSession()}
+            >
+              Discard handoff draft
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -653,7 +788,7 @@ export function RenderProfileEditor({
         />
       ) : null}
 
-      {profiles.length === 0 && !isCreating && !manualEditSession ? (
+      {profiles.length === 0 && !isCreating && !manualEditSession?.visible ? (
         <ActionEmptyState
           eyebrow="Optional runtime override"
           title="No saved render profiles yet"
@@ -677,10 +812,11 @@ export function RenderProfileEditor({
         isOpen={isAIGeneratorOpen}
         aiStatus={aiStatus}
         history={generatorHistory}
-        onEditInSettings={(attempt) =>
-          openAttemptInSettings("generator", attempt)
-        }
+        onEditInSettings={(attempt) => {
+          void openAttemptInSettings("generator", attempt);
+        }}
         onClose={() => setIsAIGeneratorOpen(false)}
+        storageKey={RENDER_PROFILE_GENERATOR_SESSION_KEY}
         onSaved={() => {
           void loadProfiles();
         }}
@@ -691,16 +827,18 @@ export function RenderProfileEditor({
         aiStatus={aiStatus}
         profile={debuggingProfile}
         history={debuggerHistory}
-        onEditInSettings={(attempt) =>
-          openAttemptInSettings("debugger", attempt)
-        }
+        onEditInSettings={(attempt) => {
+          void openAttemptInSettings("debugger", attempt);
+        }}
         onClose={() => {
           setIsAIDebuggerOpen(false);
-          setDebuggingProfile(null);
         }}
         onSaved={() => {
           void loadProfiles();
         }}
+        storageKey={RENDER_PROFILE_DEBUGGER_SESSION_KEY}
+        resetSignal={debuggerResetSignal}
+        onSessionCleared={clearDebuggingProfile}
       />
 
       <div className="space-y-2">
@@ -723,7 +861,9 @@ export function RenderProfileEditor({
             <div className="space-x-2">
               <button
                 type="button"
-                onClick={() => handleOpenDebugger(profile)}
+                onClick={() => {
+                  void handleOpenDebugger(profile);
+                }}
                 disabled={aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
                 className={`text-sm ${
@@ -732,13 +872,14 @@ export function RenderProfileEditor({
                     : "text-purple-600 hover:underline"
                 }`}
               >
-                Tune with AI
+                {debuggingProfile?.name === profile.name
+                  ? "Resume AI tuning"
+                  : "Tune with AI"}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setManualEditSession(null);
-                  setIsCreating(false);
+                  closeNativeForms();
                   setEditingProfile(profile);
                 }}
                 className="text-sm text-blue-600 hover:underline"

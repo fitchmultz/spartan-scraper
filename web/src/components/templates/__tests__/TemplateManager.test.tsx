@@ -61,6 +61,12 @@ describe("TemplateManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof window.localStorage.clear === "function") {
+      window.localStorage.clear();
+    }
+    if (typeof window.sessionStorage.clear === "function") {
+      window.sessionStorage.clear();
+    }
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),

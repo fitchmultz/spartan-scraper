@@ -5,6 +5,7 @@
  * Usage: Run with `pnpm --dir web test`.
  * Invariants/Assumptions: URL remains required, retry keeps request-scoped inputs intact, and generated profiles are only persisted after explicit save.
  */
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fireEvent,
@@ -13,6 +14,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { ToastProvider } from "../toast";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 import * as api from "../../api";
 
@@ -21,9 +23,25 @@ vi.mock("../../api", () => ({
   postV1RenderProfiles: vi.fn(),
 }));
 
+function renderGenerator(
+  props: Partial<ComponentProps<typeof AIRenderProfileGenerator>> = {},
+) {
+  return render(
+    <ToastProvider>
+      <AIRenderProfileGenerator
+        isOpen={true}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        {...props}
+      />
+    </ToastProvider>,
+  );
+}
+
 describe("AIRenderProfileGenerator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   it("calls aiRenderProfileGenerate with URL mode options and saves the result", async () => {
@@ -62,9 +80,7 @@ describe("AIRenderProfileGenerator", () => {
 
     const onSaved = vi.fn();
     const onClose = vi.fn();
-    render(
-      <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={onSaved} />,
-    );
+    renderGenerator({ onClose, onSaved });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -157,9 +173,7 @@ describe("AIRenderProfileGenerator", () => {
       response: new Response(),
     });
 
-    render(
-      <AIRenderProfileGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
-    );
+    renderGenerator();
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -265,9 +279,7 @@ describe("AIRenderProfileGenerator", () => {
       response: new Response(),
     });
 
-    render(
-      <AIRenderProfileGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
-    );
+    renderGenerator();
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -442,14 +454,7 @@ describe("AIRenderProfileGenerator", () => {
 
     const onEditInSettings = vi.fn();
 
-    render(
-      <AIRenderProfileGenerator
-        isOpen
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onEditInSettings={onEditInSettings}
-      />,
-    );
+    renderGenerator({ onEditInSettings });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -528,9 +533,7 @@ describe("AIRenderProfileGenerator", () => {
 
     const onClose = vi.fn();
 
-    render(
-      <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={vi.fn()} />,
-    );
+    renderGenerator({ onClose });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -556,11 +559,18 @@ describe("AIRenderProfileGenerator", () => {
     await screen.findByRole("region", { name: /latest candidate/i });
 
     fireEvent.click(screen.getByRole("button", { name: /reset session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^reset session$/i,
+      }),
+    );
 
-    expect(onClose).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("region", { name: /attempt history/i }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(onClose).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("region", { name: /attempt history/i }),
+      ).not.toBeInTheDocument();
+    });
     expect(
       screen.getByRole("button", { name: /generate profile/i }),
     ).toBeInTheDocument();
@@ -570,5 +580,97 @@ describe("AIRenderProfileGenerator", () => {
     expect(screen.getByText("retry-profile.png")).toBeInTheDocument();
     expect(screen.getByLabelText(/fetch headless/i)).toBeChecked();
     expect(screen.getByLabelText(/include screenshot context/i)).toBeChecked();
+  });
+
+  it("closes without discarding and only clears the session after explicit discard", async () => {
+    vi.mocked(api.aiRenderProfileGenerate).mockResolvedValue({
+      data: {
+        profile: {
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          wait: { mode: "selector", selector: "main" },
+        },
+        resolved_goal: { source: "explicit", text: "Keep the app shell" },
+      },
+      request: new Request(
+        "http://localhost:8741/v1/ai/render-profile-generate",
+      ),
+      response: new Response(),
+    });
+
+    const onClose = vi.fn();
+    const onSaved = vi.fn();
+    const { rerender } = render(
+      <ToastProvider>
+        <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/instructions/i), {
+      target: { value: "Keep the app shell" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^close$/i })[0]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ToastProvider>
+        <AIRenderProfileGenerator
+          isOpen={false}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByLabelText(/instructions/i)).toHaveValue(
+      "Keep the app shell",
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /discard session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^discard session$/i,
+      }),
+    );
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    rerender(
+      <ToastProvider>
+        <AIRenderProfileGenerator
+          isOpen={false}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIRenderProfileGenerator isOpen onClose={onClose} onSaved={onSaved} />
+      </ToastProvider>,
+    );
+
+    expect(
+      screen.queryByRole("region", { name: /attempt history/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/target url/i)).toHaveValue("");
   });
 });

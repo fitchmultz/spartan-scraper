@@ -35,6 +35,7 @@ vi.mock("../../lib/api-config", () => ({
 describe("PipelineJSEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     vi.mocked(api.getV1PipelineJs).mockResolvedValue({
       data: {
         scripts: [
@@ -445,5 +446,69 @@ describe("PipelineJSEditor", () => {
     expect(await screen.findByLabelText(/wait selectors/i)).toHaveValue(
       "main, #app-root",
     );
+  });
+
+  it("restores a closed generator session after the Settings editor remounts", async () => {
+    vi.mocked(api.getV1PipelineJs).mockResolvedValue({
+      data: { scripts: [] },
+      request: new Request("http://localhost:8741/v1/pipeline-js"),
+      response: new Response(),
+    });
+    vi.mocked(api.aiPipelineJsGenerate).mockResolvedValue({
+      data: {
+        script: {
+          name: "normalize-app-shell",
+          hostPatterns: ["example.com"],
+          selectors: ["main"],
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Keep the visible app shell",
+        },
+      },
+      request: new Request("http://localhost:8741/v1/ai/pipeline-js-generate"),
+      response: new Response(),
+    });
+
+    const firstRender = render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/instructions/i), {
+      target: { value: "Keep the visible app shell" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^close$/i })[0]);
+    firstRender.unmount();
+
+    render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByLabelText(/instructions/i)).toHaveValue(
+      "Keep the visible app shell",
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
   });
 });

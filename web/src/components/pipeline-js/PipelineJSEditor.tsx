@@ -26,6 +26,7 @@ import {
   type AIAttempt,
   useAIAttemptHistory,
 } from "../../hooks/useAIAttemptHistory";
+import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { deepEqual } from "../../lib/diff-utils";
@@ -36,6 +37,15 @@ import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
+
+const PIPELINE_JS_GENERATOR_SESSION_KEY =
+  "spartan.pipeline-js.ai-generator-session";
+const PIPELINE_JS_DEBUGGER_SESSION_KEY =
+  "spartan.pipeline-js.ai-debugger-session";
+const PIPELINE_JS_DEBUGGER_TARGET_KEY =
+  "spartan.pipeline-js.ai-debugger-target";
+const PIPELINE_JS_MANUAL_EDIT_SESSION_KEY =
+  "spartan.pipeline-js.ai-manual-edit-session";
 
 interface ScriptFormDraft {
   formData: PipelineJsInput;
@@ -98,6 +108,15 @@ function buildPipelineJsInputFromDraft(
   };
 }
 
+function isScriptManualEditSessionDirty(
+  session: ScriptManualEditSession,
+): boolean {
+  return !deepEqual(
+    buildPipelineJsInputFromDraft(session.draft),
+    session.initialValue,
+  );
+}
+
 function ManualEditContextNotice({
   attemptId,
   submitLabel,
@@ -138,17 +157,27 @@ export function PipelineJSEditor({
   const [editingScript, setEditingScript] = useState<JsTargetScript | null>(
     null,
   );
-  const [debuggingScript, setDebuggingScript] = useState<JsTargetScript | null>(
-    null,
-  );
+  const [debuggingScript, setDebuggingScript, clearDebuggingScript] =
+    useSessionStorageState<JsTargetScript | null>(
+      PIPELINE_JS_DEBUGGER_TARGET_KEY,
+      null,
+    );
   const [isCreating, setIsCreating] = useState(false);
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
-  const [manualEditSession, setManualEditSession] =
-    useState<ScriptManualEditSession | null>(null);
+  const [debuggerResetSignal, setDebuggerResetSignal] = useState(0);
+  const [manualEditSession, setManualEditSession, clearManualEditSession] =
+    useSessionStorageState<ScriptManualEditSession | null>(
+      PIPELINE_JS_MANUAL_EDIT_SESSION_KEY,
+      null,
+    );
   const [showJson, setShowJson] = useState(false);
-  const generatorHistory = useAIAttemptHistory<JsTargetScript>();
-  const debuggerHistory = useAIAttemptHistory<JsTargetScript>();
+  const generatorHistory = useAIAttemptHistory<JsTargetScript>({
+    storageKey: `${PIPELINE_JS_GENERATOR_SESSION_KEY}.history`,
+  });
+  const debuggerHistory = useAIAttemptHistory<JsTargetScript>({
+    storageKey: `${PIPELINE_JS_DEBUGGER_SESSION_KEY}.history`,
+  });
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -156,6 +185,8 @@ export function PipelineJSEditor({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
+  const hiddenManualEditSession =
+    manualEditSession && !manualEditSession.visible ? manualEditSession : null;
 
   const loadScripts = useCallback(async () => {
     try {
@@ -191,9 +222,13 @@ export function PipelineJSEditor({
     setIsCreating(false);
     setEditingScript(null);
 
-    if (!options?.preserveManualEditSession) {
-      setManualEditSession(null);
+    if (options?.preserveManualEditSession) {
+      return;
     }
+
+    setManualEditSession((current) =>
+      current ? { ...current, visible: false } : current,
+    );
   };
 
   const handleCreate = async (input: PipelineJsInput) => {
@@ -314,11 +349,51 @@ export function PipelineJSEditor({
     }
   };
 
-  const openAttemptInSettings = (
+  const discardManualEditSession = useCallback(
+    async (options?: { reason?: string; title?: string }) => {
+      if (!manualEditSession) {
+        return true;
+      }
+
+      const confirmed = await toast.confirm({
+        title: options?.title ?? "Discard the AI handoff draft?",
+        description:
+          options?.reason ??
+          (isScriptManualEditSessionDirty(manualEditSession)
+            ? "This removes the local Settings draft for the current AI attempt. Your unsaved edits will be lost."
+            : "This removes the current AI handoff draft from Settings. You can still reopen the AI modal itself if you keep that session."),
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+      if (!confirmed) {
+        return false;
+      }
+
+      clearManualEditSession();
+      return true;
+    },
+    [clearManualEditSession, manualEditSession, toast],
+  );
+
+  const openAttemptInSettings = async (
     source: AISessionSource,
     attempt: AIAttempt<JsTargetScript>,
   ) => {
     if (!attempt.artifact) {
+      return;
+    }
+
+    if (
+      manualEditSession &&
+      (manualEditSession.source !== source ||
+        manualEditSession.attemptId !== attempt.id) &&
+      !(await discardManualEditSession({
+        title: "Replace the current AI handoff draft?",
+        reason:
+          "This attempt will replace the current Settings draft for another AI handoff. Discard the older draft only if you no longer need it.",
+      }))
+    ) {
       return;
     }
 
@@ -387,15 +462,18 @@ export function PipelineJSEditor({
     setIsAIDebuggerOpen(true);
   };
 
-  const handleManualDraftChange = useCallback((draft: ScriptFormDraft) => {
-    setManualEditSession((current) => {
-      if (!current || deepEqual(current.draft, draft)) {
-        return current;
-      }
+  const handleManualDraftChange = useCallback(
+    (draft: ScriptFormDraft) => {
+      setManualEditSession((current) => {
+        if (!current || deepEqual(current.draft, draft)) {
+          return current;
+        }
 
-      return { ...current, draft };
-    });
-  }, []);
+        return { ...current, draft };
+      });
+    },
+    [setManualEditSession],
+  );
 
   const handleManualEditSubmit = async (
     session: ScriptManualEditSession,
@@ -465,13 +543,30 @@ export function PipelineJSEditor({
 
   const handleOpenGenerator = () => {
     closeNativeForms();
-    generatorHistory.reset();
     setIsAIGeneratorOpen(true);
   };
 
-  const handleOpenDebugger = (script: JsTargetScript) => {
+  const handleOpenDebugger = async (script: JsTargetScript) => {
+    if (
+      debuggingScript &&
+      debuggingScript.name !== script.name &&
+      !(await toast.confirm({
+        title: `Start tuning ${script.name}?`,
+        description: `This replaces the in-progress AI tuning session for ${debuggingScript.name}. Keep the existing session if you still need that candidate or request draft.`,
+        confirmLabel: "Start new tuning session",
+        cancelLabel: "Keep existing session",
+        tone: "warning",
+      }))
+    ) {
+      return;
+    }
+
     closeNativeForms();
-    debuggerHistory.reset();
+
+    if (debuggingScript && debuggingScript.name !== script.name) {
+      setDebuggerResetSignal((current) => current + 1);
+    }
+
     setDebuggingScript(script);
     setIsAIDebuggerOpen(true);
   };
@@ -518,8 +613,7 @@ export function PipelineJSEditor({
           <button
             type="button"
             onClick={() => {
-              setManualEditSession(null);
-              setEditingScript(null);
+              closeNativeForms();
               setIsCreating(true);
             }}
           >
@@ -535,6 +629,42 @@ export function PipelineJSEditor({
       {error ? (
         <div className="error" role="alert">
           {error}
+        </div>
+      ) : null}
+
+      {hiddenManualEditSession ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p>
+            AI handoff draft for Attempt{" "}
+            {hiddenManualEditSession.attemptId.replace("attempt-", "")}
+            {isScriptManualEditSessionDirty(hiddenManualEditSession)
+              ? " has unsaved Settings edits."
+              : " is still available in Settings."}
+          </p>
+          <p className="mt-2">
+            Resume it when you want to keep editing the local draft, or discard
+            it explicitly once you no longer need it.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() =>
+                setManualEditSession((current) =>
+                  current ? { ...current, visible: true } : current,
+                )
+              }
+            >
+              Resume AI handoff draft
+            </button>
+            <button
+              type="button"
+              className="button-secondary"
+              onClick={() => void discardManualEditSession()}
+            >
+              Discard handoff draft
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -579,7 +709,7 @@ export function PipelineJSEditor({
         />
       ) : null}
 
-      {scripts.length === 0 && !isCreating && !manualEditSession ? (
+      {scripts.length === 0 && !isCreating && !manualEditSession?.visible ? (
         <ActionEmptyState
           eyebrow="Optional page-specific hook"
           title="No pipeline scripts yet"
@@ -603,10 +733,11 @@ export function PipelineJSEditor({
         isOpen={isAIGeneratorOpen}
         aiStatus={aiStatus}
         history={generatorHistory}
-        onEditInSettings={(attempt) =>
-          openAttemptInSettings("generator", attempt)
-        }
+        onEditInSettings={(attempt) => {
+          void openAttemptInSettings("generator", attempt);
+        }}
         onClose={() => setIsAIGeneratorOpen(false)}
+        storageKey={PIPELINE_JS_GENERATOR_SESSION_KEY}
         onSaved={() => {
           void loadScripts();
         }}
@@ -617,16 +748,18 @@ export function PipelineJSEditor({
         aiStatus={aiStatus}
         script={debuggingScript}
         history={debuggerHistory}
-        onEditInSettings={(attempt) =>
-          openAttemptInSettings("debugger", attempt)
-        }
+        onEditInSettings={(attempt) => {
+          void openAttemptInSettings("debugger", attempt);
+        }}
         onClose={() => {
           setIsAIDebuggerOpen(false);
-          setDebuggingScript(null);
         }}
         onSaved={() => {
           void loadScripts();
         }}
+        storageKey={PIPELINE_JS_DEBUGGER_SESSION_KEY}
+        resetSignal={debuggerResetSignal}
+        onSessionCleared={clearDebuggingScript}
       />
 
       <div className="space-y-2">
@@ -665,7 +798,9 @@ export function PipelineJSEditor({
             <div className="space-x-2">
               <button
                 type="button"
-                onClick={() => handleOpenDebugger(script)}
+                onClick={() => {
+                  void handleOpenDebugger(script);
+                }}
                 disabled={aiUnavailable}
                 title={aiUnavailableMessage ?? undefined}
                 className={`text-sm ${
@@ -674,13 +809,14 @@ export function PipelineJSEditor({
                     : "text-purple-600 hover:underline"
                 }`}
               >
-                Tune with AI
+                {debuggingScript?.name === script.name
+                  ? "Resume AI tuning"
+                  : "Tune with AI"}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setManualEditSession(null);
-                  setIsCreating(false);
+                  closeNativeForms();
                   setEditingScript(script);
                 }}
                 className="text-sm text-blue-600 hover:underline"

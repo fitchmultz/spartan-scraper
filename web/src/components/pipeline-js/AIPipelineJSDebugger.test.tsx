@@ -5,6 +5,7 @@
  * Usage: Run with `pnpm --dir web test`.
  * Invariants/Assumptions: Tuning results must expose the resolved AI goal before operators choose to save, and retry must preserve request-scoped inputs.
  */
+import type { ComponentProps } from "react";
 import {
   fireEvent,
   render,
@@ -14,6 +15,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider } from "../toast";
 import { AIPipelineJSDebugger } from "../AIPipelineJSDebugger";
 import * as api from "../../api";
 
@@ -21,6 +23,26 @@ vi.mock("../../api", () => ({
   aiPipelineJsDebug: vi.fn(),
   putV1PipelineJsByName: vi.fn(),
 }));
+
+function renderDebugger(
+  props: Partial<ComponentProps<typeof AIPipelineJSDebugger>> = {},
+) {
+  return render(
+    <ToastProvider>
+      <AIPipelineJSDebugger
+        isOpen={true}
+        script={{
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          selectors: [".missing"],
+        }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        {...props}
+      />
+    </ToastProvider>,
+  );
+}
 
 describe("AIPipelineJSDebugger", () => {
   const onClose = vi.fn();
@@ -33,6 +55,7 @@ describe("AIPipelineJSDebugger", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   it("calls aiPipelineJsDebug and saves the suggested script", async () => {
@@ -72,14 +95,7 @@ describe("AIPipelineJSDebugger", () => {
       response: new Response(),
     });
 
-    render(
-      <AIPipelineJSDebugger
-        isOpen={true}
-        script={script}
-        onClose={onClose}
-        onSaved={onSaved}
-      />,
-    );
+    renderDebugger({ script, onClose, onSaved });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -218,14 +234,7 @@ describe("AIPipelineJSDebugger", () => {
       response: new Response(),
     });
 
-    render(
-      <AIPipelineJSDebugger
-        isOpen={true}
-        script={script}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderDebugger({ script });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -390,14 +399,7 @@ describe("AIPipelineJSDebugger", () => {
 
     const closeSpy = vi.fn();
 
-    render(
-      <AIPipelineJSDebugger
-        isOpen={true}
-        script={script}
-        onClose={closeSpy}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderDebugger({ script, onClose: closeSpy });
 
     fireEvent.change(screen.getByLabelText(/target url/i), {
       target: { value: "https://example.com/app" },
@@ -423,11 +425,18 @@ describe("AIPipelineJSDebugger", () => {
     await screen.findByRole("region", { name: /latest candidate/i });
 
     fireEvent.click(screen.getByRole("button", { name: /reset session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^reset session$/i,
+      }),
+    );
 
-    expect(closeSpy).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("region", { name: /attempt history/i }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(closeSpy).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("region", { name: /attempt history/i }),
+      ).not.toBeInTheDocument();
+    });
     expect(
       screen.getByRole("button", { name: /tune script/i }),
     ).toBeInTheDocument();
@@ -437,5 +446,114 @@ describe("AIPipelineJSDebugger", () => {
     expect(screen.getByText("debug-script.png")).toBeInTheDocument();
     expect(screen.getByLabelText(/use headless browser/i)).toBeChecked();
     expect(screen.getByLabelText(/include screenshot context/i)).toBeChecked();
+  });
+
+  it("closes without discarding and only clears the tuning session after explicit discard", async () => {
+    vi.mocked(api.aiPipelineJsDebug).mockResolvedValue({
+      data: {
+        issues: ["selectors[0] matched no elements"],
+        resolved_goal: { source: "explicit", text: "Use main" },
+        suggested_script: {
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          selectors: ["main"],
+        },
+      },
+      error: undefined,
+      request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
+      response: new Response(),
+    });
+
+    const onClose = vi.fn();
+    const onSaved = vi.fn();
+    const { rerender } = render(
+      <ToastProvider>
+        <AIPipelineJSDebugger
+          isOpen
+          script={script}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.change(screen.getByLabelText(/tuning instructions/i), {
+      target: { value: "Use main" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tune script/i }));
+    await screen.findByRole("region", { name: /attempt history/i });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^close$/i })[0]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSDebugger
+          isOpen={false}
+          script={script}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSDebugger
+          isOpen
+          script={script}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByLabelText(/target url/i)).toHaveValue(
+      "https://example.com/app",
+    );
+    expect(screen.getByLabelText(/tuning instructions/i)).toHaveValue(
+      "Use main",
+    );
+    expect(
+      screen.getByRole("region", { name: /attempt history/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /discard session/i }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: /^discard session$/i,
+      }),
+    );
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSDebugger
+          isOpen={false}
+          script={script}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <AIPipelineJSDebugger
+          isOpen
+          script={script}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      </ToastProvider>,
+    );
+
+    expect(
+      screen.queryByRole("region", { name: /attempt history/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/target url/i)).toHaveValue("");
   });
 });

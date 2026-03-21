@@ -3,10 +3,10 @@
  * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, retain full session attempt history, hand selected attempts off to Settings, and save the operator-selected suggested script.
  * Scope: Modal debugging flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted tuning.
- * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, normal modal close resets the session, and retry/save always target the selected attempt when one exists.
+ * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, closing preserves the current tab-scoped session until operators explicitly reset or discard it, and retry/save always target the selected attempt when one exists.
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   aiPipelineJsDebug,
   putV1PipelineJsByName,
@@ -19,6 +19,7 @@ import {
   type AIAttempt,
   type AIAttemptHistoryController,
 } from "../hooks/useAIAttemptHistory";
+import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toPipelineJsDebugAttempt } from "../lib/ai-authoring-attempts";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
@@ -28,6 +29,7 @@ import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
+import { useToast } from "./toast";
 
 interface AIPipelineJSDebuggerProps {
   isOpen: boolean;
@@ -37,6 +39,9 @@ interface AIPipelineJSDebuggerProps {
   onSaved: () => void;
   history?: AIAttemptHistoryController<JsTargetScript>;
   onEditInSettings?: (attempt: AIAttempt<JsTargetScript>) => void;
+  storageKey?: string;
+  resetSignal?: number;
+  onSessionCleared?: () => void;
 }
 
 interface DebugState {
@@ -73,9 +78,18 @@ export function AIPipelineJSDebugger({
   onSaved,
   history: providedHistory,
   onEditInSettings,
+  storageKey,
+  resetSignal,
+  onSessionCleared,
 }: AIPipelineJSDebuggerProps) {
-  const [state, setState] = useState<DebugState>(createInitialState);
-  const ownedHistory = useAIAttemptHistory<JsTargetScript>();
+  const toast = useToast();
+  const [state, setState, clearState] = useSessionStorageState<DebugState>(
+    storageKey ?? null,
+    createInitialState,
+  );
+  const ownedHistory = useAIAttemptHistory<JsTargetScript>(
+    storageKey ? { storageKey: `${storageKey}.history` } : undefined,
+  );
   const history = providedHistory ?? ownedHistory;
   const aiCapability = describeAICapability(
     aiStatus,
@@ -87,14 +101,41 @@ export function AIPipelineJSDebugger({
   const baselineAttempt = history.baselineAttempt;
   const latestAttempt = history.latestAttempt;
   const effectiveScript = activeAttempt?.artifact ?? script;
+  const hasSessionDraft = useMemo(
+    () =>
+      Boolean(
+        state.url.trim() ||
+          state.instructions.trim() ||
+          state.images.length > 0 ||
+          state.headless ||
+          state.playwright ||
+          state.visual ||
+          history.attempts.length > 0,
+      ),
+    [state, history.attempts.length],
+  );
+  const resetSignalRef = useRef(resetSignal);
+
+  const clearSession = useCallback(() => {
+    clearState();
+    history.reset();
+    onSessionCleared?.();
+  }, [clearState, history, onSessionCleared]);
+
+  useEffect(() => {
+    if (resetSignal === undefined || resetSignal === resetSignalRef.current) {
+      return;
+    }
+
+    resetSignalRef.current = resetSignal;
+    clearSession();
+  }, [clearSession, resetSignal]);
 
   if (!isOpen || !script) {
     return null;
   }
 
   const handleClose = () => {
-    setState(createInitialState());
-    history.reset();
     onClose();
   };
 
@@ -177,12 +218,47 @@ export function AIPipelineJSDebugger({
     void handleDebug();
   };
 
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
+    const confirmed = await toast.confirm({
+      title: "Reset this AI session?",
+      description:
+        "This clears the tuning attempt history and selected candidate, but keeps the current URL, instructions, browser options, and uploaded images so you can run a fresh pass without re-entering them.",
+      confirmLabel: "Reset session",
+      cancelLabel: "Keep session",
+      tone: "warning",
+    });
+    if (!confirmed) {
+      return;
+    }
+
     history.reset();
     setState((prev) => ({
       ...prev,
       error: null,
     }));
+  };
+
+  const handleDiscardSession = async () => {
+    if (!hasSessionDraft) {
+      clearSession();
+      onClose();
+      return;
+    }
+
+    const confirmed = await toast.confirm({
+      title: "Discard this AI session?",
+      description:
+        "This removes the in-progress tuning draft, selected candidate, attempt history, and uploaded images from this browser tab.",
+      confirmLabel: "Discard session",
+      cancelLabel: "Keep session",
+      tone: "warning",
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    clearSession();
+    onClose();
   };
 
   const handleSave = async () => {
@@ -202,8 +278,9 @@ export function AIPipelineJSDebugger({
           getApiErrorMessage(error, "Failed to save pipeline JS script"),
         );
       }
+      clearSession();
       onSaved();
-      handleClose();
+      onClose();
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -244,6 +321,14 @@ export function AIPipelineJSDebugger({
         <div className="modal-body space-y-4">
           {aiUnavailableMessage ? (
             <AIUnavailableNotice message={aiUnavailableMessage} />
+          ) : null}
+
+          {hasSessionDraft ? (
+            <div className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+              Close keeps this AI session available in the current browser tab.
+              Reset session keeps the request inputs but clears tuning attempts.
+              Discard session removes everything.
+            </div>
           ) : null}
 
           <fieldset
@@ -471,14 +556,24 @@ export function AIPipelineJSDebugger({
               className="button-secondary"
               onClick={handleClose}
             >
-              Cancel
+              Close
             </button>
+            {hasSessionDraft ? (
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => void handleDiscardSession()}
+                disabled={state.isLoading || state.isSaving}
+              >
+                Discard session
+              </button>
+            ) : null}
             {history.attempts.length > 0 ? (
               <>
                 <button
                   type="button"
                   className="button-secondary"
-                  onClick={handleResetSession}
+                  onClick={() => void handleResetSession()}
                   disabled={state.isLoading || state.isSaving}
                 >
                   Reset session
