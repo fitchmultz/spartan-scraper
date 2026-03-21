@@ -16,15 +16,15 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Optional Goal Defaults for AI Automation Generators
-   - Let render-profile and pipeline-JS generation bootstrap from page context when explicit operator instructions are omitted, instead of hard-failing before the model can attempt a reasonable starter configuration.
-   - Preserve explicit operator guidance as the preferred path, but provide a sensible default objective derived from the page URL, fetched HTML, JS-heaviness signals, and any attached screenshots.
-   - Keep deterministic validation strict after generation:
-     - generated render profiles must still pass structural validation and recheck where applicable
-     - generated pipeline scripts must still pass structural validation and representative execution checks where applicable
-   - Update API, CLI, MCP, and Web copy so these flows are described as “instructions optional, guidance recommended” rather than “instructions required” when the product can succeed without them.
-   - Add tests for no-instruction starter generation plus existing tests for explicitly guided generation.
-   - Sequence this after the bridge hardening work so default-goal generation benefits from the more tolerant bridge behavior instead of inheriting the current brittle path.
+1. AI Automation Generator Goal Transparency
+   - Surface the final resolved operator goal for render-profile and pipeline-JS generation so operators can see what Spartan actually asked the model to do when instructions were omitted.
+   - Distinguish explicit operator guidance from Spartan-derived defaults in API, Web, CLI, and MCP responses without leaking irrelevant prompt scaffolding.
+   - Show the resolved goal inside the Web AI generator results so operators can quickly decide whether to save, retry with edits, or add custom guidance.
+   - Preserve current deterministic validation and route metadata while extending responses with goal-origin metadata only where it materially improves operator trust.
+   - Add tests for:
+     - explicit guidance remaining visible as operator-supplied
+     - derived defaults being returned as system-derived
+     - retry/debug flows not losing the resolved goal context
 
 ## Ongoing Constraints
 

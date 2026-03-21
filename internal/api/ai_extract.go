@@ -114,7 +114,7 @@ type AIRenderProfileGenerateRequest struct {
 	URL           string                 `json:"url"`
 	Name          string                 `json:"name,omitempty"`
 	HostPatterns  []string               `json:"host_patterns,omitempty"`
-	Instructions  string                 `json:"instructions"`
+	Instructions  string                 `json:"instructions,omitempty"`
 	Images        []extract.AIImageInput `json:"images,omitempty"`
 	Headless      bool                   `json:"headless,omitempty"`
 	UsePlaywright bool                   `json:"playwright,omitempty"`
@@ -157,7 +157,7 @@ type AIPipelineJSGenerateRequest struct {
 	URL           string                 `json:"url"`
 	Name          string                 `json:"name,omitempty"`
 	HostPatterns  []string               `json:"host_patterns,omitempty"`
-	Instructions  string                 `json:"instructions"`
+	Instructions  string                 `json:"instructions,omitempty"`
 	Images        []extract.AIImageInput `json:"images,omitempty"`
 	Headless      bool                   `json:"headless,omitempty"`
 	UsePlaywright bool                   `json:"playwright,omitempty"`

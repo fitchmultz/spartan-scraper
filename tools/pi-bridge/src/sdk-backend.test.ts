@@ -582,6 +582,58 @@ test("generateRenderProfile validates structured profile output", async () => {
   assert.equal(result.profile.preferHeadless, true);
 });
 
+test("generateRenderProfile uses a default operator goal when instructions are omitted", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.equal(typeof userMessage.content, "string");
+        assert.match(
+          userMessage.content as string,
+          /Operator goal: Infer the minimal useful render-profile objective/,
+        );
+        return createToolResponse({
+          toolName: "submit_render_profile",
+          arguments: {
+            profile: {
+              preferHeadless: true,
+              wait: { mode: "selector", selector: "main" },
+            },
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.generateRenderProfile(
+    CAPABILITY_RENDER_PROFILE_GENERATE,
+    {
+      html: "<html><body><main>Widget</main></body></html>",
+      url: "https://example.com/widget",
+      context_summary: "HTTP fetch returned sparse shell HTML.",
+    },
+  );
+
+  assert.equal(result.profile.preferHeadless, true);
+});
+
 test("refineResearch validates structured bounded research output", async () => {
   const backend = new SDKBackend(
     {
@@ -852,6 +904,57 @@ test("generatePipelineJs sends screenshot context as multimodal user content", a
 
   assert.equal(result.route_id, "openai/gpt-5.4");
   assert.deepEqual(result.script.selectors, ["main", "[data-ready='true']"]);
+});
+
+test("generatePipelineJs uses a default operator goal when instructions are omitted", async () => {
+  const backend = new SDKBackend(
+    {
+      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.4"],
+    },
+    {
+      modelRegistry: createFakeModelRegistry({
+        models: {
+          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+        },
+        apiKeys: {
+          openai: "openai-key",
+        },
+      }),
+      completeFn: (async (
+        _model: FakeModel,
+        context: import("@mariozechner/pi-ai").Context,
+      ) => {
+        const userMessage = context.messages[0];
+        assert.equal(userMessage.role, "user");
+        assert.equal(typeof userMessage.content, "string");
+        assert.match(
+          userMessage.content as string,
+          /Operator goal: Infer the minimal useful pipeline-JS objective/,
+        );
+        return createToolResponse({
+          toolName: "submit_pipeline_js",
+          arguments: {
+            script: {
+              selectors: ["main"],
+            },
+          },
+          provider: "openai",
+          model: "gpt-5.4",
+        });
+      }) as unknown as typeof import("@mariozechner/pi-ai").complete,
+    },
+  );
+
+  const result = await backend.generatePipelineJs(
+    CAPABILITY_PIPELINE_JS_GENERATE,
+    {
+      html: "<html><body><main>Widget</main></body></html>",
+      url: "https://example.com/widget",
+      context_summary: "JS heaviness suggests a browser-driven page shell.",
+    },
+  );
+
+  assert.deepEqual(result.script.selectors, ["main"]);
 });
 
 test("extract sends screenshot context as multimodal user content", async () => {

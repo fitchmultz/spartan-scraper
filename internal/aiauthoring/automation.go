@@ -1,3 +1,22 @@
+// Package aiauthoring implements bounded AI-assisted authoring for automation artifacts.
+//
+// Purpose:
+// - Generate and debug render profiles and pipeline JS from resolved page context.
+//
+// Responsibilities:
+// - Resolve page context, derive default authoring goals when operators omit instructions,
+// - call the bounded AI bridge, and enforce deterministic post-generation validation.
+//
+// Scope:
+// - AI authoring flows for render profiles, pipeline JS, and shared automation helpers.
+//
+// Usage:
+// - Invoked by API, CLI, MCP, and internal authoring surfaces.
+//
+// Invariants/Assumptions:
+// - Explicit operator instructions always win over derived defaults.
+// - Instructionless generation must still use real page context before prompting AI.
+// - Strict validation and retry loops remain mandatory after model output.
 package aiauthoring
 
 import (
@@ -118,9 +137,6 @@ func (s *Service) GenerateRenderProfile(ctx context.Context, req RenderProfileRe
 	if err := validateHTTPURL(req.URL); err != nil {
 		return RenderProfileResult{}, err
 	}
-	if strings.TrimSpace(req.Instructions) == "" {
-		return RenderProfileResult{}, apperrors.Validation("instructions are required")
-	}
 
 	name, hostPatterns, err := resolveResourceIdentity(req.URL, req.Name, req.HostPatterns)
 	if err != nil {
@@ -139,10 +155,11 @@ func (s *Service) GenerateRenderProfile(ctx context.Context, req RenderProfileRe
 		return RenderProfileResult{}, err
 	}
 
+	instructions := resolveAutomationInstructions(automationGoalRenderProfile, req.Instructions, name, hostPatterns, page)
 	suggestion, err := s.generateRenderProfileSuggestion(ctx, page, renderProfilePromptInput{
 		Name:           name,
 		HostPatterns:   hostPatterns,
-		Instructions:   strings.TrimSpace(req.Instructions),
+		Instructions:   instructions,
 		ContextSummary: buildRenderProfileContextSummary(name, hostPatterns, page),
 		ValidateCandidate: func(candidate fetch.RenderProfile) []string {
 			return validateGeneratedRenderProfile(page.HTML, candidate)
@@ -229,9 +246,6 @@ func (s *Service) GeneratePipelineJS(ctx context.Context, req PipelineJSRequest)
 	if err := validateHTTPURL(req.URL); err != nil {
 		return PipelineJSResult{}, err
 	}
-	if strings.TrimSpace(req.Instructions) == "" {
-		return PipelineJSResult{}, apperrors.Validation("instructions are required")
-	}
 
 	name, hostPatterns, err := resolveResourceIdentity(req.URL, req.Name, req.HostPatterns)
 	if err != nil {
@@ -250,10 +264,11 @@ func (s *Service) GeneratePipelineJS(ctx context.Context, req PipelineJSRequest)
 		return PipelineJSResult{}, err
 	}
 
+	instructions := resolveAutomationInstructions(automationGoalPipelineJS, req.Instructions, name, hostPatterns, page)
 	suggestion, err := s.generatePipelineJSSuggestion(ctx, page, pipelineJSPromptInput{
 		Name:           name,
 		HostPatterns:   hostPatterns,
-		Instructions:   strings.TrimSpace(req.Instructions),
+		Instructions:   instructions,
 		ContextSummary: buildPipelineJSContextSummary(name, hostPatterns, page),
 		ValidateCandidate: func(candidate pipeline.JSTargetScript) []string {
 			return validateGeneratedPipelineJS(page.HTML, candidate)
@@ -622,22 +637,114 @@ func normalizeHostPatterns(hostPatterns []string) []string {
 	return out
 }
 
-func buildRenderProfileContextSummary(name string, hostPatterns []string, page pageContext) string {
-	parts := []string{
-		fmt.Sprintf("Profile name: %s", name),
-		fmt.Sprintf("Host patterns: %s", strings.Join(hostPatterns, ", ")),
+type automationGoalKind string
+
+const (
+	automationGoalRenderProfile automationGoalKind = "render_profile"
+	automationGoalPipelineJS    automationGoalKind = "pipeline_js"
+)
+
+func resolveAutomationInstructions(kind automationGoalKind, explicit string, name string, hostPatterns []string, page pageContext) string {
+	if trimmed := strings.TrimSpace(explicit); trimmed != "" {
+		return trimmed
 	}
-	if page.FetchStatus > 0 {
-		parts = append(parts, fmt.Sprintf("Fetch status: %d", page.FetchStatus))
+	switch kind {
+	case automationGoalRenderProfile:
+		return deriveRenderProfileInstructions(name, hostPatterns, page)
+	case automationGoalPipelineJS:
+		return derivePipelineJSInstructions(name, hostPatterns, page)
+	default:
+		return "Infer the minimal deterministic automation needed from the page context."
+	}
+}
+
+func deriveRenderProfileInstructions(name string, hostPatterns []string, page pageContext) string {
+	parts := []string{
+		fmt.Sprintf("Generate a render profile for %s.", automationTargetLabel(name, hostPatterns, page)),
+		"Prefer the lightest deterministic fetch configuration that still captures meaningful page content.",
+	}
+	if automationNeedsBrowser(page) {
+		parts = append(parts, "The page shows JS-heavy or browser-dependent signals, so prefer headless rendering and wait for stable, user-visible content.")
+	} else {
+		parts = append(parts, "The page does not strongly signal JS-heavy behavior, so avoid unnecessary browser overhead unless validation requires it.")
+	}
+	if page.FetchStatus >= 400 {
+		parts = append(parts, fmt.Sprintf("The initial fetch returned HTTP %d, so bias toward resilient content acquisition.", page.FetchStatus))
 	}
 	if strings.TrimSpace(page.FetchEngine) != "" {
-		parts = append(parts, fmt.Sprintf("Fetch engine used: %s", page.FetchEngine))
+		parts = append(parts, fmt.Sprintf("The observed fetch engine was %s.", page.FetchEngine))
 	}
-	parts = append(parts,
-		fmt.Sprintf("Detected JS heaviness score: %.2f", page.JSHeaviness.Score),
-		fmt.Sprintf("Detected JS heaviness reasons: %s", strings.Join(page.JSHeaviness.Reasons, "; ")),
-	)
-	return strings.Join(parts, "\n")
+	if reasons := automationReasonSummary(page.JSHeaviness.Reasons); reasons != "" {
+		parts = append(parts, "Relevant page signals: "+reasons+".")
+	}
+	return strings.Join(parts, " ")
+}
+
+func derivePipelineJSInstructions(name string, hostPatterns []string, page pageContext) string {
+	parts := []string{
+		fmt.Sprintf("Generate the minimal deterministic pipeline JS needed for %s.", automationTargetLabel(name, hostPatterns, page)),
+		"Prefer selectors and waits over custom JavaScript whenever possible.",
+	}
+	if automationNeedsBrowser(page) {
+		parts = append(parts, "The page shows JS-heavy or browser-dependent signals, so it is acceptable to use focused browser-side automation when selectors alone are not enough.")
+	} else {
+		parts = append(parts, "The page does not strongly signal JS-heavy behavior, so keep the script as small as possible and avoid unnecessary browser-side logic.")
+	}
+	if page.FetchStatus >= 400 {
+		parts = append(parts, fmt.Sprintf("The initial fetch returned HTTP %d, so focus on revealing stable content rather than adding broad, speculative automation.", page.FetchStatus))
+	}
+	if strings.TrimSpace(page.FetchEngine) != "" {
+		parts = append(parts, fmt.Sprintf("The observed fetch engine was %s.", page.FetchEngine))
+	}
+	if reasons := automationReasonSummary(page.JSHeaviness.Reasons); reasons != "" {
+		parts = append(parts, "Relevant page signals: "+reasons+".")
+	}
+	return strings.Join(parts, " ")
+}
+
+func automationNeedsBrowser(page pageContext) bool {
+	engine := strings.TrimSpace(page.FetchEngine)
+	if engine == string(fetch.RenderEngineChromedp) || engine == string(fetch.RenderEnginePlaywright) {
+		return true
+	}
+	return fetch.IsJSHeavy(page.JSHeaviness, 0.5)
+}
+
+func automationTargetLabel(name string, hostPatterns []string, page pageContext) string {
+	host := automationTargetHost(hostPatterns, page)
+	if trimmed := strings.TrimSpace(name); trimmed != "" {
+		return fmt.Sprintf("%q on %s", trimmed, host)
+	}
+	return host
+}
+
+func automationTargetHost(hostPatterns []string, page pageContext) string {
+	if host := strings.TrimSpace(hostmatch.HostFromURL(page.URL)); host != "" {
+		return host
+	}
+	for _, pattern := range hostPatterns {
+		if trimmed := strings.TrimSpace(pattern); trimmed != "" {
+			return trimmed
+		}
+	}
+	return "the target host"
+}
+
+func automationReasonSummary(reasons []string) string {
+	trimmed := make([]string, 0, len(reasons))
+	for _, reason := range reasons {
+		if value := strings.TrimSpace(reason); value != "" {
+			trimmed = append(trimmed, value)
+		}
+		if len(trimmed) == 3 {
+			break
+		}
+	}
+	return strings.Join(trimmed, "; ")
+}
+
+func buildRenderProfileContextSummary(name string, hostPatterns []string, page pageContext) string {
+	return buildAutomationContextSummary("Profile", name, hostPatterns, page)
 }
 
 func buildRenderProfileDebugInstructions(profile fetch.RenderProfile, instructions string) string {
@@ -666,20 +773,31 @@ func buildRenderProfileDebugContextSummary(profile fetch.RenderProfile, page pag
 }
 
 func buildPipelineJSContextSummary(name string, hostPatterns []string, page pageContext) string {
+	return buildAutomationContextSummary("Script", name, hostPatterns, page)
+}
+
+func buildAutomationContextSummary(kind string, name string, hostPatterns []string, page pageContext) string {
+	reasons := automationReasonSummary(page.JSHeaviness.Reasons)
+	if reasons == "" {
+		reasons = "none observed"
+	}
+	fetchEngine := strings.TrimSpace(page.FetchEngine)
+	if fetchEngine == "" {
+		fetchEngine = "not recorded"
+	}
+	hostPatternSummary := strings.Join(hostPatterns, ", ")
+	if hostPatternSummary == "" {
+		hostPatternSummary = automationTargetHost(hostPatterns, page)
+	}
 	parts := []string{
-		fmt.Sprintf("Script name: %s", name),
-		fmt.Sprintf("Host patterns: %s", strings.Join(hostPatterns, ", ")),
-	}
-	if page.FetchStatus > 0 {
-		parts = append(parts, fmt.Sprintf("Fetch status: %d", page.FetchStatus))
-	}
-	if strings.TrimSpace(page.FetchEngine) != "" {
-		parts = append(parts, fmt.Sprintf("Fetch engine used: %s", page.FetchEngine))
-	}
-	parts = append(parts,
+		fmt.Sprintf("%s name: %s", kind, name),
+		fmt.Sprintf("Resolved URL: %s", strings.TrimSpace(page.URL)),
+		fmt.Sprintf("Host patterns: %s", hostPatternSummary),
+		fmt.Sprintf("Fetch status: %d", page.FetchStatus),
+		fmt.Sprintf("Fetch engine used: %s", fetchEngine),
 		fmt.Sprintf("Detected JS heaviness score: %.2f", page.JSHeaviness.Score),
-		fmt.Sprintf("Detected JS heaviness reasons: %s", strings.Join(page.JSHeaviness.Reasons, "; ")),
-	)
+		fmt.Sprintf("Detected JS heaviness reasons: %s", reasons),
+	}
 	return strings.Join(parts, "\n")
 }
 

@@ -861,10 +861,18 @@ function buildTemplatePrompt(payload: GenerateTemplatePayload): string {
   return parts.join("\n\n");
 }
 
+function operatorGoalLine(instructions: string | undefined, fallback: string): string {
+  const trimmed = instructions?.trim();
+  return `Operator goal: ${trimmed || fallback}`;
+}
+
 function buildRenderProfilePrompt(payload: GenerateRenderProfilePayload): string {
   const parts: string[] = [
     `URL: ${payload.url}`,
-    `Operator goal: ${payload.instructions}`,
+    operatorGoalLine(
+      payload.instructions,
+      "Infer the minimal useful render-profile objective from the URL, context summary, HTML, fetch metadata, JS-heaviness signals, and any visual context. Prefer the lightest deterministic configuration that still captures meaningful content.",
+    ),
   ];
   if (payload.context_summary?.trim()) {
     parts.push(`Context summary:\n${payload.context_summary.trim()}`);
@@ -882,7 +890,10 @@ function buildRenderProfilePrompt(payload: GenerateRenderProfilePayload): string
 function buildPipelineJsPrompt(payload: GeneratePipelineJsPayload): string {
   const parts: string[] = [
     `URL: ${payload.url}`,
-    `Operator goal: ${payload.instructions}`,
+    operatorGoalLine(
+      payload.instructions,
+      "Infer the minimal useful pipeline-JS objective from the URL, context summary, HTML, fetch metadata, JS-heaviness signals, and any visual context. Prefer selectors and waits before custom JavaScript.",
+    ),
   ];
   if (payload.context_summary?.trim()) {
     parts.push(`Context summary:\n${payload.context_summary.trim()}`);

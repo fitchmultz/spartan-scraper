@@ -57,7 +57,7 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "ai_render_profile_generate",
 			Description: "Generate a render profile for a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "instructions": "string", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_render_profile_debug",
@@ -67,7 +67,7 @@ func (s *Server) toolsList() []tool {
 		{
 			Name:        "ai_pipeline_js_generate",
 			Description: "Generate a pipeline JS script for a live page without creating a job",
-			InputSchema: schema(map[string]string{"url": "string", "instructions": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
+			InputSchema: schema(map[string]string{"url": "string"}, map[string]string{"name": "string", "hostPatterns": "array", "instructions": "string", "images": "array", "headless": "boolean", "playwright": "boolean", "visual": "boolean"}),
 		},
 		{
 			Name:        "ai_pipeline_js_debug",

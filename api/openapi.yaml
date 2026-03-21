@@ -4477,7 +4477,6 @@ components:
       description: Request for AI render profile generation from a live URL.
       required:
       - url
-      - instructions
       properties:
         url:
           type: string
@@ -4493,7 +4492,7 @@ components:
           description: Optional host patterns override for the generated profile
         instructions:
           type: string
-          description: Operator guidance for the generated render profile
+          description: Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context.
         images:
           type: array
           items:
@@ -4599,7 +4598,6 @@ components:
       description: Request for AI pipeline JS generation from a live URL.
       required:
       - url
-      - instructions
       properties:
         url:
           type: string
@@ -4615,7 +4613,7 @@ components:
           description: Optional host patterns override for the generated script
         instructions:
           type: string
-          description: Operator guidance for the generated pipeline JS script
+          description: Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context.
         images:
           type: array
           items:

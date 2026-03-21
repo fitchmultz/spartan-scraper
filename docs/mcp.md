@@ -45,7 +45,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
 - `ai_render_profile_generate`
   - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
-  - `instructions: "..."`
+  - `instructions: "..."` optional operator guidance; Spartan derives a default goal when omitted
   - `name: "..."` optional
   - `hostPatterns: ["example.com", "*.example.com"]` optional
   - `headless: true|false`
@@ -62,7 +62,7 @@ MCP exposes dedicated prompt-heavy AI authoring tools in addition to job submiss
 - `ai_pipeline_js_generate`
   - `images: [{"data":"<base64>","mime_type":"image/png"}]` optional request-scoped reference images
   - `url`
-  - `instructions: "..."`
+  - `instructions: "..."` optional operator guidance; Spartan derives a default goal when omitted
   - `name: "..."` optional
   - `hostPatterns: ["example.com", "*.example.com"]` optional
   - `headless: true|false`
@@ -215,9 +215,9 @@ Example nested fields:
 {"id":2,"method":"tools/call","params":{"name":"ai_extract_preview","arguments":{"url":"https://example.com/product","mode":"natural_language","prompt":"Extract the title, price, and availability","fields":["title","price","availability"],"images":[{"mime_type":"image/png","data":"<base64>"}],"headless":true,"visual":true}}}
 {"id":3,"method":"tools/call","params":{"name":"ai_template_generate","arguments":{"html":"<html><body><h1>Widget</h1></body></html>","description":"Extract the product title"}}}
 {"id":4,"method":"tools/call","params":{"name":"ai_template_debug","arguments":{"url":"https://example.com/product","template":{"name":"product","selectors":[{"name":"title","selector":".missing","attr":"text"}]},"instructions":"Prefer the visible h1","headless":true,"visual":true}}}
-{"id":5,"method":"tools/call","params":{"name":"ai_render_profile_generate","arguments":{"url":"https://example.com/app","instructions":"Wait for the dashboard shell and prefer headless mode","visual":true}}}
+{"id":5,"method":"tools/call","params":{"name":"ai_render_profile_generate","arguments":{"url":"https://example.com/app","visual":true}}}
 {"id":6,"method":"tools/call","params":{"name":"ai_render_profile_debug","arguments":{"url":"https://example.com/app","profile":{"name":"example-app","hostPatterns":["example.com"],"wait":{"mode":"selector","selector":".missing"}},"instructions":"Prefer a stable selector wait","visual":true}}}
-{"id":7,"method":"tools/call","params":{"name":"ai_pipeline_js_generate","arguments":{"url":"https://example.com/app","instructions":"Wait for the dashboard shell and reset scroll position","visual":true}}}
+{"id":7,"method":"tools/call","params":{"name":"ai_pipeline_js_generate","arguments":{"url":"https://example.com/app","visual":true}}}
 {"id":8,"method":"tools/call","params":{"name":"ai_pipeline_js_debug","arguments":{"url":"https://example.com/app","script":{"name":"example-app","hostPatterns":["example.com"],"selectors":[".missing"]},"instructions":"Prefer selector waits over post-nav JS","visual":true}}}
 {"id":9,"method":"tools/call","params":{"name":"ai_research_refine","arguments":{"result":{"query":"pricing model","summary":"Original research summary","evidence":[{"url":"https://example.com/pricing","title":"Pricing","snippet":"Contact sales for enterprise pricing.","citationUrl":"https://example.com/pricing"}],"citations":[{"canonical":"https://example.com/pricing","url":"https://example.com/pricing"}]},"instructions":"Condense this into an operator-ready brief"}}}
 {"id":10,"method":"tools/call","params":{"name":"ai_export_shape","arguments":{"jobId":"<job-id>","format":"md","instructions":"Prioritize summary and pricing fields for operator handoff"}}}

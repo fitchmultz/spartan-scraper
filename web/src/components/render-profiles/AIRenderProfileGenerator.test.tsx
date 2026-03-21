@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * Purpose: Verify the AI render-profile generator modal request and save flows.
+ * Responsibilities: Assert guided and instructionless submissions, payload shaping, and save handoff behavior.
+ * Scope: `AIRenderProfileGenerator` tests only.
+ * Usage: Run with `pnpm --dir web test`.
+ * Invariants/Assumptions: URL remains required, operator guidance is optional, and generated profiles are only persisted after explicit save.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AIRenderProfileGenerator } from "../AIRenderProfileGenerator";
 import * as api from "../../api";
@@ -106,5 +113,41 @@ describe("AIRenderProfileGenerator", () => {
 
     expect(onSaved).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows render-profile generation without instructions", async () => {
+    vi.mocked(api.aiRenderProfileGenerate).mockResolvedValue({
+      data: {
+        profile: {
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          preferHeadless: true,
+        },
+      },
+      request: new Request(
+        "http://localhost:8741/v1/ai/render-profile-generate",
+      ),
+      response: new Response(),
+    });
+
+    render(
+      <AIRenderProfileGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+
+    await waitFor(() => {
+      expect(api.aiRenderProfileGenerate).toHaveBeenCalledWith({
+        baseUrl: expect.any(String),
+        body: {
+          url: "https://example.com/app",
+          headless: false,
+          visual: false,
+        },
+      });
+    });
   });
 });

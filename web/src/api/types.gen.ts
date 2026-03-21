@@ -500,9 +500,9 @@ export type AiRenderProfileGenerateRequest = {
      */
     host_patterns?: Array<string>;
     /**
-     * Operator guidance for the generated render profile
+     * Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context.
      */
-    instructions: string;
+    instructions?: string;
     /**
      * Optional operator-supplied image context. These images are request-scoped and not persisted.
      */
@@ -639,9 +639,9 @@ export type AiPipelineJsGenerateRequest = {
      */
     host_patterns?: Array<string>;
     /**
-     * Operator guidance for the generated pipeline JS script
+     * Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context.
      */
-    instructions: string;
+    instructions?: string;
     /**
      * Optional operator-supplied image context. These images are request-scoped and not persisted.
      */

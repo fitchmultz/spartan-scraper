@@ -1,3 +1,10 @@
+/**
+ * Purpose: Define the bridge protocol shared between Spartan and the pi-bridge process.
+ * Responsibilities: Declare operation names, request/response envelopes, and bounded payload/result shapes.
+ * Scope: Runtime bridge protocol types only.
+ * Usage: Imported by bridge backends, the process entrypoint, and tests.
+ * Invariants/Assumptions: Capability IDs stay stable, payloads mirror Spartan's source-of-truth contracts, and optional guidance fields remain optional across the bridge.
+ */
 export const CAPABILITY_EXTRACT_NATURAL = "extract.natural_language";
 export const CAPABILITY_EXTRACT_SCHEMA = "extract.schema_guided";
 export const CAPABILITY_TEMPLATE_GENERATE = "template.generate";
@@ -88,7 +95,7 @@ export interface GenerateTemplatePayload {
 export interface GenerateRenderProfilePayload {
   html: string;
   url: string;
-  instructions: string;
+  instructions?: string;
   context_summary?: string;
   feedback?: string;
   images?: ImageInput[];
@@ -97,7 +104,7 @@ export interface GenerateRenderProfilePayload {
 export interface GeneratePipelineJsPayload {
   html: string;
   url: string;
-  instructions: string;
+  instructions?: string;
   context_summary?: string;
   feedback?: string;
   images?: ImageInput[];

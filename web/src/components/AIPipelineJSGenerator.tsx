@@ -1,5 +1,5 @@
 /**
- * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator instructions and sample pages.
+ * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator guidance and sample pages.
  * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, surface generated script details, and require explicit save confirmation.
  * Scope: Modal generation flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted authoring.
@@ -97,9 +97,6 @@ export function AIPipelineJSGenerator({
     } catch {
       return "Please enter a valid URL";
     }
-    if (!state.instructions.trim()) {
-      return "Instructions are required";
-    }
     return null;
   };
 
@@ -137,7 +134,9 @@ export function AIPipelineJSGenerator({
           url: state.url,
           ...(state.name.trim() ? { name: state.name.trim() } : {}),
           ...(hostPatterns.length > 0 ? { host_patterns: hostPatterns } : {}),
-          instructions: state.instructions.trim(),
+          ...(state.instructions.trim()
+            ? { instructions: state.instructions.trim() }
+            : {}),
           ...(state.images.length > 0
             ? { images: toAIImagePayloads(state.images) }
             : {}),
@@ -310,7 +309,7 @@ export function AIPipelineJSGenerator({
                 htmlFor="ai-pipeline-js-instructions"
                 className="form-label"
               >
-                Instructions <span className="required">*</span>
+                Instructions
               </label>
               <textarea
                 id="ai-pipeline-js-instructions"
@@ -323,7 +322,7 @@ export function AIPipelineJSGenerator({
                   }))
                 }
                 rows={4}
-                placeholder="Describe what the script should wait for or automate, such as waiting for the main app shell, dismissing a cookie banner, or scrolling the page before extraction."
+                placeholder="Optional. Describe what the script should wait for or automate. If left blank, Spartan will derive a goal from the page URL and fetch signals."
                 disabled={state.isGenerating}
               />
             </div>

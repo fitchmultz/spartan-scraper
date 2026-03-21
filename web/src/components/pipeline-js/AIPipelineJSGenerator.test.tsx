@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * Purpose: Verify the AI pipeline-JS generator modal request and save flows.
+ * Responsibilities: Assert guided and instructionless submissions, payload shaping, and save handoff behavior.
+ * Scope: `AIPipelineJSGenerator` tests only.
+ * Usage: Run with `pnpm --dir web test`.
+ * Invariants/Assumptions: URL remains required, operator guidance is optional, and generated scripts are only persisted after explicit save.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import * as api from "../../api";
@@ -73,7 +80,7 @@ describe("AIPipelineJSGenerator", () => {
 
     await waitFor(() => {
       expect(api.aiPipelineJsGenerate).toHaveBeenCalledWith({
-        baseUrl: "",
+        baseUrl: expect.any(String),
         body: {
           url: "https://example.com/app",
           name: "example-app",
@@ -105,5 +112,39 @@ describe("AIPipelineJSGenerator", () => {
 
     expect(onSaved).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows pipeline-JS generation without instructions", async () => {
+    vi.mocked(api.aiPipelineJsGenerate).mockResolvedValue({
+      data: {
+        script: {
+          name: "example-app",
+          hostPatterns: ["example.com"],
+          selectors: ["main"],
+        },
+      },
+      request: new Request("http://localhost:8741/v1/ai/pipeline-js-generate"),
+      response: new Response(),
+    });
+
+    render(
+      <AIPipelineJSGenerator isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
+
+    await waitFor(() => {
+      expect(api.aiPipelineJsGenerate).toHaveBeenCalledWith({
+        baseUrl: expect.any(String),
+        body: {
+          url: "https://example.com/app",
+          headless: false,
+          visual: false,
+        },
+      });
+    });
   });
 });

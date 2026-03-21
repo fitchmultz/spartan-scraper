@@ -1,7 +1,20 @@
-// Package api provides HTTP handlers for AI-powered extraction endpoints.
+// Package api verifies HTTP handlers for bounded AI authoring endpoints.
 //
-// This test file validates body size limits for AI extract endpoints to prevent
-// oversized payload attacks.
+// Purpose:
+// - Exercise AI authoring request handling, validation, and response shaping.
+//
+// Responsibilities:
+// - Cover extract preview, template authoring, automation generation, and size-limit behavior.
+//
+// Scope:
+// - API handler tests for `/v1/ai/*` routes only.
+//
+// Usage:
+// - Run with `go test ./internal/api`.
+//
+// Invariants/Assumptions:
+// - Handlers must preserve structured responses, propagate bounded AI metadata,
+// - and allow optional operator guidance where the product can derive defaults.
 package api
 
 import (
@@ -515,6 +528,9 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	if automationClient.renderProfileCalls != 1 {
 		t.Fatalf("expected single render profile generation call, got %d", automationClient.renderProfileCalls)
 	}
+	if automationClient.renderProfileReq.Instructions != "Wait for the dashboard shell and prefer headless mode" {
+		t.Fatalf("expected explicit render profile instructions to win, got %q", automationClient.renderProfileReq.Instructions)
+	}
 	if len(automationClient.renderProfileReq.Images) != 1 || automationClient.renderProfileReq.Images[0].MimeType != "image/png" {
 		t.Fatalf("expected direct image to reach automation client, got %#v", automationClient.renderProfileReq.Images)
 	}
@@ -531,6 +547,43 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	}
 	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
 		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
+	}
+}
+
+func TestAIRenderProfileGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	automationClient := &fakeAutomationClient{
+		renderProfileResult: piai.GenerateRenderProfileResult{
+			Profile: piai.BridgeRenderProfile{
+				PreferHeadless: true,
+				Wait:           piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"},
+			},
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Dashboard</main><script src="/app.js"></script></body></html>`))
+	}))
+	defer source.Close()
+
+	body := `{"url":"` + source.URL + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/render-profile-generate", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if strings.TrimSpace(automationClient.renderProfileReq.Instructions) == "" {
+		t.Fatal("expected derived render profile instructions to reach the automation client")
+	}
+	if !strings.Contains(automationClient.renderProfileReq.Instructions, "render profile") {
+		t.Fatalf("expected derived render profile instructions to mention render profile goal, got %q", automationClient.renderProfileReq.Instructions)
 	}
 }
 
@@ -567,6 +620,9 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
 	}
+	if automationClient.pipelineJSReq.Instructions != "Wait for the dashboard shell and reset scroll position" {
+		t.Fatalf("expected explicit pipeline JS instructions to win, got %q", automationClient.pipelineJSReq.Instructions)
+	}
 	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
 		t.Fatalf("expected direct image to reach pipeline JS automation client, got %#v", automationClient.pipelineJSReq.Images)
 	}
@@ -580,6 +636,40 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 	}
 	if len(resp.Script.Selectors) != 1 || resp.Script.Selectors[0] != "main" {
 		t.Fatalf("unexpected selectors: %#v", resp.Script.Selectors)
+	}
+}
+
+func TestAIPipelineJSGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	automationClient := &fakeAutomationClient{
+		pipelineJSResult: piai.GeneratePipelineJSResult{
+			Script: piai.BridgePipelineJSScript{Selectors: []string{"main"}},
+		},
+	}
+	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(srv.cfg, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Dashboard</main><script src="/app.js"></script></body></html>`))
+	}))
+	defer source.Close()
+
+	body := `{"url":"` + source.URL + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/ai/pipeline-js-generate", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if strings.TrimSpace(automationClient.pipelineJSReq.Instructions) == "" {
+		t.Fatal("expected derived pipeline JS instructions to reach the automation client")
+	}
+	if !strings.Contains(automationClient.pipelineJSReq.Instructions, "pipeline JS") {
+		t.Fatalf("expected derived pipeline JS instructions to mention pipeline JS goal, got %q", automationClient.pipelineJSReq.Instructions)
 	}
 }
 

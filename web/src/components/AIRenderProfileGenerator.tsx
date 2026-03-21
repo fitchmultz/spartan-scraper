@@ -1,5 +1,5 @@
 /**
- * Purpose: Present the modal AI helper that generates saved render profiles from operator instructions and sample pages.
+ * Purpose: Present the modal AI helper that generates saved render profiles from operator guidance and sample pages.
  * Responsibilities: Collect bounded AI inputs, call the render-profile generation endpoint, surface generated profile details, and require explicit save confirmation.
  * Scope: Modal generation flow for Settings render profiles only.
  * Usage: Mount from `RenderProfileEditor` when operators opt into AI-assisted authoring.
@@ -97,9 +97,6 @@ export function AIRenderProfileGenerator({
     } catch {
       return "Please enter a valid URL";
     }
-    if (!state.instructions.trim()) {
-      return "Instructions are required";
-    }
     return null;
   };
 
@@ -137,7 +134,9 @@ export function AIRenderProfileGenerator({
           url: state.url,
           ...(state.name.trim() ? { name: state.name.trim() } : {}),
           ...(hostPatterns.length > 0 ? { host_patterns: hostPatterns } : {}),
-          instructions: state.instructions.trim(),
+          ...(state.instructions.trim()
+            ? { instructions: state.instructions.trim() }
+            : {}),
           ...(state.images.length > 0
             ? { images: toAIImagePayloads(state.images) }
             : {}),
@@ -308,7 +307,7 @@ export function AIRenderProfileGenerator({
                 htmlFor="ai-render-profile-instructions"
                 className="form-label"
               >
-                Instructions <span className="required">*</span>
+                Instructions
               </label>
               <textarea
                 id="ai-render-profile-instructions"
@@ -321,7 +320,7 @@ export function AIRenderProfileGenerator({
                   }))
                 }
                 rows={4}
-                placeholder="Describe the fetch behavior you want, such as waiting for the main app shell, preferring headless mode, or keeping heavy assets blocked."
+                placeholder="Optional. Describe the fetch behavior you want. If left blank, Spartan will derive a goal from the page URL and fetch signals."
                 disabled={state.isGenerating}
               />
             </div>

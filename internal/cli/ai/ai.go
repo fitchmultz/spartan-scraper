@@ -1,3 +1,21 @@
+// Package ai implements the Spartan CLI subcommands for bounded AI authoring workflows.
+//
+// Purpose:
+// - Expose preview, generation, debugging, and refinement commands for operator-driven AI helpers.
+//
+// Responsibilities:
+// - Parse CLI flags, load optional local inputs, call the shared authoring service, and print stable JSON output.
+//
+// Scope:
+// - `spartan ai *` command execution only.
+//
+// Usage:
+// - Invoked by the main CLI entrypoint when operators run `spartan ai ...`.
+//
+// Invariants/Assumptions:
+// - Help text must stay aligned with the real product contract.
+// - Commands emit JSON results or actionable errors.
+// - Optional guidance flags remain optional where the product can derive sensible defaults.
 package ai
 
 import (
@@ -353,7 +371,7 @@ func runRenderProfile(ctx context.Context, runner authoringRunner, args []string
 	url := fs.String("url", "", "Target URL to inspect for render profile generation")
 	name := fs.String("name", "", "Optional render profile name")
 	hostPatterns := fs.String("host-patterns", "", "Optional comma-separated host patterns")
-	instructions := fs.String("instructions", "", "Describe the fetch behavior the generated profile should optimize")
+	instructions := fs.String("instructions", "", "Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context")
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
@@ -365,7 +383,7 @@ func runRenderProfile(ctx context.Context, runner authoringRunner, args []string
   spartan ai render-profile [options]
 
 Examples:
-  spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell and prefer headless if needed"
+  spartan ai render-profile --url https://example.com/app
   spartan ai render-profile --url https://example.com/catalog --name catalog --host-patterns example.com,*.example.com --instructions "Keep static assets light but wait for the product grid" --visual
 
 Options:
@@ -407,7 +425,7 @@ func runPipelineJS(ctx context.Context, runner authoringRunner, args []string) i
 	url := fs.String("url", "", "Target URL to inspect for pipeline JS generation")
 	name := fs.String("name", "", "Optional pipeline JS script name")
 	hostPatterns := fs.String("host-patterns", "", "Optional comma-separated host patterns")
-	instructions := fs.String("instructions", "", "Describe what the generated pipeline JS should wait for or automate")
+	instructions := fs.String("instructions", "", "Optional operator guidance. When omitted, Spartan derives a default objective from the fetched page context")
 	headless := fs.Bool("headless", false, "Use headless browser when fetching the URL")
 	playwright := fs.Bool("playwright", false, "Use Playwright instead of Chromedp when fetching the URL")
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
@@ -419,7 +437,7 @@ func runPipelineJS(ctx context.Context, runner authoringRunner, args []string) i
   spartan ai pipeline-js [options]
 
 Examples:
-  spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and scroll back to the top before extraction"
+  spartan ai pipeline-js --url https://example.com/app
   spartan ai pipeline-js --url https://example.com/catalog --name catalog --host-patterns example.com --instructions "Wait for the product grid and dismiss any cookie banner" --visual
 
 Options:
@@ -749,9 +767,9 @@ Examples:
   spartan ai preview --url https://example.com --prompt "Extract the main product facts"
   spartan ai template --url https://example.com --description "Extract product title and price"
   spartan ai template-debug --url https://example.com --template-name product
-  spartan ai render-profile --url https://example.com/app --instructions "Wait for the dashboard shell"
+  spartan ai render-profile --url https://example.com/app
   spartan ai render-profile-debug --url https://example.com/app --profile-name example-app
-  spartan ai pipeline-js --url https://example.com/app --instructions "Wait for the main dashboard and dismiss the cookie banner"
+  spartan ai pipeline-js --url https://example.com/app
   spartan ai pipeline-js-debug --url https://example.com/app --script-name example-app
   spartan ai research-refine --job-id <research-job-id>
   spartan ai export-shape --job-id <job-id> --format md

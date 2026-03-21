@@ -1,3 +1,19 @@
+// Package mcp verifies AI authoring tool contracts and execution behavior.
+//
+// Purpose:
+// - Ensure MCP AI authoring tools stay aligned with Spartan's bounded automation flows.
+//
+// Responsibilities:
+// - Cover tool listing, request decoding, optional guidance handling, and structured responses.
+//
+// Scope:
+// - MCP AI authoring tests only.
+//
+// Usage:
+// - Run with `go test ./internal/mcp`.
+//
+// Invariants/Assumptions:
+// - MCP schemas must match the live handlers and optional guidance stays optional where Spartan can derive defaults.
 package mcp
 
 import (
@@ -7,6 +23,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -377,8 +394,8 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if automationClient.renderProfileCalls != 1 {
 		t.Fatalf("expected single render profile generation call, got %d", automationClient.renderProfileCalls)
 	}
-	if automationClient.renderProfileReq.Instructions == "" {
-		t.Fatal("expected render profile instructions to reach the automation client")
+	if automationClient.renderProfileReq.Instructions != "Wait for the main shell and prefer headless mode" {
+		t.Fatalf("expected explicit render profile instructions to win, got %q", automationClient.renderProfileReq.Instructions)
 	}
 	directImageFound := false
 	for _, image := range automationClient.renderProfileReq.Images {
@@ -462,6 +479,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.pipelineJSCalls != 1 {
 		t.Fatalf("expected single pipeline JS generation call, got %d", automationClient.pipelineJSCalls)
+	}
+	if automationClient.pipelineJSReq.Instructions != "Wait for the main shell and reset scroll position" {
+		t.Fatalf("expected explicit pipeline JS instructions to win, got %q", automationClient.pipelineJSReq.Instructions)
 	}
 	if len(automationClient.pipelineJSReq.Images) != 1 || automationClient.pipelineJSReq.Images[0].MimeType != "image/png" {
 		t.Fatalf("expected pipeline JS image to reach automation client, got %#v", automationClient.pipelineJSReq.Images)
@@ -640,5 +660,90 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	}
 	if automationClient.transformReq.PreferredLanguage != "jmespath" {
 		t.Fatalf("unexpected preferred language: %q", automationClient.transformReq.PreferredLanguage)
+	}
+}
+
+func TestHandleToolCallAIRenderProfileGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
+	srv, tmpDir := testServer()
+	defer os.RemoveAll(tmpDir)
+	defer srv.Close()
+
+	automationClient := &fakeAutomationClient{
+		renderProfileResult: piai.GenerateRenderProfileResult{
+			Profile: piai.BridgeRenderProfile{
+				PreferHeadless: true,
+				Wait:           piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"},
+			},
+		},
+	}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(config.Config{DataDir: tmpDir, UserAgent: "test-agent", RequestTimeoutSecs: 30, AI: config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}}, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Example</main><script src="/app.js"></script></body></html>`))
+	}))
+	defer source.Close()
+
+	base := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_render_profile_generate",
+			"arguments": map[string]interface{}{
+				"url": source.URL,
+			},
+		}),
+	}
+	result, err := srv.handleToolCall(context.Background(), base)
+	if err != nil {
+		t.Fatalf("ai_render_profile_generate failed: %v", err)
+	}
+	resp, ok := result.(aiauthoring.RenderProfileResult)
+	if !ok {
+		t.Fatalf("expected render profile result type, got %#v", result)
+	}
+	if resp.Profile.Wait.Selector != "main" {
+		t.Fatalf("unexpected render profile suggestion: %#v", resp.Profile)
+	}
+	if strings.TrimSpace(automationClient.renderProfileReq.Instructions) == "" {
+		t.Fatal("expected derived render profile instructions to reach the automation client")
+	}
+}
+
+func TestHandleToolCallAIPipelineJSGenerateDerivesInstructionsWhenOmitted(t *testing.T) {
+	srv, tmpDir := testServer()
+	defer os.RemoveAll(tmpDir)
+	defer srv.Close()
+
+	automationClient := &fakeAutomationClient{
+		pipelineJSResult: piai.GeneratePipelineJSResult{
+			Script: piai.BridgePipelineJSScript{Selectors: []string{"main"}},
+		},
+	}
+	srv.aiAuthoring = aiauthoring.NewServiceWithAutomationClient(config.Config{DataDir: tmpDir, UserAgent: "test-agent", RequestTimeoutSecs: 30, AI: config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}}, nil, automationClient, true)
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html><body><main>Example</main><script src="/app.js"></script></body></html>`))
+	}))
+	defer source.Close()
+
+	base := map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "ai_pipeline_js_generate",
+			"arguments": map[string]interface{}{
+				"url": source.URL,
+			},
+		}),
+	}
+	result, err := srv.handleToolCall(context.Background(), base)
+	if err != nil {
+		t.Fatalf("ai_pipeline_js_generate failed: %v", err)
+	}
+	resp, ok := result.(aiauthoring.PipelineJSResult)
+	if !ok {
+		t.Fatalf("expected pipeline JS result type, got %#v", result)
+	}
+	if len(resp.Script.Selectors) != 1 || resp.Script.Selectors[0] != "main" {
+		t.Fatalf("unexpected pipeline JS suggestion: %#v", resp.Script)
+	}
+	if strings.TrimSpace(automationClient.pipelineJSReq.Instructions) == "" {
+		t.Fatal("expected derived pipeline JS instructions to reach the automation client")
 	}
 }

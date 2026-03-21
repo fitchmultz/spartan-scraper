@@ -270,7 +270,7 @@ Render-profile flags:
 - `--url <url>`
 - `--name <profile-name>`
 - `--host-patterns "example.com,*.example.com"`
-- `--instructions "<fetch-behavior guidance>"`
+- `--instructions "<fetch-behavior guidance>"` optional; Spartan derives a default objective when omitted
 - `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
@@ -293,7 +293,7 @@ Pipeline-JS flags:
 - `--url <url>`
 - `--name <script-name>`
 - `--host-patterns "example.com,*.example.com"`
-- `--instructions "<browser-automation guidance>"`
+- `--instructions "<browser-automation guidance>"` optional; Spartan derives a default objective when omitted
 - `--image-file <path>` repeatable request-scoped reference images
 - `--headless`
 - `--playwright`
@@ -378,7 +378,6 @@ spartan ai template-debug \
 
 spartan ai render-profile \
   --url https://example.com/app \
-  --instructions "Wait for the dashboard shell and prefer headless mode when the HTTP shell is sparse" \
   --visual
 
 spartan ai render-profile-debug \
@@ -389,7 +388,6 @@ spartan ai render-profile-debug \
 
 spartan ai pipeline-js \
   --url https://example.com/app \
-  --instructions "Wait for the main dashboard shell and reset scroll position before extraction" \
   --visual
 
 spartan ai pipeline-js-debug \
