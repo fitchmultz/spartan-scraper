@@ -16,6 +16,7 @@ import {
   type JsTargetScript,
 } from "../api";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
+import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -363,13 +364,10 @@ export function AIPipelineJSDebugger({
                 muted
               >
                 {state.previousResult.suggested_script ? (
-                  <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                    {JSON.stringify(
-                      state.previousResult.suggested_script,
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <AICandidateDiffView
+                    artifactKind="pipeline-js"
+                    latestArtifact={state.previousResult.suggested_script}
+                  />
                 ) : null}
               </AIAuthoringAttemptPanel>
             ) : null}
@@ -389,9 +387,13 @@ export function AIPipelineJSDebugger({
                 explanation={state.result.explanation}
               >
                 {state.result.suggested_script ? (
-                  <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                    {JSON.stringify(state.result.suggested_script, null, 2)}
-                  </pre>
+                  <AICandidateDiffView
+                    artifactKind="pipeline-js"
+                    previousArtifact={
+                      state.previousResult?.suggested_script ?? null
+                    }
+                    latestArtifact={state.result.suggested_script}
+                  />
                 ) : null}
               </AIAuthoringAttemptPanel>
             ) : null}

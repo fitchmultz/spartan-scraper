@@ -16,14 +16,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Candidate Diff Views
-   - Replace raw JSON-only comparison in render-profile and pipeline-JS generate/debug retry flows with operator-friendly field-level diffs that highlight what changed between the previous and latest candidate.
-   - Preserve access to the raw JSON payloads, but make the primary comparison view answer the operator question "what actually changed and why should I trust it?" without manual scanning.
-   - Use artifact-specific summaries for the highest-signal fields first:
-     - render profiles: wait mode/selector, engine preferences, blocking rules, timeouts, screenshot settings
-     - pipeline JS: selectors, engine, pre-nav, post-nav, and any added or removed browser-side logic
-   - Keep the new diff view consistent across generator and debugger modals so retry review feels like one coherent AI authoring workspace.
-   - Add tests for changed-field highlighting, unchanged-field omission, and fallback to raw JSON when a comparison cannot be summarized cleanly.
+1. AI Automation Attempt History and Restore
+   - Replace the current previous-vs-latest only retry memory with a full per-session attempt history for render-profile and pipeline-JS generate/debug flows.
+   - Let operators select any earlier attempt as the comparison baseline, restore its guidance into the editor, and save that attempt directly without re-running the model.
+   - Preserve the trust signals already added for every attempt: resolved goal, provider/model route, explanation, diff summary, and raw JSON access.
+   - Keep the interaction model consistent across all four AI automation modals so operators learn one retry-review workflow and reuse it everywhere.
+   - Add tests for multi-retry history retention, restoring a non-latest attempt, replacing the active comparison baseline, and saving a restored attempt without losing later history.
 
 ## Ongoing Constraints
 

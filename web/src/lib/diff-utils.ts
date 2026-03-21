@@ -1,12 +1,11 @@
 /**
- * Diff Utilities Module
- *
- * Provides functions for comparing crawl and research results between job runs.
- * Computes added, removed, modified, and unchanged items with detailed field
- * change tracking for visualization in diff views.
- *
- * @module diff-utils
+ * Purpose: Compute reusable operator-facing diffs and summaries for crawl, research, and AI authoring surfaces.
+ * Responsibilities: Compare supported result shapes, expose field-level changes, summarize AI candidates, and signal when raw JSON fallback is safer than a partial summary.
+ * Scope: Shared web diff logic only.
+ * Usage: Import from result diff views and AI authoring components instead of rebuilding ad hoc comparison logic.
+ * Invariants/Assumptions: Equality checks must stay deterministic, unchanged fields should be omitted from comparison summaries, and unsupported AI candidate changes should fall back to raw JSON by default.
  */
+import type { JsTargetScript, RenderProfile } from "../api";
 import type {
   CrawlResultItem,
   ResearchResultItem,
@@ -26,6 +25,34 @@ export interface FieldChange {
   oldValue: unknown;
   /** New value */
   newValue: unknown;
+  /** Optional canonical field path */
+  path?: string;
+}
+
+/**
+ * Summary of a supported latest-only candidate field.
+ */
+export interface CandidateFieldSummary {
+  /** Operator-facing label */
+  label: string;
+  /** Canonical field path */
+  path: string;
+  /** Latest field value */
+  value: unknown;
+}
+
+/**
+ * Summary of an AI candidate comparison.
+ */
+export interface CandidateDiffSummary {
+  /** Changed supported fields between the previous and latest candidate */
+  changes: FieldChange[];
+  /** Latest candidate highlights for single-candidate views */
+  latestFields: CandidateFieldSummary[];
+  /** Whether raw JSON should be shown by default */
+  shouldShowRawJsonByDefault: boolean;
+  /** Human-readable explanation for raw JSON fallback */
+  rawJsonReason?: string;
 }
 
 /**
@@ -140,7 +167,7 @@ export function computeCitationKey(citation: CitationItem): string {
  * @param b - Second value
  * @returns True if values are equal
  */
-function deepEqual(a: unknown, b: unknown): boolean {
+export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (a == null || b == null) return a === b;
@@ -560,4 +587,317 @@ export function getResearchDiffStats(diff: ResearchDiffResult): {
     summaryChanged: !!diff.summaryChanges,
     confidenceChanged: !!diff.confidenceChanges,
   };
+}
+
+type CandidateFieldDescriptor<T> = {
+  path: string;
+  label: string;
+  getValue: (artifact: T) => unknown;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isDisplayEmpty(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  return false;
+}
+
+function flattenComparable(
+  value: unknown,
+  prefix = "",
+  output: Record<string, unknown> = {},
+): Record<string, unknown> {
+  if (!isPlainObject(value)) {
+    if (prefix) {
+      output[prefix] = value;
+    }
+    return output;
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const nextPrefix = prefix ? `${prefix}.${key}` : key;
+    if (Array.isArray(nestedValue) || !isPlainObject(nestedValue)) {
+      output[nextPrefix] = nestedValue;
+      continue;
+    }
+    flattenComparable(nestedValue, nextPrefix, output);
+  }
+
+  return output;
+}
+
+function computeCandidateFieldChanges<T>(
+  before: T,
+  after: T,
+  descriptors: readonly CandidateFieldDescriptor<T>[],
+): FieldChange[] {
+  return descriptors.flatMap((descriptor) => {
+    const oldValue = descriptor.getValue(before);
+    const newValue = descriptor.getValue(after);
+    if (deepEqual(oldValue, newValue)) {
+      return [];
+    }
+
+    return [
+      {
+        field: descriptor.label,
+        path: descriptor.path,
+        oldValue,
+        newValue,
+      },
+    ];
+  });
+}
+
+function buildLatestFieldSummary<T>(
+  artifact: T,
+  descriptors: readonly CandidateFieldDescriptor<T>[],
+): CandidateFieldSummary[] {
+  return descriptors
+    .map((descriptor) => ({
+      label: descriptor.label,
+      path: descriptor.path,
+      value: descriptor.getValue(artifact),
+    }))
+    .filter((entry) => !isDisplayEmpty(entry.value));
+}
+
+function findUnsupportedChangedPaths<T>(
+  before: T,
+  after: T,
+  descriptors: readonly CandidateFieldDescriptor<T>[],
+): string[] {
+  const supportedPaths = new Set(
+    descriptors.map((descriptor) => descriptor.path),
+  );
+  const beforeFlat = flattenComparable(before);
+  const afterFlat = flattenComparable(after);
+  const allPaths = new Set([
+    ...Object.keys(beforeFlat),
+    ...Object.keys(afterFlat),
+  ]);
+
+  return [...allPaths]
+    .filter((path) => {
+      if (supportedPaths.has(path)) {
+        return false;
+      }
+      return !deepEqual(beforeFlat[path], afterFlat[path]);
+    })
+    .sort();
+}
+
+const renderProfileFieldDescriptors: readonly CandidateFieldDescriptor<RenderProfile>[] =
+  [
+    {
+      path: "name",
+      label: "Profile name",
+      getValue: (profile) => profile.name,
+    },
+    {
+      path: "hostPatterns",
+      label: "Host patterns",
+      getValue: (profile) => profile.hostPatterns,
+    },
+    {
+      path: "wait.mode",
+      label: "Wait mode",
+      getValue: (profile) => profile.wait?.mode,
+    },
+    {
+      path: "wait.selector",
+      label: "Wait selector",
+      getValue: (profile) => profile.wait?.selector,
+    },
+    {
+      path: "forceEngine",
+      label: "Engine override",
+      getValue: (profile) => profile.forceEngine,
+    },
+    {
+      path: "preferHeadless",
+      label: "Prefer headless",
+      getValue: (profile) => profile.preferHeadless,
+    },
+    {
+      path: "neverHeadless",
+      label: "Never headless",
+      getValue: (profile) => profile.neverHeadless,
+    },
+    {
+      path: "block.resourceTypes",
+      label: "Blocked resource types",
+      getValue: (profile) => profile.block?.resourceTypes,
+    },
+    {
+      path: "block.urlPatterns",
+      label: "Blocked URL patterns",
+      getValue: (profile) => profile.block?.urlPatterns,
+    },
+    {
+      path: "timeouts.maxRenderMs",
+      label: "Max render timeout",
+      getValue: (profile) => profile.timeouts?.maxRenderMs,
+    },
+    {
+      path: "timeouts.scriptEvalMs",
+      label: "Script evaluation timeout",
+      getValue: (profile) => profile.timeouts?.scriptEvalMs,
+    },
+    {
+      path: "timeouts.navigationMs",
+      label: "Navigation timeout",
+      getValue: (profile) => profile.timeouts?.navigationMs,
+    },
+    {
+      path: "screenshot.enabled",
+      label: "Screenshot capture",
+      getValue: (profile) => profile.screenshot?.enabled,
+    },
+    {
+      path: "screenshot.fullPage",
+      label: "Full-page screenshot",
+      getValue: (profile) => profile.screenshot?.fullPage,
+    },
+    {
+      path: "screenshot.format",
+      label: "Screenshot format",
+      getValue: (profile) => profile.screenshot?.format,
+    },
+    {
+      path: "screenshot.quality",
+      label: "Screenshot quality",
+      getValue: (profile) => profile.screenshot?.quality,
+    },
+    {
+      path: "screenshot.width",
+      label: "Screenshot width",
+      getValue: (profile) => profile.screenshot?.width,
+    },
+    {
+      path: "screenshot.height",
+      label: "Screenshot height",
+      getValue: (profile) => profile.screenshot?.height,
+    },
+  ];
+
+const pipelineScriptFieldDescriptors: readonly CandidateFieldDescriptor<JsTargetScript>[] =
+  [
+    {
+      path: "name",
+      label: "Script name",
+      getValue: (script) => script.name,
+    },
+    {
+      path: "hostPatterns",
+      label: "Host patterns",
+      getValue: (script) => script.hostPatterns,
+    },
+    {
+      path: "engine",
+      label: "Browser engine",
+      getValue: (script) => script.engine,
+    },
+    {
+      path: "selectors",
+      label: "Wait selectors",
+      getValue: (script) => script.selectors,
+    },
+    {
+      path: "preNav",
+      label: "Pre-navigation logic",
+      getValue: (script) => script.preNav,
+    },
+    {
+      path: "postNav",
+      label: "Post-navigation logic",
+      getValue: (script) => script.postNav,
+    },
+  ];
+
+function buildCandidateDiffSummary<T>(
+  previousArtifact: T | null | undefined,
+  latestArtifact: T | null | undefined,
+  descriptors: readonly CandidateFieldDescriptor<T>[],
+  artifactLabel: string,
+): CandidateDiffSummary {
+  if (!latestArtifact || !isPlainObject(latestArtifact)) {
+    return {
+      changes: [],
+      latestFields: [],
+      shouldShowRawJsonByDefault: true,
+      rawJsonReason: `Showing raw JSON because the latest ${artifactLabel} could not be summarized safely.`,
+    };
+  }
+
+  const latestFields = buildLatestFieldSummary(latestArtifact, descriptors);
+
+  if (!previousArtifact) {
+    return {
+      changes: [],
+      latestFields,
+      shouldShowRawJsonByDefault: false,
+    };
+  }
+
+  if (!isPlainObject(previousArtifact)) {
+    return {
+      changes: [],
+      latestFields,
+      shouldShowRawJsonByDefault: true,
+      rawJsonReason: `Showing raw JSON because the previous ${artifactLabel} could not be summarized safely.`,
+    };
+  }
+
+  const changes = computeCandidateFieldChanges(
+    previousArtifact,
+    latestArtifact,
+    descriptors,
+  );
+  const unsupportedChangedPaths = findUnsupportedChangedPaths(
+    previousArtifact,
+    latestArtifact,
+    descriptors,
+  );
+
+  return {
+    changes,
+    latestFields,
+    shouldShowRawJsonByDefault: unsupportedChangedPaths.length > 0,
+    rawJsonReason:
+      unsupportedChangedPaths.length > 0
+        ? `Showing raw JSON because ${artifactLabel} changed in unsupported fields: ${unsupportedChangedPaths.join(", ")}.`
+        : undefined,
+  };
+}
+
+export function summarizeRenderProfileCandidateDiff(
+  previousArtifact: RenderProfile | null | undefined,
+  latestArtifact: RenderProfile | null | undefined,
+): CandidateDiffSummary {
+  return buildCandidateDiffSummary(
+    previousArtifact,
+    latestArtifact,
+    renderProfileFieldDescriptors,
+    "the render profile",
+  );
+}
+
+export function summarizePipelineScriptCandidateDiff(
+  previousArtifact: JsTargetScript | null | undefined,
+  latestArtifact: JsTargetScript | null | undefined,
+): CandidateDiffSummary {
+  return buildCandidateDiffSummary(
+    previousArtifact,
+    latestArtifact,
+    pipelineScriptFieldDescriptors,
+    "the pipeline JS script",
+  );
 }

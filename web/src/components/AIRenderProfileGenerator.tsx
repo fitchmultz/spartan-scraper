@@ -16,6 +16,7 @@ import {
   type ResolvedGoal,
 } from "../api";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
+import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -466,9 +467,10 @@ export function AIRenderProfileGenerator({
                 explanation={state.previousResult.explanation}
                 muted
               >
-                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                  {JSON.stringify(state.previousResult.profile, null, 2)}
-                </pre>
+                <AICandidateDiffView
+                  artifactKind="render-profile"
+                  latestArtifact={state.previousResult.profile}
+                />
               </AIAuthoringAttemptPanel>
             ) : null}
 
@@ -482,9 +484,11 @@ export function AIRenderProfileGenerator({
                 resolvedGoal={latestAttempt.resolvedGoal}
                 explanation={latestAttempt.explanation}
               >
-                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                  {JSON.stringify(latestAttempt.profile, null, 2)}
-                </pre>
+                <AICandidateDiffView
+                  artifactKind="render-profile"
+                  previousArtifact={state.previousResult?.profile ?? null}
+                  latestArtifact={latestAttempt.profile}
+                />
               </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>

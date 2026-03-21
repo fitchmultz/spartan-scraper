@@ -6,7 +6,14 @@
  * Invariants/Assumptions: `useFormState` remains the canonical owner of shared runtime/extraction fields, job-specific URL/query/device values are stored separately, and local-storage corruption must fail open to empty drafts.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   buildPresetConfig,
   createInitialJobDraftLocalState,
@@ -152,13 +159,13 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
   const [localState, setLocalState] = useState<JobDraftLocalState>(() =>
     createInitialJobDraftLocalState(),
   );
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const draftsRef = useRef<Record<JobType, PresetConfig | null>>({
     scrape: null,
     crawl: null,
     research: null,
   });
-  const initializedRef = useRef(false);
   const initialActiveTabRef = useRef<JobType>(activeTab);
   const previousTabRef = useRef<JobType>(activeTab);
 
@@ -229,7 +236,7 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     }
   }, [expertMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const storedDrafts: Record<JobType, PresetConfig | null> = {
       scrape: readStoredDraft("scrape"),
       crawl: readStoredDraft("crawl"),
@@ -251,11 +258,11 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     });
 
     hydrateSharedForm(storedDrafts[initialActiveTabRef.current]);
-    initializedRef.current = true;
+    setIsInitialized(true);
   }, [hydrateSharedForm]);
 
   useEffect(() => {
-    if (!initializedRef.current) {
+    if (!isInitialized) {
       return;
     }
 
@@ -279,10 +286,10 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     setActiveStepState("basics");
     setDraftSavedAt(nextConfig ? Date.now() : null);
     previousTabRef.current = activeTab;
-  }, [activeTab, formState, hydrateSharedForm, localState]);
+  }, [activeTab, formState, hydrateSharedForm, isInitialized, localState]);
 
   useEffect(() => {
-    if (!initializedRef.current) {
+    if (!isInitialized) {
       return;
     }
 
@@ -294,10 +301,10 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     }, 300);
 
     return () => window.clearTimeout(timeoutId);
-  }, [activeTab, activeConfigKey]);
+  }, [activeTab, activeConfigKey, isInitialized]);
 
   useEffect(() => {
-    if (!initializedRef.current) {
+    if (!isInitialized) {
       return;
     }
 
@@ -310,7 +317,7 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
         return previousSteps.filter((step) => step !== "basics");
       });
     }
-  }, [validateStep]);
+  }, [isInitialized, validateStep]);
 
   const updateLocalState = useCallback(
     (

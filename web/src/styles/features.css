@@ -2026,6 +2026,79 @@
   color: #ff4b4b;
 }
 
+.ai-candidate-diff {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-candidate-diff-callout {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(247, 181, 0, 0.35);
+  background: rgba(247, 181, 0, 0.08);
+  color: var(--text);
+}
+
+.ai-candidate-field-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.ai-candidate-field-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: var(--bg-alt);
+}
+
+.ai-candidate-field-name,
+.ai-candidate-raw-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ai-candidate-field-value {
+  margin: 0;
+}
+
+.ai-candidate-field-pre,
+.ai-candidate-raw-json {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.ai-candidate-raw-toggle {
+  width: fit-content;
+}
+
+.ai-candidate-raw-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-candidate-raw-json {
+  overflow: auto;
+  max-height: 320px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #020617;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .ai-candidate-raw-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Research Diff View */
 .diff-research .diff-section {
   margin-bottom: 24px;

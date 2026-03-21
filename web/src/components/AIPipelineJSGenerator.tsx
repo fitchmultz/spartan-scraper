@@ -16,6 +16,7 @@ import {
   type ResolvedGoal,
 } from "../api";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
+import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -466,9 +467,10 @@ export function AIPipelineJSGenerator({
                 explanation={state.previousResult.explanation}
                 muted
               >
-                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                  {JSON.stringify(state.previousResult.script, null, 2)}
-                </pre>
+                <AICandidateDiffView
+                  artifactKind="pipeline-js"
+                  latestArtifact={state.previousResult.script}
+                />
               </AIAuthoringAttemptPanel>
             ) : null}
 
@@ -482,9 +484,11 @@ export function AIPipelineJSGenerator({
                 resolvedGoal={latestAttempt.resolvedGoal}
                 explanation={latestAttempt.explanation}
               >
-                <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                  {JSON.stringify(latestAttempt.script, null, 2)}
-                </pre>
+                <AICandidateDiffView
+                  artifactKind="pipeline-js"
+                  previousArtifact={state.previousResult?.script ?? null}
+                  latestArtifact={latestAttempt.script}
+                />
               </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>

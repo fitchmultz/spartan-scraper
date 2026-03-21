@@ -325,6 +325,15 @@ describe("AIRenderProfileGenerator", () => {
     expect(
       within(latestCandidate).getByText(/route: route-2/i),
     ).toBeInTheDocument();
+    expect(
+      within(latestCandidate).getByText("Wait selector"),
+    ).toBeInTheDocument();
+    expect(
+      within(latestCandidate).queryByText("Host patterns"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(latestCandidate).getByRole("button", { name: /show raw json/i }),
+    ).toBeInTheDocument();
 
     fireEvent.change(instructions, {
       target: { value: "Wait for #app-root" },

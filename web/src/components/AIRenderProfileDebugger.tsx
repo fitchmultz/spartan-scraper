@@ -16,6 +16,7 @@ import {
   type RenderProfile,
 } from "../api";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
+import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
 import { getApiBaseUrl } from "../lib/api-config";
@@ -366,13 +367,10 @@ export function AIRenderProfileDebugger({
                 muted
               >
                 {state.previousResult.suggested_profile ? (
-                  <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                    {JSON.stringify(
-                      state.previousResult.suggested_profile,
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <AICandidateDiffView
+                    artifactKind="render-profile"
+                    latestArtifact={state.previousResult.suggested_profile}
+                  />
                 ) : null}
               </AIAuthoringAttemptPanel>
             ) : null}
@@ -392,9 +390,13 @@ export function AIRenderProfileDebugger({
                 explanation={state.result.explanation}
               >
                 {state.result.suggested_profile ? (
-                  <pre className="overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-100">
-                    {JSON.stringify(state.result.suggested_profile, null, 2)}
-                  </pre>
+                  <AICandidateDiffView
+                    artifactKind="render-profile"
+                    previousArtifact={
+                      state.previousResult?.suggested_profile ?? null
+                    }
+                    latestArtifact={state.result.suggested_profile}
+                  />
                 ) : null}
               </AIAuthoringAttemptPanel>
             ) : null}
