@@ -15,13 +15,13 @@ describe("AICandidateDiffView", () => {
     render(
       <AICandidateDiffView
         artifactKind="render-profile"
-        previousArtifact={{
+        baselineArtifact={{
           name: "example-app",
           hostPatterns: ["example.com"],
           preferHeadless: false,
           wait: { mode: "selector", selector: "main" },
         }}
-        latestArtifact={{
+        selectedArtifact={{
           name: "example-app",
           hostPatterns: ["example.com"],
           preferHeadless: true,
@@ -46,7 +46,7 @@ describe("AICandidateDiffView", () => {
     render(
       <AICandidateDiffView
         artifactKind="pipeline-js"
-        latestArtifact={{
+        selectedArtifact={{
           name: "example-app",
           hostPatterns: ["example.com"],
           selectors: ["#app-root"],
@@ -67,7 +67,7 @@ describe("AICandidateDiffView", () => {
     render(
       <AICandidateDiffView
         artifactKind="pipeline-js"
-        previousArtifact={
+        baselineArtifact={
           {
             name: "example-app",
             hostPatterns: ["example.com"],
@@ -75,7 +75,7 @@ describe("AICandidateDiffView", () => {
             experimental: { enabled: false },
           } as unknown as never
         }
-        latestArtifact={
+        selectedArtifact={
           {
             name: "example-app",
             hostPatterns: ["example.com"],

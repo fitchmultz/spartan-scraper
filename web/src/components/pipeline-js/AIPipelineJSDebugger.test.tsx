@@ -124,7 +124,9 @@ describe("AIPipelineJSDebugger", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /save tuned script/i }),
+      await screen.findByRole("button", {
+        name: /save selected tuned script/i,
+      }),
     );
 
     await waitFor(() => {
@@ -144,7 +146,7 @@ describe("AIPipelineJSDebugger", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("retries script debugging with preserved request-scoped state and clean metadata replacement", async () => {
+  it("retains full history, restores non-latest guidance, switches baselines, and saves a restored tuned script", async () => {
     vi.mocked(api.aiPipelineJsDebug)
       .mockResolvedValueOnce({
         data: {
@@ -205,6 +207,16 @@ describe("AIPipelineJSDebugger", () => {
         request: new Request("http://localhost:8741/v1/ai/pipeline-js-debug"),
         response: new Response(),
       });
+    vi.mocked(api.putV1PipelineJsByName).mockResolvedValue({
+      data: {
+        name: "example-app",
+        hostPatterns: ["example.com"],
+        selectors: ["main"],
+      },
+      error: undefined,
+      request: new Request("http://localhost:8741/v1/pipeline-js/example-app"),
+      response: new Response(),
+    });
 
     render(
       <AIPipelineJSDebugger
@@ -262,28 +274,6 @@ describe("AIPipelineJSDebugger", () => {
       expect(instructions).toHaveValue("Prefer #app-root over main");
     });
 
-    const previousCandidate = await screen.findByRole("region", {
-      name: /previous candidate/i,
-    });
-    const latestCandidate = await screen.findByRole("region", {
-      name: /latest candidate/i,
-    });
-    expect(
-      within(previousCandidate).getByText(/route: route-1/i),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByText(/route: route-2/i),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByText("Wait selectors"),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).queryByText("Host patterns"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByRole("button", { name: /show raw json/i }),
-    ).toBeInTheDocument();
-
     fireEvent.change(instructions, {
       target: { value: "Wait for #app-root" },
     });
@@ -309,14 +299,57 @@ describe("AIPipelineJSDebugger", () => {
       expect(instructions).toHaveValue("Wait for #app-root");
     });
 
+    const history = screen.getByRole("region", { name: /attempt history/i });
+    expect(within(history).getByText(/attempt 1/i)).toBeInTheDocument();
+    expect(within(history).getByText(/attempt 2/i)).toBeInTheDocument();
+    expect(within(history).getByText(/attempt 3/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-1/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-2/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-3/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /restore guidance from attempt 1/i,
+      }),
+    );
+    expect(instructions).toHaveValue("Derived tuning goal v1");
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /use attempt 1 as baseline/i,
+      }),
+    );
+
+    const selectedCandidate = screen.getByRole("region", {
+      name: /latest candidate · attempt 3/i,
+    });
     expect(
-      within(previousCandidate).queryByText(/route: route-1/i),
-    ).not.toBeInTheDocument();
-    expect(
-      within(previousCandidate).getByText(/route: route-2/i),
+      within(selectedCandidate).getByText("Wait selectors"),
     ).toBeInTheDocument();
+    expect(within(selectedCandidate).getByText(/"main"/)).toBeInTheDocument();
     expect(
-      within(latestCandidate).getByText(/route: route-3/i),
+      within(selectedCandidate).getByText(/"#app-root"/),
     ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /select attempt 1/i,
+      }),
+    );
+    expect(within(history).getByText(/route-3/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /save selected tuned script/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.putV1PipelineJsByName).toHaveBeenCalledWith({
+        baseUrl: expect.any(String),
+        path: { name: "example-app" },
+        body: expect.objectContaining({
+          selectors: ["main"],
+        }),
+      });
+    });
   });
 });

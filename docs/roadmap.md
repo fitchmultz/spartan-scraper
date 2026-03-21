@@ -16,12 +16,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. AI Automation Attempt History and Restore
-   - Replace the current previous-vs-latest only retry memory with a full per-session attempt history for render-profile and pipeline-JS generate/debug flows.
-   - Let operators select any earlier attempt as the comparison baseline, restore its guidance into the editor, and save that attempt directly without re-running the model.
-   - Preserve the trust signals already added for every attempt: resolved goal, provider/model route, explanation, diff summary, and raw JSON access.
-   - Keep the interaction model consistent across all four AI automation modals so operators learn one retry-review workflow and reuse it everywhere.
-   - Add tests for multi-retry history retention, restoring a non-latest attempt, replacing the active comparison baseline, and saving a restored attempt without losing later history.
+1. AI Automation Editor Handoff and Round-Trip Editing
+   - Let operators open the currently selected render-profile or pipeline-JS attempt directly in the native Settings editor without losing the in-session AI attempt history.
+   - Preserve the selected attempt as the editable baseline so manual changes are visibly distinct from the last AI candidate, not silently flattened into a save.
+   - Support a round trip back into the AI modal so operators can keep retrying from their manually edited candidate instead of restarting from the saved artifact.
+   - Keep the workflow consistent across generator and debugger modals, including clear copy for when the editable candidate differs from the last saved profile or script.
+   - Add tests for opening an older selected attempt in the editor, keeping later AI attempts in history after manual edits, and resuming retries from the manually adjusted candidate.
 
 ## Ongoing Constraints
 

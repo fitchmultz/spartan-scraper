@@ -128,7 +128,9 @@ describe("AIRenderProfileDebugger", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /save tuned profile/i }),
+      await screen.findByRole("button", {
+        name: /save selected tuned profile/i,
+      }),
     );
 
     await waitFor(() => {
@@ -148,7 +150,7 @@ describe("AIRenderProfileDebugger", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("preserves debugger inputs across retries and replaces stale comparison metadata", async () => {
+  it("retains full history, restores non-latest guidance, switches baselines, and saves a restored tuned profile", async () => {
     vi.mocked(api.aiRenderProfileDebug)
       .mockResolvedValueOnce({
         data: {
@@ -215,6 +217,18 @@ describe("AIRenderProfileDebugger", () => {
         ),
         response: new Response(),
       });
+    vi.mocked(api.putV1RenderProfilesByName).mockResolvedValue({
+      data: {
+        name: "example-app",
+        hostPatterns: ["example.com"],
+        wait: { mode: "selector", selector: "main" },
+      },
+      error: undefined,
+      request: new Request(
+        "http://localhost:8741/v1/render-profiles/example-app",
+      ),
+      response: new Response(),
+    });
 
     render(
       <AIRenderProfileDebugger
@@ -272,28 +286,6 @@ describe("AIRenderProfileDebugger", () => {
       expect(instructions).toHaveValue("Prefer #app-root over main");
     });
 
-    const previousCandidate = await screen.findByRole("region", {
-      name: /previous candidate/i,
-    });
-    const latestCandidate = await screen.findByRole("region", {
-      name: /latest candidate/i,
-    });
-    expect(
-      within(previousCandidate).getByText(/route: route-1/i),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByText(/route: route-2/i),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByText("Wait selector"),
-    ).toBeInTheDocument();
-    expect(
-      within(latestCandidate).queryByText("Host patterns"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(latestCandidate).getByRole("button", { name: /show raw json/i }),
-    ).toBeInTheDocument();
-
     fireEvent.change(instructions, {
       target: { value: "Wait for #app-root" },
     });
@@ -319,14 +311,57 @@ describe("AIRenderProfileDebugger", () => {
       expect(instructions).toHaveValue("Wait for #app-root");
     });
 
+    const history = screen.getByRole("region", { name: /attempt history/i });
+    expect(within(history).getByText(/attempt 1/i)).toBeInTheDocument();
+    expect(within(history).getByText(/attempt 2/i)).toBeInTheDocument();
+    expect(within(history).getByText(/attempt 3/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-1/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-2/i)).toBeInTheDocument();
+    expect(within(history).getByText(/route-3/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /restore guidance from attempt 1/i,
+      }),
+    );
+    expect(instructions).toHaveValue("Derived tuning goal v1");
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /use attempt 1 as baseline/i,
+      }),
+    );
+
+    const selectedCandidate = screen.getByRole("region", {
+      name: /latest candidate · attempt 3/i,
+    });
     expect(
-      within(previousCandidate).queryByText(/route: route-1/i),
-    ).not.toBeInTheDocument();
-    expect(
-      within(previousCandidate).getByText(/route: route-2/i),
+      within(selectedCandidate).getByText("Wait selector"),
     ).toBeInTheDocument();
+    expect(within(selectedCandidate).getByText("main")).toBeInTheDocument();
     expect(
-      within(latestCandidate).getByText(/route: route-3/i),
+      within(selectedCandidate).getByText("#app-root"),
     ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /select attempt 1/i,
+      }),
+    );
+    expect(within(history).getByText(/route-3/i)).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /save selected tuned profile/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.putV1RenderProfilesByName).toHaveBeenCalledWith({
+        baseUrl: expect.any(String),
+        path: { name: "example-app" },
+        body: expect.objectContaining({
+          wait: { mode: "selector", selector: "main" },
+        }),
+      });
+    });
   });
 });

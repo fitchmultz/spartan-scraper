@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that generates saved render profiles from operator guidance and sample pages.
- * Responsibilities: Collect bounded AI inputs, call the render-profile generation endpoint, preserve retry context, and require explicit save confirmation.
+ * Responsibilities: Collect bounded AI inputs, call the render-profile generation endpoint, retain full session attempt history, and save the operator-selected attempt.
  * Scope: Modal generation flow for Settings render profiles only.
  * Usage: Mount from `RenderProfileEditor` when operators opt into AI-assisted authoring.
- * Invariants/Assumptions: Generated profiles are never auto-saved, image attachments stay request-scoped, and retrying must preserve operator inputs.
+ * Invariants/Assumptions: Generated profiles are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
  */
 
 import { useState } from "react";
@@ -13,31 +13,23 @@ import {
   type AiRenderProfileGenerateResponse,
   type ComponentStatus,
   type RenderProfile,
-  type ResolvedGoal,
 } from "../api";
+import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import { toRenderProfileGenerateAttempt } from "../lib/ai-authoring-attempts";
+import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
+import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
-import { getApiBaseUrl } from "../lib/api-config";
-import { getApiErrorMessage } from "../lib/api-errors";
-import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIRenderProfileGeneratorProps {
   isOpen: boolean;
   aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-interface RenderProfileAttempt {
-  profile: RenderProfile;
-  resolvedGoal: ResolvedGoal | null;
-  explanation: string;
-  routeId: string;
-  provider: string;
-  model: string;
-  visualContextUsed: boolean;
 }
 
 interface GeneratorState {
@@ -50,14 +42,6 @@ interface GeneratorState {
   playwright: boolean;
   visual: boolean;
   isGenerating: boolean;
-  generatedProfile: RenderProfile | null;
-  resolvedGoal: ResolvedGoal | null;
-  explanation: string;
-  routeId: string;
-  provider: string;
-  model: string;
-  visualContextUsed: boolean;
-  previousResult: RenderProfileAttempt | null;
   isSaving: boolean;
   error: string | null;
 }
@@ -72,53 +56,9 @@ const INITIAL_STATE: GeneratorState = {
   playwright: false,
   visual: false,
   isGenerating: false,
-  generatedProfile: null,
-  resolvedGoal: null,
-  explanation: "",
-  routeId: "",
-  provider: "",
-  model: "",
-  visualContextUsed: false,
-  previousResult: null,
   isSaving: false,
   error: null,
 };
-
-function buildRenderProfileAttempt(
-  response: AiRenderProfileGenerateResponse,
-): RenderProfileAttempt {
-  if (!response.profile) {
-    throw new Error("No render profile was generated. Please try again.");
-  }
-
-  return {
-    profile: response.profile,
-    resolvedGoal: response.resolved_goal ?? null,
-    explanation: response.explanation || "",
-    routeId: response.route_id || "",
-    provider: response.provider || "",
-    model: response.model || "",
-    visualContextUsed: response.visual_context_used || false,
-  };
-}
-
-function getCurrentRenderProfileAttempt(
-  state: GeneratorState,
-): RenderProfileAttempt | null {
-  if (!state.generatedProfile) {
-    return null;
-  }
-
-  return {
-    profile: state.generatedProfile,
-    resolvedGoal: state.resolvedGoal,
-    explanation: state.explanation,
-    routeId: state.routeId,
-    provider: state.provider,
-    model: state.model,
-    visualContextUsed: state.visualContextUsed,
-  };
-}
 
 export function AIRenderProfileGenerator({
   isOpen,
@@ -134,8 +74,15 @@ export function AIRenderProfileGenerator({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const latestAttempt = getCurrentRenderProfileAttempt(state);
-  const resetState = () => setState(INITIAL_STATE);
+  const history = useAIAttemptHistory<RenderProfile>();
+  const activeAttempt = history.activeAttempt;
+  const baselineAttempt = history.baselineAttempt;
+  const latestAttempt = history.latestAttempt;
+
+  const resetState = () => {
+    setState(INITIAL_STATE);
+    history.reset();
+  };
 
   const handleClose = () => {
     resetState();
@@ -154,9 +101,7 @@ export function AIRenderProfileGenerator({
     return null;
   };
 
-  const handleGenerate = async (options?: {
-    preserveCurrentAsPrevious?: boolean;
-  }) => {
+  const handleGenerate = async () => {
     if (aiUnavailable) {
       return;
     }
@@ -167,9 +112,6 @@ export function AIRenderProfileGenerator({
     }
 
     const requestState = state;
-    const nextPreviousResult = options?.preserveCurrentAsPrevious
-      ? getCurrentRenderProfileAttempt(requestState)
-      : requestState.previousResult;
 
     setState((prev) => ({
       ...prev,
@@ -210,22 +152,15 @@ export function AIRenderProfileGenerator({
         );
       }
 
-      const attempt = buildRenderProfileAttempt(
+      const attempt = toRenderProfileGenerateAttempt(
         data as AiRenderProfileGenerateResponse,
       );
+      history.appendAttempt(attempt);
 
       setState((prev) => ({
         ...prev,
         isGenerating: false,
-        instructions: attempt.resolvedGoal?.text ?? prev.instructions,
-        generatedProfile: attempt.profile,
-        resolvedGoal: attempt.resolvedGoal,
-        explanation: attempt.explanation,
-        routeId: attempt.routeId,
-        provider: attempt.provider,
-        model: attempt.model,
-        visualContextUsed: attempt.visualContextUsed,
-        previousResult: nextPreviousResult,
+        instructions: attempt.guidanceText || prev.instructions,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -243,11 +178,11 @@ export function AIRenderProfileGenerator({
     if (!latestAttempt || aiUnavailable) {
       return;
     }
-    void handleGenerate({ preserveCurrentAsPrevious: true });
+    void handleGenerate();
   };
 
   const handleSave = async () => {
-    if (!state.generatedProfile) {
+    if (!activeAttempt?.artifact) {
       return;
     }
 
@@ -255,7 +190,7 @@ export function AIRenderProfileGenerator({
     try {
       const { error } = await postV1RenderProfiles({
         baseUrl: getApiBaseUrl(),
-        body: state.generatedProfile,
+        body: activeAttempt.artifact,
       });
       if (error) {
         throw new Error(
@@ -456,39 +391,77 @@ export function AIRenderProfileGenerator({
               </div>
             ) : null}
 
-            {state.previousResult ? (
+            <AIAttemptHistoryList
+              attempts={history.attempts}
+              activeAttemptId={history.activeAttemptId}
+              baselineAttemptId={history.baselineAttemptId}
+              onSelectAttempt={history.selectAttempt}
+              onSelectBaseline={history.selectBaseline}
+              onRestoreGuidance={(attempt) =>
+                setState((prev) => ({
+                  ...prev,
+                  instructions: attempt.guidanceText || prev.instructions,
+                  error: null,
+                }))
+              }
+            />
+
+            {baselineAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Previous candidate"
-                routeId={state.previousResult.routeId}
-                provider={state.previousResult.provider}
-                model={state.previousResult.model}
-                visualContextUsed={state.previousResult.visualContextUsed}
-                resolvedGoal={state.previousResult.resolvedGoal}
-                explanation={state.previousResult.explanation}
+                key={baselineAttempt.id}
+                label={`Comparison baseline · Attempt ${baselineAttempt.ordinal}`}
+                routeId={baselineAttempt.routeId}
+                provider={baselineAttempt.provider}
+                model={baselineAttempt.model}
+                visualContextUsed={baselineAttempt.visualContextUsed}
+                resolvedGoal={baselineAttempt.resolvedGoal}
+                explanation={baselineAttempt.explanation}
+                rawResponse={baselineAttempt.rawResponse}
                 muted
               >
-                <AICandidateDiffView
-                  artifactKind="render-profile"
-                  latestArtifact={state.previousResult.profile}
-                />
+                {baselineAttempt.artifact ? (
+                  <AICandidateDiffView
+                    artifactKind="render-profile"
+                    selectedArtifact={baselineAttempt.artifact}
+                    selectedLabel={`Attempt ${baselineAttempt.ordinal}`}
+                  />
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No render profile artifact was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
 
-            {latestAttempt ? (
+            {activeAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Latest candidate"
-                routeId={latestAttempt.routeId}
-                provider={latestAttempt.provider}
-                model={latestAttempt.model}
-                visualContextUsed={latestAttempt.visualContextUsed}
-                resolvedGoal={latestAttempt.resolvedGoal}
-                explanation={latestAttempt.explanation}
+                key={activeAttempt.id}
+                label={`${activeAttempt.id === latestAttempt?.id ? "Latest" : "Selected"} candidate · Attempt ${activeAttempt.ordinal}`}
+                routeId={activeAttempt.routeId}
+                provider={activeAttempt.provider}
+                model={activeAttempt.model}
+                visualContextUsed={activeAttempt.visualContextUsed}
+                resolvedGoal={activeAttempt.resolvedGoal}
+                explanation={activeAttempt.explanation}
+                rawResponse={activeAttempt.rawResponse}
               >
-                <AICandidateDiffView
-                  artifactKind="render-profile"
-                  previousArtifact={state.previousResult?.profile ?? null}
-                  latestArtifact={latestAttempt.profile}
-                />
+                {activeAttempt.artifact ? (
+                  <AICandidateDiffView
+                    artifactKind="render-profile"
+                    baselineArtifact={baselineAttempt?.artifact ?? null}
+                    selectedArtifact={activeAttempt.artifact}
+                    baselineLabel={
+                      baselineAttempt
+                        ? `Attempt ${baselineAttempt.ordinal}`
+                        : "Comparison baseline"
+                    }
+                    selectedLabel={`Attempt ${activeAttempt.ordinal}`}
+                  />
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No render profile artifact was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>
@@ -501,7 +474,7 @@ export function AIRenderProfileGenerator({
             >
               Cancel
             </button>
-            {state.generatedProfile ? (
+            {history.attempts.length > 0 ? (
               <>
                 <button
                   type="button"
@@ -519,11 +492,14 @@ export function AIRenderProfileGenerator({
                   className="button-primary"
                   onClick={handleSave}
                   disabled={
-                    state.isGenerating || state.isSaving || aiUnavailable
+                    state.isGenerating ||
+                    state.isSaving ||
+                    aiUnavailable ||
+                    !activeAttempt?.artifact
                   }
                   title={aiUnavailableMessage ?? undefined}
                 >
-                  {state.isSaving ? "Saving..." : "Save Profile"}
+                  {state.isSaving ? "Saving..." : "Save selected profile"}
                 </button>
               </>
             ) : (

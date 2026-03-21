@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that debugs saved pipeline JavaScript scripts against representative pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, preserve retry context, and require explicit save confirmation.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS debug endpoint, retain full session attempt history, and save the operator-selected suggested script.
  * Scope: Modal debugging flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted tuning.
- * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, and retrying must preserve operator inputs.
+ * Invariants/Assumptions: Suggested scripts are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
  */
 
 import { useState } from "react";
@@ -15,13 +15,16 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
+import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import { toPipelineJsDebugAttempt } from "../lib/ai-authoring-attempts";
+import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
+import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
-import { getApiBaseUrl } from "../lib/api-config";
-import { getApiErrorMessage } from "../lib/api-errors";
-import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIPipelineJSDebuggerProps {
   isOpen: boolean;
@@ -41,8 +44,6 @@ interface DebugState {
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
-  result: AiPipelineJsDebugResponse | null;
-  previousResult: AiPipelineJsDebugResponse | null;
 }
 
 function createInitialState(): DebugState {
@@ -56,8 +57,6 @@ function createInitialState(): DebugState {
     isLoading: false,
     isSaving: false,
     error: null,
-    result: null,
-    previousResult: null,
   };
 }
 
@@ -75,6 +74,10 @@ export function AIPipelineJSDebugger({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
+  const history = useAIAttemptHistory<JsTargetScript>();
+  const activeAttempt = history.activeAttempt;
+  const baselineAttempt = history.baselineAttempt;
+  const latestAttempt = history.latestAttempt;
 
   if (!isOpen || !script) {
     return null;
@@ -82,12 +85,11 @@ export function AIPipelineJSDebugger({
 
   const handleClose = () => {
     setState(createInitialState());
+    history.reset();
     onClose();
   };
 
-  const handleDebug = async (options?: {
-    preserveCurrentAsPrevious?: boolean;
-  }) => {
+  const handleDebug = async () => {
     if (aiUnavailable) {
       return;
     }
@@ -103,9 +105,6 @@ export function AIPipelineJSDebugger({
     }
 
     const requestState = state;
-    const nextPreviousResult = options?.preserveCurrentAsPrevious
-      ? requestState.result
-      : requestState.previousResult;
 
     setState((prev) => ({
       ...prev,
@@ -137,13 +136,14 @@ export function AIPipelineJSDebugger({
           getApiErrorMessage(error, "Failed to debug pipeline JS script"),
         );
       }
-      const nextResult = (data as AiPipelineJsDebugResponse) ?? null;
+      const attempt = toPipelineJsDebugAttempt(
+        data as AiPipelineJsDebugResponse,
+      );
+      history.appendAttempt(attempt);
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        instructions: nextResult?.resolved_goal?.text ?? prev.instructions,
-        result: nextResult,
-        previousResult: nextPreviousResult,
+        instructions: attempt.guidanceText || prev.instructions,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -158,14 +158,14 @@ export function AIPipelineJSDebugger({
   };
 
   const handleRetry = () => {
-    if (!state.result || aiUnavailable) {
+    if (!latestAttempt || aiUnavailable) {
       return;
     }
-    void handleDebug({ preserveCurrentAsPrevious: true });
+    void handleDebug();
   };
 
   const handleSave = async () => {
-    if (!state.result?.suggested_script) {
+    if (!activeAttempt?.artifact) {
       return;
     }
 
@@ -174,7 +174,7 @@ export function AIPipelineJSDebugger({
       const { error } = await putV1PipelineJsByName({
         baseUrl: getApiBaseUrl(),
         path: { name: script.name },
-        body: state.result.suggested_script,
+        body: activeAttempt.artifact,
       });
       if (error) {
         throw new Error(
@@ -348,53 +348,85 @@ export function AIPipelineJSDebugger({
               </div>
             ) : null}
 
-            {state.previousResult ? (
+            <AIAttemptHistoryList
+              attempts={history.attempts}
+              activeAttemptId={history.activeAttemptId}
+              baselineAttemptId={history.baselineAttemptId}
+              onSelectAttempt={history.selectAttempt}
+              onSelectBaseline={history.selectBaseline}
+              onRestoreGuidance={(attempt) =>
+                setState((prev) => ({
+                  ...prev,
+                  instructions: attempt.guidanceText || prev.instructions,
+                  error: null,
+                }))
+              }
+            />
+
+            {baselineAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Previous candidate"
-                routeId={state.previousResult.route_id}
-                provider={state.previousResult.provider}
-                model={state.previousResult.model}
-                visualContextUsed={state.previousResult.visual_context_used}
-                recheckStatus={state.previousResult.recheck_status}
-                recheckEngine={state.previousResult.recheck_engine}
-                recheckError={state.previousResult.recheck_error}
-                issues={state.previousResult.issues}
-                resolvedGoal={state.previousResult.resolved_goal}
-                explanation={state.previousResult.explanation}
+                key={baselineAttempt.id}
+                label={`Comparison baseline · Attempt ${baselineAttempt.ordinal}`}
+                routeId={baselineAttempt.routeId}
+                provider={baselineAttempt.provider}
+                model={baselineAttempt.model}
+                visualContextUsed={baselineAttempt.visualContextUsed}
+                recheckStatus={baselineAttempt.recheckStatus}
+                recheckEngine={baselineAttempt.recheckEngine}
+                recheckError={baselineAttempt.recheckError}
+                issues={baselineAttempt.issues}
+                resolvedGoal={baselineAttempt.resolvedGoal}
+                explanation={baselineAttempt.explanation}
+                rawResponse={baselineAttempt.rawResponse}
                 muted
               >
-                {state.previousResult.suggested_script ? (
+                {baselineAttempt.artifact ? (
                   <AICandidateDiffView
                     artifactKind="pipeline-js"
-                    latestArtifact={state.previousResult.suggested_script}
+                    selectedArtifact={baselineAttempt.artifact}
+                    selectedLabel={`Attempt ${baselineAttempt.ordinal}`}
                   />
-                ) : null}
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No tuned pipeline JS script was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
 
-            {state.result ? (
+            {activeAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Latest candidate"
-                routeId={state.result.route_id}
-                provider={state.result.provider}
-                model={state.result.model}
-                visualContextUsed={state.result.visual_context_used}
-                recheckStatus={state.result.recheck_status}
-                recheckEngine={state.result.recheck_engine}
-                recheckError={state.result.recheck_error}
-                issues={state.result.issues}
-                resolvedGoal={state.result.resolved_goal}
-                explanation={state.result.explanation}
+                key={activeAttempt.id}
+                label={`${activeAttempt.id === latestAttempt?.id ? "Latest" : "Selected"} candidate · Attempt ${activeAttempt.ordinal}`}
+                routeId={activeAttempt.routeId}
+                provider={activeAttempt.provider}
+                model={activeAttempt.model}
+                visualContextUsed={activeAttempt.visualContextUsed}
+                recheckStatus={activeAttempt.recheckStatus}
+                recheckEngine={activeAttempt.recheckEngine}
+                recheckError={activeAttempt.recheckError}
+                issues={activeAttempt.issues}
+                resolvedGoal={activeAttempt.resolvedGoal}
+                explanation={activeAttempt.explanation}
+                rawResponse={activeAttempt.rawResponse}
               >
-                {state.result.suggested_script ? (
+                {activeAttempt.artifact ? (
                   <AICandidateDiffView
                     artifactKind="pipeline-js"
-                    previousArtifact={
-                      state.previousResult?.suggested_script ?? null
+                    baselineArtifact={baselineAttempt?.artifact ?? null}
+                    selectedArtifact={activeAttempt.artifact}
+                    baselineLabel={
+                      baselineAttempt
+                        ? `Attempt ${baselineAttempt.ordinal}`
+                        : "Comparison baseline"
                     }
-                    latestArtifact={state.result.suggested_script}
+                    selectedLabel={`Attempt ${activeAttempt.ordinal}`}
                   />
-                ) : null}
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No tuned pipeline JS script was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>
@@ -407,7 +439,7 @@ export function AIPipelineJSDebugger({
             >
               Cancel
             </button>
-            {state.result ? (
+            {history.attempts.length > 0 ? (
               <>
                 <button
                   type="button"
@@ -418,19 +450,20 @@ export function AIPipelineJSDebugger({
                 >
                   {state.isLoading ? "Retrying..." : "Retry with changes"}
                 </button>
-                {state.result.suggested_script ? (
-                  <button
-                    type="button"
-                    className="button-primary"
-                    onClick={handleSave}
-                    disabled={
-                      state.isLoading || state.isSaving || aiUnavailable
-                    }
-                    title={aiUnavailableMessage ?? undefined}
-                  >
-                    {state.isSaving ? "Saving..." : "Save tuned script"}
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="button-primary"
+                  onClick={handleSave}
+                  disabled={
+                    state.isLoading ||
+                    state.isSaving ||
+                    aiUnavailable ||
+                    !activeAttempt?.artifact
+                  }
+                  title={aiUnavailableMessage ?? undefined}
+                >
+                  {state.isSaving ? "Saving..." : "Save selected tuned script"}
+                </button>
               </>
             ) : (
               <button

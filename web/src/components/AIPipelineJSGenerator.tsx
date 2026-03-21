@@ -1,9 +1,9 @@
 /**
  * Purpose: Present the modal AI helper that generates pipeline JavaScript scripts from operator guidance and sample pages.
- * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, preserve retry context, and require explicit save confirmation.
+ * Responsibilities: Collect bounded AI inputs, call the pipeline-JS generation endpoint, retain full session attempt history, and save the operator-selected attempt.
  * Scope: Modal generation flow for Settings pipeline scripts only.
  * Usage: Mount from `PipelineJSEditor` when operators opt into AI-assisted authoring.
- * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, and retrying must preserve operator inputs.
+ * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, attempt history resets on close, and save always targets the selected attempt.
  */
 
 import { useState } from "react";
@@ -13,31 +13,23 @@ import {
   type AiPipelineJsGenerateResponse,
   type ComponentStatus,
   type JsTargetScript,
-  type ResolvedGoal,
 } from "../api";
+import { useAIAttemptHistory } from "../hooks/useAIAttemptHistory";
+import { toPipelineJsGenerateAttempt } from "../lib/ai-authoring-attempts";
+import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
+import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
+import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
-import { getApiBaseUrl } from "../lib/api-config";
-import { getApiErrorMessage } from "../lib/api-errors";
-import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
 
 interface AIPipelineJSGeneratorProps {
   isOpen: boolean;
   aiStatus?: ComponentStatus | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-interface PipelineJSAttempt {
-  script: JsTargetScript;
-  resolvedGoal: ResolvedGoal | null;
-  explanation: string;
-  routeId: string;
-  provider: string;
-  model: string;
-  visualContextUsed: boolean;
 }
 
 interface GeneratorState {
@@ -50,14 +42,6 @@ interface GeneratorState {
   playwright: boolean;
   visual: boolean;
   isGenerating: boolean;
-  generatedScript: JsTargetScript | null;
-  resolvedGoal: ResolvedGoal | null;
-  explanation: string;
-  routeId: string;
-  provider: string;
-  model: string;
-  visualContextUsed: boolean;
-  previousResult: PipelineJSAttempt | null;
   isSaving: boolean;
   error: string | null;
 }
@@ -72,53 +56,9 @@ const INITIAL_STATE: GeneratorState = {
   playwright: false,
   visual: false,
   isGenerating: false,
-  generatedScript: null,
-  resolvedGoal: null,
-  explanation: "",
-  routeId: "",
-  provider: "",
-  model: "",
-  visualContextUsed: false,
-  previousResult: null,
   isSaving: false,
   error: null,
 };
-
-function buildPipelineJSAttempt(
-  response: AiPipelineJsGenerateResponse,
-): PipelineJSAttempt {
-  if (!response.script) {
-    throw new Error("No pipeline JS script was generated. Please try again.");
-  }
-
-  return {
-    script: response.script,
-    resolvedGoal: response.resolved_goal ?? null,
-    explanation: response.explanation || "",
-    routeId: response.route_id || "",
-    provider: response.provider || "",
-    model: response.model || "",
-    visualContextUsed: response.visual_context_used || false,
-  };
-}
-
-function getCurrentPipelineJSAttempt(
-  state: GeneratorState,
-): PipelineJSAttempt | null {
-  if (!state.generatedScript) {
-    return null;
-  }
-
-  return {
-    script: state.generatedScript,
-    resolvedGoal: state.resolvedGoal,
-    explanation: state.explanation,
-    routeId: state.routeId,
-    provider: state.provider,
-    model: state.model,
-    visualContextUsed: state.visualContextUsed,
-  };
-}
 
 export function AIPipelineJSGenerator({
   isOpen,
@@ -134,8 +74,15 @@ export function AIPipelineJSGenerator({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const latestAttempt = getCurrentPipelineJSAttempt(state);
-  const resetState = () => setState(INITIAL_STATE);
+  const history = useAIAttemptHistory<JsTargetScript>();
+  const activeAttempt = history.activeAttempt;
+  const baselineAttempt = history.baselineAttempt;
+  const latestAttempt = history.latestAttempt;
+
+  const resetState = () => {
+    setState(INITIAL_STATE);
+    history.reset();
+  };
 
   const handleClose = () => {
     resetState();
@@ -154,9 +101,7 @@ export function AIPipelineJSGenerator({
     return null;
   };
 
-  const handleGenerate = async (options?: {
-    preserveCurrentAsPrevious?: boolean;
-  }) => {
+  const handleGenerate = async () => {
     if (aiUnavailable) {
       return;
     }
@@ -167,9 +112,6 @@ export function AIPipelineJSGenerator({
     }
 
     const requestState = state;
-    const nextPreviousResult = options?.preserveCurrentAsPrevious
-      ? getCurrentPipelineJSAttempt(requestState)
-      : requestState.previousResult;
 
     setState((prev) => ({
       ...prev,
@@ -210,22 +152,15 @@ export function AIPipelineJSGenerator({
         );
       }
 
-      const attempt = buildPipelineJSAttempt(
+      const attempt = toPipelineJsGenerateAttempt(
         data as AiPipelineJsGenerateResponse,
       );
+      history.appendAttempt(attempt);
 
       setState((prev) => ({
         ...prev,
         isGenerating: false,
-        instructions: attempt.resolvedGoal?.text ?? prev.instructions,
-        generatedScript: attempt.script,
-        resolvedGoal: attempt.resolvedGoal,
-        explanation: attempt.explanation,
-        routeId: attempt.routeId,
-        provider: attempt.provider,
-        model: attempt.model,
-        visualContextUsed: attempt.visualContextUsed,
-        previousResult: nextPreviousResult,
+        instructions: attempt.guidanceText || prev.instructions,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -243,11 +178,11 @@ export function AIPipelineJSGenerator({
     if (!latestAttempt || aiUnavailable) {
       return;
     }
-    void handleGenerate({ preserveCurrentAsPrevious: true });
+    void handleGenerate();
   };
 
   const handleSave = async () => {
-    if (!state.generatedScript) {
+    if (!activeAttempt?.artifact) {
       return;
     }
 
@@ -255,7 +190,7 @@ export function AIPipelineJSGenerator({
     try {
       const { error } = await postV1PipelineJs({
         baseUrl: getApiBaseUrl(),
-        body: state.generatedScript,
+        body: activeAttempt.artifact,
       });
       if (error) {
         throw new Error(
@@ -456,39 +391,77 @@ export function AIPipelineJSGenerator({
               </div>
             ) : null}
 
-            {state.previousResult ? (
+            <AIAttemptHistoryList
+              attempts={history.attempts}
+              activeAttemptId={history.activeAttemptId}
+              baselineAttemptId={history.baselineAttemptId}
+              onSelectAttempt={history.selectAttempt}
+              onSelectBaseline={history.selectBaseline}
+              onRestoreGuidance={(attempt) =>
+                setState((prev) => ({
+                  ...prev,
+                  instructions: attempt.guidanceText || prev.instructions,
+                  error: null,
+                }))
+              }
+            />
+
+            {baselineAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Previous candidate"
-                routeId={state.previousResult.routeId}
-                provider={state.previousResult.provider}
-                model={state.previousResult.model}
-                visualContextUsed={state.previousResult.visualContextUsed}
-                resolvedGoal={state.previousResult.resolvedGoal}
-                explanation={state.previousResult.explanation}
+                key={baselineAttempt.id}
+                label={`Comparison baseline · Attempt ${baselineAttempt.ordinal}`}
+                routeId={baselineAttempt.routeId}
+                provider={baselineAttempt.provider}
+                model={baselineAttempt.model}
+                visualContextUsed={baselineAttempt.visualContextUsed}
+                resolvedGoal={baselineAttempt.resolvedGoal}
+                explanation={baselineAttempt.explanation}
+                rawResponse={baselineAttempt.rawResponse}
                 muted
               >
-                <AICandidateDiffView
-                  artifactKind="pipeline-js"
-                  latestArtifact={state.previousResult.script}
-                />
+                {baselineAttempt.artifact ? (
+                  <AICandidateDiffView
+                    artifactKind="pipeline-js"
+                    selectedArtifact={baselineAttempt.artifact}
+                    selectedLabel={`Attempt ${baselineAttempt.ordinal}`}
+                  />
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No pipeline JS artifact was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
 
-            {latestAttempt ? (
+            {activeAttempt ? (
               <AIAuthoringAttemptPanel
-                label="Latest candidate"
-                routeId={latestAttempt.routeId}
-                provider={latestAttempt.provider}
-                model={latestAttempt.model}
-                visualContextUsed={latestAttempt.visualContextUsed}
-                resolvedGoal={latestAttempt.resolvedGoal}
-                explanation={latestAttempt.explanation}
+                key={activeAttempt.id}
+                label={`${activeAttempt.id === latestAttempt?.id ? "Latest" : "Selected"} candidate · Attempt ${activeAttempt.ordinal}`}
+                routeId={activeAttempt.routeId}
+                provider={activeAttempt.provider}
+                model={activeAttempt.model}
+                visualContextUsed={activeAttempt.visualContextUsed}
+                resolvedGoal={activeAttempt.resolvedGoal}
+                explanation={activeAttempt.explanation}
+                rawResponse={activeAttempt.rawResponse}
               >
-                <AICandidateDiffView
-                  artifactKind="pipeline-js"
-                  previousArtifact={state.previousResult?.script ?? null}
-                  latestArtifact={latestAttempt.script}
-                />
+                {activeAttempt.artifact ? (
+                  <AICandidateDiffView
+                    artifactKind="pipeline-js"
+                    baselineArtifact={baselineAttempt?.artifact ?? null}
+                    selectedArtifact={activeAttempt.artifact}
+                    baselineLabel={
+                      baselineAttempt
+                        ? `Attempt ${baselineAttempt.ordinal}`
+                        : "Comparison baseline"
+                    }
+                    selectedLabel={`Attempt ${activeAttempt.ordinal}`}
+                  />
+                ) : (
+                  <div className="text-sm text-slate-400">
+                    No pipeline JS artifact was returned for this attempt.
+                  </div>
+                )}
               </AIAuthoringAttemptPanel>
             ) : null}
           </fieldset>
@@ -501,7 +474,7 @@ export function AIPipelineJSGenerator({
             >
               Cancel
             </button>
-            {state.generatedScript ? (
+            {history.attempts.length > 0 ? (
               <>
                 <button
                   type="button"
@@ -519,11 +492,14 @@ export function AIPipelineJSGenerator({
                   className="button-primary"
                   onClick={handleSave}
                   disabled={
-                    state.isGenerating || state.isSaving || aiUnavailable
+                    state.isGenerating ||
+                    state.isSaving ||
+                    aiUnavailable ||
+                    !activeAttempt?.artifact
                   }
                   title={aiUnavailableMessage ?? undefined}
                 >
-                  {state.isSaving ? "Saving..." : "Save Script"}
+                  {state.isSaving ? "Saving..." : "Save selected script"}
                 </button>
               </>
             ) : (

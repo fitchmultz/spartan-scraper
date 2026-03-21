@@ -1,8 +1,8 @@
 /**
- * Purpose: Render operator-friendly AI candidate previews for render profiles and pipeline JS scripts.
- * Responsibilities: Show latest-only highlights, show field-level diffs against a previous candidate, and preserve raw JSON access with safe fallback behavior.
+ * Purpose: Render operator-friendly AI candidate previews for render profiles and pipeline JavaScript scripts.
+ * Responsibilities: Show selected-only highlights, show field-level diffs against a chosen baseline, and preserve raw artifact JSON access.
  * Scope: Shared artifact preview surface for AI automation generator and debugger modals.
- * Usage: Mount inside `AIAuthoringAttemptPanel` for previous/latest candidate content.
+ * Usage: Mount inside `AIAuthoringAttemptPanel` for selected and baseline candidate content.
  * Invariants/Assumptions: Unchanged fields stay hidden in comparison mode, raw JSON remains available on demand, and unsupported runtime changes default to raw JSON.
  */
 
@@ -22,8 +22,10 @@ type CandidateArtifact = RenderProfile | JsTargetScript;
 
 interface AICandidateDiffViewProps {
   artifactKind: ArtifactKind;
-  previousArtifact?: CandidateArtifact | null;
-  latestArtifact?: CandidateArtifact | null;
+  baselineArtifact?: CandidateArtifact | null;
+  selectedArtifact?: CandidateArtifact | null;
+  baselineLabel?: string;
+  selectedLabel?: string;
 }
 
 function formatCandidateValue(value: unknown): string {
@@ -38,7 +40,15 @@ function formatCandidateValue(value: unknown): string {
   });
 }
 
-function CandidateFieldChangeRow({ change }: { change: FieldChange }) {
+function CandidateFieldChangeRow({
+  change,
+  baselineLabel,
+  selectedLabel,
+}: {
+  change: FieldChange;
+  baselineLabel: string;
+  selectedLabel: string;
+}) {
   return (
     <section aria-label={change.field} className="diff-field-change">
       <div className="diff-field-header" role="presentation">
@@ -46,13 +56,13 @@ function CandidateFieldChangeRow({ change }: { change: FieldChange }) {
       </div>
       <div className="diff-field-values">
         <div className="diff-field-old">
-          <span className="diff-field-label">Previous</span>
+          <span className="diff-field-label">{baselineLabel}</span>
           <pre className="ai-candidate-field-pre">
             {formatCandidateValue(change.oldValue)}
           </pre>
         </div>
         <div className="diff-field-new">
-          <span className="diff-field-label">Latest</span>
+          <span className="diff-field-label">{selectedLabel}</span>
           <pre className="ai-candidate-field-pre">
             {formatCandidateValue(change.newValue)}
           </pre>
@@ -64,22 +74,24 @@ function CandidateFieldChangeRow({ change }: { change: FieldChange }) {
 
 export function AICandidateDiffView({
   artifactKind,
-  previousArtifact = null,
-  latestArtifact = null,
+  baselineArtifact = null,
+  selectedArtifact = null,
+  baselineLabel = "Comparison baseline",
+  selectedLabel = "Selected candidate",
 }: AICandidateDiffViewProps) {
   const summary: CandidateDiffSummary = useMemo(() => {
     if (artifactKind === "render-profile") {
       return summarizeRenderProfileCandidateDiff(
-        previousArtifact as RenderProfile | null,
-        latestArtifact as RenderProfile | null,
+        baselineArtifact as RenderProfile | null,
+        selectedArtifact as RenderProfile | null,
       );
     }
 
     return summarizePipelineScriptCandidateDiff(
-      previousArtifact as JsTargetScript | null,
-      latestArtifact as JsTargetScript | null,
+      baselineArtifact as JsTargetScript | null,
+      selectedArtifact as JsTargetScript | null,
     );
-  }, [artifactKind, previousArtifact, latestArtifact]);
+  }, [artifactKind, baselineArtifact, selectedArtifact]);
   const [showRawJson, setShowRawJson] = useState(
     summary.shouldShowRawJsonByDefault,
   );
@@ -88,11 +100,11 @@ export function AICandidateDiffView({
     setShowRawJson(summary.shouldShowRawJsonByDefault);
   }, [summary.shouldShowRawJsonByDefault]);
 
-  if (!latestArtifact) {
+  if (!selectedArtifact) {
     return null;
   }
 
-  const hasComparison = !!previousArtifact;
+  const hasComparison = !!baselineArtifact;
 
   return (
     <div className="ai-candidate-diff space-y-3">
@@ -107,6 +119,8 @@ export function AICandidateDiffView({
               <CandidateFieldChangeRow
                 key={change.path ?? change.field}
                 change={change}
+                baselineLabel={baselineLabel}
+                selectedLabel={selectedLabel}
               />
             ))}
           </section>
@@ -147,18 +161,16 @@ export function AICandidateDiffView({
         <div className="ai-candidate-raw-grid">
           {hasComparison ? (
             <div className="space-y-2">
-              <span className="ai-candidate-raw-label">Previous</span>
+              <span className="ai-candidate-raw-label">{baselineLabel}</span>
               <pre className="ai-candidate-raw-json">
-                {JSON.stringify(previousArtifact, null, 2)}
+                {JSON.stringify(baselineArtifact, null, 2)}
               </pre>
             </div>
           ) : null}
           <div className="space-y-2">
-            <span className="ai-candidate-raw-label">
-              {hasComparison ? "Latest" : "Candidate"}
-            </span>
+            <span className="ai-candidate-raw-label">{selectedLabel}</span>
             <pre className="ai-candidate-raw-json">
-              {JSON.stringify(latestArtifact, null, 2)}
+              {JSON.stringify(selectedArtifact, null, 2)}
             </pre>
           </div>
         </div>

@@ -1,12 +1,12 @@
 /**
  * Purpose: Render a consistent comparison panel for AI authoring attempts.
- * Responsibilities: Show attempt labels, request metadata, optional diagnostics, resolved goals, explanations, and caller-supplied artifact previews.
+ * Responsibilities: Show attempt labels, request metadata, diagnostics, resolved goals, explanations, operator-controlled response JSON, and caller-supplied artifact previews.
  * Scope: Shared Web UI presentation for AI automation generator and debugger results.
- * Usage: Mount for latest and previous candidates inside AI authoring modals.
- * Invariants/Assumptions: The caller owns artifact-specific preview markup and passes only request-scoped metadata from the latest or previous attempt.
+ * Usage: Mount for selected and baseline candidates inside AI authoring modals.
+ * Invariants/Assumptions: The caller owns artifact-specific preview markup, and raw-response inspection must remain operator-controlled.
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AIResolvedGoalCard } from "./AIResolvedGoalCard";
 import type { ResolvedGoal } from "../api";
 
@@ -22,6 +22,7 @@ interface AIAuthoringAttemptPanelProps {
   issues?: string[];
   resolvedGoal?: ResolvedGoal | null;
   explanation?: string;
+  rawResponse?: unknown;
   muted?: boolean;
   children?: ReactNode;
 }
@@ -38,9 +39,12 @@ export function AIAuthoringAttemptPanel({
   issues = [],
   resolvedGoal,
   explanation,
+  rawResponse,
   muted = false,
   children,
 }: AIAuthoringAttemptPanelProps) {
+  const [showRawResponse, setShowRawResponse] = useState(false);
+
   return (
     <section
       aria-label={label}
@@ -50,7 +54,18 @@ export function AIAuthoringAttemptPanel({
           : "border-slate-700 bg-slate-900/60"
       }`}
     >
-      <div className="text-sm font-medium text-slate-100">{label}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm font-medium text-slate-100">{label}</div>
+        {rawResponse ? (
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setShowRawResponse((current) => !current)}
+          >
+            {showRawResponse ? "Hide response JSON" : "Show response JSON"}
+          </button>
+        ) : null}
+      </div>
 
       <div className="space-y-2 text-sm text-slate-300">
         {recheckStatus ? (
@@ -89,6 +104,12 @@ export function AIAuthoringAttemptPanel({
       ) : null}
 
       {children}
+
+      {showRawResponse ? (
+        <pre className="ai-candidate-raw-json">
+          {JSON.stringify(rawResponse, null, 2)}
+        </pre>
+      ) : null}
     </section>
   );
 }
