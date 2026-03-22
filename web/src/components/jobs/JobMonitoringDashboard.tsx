@@ -108,8 +108,6 @@ export interface JobMonitoringDashboardProps {
   onDelete: (jobId: string) => void;
   onRefresh: () => void;
   onCreateJob: () => void;
-  onOpenTemplates: () => void;
-  onOpenAutomation: () => void;
   currentPage: number;
   totalJobs: number;
   jobsPerPage: number;
@@ -130,8 +128,6 @@ export function JobMonitoringDashboard({
   onDelete,
   onRefresh,
   onCreateJob,
-  onOpenTemplates,
-  onOpenAutomation,
   currentPage,
   totalJobs,
   jobsPerPage,
@@ -243,19 +239,7 @@ export function JobMonitoringDashboard({
           eyebrow="Fresh workspace"
           title="No jobs yet"
           description="Create a scrape, crawl, or research run to populate the dashboard. Queue state, failures, and completed results will all appear here."
-          actions={[
-            { label: "Create first job", onClick: onCreateJob },
-            {
-              label: "Browse templates",
-              onClick: onOpenTemplates,
-              tone: "secondary",
-            },
-            {
-              label: "Open automation",
-              onClick: onOpenAutomation,
-              tone: "secondary",
-            },
-          ]}
+          actions={[{ label: "Create first job", onClick: onCreateJob }]}
         />
       </section>
     );

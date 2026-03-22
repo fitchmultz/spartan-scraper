@@ -23,7 +23,7 @@ const shortcuts = {
 };
 
 describe("RouteHelpPanel", () => {
-  it("renders route-specific next actions and invokes the handler", async () => {
+  it("renders the route-specific next action and invokes the handler", async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
 
@@ -43,8 +43,11 @@ describe("RouteHelpPanel", () => {
       name: /create job/i,
     });
     expect(
-      screen.getByRole("button", { name: /open automation/i }),
+      screen.getByRole("heading", { name: /next action/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /open automation/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(createJobButton);
 

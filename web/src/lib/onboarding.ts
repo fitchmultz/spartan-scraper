@@ -22,12 +22,7 @@ export interface RouteHelpShortcutConfig {
 }
 
 export interface RouteHelpAction {
-  id:
-    | "create-job"
-    | "open-templates"
-    | "open-automation"
-    | "open-settings"
-    | "start-tour";
+  id: "create-job" | "open-jobs";
   label: string;
 }
 
@@ -66,10 +61,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to New Job", shortcut: "navigateForms" },
       ],
-      nextActions: [
-        { id: "create-job", label: "Create job" },
-        { id: "open-templates", label: "Browse templates" },
-      ],
+      nextActions: [{ id: "create-job", label: "Create Job" }],
     },
     "new-job": {
       title: "What can I do here?",
@@ -85,10 +77,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
-      nextActions: [
-        { id: "open-templates", label: "Open templates" },
-        { id: "start-tour", label: "Restart tour" },
-      ],
+      nextActions: [],
     },
     "job-detail": {
       title: "What can I do here?",
@@ -104,7 +93,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
-      nextActions: [{ id: "create-job", label: "Queue another job" }],
+      nextActions: [{ id: "open-jobs", label: "Back to Jobs" }],
     },
     templates: {
       title: "What can I do here?",
@@ -120,10 +109,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
-      nextActions: [
-        { id: "create-job", label: "Create job" },
-        { id: "open-automation", label: "Open automation" },
-      ],
+      nextActions: [{ id: "create-job", label: "Create Job" }],
     },
     automation: {
       title: "What can I do here?",
@@ -139,10 +125,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
-      nextActions: [
-        { id: "create-job", label: "Create single job" },
-        { id: "open-settings", label: "Open settings" },
-      ],
+      nextActions: [],
     },
     settings: {
       title: "What can I do here?",
@@ -158,10 +141,7 @@ export const ROUTE_HELP_CONTENT: Record<OnboardingRouteKey, RouteHelpContent> =
         { label: "Open keyboard help", shortcut: "help" },
         { label: "Go to Jobs", shortcut: "navigateJobs" },
       ],
-      nextActions: [
-        { id: "create-job", label: "Create job" },
-        { id: "open-automation", label: "Open automation" },
-      ],
+      nextActions: [{ id: "create-job", label: "Create Job" }],
     },
   };
 

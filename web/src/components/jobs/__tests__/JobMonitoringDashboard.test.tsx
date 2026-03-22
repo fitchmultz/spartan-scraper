@@ -98,8 +98,6 @@ describe("JobMonitoringDashboard", () => {
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
         onCreateJob={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={4}
         jobsPerPage={100}
@@ -146,8 +144,6 @@ describe("JobMonitoringDashboard", () => {
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
         onCreateJob={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={0}
         jobsPerPage={100}
@@ -163,7 +159,6 @@ describe("JobMonitoringDashboard", () => {
 
   it("renders a guided empty state for a fresh workspace", () => {
     const onCreateJob = vi.fn();
-    const onOpenTemplates = vi.fn();
 
     render(
       <JobMonitoringDashboard
@@ -178,8 +173,6 @@ describe("JobMonitoringDashboard", () => {
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
         onCreateJob={onCreateJob}
-        onOpenTemplates={onOpenTemplates}
-        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={0}
         jobsPerPage={100}
@@ -193,8 +186,11 @@ describe("JobMonitoringDashboard", () => {
       screen.getByRole("button", { name: /create first job/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /browse templates/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /browse templates/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /open automation/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("restores saved filter, page, and scroll position", async () => {
@@ -223,8 +219,6 @@ describe("JobMonitoringDashboard", () => {
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
         onCreateJob={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenAutomation={vi.fn()}
         currentPage={1}
         totalJobs={300}
         jobsPerPage={100}
@@ -249,8 +243,6 @@ describe("JobMonitoringDashboard", () => {
         onDelete={vi.fn()}
         onRefresh={vi.fn()}
         onCreateJob={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenAutomation={vi.fn()}
         currentPage={3}
         totalJobs={300}
         jobsPerPage={100}

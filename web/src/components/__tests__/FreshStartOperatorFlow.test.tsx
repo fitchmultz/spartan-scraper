@@ -468,7 +468,7 @@ function createAppDataState() {
     setupRequired: false,
     detailJob: null as JobEntry | null,
     detailJobLoading: false,
-    detailJobError: null,
+    detailJobError: null as string | null,
     refreshHealth: vi.fn(async () => buildHealth()),
     refreshJobs: vi.fn(async () => {}),
     refreshTemplates: vi.fn(async () => {}),
@@ -617,6 +617,25 @@ describe("FreshStartOperatorFlow", () => {
       results.compareDocumentPosition(routeHelp) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("keeps job detail errors focused on the recovery path", async () => {
+    appDataState.detailJobError = "invalid job id format: bad-job";
+
+    renderAppAt("/jobs/bad-job");
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /unable to load this saved job/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/result context/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/what can i do here\? for this route/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: /back to jobs/i }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("hands off promotion drafts from results into the canonical destination workspaces", async () => {
@@ -815,7 +834,7 @@ describe("FreshStartOperatorFlow", () => {
 
     const routeCases = [
       ["Open Jobs", "/jobs", "Jobs"],
-      ["Open New Job", "/jobs/new", "Create Job"],
+      ["Create Job", "/jobs/new", "Create Job"],
       ["Open Templates", "/templates", "Templates"],
       ["Open Settings", "/settings", "Settings"],
       ["Open Automation / Batches", "/automation/batches", "Automation"],

@@ -62,7 +62,7 @@ const ROUTE_COMMANDS = [
   },
   {
     id: "nav-new-job",
-    label: "Open New Job",
+    label: "Create Job",
     path: "/jobs/new",
     shortcut: "G F",
     icon: "📝",

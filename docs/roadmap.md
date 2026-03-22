@@ -16,15 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Route Primary-Action Alignment
-   - Pick one primary CTA per top-level route and demote cross-route detours.
-   - Align route-header actions, route-help actions, command-palette labels, and empty-state CTAs to the same primary workflow per route.
+1. Route Help Disclosure Tuning
+   - Keep route help easy to reopen, but stop first-visit expansion from recreating a long lower-page explainer.
+   - Separate the always-visible summary from deeper shortcuts and help tools so the panel stays useful after the workflow-first cutover.
 
-2. Route Help Disclosure Tuning
-   - Keep route help easy to reopen, but stop first-visit expansion from turning the lower page into another long explainer block.
-   - Separate terse route summaries from deeper shortcut and next-action detail so help stays useful after the workflow-first cutover.
-
-3. Settings Section Deep Links
+2. Settings Section Deep Links
    - Give `/settings` sections stable URL state so authoring, saved state, and operations can be opened directly.
    - Keep subnav highlight, scroll position, and restored route state aligned without reintroducing a stacked mega-page.
 

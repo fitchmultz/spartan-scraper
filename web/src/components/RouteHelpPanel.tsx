@@ -93,19 +93,27 @@ export function RouteHelpPanel({
             </div>
           </div>
 
+          {content.nextActions.length > 0 ? (
+            <div className="route-help__section">
+              <h3>Next action</h3>
+              <div className="route-help__actions">
+                {content.nextActions.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className="secondary"
+                    onClick={() => onAction(action.id)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="route-help__section">
-            <h3>Next actions</h3>
+            <h3>Help tools</h3>
             <div className="route-help__actions">
-              {content.nextActions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="secondary"
-                  onClick={() => onAction(action.id)}
-                >
-                  {action.label}
-                </button>
-              ))}
               <button
                 type="button"
                 className="secondary"

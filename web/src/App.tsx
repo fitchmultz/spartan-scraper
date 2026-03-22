@@ -1208,21 +1208,12 @@ function AppShell() {
         case "create-job":
           navigate("/jobs/new");
           return;
-        case "open-templates":
-          navigate("/templates");
-          return;
-        case "open-automation":
-          navigate("/automation/batches");
-          return;
-        case "open-settings":
-          navigate("/settings");
-          return;
-        case "start-tour":
-          resetOnboarding();
+        case "open-jobs":
+          navigate("/jobs");
           return;
       }
     },
-    [navigate, resetOnboarding],
+    [navigate],
   );
 
   const shellUtilities = (
@@ -1377,20 +1368,6 @@ function AppShell() {
           <RouteHeader
             title={routeMeta.title}
             description={routeMeta.description}
-            actions={
-              selectedJobId ? (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    persistJobsViewState();
-                    navigate(`/jobs/${selectedJobId}`);
-                  }}
-                >
-                  Open Last Results
-                </button>
-              ) : null
-            }
           />
 
           <section id="jobs" data-tour="jobs-dashboard">
@@ -1406,8 +1383,6 @@ function AppShell() {
               onDelete={deleteJob}
               onRefresh={refreshJobs}
               onCreateJob={() => navigate("/jobs/new")}
-              onOpenTemplates={() => navigate("/templates")}
-              onOpenAutomation={() => navigate("/automation/batches")}
               currentPage={jobsPage}
               totalJobs={jobsTotal}
               jobsPerPage={100}
@@ -1458,18 +1433,23 @@ function AppShell() {
           ) : null}
 
           {!detailJobError ? (
-            <ResultsContainer
-              resultsState={resultsState}
-              jobs={jobs}
-              currentJob={detailJob}
-              aiStatus={health?.components?.ai ?? null}
-              onPromote={handlePromoteJob}
-            />
+            <>
+              <ResultsContainer
+                resultsState={resultsState}
+                jobs={jobs}
+                currentJob={detailJob}
+                aiStatus={health?.components?.ai ?? null}
+                onPromote={handlePromoteJob}
+              />
+
+              <RouteSignals
+                ariaLabel="Result context"
+                items={jobDetailSignals}
+              />
+
+              {routeHelpPanel}
+            </>
           ) : null}
-
-          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
-
-          {routeHelpPanel}
         </div>
       )}
 
@@ -1515,18 +1495,6 @@ function AppShell() {
               eyebrow="First run"
               title="Start with a single page scrape"
               description="Paste a URL into the form below, keep the defaults, and submit one successful run before moving on to templates or automation."
-              actions={[
-                {
-                  label: "Open templates",
-                  onClick: () => navigate("/templates"),
-                  tone: "secondary",
-                },
-                {
-                  label: "Restart tour",
-                  onClick: resetOnboarding,
-                  tone: "secondary",
-                },
-              ]}
             />
           ) : null}
 
@@ -1590,15 +1558,6 @@ function AppShell() {
           <RouteHeader
             title={routeMeta.title}
             description={routeMeta.description}
-            actions={
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => navigate("/templates")}
-              >
-                Open Templates
-              </button>
-            }
             subnav={
               <SettingsSubnav
                 activeSection={activeSettingsSection}
