@@ -13,6 +13,7 @@ import {
   useCallback,
   useImperativeHandle,
   useRef,
+  type CSSProperties,
 } from "react";
 import type {
   ComponentStatus,
@@ -23,8 +24,9 @@ import type {
 } from "../../api";
 import type { Profile } from "../../hooks/useAppData";
 import type { FormController, ProfileOption } from "../../hooks/useFormState";
-import type { JobType, PresetConfig } from "../../types/presets";
-import { JobSubmissionAssistantSection } from "../ai-assistant";
+import type { JobPreset, JobType, PresetConfig } from "../../types/presets";
+import { useAIAssistant, JobSubmissionAssistantSection } from "../ai-assistant";
+import { PresetContainer } from "../presets/PresetContainer";
 import { WizardActions } from "./WizardActions";
 import { WizardStepper } from "./WizardStepper";
 import { useJobWizard } from "./useJobWizard";
@@ -77,6 +79,16 @@ interface JobSubmissionContainerProps {
   onSubmitResearch: (request: ResearchRequest) => void;
   loading: boolean;
   profiles: Profile[] | ProfileOption[];
+  presets?: JobPreset[];
+  savePreset?: (
+    name: string,
+    description: string,
+    jobType: JobType,
+    config: PresetConfig,
+  ) => void;
+  onSelectPreset?: (preset: JobPreset) => void;
+  onOpenAssistant?: () => void;
+  onOpenTemplateAssistant?: () => void;
 }
 
 export const JobSubmissionContainer = forwardRef<
@@ -93,12 +105,18 @@ export const JobSubmissionContainer = forwardRef<
     onSubmitResearch,
     loading,
     profiles,
+    presets,
+    savePreset,
+    onSelectPreset,
+    onOpenAssistant,
+    onOpenTemplateAssistant,
   },
   ref,
 ) {
   const scrapeFormRef = useRef<ScrapeFormRef>(null);
   const crawlFormRef = useRef<CrawlFormRef>(null);
   const researchFormRef = useRef<ResearchFormRef>(null);
+  const { isOpen: isAssistantOpen, width: assistantWidth } = useAIAssistant();
   const profileOptions = profiles as ProfileOption[];
 
   const wizard = useJobWizard({
@@ -179,14 +197,28 @@ export const JobSubmissionContainer = forwardRef<
     [activeTab, wizard],
   );
 
+  const currentUrl =
+    activeTab === "scrape"
+      ? wizard.localState.scrape.url
+      : activeTab === "crawl"
+        ? wizard.localState.crawl.url
+        : "";
+
   return (
     <section
       id="forms"
       className="job-workflow job-wizard"
       data-tour="form-types"
     >
-      <div className="ai-assistant-surface">
-        <div className="ai-assistant-surface__main">
+      <div
+        className="job-wizard__workspace"
+        style={
+          {
+            "--job-wizard-sidebar-width": `${isAssistantOpen ? Math.max(assistantWidth, 360) : 360}px`,
+          } as CSSProperties
+        }
+      >
+        <div className="job-wizard__main">
           <div
             className="panel job-workflow__header job-wizard__header"
             data-tour="job-wizard-header"
@@ -195,8 +227,8 @@ export const JobSubmissionContainer = forwardRef<
               <div className="job-workflow__eyebrow">Workflow</div>
               <h2>Create a job with a guided workflow</h2>
               <p>
-                Move step by step, keep presets in the sidebar, and switch to
-                Expert mode at any time without losing entered values.
+                Move step by step, keep presets and AI actions nearby, and
+                switch to Expert mode at any time without losing entered values.
               </p>
             </div>
 
@@ -390,12 +422,27 @@ export const JobSubmissionContainer = forwardRef<
           </Suspense>
         </div>
 
-        <JobSubmissionAssistantSection
-          activeTab={activeTab}
-          form={formState}
-          localState={wizard.localState}
-          aiStatus={aiStatus}
-        />
+        <div className="job-wizard__sidebar">
+          {presets && savePreset && onSelectPreset ? (
+            <PresetContainer
+              presets={presets}
+              activeTab={activeTab}
+              savePreset={savePreset}
+              getCurrentConfig={() => wizard.getCurrentConfig(activeTab)}
+              getCurrentUrl={() => currentUrl}
+              onSelectPreset={onSelectPreset}
+              onOpenAssistant={onOpenAssistant}
+              onOpenTemplateAssistant={onOpenTemplateAssistant}
+            />
+          ) : null}
+
+          <JobSubmissionAssistantSection
+            activeTab={activeTab}
+            form={formState}
+            localState={wizard.localState}
+            aiStatus={aiStatus}
+          />
+        </div>
       </div>
     </section>
   );

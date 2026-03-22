@@ -16,13 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. New Job Layout Containment
-   - Keep `/jobs/new` readable at normal desktop widths when the AI assistant rail is open, resized, or hidden.
-   - Constrain the assistant rail and surrounding layout so the workflow switcher, core form fields, and wizard controls stay above the fold.
+1. Settings Capability Error Surfaces
+   - Replace raw-object and generic failure fallbacks in proxy-pool and retention panels with operator-safe messages and structured next actions.
+   - Keep optional-capability failures scoped to the affected Settings panel instead of degrading unrelated sections.
 
-2. Settings Section Deep Links
-   - Bind `/settings` section selection to stable URL state so authoring, saved state, and operations can be opened directly.
-   - Keep subnav highlight, scroll restoration, and direct linking aligned with the URL without reintroducing a stacked mega-page.
+2. Settings Section URL State
+   - Make `/settings` section selection URL-driven so authoring, saved state, and operations views open directly and survive refresh plus back-forward navigation.
+   - Derive subnav highlight, scroll target, and restored section state from the URL instead of duplicating that state locally.
 
 ## Ongoing Constraints
 

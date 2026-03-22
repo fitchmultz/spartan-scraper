@@ -68,7 +68,6 @@ import { BatchContainer } from "./components/batches/BatchContainer";
 import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
 import { useToast } from "./components/toast";
 import { TemplateManager } from "./components/templates/TemplateManager";
-import { PresetContainer } from "./components/presets/PresetContainer";
 import {
   JobSubmissionContainer,
   type JobSubmissionContainerRef,
@@ -1443,34 +1442,24 @@ function AppShell() {
             description={routeMeta.description}
           />
 
-          <div className="route-grid route-grid--new-job">
-            <div className="route-primary route-stack" data-tour="job-wizard">
-              <JobSubmissionContainer
-                ref={jobSubmissionRef}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                formState={formState}
-                aiStatus={health?.components?.ai ?? null}
-                onSubmitScrape={handleSubmitScrape}
-                onSubmitCrawl={handleSubmitCrawl}
-                onSubmitResearch={handleSubmitResearch}
-                loading={loading}
-                profiles={profiles}
-              />
-            </div>
-            <aside className="route-sidebar">
-              <PresetContainer
-                presets={presets}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                savePreset={savePreset}
-                getCurrentConfig={getCurrentConfig}
-                getCurrentUrl={getCurrentUrl}
-                onSelectPreset={handleSelectPreset}
-                onOpenAssistant={openJobAssistant}
-                onOpenTemplateAssistant={openTemplateAssistant}
-              />
-            </aside>
+          <div className="route-stack" data-tour="job-wizard">
+            <JobSubmissionContainer
+              ref={jobSubmissionRef}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              formState={formState}
+              aiStatus={health?.components?.ai ?? null}
+              onSubmitScrape={handleSubmitScrape}
+              onSubmitCrawl={handleSubmitCrawl}
+              onSubmitResearch={handleSubmitResearch}
+              loading={loading}
+              profiles={profiles}
+              presets={presets}
+              savePreset={savePreset}
+              onSelectPreset={handleSelectPreset}
+              onOpenAssistant={openJobAssistant}
+              onOpenTemplateAssistant={openTemplateAssistant}
+            />
           </div>
 
           {jobsTotal === 0 && jobStatusFilter === "" ? (

@@ -1,9 +1,9 @@
 /**
- * Purpose: Present a compact preset rail that lets operators switch job workflows without leaving the new-job route.
- * Responsibilities: Show workflow tabs, highlight recommended presets for the current URL, and expose quick launch actions for presets, AI help, and saving.
+ * Purpose: Present a compact preset rail for the active job workflow on the new-job route.
+ * Responsibilities: Highlight recommended presets for the current target and expose quick launch actions for presets, AI help, and saving.
  * Scope: `/jobs/new` quick-start surface only.
- * Usage: Render from the job-submission workspace header beside the guided and expert flows.
- * Invariants/Assumptions: Preset recommendations stay advisory, workflow switching remains explicit, and quick actions never submit work automatically.
+ * Usage: Render from the job-submission workspace beside the guided and expert flows.
+ * Invariants/Assumptions: Preset recommendations stay advisory, the active workflow is controlled by the main wizard, and quick actions never submit work automatically.
  */
 
 import { useMemo } from "react";
@@ -14,7 +14,6 @@ import type { JobPreset, JobType } from "../types/presets";
 interface QuickStartPanelProps {
   presets: JobPreset[];
   activeJobType: JobType;
-  onJobTypeChange: (jobType: JobType) => void;
   onSelectPreset: (preset: JobPreset) => void;
   onSavePreset?: () => void;
   onOpenAssistant?: () => void;
@@ -43,31 +42,6 @@ const JOB_TYPE_COPY: Record<
       "No research presets yet. Save one after shaping a strong source set.",
   },
 };
-
-function JobTypeButton({
-  jobType,
-  activeJobType,
-  count,
-  onClick,
-}: {
-  jobType: JobType;
-  activeJobType: JobType;
-  count: number;
-  onClick: () => void;
-}) {
-  const isActive = activeJobType === jobType;
-
-  return (
-    <button
-      type="button"
-      className={`job-quickstart__type ${isActive ? "is-active" : ""}`}
-      onClick={onClick}
-    >
-      <span>{JOB_TYPE_COPY[jobType].label}</span>
-      <strong>{count}</strong>
-    </button>
-  );
-}
 
 function PresetChip({
   preset,
@@ -104,7 +78,6 @@ function PresetChip({
 export function QuickStartPanel({
   presets,
   activeJobType,
-  onJobTypeChange,
   onSelectPreset,
   onSavePreset,
   onOpenAssistant,
@@ -125,16 +98,6 @@ export function QuickStartPanel({
 
   const recommendedIds = new Set(recommendedPresets.map((preset) => preset.id));
 
-  const presetCounts = useMemo(
-    () => ({
-      scrape: presets.filter((preset) => preset.jobType === "scrape").length,
-      crawl: presets.filter((preset) => preset.jobType === "crawl").length,
-      research: presets.filter((preset) => preset.jobType === "research")
-        .length,
-    }),
-    [presets],
-  );
-
   const activeCopy = JOB_TYPE_COPY[activeJobType];
   const featuredPresets =
     recommendedPresets.length > 0
@@ -149,7 +112,7 @@ export function QuickStartPanel({
       <div className="job-quickstart__header">
         <div>
           <div className="job-quickstart__eyebrow">Quick Start</div>
-          <h2>Switch workflows fast</h2>
+          <h2>{activeCopy.label} presets</h2>
           <p>{activeCopy.summary}</p>
         </div>
         <div className="job-quickstart__header-actions">
@@ -177,31 +140,6 @@ export function QuickStartPanel({
             </button>
           ) : null}
         </div>
-      </div>
-
-      <div
-        className="job-quickstart__types"
-        role="tablist"
-        aria-label="Job types"
-      >
-        <JobTypeButton
-          jobType="scrape"
-          activeJobType={activeJobType}
-          count={presetCounts.scrape}
-          onClick={() => onJobTypeChange("scrape")}
-        />
-        <JobTypeButton
-          jobType="crawl"
-          activeJobType={activeJobType}
-          count={presetCounts.crawl}
-          onClick={() => onJobTypeChange("crawl")}
-        />
-        <JobTypeButton
-          jobType="research"
-          activeJobType={activeJobType}
-          count={presetCounts.research}
-          onClick={() => onJobTypeChange("research")}
-        />
       </div>
 
       <div className="job-quickstart__group">

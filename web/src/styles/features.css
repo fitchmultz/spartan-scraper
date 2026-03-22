@@ -287,23 +287,13 @@
    Integrated AI Assistant Styles
    ============================================================================ */
 
-.ai-assistant-surface {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: start;
-}
-
-.ai-assistant-surface__main {
-  min-width: 0;
-  display: grid;
-  gap: 16px;
-}
-
 .ai-assistant-panel {
   position: sticky;
   top: 12px;
-  width: min(100%, var(--ai-assistant-panel-width, 380px));
+  width: min(
+    100%,
+    var(--ai-assistant-panel-width, var(--job-wizard-sidebar-width, 380px))
+  );
   max-height: calc(100vh - 24px);
   overflow: hidden;
   display: flex;
@@ -400,10 +390,6 @@
 }
 
 @media (max-width: 1200px) {
-  .ai-assistant-surface {
-    grid-template-columns: 1fr;
-  }
-
   .ai-assistant-panel {
     position: static;
     max-height: none;

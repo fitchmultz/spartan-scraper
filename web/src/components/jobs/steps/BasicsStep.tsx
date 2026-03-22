@@ -69,7 +69,7 @@ export function BasicsStep({
   errors,
 }: BasicsStepProps) {
   return (
-    <section className="panel job-wizard__panel">
+    <section className="panel job-wizard__panel job-wizard__panel--basics">
       <div className="job-wizard__panel-header">
         <div className="job-workflow__eyebrow">Basics</div>
         <h2>Pick the workflow and define the target</h2>

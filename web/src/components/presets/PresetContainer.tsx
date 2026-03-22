@@ -2,7 +2,7 @@
  * Purpose: Coordinate the quick-start preset rail and save-preset dialog for the new-job route.
  * Responsibilities: Bridge preset selection into route-owned navigation, open the save dialog with the current config snapshot, and keep the quick-start rail focused on discovery rather than direct form mutation.
  * Scope: Preset management for single-job creation only.
- * Usage: Render from `App.tsx` alongside `JobSubmissionContainer` on `/jobs/new`.
+ * Usage: Render from the `/jobs/new` workspace alongside the guided and expert job surfaces.
  * Invariants/Assumptions: The route owner applies presets exactly once, the active job type is controlled by the surrounding route, and scrolling to `#forms` remains the correct affordance after selecting a preset.
  */
 
@@ -14,7 +14,6 @@ import type { JobPreset, JobType, PresetConfig } from "../../types/presets";
 interface PresetContainerProps {
   presets: JobPreset[];
   activeTab: JobType;
-  setActiveTab: (tab: JobType) => void;
   savePreset: (
     name: string,
     desc: string,
@@ -31,7 +30,6 @@ interface PresetContainerProps {
 export function PresetContainer({
   presets,
   activeTab,
-  setActiveTab,
   savePreset,
   getCurrentConfig,
   getCurrentUrl,
@@ -70,7 +68,6 @@ export function PresetContainer({
         <QuickStartPanel
           presets={presets}
           activeJobType={activeTab}
-          onJobTypeChange={setActiveTab}
           onSelectPreset={handleSelectPreset}
           onSavePreset={handleSavePreset}
           onOpenAssistant={onOpenAssistant}
