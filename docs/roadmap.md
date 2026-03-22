@@ -17,12 +17,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 ## Next
 
 1. Route Help Disclosure Tuning
-   - Keep route help easy to reopen, but stop first-visit expansion from recreating a long lower-page explainer.
-   - Separate the always-visible summary from deeper shortcuts and help tools so the panel stays useful after the workflow-first cutover.
+   - Keep route help easy to reopen, but default it to a terse summary instead of an expanded lower-page explainer.
+   - Reserve shortcuts and help tools for explicit expansion so the panel supports the workflow-first shell instead of competing with it.
 
 2. Settings Section Deep Links
    - Give `/settings` sections stable URL state so authoring, saved state, and operations can be opened directly.
-   - Keep subnav highlight, scroll position, and restored route state aligned without reintroducing a stacked mega-page.
+   - Keep subnav highlight, scroll position, and restored route state aligned with the URL without reintroducing a stacked mega-page.
 
 ## Ongoing Constraints
 

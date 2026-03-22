@@ -373,6 +373,8 @@ function AppShell() {
 
   const route = useMemo(() => parseRoute(pathname), [pathname]);
   const routeKey = route.kind as OnboardingRouteKey;
+  const showGlobalFirstRunPrompt =
+    shouldShowFirstRunHint && route.kind === "jobs";
   const [routeHelpDefaultExpanded, setRouteHelpDefaultExpanded] =
     useState(false);
   const [renderProfileCount, setRenderProfileCount] = useState<number | null>(
@@ -1276,7 +1278,7 @@ function AppShell() {
 
       {!setupRequired ? (
         <OnboardingNudge
-          isVisible={shouldShowFirstRunHint}
+          isVisible={showGlobalFirstRunPrompt}
           isMac={isMac}
           onStartTour={startOnboarding}
           onOpenHelp={openHelp}
@@ -1292,7 +1294,7 @@ function AppShell() {
         title="Jump anywhere fast"
         content="Use the command palette to navigate routes, submit work, select presets, and restart onboarding."
         position="bottom"
-        showBeacon={shouldShowFirstRunHint}
+        showBeacon={showGlobalFirstRunPrompt}
         showDelay={500}
       />
 
@@ -1301,7 +1303,7 @@ function AppShell() {
         title="Shortcut help is visible now"
         content="Open this anytime to see global shortcuts and a route-specific section for what matters on the current screen."
         position="bottom"
-        showBeacon={shouldShowFirstRunHint}
+        showBeacon={showGlobalFirstRunPrompt}
         showDelay={500}
       />
 

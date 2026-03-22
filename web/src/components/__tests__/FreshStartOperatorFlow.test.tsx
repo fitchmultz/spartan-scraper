@@ -677,6 +677,10 @@ describe("FreshStartOperatorFlow", () => {
   it("keeps the new job workspace ahead of first-run framing", async () => {
     renderAppAt("/jobs/new");
 
+    expect(
+      screen.queryByRole("heading", { name: /start with one working job/i }),
+    ).not.toBeInTheDocument();
+
     const wizard = screen.getByTestId("job-submission-container");
     const firstRunNotice = screen.getByText(/start with a single page scrape/i);
     const routeHelp = screen.getByLabelText(
@@ -698,6 +702,9 @@ describe("FreshStartOperatorFlow", () => {
 
     const firstRender = renderAppAt("/settings");
 
+    expect(
+      screen.queryByRole("heading", { name: /start with one working job/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /hide help/i }),
     ).toBeInTheDocument();
