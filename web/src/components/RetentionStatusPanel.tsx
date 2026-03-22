@@ -16,6 +16,7 @@ import {
   type RetentionStatusResponse,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
 import { ActionEmptyState } from "./ActionEmptyState";
 import { CapabilityActionList } from "./CapabilityActionList";
 
@@ -237,12 +238,15 @@ export function RetentionStatusPanel({
       if (response.data) {
         setStatus(response.data);
       } else if (response.error) {
-        setError(String(response.error));
+        setError(
+          getApiErrorMessage(
+            response.error,
+            "Failed to fetch retention status",
+          ),
+        );
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch retention status",
-      );
+      setError(getApiErrorMessage(err, "Failed to fetch retention status"));
     } finally {
       setLoading(false);
     }
@@ -284,10 +288,10 @@ export function RetentionStatusPanel({
             await refreshAll();
           }
         } else if (response.error) {
-          setError(String(response.error));
+          setError(getApiErrorMessage(response.error, "Cleanup failed"));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Cleanup failed");
+        setError(getApiErrorMessage(err, "Cleanup failed"));
       } finally {
         setCleanupLoading(false);
         setShowConfirm(false);

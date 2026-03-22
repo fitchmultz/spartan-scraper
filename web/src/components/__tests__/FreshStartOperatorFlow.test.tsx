@@ -647,6 +647,22 @@ describe("FreshStartOperatorFlow", () => {
         /most settings controls can wait until a workflow proves it needs them/i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: /settings sections/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /authoring tools/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /saved state and history/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /operational controls/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("render-profile-editor")).toBeInTheDocument();
+    expect(screen.getByTestId("pipeline-js-editor")).toBeInTheDocument();
+    expect(screen.getByTestId("proxy-pool-status")).toBeInTheDocument();
+    expect(screen.getByTestId("retention-status")).toBeInTheDocument();
 
     const routeHelp = screen.getByLabelText(
       /what can i do here\? for this route/i,

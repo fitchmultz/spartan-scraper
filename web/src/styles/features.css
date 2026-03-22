@@ -3493,6 +3493,44 @@
   font-size: 0.92rem;
 }
 
+.settings-route {
+  display: grid;
+  gap: 20px;
+}
+
+.settings-route__section {
+  display: grid;
+  gap: 14px;
+  scroll-margin-top: 120px;
+}
+
+.settings-route__section-header {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-route__section-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings-route__section-header h2,
+.settings-route__section-header p {
+  margin: 0;
+}
+
+.settings-route__section-header p {
+  max-width: 72ch;
+  color: var(--muted);
+}
+
+.settings-route__section-stack {
+  display: grid;
+  gap: 16px;
+}
+
 .system-status {
   border-color: var(--tone-warning-border);
   background:

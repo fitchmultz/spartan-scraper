@@ -86,6 +86,11 @@ import {
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ShortcutHint } from "./components/ShortcutHint";
 import { TutorialTooltip } from "./components/TutorialTooltip";
+import {
+  SETTINGS_SECTION_META,
+  SettingsSubnav,
+  type SettingsSectionId,
+} from "./components/settings/SettingsSubnav";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
@@ -340,6 +345,8 @@ function AppShell() {
   const [pipelineScriptCount, setPipelineScriptCount] = useState<number | null>(
     null,
   );
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsSectionId>("authoring");
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -1052,6 +1059,24 @@ function AppShell() {
     ],
   );
 
+  const scrollToSettingsSection = useCallback((section: SettingsSectionId) => {
+    setActiveSettingsSection(section);
+
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document
+      .getElementById(SETTINGS_SECTION_META[section].elementId)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  useEffect(() => {
+    if (route.kind === "settings") {
+      setActiveSettingsSection("authoring");
+    }
+  }, [route.kind]);
+
   const jobDetailSignals = useMemo<RouteSignal[]>(() => {
     if (route.kind !== "job-detail") {
       return [];
@@ -1479,11 +1504,17 @@ function AppShell() {
                 Open Templates
               </button>
             }
+            subnav={
+              <SettingsSubnav
+                activeSection={activeSettingsSection}
+                onSectionChange={scrollToSettingsSection}
+              />
+            }
           />
 
           {routeHelpPanel}
 
-          <div data-tour="settings-workspace">
+          <div data-tour="settings-workspace" className="settings-route">
             {showSettingsOverview ? (
               <SettingsOverviewPanel
                 onCreateJob={() => navigate("/jobs/new")}
@@ -1491,45 +1522,97 @@ function AppShell() {
               />
             ) : null}
 
-            <InfoSections
-              profiles={profiles}
-              schedules={schedules}
-              crawlStates={crawlStates}
-              crawlStatesPage={crawlStatesPage}
-              crawlStatesTotal={crawlStatesTotal}
-              crawlStatesPerPage={100}
-              onCrawlStatesPageChange={setCrawlStatesPage}
-              onCreateJob={() => navigate("/jobs/new")}
-              onOpenAutomation={() => navigate("/automation/batches")}
-              onOpenJobs={() => navigate("/jobs")}
-            />
+            <section
+              id={SETTINGS_SECTION_META.authoring.elementId}
+              className="settings-route__section"
+              aria-labelledby="settings-route-authoring-title"
+            >
+              <div className="settings-route__section-header">
+                <div className="settings-route__section-eyebrow">
+                  {SETTINGS_SECTION_META.authoring.label}
+                </div>
+                <h2 id="settings-route-authoring-title">
+                  {SETTINGS_SECTION_META.authoring.title}
+                </h2>
+                <p>{SETTINGS_SECTION_META.authoring.description}</p>
+              </div>
 
-            <section className="panel">
-              <RenderProfileEditor
-                aiStatus={health?.components?.ai ?? null}
-                onInventoryChange={setRenderProfileCount}
+              <div className="settings-route__section-stack">
+                <section className="panel">
+                  <RenderProfileEditor
+                    aiStatus={health?.components?.ai ?? null}
+                    onInventoryChange={setRenderProfileCount}
+                  />
+                </section>
+
+                <section className="panel">
+                  <PipelineJSEditor
+                    aiStatus={health?.components?.ai ?? null}
+                    onInventoryChange={setPipelineScriptCount}
+                  />
+                </section>
+              </div>
+            </section>
+
+            <section
+              id={SETTINGS_SECTION_META.inventory.elementId}
+              className="settings-route__section"
+              aria-labelledby="settings-route-inventory-title"
+            >
+              <div className="settings-route__section-header">
+                <div className="settings-route__section-eyebrow">
+                  {SETTINGS_SECTION_META.inventory.label}
+                </div>
+                <h2 id="settings-route-inventory-title">
+                  {SETTINGS_SECTION_META.inventory.title}
+                </h2>
+                <p>{SETTINGS_SECTION_META.inventory.description}</p>
+              </div>
+
+              <InfoSections
+                profiles={profiles}
+                schedules={schedules}
+                crawlStates={crawlStates}
+                crawlStatesPage={crawlStatesPage}
+                crawlStatesTotal={crawlStatesTotal}
+                crawlStatesPerPage={100}
+                onCrawlStatesPageChange={setCrawlStatesPage}
+                onCreateJob={() => navigate("/jobs/new")}
+                onOpenAutomation={() => navigate("/automation/batches")}
+                onOpenJobs={() => navigate("/jobs")}
               />
             </section>
 
-            <section className="panel">
-              <PipelineJSEditor
-                aiStatus={health?.components?.ai ?? null}
-                onInventoryChange={setPipelineScriptCount}
-              />
-            </section>
+            <section
+              id={SETTINGS_SECTION_META.operations.elementId}
+              className="settings-route__section"
+              aria-labelledby="settings-route-operations-title"
+            >
+              <div className="settings-route__section-header">
+                <div className="settings-route__section-eyebrow">
+                  {SETTINGS_SECTION_META.operations.label}
+                </div>
+                <h2 id="settings-route-operations-title">
+                  {SETTINGS_SECTION_META.operations.title}
+                </h2>
+                <p>{SETTINGS_SECTION_META.operations.description}</p>
+              </div>
 
-            <ProxyPoolStatusPanel
-              health={health}
-              onNavigate={navigate}
-              onRefreshHealth={refreshHealth}
-            />
-            <RetentionStatusPanel
-              health={health}
-              onNavigate={navigate}
-              onRefreshHealth={refreshHealth}
-              onCreateJob={() => navigate("/jobs/new")}
-              onOpenAutomation={() => navigate("/automation/batches")}
-            />
+              <div className="settings-route__section-stack">
+                <ProxyPoolStatusPanel
+                  health={health}
+                  onNavigate={navigate}
+                  onRefreshHealth={refreshHealth}
+                />
+                <RetentionStatusPanel
+                  health={health}
+                  onNavigate={navigate}
+                  onRefreshHealth={refreshHealth}
+                  onCreateJob={() => navigate("/jobs/new")}
+                  onOpenAutomation={() => navigate("/automation/batches")}
+                />
+              </div>
+            </section>
           </div>
         </div>
       )}

@@ -16,14 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Settings Route Information Architecture Follow-Through
-   - Re-group `/settings` so reusable authoring tools and optional operational capabilities stop competing in one long scroll.
-   - Keep render profiles and pipeline JS together as authoring tools, and keep proxy pooling and retention together as operational controls.
-   - Preserve the top-level route while reducing cross-section context switching and scrollback.
+1. Route First-Screen Framing Trim
+   - Remove repeated intro framing across `/jobs`, `/jobs/new`, `/templates`, `/automation`, and `/settings` so the first screen starts with work, not stacked explanation.
+   - Keep route help and onboarding useful, but collapse or relocate secondary copy that duplicates the shell or overview panels.
 
-2. Onboarding and Discoverability Expansion
-   - Tighten first-run guidance so `/jobs/new`, `/templates`, `/automation`, and `/settings` each point operators at one obvious next action.
-   - Remove repeated framing that still spends the first screen on explanation instead of work.
+2. Route Primary-Action Alignment
+   - Make each top-level route present one obvious next action and keep secondary actions subordinate.
+   - Align command-palette labels, route help actions, and empty-state CTAs so they reinforce the same primary workflow per route.
 
 ## Ongoing Constraints
 
