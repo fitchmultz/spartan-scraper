@@ -3461,6 +3461,7 @@
 .system-status__setup,
 .system-status__hint,
 .onboarding-nudge__copy,
+.route-help__summary,
 .route-help__header,
 .route-help__content,
 .route-help__section {
@@ -3662,6 +3663,7 @@
 }
 
 .onboarding-nudge__copy,
+.route-help__summary,
 .route-help__header,
 .route-help__content,
 .route-help__section {
@@ -3722,6 +3724,10 @@
 .route-help__header {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.route-help__summary-actions {
+  padding-top: 4px;
 }
 
 .route-help__content {

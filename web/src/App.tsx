@@ -311,7 +311,6 @@ function AppShell() {
     null,
   );
   const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
-  const previousRouteKeyRef = useRef<OnboardingRouteKey | null>(null);
 
   const {
     isCommandPaletteOpen,
@@ -365,8 +364,6 @@ function AppShell() {
     goToStep,
     finishOnboarding,
     dismissFirstRunHint,
-    markRouteVisited,
-    visitedRoutes,
   } = useOnboarding({ hasStartedWork: jobsTotal > 0 });
 
   const { selectedJobId, loadResults } = resultsState;
@@ -375,8 +372,6 @@ function AppShell() {
   const routeKey = route.kind as OnboardingRouteKey;
   const showGlobalFirstRunPrompt =
     shouldShowFirstRunHint && route.kind === "jobs";
-  const [routeHelpDefaultExpanded, setRouteHelpDefaultExpanded] =
-    useState(false);
   const [renderProfileCount, setRenderProfileCount] = useState<number | null>(
     null,
   );
@@ -457,19 +452,6 @@ function AppShell() {
 
     clearJobDetail();
   }, [clearJobDetail, loadResults, refreshJobDetail, route]);
-
-  useEffect(() => {
-    if (previousRouteKeyRef.current === routeKey) {
-      return;
-    }
-
-    const firstVisit = !visitedRoutes.includes(routeKey);
-    setRouteHelpDefaultExpanded(firstVisit);
-    if (firstVisit) {
-      markRouteVisited(routeKey);
-    }
-    previousRouteKeyRef.current = routeKey;
-  }, [markRouteVisited, routeKey, visitedRoutes]);
 
   const handleNavigate = useCallback(
     (view: "jobs" | "results" | "forms") => {
@@ -1252,7 +1234,6 @@ function AppShell() {
       routeKey={routeKey}
       shortcuts={shortcuts}
       isMac={isMac}
-      defaultExpanded={routeHelpDefaultExpanded}
       onOpenCommandPalette={openCommandPalette}
       onOpenShortcuts={openHelp}
       onRestartTour={resetOnboarding}

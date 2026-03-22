@@ -1,9 +1,9 @@
 /**
- * Purpose: Verify route-help next actions stay visible and wired for the active route.
- * Responsibilities: Assert route-specific action labels render and invoke the supplied callback.
+ * Purpose: Verify route-help summary actions stay visible while detailed help remains opt-in.
+ * Responsibilities: Assert route-specific action labels render collapsed by default and still invoke the supplied callback.
  * Scope: RouteHelpPanel interaction coverage only.
  * Usage: Run with Vitest as part of the web test suite.
- * Invariants/Assumptions: Route help content comes from shared onboarding configuration and next actions remain route-aware.
+ * Invariants/Assumptions: Route help content comes from shared onboarding configuration, next actions remain route-aware, and details only expand on demand.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -23,7 +23,7 @@ const shortcuts = {
 };
 
 describe("RouteHelpPanel", () => {
-  it("renders the route-specific next action and invokes the handler", async () => {
+  it("renders the route-specific next action while keeping details collapsed by default", async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
 
@@ -31,7 +31,6 @@ describe("RouteHelpPanel", () => {
       <RouteHelpPanel
         routeKey="templates"
         shortcuts={shortcuts}
-        defaultExpanded
         onOpenCommandPalette={vi.fn()}
         onOpenShortcuts={vi.fn()}
         onRestartTour={vi.fn()}
@@ -43,11 +42,11 @@ describe("RouteHelpPanel", () => {
       name: /create job/i,
     });
     expect(
-      screen.getByRole("heading", { name: /next action/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /open automation/i }),
+      screen.queryByRole("heading", { name: /shortcuts for this route/i }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show details/i }),
+    ).toBeInTheDocument();
 
     await user.click(createJobButton);
 

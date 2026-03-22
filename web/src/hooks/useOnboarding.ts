@@ -1,16 +1,13 @@
 /**
- * Purpose: Persist progressive onboarding state for the web app across sessions and route visits.
- * Responsibilities: Track first-run nudges, full-tour progress, route visitation, and onboarding reset semantics in localStorage-backed state.
+ * Purpose: Persist progressive onboarding state for the web app across sessions.
+ * Responsibilities: Track first-run nudges, full-tour progress, and onboarding reset semantics in localStorage-backed state.
  * Scope: Onboarding state management only; rendering lives in route help, nudge, and tour components.
  * Usage: Call from `App.tsx` once and pass the returned state/actions into the onboarding UI surfaces.
  * Invariants/Assumptions: Restarting onboarding should launch the full tour immediately, route help stays available after tour skip, and `?showHelp` forces a fresh tour without restoring the old blocking modal model.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ONBOARDING_TOTAL_STEPS,
-  type OnboardingRouteKey,
-} from "../lib/onboarding";
+import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
 
 const STORAGE_KEY = "spartan-onboarding";
 
@@ -21,7 +18,6 @@ export interface OnboardingState {
   hasDismissedFirstRunHint: boolean;
   currentStep: number;
   completedSteps: number[];
-  visitedRoutes: OnboardingRouteKey[];
   firstVisitAt: string | null;
   isFirstLoad: boolean;
 }
@@ -34,8 +30,6 @@ export interface OnboardingActions {
   goToStep: (stepIndex: number) => void;
   finishOnboarding: () => void;
   dismissFirstRunHint: () => void;
-  markRouteVisited: (route: OnboardingRouteKey) => void;
-  hasVisitedRoute: (route: OnboardingRouteKey) => boolean;
   shouldShowFirstRunHint: boolean;
   isTourActive: boolean;
   totalSteps: number;
@@ -54,7 +48,6 @@ const DEFAULT_STATE: OnboardingState = {
   hasDismissedFirstRunHint: false,
   currentStep: 0,
   completedSteps: [],
-  visitedRoutes: [],
   firstVisitAt: null,
   isFirstLoad: true,
 };
@@ -131,7 +124,6 @@ function buildInitialState(): OnboardingState {
       : (stored.hasDismissedFirstRunHint ?? false),
     currentStep: forced ? 0 : (stored.currentStep ?? 0),
     firstVisitAt: stored.firstVisitAt ?? new Date().toISOString(),
-    visitedRoutes: stored.visitedRoutes ?? [],
     isFirstLoad: forced
       ? false
       : !stored.hasCompletedOnboarding &&
@@ -250,27 +242,6 @@ export function useOnboarding(
     }));
   }, [updateState]);
 
-  const markRouteVisited = useCallback(
-    (route: OnboardingRouteKey) => {
-      updateState((previous) => {
-        if (previous.visitedRoutes.includes(route)) {
-          return previous;
-        }
-
-        return {
-          ...previous,
-          visitedRoutes: [...previous.visitedRoutes, route],
-        };
-      });
-    },
-    [updateState],
-  );
-
-  const hasVisitedRoute = useCallback(
-    (route: OnboardingRouteKey) => state.visitedRoutes.includes(route),
-    [state.visitedRoutes],
-  );
-
   useEffect(() => {
     if (!hasStartedWork || state.hasDismissedFirstRunHint) {
       return;
@@ -320,8 +291,6 @@ export function useOnboarding(
     goToStep,
     finishOnboarding,
     dismissFirstRunHint,
-    markRouteVisited,
-    hasVisitedRoute,
     shouldShowFirstRunHint,
     isTourActive,
     totalSteps: ONBOARDING_TOTAL_STEPS,

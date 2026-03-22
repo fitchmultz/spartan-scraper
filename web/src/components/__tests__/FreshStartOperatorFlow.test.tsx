@@ -9,7 +9,15 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import type { JobEntry } from "../../types";
 
 const hoisted = vi.hoisted(() => ({
@@ -36,6 +44,8 @@ const hoisted = vi.hoisted(() => ({
     pipelineScripts: 0,
   },
 }));
+
+const storage = new Map<string, string>();
 
 vi.mock("../../hooks/useAppData", () => ({
   useAppData: hoisted.useAppData,
@@ -508,11 +518,32 @@ function renderAppAt(path: string) {
 }
 
 describe("FreshStartOperatorFlow", () => {
+  beforeAll(() => {
+    const localStorageMock = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+      clear: () => {
+        storage.clear();
+      },
+    };
+
+    vi.stubGlobal("localStorage", localStorageMock);
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      configurable: true,
+    });
+  });
+
   let appDataState: ReturnType<typeof createAppDataState>;
   let keyboardState: ReturnType<typeof createKeyboardState>;
 
   beforeEach(() => {
-    localStorage.clear();
+    storage.clear();
     vi.clearAllMocks();
 
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
@@ -706,7 +737,7 @@ describe("FreshStartOperatorFlow", () => {
       screen.queryByRole("heading", { name: /start with one working job/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /hide help/i }),
+      screen.getByRole("button", { name: /show details/i }),
     ).toBeInTheDocument();
     const settingsOverview = await screen.findByText(
       /most settings controls can wait until a workflow proves it needs them/i,

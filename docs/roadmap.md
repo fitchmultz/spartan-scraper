@@ -16,13 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Route Help Disclosure Tuning
-   - Keep route help easy to reopen, but default it to a terse summary instead of an expanded lower-page explainer.
-   - Reserve shortcuts and help tools for explicit expansion so the panel supports the workflow-first shell instead of competing with it.
+1. New Job Layout Containment
+   - Keep `/jobs/new` readable at normal desktop widths when the AI assistant rail is open, resized, or hidden.
+   - Constrain the assistant rail and surrounding layout so the workflow switcher, core form fields, and wizard controls stay above the fold.
 
 2. Settings Section Deep Links
-   - Give `/settings` sections stable URL state so authoring, saved state, and operations can be opened directly.
-   - Keep subnav highlight, scroll position, and restored route state aligned with the URL without reintroducing a stacked mega-page.
+   - Bind `/settings` section selection to stable URL state so authoring, saved state, and operations can be opened directly.
+   - Keep subnav highlight, scroll restoration, and direct linking aligned with the URL without reintroducing a stacked mega-page.
 
 ## Ongoing Constraints
 

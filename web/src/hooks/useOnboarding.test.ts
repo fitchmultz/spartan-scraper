@@ -1,6 +1,6 @@
 /**
- * Purpose: Verify the progressive onboarding state model persists first-run hints, route visits, and tour restart semantics.
- * Responsibilities: Cover first-run hint dismissal, route visitation persistence, immediate tour restart, and full-tour completion bookkeeping.
+ * Purpose: Verify the progressive onboarding state model persists first-run hints and tour restart semantics.
+ * Responsibilities: Cover first-run hint dismissal, immediate tour restart, and full-tour completion bookkeeping.
  * Scope: `useOnboarding` state behavior only.
  * Usage: Run with Vitest as part of the web test suite.
  * Invariants/Assumptions: Tests run in jsdom with localStorage stubbed and the onboarding step count sourced from shared onboarding config.
@@ -49,21 +49,6 @@ describe("useOnboarding", () => {
     });
 
     expect(result.current.shouldShowFirstRunHint).toBe(false);
-  });
-
-  it("persists visited routes for contextual onboarding", () => {
-    const { result, unmount } = renderHook(() => useOnboarding());
-
-    act(() => {
-      result.current.markRouteVisited("templates");
-    });
-
-    expect(result.current.hasVisitedRoute("templates")).toBe(true);
-
-    unmount();
-
-    const { result: refreshed } = renderHook(() => useOnboarding());
-    expect(refreshed.current.hasVisitedRoute("templates")).toBe(true);
   });
 
   it("retires the first-run hint after work has started", () => {
