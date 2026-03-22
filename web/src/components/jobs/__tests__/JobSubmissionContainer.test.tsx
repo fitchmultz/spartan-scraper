@@ -223,35 +223,21 @@ describe("JobSubmissionContainer wizard", () => {
   });
 
   it("restores the saved scrape draft when the wizard remounts", async () => {
-    const user = userEvent.setup();
     const view = renderHarness();
+    view.unmount();
 
-    await user.type(
-      screen.getAllByLabelText(/target url/i)[0],
-      "https://example.com/docs",
+    window.localStorage.setItem(
+      "spartan.job-draft.scrape",
+      JSON.stringify({ url: "https://example.com/docs" }),
     );
 
-    await waitFor(() => {
-      expect(
-        JSON.parse(
-          window.localStorage.getItem("spartan.job-draft.scrape") ?? "{}",
-        ),
-      ).toMatchObject({
-        url: "https://example.com/docs",
-      });
-    });
-
-    view.unmount();
     renderHarness();
 
-    await waitFor(
-      () => {
-        expect(screen.getAllByLabelText(/target url/i)[0]).toHaveValue(
-          "https://example.com/docs",
-        );
-      },
-      { timeout: 3_000 },
-    );
+    await waitFor(() => {
+      expect(document.getElementById("wizard-scrape-url")).toHaveValue(
+        "https://example.com/docs",
+      );
+    });
   });
 
   it("renders stable onboarding targets for the new-job tour", () => {

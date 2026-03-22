@@ -1030,7 +1030,6 @@ function AppShell() {
       case "jobs":
         return {
           title: "Jobs",
-          description: "Monitor live work and open results fast.",
         };
       case "job-detail":
         return {
@@ -1043,26 +1042,18 @@ function AppShell() {
       case "new-job":
         return {
           title: "Create Job",
-          description:
-            "Step through scrape, crawl, or research setup without front-loading optional capabilities or losing access to expert controls.",
         };
       case "templates":
         return {
           title: "Templates",
-          description:
-            "Manage extraction templates, with optional AI-assisted generation when that capability is enabled.",
         };
       case "automation":
         return {
           title: "Automation",
-          description:
-            "Switch sections from the sub-navigation and stay in the workspace.",
         };
       case "settings":
         return {
           title: "Settings",
-          description:
-            "Configure saved auth, runtime overrides, automation, and maintenance only when a workflow actually needs them.",
         };
     }
   }, [route.jobId, route.kind]);
@@ -1404,8 +1395,6 @@ function AppShell() {
             }
           />
 
-          {routeHelpPanel}
-
           <section id="jobs" data-tour="jobs-dashboard">
             <JobMonitoringDashboard
               jobs={jobs}
@@ -1429,6 +1418,8 @@ function AppShell() {
               managerStatus={managerStatus}
             />
           </section>
+
+          {routeHelpPanel}
         </div>
       )}
 
@@ -1491,28 +1482,6 @@ function AppShell() {
             description={routeMeta.description}
           />
 
-          {routeHelpPanel}
-
-          {jobsTotal === 0 && jobStatusFilter === "" ? (
-            <ActionEmptyState
-              eyebrow="First run"
-              title="Start with a single page scrape"
-              description="Paste a URL into the form below, keep the defaults, and submit one successful run before moving on to templates or automation."
-              actions={[
-                {
-                  label: "Open templates",
-                  onClick: () => navigate("/templates"),
-                  tone: "secondary",
-                },
-                {
-                  label: "Restart tour",
-                  onClick: resetOnboarding,
-                  tone: "secondary",
-                },
-              ]}
-            />
-          ) : null}
-
           <div className="route-grid route-grid--new-job">
             <div className="route-primary route-stack" data-tour="job-wizard">
               <JobSubmissionContainer
@@ -1542,6 +1511,28 @@ function AppShell() {
               />
             </aside>
           </div>
+
+          {jobsTotal === 0 && jobStatusFilter === "" ? (
+            <ActionEmptyState
+              eyebrow="First run"
+              title="Start with a single page scrape"
+              description="Paste a URL into the form below, keep the defaults, and submit one successful run before moving on to templates or automation."
+              actions={[
+                {
+                  label: "Open templates",
+                  onClick: () => navigate("/templates"),
+                  tone: "secondary",
+                },
+                {
+                  label: "Restart tour",
+                  onClick: resetOnboarding,
+                  tone: "secondary",
+                },
+              ]}
+            />
+          ) : null}
+
+          {routeHelpPanel}
         </div>
       )}
 
@@ -1551,8 +1542,6 @@ function AppShell() {
             title={routeMeta.title}
             description={routeMeta.description}
           />
-
-          {routeHelpPanel}
 
           <div data-tour="templates-workspace">
             <TemplateManager
@@ -1566,6 +1555,8 @@ function AppShell() {
               }}
             />
           </div>
+
+          {routeHelpPanel}
         </div>
       )}
 
@@ -1585,13 +1576,14 @@ function AppShell() {
               </div>
             }
           />
-          {routeHelpPanel}
           <section data-tour="automation-hub">
             <AutomationLayout
               activeSection={activeAutomationSection}
               renderSection={renderAutomationSection}
             />
           </section>
+
+          {routeHelpPanel}
         </div>
       )}
 
@@ -1617,16 +1609,7 @@ function AppShell() {
             }
           />
 
-          {routeHelpPanel}
-
           <div data-tour="settings-workspace" className="settings-route">
-            {showSettingsOverview ? (
-              <SettingsOverviewPanel
-                onCreateJob={() => navigate("/jobs/new")}
-                onOpenJobs={() => navigate("/jobs")}
-              />
-            ) : null}
-
             <section
               id={SETTINGS_SECTION_META.authoring.elementId}
               className="settings-route__section"
@@ -1658,6 +1641,13 @@ function AppShell() {
                 </section>
               </div>
             </section>
+
+            {showSettingsOverview ? (
+              <SettingsOverviewPanel
+                onCreateJob={() => navigate("/jobs/new")}
+                onOpenJobs={() => navigate("/jobs")}
+              />
+            ) : null}
 
             <section
               id={SETTINGS_SECTION_META.inventory.elementId}
@@ -1719,6 +1709,8 @@ function AppShell() {
               </div>
             </section>
           </div>
+
+          {routeHelpPanel}
         </div>
       )}
 

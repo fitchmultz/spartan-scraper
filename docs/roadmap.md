@@ -16,13 +16,17 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Route First-Screen Framing Trim
-   - Remove repeated intro framing across `/jobs`, `/jobs/new`, `/templates`, `/automation`, and `/settings` so the first screen starts with work, not stacked explanation.
-   - Collapse or relocate secondary copy that duplicates the shell, route help, or overview panels.
+1. Route Primary-Action Alignment
+   - Pick one primary CTA per top-level route and demote cross-route detours.
+   - Align route-header actions, route-help actions, command-palette labels, and empty-state CTAs to the same primary workflow per route.
 
-2. Route Primary-Action Alignment
-   - Make each top-level route present one obvious next action and keep secondary actions subordinate.
-   - Align command-palette labels, route help actions, and empty-state CTAs around the same primary workflow per route.
+2. Results Route Framing Trim
+   - Move `/jobs/:id` secondary explanation behind the saved output so the route opens on results first.
+   - Keep comparison, export, and branch-off guidance available without repeating the route header.
+
+3. Settings Section Deep Links
+   - Give `/settings` sections stable URL state so authoring, saved state, and operations can be opened directly.
+   - Keep subnav highlight, scroll position, and restored route state aligned without reintroducing a stacked mega-page.
 
 ## Ongoing Constraints
 

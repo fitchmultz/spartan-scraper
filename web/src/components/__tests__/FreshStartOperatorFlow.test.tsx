@@ -634,6 +634,25 @@ describe("FreshStartOperatorFlow", () => {
     expect(screen.getByText("Template seed job-template")).toBeInTheDocument();
   });
 
+  it("keeps the new job workspace ahead of first-run framing", async () => {
+    renderAppAt("/jobs/new");
+
+    const wizard = screen.getByTestId("job-submission-container");
+    const firstRunNotice = screen.getByText(/start with a single page scrape/i);
+    const routeHelp = screen.getByLabelText(
+      /what can i do here\? for this route/i,
+    );
+
+    expect(
+      wizard.compareDocumentPosition(firstRunNotice) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      firstRunNotice.compareDocumentPosition(routeHelp) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows first-visit Settings guidance, then retires the overview after the first job", async () => {
     const user = userEvent.setup();
 
@@ -642,17 +661,17 @@ describe("FreshStartOperatorFlow", () => {
     expect(
       screen.getByRole("button", { name: /hide help/i }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        /most settings controls can wait until a workflow proves it needs them/i,
-      ),
-    ).toBeInTheDocument();
+    const settingsOverview = await screen.findByText(
+      /most settings controls can wait until a workflow proves it needs them/i,
+    );
+    expect(settingsOverview).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: /settings sections/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /authoring tools/i }),
-    ).toBeInTheDocument();
+    const authoringHeading = screen.getByRole("heading", {
+      name: /authoring tools/i,
+    });
+    expect(authoringHeading).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /saved state and history/i }),
     ).toBeInTheDocument();
@@ -667,6 +686,15 @@ describe("FreshStartOperatorFlow", () => {
     const routeHelp = screen.getByLabelText(
       /what can i do here\? for this route/i,
     );
+    expect(
+      authoringHeading.compareDocumentPosition(settingsOverview) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      settingsOverview.compareDocumentPosition(routeHelp) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
     await user.click(
       within(routeHelp).getByRole("button", { name: /^create job$/i }),
     );
