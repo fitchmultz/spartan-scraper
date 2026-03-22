@@ -18,11 +18,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 1. Route First-Screen Framing Trim
    - Remove repeated intro framing across `/jobs`, `/jobs/new`, `/templates`, `/automation`, and `/settings` so the first screen starts with work, not stacked explanation.
-   - Keep route help and onboarding useful, but collapse or relocate secondary copy that duplicates the shell or overview panels.
+   - Collapse or relocate secondary copy that duplicates the shell, route help, or overview panels.
 
 2. Route Primary-Action Alignment
    - Make each top-level route present one obvious next action and keep secondary actions subordinate.
-   - Align command-palette labels, route help actions, and empty-state CTAs so they reinforce the same primary workflow per route.
+   - Align command-palette labels, route help actions, and empty-state CTAs around the same primary workflow per route.
 
 ## Ongoing Constraints
 

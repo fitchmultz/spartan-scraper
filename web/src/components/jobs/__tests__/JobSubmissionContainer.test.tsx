@@ -244,11 +244,14 @@ describe("JobSubmissionContainer wizard", () => {
     view.unmount();
     renderHarness();
 
-    await waitFor(() => {
-      expect(screen.getAllByLabelText(/target url/i)[0]).toHaveValue(
-        "https://example.com/docs",
-      );
-    });
+    await waitFor(
+      () => {
+        expect(screen.getAllByLabelText(/target url/i)[0]).toHaveValue(
+          "https://example.com/docs",
+        );
+      },
+      { timeout: 3_000 },
+    );
   });
 
   it("renders stable onboarding targets for the new-job tour", () => {

@@ -32,7 +32,7 @@ export const SETTINGS_SECTION_META = {
 
 export type SettingsSectionId = keyof typeof SETTINGS_SECTION_META;
 
-const SETTINGS_SECTION_ORDER: SettingsSectionId[] = [
+export const SETTINGS_SECTION_ORDER: SettingsSectionId[] = [
   "authoring",
   "inventory",
   "operations",

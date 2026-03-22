@@ -88,6 +88,7 @@ import { ShortcutHint } from "./components/ShortcutHint";
 import { TutorialTooltip } from "./components/TutorialTooltip";
 import {
   SETTINGS_SECTION_META,
+  SETTINGS_SECTION_ORDER,
   SettingsSubnav,
   type SettingsSectionId,
 } from "./components/settings/SettingsSubnav";
@@ -188,6 +189,41 @@ const NAV_ITEMS = [
       "Saved auth, reusable runtime tools, and optional maintenance controls.",
   },
 ] as const satisfies readonly NavItem[];
+
+const SETTINGS_SECTION_VIEWPORT_ANCHOR_PX = 180;
+
+function getSettingsSectionInView(
+  sections: Array<{
+    id: SettingsSectionId;
+    element: HTMLElement;
+  }>,
+): SettingsSectionId {
+  const sectionRects = sections.map((section) => ({
+    ...section,
+    rect: section.element.getBoundingClientRect(),
+  }));
+
+  const hasMeasuredLayout = sectionRects.some(
+    ({ rect }) => rect.top !== 0 || rect.bottom !== 0 || rect.height !== 0,
+  );
+
+  if (!hasMeasuredLayout) {
+    return SETTINGS_SECTION_ORDER[0];
+  }
+
+  let activeSection = SETTINGS_SECTION_ORDER[0];
+
+  for (const section of sectionRects) {
+    if (section.rect.top <= SETTINGS_SECTION_VIEWPORT_ANCHOR_PX) {
+      activeSection = section.id;
+      continue;
+    }
+
+    break;
+  }
+
+  return activeSection;
+}
 
 export function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") {
@@ -1071,11 +1107,80 @@ function AppShell() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  useEffect(() => {
-    if (route.kind === "settings") {
-      setActiveSettingsSection("authoring");
+  const syncActiveSettingsSection = useCallback(() => {
+    if (typeof document === "undefined") {
+      return;
     }
-  }, [route.kind]);
+
+    const sections = SETTINGS_SECTION_ORDER.map((section) => ({
+      id: section,
+      element: document.getElementById(
+        SETTINGS_SECTION_META[section].elementId,
+      ) as HTMLElement | null,
+    })).filter(
+      (section): section is { id: SettingsSectionId; element: HTMLElement } =>
+        section.element !== null,
+    );
+
+    if (sections.length === 0) {
+      return;
+    }
+
+    const nextSection = getSettingsSectionInView(sections);
+    setActiveSettingsSection((currentSection) =>
+      currentSection === nextSection ? currentSection : nextSection,
+    );
+  }, []);
+
+  useEffect(() => {
+    if (route.kind !== "settings" || typeof window === "undefined") {
+      return;
+    }
+
+    let animationFrameId = 0;
+    const syncOnNextFrame = () => {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        syncActiveSettingsSection();
+      });
+    };
+
+    setActiveSettingsSection("authoring");
+    syncOnNextFrame();
+    window.addEventListener("scroll", syncOnNextFrame, { passive: true });
+    window.addEventListener("resize", syncOnNextFrame);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("scroll", syncOnNextFrame);
+      window.removeEventListener("resize", syncOnNextFrame);
+    };
+  }, [route.kind, syncActiveSettingsSection]);
+
+  useEffect(() => {
+    if (route.kind !== "settings" || typeof window === "undefined") {
+      return;
+    }
+
+    let animationFrameId = 0;
+    let remainingSyncPasses = showSettingsOverview ? 2 : 1;
+
+    const syncOnNextFrame = () => {
+      animationFrameId = requestAnimationFrame(() => {
+        syncActiveSettingsSection();
+        remainingSyncPasses -= 1;
+        if (remainingSyncPasses > 0) {
+          syncOnNextFrame();
+        }
+      });
+    };
+
+    syncOnNextFrame();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [route.kind, showSettingsOverview, syncActiveSettingsSection]);
 
   const jobDetailSignals = useMemo<RouteSignal[]>(() => {
     if (route.kind !== "job-detail") {

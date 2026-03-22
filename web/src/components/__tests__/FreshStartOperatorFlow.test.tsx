@@ -695,6 +695,64 @@ describe("FreshStartOperatorFlow", () => {
     });
   });
 
+  it("syncs the Settings sub-navigation highlight with the section in view", async () => {
+    renderAppAt("/settings");
+
+    const authoringButton = screen.getByRole("button", {
+      name: /authoring tools/i,
+    });
+    const inventoryButton = screen.getByRole("button", {
+      name: /saved state/i,
+    });
+    const operationsButton = screen.getByRole("button", {
+      name: /operations/i,
+    });
+
+    const mockSectionRect = (id: string, top: number, height = 320) => {
+      const section = document.getElementById(id);
+      if (!section) {
+        throw new Error(`missing section: ${id}`);
+      }
+
+      Object.defineProperty(section, "getBoundingClientRect", {
+        configurable: true,
+        value: () => ({
+          x: 0,
+          y: top,
+          width: 100,
+          height,
+          top,
+          right: 100,
+          bottom: top + height,
+          left: 0,
+          toJSON: () => ({}),
+        }),
+      });
+    };
+
+    expect(authoringButton).toHaveAttribute("aria-current", "page");
+    expect(inventoryButton).not.toHaveAttribute("aria-current");
+    expect(operationsButton).not.toHaveAttribute("aria-current");
+
+    mockSectionRect("settings-authoring-tools", -600);
+    mockSectionRect("settings-saved-state", 120);
+    mockSectionRect("settings-operational-controls", 760);
+    window.dispatchEvent(new Event("scroll"));
+
+    await waitFor(() => {
+      expect(inventoryButton).toHaveAttribute("aria-current", "page");
+    });
+
+    mockSectionRect("settings-authoring-tools", -1200);
+    mockSectionRect("settings-saved-state", -420);
+    mockSectionRect("settings-operational-controls", 120);
+    window.dispatchEvent(new Event("scroll"));
+
+    await waitFor(() => {
+      expect(operationsButton).toHaveAttribute("aria-current", "page");
+    });
+  });
+
   it("navigates to every major route from the command palette", async () => {
     const user = userEvent.setup();
 
