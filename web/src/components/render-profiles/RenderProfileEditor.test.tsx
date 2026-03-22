@@ -228,6 +228,106 @@ describe("RenderProfileEditor", () => {
     expect(screen.getByLabelText(/prefer headless/i)).not.toBeChecked();
   });
 
+  it("warns before replacing a hidden local Settings draft with an AI handoff draft", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: { profiles: [] },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+    vi.mocked(api.aiRenderProfileGenerate).mockResolvedValue({
+      data: {
+        profile: {
+          name: "generated-profile",
+          hostPatterns: ["example.com"],
+          wait: { mode: "selector", selector: "main" },
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Generate a stable render profile",
+        },
+        route_id: "route-1",
+      },
+      request: new Request(
+        "http://localhost:8741/v1/ai/render-profile-generate",
+      ),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create profile/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "draft-profile" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /generate with ai/i }));
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate profile/i }));
+
+    const history = await screen.findByRole("region", {
+      name: /attempt history/i,
+    });
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    let confirmDialog = await screen.findByRole("alertdialog");
+    expect(confirmDialog).toHaveTextContent(
+      /replace the current settings draft/i,
+    );
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /keep draft/i }),
+    );
+
+    expect(
+      screen.queryByRole("heading", {
+        name: /create profile from ai session/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /create profile from ai session/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /back to ai session/i }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /resume ai handoff draft/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /resume settings draft/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the create form open and shows the API error when create fails", async () => {
     vi.mocked(api.postV1RenderProfiles).mockResolvedValue({
       data: undefined,

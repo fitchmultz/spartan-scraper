@@ -244,9 +244,11 @@ describe("JobSubmissionContainer wizard", () => {
     view.unmount();
     renderHarness();
 
-    expect(
-      (await screen.findAllByDisplayValue("https://example.com/docs"))[0],
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByLabelText(/target url/i)[0]).toHaveValue(
+        "https://example.com/docs",
+      );
+    });
   });
 
   it("renders stable onboarding targets for the new-job tour", () => {

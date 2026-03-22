@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Authoring Workspace State Consistency Sweep
-   - Apply the same saved-vs-local workspace semantics to the next inline authoring surface that still makes operators reason about both a saved record and a tab-local draft at once.
-   - Reuse the existing session-backed draft pattern instead of growing another per-surface variant.
+1. Settings Authoring Failure-Path Dogfood
+   - Validate render-profile and pipeline-JS close, resume, discard, replace, and AI-handoff flows in a real browser now that both editors use one tab-local draft session model.
+   - Confirm the Settings route no longer makes operators juggle multiple hidden drafts at once within a single authoring surface.
 
 ## Ongoing Constraints
 

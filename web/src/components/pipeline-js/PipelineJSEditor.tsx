@@ -39,6 +39,7 @@ import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraft
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
+type ScriptDraftSessionSource = "native" | AISessionSource;
 
 const PIPELINE_JS_GENERATOR_SESSION_KEY =
   "spartan.pipeline-js.ai-generator-session";
@@ -46,10 +47,8 @@ const PIPELINE_JS_DEBUGGER_SESSION_KEY =
   "spartan.pipeline-js.ai-debugger-session";
 const PIPELINE_JS_DEBUGGER_TARGET_KEY =
   "spartan.pipeline-js.ai-debugger-target";
-const PIPELINE_JS_MANUAL_EDIT_SESSION_KEY =
-  "spartan.pipeline-js.ai-manual-edit-session";
-const PIPELINE_JS_NATIVE_EDIT_SESSION_KEY =
-  "spartan.pipeline-js.native-edit-session";
+const PIPELINE_JS_WORKSPACE_DRAFT_SESSION_KEY =
+  "spartan.pipeline-js.workspace-draft-session";
 
 interface ScriptFormDraft {
   formData: PipelineJsInput;
@@ -57,17 +56,9 @@ interface ScriptFormDraft {
   selectorInput: string;
 }
 
-interface ScriptManualEditSession {
-  source: AISessionSource;
-  attemptId: string;
-  mode: "create" | "edit";
-  originalName: string | null;
-  initialValue: PipelineJsInput;
-  draft: ScriptFormDraft;
-  visible: boolean;
-}
-
-interface ScriptNativeEditSession {
+interface ScriptWorkspaceDraftSession {
+  source: ScriptDraftSessionSource;
+  attemptId: string | null;
   mode: "create" | "edit";
   originalName: string | null;
   initialValue: PipelineJsInput;
@@ -138,14 +129,8 @@ function isScriptDraftDirty(
   return !deepEqual(buildPipelineJsInputFromDraft(draft), initialValue);
 }
 
-function isScriptManualEditSessionDirty(
-  session: ScriptManualEditSession,
-): boolean {
-  return isScriptDraftDirty(session.draft, session.initialValue);
-}
-
-function isScriptNativeEditSessionDirty(
-  session: ScriptNativeEditSession,
+function isScriptWorkspaceDraftSessionDirty(
+  session: ScriptWorkspaceDraftSession,
 ): boolean {
   return isScriptDraftDirty(session.draft, session.initialValue);
 }
@@ -187,11 +172,14 @@ export function PipelineJSEditor({
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nativeEditSession, setNativeEditSession, clearNativeEditSession] =
-    useSessionStorageState<ScriptNativeEditSession | null>(
-      PIPELINE_JS_NATIVE_EDIT_SESSION_KEY,
-      null,
-    );
+  const [
+    workspaceDraftSession,
+    setWorkspaceDraftSession,
+    clearWorkspaceDraftSession,
+  ] = useSessionStorageState<ScriptWorkspaceDraftSession | null>(
+    PIPELINE_JS_WORKSPACE_DRAFT_SESSION_KEY,
+    null,
+  );
   const [debuggingScript, setDebuggingScript, clearDebuggingScript] =
     useSessionStorageState<JsTargetScript | null>(
       PIPELINE_JS_DEBUGGER_TARGET_KEY,
@@ -200,11 +188,6 @@ export function PipelineJSEditor({
   const [isAIGeneratorOpen, setIsAIGeneratorOpen] = useState(false);
   const [isAIDebuggerOpen, setIsAIDebuggerOpen] = useState(false);
   const [debuggerResetSignal, setDebuggerResetSignal] = useState(0);
-  const [manualEditSession, setManualEditSession, clearManualEditSession] =
-    useSessionStorageState<ScriptManualEditSession | null>(
-      PIPELINE_JS_MANUAL_EDIT_SESSION_KEY,
-      null,
-    );
   const [showJson, setShowJson] = useState(false);
   const generatorHistory = useAIAttemptHistory<JsTargetScript>({
     storageKey: `${PIPELINE_JS_GENERATOR_SESSION_KEY}.history`,
@@ -219,17 +202,13 @@ export function PipelineJSEditor({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const hiddenManualEditSession =
-    manualEditSession && !manualEditSession.visible ? manualEditSession : null;
-  const hiddenNativeEditSession =
-    nativeEditSession && !nativeEditSession.visible ? nativeEditSession : null;
-  const hasDirtySettingsDraft =
-    (manualEditSession
-      ? isScriptManualEditSessionDirty(manualEditSession)
-      : false) ||
-    (nativeEditSession
-      ? isScriptNativeEditSessionDirty(nativeEditSession)
-      : false);
+  const hiddenWorkspaceDraftSession =
+    workspaceDraftSession && !workspaceDraftSession.visible
+      ? workspaceDraftSession
+      : null;
+  const hasDirtySettingsDraft = workspaceDraftSession
+    ? isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
+    : false;
 
   useBeforeUnloadPrompt(hasDirtySettingsDraft);
 
@@ -261,29 +240,20 @@ export function PipelineJSEditor({
     loadScripts();
   }, [loadScripts]);
 
-  const closeNativeForms = (options?: {
-    preserveManualEditSession?: boolean;
-    preserveNativeEditSession?: boolean;
-  }) => {
-    if (!options?.preserveNativeEditSession) {
-      setNativeEditSession((current) =>
-        current ? { ...current, visible: false } : current,
-      );
-    }
+  const hideWorkspaceDraft = useCallback(() => {
+    setWorkspaceDraftSession((current) =>
+      current ? { ...current, visible: false } : current,
+    );
+  }, [setWorkspaceDraftSession]);
 
-    if (options?.preserveManualEditSession) {
+  const handleSaveNativeEditSession = async (
+    session: ScriptWorkspaceDraftSession,
+    input: PipelineJsInput,
+  ) => {
+    if (session.source !== "native") {
       return;
     }
 
-    setManualEditSession((current) =>
-      current ? { ...current, visible: false } : current,
-    );
-  };
-
-  const handleSaveNativeEditSession = async (
-    session: ScriptNativeEditSession,
-    input: PipelineJsInput,
-  ) => {
     const isCreate = session.mode === "create";
     const actionLabel = isCreate
       ? input.name
@@ -319,7 +289,7 @@ export function PipelineJSEditor({
         );
       }
       await loadScripts();
-      clearNativeEditSession();
+      clearWorkspaceDraftSession();
       toast.update(toastId, {
         tone: "success",
         title: isCreate ? "Script created" : "Script updated",
@@ -387,19 +357,28 @@ export function PipelineJSEditor({
     }
   };
 
-  const discardManualEditSession = useCallback(
+  const discardWorkspaceDraft = useCallback(
     async (options?: { reason?: string; title?: string }) => {
-      if (!manualEditSession) {
+      if (!workspaceDraftSession) {
         return true;
       }
 
+      const isAIHandoffDraft = workspaceDraftSession.source !== "native";
       const confirmed = await toast.confirm({
-        title: options?.title ?? "Discard the AI handoff draft?",
+        title:
+          options?.title ??
+          (isAIHandoffDraft
+            ? "Discard the AI handoff draft?"
+            : "Discard the local Settings draft?"),
         description:
           options?.reason ??
-          (isScriptManualEditSessionDirty(manualEditSession)
-            ? "This removes the local Settings draft for the current AI attempt. Your unsaved edits will be lost."
-            : "This removes the current AI handoff draft from Settings. You can still reopen the AI modal itself if you keep that session."),
+          (isAIHandoffDraft
+            ? isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
+              ? "This removes the local Settings draft for the current AI attempt. Your unsaved edits will be lost."
+              : "This removes the current AI handoff draft from Settings. You can still reopen the AI modal itself if you keep that session."
+            : isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
+              ? "This removes the in-progress local Settings draft. Your unsaved edits will be lost."
+              : "This removes the current local Settings draft from this tab."),
         confirmLabel: "Discard draft",
         cancelLabel: "Keep draft",
         tone: "warning",
@@ -408,37 +387,10 @@ export function PipelineJSEditor({
         return false;
       }
 
-      clearManualEditSession();
+      clearWorkspaceDraftSession();
       return true;
     },
-    [clearManualEditSession, manualEditSession, toast],
-  );
-
-  const discardNativeEditSession = useCallback(
-    async (options?: { reason?: string; title?: string }) => {
-      if (!nativeEditSession) {
-        return true;
-      }
-
-      const confirmed = await toast.confirm({
-        title: options?.title ?? "Discard the local Settings draft?",
-        description:
-          options?.reason ??
-          (isScriptNativeEditSessionDirty(nativeEditSession)
-            ? "This removes the in-progress local Settings draft. Your unsaved edits will be lost."
-            : "This removes the current local Settings draft from this tab."),
-        confirmLabel: "Discard draft",
-        cancelLabel: "Keep draft",
-        tone: "warning",
-      });
-      if (!confirmed) {
-        return false;
-      }
-
-      clearNativeEditSession();
-      return true;
-    },
-    [clearNativeEditSession, nativeEditSession, toast],
+    [clearWorkspaceDraftSession, toast, workspaceDraftSession],
   );
 
   const openNativeEditSession = async (options: {
@@ -453,22 +405,24 @@ export function PipelineJSEditor({
         : createEmptyPipelineJsInput();
 
     if (
-      nativeEditSession &&
-      nativeEditSession.mode === options.mode &&
-      nativeEditSession.originalName === nextOriginalName
+      workspaceDraftSession?.source === "native" &&
+      workspaceDraftSession.mode === options.mode &&
+      workspaceDraftSession.originalName === nextOriginalName
     ) {
-      closeNativeForms({ preserveNativeEditSession: true });
-      setNativeEditSession((current) =>
+      setWorkspaceDraftSession((current) =>
         current ? { ...current, visible: true } : current,
       );
       return;
     }
 
     if (
-      nativeEditSession &&
-      isScriptNativeEditSessionDirty(nativeEditSession) &&
-      !(await discardNativeEditSession({
-        title: "Replace the current Settings draft?",
+      workspaceDraftSession &&
+      isScriptWorkspaceDraftSessionDirty(workspaceDraftSession) &&
+      !(await discardWorkspaceDraft({
+        title:
+          workspaceDraftSession.source === "native"
+            ? "Replace the current Settings draft?"
+            : "Replace the current AI handoff draft?",
         reason:
           "This opens another local Settings draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
       }))
@@ -476,9 +430,10 @@ export function PipelineJSEditor({
       return;
     }
 
-    closeNativeForms({ preserveNativeEditSession: true });
     setError(null);
-    setNativeEditSession({
+    setWorkspaceDraftSession({
+      source: "native",
+      attemptId: null,
       mode: options.mode,
       originalName: nextOriginalName,
       initialValue: nextInitialValue,
@@ -496,19 +451,24 @@ export function PipelineJSEditor({
     }
 
     if (
-      manualEditSession &&
-      (manualEditSession.source !== source ||
-        manualEditSession.attemptId !== attempt.id) &&
-      !(await discardManualEditSession({
-        title: "Replace the current AI handoff draft?",
+      workspaceDraftSession &&
+      (workspaceDraftSession.source !== source ||
+        workspaceDraftSession.attemptId !== attempt.id) &&
+      isScriptWorkspaceDraftSessionDirty(workspaceDraftSession) &&
+      !(await discardWorkspaceDraft({
+        title:
+          workspaceDraftSession.source === "native"
+            ? "Replace the current Settings draft?"
+            : "Replace the current AI handoff draft?",
         reason:
-          "This attempt will replace the current Settings draft for another AI handoff. Discard the older draft only if you no longer need it.",
+          workspaceDraftSession.source === "native"
+            ? "This opens an AI handoff draft and discards the local Settings edits you have not saved yet. Keep the current draft if you still need it."
+            : "This attempt will replace the current Settings draft for another AI handoff. Discard the older draft only if you no longer need it.",
       }))
     ) {
       return;
     }
 
-    closeNativeForms({ preserveManualEditSession: true });
     setError(null);
 
     if (source === "generator") {
@@ -526,7 +486,7 @@ export function PipelineJSEditor({
         : null;
     const nextInitialValue = toPipelineJsInput(attempt.artifact);
 
-    setManualEditSession((current) => {
+    setWorkspaceDraftSession((current) => {
       if (
         current &&
         current.source === source &&
@@ -555,7 +515,7 @@ export function PipelineJSEditor({
     source: AISessionSource,
     options?: { preserveDraft?: boolean },
   ) => {
-    setManualEditSession((current) => {
+    setWorkspaceDraftSession((current) => {
       if (!current || current.source !== source) {
         return current;
       }
@@ -573,9 +533,9 @@ export function PipelineJSEditor({
     setIsAIDebuggerOpen(true);
   };
 
-  const handleManualDraftChange = useCallback(
+  const handleDraftChange = useCallback(
     (draft: ScriptFormDraft) => {
-      setManualEditSession((current) => {
+      setWorkspaceDraftSession((current) => {
         if (!current || deepEqual(current.draft, draft)) {
           return current;
         }
@@ -583,26 +543,16 @@ export function PipelineJSEditor({
         return { ...current, draft };
       });
     },
-    [setManualEditSession],
-  );
-
-  const handleNativeDraftChange = useCallback(
-    (draft: ScriptFormDraft) => {
-      setNativeEditSession((current) => {
-        if (!current || deepEqual(current.draft, draft)) {
-          return current;
-        }
-
-        return { ...current, draft };
-      });
-    },
-    [setNativeEditSession],
+    [setWorkspaceDraftSession],
   );
 
   const handleManualEditSubmit = async (
-    session: ScriptManualEditSession,
+    session: ScriptWorkspaceDraftSession,
     input: PipelineJsInput,
   ) => {
+    if (session.source === "native" || !session.attemptId) {
+      return;
+    }
     const actionLabel =
       session.mode === "create"
         ? `Creating ${input.name}`
@@ -666,7 +616,7 @@ export function PipelineJSEditor({
   };
 
   const handleOpenGenerator = () => {
-    closeNativeForms();
+    hideWorkspaceDraft();
     setIsAIGeneratorOpen(true);
   };
 
@@ -685,7 +635,7 @@ export function PipelineJSEditor({
       return;
     }
 
-    closeNativeForms();
+    hideWorkspaceDraft();
 
     if (debuggingScript && debuggingScript.name !== script.name) {
       setDebuggerResetSignal((current) => current + 1);
@@ -755,113 +705,125 @@ export function PipelineJSEditor({
         </div>
       ) : null}
 
-      {hiddenNativeEditSession ? (
+      {hiddenWorkspaceDraftSession ? (
         <ResumableSettingsDraftNotice
-          title={`Local Settings draft for ${
-            hiddenNativeEditSession.originalName ?? "a new pipeline script"
-          }${
-            isScriptNativeEditSessionDirty(hiddenNativeEditSession)
-              ? " has unsaved edits."
-              : " is still available in this tab."
-          }`}
-          description="Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
-          resumeLabel="Resume Settings draft"
-          discardLabel="Discard Settings draft"
-          onResume={() =>
-            setNativeEditSession((current) =>
-              current ? { ...current, visible: true } : current,
-            )
-          }
-          onDiscard={() => {
-            void discardNativeEditSession();
-          }}
-        />
-      ) : null}
-
-      {hiddenManualEditSession ? (
-        <ResumableSettingsDraftNotice
-          title={`AI handoff draft for Attempt ${hiddenManualEditSession.attemptId.replace(
-            "attempt-",
-            "",
-          )}${
-            isScriptManualEditSessionDirty(hiddenManualEditSession)
-              ? " has unsaved Settings edits."
-              : " is still available in Settings."
-          }`}
-          description="Close keeps this draft available in the current tab. Resume it when you want to keep editing the local handoff draft, or discard it explicitly once you no longer need it."
-          resumeLabel="Resume AI handoff draft"
-          discardLabel="Discard handoff draft"
-          onResume={() =>
-            setManualEditSession((current) =>
-              current ? { ...current, visible: true } : current,
-            )
-          }
-          onDiscard={() => {
-            void discardManualEditSession();
-          }}
-        />
-      ) : null}
-
-      {manualEditSession?.visible ? (
-        <ScriptForm
-          key={`manual-${manualEditSession.source}-${manualEditSession.attemptId}`}
-          initialValue={manualEditSession.initialValue}
-          draft={manualEditSession.draft}
-          savedValue={manualEditSession.initialValue}
-          onDraftChange={handleManualDraftChange}
-          lockName={manualEditSession.mode === "edit"}
           title={
-            manualEditSession.mode === "edit"
-              ? "Edit Script from AI Session"
-              : "Create Script from AI Session"
+            hiddenWorkspaceDraftSession.source === "native"
+              ? `Local Settings draft for ${
+                  hiddenWorkspaceDraftSession.originalName ??
+                  "a new pipeline script"
+                }${
+                  isScriptWorkspaceDraftSessionDirty(
+                    hiddenWorkspaceDraftSession,
+                  )
+                    ? " has unsaved edits."
+                    : " is still available in this tab."
+                }`
+              : `AI handoff draft for Attempt ${hiddenWorkspaceDraftSession.attemptId?.replace(
+                  "attempt-",
+                  "",
+                )}${
+                  isScriptWorkspaceDraftSessionDirty(
+                    hiddenWorkspaceDraftSession,
+                  )
+                    ? " has unsaved Settings edits."
+                    : " is still available in Settings."
+                }`
           }
-          contextNotice={
-            <ManualEditContextNotice
-              attemptId={manualEditSession.attemptId}
-              submitLabel={
-                manualEditSession.mode === "edit" ? "Update" : "Create"
+          description={
+            hiddenWorkspaceDraftSession.source === "native"
+              ? "Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
+              : "Close keeps this draft available in the current tab. Resume it when you want to keep editing the local handoff draft, or discard it explicitly once you no longer need it."
+          }
+          resumeLabel={
+            hiddenWorkspaceDraftSession.source === "native"
+              ? "Resume Settings draft"
+              : "Resume AI handoff draft"
+          }
+          discardLabel={
+            hiddenWorkspaceDraftSession.source === "native"
+              ? "Discard Settings draft"
+              : "Discard handoff draft"
+          }
+          onResume={() =>
+            setWorkspaceDraftSession((current) =>
+              current ? { ...current, visible: true } : current,
+            )
+          }
+          onDiscard={() => {
+            void discardWorkspaceDraft();
+          }}
+        />
+      ) : null}
+
+      {workspaceDraftSession?.visible ? (
+        workspaceDraftSession.source === "native" ? (
+          <ScriptForm
+            key={`native-${workspaceDraftSession.mode}-${workspaceDraftSession.originalName ?? "create"}`}
+            initialValue={workspaceDraftSession.initialValue}
+            draft={workspaceDraftSession.draft}
+            savedValue={
+              workspaceDraftSession.mode === "edit"
+                ? workspaceDraftSession.initialValue
+                : undefined
+            }
+            lockName={workspaceDraftSession.mode === "edit"}
+            title={
+              workspaceDraftSession.mode === "edit"
+                ? "Edit Saved Script"
+                : "Create New Script"
+            }
+            cancelLabel="Close"
+            submitLabel={
+              workspaceDraftSession.mode === "edit" ? "Update" : "Create"
+            }
+            onDraftChange={handleDraftChange}
+            onSubmit={(input) => {
+              void handleSaveNativeEditSession(workspaceDraftSession, input);
+            }}
+            onCancel={hideWorkspaceDraft}
+            onDiscard={() => {
+              void discardWorkspaceDraft();
+            }}
+          />
+        ) : (
+          <ScriptForm
+            key={`manual-${workspaceDraftSession.source}-${workspaceDraftSession.attemptId}`}
+            initialValue={workspaceDraftSession.initialValue}
+            draft={workspaceDraftSession.draft}
+            savedValue={workspaceDraftSession.initialValue}
+            onDraftChange={handleDraftChange}
+            lockName={workspaceDraftSession.mode === "edit"}
+            title={
+              workspaceDraftSession.mode === "edit"
+                ? "Edit Script from AI Session"
+                : "Create Script from AI Session"
+            }
+            contextNotice={
+              <ManualEditContextNotice
+                attemptId={workspaceDraftSession.attemptId ?? "attempt-"}
+                submitLabel={
+                  workspaceDraftSession.mode === "edit" ? "Update" : "Create"
+                }
+              />
+            }
+            cancelLabel="Back to AI session"
+            submitLabel={
+              workspaceDraftSession.mode === "edit" ? "Update" : "Create"
+            }
+            onSubmit={(input) => {
+              void handleManualEditSubmit(workspaceDraftSession, input);
+            }}
+            onCancel={() => {
+              if (workspaceDraftSession.source !== "native") {
+                returnToAISession(workspaceDraftSession.source);
               }
-            />
-          }
-          cancelLabel="Back to AI session"
-          submitLabel={manualEditSession.mode === "edit" ? "Update" : "Create"}
-          onSubmit={(input) => {
-            void handleManualEditSubmit(manualEditSession, input);
-          }}
-          onCancel={() => returnToAISession(manualEditSession.source)}
-        />
-      ) : nativeEditSession?.visible ? (
-        <ScriptForm
-          key={`native-${nativeEditSession.mode}-${nativeEditSession.originalName ?? "create"}`}
-          initialValue={nativeEditSession.initialValue}
-          draft={nativeEditSession.draft}
-          savedValue={
-            nativeEditSession.mode === "edit"
-              ? nativeEditSession.initialValue
-              : undefined
-          }
-          lockName={nativeEditSession.mode === "edit"}
-          title={
-            nativeEditSession.mode === "edit"
-              ? "Edit Saved Script"
-              : "Create New Script"
-          }
-          cancelLabel="Close"
-          submitLabel={nativeEditSession.mode === "edit" ? "Update" : "Create"}
-          onDraftChange={handleNativeDraftChange}
-          onSubmit={(input) => {
-            void handleSaveNativeEditSession(nativeEditSession, input);
-          }}
-          onCancel={() =>
-            closeNativeForms({ preserveNativeEditSession: false })
-          }
-          onDiscard={() => {
-            void discardNativeEditSession();
-          }}
-        />
+            }}
+          />
+        )
       ) : null}
 
-      {scripts.length === 0 && !nativeEditSession && !manualEditSession ? (
+      {scripts.length === 0 && !workspaceDraftSession ? (
         <ActionEmptyState
           eyebrow="Optional page-specific hook"
           title="No pipeline scripts yet"

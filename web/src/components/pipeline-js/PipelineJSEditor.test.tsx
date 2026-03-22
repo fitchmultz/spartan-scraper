@@ -233,6 +233,102 @@ describe("PipelineJSEditor", () => {
     expect(screen.getByLabelText(/wait selectors/i)).toHaveValue("#content");
   });
 
+  it("warns before replacing a hidden local Settings draft with an AI handoff draft", async () => {
+    vi.mocked(api.getV1PipelineJs).mockResolvedValue({
+      data: { scripts: [] },
+      request: new Request("http://localhost:8741/v1/pipeline-js"),
+      response: new Response(),
+    });
+    vi.mocked(api.aiPipelineJsGenerate).mockResolvedValue({
+      data: {
+        script: {
+          name: "generated-script",
+          hostPatterns: ["example.com"],
+          selectors: ["main"],
+        },
+        resolved_goal: {
+          source: "explicit",
+          text: "Generate a stable pipeline script",
+        },
+        route_id: "route-1",
+      },
+      request: new Request("http://localhost:8741/v1/ai/pipeline-js-generate"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create script/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "draft-script" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /generate with ai/i }));
+    fireEvent.change(screen.getByLabelText(/target url/i), {
+      target: { value: "https://example.com/app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /generate script/i }));
+
+    const history = await screen.findByRole("region", {
+      name: /attempt history/i,
+    });
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    let confirmDialog = await screen.findByRole("alertdialog");
+    expect(confirmDialog).toHaveTextContent(
+      /replace the current settings draft/i,
+    );
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /keep draft/i }),
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: /create script from ai session/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole("button", {
+        name: /edit attempt 1 in settings/i,
+      }),
+    );
+
+    confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /create script from ai session/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /back to ai session/i }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /resume ai handoff draft/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /resume settings draft/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("preserves AI history after manual Settings edits and retries from the edited script", async () => {
     vi.mocked(api.getV1PipelineJs)
       .mockResolvedValueOnce({
