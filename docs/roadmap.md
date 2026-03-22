@@ -16,9 +16,14 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Settings Authoring Failure-Path Dogfood
-   - Validate render-profile and pipeline-JS close, resume, discard, replace, and AI-handoff flows in a real browser now that both editors use one tab-local draft session model.
-   - Confirm the Settings route no longer makes operators juggle multiple hidden drafts at once within a single authoring surface.
+1. Settings Route Information Architecture Follow-Through
+   - Re-group `/settings` so reusable authoring tools and optional operational capabilities stop competing in one long scroll.
+   - Keep render profiles and pipeline JS together as authoring tools, and keep proxy pooling and retention together as operational controls.
+   - Preserve the top-level route while reducing cross-section context switching and scrollback.
+
+2. Onboarding and Discoverability Expansion
+   - Tighten first-run guidance so `/jobs/new`, `/templates`, `/automation`, and `/settings` each point operators at one obvious next action.
+   - Remove repeated framing that still spends the first screen on explanation instead of work.
 
 ## Ongoing Constraints
 

@@ -36,6 +36,12 @@ import { AIPipelineJSGenerator } from "../AIPipelineJSGenerator";
 import { ActionEmptyState } from "../ActionEmptyState";
 import { AIUnavailableNotice, describeAICapability } from "../ai-assistant";
 import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraftNotice";
+import {
+  describeHiddenSettingsDraft,
+  SettingsAIHandoffContextNotice,
+  type SettingsWorkspaceDraftSession,
+  useSettingsWorkspaceDraftController,
+} from "../settings/workspaceDrafts";
 import { useToast } from "../toast";
 
 type AISessionSource = "generator" | "debugger";
@@ -56,15 +62,11 @@ interface ScriptFormDraft {
   selectorInput: string;
 }
 
-interface ScriptWorkspaceDraftSession {
-  source: ScriptDraftSessionSource;
-  attemptId: string | null;
-  mode: "create" | "edit";
-  originalName: string | null;
-  initialValue: PipelineJsInput;
-  draft: ScriptFormDraft;
-  visible: boolean;
-}
+type ScriptWorkspaceDraftSession = SettingsWorkspaceDraftSession<
+  ScriptDraftSessionSource,
+  PipelineJsInput,
+  ScriptFormDraft
+>;
 
 interface PipelineJSEditorProps {
   onError?: (error: string) => void;
@@ -135,34 +137,6 @@ function isScriptWorkspaceDraftSessionDirty(
   return isScriptDraftDirty(session.draft, session.initialValue);
 }
 
-function ManualEditContextNotice({
-  attemptId,
-  submitLabel,
-}: {
-  attemptId: string;
-  submitLabel: string;
-}) {
-  const attemptOrdinal = attemptId.replace("attempt-", "");
-
-  return (
-    <div className="space-y-2">
-      <p>You are editing Attempt {attemptOrdinal} from the AI session.</p>
-      <p>
-        Back to AI session returns to the modal with this working candidate
-        preserved locally as-is, even if it is unsaved.
-      </p>
-      <p>
-        {submitLabel} saves to the API, updates the AI attempt, and then returns
-        to the modal.
-      </p>
-      <p>
-        Unsaved edits are preserved locally, but they are not reflected in the
-        AI attempt history until you save.
-      </p>
-    </div>
-  );
-}
-
 export function PipelineJSEditor({
   onError,
   aiStatus = null,
@@ -172,14 +146,6 @@ export function PipelineJSEditor({
   const [scripts, setScripts] = useState<JsTargetScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [
-    workspaceDraftSession,
-    setWorkspaceDraftSession,
-    clearWorkspaceDraftSession,
-  ] = useSessionStorageState<ScriptWorkspaceDraftSession | null>(
-    PIPELINE_JS_WORKSPACE_DRAFT_SESSION_KEY,
-    null,
-  );
   const [debuggingScript, setDebuggingScript, clearDebuggingScript] =
     useSessionStorageState<JsTargetScript | null>(
       PIPELINE_JS_DEBUGGER_TARGET_KEY,
@@ -195,6 +161,46 @@ export function PipelineJSEditor({
   const debuggerHistory = useAIAttemptHistory<JsTargetScript>({
     storageKey: `${PIPELINE_JS_DEBUGGER_SESSION_KEY}.history`,
   });
+  const {
+    workspaceDraftSession,
+    hiddenWorkspaceDraftSession,
+    hasDirtySettingsDraft,
+    resumeWorkspaceDraft,
+    hideWorkspaceDraft,
+    discardWorkspaceDraft,
+    openNativeWorkspaceDraft,
+    openAIWorkspaceDraft,
+    returnToAISession,
+    updateWorkspaceDraft,
+    clearWorkspaceDraftSession,
+  } = useSettingsWorkspaceDraftController<
+    ScriptDraftSessionSource,
+    PipelineJsInput,
+    ScriptFormDraft
+  >({
+    storageKey: PIPELINE_JS_WORKSPACE_DRAFT_SESSION_KEY,
+    toast,
+    clearTransientError: () => setError(null),
+    isDirty: isScriptWorkspaceDraftSessionDirty,
+    activateAISession: (source, attemptId) => {
+      if (source === "generator") {
+        generatorHistory.selectAttempt(attemptId);
+        setIsAIGeneratorOpen(false);
+        return;
+      }
+
+      debuggerHistory.selectAttempt(attemptId);
+      setIsAIDebuggerOpen(false);
+    },
+    openAISession: (source) => {
+      if (source === "generator") {
+        setIsAIGeneratorOpen(true);
+        return;
+      }
+
+      setIsAIDebuggerOpen(true);
+    },
+  });
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -202,13 +208,6 @@ export function PipelineJSEditor({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const hiddenWorkspaceDraftSession =
-    workspaceDraftSession && !workspaceDraftSession.visible
-      ? workspaceDraftSession
-      : null;
-  const hasDirtySettingsDraft = workspaceDraftSession
-    ? isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
-    : false;
 
   useBeforeUnloadPrompt(hasDirtySettingsDraft);
 
@@ -239,12 +238,6 @@ export function PipelineJSEditor({
   useEffect(() => {
     loadScripts();
   }, [loadScripts]);
-
-  const hideWorkspaceDraft = useCallback(() => {
-    setWorkspaceDraftSession((current) =>
-      current ? { ...current, visible: false } : current,
-    );
-  }, [setWorkspaceDraftSession]);
 
   const handleSaveNativeEditSession = async (
     session: ScriptWorkspaceDraftSession,
@@ -357,42 +350,6 @@ export function PipelineJSEditor({
     }
   };
 
-  const discardWorkspaceDraft = useCallback(
-    async (options?: { reason?: string; title?: string }) => {
-      if (!workspaceDraftSession) {
-        return true;
-      }
-
-      const isAIHandoffDraft = workspaceDraftSession.source !== "native";
-      const confirmed = await toast.confirm({
-        title:
-          options?.title ??
-          (isAIHandoffDraft
-            ? "Discard the AI handoff draft?"
-            : "Discard the local Settings draft?"),
-        description:
-          options?.reason ??
-          (isAIHandoffDraft
-            ? isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
-              ? "This removes the local Settings draft for the current AI attempt. Your unsaved edits will be lost."
-              : "This removes the current AI handoff draft from Settings. You can still reopen the AI modal itself if you keep that session."
-            : isScriptWorkspaceDraftSessionDirty(workspaceDraftSession)
-              ? "This removes the in-progress local Settings draft. Your unsaved edits will be lost."
-              : "This removes the current local Settings draft from this tab."),
-        confirmLabel: "Discard draft",
-        cancelLabel: "Keep draft",
-        tone: "warning",
-      });
-      if (!confirmed) {
-        return false;
-      }
-
-      clearWorkspaceDraftSession();
-      return true;
-    },
-    [clearWorkspaceDraftSession, toast, workspaceDraftSession],
-  );
-
   const openNativeEditSession = async (options: {
     mode: "create" | "edit";
     script?: JsTargetScript;
@@ -404,41 +361,11 @@ export function PipelineJSEditor({
         ? toPipelineJsInput(options.script)
         : createEmptyPipelineJsInput();
 
-    if (
-      workspaceDraftSession?.source === "native" &&
-      workspaceDraftSession.mode === options.mode &&
-      workspaceDraftSession.originalName === nextOriginalName
-    ) {
-      setWorkspaceDraftSession((current) =>
-        current ? { ...current, visible: true } : current,
-      );
-      return;
-    }
-
-    if (
-      workspaceDraftSession &&
-      isScriptWorkspaceDraftSessionDirty(workspaceDraftSession) &&
-      !(await discardWorkspaceDraft({
-        title:
-          workspaceDraftSession.source === "native"
-            ? "Replace the current Settings draft?"
-            : "Replace the current AI handoff draft?",
-        reason:
-          "This opens another local Settings draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
-      }))
-    ) {
-      return;
-    }
-
-    setError(null);
-    setWorkspaceDraftSession({
-      source: "native",
-      attemptId: null,
+    await openNativeWorkspaceDraft({
       mode: options.mode,
       originalName: nextOriginalName,
       initialValue: nextInitialValue,
       draft: createScriptFormDraft(nextInitialValue),
-      visible: true,
     });
   };
 
@@ -450,35 +377,6 @@ export function PipelineJSEditor({
       return;
     }
 
-    if (
-      workspaceDraftSession &&
-      (workspaceDraftSession.source !== source ||
-        workspaceDraftSession.attemptId !== attempt.id) &&
-      isScriptWorkspaceDraftSessionDirty(workspaceDraftSession) &&
-      !(await discardWorkspaceDraft({
-        title:
-          workspaceDraftSession.source === "native"
-            ? "Replace the current Settings draft?"
-            : "Replace the current AI handoff draft?",
-        reason:
-          workspaceDraftSession.source === "native"
-            ? "This opens an AI handoff draft and discards the local Settings edits you have not saved yet. Keep the current draft if you still need it."
-            : "This attempt will replace the current Settings draft for another AI handoff. Discard the older draft only if you no longer need it.",
-      }))
-    ) {
-      return;
-    }
-
-    setError(null);
-
-    if (source === "generator") {
-      generatorHistory.selectAttempt(attempt.id);
-      setIsAIGeneratorOpen(false);
-    } else {
-      debuggerHistory.selectAttempt(attempt.id);
-      setIsAIDebuggerOpen(false);
-    }
-
     const nextMode = source === "generator" ? "create" : "edit";
     const nextOriginalName =
       source === "debugger"
@@ -486,64 +384,21 @@ export function PipelineJSEditor({
         : null;
     const nextInitialValue = toPipelineJsInput(attempt.artifact);
 
-    setWorkspaceDraftSession((current) => {
-      if (
-        current &&
-        current.source === source &&
-        current.attemptId === attempt.id
-      ) {
-        return {
-          ...current,
-          originalName: nextOriginalName,
-          visible: true,
-        };
-      }
-
-      return {
-        source,
-        attemptId: attempt.id,
-        mode: nextMode,
-        originalName: nextOriginalName,
-        initialValue: nextInitialValue,
-        draft: createScriptFormDraft(nextInitialValue),
-        visible: true,
-      };
+    await openAIWorkspaceDraft({
+      source,
+      attemptId: attempt.id,
+      mode: nextMode,
+      originalName: nextOriginalName,
+      initialValue: nextInitialValue,
+      draft: createScriptFormDraft(nextInitialValue),
     });
-  };
-
-  const returnToAISession = (
-    source: AISessionSource,
-    options?: { preserveDraft?: boolean },
-  ) => {
-    setWorkspaceDraftSession((current) => {
-      if (!current || current.source !== source) {
-        return current;
-      }
-
-      return options?.preserveDraft === false
-        ? null
-        : { ...current, visible: false };
-    });
-
-    if (source === "generator") {
-      setIsAIGeneratorOpen(true);
-      return;
-    }
-
-    setIsAIDebuggerOpen(true);
   };
 
   const handleDraftChange = useCallback(
     (draft: ScriptFormDraft) => {
-      setWorkspaceDraftSession((current) => {
-        if (!current || deepEqual(current.draft, draft)) {
-          return current;
-        }
-
-        return { ...current, draft };
-      });
+      updateWorkspaceDraft(draft);
     },
-    [setWorkspaceDraftSession],
+    [updateWorkspaceDraft],
   );
 
   const handleManualEditSubmit = async (
@@ -707,49 +562,13 @@ export function PipelineJSEditor({
 
       {hiddenWorkspaceDraftSession ? (
         <ResumableSettingsDraftNotice
-          title={
-            hiddenWorkspaceDraftSession.source === "native"
-              ? `Local Settings draft for ${
-                  hiddenWorkspaceDraftSession.originalName ??
-                  "a new pipeline script"
-                }${
-                  isScriptWorkspaceDraftSessionDirty(
-                    hiddenWorkspaceDraftSession,
-                  )
-                    ? " has unsaved edits."
-                    : " is still available in this tab."
-                }`
-              : `AI handoff draft for Attempt ${hiddenWorkspaceDraftSession.attemptId?.replace(
-                  "attempt-",
-                  "",
-                )}${
-                  isScriptWorkspaceDraftSessionDirty(
-                    hiddenWorkspaceDraftSession,
-                  )
-                    ? " has unsaved Settings edits."
-                    : " is still available in Settings."
-                }`
-          }
-          description={
-            hiddenWorkspaceDraftSession.source === "native"
-              ? "Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
-              : "Close keeps this draft available in the current tab. Resume it when you want to keep editing the local handoff draft, or discard it explicitly once you no longer need it."
-          }
-          resumeLabel={
-            hiddenWorkspaceDraftSession.source === "native"
-              ? "Resume Settings draft"
-              : "Resume AI handoff draft"
-          }
-          discardLabel={
-            hiddenWorkspaceDraftSession.source === "native"
-              ? "Discard Settings draft"
-              : "Discard handoff draft"
-          }
-          onResume={() =>
-            setWorkspaceDraftSession((current) =>
-              current ? { ...current, visible: true } : current,
-            )
-          }
+          {...describeHiddenSettingsDraft(hiddenWorkspaceDraftSession, {
+            isDirty: isScriptWorkspaceDraftSessionDirty(
+              hiddenWorkspaceDraftSession,
+            ),
+            nativeDraftLabel: "a new pipeline script",
+          })}
+          onResume={resumeWorkspaceDraft}
           onDiscard={() => {
             void discardWorkspaceDraft();
           }}
@@ -800,7 +619,7 @@ export function PipelineJSEditor({
                 : "Create Script from AI Session"
             }
             contextNotice={
-              <ManualEditContextNotice
+              <SettingsAIHandoffContextNotice
                 attemptId={workspaceDraftSession.attemptId ?? "attempt-"}
                 submitLabel={
                   workspaceDraftSession.mode === "edit" ? "Update" : "Create"
