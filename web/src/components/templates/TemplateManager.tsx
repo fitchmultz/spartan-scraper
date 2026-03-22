@@ -167,6 +167,10 @@ export function TemplateManager({
   const isDirty = workspaceDraftSession
     ? isTemplateWorkspaceDraftDirty(workspaceDraftSession)
     : false;
+  const canDeleteSelectedTemplate =
+    activeDraftSource === "selected" &&
+    !readOnly &&
+    !!selectedTemplateData?.name;
   const draftTemplate = useMemo(
     () => buildTemplateSnapshot(activeDraft),
     [activeDraft],
@@ -932,17 +936,15 @@ export function TemplateManager({
                     >
                       Duplicate to Edit
                     </button>
-                  ) : (
-                    selectedTemplateData?.name && (
-                      <button
-                        type="button"
-                        className="btn btn--danger btn--small"
-                        onClick={handleDelete}
-                      >
-                        Delete
-                      </button>
-                    )
-                  )}
+                  ) : canDeleteSelectedTemplate ? (
+                    <button
+                      type="button"
+                      className="btn btn--danger btn--small"
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
                 </div>
               </div>
 

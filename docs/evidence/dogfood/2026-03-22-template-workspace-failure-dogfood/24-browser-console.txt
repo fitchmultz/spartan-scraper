@@ -1,0 +1,1 @@
+No browser console messages were reported by agent-browser during the verification pass.

@@ -1,0 +1,1 @@
+{"name":"docs","is_built_in":false,"template":{"name":"docs","selectors":[{"name":"title","selector":"article h1","attr":"text","trim":true},{"name":"summary","selector":"p.dek","attr":"text","trim":true}]}}

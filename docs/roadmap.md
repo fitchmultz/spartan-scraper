@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Template Workspace Failure-Path Dogfooding
-   - Exercise `/templates` close, discard, duplicate, builder, and AI-apply flows with failure-focused browser QA now that local draft recovery is tab-resilient.
-   - Capture any route-level confusion between saved library state and local workspace state before widening the same model to more authoring surfaces.
+1. Authoring Workspace State Consistency Sweep
+   - Apply the same saved-vs-local workspace semantics to the next inline authoring surface that still makes operators reason about both a saved record and a tab-local draft at once.
+   - Reuse the existing session-backed draft pattern instead of growing another per-surface variant.
 
 ## Ongoing Constraints
 

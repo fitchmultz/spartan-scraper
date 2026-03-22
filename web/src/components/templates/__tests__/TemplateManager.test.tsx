@@ -174,6 +174,9 @@ describe("TemplateManager", () => {
       "custom-news",
     );
     expect(screen.queryByText(/modal-overlay/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^delete$/i }),
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/css selector/i), {
       target: { value: "main h1" },
@@ -201,6 +204,90 @@ describe("TemplateManager", () => {
         }),
       );
     });
+  });
+
+  it("does not show delete for a new local draft seeded from a saved selection", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "article",
+        is_built_in: true,
+        template: {
+          name: "article",
+          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["article"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "article",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /new template/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /new template/i }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show delete for a duplicated built-in draft", async () => {
+    vi.mocked(api.getTemplate).mockResolvedValue({
+      data: {
+        name: "article",
+        is_built_in: true,
+        template: {
+          name: "article",
+          selectors: [{ name: "title", selector: "article h1", attr: "text" }],
+        },
+      },
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates/article"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["article"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "article",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /duplicate to edit/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/template name/i)).toHaveValue(
+        "article-copy",
+      );
+    });
+    expect(
+      screen.queryByRole("button", { name: /^delete$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("restores a closed local template draft after the workspace remounts and lets operators discard it intentionally", async () => {
