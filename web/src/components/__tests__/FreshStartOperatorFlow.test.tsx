@@ -598,6 +598,27 @@ describe("FreshStartOperatorFlow", () => {
     expect(screen.getByText("job-direct")).toBeInTheDocument();
   });
 
+  it("keeps saved results ahead of secondary framing on the results route", async () => {
+    appDataState.detailJob = makeJobEntry({ id: "job-results-first" });
+
+    renderAppAt("/jobs/job-results-first");
+
+    const results = await screen.findByTestId("results-container");
+    const routeHelp = screen.getByLabelText(
+      /what can i do here\? for this route/i,
+    );
+
+    expect(
+      screen.queryByText(
+        /read saved output first, then open comparison, transform, and export tools only when needed/i,
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      results.compareDocumentPosition(routeHelp) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("hands off promotion drafts from results into the canonical destination workspaces", async () => {
     const user = userEvent.setup();
     appDataState.detailJob = makeJobEntry({ id: "job-promote" });

@@ -20,9 +20,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
    - Pick one primary CTA per top-level route and demote cross-route detours.
    - Align route-header actions, route-help actions, command-palette labels, and empty-state CTAs to the same primary workflow per route.
 
-2. Results Route Framing Trim
-   - Move `/jobs/:id` secondary explanation behind the saved output so the route opens on results first.
-   - Keep comparison, export, and branch-off guidance available without repeating the route header.
+2. Route Help Disclosure Tuning
+   - Keep route help easy to reopen, but stop first-visit expansion from turning the lower page into another long explainer block.
+   - Separate terse route summaries from deeper shortcut and next-action detail so help stays useful after the workflow-first cutover.
 
 3. Settings Section Deep Links
    - Give `/settings` sections stable URL state so authoring, saved state, and operations can be opened directly.

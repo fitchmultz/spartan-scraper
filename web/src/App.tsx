@@ -1036,8 +1036,6 @@ function AppShell() {
           title: route.jobId
             ? `Job ${formatShortJobId(route.jobId)}`
             : "Results",
-          description:
-            "Read saved output first, then open comparison, transform, and export tools only when needed.",
         };
       case "new-job":
         return {
@@ -1439,8 +1437,6 @@ function AppShell() {
             }
           />
 
-          {routeHelpPanel}
-
           {detailJobLoading && !detailJob ? (
             <section className="panel">
               <div className="loading-placeholder">Loading job details…</div>
@@ -1461,9 +1457,7 @@ function AppShell() {
             />
           ) : null}
 
-          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
-
-          <div data-tour="job-results">
+          {!detailJobError ? (
             <ResultsContainer
               resultsState={resultsState}
               jobs={jobs}
@@ -1471,7 +1465,11 @@ function AppShell() {
               aiStatus={health?.components?.ai ?? null}
               onPromote={handlePromoteJob}
             />
-          </div>
+          ) : null}
+
+          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
+
+          {routeHelpPanel}
         </div>
       )}
 
