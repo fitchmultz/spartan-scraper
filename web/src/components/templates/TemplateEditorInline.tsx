@@ -29,6 +29,10 @@ interface TemplateEditorInlineProps {
   onNormalizeTextChange: (value: string) => void;
   onSave: () => void;
   onReset: () => void;
+  onClose?: () => void;
+  onDiscard?: () => void;
+  closeLabel?: string;
+  discardLabel?: string;
 }
 
 export function TemplateEditorInline({
@@ -47,6 +51,10 @@ export function TemplateEditorInline({
   onNormalizeTextChange,
   onSave,
   onReset,
+  onClose,
+  onDiscard,
+  closeLabel = "Close",
+  discardLabel = "Discard draft",
 }: TemplateEditorInlineProps) {
   return (
     <div className="template-editor-inline">
@@ -353,6 +361,26 @@ export function TemplateEditorInline({
               disabled={isSaving}
             >
               Reset Draft
+            </button>
+          ) : null}
+          {!readOnly && onClose ? (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              {closeLabel}
+            </button>
+          ) : null}
+          {!readOnly && onDiscard ? (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={onDiscard}
+              disabled={isSaving}
+            >
+              {discardLabel}
             </button>
           ) : null}
           {!readOnly ? (

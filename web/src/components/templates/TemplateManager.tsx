@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Template detail comes from the API on demand, built-in templates remain non-destructive in place, and workspace actions should preserve draft continuity without modal-first flows.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createTemplate,
@@ -18,17 +18,20 @@ import {
   type Template,
   type TemplateDetail,
 } from "../../api";
+import { useBeforeUnloadPrompt } from "../../hooks/useBeforeUnloadPrompt";
+import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { deepEqual } from "../../lib/diff-utils";
 import {
   TemplateAssistantSection,
   type TemplateAssistantMode,
   useAIAssistant,
 } from "../ai-assistant";
-import { useToast } from "../toast";
-import { ActionEmptyState } from "../ActionEmptyState";
-import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 import { PromotionDraftNotice } from "../promotion/PromotionDraftNotice";
+import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraftNotice";
+import { useToast } from "../toast";
+import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 import { TemplateEditorInline } from "./TemplateEditorInline";
 import {
   BUILT_IN_TEMPLATE_NAMES,
@@ -53,6 +56,54 @@ interface TemplateManagerProps {
 
 type DraftSource = "selected" | "create" | "duplicate";
 
+interface TemplateWorkspaceDraftSession {
+  source: DraftSource;
+  originalName: string | null;
+  selectedName: string | null;
+  initialTemplate: Template;
+  draft: TemplateDraftState;
+  visible: boolean;
+}
+
+const TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY =
+  "spartan.templates.workspace-draft-session";
+
+function createTemplateWorkspaceDraftSession(
+  template: Template | undefined,
+  source: DraftSource,
+  options?: {
+    originalName?: string | null;
+    selectedName?: string | null;
+    visible?: boolean;
+  },
+): TemplateWorkspaceDraftSession {
+  const draft = buildDraftFromTemplate(template);
+
+  return {
+    source,
+    originalName:
+      options?.originalName !== undefined
+        ? options.originalName
+        : (template?.name ?? null),
+    selectedName:
+      options?.selectedName !== undefined
+        ? options.selectedName
+        : (template?.name ?? null),
+    initialTemplate: buildTemplateSnapshot(draft),
+    draft,
+    visible: options?.visible ?? true,
+  };
+}
+
+function isTemplateWorkspaceDraftDirty(
+  session: TemplateWorkspaceDraftSession,
+): boolean {
+  return !deepEqual(
+    buildTemplateSnapshot(session.draft),
+    session.initialTemplate,
+  );
+}
+
 export function TemplateManager({
   templateNames,
   onTemplatesChanged,
@@ -63,30 +114,32 @@ export function TemplateManager({
 }: TemplateManagerProps) {
   const aiAssistant = useAIAssistant();
   const toast = useToast();
+  const [
+    workspaceDraftSession,
+    setWorkspaceDraftSession,
+    clearWorkspaceDraftSession,
+  ] = useSessionStorageState<TemplateWorkspaceDraftSession | null>(
+    TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY,
+    null,
+  );
   const [selectedName, setSelectedName] = useState<string | null>(
-    templateNames[0] ?? null,
+    () => workspaceDraftSession?.selectedName ?? templateNames[0] ?? null,
   );
   const [selectedTemplate, setSelectedTemplate] =
     useState<TemplateDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-
-  const [draft, setDraft] = useState<TemplateDraftState>(() =>
-    buildDraftFromTemplate(),
-  );
-  const [draftSource, setDraftSource] = useState<DraftSource>(
-    templateNames[0] ? "selected" : "create",
-  );
-  const [originalName, setOriginalName] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const [shouldAutoSelectFirst, setShouldAutoSelectFirst] = useState(true);
+  const [shouldAutoSelectFirst, setShouldAutoSelectFirst] = useState(
+    () => workspaceDraftSession === null,
+  );
 
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [railTab, setRailTab] = useState<TemplateAssistantMode>("preview");
   const [previewUrl, setPreviewUrl] = useState("");
+  const handledPromotionSeedRef = useRef<TemplatePromotionSeed | null>(null);
 
   const selectedTemplateData = selectedTemplate?.template ?? null;
   const selectedIsBuiltIn =
@@ -96,63 +149,155 @@ export function TemplateManager({
           selectedName as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
         )
       : false);
+  const selectedTemplateDraft = useMemo(
+    () => buildDraftFromTemplate(selectedTemplateData ?? undefined),
+    [selectedTemplateData],
+  );
+  const activeDraft = workspaceDraftSession?.draft ?? selectedTemplateDraft;
+  const activeDraftSource =
+    workspaceDraftSession?.source ?? (selectedName ? "selected" : "create");
+  const activeOriginalName =
+    workspaceDraftSession?.originalName ?? selectedTemplateData?.name ?? null;
+  const hasWorkspaceDraft = workspaceDraftSession !== null;
+  const readOnly = activeDraftSource === "selected" && selectedIsBuiltIn;
+  const hiddenDraftSession =
+    workspaceDraftSession && !workspaceDraftSession.visible
+      ? workspaceDraftSession
+      : null;
+  const isDirty = workspaceDraftSession
+    ? isTemplateWorkspaceDraftDirty(workspaceDraftSession)
+    : false;
+  const draftTemplate = useMemo(
+    () => buildTemplateSnapshot(activeDraft),
+    [activeDraft],
+  );
 
-  const draftTemplate = useMemo(() => buildTemplateSnapshot(draft), [draft]);
+  useBeforeUnloadPrompt(isDirty);
 
-  const confirmDiscardChanges = useCallback(async () => {
-    if (!isDirty) {
+  const confirmReplaceCurrentDraft = useCallback(
+    async (options?: { title?: string; reason?: string }) => {
+      if (!workspaceDraftSession || !isDirty) {
+        return true;
+      }
+
+      return toast.confirm({
+        title: options?.title ?? "Replace the current template draft?",
+        description:
+          options?.reason ??
+          "This opens another local template draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+    },
+    [isDirty, toast, workspaceDraftSession],
+  );
+
+  const discardWorkspaceDraft = useCallback(
+    async (options?: { title?: string; reason?: string }) => {
+      if (!workspaceDraftSession) {
+        return true;
+      }
+
+      const confirmed = await toast.confirm({
+        title: options?.title ?? "Discard the local template draft?",
+        description:
+          options?.reason ??
+          (isDirty
+            ? "This removes the in-progress template draft. Your unsaved edits will be lost."
+            : "This removes the current local template draft from this tab."),
+        confirmLabel: "Discard draft",
+        cancelLabel: "Keep draft",
+        tone: "warning",
+      });
+      if (!confirmed) {
+        return false;
+      }
+
+      clearWorkspaceDraftSession();
+      onClearPromotionSeed?.();
+      setSaveError(null);
+      setSaveNotice(null);
+      setIsBuilderOpen(false);
       return true;
-    }
-
-    return toast.confirm({
-      title: "Discard unsaved template changes?",
-      description:
-        "Your in-progress edits will be lost and the previous saved state will stay unchanged.",
-      confirmLabel: "Discard changes",
-      cancelLabel: "Keep editing",
-      tone: "warning",
-    });
-  }, [isDirty, toast]);
+    },
+    [
+      clearWorkspaceDraftSession,
+      isDirty,
+      onClearPromotionSeed,
+      toast,
+      workspaceDraftSession,
+    ],
+  );
 
   const loadDraft = useCallback(
     (
       template: Template | undefined,
       source: DraftSource,
-      nextOriginalName?: string,
+      options?: {
+        originalName?: string | null;
+        selectedName?: string | null;
+        visible?: boolean;
+      },
     ) => {
-      setDraft(buildDraftFromTemplate(template));
-      setDraftSource(source);
-      setOriginalName(nextOriginalName ?? template?.name ?? null);
-      setIsDirty(false);
+      const nextSelectedName =
+        options?.selectedName !== undefined
+          ? options.selectedName
+          : (template?.name ?? null);
+      setWorkspaceDraftSession(
+        createTemplateWorkspaceDraftSession(template, source, options),
+      );
+      setSelectedName(nextSelectedName);
       setSaveError(null);
       setSaveNotice(null);
       setIsBuilderOpen(false);
     },
-    [],
+    [setWorkspaceDraftSession],
   );
 
   useEffect(() => {
     if (!promotionSeed) {
+      handledPromotionSeedRef.current = null;
       return;
     }
+
+    if (handledPromotionSeedRef.current === promotionSeed) {
+      return;
+    }
+    handledPromotionSeedRef.current = promotionSeed;
 
     let cancelled = false;
 
     const applyPromotionSeed = async () => {
+      if (workspaceDraftSession && isDirty) {
+        const confirmed = await toast.confirm({
+          title: "Replace the current template draft?",
+          description:
+            "This verified-job draft will replace the current local template draft. Keep the current draft if you still need those unsaved edits.",
+          confirmLabel: "Discard draft",
+          cancelLabel: "Keep draft",
+          tone: "warning",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+
       setShouldAutoSelectFirst(false);
-      setSelectedName(null);
-      setSelectedTemplate(null);
       setDetailError(null);
       setPreviewUrl(promotionSeed.previewUrl ?? "");
       setRailTab("preview");
 
       if (promotionSeed.mode === "inline-template" && promotionSeed.template) {
+        setSelectedName(null);
+        setSelectedTemplate(null);
         loadDraft(
           {
             ...promotionSeed.template,
             name: promotionSeed.suggestedName,
           },
           "create",
+          { selectedName: null },
         );
         return;
       }
@@ -182,6 +327,7 @@ export function TemplateManager({
           }
 
           const detail = response.data ?? null;
+          setSelectedName(detail?.template?.name ?? promotionSeed.templateName);
           setSelectedTemplate(detail);
           loadDraft(
             {
@@ -189,7 +335,11 @@ export function TemplateManager({
               name: promotionSeed.suggestedName,
             },
             "duplicate",
-            detail?.template?.name,
+            {
+              originalName: detail?.template?.name,
+              selectedName:
+                detail?.template?.name ?? promotionSeed.templateName,
+            },
           );
         } catch (error) {
           if (!cancelled) {
@@ -207,11 +357,14 @@ export function TemplateManager({
         return;
       }
 
+      setSelectedName(null);
+      setSelectedTemplate(null);
       loadDraft(
         {
           name: promotionSeed.suggestedName,
         },
         "create",
+        { selectedName: null },
       );
     };
 
@@ -220,30 +373,20 @@ export function TemplateManager({
     return () => {
       cancelled = true;
     };
-  }, [loadDraft, promotionSeed]);
+  }, [isDirty, loadDraft, promotionSeed, toast, workspaceDraftSession]);
 
   useEffect(() => {
     if (templateNames.length === 0) {
       setSelectedName(null);
       setSelectedTemplate(null);
-      if (draftSource === "selected") {
-        loadDraft(undefined, "create");
-      }
       return;
     }
 
     if (!selectedName && shouldAutoSelectFirst) {
-      setDraftSource("selected");
       setSelectedName(templateNames[0] ?? null);
       setShouldAutoSelectFirst(false);
     }
-  }, [
-    draftSource,
-    loadDraft,
-    selectedName,
-    shouldAutoSelectFirst,
-    templateNames,
-  ]);
+  }, [selectedName, shouldAutoSelectFirst, templateNames]);
 
   useEffect(() => {
     if (!selectedName) {
@@ -276,10 +419,26 @@ export function TemplateManager({
         if (!cancelled) {
           const detail = response.data ?? null;
           setSelectedTemplate(detail);
+          setWorkspaceDraftSession((current) => {
+            if (
+              !current ||
+              current.source !== "selected" ||
+              current.originalName !== detail?.template?.name ||
+              isTemplateWorkspaceDraftDirty(current)
+            ) {
+              return current;
+            }
 
-          if (!isDirty && draftSource === "selected") {
-            loadDraft(detail?.template, "selected", detail?.template?.name);
-          }
+            return createTemplateWorkspaceDraftSession(
+              detail?.template,
+              "selected",
+              {
+                originalName: detail?.template?.name,
+                selectedName,
+                visible: current.visible,
+              },
+            );
+          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -302,16 +461,39 @@ export function TemplateManager({
     return () => {
       cancelled = true;
     };
-  }, [draftSource, isDirty, loadDraft, selectedName]);
+  }, [selectedName, setWorkspaceDraftSession]);
 
-  const updateDraft = (
-    updater: (current: TemplateDraftState) => TemplateDraftState,
-  ) => {
-    setDraft((current) => updater(current));
-    setIsDirty(true);
-    setSaveError(null);
-    setSaveNotice(null);
-  };
+  const updateDraft = useCallback(
+    (updater: (current: TemplateDraftState) => TemplateDraftState) => {
+      setWorkspaceDraftSession((current) => {
+        if (current) {
+          const nextDraft = updater(current.draft);
+          return deepEqual(current.draft, nextDraft)
+            ? current
+            : { ...current, draft: nextDraft, visible: true };
+        }
+
+        const nextDraft = updater(activeDraft);
+        return {
+          source: activeDraftSource,
+          originalName: activeOriginalName,
+          selectedName,
+          initialTemplate: buildTemplateSnapshot(activeDraft),
+          draft: nextDraft,
+          visible: true,
+        };
+      });
+      setSaveError(null);
+      setSaveNotice(null);
+    },
+    [
+      activeDraft,
+      activeDraftSource,
+      activeOriginalName,
+      selectedName,
+      setWorkspaceDraftSession,
+    ],
+  );
 
   const handleUpdateSelector = (
     selectorId: string,
@@ -332,7 +514,7 @@ export function TemplateManager({
   };
 
   const handleSave = async () => {
-    const { payload, error } = buildTemplatePayload(draft);
+    const { payload, error } = buildTemplatePayload(activeDraft);
     if (!payload || error) {
       const message = error ?? "Failed to build template payload.";
       setSaveError(message);
@@ -356,14 +538,16 @@ export function TemplateManager({
 
     try {
       const shouldUpdateSelected =
-        draftSource === "selected" &&
+        activeDraftSource === "selected" &&
         !selectedIsBuiltIn &&
-        !!(originalName ?? selectedTemplateData?.name);
+        !!(activeOriginalName ?? selectedTemplateData?.name);
 
       if (shouldUpdateSelected) {
         const response = await updateTemplate({
           baseUrl: getApiBaseUrl(),
-          path: { name: originalName ?? selectedTemplateData?.name ?? "" },
+          path: {
+            name: activeOriginalName ?? selectedTemplateData?.name ?? "",
+          },
           body: payload,
         });
 
@@ -385,6 +569,7 @@ export function TemplateManager({
         }
       }
 
+      clearWorkspaceDraftSession();
       setSelectedTemplate({
         name: payload.name,
         is_built_in: false,
@@ -392,7 +577,6 @@ export function TemplateManager({
       });
       onClearPromotionSeed?.();
       setShouldAutoSelectFirst(false);
-      loadDraft(payload, "selected", payload.name);
       setSaveNotice("Template saved.");
       setSelectedName(payload.name);
       onTemplatesChanged();
@@ -451,11 +635,11 @@ export function TemplateManager({
         );
       }
 
+      clearWorkspaceDraftSession();
       onTemplatesChanged();
       setShouldAutoSelectFirst(false);
       setSelectedName(null);
       setSelectedTemplate(null);
-      loadDraft(undefined, "create");
       toast.update(toastId, {
         tone: "success",
         title: "Template deleted",
@@ -474,17 +658,32 @@ export function TemplateManager({
   };
 
   const handleStartCreate = async () => {
-    if (!(await confirmDiscardChanges())) {
+    if (
+      !(await confirmReplaceCurrentDraft({
+        title: "Replace the current template draft?",
+        reason:
+          "This starts a new local template draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
       return;
     }
 
     onClearPromotionSeed?.();
     setShouldAutoSelectFirst(false);
-    loadDraft(undefined, "create");
+    loadDraft(undefined, "create", { selectedName });
   };
 
   const handleStartDuplicate = async () => {
-    if (!selectedTemplateData || !(await confirmDiscardChanges())) {
+    if (!selectedTemplateData) {
+      return;
+    }
+    if (
+      !(await confirmReplaceCurrentDraft({
+        title: "Replace the current template draft?",
+        reason:
+          "This duplicates another saved template into the workspace and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
       return;
     }
 
@@ -498,7 +697,10 @@ export function TemplateManager({
           : "",
       },
       "duplicate",
-      selectedTemplateData.name,
+      {
+        originalName: selectedTemplateData.name,
+        selectedName: selectedTemplateData.name,
+      },
     );
   };
 
@@ -507,12 +709,18 @@ export function TemplateManager({
       return;
     }
 
-    if (!(await confirmDiscardChanges())) {
+    if (
+      !(await confirmReplaceCurrentDraft({
+        title: "Replace the current template draft?",
+        reason:
+          "This opens another saved template and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
       return;
     }
 
+    clearWorkspaceDraftSession();
     onClearPromotionSeed?.();
-    setDraftSource("selected");
     setShouldAutoSelectFirst(false);
     setSelectedName(name);
     setIsBuilderOpen(false);
@@ -520,12 +728,43 @@ export function TemplateManager({
     setSaveNotice(null);
   };
 
-  const handleApplyTemplate = (template: Template, source: DraftSource) => {
+  const handleApplyTemplate = async (
+    template: Template,
+    source: DraftSource,
+  ) => {
+    if (
+      !(await confirmReplaceCurrentDraft({
+        title: "Replace the current template draft?",
+        reason:
+          "This applies another template to the workspace and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+      }))
+    ) {
+      return;
+    }
+
     onClearPromotionSeed?.();
     setShouldAutoSelectFirst(false);
-    loadDraft(template, source, template.name);
+    loadDraft(template, source, {
+      originalName:
+        source === "selected"
+          ? (activeOriginalName ??
+            selectedTemplateData?.name ??
+            template.name ??
+            null)
+          : source === "duplicate"
+            ? (activeOriginalName ?? selectedTemplateData?.name ?? null)
+            : null,
+      selectedName,
+    });
     setRailTab("preview");
   };
+
+  const closeWorkspaceDraft = useCallback(() => {
+    setWorkspaceDraftSession((current) =>
+      current ? { ...current, visible: false } : current,
+    );
+    setIsBuilderOpen(false);
+  }, [setWorkspaceDraftSession]);
 
   const openAssistantMode = (mode: TemplateAssistantMode) => {
     setRailTab(mode);
@@ -539,13 +778,13 @@ export function TemplateManager({
   };
 
   const editorTitle =
-    draftSource === "create"
+    activeDraftSource === "create"
       ? "New template"
-      : draftSource === "duplicate"
-        ? `Duplicate of ${originalName ?? "template"}`
-        : draft.name || selectedTemplateData?.name || "Template workspace";
-
-  const readOnly = draftSource === "selected" && selectedIsBuiltIn;
+      : activeDraftSource === "duplicate"
+        ? `Duplicate of ${activeOriginalName ?? "template"}`
+        : activeDraft.name ||
+          selectedTemplateData?.name ||
+          "Template workspace";
 
   return (
     <div className="template-manager-shell">
@@ -590,26 +829,7 @@ export function TemplateManager({
             <span>{templateNames.length}</span>
           </div>
 
-          {templateNames.length === 0 ? (
-            <ActionEmptyState
-              eyebrow="Empty library"
-              title="No saved templates yet"
-              description="Start a template from scratch, open the visual builder, or let AI draft a starting point from a real page."
-              actions={[
-                { label: "New template", onClick: handleStartCreate },
-                {
-                  label: "Open visual builder",
-                  onClick: () => setIsBuilderOpen(true),
-                  tone: "secondary",
-                },
-                {
-                  label: "Open AI assistant",
-                  onClick: () => openAssistantMode("generate"),
-                  tone: "secondary",
-                },
-              ]}
-            />
-          ) : (
+          {templateNames.length > 0 ? (
             <ul
               className="template-manager__list"
               aria-label="Extraction template list"
@@ -643,16 +863,17 @@ export function TemplateManager({
                 );
               })}
             </ul>
-          )}
+          ) : null}
         </aside>
 
         {isBuilderOpen ? (
           <section className="template-manager__builder-surface">
             <VisualSelectorBuilder
-              key={`${draft.name || "new"}-${draftSource}`}
+              key={`${activeDraft.name || "new"}-${activeDraftSource}`}
               initialTemplate={draftTemplate}
               onSave={(template) => {
                 setIsBuilderOpen(false);
+                clearWorkspaceDraftSession();
                 setSelectedTemplate({
                   name: template.name,
                   is_built_in: false,
@@ -661,7 +882,8 @@ export function TemplateManager({
                 onClearPromotionSeed?.();
                 setShouldAutoSelectFirst(false);
                 setSelectedName(template.name ?? null);
-                loadDraft(template, "selected", template.name);
+                setSaveError(null);
+                setSaveNotice(null);
                 onTemplatesChanged();
               }}
               onCancel={() => setIsBuilderOpen(false)}
@@ -681,7 +903,7 @@ export function TemplateManager({
                   </div>
                   <h3>{editorTitle}</h3>
                   <p>
-                    {selectedTemplate && draftSource === "selected"
+                    {selectedTemplate && activeDraftSource === "selected"
                       ? describeTemplate(selectedTemplate)
                       : "Changes stay in the workspace until you explicitly save them."}
                   </p>
@@ -734,62 +956,107 @@ export function TemplateManager({
                 />
               ) : null}
 
-              {isLoadingDetail && draftSource === "selected" ? (
+              {hiddenDraftSession ? (
+                <ResumableSettingsDraftNotice
+                  title={`Template draft for ${
+                    hiddenDraftSession.draft.name ||
+                    hiddenDraftSession.originalName ||
+                    "the current workspace"
+                  }${
+                    isTemplateWorkspaceDraftDirty(hiddenDraftSession)
+                      ? " has unsaved edits."
+                      : " is still available in this tab."
+                  }`}
+                  description="Close keeps this draft available in the current tab. Resume it when you want to continue editing, or discard it explicitly once you no longer need it."
+                  resumeLabel="Resume template draft"
+                  discardLabel="Discard template draft"
+                  onResume={() =>
+                    setWorkspaceDraftSession((current) =>
+                      current ? { ...current, visible: true } : current,
+                    )
+                  }
+                  onDiscard={() => {
+                    void discardWorkspaceDraft();
+                  }}
+                />
+              ) : null}
+
+              {isLoadingDetail &&
+              activeDraftSource === "selected" &&
+              !hasWorkspaceDraft ? (
                 <div className="template-manager__empty">
                   Loading template details…
                 </div>
               ) : null}
 
-              <TemplateEditorInline
-                draft={draft}
-                readOnly={readOnly}
-                isDirty={isDirty}
-                isSaving={isSaving}
-                error={saveError}
-                notice={saveNotice}
-                onNameChange={(value) =>
-                  updateDraft((current) => ({ ...current, name: value }))
-                }
-                onUpdateSelector={handleUpdateSelector}
-                onAddSelector={() =>
-                  updateDraft((current) => ({
-                    ...current,
-                    selectors: [...current.selectors, createSelectorDraft()],
-                  }))
-                }
-                onRemoveSelector={(selectorId) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    selectors: current.selectors.filter(
-                      (selector) => selector.id !== selectorId,
-                    ),
-                  }))
-                }
-                onJsonldTextChange={(value) =>
-                  updateDraft((current) => ({ ...current, jsonldText: value }))
-                }
-                onRegexTextChange={(value) =>
-                  updateDraft((current) => ({ ...current, regexText: value }))
-                }
-                onNormalizeTextChange={(value) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    normalizeText: value,
-                  }))
-                }
-                onSave={handleSave}
-                onReset={() => {
-                  if (draftSource === "selected" && selectedTemplateData) {
-                    loadDraft(
-                      selectedTemplateData,
-                      "selected",
-                      selectedTemplateData.name,
-                    );
-                    return;
+              {!hiddenDraftSession ? (
+                <TemplateEditorInline
+                  draft={activeDraft}
+                  readOnly={readOnly}
+                  isDirty={isDirty}
+                  isSaving={isSaving}
+                  error={saveError}
+                  notice={saveNotice}
+                  onNameChange={(value) =>
+                    updateDraft((current) => ({ ...current, name: value }))
                   }
-                  loadDraft(undefined, "create");
-                }}
-              />
+                  onUpdateSelector={handleUpdateSelector}
+                  onAddSelector={() =>
+                    updateDraft((current) => ({
+                      ...current,
+                      selectors: [...current.selectors, createSelectorDraft()],
+                    }))
+                  }
+                  onRemoveSelector={(selectorId) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      selectors: current.selectors.filter(
+                        (selector) => selector.id !== selectorId,
+                      ),
+                    }))
+                  }
+                  onJsonldTextChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      jsonldText: value,
+                    }))
+                  }
+                  onRegexTextChange={(value) =>
+                    updateDraft((current) => ({ ...current, regexText: value }))
+                  }
+                  onNormalizeTextChange={(value) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      normalizeText: value,
+                    }))
+                  }
+                  onSave={handleSave}
+                  onReset={() => {
+                    if (workspaceDraftSession) {
+                      if (
+                        activeDraftSource === "selected" &&
+                        selectedTemplateData
+                      ) {
+                        loadDraft(selectedTemplateData, "selected", {
+                          originalName: selectedTemplateData.name,
+                          selectedName,
+                        });
+                        return;
+                      }
+
+                      loadDraft(undefined, "create", { selectedName });
+                    }
+                  }}
+                  onClose={hasWorkspaceDraft ? closeWorkspaceDraft : undefined}
+                  onDiscard={
+                    hasWorkspaceDraft
+                      ? () => {
+                          void discardWorkspaceDraft();
+                        }
+                      : undefined
+                  }
+                />
+              ) : null}
             </section>
 
             <TemplateAssistantSection
@@ -800,13 +1067,13 @@ export function TemplateManager({
               aiStatus={aiStatus}
               onPreviewUrlChange={setPreviewUrl}
               onApplyTemplate={(template) => {
-                handleApplyTemplate(
+                void handleApplyTemplate(
                   template,
                   railTab === "generate"
                     ? "create"
                     : readOnly
                       ? "duplicate"
-                      : draftSource,
+                      : activeDraftSource,
                 );
               }}
             />

@@ -6,7 +6,13 @@
  * Invariants/Assumptions: API calls are mocked, built-in templates are non-destructive, and the `/templates` route no longer depends on modal-first editing.
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TemplateManager } from "../TemplateManager";
@@ -169,8 +175,12 @@ describe("TemplateManager", () => {
     );
     expect(screen.queryByText(/modal-overlay/i)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByDisplayValue("h1"), {
+    fireEvent.change(screen.getByLabelText(/css selector/i), {
       target: { value: "main h1" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/css selector/i)).toHaveValue("main h1");
     });
 
     fireEvent.click(screen.getByRole("button", { name: /save template/i }));
@@ -191,6 +201,201 @@ describe("TemplateManager", () => {
         }),
       );
     });
+  });
+
+  it("restores a closed local template draft after the workspace remounts and lets operators discard it intentionally", async () => {
+    const firstRender = render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={[]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /new template/i }));
+    fireEvent.change(await screen.findByLabelText(/template name/i), {
+      target: { value: "draft-template" },
+    });
+    fireEvent.change(screen.getByLabelText(/css selector/i), {
+      target: { value: "article h1" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /resume template draft/i }),
+    ).toBeInTheDocument();
+
+    firstRender.unmount();
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={[]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /resume template draft/i }),
+    );
+
+    expect(screen.getByLabelText(/template name/i)).toHaveValue(
+      "draft-template",
+    );
+    expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /discard draft/i }));
+
+    const confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /resume template draft/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("warns before replacing a dirty local template draft when switching to another saved template", async () => {
+    vi.mocked(api.getTemplate).mockImplementation(async ({ path }) => ({
+      data:
+        path.name === "docs"
+          ? {
+              name: "docs",
+              is_built_in: false,
+              template: {
+                name: "docs",
+                selectors: [
+                  { name: "title", selector: "main h1", attr: "text" },
+                ],
+              },
+            }
+          : {
+              name: "news",
+              is_built_in: false,
+              template: {
+                name: "news",
+                selectors: [{ name: "title", selector: "h1", attr: "text" }],
+              },
+            },
+      error: undefined as never,
+      request: new Request(`http://127.0.0.1:8741/v1/templates/${path.name}`),
+      response: new Response(),
+    }));
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={["news", "docs"]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue("news");
+
+    fireEvent.change(screen.getByLabelText(/css selector/i), {
+      target: { value: "article h1" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/css selector/i)).toHaveValue("article h1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /docs/i }));
+
+    let confirmDialog = await screen.findByRole("alertdialog");
+    expect(confirmDialog).toHaveTextContent(
+      /replace the current template draft/i,
+    );
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /keep draft/i }),
+    );
+
+    expect(screen.getByLabelText(/template name/i)).toHaveValue("news");
+    expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /docs/i }));
+
+    confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: /discard draft/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/template name/i)).toHaveValue("docs");
+    });
+    expect(screen.getByDisplayValue("main h1")).toBeInTheDocument();
+  });
+
+  it("keeps the working template draft after a save failure so the operator can retry", async () => {
+    vi.mocked(api.createTemplate).mockResolvedValue({
+      data: undefined,
+      error: { error: "template name already exists" },
+      request: new Request("http://127.0.0.1:8741/v1/templates"),
+      response: new Response(null, { status: 400 }),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={[]}
+            onTemplatesChanged={onTemplatesChanged}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /new template/i }));
+    fireEvent.change(await screen.findByLabelText(/template name/i), {
+      target: { value: "draft-template" },
+    });
+    fireEvent.change(screen.getByLabelText(/field name/i), {
+      target: { value: "title" },
+    });
+    fireEvent.change(screen.getByLabelText(/css selector/i), {
+      target: { value: "article h1" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /save template/i }));
+
+    await waitFor(() => {
+      expect(api.createTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            name: "draft-template",
+            selectors: [
+              expect.objectContaining({
+                name: "title",
+                selector: "article h1",
+              }),
+            ],
+          }),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/template name already exists/i)).toHaveLength(
+        2,
+      );
+    });
+    expect(screen.getByLabelText(/template name/i)).toHaveValue(
+      "draft-template",
+    );
+    expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
   });
 
   it("saves a promotion-seeded template draft and previews the saved selectors", async () => {
@@ -497,9 +702,11 @@ describe("TemplateManager", () => {
       screen.getByRole("button", { name: /apply to workspace/i }),
     );
 
-    expect(screen.getByLabelText(/template name/i)).toHaveValue(
-      "generated-template",
-    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/template name/i)).toHaveValue(
+        "generated-template",
+      );
+    });
     expect(screen.getByDisplayValue(".price")).toBeInTheDocument();
   });
 

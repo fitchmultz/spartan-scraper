@@ -16,11 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Template Workspace Draft Persistence and Intentional Discard
-   - Preserve in-progress template workspace drafts across close/reopen and route-level navigation so `/templates` matches the resilient Settings editing model.
-   - Split close versus discard semantics for template creation, duplication, promotion-seeded drafts, and visual-builder handoffs instead of silently resetting the workspace.
-   - Add resumable-draft notices and replacement confirmations when operators switch templates or builder sessions with unsaved local workspace edits.
-   - Add focused workflow tests for route remount recovery, switching between saved templates with dirty local edits, and intentionally discarding a hidden template draft.
+1. Template Workspace Failure-Path Dogfooding
+   - Exercise `/templates` close, discard, duplicate, builder, and AI-apply flows with failure-focused browser QA now that local draft recovery is tab-resilient.
+   - Capture any route-level confusion between saved library state and local workspace state before widening the same model to more authoring surfaces.
 
 ## Ongoing Constraints
 
