@@ -50,6 +50,11 @@ make web-dev          # Start web dev server (http://localhost:5173)
 - Only terminate resources started by the agent for this repo, or clearly orphaned repo automation. If ownership is ambiguous, do not kill it silently; report it.
 - Never leave repo-started dev servers, background workers, or automation browsers running after verification or visual inspection completes.
 
+### Roadmap Authoring
+
+- Roadmap items must be meaningful implementation slices, not micro-tasks. Bundle tightly related work in the same surface—UI behavior, state handling, error handling, cleanup, and the direct regression coverage needed to ship it—into one item unless a hard dependency or contract boundary forces a split.
+- When new follow-up work is discovered in the same area, rewrite adjacent roadmap items so the roadmap reflects the real cutover shape and lowest-churn sequence instead of appending another tiny task.
+
 ### Recent Learned Patterns
 
 - Public-facing docs should stay value-first: lead README with the core URL-to-result workflow, keep a fast 5-minute demo near the top, and point evidence docs at the smallest set of high-signal verification artifacts instead of archival inventories.

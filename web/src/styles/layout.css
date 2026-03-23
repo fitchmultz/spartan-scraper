@@ -309,7 +309,7 @@
   align-items: start;
 }
 
-.job-wizard__workspace[data-assistant-open="false"] {
+.job-wizard__workspace[data-sidebar-mode="none"] {
   grid-template-columns: minmax(0, 1fr);
 }
 

@@ -58,6 +58,8 @@ type CrawlFormRef = import("../../components/CrawlForm").CrawlFormRef;
 type ResearchFormRef = import("../../components/ResearchForm").ResearchFormRef;
 
 const COMPACT_JOB_WIZARD_MAX_HEIGHT = 820;
+const PRESET_RAIL_WIDTH = 340;
+const MIN_ASSISTANT_SIDEBAR_WIDTH = 360;
 
 function readCompactViewport(): boolean {
   if (typeof window === "undefined") {
@@ -260,8 +262,20 @@ export const JobSubmissionContainer = forwardRef<
       {presetsSection}
     </div>
   ) : null;
+  const hasPresetRail = presetRail !== null;
   const showAssistantSidebar = isAssistantOpen;
-  const sidebarWidth = Math.max(assistantWidth, 360);
+  const showPresetRailAboveMain =
+    hasPresetRail && !showAssistantSidebar && isCompactViewport;
+  const showPresetRailInSidebar = hasPresetRail && !showPresetRailAboveMain;
+  const sidebarMode = showAssistantSidebar
+    ? "assistant"
+    : showPresetRailInSidebar
+      ? "presets"
+      : "none";
+  const showSidebar = sidebarMode !== "none";
+  const sidebarWidth = showAssistantSidebar
+    ? Math.max(assistantWidth, MIN_ASSISTANT_SIDEBAR_WIDTH)
+    : PRESET_RAIL_WIDTH;
 
   return (
     <section
@@ -272,15 +286,17 @@ export const JobSubmissionContainer = forwardRef<
       <div
         className="job-wizard__workspace"
         data-compact={isCompactViewport ? "true" : "false"}
-        data-assistant-open={showAssistantSidebar ? "true" : "false"}
+        data-sidebar-mode={sidebarMode}
         style={
-          showAssistantSidebar
+          showSidebar
             ? ({
                 "--job-wizard-sidebar-width": `${sidebarWidth}px`,
               } as CSSProperties)
             : undefined
         }
       >
+        {showPresetRailAboveMain ? presetRail : null}
+
         <div className="job-wizard__main">
           <div
             className="panel job-workflow__header job-wizard__header"
@@ -314,8 +330,6 @@ export const JobSubmissionContainer = forwardRef<
               </span>
             </div>
           </div>
-
-          {!showAssistantSidebar ? presetRail : null}
 
           {!wizard.expertMode ? (
             <div className="job-wizard__guided-flow">
@@ -487,18 +501,20 @@ export const JobSubmissionContainer = forwardRef<
           </Suspense>
         </div>
 
-        {showAssistantSidebar ? (
+        {showSidebar ? (
           <div className="job-wizard__sidebar">
-            {presetRail}
+            {showPresetRailInSidebar ? presetRail : null}
 
-            <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
-              <JobSubmissionAssistantSection
-                activeTab={activeTab}
-                form={formState}
-                localState={wizard.localState}
-                aiStatus={aiStatus}
-              />
-            </div>
+            {showAssistantSidebar ? (
+              <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
+                <JobSubmissionAssistantSection
+                  activeTab={activeTab}
+                  form={formState}
+                  localState={wizard.localState}
+                  aiStatus={aiStatus}
+                />
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

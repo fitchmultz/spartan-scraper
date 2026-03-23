@@ -300,8 +300,8 @@ describe("JobSubmissionContainer wizard", () => {
       "true",
     );
     expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
-      "data-assistant-open",
-      "true",
+      "data-sidebar-mode",
+      "assistant",
     );
     expect(
       screen.getByRole("heading", { name: /scrape presets/i }),
@@ -311,13 +311,13 @@ describe("JobSubmissionContainer wizard", () => {
     ).toBeInTheDocument();
   });
 
-  it("drops the sidebar column when the assistant is hidden", () => {
+  it("keeps presets visible when the assistant is hidden", () => {
     window.localStorage.setItem("spartan.ai-assistant.open", "false");
     const { container } = renderHarness("scrape", { includePresets: true });
 
     expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
-      "data-assistant-open",
-      "false",
+      "data-sidebar-mode",
+      "presets",
     );
     expect(
       screen.getByRole("heading", { name: /scrape presets/i }),
@@ -325,6 +325,36 @@ describe("JobSubmissionContainer wizard", () => {
     expect(
       screen.queryByRole("heading", { name: /job submission assistant/i }),
     ).not.toBeInTheDocument();
+    expect(container.querySelector(".job-wizard__sidebar")).not.toBeNull();
+  });
+
+  it("stacks presets above the workflow on compact hidden-assistant layouts", () => {
+    setViewportHeight(780);
+    window.localStorage.setItem("spartan.ai-assistant.open", "false");
+    const { container } = renderHarness("scrape", { includePresets: true });
+
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-compact",
+      "true",
+    );
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-sidebar-mode",
+      "none",
+    );
+    expect(
+      screen.getByRole("heading", { name: /scrape presets/i }),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".job-wizard__sidebar")).toBeNull();
+  });
+
+  it("drops the sidebar when both presets and the assistant are unavailable", () => {
+    window.localStorage.setItem("spartan.ai-assistant.open", "false");
+    const { container } = renderHarness();
+
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-sidebar-mode",
+      "none",
+    );
     expect(container.querySelector(".job-wizard__sidebar")).toBeNull();
   });
 

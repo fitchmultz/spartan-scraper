@@ -16,21 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Normalize dedup failure copy
-   - Replace the raw `String(response.error)` handling in `DedupExplorer` with the shared API error formatter.
-   - Keep search, history, and stats failures readable without leaking transport-shaped messages into the UI.
+1. Harden the dedup explorer workflow end-to-end
+   - Replace raw transport-shaped error copy with `getApiErrorMessage`, split search/history/stats into panel-local loading-error-result state, and stop one panel's refresh from clobbering another.
+   - Backfill only the direct dedup regressions needed for failure copy, panel-local recovery, and state preservation.
 
-2. Scope dedup state by active tab
-   - Keep `DedupExplorer` search, history, and stats errors isolated to the active panel.
-   - Prevent stale results or refresh failures in one tab from mutating the others.
-
-3. Backfill focused dedup regressions
-   - Add only the direct tests needed for dedup search, history, and stats failures.
-   - Assert operator-visible recovery and panel-local state preservation instead of implementation details.
-
-4. Unify long-running validation helpers
-   - Extract one shared helper for spawning and tearing down repo-owned test processes across `internal/e2e`, `internal/system`, and heavy validation paths.
-   - Keep API envelope parsing aligned between PR-safe and heavy validation coverage.
+2. Extract a shared integration-test harness and realign heavy validation coverage
+   - Deduplicate binary build, server and web-preview lifecycle, job polling, and API envelope parsing across `internal/system` and `internal/e2e`.
+   - Keep teardown failure-safe, preserve the PR-safe versus heavy-suite split, and eliminate response-shape drift between validation layers.
 
 ## Ongoing Constraints
 
