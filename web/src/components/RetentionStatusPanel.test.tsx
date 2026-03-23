@@ -209,7 +209,7 @@ describe("RetentionStatusPanel", () => {
     expect(screen.getByText("spartan retention status")).toBeInTheDocument();
   });
 
-  it("formats API-shaped retention errors instead of rendering object text", async () => {
+  it("formats API-shaped retention errors into a panel-local recovery state", async () => {
     vi.mocked(api.getRetentionStatus).mockResolvedValue({
       data: undefined,
       error: { error: "Retention metadata could not be loaded." },
@@ -220,7 +220,14 @@ describe("RetentionStatusPanel", () => {
     renderPanel();
 
     expect(
-      await screen.findByText("Retention metadata could not be loaded."),
+      await screen.findByText("Unable to load retention status"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Retention metadata could not be loaded."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("spartan retention status")).toBeInTheDocument();
+    expect(
+      screen.getByText("spartan retention cleanup --dry-run"),
     ).toBeInTheDocument();
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
   });

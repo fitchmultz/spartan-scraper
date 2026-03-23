@@ -11,10 +11,13 @@ import {
   getProxyPoolStatus,
   type HealthResponse,
   type ProxyPoolStatusResponse,
+  type RecommendedAction,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { getApiErrorMessage } from "../lib/api-errors";
 import { ActionEmptyState } from "./ActionEmptyState";
 import { CapabilityActionList } from "./CapabilityActionList";
+import { CapabilityLoadErrorState } from "./CapabilityLoadErrorState";
 
 interface ProxyPoolStatusPanelProps {
   health: HealthResponse | null;
@@ -56,14 +59,15 @@ export function ProxyPoolStatusPanel({
       if (response.data) {
         setStatus(response.data);
       } else if (response.error) {
-        setError(String(response.error));
+        setError(
+          getApiErrorMessage(
+            response.error,
+            "Failed to load proxy pool status",
+          ),
+        );
       }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch proxy pool status",
-      );
+      setError(getApiErrorMessage(err, "Failed to load proxy pool status"));
     } finally {
       setLoading(false);
     }
@@ -108,6 +112,54 @@ export function ProxyPoolStatusPanel({
     }
   }, [capabilityStatus, proxyComponent?.message]);
 
+  const loadErrorActions = useMemo<RecommendedAction[]>(() => {
+    if (proxyComponent?.actions && proxyComponent.actions.length > 0) {
+      return proxyComponent.actions;
+    }
+
+    return [
+      {
+        label: "Check proxy-pool status from the CLI",
+        kind: "command",
+        value: "spartan proxy-pool status",
+      },
+    ];
+  }, [proxyComponent?.actions]);
+
+  const loadErrorState = useMemo(() => {
+    if (!error || status) {
+      return null;
+    }
+
+    switch (capabilityStatus) {
+      case "disabled":
+        return {
+          eyebrow: "Optional subsystem",
+          title: "Unable to load proxy pool status",
+          description:
+            "Spartan could not confirm whether proxy pooling is still off by choice. Core scraping can continue without it while you re-check this section.",
+        };
+      case "degraded":
+      case "error":
+      case "setup_required":
+        return {
+          eyebrow: "Recovery guidance",
+          title: "Unable to load proxy pool status",
+          description:
+            "Spartan could not load live proxy-pool details for this section. Use the recovery actions below, then refresh this section.",
+        };
+      default:
+        return {
+          eyebrow: "Status unavailable",
+          title: "Unable to load proxy pool status",
+          description:
+            "Spartan could not load live proxy-pool details for this section. Refresh this section or use the CLI status command below.",
+        };
+    }
+  }, [capabilityStatus, error, status]);
+
+  const showLoadErrorState = Boolean(error && !loading && !status);
+
   return (
     <section className="panel" id="proxy-pool">
       <div
@@ -138,13 +190,32 @@ export function ProxyPoolStatusPanel({
         </button>
       </div>
 
-      {error ? (
+      {error && status ? (
         <div className="error" style={{ marginBottom: 16 }}>
           {error}
         </div>
       ) : null}
 
-      {guidance && !hasLoadedProxies ? (
+      {showLoadErrorState && loadErrorState && error ? (
+        <CapabilityLoadErrorState
+          eyebrow={loadErrorState.eyebrow}
+          title={loadErrorState.title}
+          description={loadErrorState.description}
+          error={error}
+          actions={loadErrorActions}
+          onNavigate={onNavigate}
+          onRefresh={refreshAll}
+        >
+          {configuredPath ? (
+            <div className="system-status__hint">
+              <strong>Configured file</strong>
+              <span>{configuredPath}</span>
+            </div>
+          ) : null}
+        </CapabilityLoadErrorState>
+      ) : null}
+
+      {!showLoadErrorState && guidance && !hasLoadedProxies ? (
         <ActionEmptyState
           eyebrow={guidance.eyebrow}
           title={guidance.title}

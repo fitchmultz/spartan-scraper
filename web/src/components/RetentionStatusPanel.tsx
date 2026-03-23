@@ -19,6 +19,7 @@ import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { ActionEmptyState } from "./ActionEmptyState";
 import { CapabilityActionList } from "./CapabilityActionList";
+import { CapabilityLoadErrorState } from "./CapabilityLoadErrorState";
 
 interface RetentionStatusPanelProps {
   health: HealthResponse | null;
@@ -338,10 +339,65 @@ export function RetentionStatusPanel({
     return "normal";
   };
 
+  const retentionComponent = health?.components?.retention;
+
   const capability = useMemo(
     () => resolveRetentionCapability(health, status),
     [health, status],
   );
+
+  const loadErrorActions = useMemo<RecommendedAction[]>(() => {
+    if (retentionComponent?.actions && retentionComponent.actions.length > 0) {
+      return retentionComponent.actions;
+    }
+
+    return [
+      {
+        label: "Check retention status from the CLI",
+        kind: "command",
+        value: "spartan retention status",
+      },
+      {
+        label: "Preview cleanup from the CLI",
+        kind: "command",
+        value: "spartan retention cleanup --dry-run",
+      },
+    ];
+  }, [retentionComponent?.actions]);
+
+  const loadErrorState = useMemo(() => {
+    if (!error || status) {
+      return null;
+    }
+
+    switch (retentionComponent?.status) {
+      case "disabled":
+        return {
+          eyebrow: "Optional subsystem",
+          title: "Unable to load retention status",
+          description:
+            "Spartan could not confirm current retention metadata for this section. Automatic cleanup is optional, but status checks and previews are temporarily unavailable until this check succeeds.",
+        };
+      case "degraded":
+      case "error":
+      case "setup_required":
+        return {
+          eyebrow: "Recovery guidance",
+          title: "Unable to load retention status",
+          description:
+            "Spartan could not load retention metadata for this section. Use the recovery actions below, then refresh this section.",
+        };
+      default:
+        return {
+          eyebrow: "Status unavailable",
+          title: "Unable to load retention status",
+          description:
+            "Spartan could not load retention metadata for this section. Refresh this section or use the CLI commands below.",
+        };
+    }
+  }, [error, retentionComponent?.status, status]);
+
+  const showLoadErrorState = Boolean(error && !loading && !status);
 
   return (
     <section className="panel" id="retention">
@@ -374,7 +430,7 @@ export function RetentionStatusPanel({
         </button>
       </div>
 
-      {error ? (
+      {error && status ? (
         <div className="error" style={{ marginBottom: "16px" }}>
           {error}
         </div>
@@ -382,6 +438,16 @@ export function RetentionStatusPanel({
 
       {loading && !status ? (
         <div>Loading retention status...</div>
+      ) : showLoadErrorState && loadErrorState && error ? (
+        <CapabilityLoadErrorState
+          eyebrow={loadErrorState.eyebrow}
+          title={loadErrorState.title}
+          description={loadErrorState.description}
+          error={error}
+          actions={loadErrorActions}
+          onNavigate={onNavigate}
+          onRefresh={refreshAll}
+        />
       ) : status ? (
         <>
           {capability.status === "disabled" ? (

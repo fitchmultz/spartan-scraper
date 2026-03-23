@@ -136,6 +136,32 @@ describe("ProxyPoolStatusPanel", () => {
     expect(container.querySelector(".retention-notice--warning")).toBeNull();
   });
 
+  it("formats API-shaped proxy-pool errors into a panel-local recovery state", async () => {
+    vi.mocked(getProxyPoolStatus).mockResolvedValue({
+      data: undefined,
+      error: { error: "Proxy pool metadata could not be loaded." },
+      request: new Request("http://localhost:8741/v1/proxy-pool/status"),
+      response: new Response(null, { status: 500 }),
+    } as never);
+
+    render(
+      <ProxyPoolStatusPanel
+        health={null}
+        onNavigate={vi.fn()}
+        onRefreshHealth={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Unable to load proxy pool status"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Proxy pool metadata could not be loaded."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("spartan proxy-pool status")).toBeInTheDocument();
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
   it("renders degraded health guidance and runs inline diagnostics", async () => {
     const user = userEvent.setup();
     const onRefreshHealth = vi.fn().mockResolvedValue(undefined);

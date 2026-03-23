@@ -43,6 +43,10 @@ const hoisted = vi.hoisted(() => ({
     renderProfiles: 0,
     pipelineScripts: 0,
   },
+  settingsPanels: {
+    proxyMessage: null as string | null,
+    retentionMessage: null as string | null,
+  },
 }));
 
 const storage = new Map<string, string>();
@@ -158,11 +162,23 @@ vi.mock("../../components/webhooks/WebhookDeliveryContainer", () => ({
 }));
 
 vi.mock("../../components/RetentionStatusPanel", () => ({
-  RetentionStatusPanel: () => <div data-testid="retention-status" />,
+  RetentionStatusPanel: () => (
+    <div data-testid="retention-status">
+      {hoisted.settingsPanels.retentionMessage ? (
+        <div className="error">{hoisted.settingsPanels.retentionMessage}</div>
+      ) : null}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/ProxyPoolStatusPanel", () => ({
-  ProxyPoolStatusPanel: () => <div data-testid="proxy-pool-status" />,
+  ProxyPoolStatusPanel: () => (
+    <div data-testid="proxy-pool-status">
+      {hoisted.settingsPanels.proxyMessage ? (
+        <div className="error">{hoisted.settingsPanels.proxyMessage}</div>
+      ) : null}
+    </div>
+  ),
 }));
 
 vi.mock("../../components/chains/ChainContainer", () => ({
@@ -562,6 +578,8 @@ describe("FreshStartOperatorFlow", () => {
 
     hoisted.inventory.renderProfiles = 0;
     hoisted.inventory.pipelineScripts = 0;
+    hoisted.settingsPanels.proxyMessage = null;
+    hoisted.settingsPanels.retentionMessage = null;
 
     appDataState = createAppDataState();
     keyboardState = createKeyboardState();
@@ -848,6 +866,32 @@ describe("FreshStartOperatorFlow", () => {
     expect(operationsButton).not.toHaveAttribute("aria-current");
     expect(screen.getByTestId("render-profile-editor")).toBeInTheDocument();
     expect(screen.queryByTestId("proxy-pool-status")).not.toBeInTheDocument();
+  });
+
+  it("keeps shared Settings chrome visible when Operations panels fail locally", () => {
+    hoisted.settingsPanels.proxyMessage =
+      "Proxy pool metadata could not be loaded.";
+    hoisted.settingsPanels.retentionMessage =
+      "Retention metadata could not be loaded.";
+
+    renderAppAt("/settings/operations");
+
+    expect(
+      screen.getByRole("heading", { name: /operational controls/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("proxy-pool-status")).toHaveTextContent(
+      "Proxy pool metadata could not be loaded.",
+    );
+    expect(screen.getByTestId("retention-status")).toHaveTextContent(
+      "Retention metadata could not be loaded.",
+    );
+    expect(
+      screen.getByRole("heading", { name: /^settings$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/settings sections/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/what can i do here\? for this route/i),
+    ).toBeInTheDocument();
   });
 
   it("navigates to every major route from the command palette", async () => {

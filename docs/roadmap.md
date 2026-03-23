@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Settings Capability Error Surfaces
-   - Replace raw-object and generic failure fallbacks in proxy-pool and retention panels with operator-safe messages and explicit next actions.
-   - Keep optional-capability failures isolated to the affected Settings section even when sections mount independently.
+1. Settings Route Contract Cleanup
+   - Update operator-facing docs, specs, and remaining test fixtures to treat `/settings/:section` as the canonical deep-link shape.
+   - Remove stale references that still describe Settings as a stacked page or rely on `/settings` as the durable link target.
 
 2. New Job Sticky Action Clearance
    - Keep `/jobs/new` readable on short laptop heights with the sticky action bar present and the AI rail open or hidden.
@@ -27,6 +27,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 ## Ongoing Constraints
 
 - Keep the TUI scope frozen as a lightweight local inspector unless a future roadmap item explicitly justifies re-investing in it as a first-class surface.
-- Preserve the current top-level Web route model (`/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings`), but allow sub-routing or in-route navigation inside complex surfaces when that materially improves operator comprehension.
+- Preserve the current top-level feature routes (`/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings`), while treating `/automation/:section` and `/settings/:section` as the canonical deep-link shapes for those sectioned surfaces.
 - Treat Web UI product-grade workflow improvements as higher priority than maintenance-only work and parity-only work until the primary operator journeys feel coherent, legible, and fast.
 - No backwards-compatibility shims are required for the Web UI cutover. Prefer the cleaner immediate product model when redesign choices conflict.
