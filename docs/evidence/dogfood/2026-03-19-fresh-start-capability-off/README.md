@@ -23,7 +23,7 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
 | --- | --- | --- | --- |
 | Fresh `/healthz` on an empty workspace | Overall health stays `ok`; optional-off states stay `disabled` instead of `degraded` | Pass | `01-healthz.json` |
 | Fresh Jobs route | First-run guidance stays focused on creating one working job; no degraded system panel appears just because optional features are off | Pass | `screenshots/01-jobs-fresh-start.png` |
-| Fresh Settings route before fixes | Optional sections remain visible and quiet by default; no optional feature should feel required | Needed follow-up | `screenshots/04-settings-fresh-start.png` |
+| Fresh Settings authoring route before fixes | Optional sections remain visible and quiet by default; no optional feature should feel required | Needed follow-up | `screenshots/04-settings-fresh-start.png` |
 | CLI health and optional capability commands | CLI should report AI/proxy/retention as intentional optional states, not failures | Pass | `14-cli-health.txt`, `15-cli-proxy-diagnostic.txt`, `16-cli-proxy-status.txt`, `17-cli-retention-status.txt` |
 | MCP health and proxy diagnostics | MCP should mirror the same `disabled` framing and translated actions | Pass | `18-mcp-health-status.json`, `19-mcp-proxy-diagnostic.json` |
 | Settings AI affordances after fix | Render-profile and pipeline-JS AI actions should stop looking active/required when AI is unavailable, while manual authoring remains available | Pass after fix | `screenshots/25-settings-ai-disabled-buttons-closeup.png`, `screenshots/22-settings-ai-disabled-note.png`, `screenshots/26-settings-ai-disabled-followup.png` |
@@ -40,7 +40,7 @@ Validate the fresh-start operator experience across Web, CLI, and MCP with optio
 - **Why it mattered:** On a fresh workspace with AI intentionally unconfigured, Settings still showed active-looking `Generate with AI` / `Tune with AI` affordances inside Render Profiles and Pipeline JavaScript. That made an optional capability feel expected and undermined the new quiet-by-default model.
 - **Repro:**
   1. Start Spartan with a fresh empty `DATA_DIR` and no AI env configured.
-  2. Open `/settings`.
+  2. Open `/settings/authoring`.
   3. Scroll to Render Profiles or Pipeline JavaScript.
   4. Observe AI affordances shown alongside manual authoring with no inline explanation of why AI is unavailable.
 - **Fix:**

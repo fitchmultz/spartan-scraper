@@ -374,7 +374,7 @@ describe("SystemStatusPanel", () => {
             {
               label: "Open settings docs",
               kind: "doc",
-              value: "/settings",
+              value: "/settings/operations",
             },
           ],
         },
@@ -395,7 +395,7 @@ describe("SystemStatusPanel", () => {
     await user.click(
       screen.getByRole("button", { name: "Open settings docs" }),
     );
-    expect(onNavigate).toHaveBeenCalledWith("/settings");
+    expect(onNavigate).toHaveBeenCalledWith("/settings/operations");
   });
 
   it("renders external recovery links with safe new-tab attributes", () => {

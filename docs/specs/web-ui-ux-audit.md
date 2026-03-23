@@ -10,7 +10,7 @@
 
 - Started the local server and verified the Web UI on `http://127.0.0.1:5173`.
 - Submitted a real scrape job for `https://example.com`.
-- Visited `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings`.
+- Visited `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings/authoring`.
 - Captured screenshots under `output/playwright/ui-ux-audit-2026-03-16/screenshots/`.
 
 ### Evidence screenshots

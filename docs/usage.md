@@ -741,7 +741,9 @@ Balanced 1.0 routes:
 - `/jobs/:id`
 - `/templates`
 - `/automation`
-- `/settings`
+- `/settings/:section` (`authoring`, `inventory`, `operations`)
+
+Use `/settings/:section` as the shareable Settings URL. `/settings` is only the redirect entry point to the default section.
 
 The Settings route now keeps optional capabilities legible: auth profiles, schedules, crawl states, proxy-pool status, and retention all explain when they matter, what is currently off by choice, and which recovery steps matter only after a capability is enabled.
 

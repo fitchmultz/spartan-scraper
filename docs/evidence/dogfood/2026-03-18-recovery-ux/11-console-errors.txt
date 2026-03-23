@@ -1,7 +1,7 @@
 Recovery UX console check — 2026-03-18
 
 Session: Playwright CLI `recoveryuxpw`
-Route checked: /settings with degraded AI, browser, and proxy-pool states visible
+Route checked: /settings/authoring with degraded AI, browser, and proxy-pool states visible
 
 Post-fix result:
 - Errors: 0

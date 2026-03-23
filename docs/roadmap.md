@@ -16,13 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Settings Route Contract Cleanup
-   - Update operator-facing docs, specs, and remaining test fixtures to treat `/settings/:section` as the canonical deep-link shape.
-   - Remove stale references that still describe Settings as a stacked page or rely on `/settings` as the durable link target.
+1. New Job Sticky Action Clearance
+   - Rework `/jobs/new` basics-step spacing so sticky actions, required fields, and the AI rail fit on short laptop heights.
+   - Verify the layout in headed browser screenshots with the AI rail both open and closed.
 
-2. New Job Sticky Action Clearance
-   - Keep `/jobs/new` readable on short laptop heights with the sticky action bar present and the AI rail open or hidden.
-   - Prevent workflow cards, required inputs, and sticky actions from competing for the same vertical space in the basics step.
+2. Web API Error Surface Consistency
+   - Replace remaining raw `String(response.error)`-style handling in non-Settings web panels and hooks with operator-safe copy.
+   - Add only the smallest regressions needed to prevent `[object Object]` or opaque fallback text from reaching operators.
 
 ## Ongoing Constraints
 

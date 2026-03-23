@@ -28,7 +28,7 @@ Validate the in-product recovery UX in real degraded scenarios before moving on 
 | Copy actions | Copy buttons should show operator feedback and remain robust when Clipboard API is denied | Passed after fix; copy path now falls back cleanly instead of depending solely on `navigator.clipboard.writeText` | Pass | `08-copy-feedback.png` |
 | One-click diagnostic actions | Run check → inline result → parent health refresh | Passed after fix; browser and proxy checks issued POSTs and were followed by `GET /healthz` refreshes | Pass | `09-one-click-browser-diagnostic.png`, `10-proxy-one-click-result.png`, `11-console-errors.txt` |
 | External docs links | Open in a new tab and stay on the current Spartan tab | Passed; Playwright opened the browser guide in a second tab while leaving Spartan on the current tab | Pass | `10-external-link-browser-install-guide.png` |
-| Route behavior during degraded states | Primary navigation should still work | Passed; navigation to `/settings` worked while the diagnostic panel remained actionable | Pass | Playwright tab/session log |
+| Route behavior during degraded states | Primary navigation should still work | Passed; navigation to `/settings/authoring` worked while the diagnostic panel remained actionable | Pass | Playwright tab/session log |
 
 ## Findings fixed during dogfood
 

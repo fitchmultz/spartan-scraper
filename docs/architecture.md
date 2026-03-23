@@ -143,7 +143,9 @@ The web shell is route-based and scoped to the retained product:
 - `/jobs/:id`
 - `/templates`
 - `/automation`
-- `/settings`
+- `/settings/:section`
+
+`/settings/:section` is the canonical Settings deep-link shape. `/settings` remains only as a redirect entry point to the default section.
 
 Deleted product areas are not hidden behind feature flags; they are absent from the navigation and render tree.
 
