@@ -16,12 +16,20 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Finish the remaining Web authoring and dedup error-state sweep
-   - Replace the remaining raw `String(response.error)` paths in `useTemplateBuilder`, `VisualSelectorBuilder`, and `DedupExplorer` with `getApiErrorMessage`-based operator copy.
-   - Scope dedup errors and stale results to the active tab so a failed search, history lookup, or stats refresh cannot pollute the other panels.
+1. Remove the hidden AI rail footprint from `/jobs/new`
+   - Collapse the hidden assistant affordance so it does not reserve a dedicated sidebar column on short laptop viewports.
+   - Keep presets and sticky actions visible without introducing a new responsive mode.
 
-2. Backfill focused failure-path regressions for authoring and dedup
-   - Add direct coverage for template-save, visual-selector fetch/test, and dedup search/history/stats failures that still rely on manual dogfooding.
+2. Normalize the remaining template-authoring error copy
+   - Replace the raw `String(response.error)` fallbacks in `useTemplateBuilder` and `VisualSelectorBuilder` with `getApiErrorMessage` copy.
+   - Keep save, fetch, and selector-test failures operator-readable across the template flow.
+
+3. Isolate dedup panel state by active tab
+   - Scope dedup errors, stale results, and refresh failures to the active panel in `DedupExplorer`.
+   - Prevent a failed search, history lookup, or stats refresh from polluting the other dedup surfaces.
+
+4. Backfill focused regressions for authoring and dedup failures
+   - Add only the direct coverage needed for template save, visual-selector fetch/test, and dedup search/history/stats failures.
    - Assert operator-visible recovery copy, panel-local failure handling, and draft/result preservation instead of implementation details.
 
 ## Ongoing Constraints

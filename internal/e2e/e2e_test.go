@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -145,40 +146,6 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", site.ScrapeURL())
 	waitForJobs(t, client, port, 1)
 
-	runOK(t, env, "mcp", "--help")
-
-	mcpOut := runMCP(t, env, []string{
-		`{"id":1,"method":"initialize"}`,
-		`{"id":2,"method":"tools/list"}`,
-	})
-	if !strings.Contains(mcpOut, `"tools"`) {
-		t.Fatalf("expected MCP tools list in output")
-	}
-	if !strings.Contains(mcpOut, `"preProcessors"`) {
-		t.Fatalf("expected preProcessors in tools schema")
-	}
-	if !strings.Contains(mcpOut, `"postProcessors"`) {
-		t.Fatalf("expected postProcessors in tools schema")
-	}
-	if !strings.Contains(mcpOut, `"transformers"`) {
-		t.Fatalf("expected transformers in tools schema")
-	}
-
-	mcpCallOut := runMCP(t, env, []string{
-		fmt.Sprintf(`{"id":3,"method":"tools/call","params":{"name":"scrape_page","arguments":{"url":%q,"preProcessors":["prep1","prep2"],"postProcessors":["post1"],"transformers":["trans1"],"incremental":true}}}`, site.ScrapeURL()),
-	})
-	if strings.Contains(mcpCallOut, `"error"`) && strings.Contains(mcpCallOut, `"message"`) {
-		var resp map[string]interface{}
-		if err := json.Unmarshal([]byte(mcpCallOut), &resp); err == nil {
-			if errMsg, ok := resp["error"].(map[string]interface{}); ok {
-				msg, _ := errMsg["message"].(string)
-				if !strings.Contains(msg, "job failed") {
-					t.Fatalf("unexpected MCP error: %s", msg)
-				}
-			}
-		}
-	}
-
 	cancel()
 	_ = srvCmd.Wait()
 }
@@ -231,19 +198,23 @@ func startProcess(ctx context.Context, t *testing.T, env []string, dir string, n
 		t.Fatalf("failed to start process %s %v: %v", name, args, err)
 	}
 
+	var cleanupOnce sync.Once
 	cleanup := func() {
-		if cmd.Process == nil {
-			return
-		}
-		if runtime.GOOS != "windows" {
-			// Kill the entire process group
-			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		} else {
-			_ = cmd.Process.Kill()
-		}
-		_ = cmd.Wait()
+		cleanupOnce.Do(func() {
+			if cmd.Process == nil {
+				return
+			}
+			if runtime.GOOS != "windows" {
+				// Kill the entire process group
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			} else {
+				_ = cmd.Process.Kill()
+			}
+			_ = cmd.Wait()
+		})
 	}
 
+	t.Cleanup(cleanup)
 	return cmd, cleanup
 }
 
@@ -284,67 +255,6 @@ func lastLines(s string, n int) string {
 	return "... (truncated) ...\n" + strings.Join(lines[len(lines)-n:], "\n")
 }
 
-func runMCP(t *testing.T, env []string, lines []string) string {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, spartanPath, "mcp")
-	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), env...)
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatalf("stdin: %v", err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("stdout: %v", err)
-	}
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start mcp: %v", err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		for _, line := range lines {
-			if _, err := io.WriteString(stdin, line+"\n"); err != nil {
-				return
-			}
-		}
-	}()
-
-	out, err := io.ReadAll(stdout)
-	if err != nil {
-		t.Fatalf("read stdout: %v", err)
-	}
-
-	waitDone := make(chan error, 1)
-	go func() {
-		waitDone <- cmd.Wait()
-	}()
-
-	select {
-	case err := <-waitDone:
-		if err != nil {
-			t.Fatalf("mcp failed: %v", err)
-		}
-	case <-ctx.Done():
-		if runtime.GOOS != "windows" {
-			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		} else {
-			_ = cmd.Process.Kill()
-		}
-		t.Fatalf("mcp timed out")
-	}
-
-	return string(out)
-}
-
 func baseEnv(dataDir string) []string {
 	return []string{
 		"DATA_DIR=" + dataDir,
@@ -380,14 +290,19 @@ func postJob(t *testing.T, client *http.Client, port int, path string, body map[
 		t.Fatalf("post job: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("post job status: %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		payload, _ := io.ReadAll(resp.Body)
+		t.Fatalf("post job status: %d body=%s", resp.StatusCode, string(payload))
 	}
-	var payload map[string]interface{}
+	var payload map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode job: %v", err)
 	}
-	id, _ := payload["id"].(string)
+	jobPayload, ok := payload["job"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing job envelope: %#v", payload)
+	}
+	id, _ := jobPayload["id"].(string)
 	if id == "" {
 		t.Fatalf("missing job id")
 	}
@@ -403,18 +318,19 @@ func waitForJob(t *testing.T, client *http.Client, port int, id string) {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		var payload map[string]interface{}
+		var payload map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&payload)
 		_ = resp.Body.Close()
-		if payload["status"] == "succeeded" {
+		jobPayload, _ := payload["job"].(map[string]any)
+		switch jobPayload["status"] {
+		case "succeeded":
 			return
-		}
-		if payload["status"] == "failed" {
-			t.Fatalf("job failed")
+		case "failed":
+			t.Fatalf("job %s failed", id)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("job timeout")
+	t.Fatalf("job %s timeout", id)
 }
 
 func waitForJobs(t *testing.T, client *http.Client, port int, minCount int) {

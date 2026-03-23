@@ -42,6 +42,14 @@ make clean            # Remove build artifacts, dependencies, node_modules, inst
 make web-dev          # Start web dev server (http://localhost:5173)
 ```
 
+### Automation Cleanup Hygiene
+
+- If an agent starts any repo-owned runtime resource for this project—a local server, browser/desktop automation (Playwright, agent-browser, Peekaboo, XCTest, Chrome/Chromium sessions, or similar), temp browser profile, temp workspace, simulator/device run, worker, or other background helper—it must stop it and remove the related ephemeral artifacts before ending its turn, and cleanup must still happen on success, failure, and interruption.
+- Cleanup is not documentation-only: enforce teardown in the relevant repo scripts/tests/tooling where practical with `trap`, `defer`, `afterEach`, `t.Cleanup`, or equivalent failure-safe hooks.
+- Before ending a turn, verify no agent-started resources remain for this repo: dev servers, browser automation processes, temporary browser profiles, or other repo-started automation helpers.
+- Only terminate resources started by the agent for this repo, or clearly orphaned repo automation. If ownership is ambiguous, do not kill it silently; report it.
+- Never leave repo-started dev servers, background workers, or automation browsers running after verification or visual inspection completes.
+
 ### Recent Learned Patterns
 
 - Public-facing docs should stay value-first: lead README with the core URL-to-result workflow, keep a fast 5-minute demo near the top, and point evidence docs at the smallest set of high-signal verification artifacts instead of archival inventories.

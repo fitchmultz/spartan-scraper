@@ -12,6 +12,19 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
 
+var newRequestFetcher = func(req Request) fetch.Fetcher {
+	if req.MetricsCallback != nil {
+		if req.ProxyPool != nil {
+			return fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
+		}
+		return fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	}
+	if req.ProxyPool != nil {
+		return fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
+	}
+	return fetch.NewFetcher(req.DataDir)
+}
+
 // Run executes a crawl request. It concurrently fetches and processes pages
 // starting from a root URL, following links up to a maximum depth and page count.
 func Run(ctx context.Context, req Request) ([]PageResult, error) {
@@ -59,20 +72,12 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 		return nil, apperrors.Wrap(apperrors.KindValidation, "invalid URL pattern", err)
 	}
 
-	var fetcher fetch.Fetcher
-	if req.MetricsCallback != nil {
-		if req.ProxyPool != nil {
-			fetcher = fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
-		} else {
-			fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	fetcher := newRequestFetcher(req)
+	defer func() {
+		if err := fetch.CloseFetcher(fetcher); err != nil {
+			slog.Warn("failed to close crawl fetcher", "url", req.URL, "error", err)
 		}
-	} else {
-		if req.ProxyPool != nil {
-			fetcher = fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
-		} else {
-			fetcher = fetch.NewFetcher(req.DataDir)
-		}
-	}
+	}()
 
 	// Simhash index for duplicate detection
 	var simhashMu sync.Mutex

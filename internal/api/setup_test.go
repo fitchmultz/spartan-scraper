@@ -5,6 +5,7 @@ package api
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -60,12 +61,16 @@ func setupTestServerWithConcurrency(t *testing.T, maxConcurrency int) (*Server, 
 
 	srv := NewServer(manager, st, cfg)
 
+	var cleanupOnce sync.Once
 	cleanup := func() {
-		srv.Stop()
-		cancel()
-		manager.Wait()
-		st.Close()
+		cleanupOnce.Do(func() {
+			srv.Stop()
+			cancel()
+			manager.Wait()
+			st.Close()
+		})
 	}
 
+	t.Cleanup(cleanup)
 	return srv, cleanup
 }

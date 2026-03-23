@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -264,18 +265,22 @@ func startProcess(ctx context.Context, t *testing.T, env []string, dir string, n
 		t.Fatalf("failed to start process %s %v: %v", name, args, err)
 	}
 
+	var cleanupOnce sync.Once
 	cleanup := func() {
-		if cmd.Process == nil {
-			return
-		}
-		if runtime.GOOS != "windows" {
-			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		} else {
-			_ = cmd.Process.Kill()
-		}
-		_ = cmd.Wait()
+		cleanupOnce.Do(func() {
+			if cmd.Process == nil {
+				return
+			}
+			if runtime.GOOS != "windows" {
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			} else {
+				_ = cmd.Process.Kill()
+			}
+			_ = cmd.Wait()
+		})
 	}
 
+	t.Cleanup(cleanup)
 	return cmd, cleanup
 }
 

@@ -12,7 +12,51 @@ import (
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 )
+
+type trackingFetcher struct {
+	result fetch.Result
+	closed bool
+}
+
+func (f *trackingFetcher) Fetch(_ context.Context, _ fetch.Request) (fetch.Result, error) {
+	return f.result, nil
+}
+
+func (f *trackingFetcher) Close() error {
+	f.closed = true
+	return nil
+}
+
+func TestRunClosesFetcher(t *testing.T) {
+	fetcher := &trackingFetcher{result: fetch.Result{URL: "https://example.com", Status: http.StatusOK, HTML: `<html><body>ok</body></html>`}}
+	previous := newRequestFetcher
+	newRequestFetcher = func(Request) fetch.Fetcher {
+		return fetcher
+	}
+	defer func() {
+		newRequestFetcher = previous
+	}()
+
+	results, err := Run(context.Background(), Request{
+		URL:      "https://example.com",
+		MaxDepth: 1,
+		MaxPages: 1,
+		Timeout:  time.Second,
+		DataDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if !fetcher.closed {
+		t.Fatal("expected Run to close the fetcher")
+	}
+}
 
 func TestNormalizeURL(t *testing.T) {
 	tests := []struct {

@@ -252,6 +252,11 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 func (w *Watcher) fetchContentWithScreenshot(ctx context.Context, watch *Watch) (string, string, error) {
 	// Build fetch request
 	fetcher := fetch.NewFetcher(w.dataDir)
+	defer func() {
+		if err := fetch.CloseFetcher(fetcher); err != nil {
+			slog.Warn("failed to close watch fetcher", "watchID", watch.ID, "url", watch.URL, "error", err)
+		}
+	}()
 	fetchReq := fetch.Request{
 		URL:           watch.URL,
 		Headless:      watch.Headless || watch.ScreenshotEnabled, // Force headless if screenshot enabled

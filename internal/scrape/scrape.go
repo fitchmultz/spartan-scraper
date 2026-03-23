@@ -2,6 +2,25 @@
 // It handles fetching the page content (optionally using a headless browser),
 // running it through a pipeline of pre-processors, extracting metadata and content
 // based on templates, and running post-processors and transformers on the output.
+// Package scrape provides single-page scraping orchestration.
+//
+// Purpose:
+// - Fetch one target page, run pipeline hooks, extract content, and normalize the result.
+//
+// Responsibilities:
+// - Build the right fetcher for each scrape request.
+// - Ensure repo-started browser automation is torn down after every run.
+// - Persist incremental crawl metadata when enabled.
+//
+// Scope:
+// - Single-page scrape orchestration only; fetch, pipeline, and extraction implementations live in sibling packages.
+//
+// Usage:
+// - Call Run(ctx, Request{...}) from CLI, API, MCP, or research flows.
+//
+// Invariants/Assumptions:
+// - Every fetcher created here must be closed before Run returns.
+// - Pipeline hooks may rewrite the fetch request before navigation begins.
 package scrape
 
 import (
@@ -75,6 +94,19 @@ type CrawlStateStore interface {
 	UpsertCrawlState(ctx context.Context, state model.CrawlState) error
 }
 
+var newRequestFetcher = func(req Request) fetch.Fetcher {
+	if req.MetricsCallback != nil {
+		if req.ProxyPool != nil {
+			return fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
+		}
+		return fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	}
+	if req.ProxyPool != nil {
+		return fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
+	}
+	return fetch.NewFetcher(req.DataDir)
+}
+
 // Run executes a scrape request. It fetches the page, runs it through the pipeline,
 // extracts data, and returns the result.
 func Run(ctx context.Context, req Request) (Result, error) {
@@ -106,20 +138,12 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		}
 	}
 
-	var fetcher fetch.Fetcher
-	if req.MetricsCallback != nil {
-		if req.ProxyPool != nil {
-			fetcher = fetch.NewFetcherWithMetricsAndProxyPool(req.DataDir, req.MetricsCallback, req.ProxyPool)
-		} else {
-			fetcher = fetch.NewFetcherWithMetrics(req.DataDir, req.MetricsCallback)
+	fetcher := newRequestFetcher(req)
+	defer func() {
+		if err := fetch.CloseFetcher(fetcher); err != nil {
+			slog.Warn("failed to close scrape fetcher", "url", req.URL, "error", err)
 		}
-	} else {
-		if req.ProxyPool != nil {
-			fetcher = fetch.NewFetcherWithProxyPool(req.DataDir, req.ProxyPool)
-		} else {
-			fetcher = fetch.NewFetcher(req.DataDir)
-		}
-	}
+	}()
 
 	fetchReq := fetch.Request{
 		URL:              req.URL,

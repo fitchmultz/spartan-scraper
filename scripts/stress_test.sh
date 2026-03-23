@@ -115,7 +115,7 @@ parse_json_field() {
     jq -r ".$field // \"\""
   else
     # Fallback to node (part of project dev deps)
-    node -e "const fs=require('fs'); try { const d=JSON.parse(fs.readFileSync(0, 'utf-8')); console.log(d['$field']||''); } catch(e){}"
+    node -e "const fs=require('fs'); try { let value=JSON.parse(fs.readFileSync(0, 'utf-8')); for (const part of '$field'.split('.')) { value = value == null ? '' : value[part]; } console.log(value ?? ''); } catch(e){}"
   fi
 }
 
@@ -245,26 +245,75 @@ fi
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
+FIXTURE_PID=""
+SERVER_PID=""
+CLEANUP_RAN=0
+
+collect_descendant_pids() {
+  local pid="$1"
+  local child=""
+
+  while read -r child; do
+    [[ -z "$child" ]] && continue
+    collect_descendant_pids "$child"
+    echo "$child"
+  done < <(pgrep -P "$pid" 2>/dev/null || true)
+}
+
+stop_process_tree() {
+  local root_pid="$1"
+  local pid=""
+  local -a descendants=()
+
+  [[ -z "$root_pid" ]] && return 0
+  if ! kill -0 "$root_pid" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  mapfile -t descendants < <(collect_descendant_pids "$root_pid")
+
+  for pid in "${descendants[@]}"; do
+    kill -TERM "$pid" >/dev/null 2>&1 || true
+  done
+  kill -TERM "$root_pid" >/dev/null 2>&1 || true
+  sleep 1
+
+  for pid in "${descendants[@]}"; do
+    kill -KILL "$pid" >/dev/null 2>&1 || true
+  done
+  kill -KILL "$root_pid" >/dev/null 2>&1 || true
+  wait "$root_pid" >/dev/null 2>&1 || true
+}
+
 cleanup() {
+  local exit_code="${1:-$?}"
+
+  if [[ "$CLEANUP_RAN" == "1" ]]; then
+    return 0
+  fi
+  CLEANUP_RAN=1
+
   echo "Cleaning up..."
-  if [[ -n "${FIXTURE_PID:-}" ]]; then
-    kill "$FIXTURE_PID" >/dev/null 2>&1 || true
-    wait "$FIXTURE_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${SERVER_PID:-}" ]]; then
-    # Use pkill -P to kill child processes (like chrome) if supported,
-    # or just kill the process group if we had started it with one.
-    # Since we didn't start it with a process group in bash easily,
-    # we'll just kill the server and hope it cleans up its children (it should on SIGTERM).
-    kill "$SERVER_PID" >/dev/null 2>&1 || true
-    # Wait for server to exit
-    wait "$SERVER_PID" >/dev/null 2>&1 || true
-  fi
+  stop_process_tree "${FIXTURE_PID:-}"
+  stop_process_tree "${SERVER_PID:-}"
   if [[ -n "${WORK_DIR:-}" && "$WORK_DIR" == "${WORK_DIR_DEFAULT}" ]]; then
     rm -rf "$WORK_DIR"
   fi
+
+  return "$exit_code"
 }
-trap cleanup EXIT
+
+handle_signal() {
+  local signal_name="$1"
+  echo "Received ${signal_name}; shutting down..."
+  cleanup 1
+  exit 1
+}
+
+trap 'cleanup $?' EXIT
+trap 'handle_signal INT' INT
+trap 'handle_signal TERM' TERM
+trap 'handle_signal HUP' HUP
 
 wait_job_api() {
   local job_id="$1"
@@ -278,14 +327,14 @@ wait_job_api() {
       return 1
     }
     local status
-    status=$(echo "$output" | parse_json_field "status")
+    status=$(echo "$output" | parse_json_field "job.status")
     if [[ "$status" == "succeeded" ]]; then
       echo "$description succeeded."
       return 0
     fi
     if [[ "$status" == "failed" ]]; then
       local err
-      err=$(echo "$output" | parse_json_field "error")
+      err=$(echo "$output" | parse_json_field "job.error")
       echo "$description failed: $err"
       return 1
     fi
@@ -375,19 +424,19 @@ RESEARCH_URLS=$(IFS=,; echo "${TARGETS[*]}")
 run_spartan research --query "$RESEARCH_QUERY" --urls "$RESEARCH_URLS" $HEADLESS_FLAG $PLAYWRIGHT_FLAG --wait --wait-timeout "$WAIT_TIMEOUT_SECS" --timeout "$TIMEOUT_SECS" --out "$OUT_DIR/research.jsonl" >/dev/null
 
 SCRAPE_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/scrape" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-SCRAPE_JOB_ID=$(echo "$SCRAPE_JOB" | parse_json_field "id")
+SCRAPE_JOB_ID=$(echo "$SCRAPE_JOB" | parse_json_field "job.id")
 wait_job_api "$SCRAPE_JOB_ID"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${SCRAPE_JOB_ID}" >"$OUT_DIR/api-job.json"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${SCRAPE_JOB_ID}/results" >"$OUT_DIR/api-results.json"
 
 CRAWL_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/crawl" -H "Content-Type: application/json" -d "{\"url\":\"${TARGETS[0]}\",\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-CRAWL_JOB_ID=$(echo "$CRAWL_JOB" | parse_json_field "id")
+CRAWL_JOB_ID=$(echo "$CRAWL_JOB" | parse_json_field "job.id")
 wait_job_api "$CRAWL_JOB_ID"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${CRAWL_JOB_ID}" >"$OUT_DIR/api-crawl-job.json"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${CRAWL_JOB_ID}/results" >"$OUT_DIR/api-crawl-results.json"
 
 RESEARCH_JOB=$(curl -fsS -X POST "http://127.0.0.1:${SERVER_PORT}/v1/research" -H "Content-Type: application/json" -d "{\"query\":\"${RESEARCH_QUERY}\",\"urls\":[\"${TARGETS[0]}\",\"${TARGETS[1]}\"] ,\"maxDepth\":${MAX_DEPTH},\"maxPages\":${MAX_PAGES},\"headless\":${HEADLESS_JSON},\"playwright\":${PLAYWRIGHT_JSON},\"timeoutSeconds\":${TIMEOUT_SECS}}")
-RESEARCH_JOB_ID=$(echo "$RESEARCH_JOB" | parse_json_field "id")
+RESEARCH_JOB_ID=$(echo "$RESEARCH_JOB" | parse_json_field "job.id")
 wait_job_api "$RESEARCH_JOB_ID"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}" >"$OUT_DIR/api-research-job.json"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}/results" >"$OUT_DIR/api-research-results.json"

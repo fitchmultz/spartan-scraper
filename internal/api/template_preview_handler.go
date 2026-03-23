@@ -3,6 +3,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -96,6 +97,11 @@ func (s *Server) handleTemplatePreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fetcher := fetch.NewFetcher(s.cfg.DataDir)
+	defer func() {
+		if closeErr := fetch.CloseFetcher(fetcher); closeErr != nil {
+			slog.Warn("failed to close template preview fetcher", "url", pageURL, "error", closeErr)
+		}
+	}()
 	result, err := fetcher.Fetch(r.Context(), fetchReq)
 	if err != nil {
 		writeError(w, r, apperrors.Wrap(apperrors.KindInternal, "failed to fetch page", err))
@@ -186,6 +192,11 @@ func (s *Server) handleTestSelector(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fetcher := fetch.NewFetcher(s.cfg.DataDir)
+	defer func() {
+		if closeErr := fetch.CloseFetcher(fetcher); closeErr != nil {
+			slog.Warn("failed to close selector-test fetcher", "url", req.URL, "error", closeErr)
+		}
+	}()
 	result, err := fetcher.Fetch(r.Context(), fetchReq)
 	if err != nil {
 		writeError(w, r, apperrors.Wrap(apperrors.KindInternal, "failed to fetch page", err))

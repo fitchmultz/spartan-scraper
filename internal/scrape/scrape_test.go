@@ -12,8 +12,46 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
+	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 )
+
+type trackingFetcher struct {
+	result fetch.Result
+	closed bool
+}
+
+func (f *trackingFetcher) Fetch(_ context.Context, _ fetch.Request) (fetch.Result, error) {
+	return f.result, nil
+}
+
+func (f *trackingFetcher) Close() error {
+	f.closed = true
+	return nil
+}
+
+func TestRunClosesFetcher(t *testing.T) {
+	fetcher := &trackingFetcher{result: fetch.Result{URL: "https://example.com", Status: http.StatusOK, HTML: `<html><head><title>Closed</title></head><body>ok</body></html>`}}
+	previous := newRequestFetcher
+	newRequestFetcher = func(Request) fetch.Fetcher {
+		return fetcher
+	}
+	defer func() {
+		newRequestFetcher = previous
+	}()
+
+	_, err := Run(context.Background(), Request{
+		URL:     "https://example.com",
+		Timeout: time.Second,
+		DataDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if !fetcher.closed {
+		t.Fatal("expected Run to close the fetcher")
+	}
+}
 
 func TestRun(t *testing.T) {
 	mux := http.NewServeMux()
