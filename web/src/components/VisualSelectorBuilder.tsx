@@ -19,6 +19,7 @@ import {
   type TestSelectorResponse,
 } from "../api";
 import { useTemplateBuilder } from "../hooks/useTemplateBuilder";
+import { getApiErrorMessage } from "../lib/api-errors";
 
 import {
   buildExpandedPaths,
@@ -191,11 +192,13 @@ export function VisualSelectorBuilder({
         },
       });
       if (response.error) {
-        throw new Error(String(response.error) || "Failed to fetch page");
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to fetch page"),
+        );
       }
       setDomTree(response.data?.dom_tree ?? null);
     } catch (err) {
-      setFetchError(err instanceof Error ? err.message : "Unknown error");
+      setFetchError(getApiErrorMessage(err, "Failed to fetch page"));
     } finally {
       setFetching(false);
     }
@@ -241,7 +244,9 @@ export function VisualSelectorBuilder({
         body: request,
       });
       if (response.error) {
-        throw new Error(String(response.error) || "Failed to test selector");
+        throw new Error(
+          getApiErrorMessage(response.error, "Failed to test selector"),
+        );
       }
       const data = response.data;
       setTestResults({
@@ -255,7 +260,7 @@ export function VisualSelectorBuilder({
         selector: generatedSelector,
         matches: 0,
         elements: [],
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: getApiErrorMessage(err, "Failed to test selector"),
       });
     } finally {
       setTesting(false);

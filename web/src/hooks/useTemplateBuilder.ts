@@ -30,6 +30,7 @@ import {
   type SelectorRule,
   type Template,
 } from "../api";
+import { getApiErrorMessage } from "../lib/api-errors";
 
 interface UseTemplateBuilderOptions {
   initialTemplate?: Template;
@@ -122,19 +123,23 @@ export function useTemplateBuilder(
           body: request,
         });
         if (response.error) {
-          throw new Error(String(response.error) || "Failed to save template");
+          throw new Error(
+            getApiErrorMessage(response.error, "Failed to save template"),
+          );
         }
       } else {
         const response = await createTemplate({
           body: request,
         });
         if (response.error) {
-          throw new Error(String(response.error) || "Failed to save template");
+          throw new Error(
+            getApiErrorMessage(response.error, "Failed to save template"),
+          );
         }
       }
       onSave?.({ ...template, name, selectors });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(getApiErrorMessage(err, "Failed to save template"));
     } finally {
       setIsSaving(false);
     }

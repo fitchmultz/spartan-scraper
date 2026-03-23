@@ -16,16 +16,16 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Normalize template-authoring failure copy
-   - Replace the remaining raw `String(response.error)` fallbacks in `useTemplateBuilder` and `VisualSelectorBuilder` with `getApiErrorMessage`.
-   - Keep save, fetch, and selector-test failures operator-readable and action-oriented.
+1. Normalize dedup failure copy
+   - Replace the raw `String(response.error)` handling in `DedupExplorer` with the shared API error formatter.
+   - Keep search, history, and stats failures readable without leaking transport-shaped messages into the UI.
 
 2. Scope dedup state by active tab
    - Keep `DedupExplorer` search, history, and stats errors isolated to the active panel.
    - Prevent stale results or refresh failures in one tab from mutating the others.
 
-3. Backfill focused authoring and dedup regressions
-   - Add only the direct tests needed for template save, visual-selector fetch/test, and dedup search/history/stats failures.
+3. Backfill focused dedup regressions
+   - Add only the direct tests needed for dedup search, history, and stats failures.
    - Assert operator-visible recovery and panel-local state preservation instead of implementation details.
 
 4. Unify long-running validation helpers
