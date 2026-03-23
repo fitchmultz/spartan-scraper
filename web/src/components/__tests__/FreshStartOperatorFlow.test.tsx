@@ -733,6 +733,10 @@ describe("FreshStartOperatorFlow", () => {
 
     const firstRender = renderAppAt("/settings");
 
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/settings/authoring");
+    });
+
     expect(
       screen.queryByRole("heading", { name: /start with one working job/i }),
     ).not.toBeInTheDocument();
@@ -751,15 +755,15 @@ describe("FreshStartOperatorFlow", () => {
     });
     expect(authoringHeading).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /saved state and history/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: /saved state and history/i }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /operational controls/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: /operational controls/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("render-profile-editor")).toBeInTheDocument();
     expect(screen.getByTestId("pipeline-js-editor")).toBeInTheDocument();
-    expect(screen.getByTestId("proxy-pool-status")).toBeInTheDocument();
-    expect(screen.getByTestId("retention-status")).toBeInTheDocument();
+    expect(screen.queryByTestId("proxy-pool-status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("retention-status")).not.toBeInTheDocument();
 
     const routeHelp = screen.getByLabelText(
       /what can i do here\? for this route/i,
@@ -783,7 +787,7 @@ describe("FreshStartOperatorFlow", () => {
 
     firstRender.unmount();
 
-    const secondRender = renderAppAt("/settings");
+    const secondRender = renderAppAt("/settings/authoring");
 
     expect(
       screen.getByLabelText(/what can i do here\? for this route/i),
@@ -801,62 +805,49 @@ describe("FreshStartOperatorFlow", () => {
     });
   });
 
-  it("syncs the Settings sub-navigation highlight with the section in view", async () => {
-    renderAppAt("/settings");
+  it("binds Settings section selection to the canonical URL and browser history", async () => {
+    const user = userEvent.setup();
+
+    renderAppAt("/settings/authoring");
 
     const authoringButton = screen.getByRole("button", {
       name: /authoring tools/i,
-    });
-    const inventoryButton = screen.getByRole("button", {
-      name: /saved state/i,
     });
     const operationsButton = screen.getByRole("button", {
       name: /operations/i,
     });
 
-    const mockSectionRect = (id: string, top: number, height = 320) => {
-      const section = document.getElementById(id);
-      if (!section) {
-        throw new Error(`missing section: ${id}`);
-      }
+    expect(authoringButton).toHaveAttribute("aria-current", "page");
+    expect(operationsButton).not.toHaveAttribute("aria-current");
+    expect(screen.getByTestId("render-profile-editor")).toBeInTheDocument();
+    expect(screen.queryByTestId("proxy-pool-status")).not.toBeInTheDocument();
 
-      Object.defineProperty(section, "getBoundingClientRect", {
-        configurable: true,
-        value: () => ({
-          x: 0,
-          y: top,
-          width: 100,
-          height,
-          top,
-          right: 100,
-          bottom: top + height,
-          left: 0,
-          toJSON: () => ({}),
-        }),
-      });
-    };
+    await user.click(operationsButton);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/settings/operations");
+    });
+
+    expect(operationsButton).toHaveAttribute("aria-current", "page");
+    expect(authoringButton).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("heading", { name: /operational controls/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("proxy-pool-status")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("render-profile-editor"),
+    ).not.toBeInTheDocument();
+
+    window.history.back();
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/settings/authoring");
+    });
 
     expect(authoringButton).toHaveAttribute("aria-current", "page");
-    expect(inventoryButton).not.toHaveAttribute("aria-current");
     expect(operationsButton).not.toHaveAttribute("aria-current");
-
-    mockSectionRect("settings-authoring-tools", -600);
-    mockSectionRect("settings-saved-state", 120);
-    mockSectionRect("settings-operational-controls", 760);
-    window.dispatchEvent(new Event("scroll"));
-
-    await waitFor(() => {
-      expect(inventoryButton).toHaveAttribute("aria-current", "page");
-    });
-
-    mockSectionRect("settings-authoring-tools", -1200);
-    mockSectionRect("settings-saved-state", -420);
-    mockSectionRect("settings-operational-controls", 120);
-    window.dispatchEvent(new Event("scroll"));
-
-    await waitFor(() => {
-      expect(operationsButton).toHaveAttribute("aria-current", "page");
-    });
+    expect(screen.getByTestId("render-profile-editor")).toBeInTheDocument();
+    expect(screen.queryByTestId("proxy-pool-status")).not.toBeInTheDocument();
   });
 
   it("navigates to every major route from the command palette", async () => {
@@ -874,7 +865,7 @@ describe("FreshStartOperatorFlow", () => {
       ["Open Jobs", "/jobs", "Jobs"],
       ["Create Job", "/jobs/new", "Create Job"],
       ["Open Templates", "/templates", "Templates"],
-      ["Open Settings", "/settings", "Settings"],
+      ["Open Settings", "/settings/authoring", "Settings"],
       ["Open Automation / Batches", "/automation/batches", "Automation"],
       ["Open Automation / Chains", "/automation/chains", "Automation"],
       ["Open Automation / Watches", "/automation/watches", "Automation"],
@@ -927,12 +918,22 @@ describe("FreshStartOperatorFlow", () => {
     expect(getApiBaseUrl()).toBe("");
   });
 
-  it("normalizes root and trailing-slash paths and falls back unknown routes to Jobs", () => {
+  it("normalizes paths, resolves Settings sections, and falls back unknown routes to Jobs", () => {
     expect(normalizePath("")).toBe("/jobs");
     expect(normalizePath("/")).toBe("/jobs");
     expect(normalizePath("/settings///")).toBe("/settings");
     expect(normalizePath("/jobs/new/")).toBe("/jobs/new");
 
+    expect(parseRoute("/settings/operations")).toMatchObject({
+      kind: "settings",
+      path: "/settings/operations",
+      settingsSection: "operations",
+    });
+    expect(parseRoute("/settings/unknown")).toMatchObject({
+      kind: "settings",
+      path: "/settings/unknown",
+      settingsSection: "authoring",
+    });
     expect(parseRoute("/mystery-path")).toMatchObject({
       kind: "jobs",
       path: "/jobs",

@@ -8,6 +8,10 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Command } from "cmdk";
+import {
+  DEFAULT_SETTINGS_SECTION,
+  getSettingsPath,
+} from "./settings/settingsSections";
 import { getJobStatusIcon } from "../lib/job-status";
 import type { JobEntry } from "../types";
 import type { JobPreset } from "../types/presets";
@@ -78,7 +82,7 @@ const ROUTE_COMMANDS = [
   {
     id: "nav-settings",
     label: "Open Settings",
-    path: "/settings",
+    path: getSettingsPath(DEFAULT_SETTINGS_SECTION),
     icon: "⚙️",
     group: "navigation" as const,
   },

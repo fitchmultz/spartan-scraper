@@ -17,12 +17,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 ## Next
 
 1. Settings Capability Error Surfaces
-   - Replace raw-object and generic failure fallbacks in proxy-pool and retention panels with operator-safe messages and structured next actions.
-   - Keep optional-capability failures scoped to the affected Settings panel instead of degrading unrelated sections.
+   - Replace raw-object and generic failure fallbacks in proxy-pool and retention panels with operator-safe messages and explicit next actions.
+   - Keep optional-capability failures isolated to the affected Settings section even when sections mount independently.
 
-2. Settings Section URL State
-   - Make `/settings` section selection URL-driven so authoring, saved state, and operations views open directly and survive refresh plus back-forward navigation.
-   - Derive subnav highlight, scroll target, and restored section state from the URL instead of duplicating that state locally.
+2. New Job Sticky Action Clearance
+   - Keep `/jobs/new` readable on short laptop heights with the sticky action bar present and the AI rail open or hidden.
+   - Prevent workflow cards, required inputs, and sticky actions from competing for the same vertical space in the basics step.
 
 ## Ongoing Constraints
 

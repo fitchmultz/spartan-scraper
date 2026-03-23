@@ -18,7 +18,7 @@
  *
  * Invariants/Assumptions:
  * - Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`,
- *   `/automation`, `/automation/:section`, and `/settings`.
+ *   `/automation`, `/automation/:section`, `/settings`, and `/settings/:section`.
  * - Results detail routes load job results directly from the canonical REST API.
  * - Deleted feature areas stay out of navigation and render tree entirely.
  */
@@ -85,12 +85,14 @@ import {
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ShortcutHint } from "./components/ShortcutHint";
 import { TutorialTooltip } from "./components/TutorialTooltip";
+import { SettingsSubnav } from "./components/settings/SettingsSubnav";
 import {
+  DEFAULT_SETTINGS_SECTION,
+  getSettingsPath,
+  getSettingsSectionFromPath,
   SETTINGS_SECTION_META,
-  SETTINGS_SECTION_ORDER,
-  SettingsSubnav,
   type SettingsSectionId,
-} from "./components/settings/SettingsSubnav";
+} from "./components/settings/settingsSections";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
@@ -135,6 +137,7 @@ export interface AppRoute {
   path: string;
   jobId?: string;
   automationSection?: AutomationSection;
+  settingsSection?: SettingsSectionId;
 }
 
 interface NavItem {
@@ -183,46 +186,11 @@ const NAV_ITEMS = [
   {
     kind: "settings",
     label: "Settings",
-    path: "/settings",
+    path: getSettingsPath(DEFAULT_SETTINGS_SECTION),
     description:
       "Saved auth, reusable runtime tools, and optional maintenance controls.",
   },
 ] as const satisfies readonly NavItem[];
-
-const SETTINGS_SECTION_VIEWPORT_ANCHOR_PX = 180;
-
-function getSettingsSectionInView(
-  sections: Array<{
-    id: SettingsSectionId;
-    element: HTMLElement;
-  }>,
-): SettingsSectionId {
-  const sectionRects = sections.map((section) => ({
-    ...section,
-    rect: section.element.getBoundingClientRect(),
-  }));
-
-  const hasMeasuredLayout = sectionRects.some(
-    ({ rect }) => rect.top !== 0 || rect.bottom !== 0 || rect.height !== 0,
-  );
-
-  if (!hasMeasuredLayout) {
-    return SETTINGS_SECTION_ORDER[0];
-  }
-
-  let activeSection = SETTINGS_SECTION_ORDER[0];
-
-  for (const section of sectionRects) {
-    if (section.rect.top <= SETTINGS_SECTION_VIEWPORT_ANCHOR_PX) {
-      activeSection = section.id;
-      continue;
-    }
-
-    break;
-  }
-
-  return activeSection;
-}
 
 export function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") {
@@ -256,8 +224,13 @@ export function parseRoute(pathname: string): AppRoute {
         getAutomationSectionFromPath(path) ?? DEFAULT_AUTOMATION_SECTION,
     };
   }
-  if (path === "/settings") {
-    return { kind: "settings", path };
+  if (path === "/settings" || path.startsWith("/settings/")) {
+    return {
+      kind: "settings",
+      path,
+      settingsSection:
+        getSettingsSectionFromPath(path) ?? DEFAULT_SETTINGS_SECTION,
+    };
   }
   return { kind: "jobs", path: "/jobs" };
 }
@@ -280,6 +253,15 @@ function ErrorBanner({ message }: { message: string | null }) {
       <div className="error">{message}</div>
     </section>
   );
+}
+
+function scrollWindowToTop() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
 
 export function App() {
@@ -377,8 +359,6 @@ function AppShell() {
   const [pipelineScriptCount, setPipelineScriptCount] = useState<number | null>(
     null,
   );
-  const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSectionId>("authoring");
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -441,6 +421,23 @@ function AppShell() {
     window.history.replaceState(window.history.state ?? {}, "", canonicalPath);
     setPathname(canonicalPath);
   }, [pathname, route.automationSection, route.kind]);
+
+  useEffect(() => {
+    if (route.kind !== "settings") {
+      return;
+    }
+
+    const canonicalPath = getSettingsPath(
+      route.settingsSection ?? DEFAULT_SETTINGS_SECTION,
+    );
+
+    if (pathname === canonicalPath) {
+      return;
+    }
+
+    window.history.replaceState(window.history.state ?? {}, "", canonicalPath);
+    setPathname(canonicalPath);
+  }, [pathname, route.kind, route.settingsSection]);
 
   useEffect(() => {
     if (route.kind === "job-detail" && route.jobId) {
@@ -910,6 +907,11 @@ function AppShell() {
     route.kind === "automation"
       ? (route.automationSection ?? DEFAULT_AUTOMATION_SECTION)
       : DEFAULT_AUTOMATION_SECTION;
+  const activeSettingsSection =
+    route.kind === "settings"
+      ? (route.settingsSection ?? DEFAULT_SETTINGS_SECTION)
+      : DEFAULT_SETTINGS_SECTION;
+  const activeSettingsPath = route.kind === "settings" ? route.path : null;
 
   const watchPromotionSeed =
     route.kind === "automation" &&
@@ -952,7 +954,7 @@ function AppShell() {
           navigate("/automation/batches");
           return;
         case "settings":
-          navigate("/settings");
+          navigate(getSettingsPath(DEFAULT_SETTINGS_SECTION));
           return;
       }
     },
@@ -1067,92 +1069,98 @@ function AppShell() {
     ],
   );
 
-  const scrollToSettingsSection = useCallback((section: SettingsSectionId) => {
-    setActiveSettingsSection(section);
+  const scrollToSettingsSection = useCallback(
+    (section: SettingsSectionId) => {
+      if (route.kind !== "settings") {
+        navigate(getSettingsPath(section));
+        return;
+      }
 
-    if (typeof document === "undefined") {
-      return;
-    }
+      if (section === activeSettingsSection) {
+        scrollWindowToTop();
+        return;
+      }
 
-    document
-      .getElementById(SETTINGS_SECTION_META[section].elementId)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
-  const syncActiveSettingsSection = useCallback(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-
-    const sections = SETTINGS_SECTION_ORDER.map((section) => ({
-      id: section,
-      element: document.getElementById(
-        SETTINGS_SECTION_META[section].elementId,
-      ) as HTMLElement | null,
-    })).filter(
-      (section): section is { id: SettingsSectionId; element: HTMLElement } =>
-        section.element !== null,
-    );
-
-    if (sections.length === 0) {
-      return;
-    }
-
-    const nextSection = getSettingsSectionInView(sections);
-    setActiveSettingsSection((currentSection) =>
-      currentSection === nextSection ? currentSection : nextSection,
-    );
-  }, []);
+      navigate(getSettingsPath(section));
+    },
+    [activeSettingsSection, navigate, route.kind],
+  );
 
   useEffect(() => {
-    if (route.kind !== "settings" || typeof window === "undefined") {
+    if (activeSettingsPath === null) {
       return;
     }
 
-    let animationFrameId = 0;
-    const syncOnNextFrame = () => {
-      cancelAnimationFrame(animationFrameId);
-      animationFrameId = requestAnimationFrame(() => {
-        syncActiveSettingsSection();
-      });
-    };
+    scrollWindowToTop();
+  }, [activeSettingsPath]);
 
-    setActiveSettingsSection("authoring");
-    syncOnNextFrame();
-    window.addEventListener("scroll", syncOnNextFrame, { passive: true });
-    window.addEventListener("resize", syncOnNextFrame);
+  const renderSettingsSection = useCallback(
+    (section: SettingsSectionId): ReactNode => {
+      switch (section) {
+        case "authoring":
+          return (
+            <div className="settings-route__section-stack">
+              <section className="panel">
+                <RenderProfileEditor
+                  aiStatus={health?.components?.ai ?? null}
+                  onInventoryChange={setRenderProfileCount}
+                />
+              </section>
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("scroll", syncOnNextFrame);
-      window.removeEventListener("resize", syncOnNextFrame);
-    };
-  }, [route.kind, syncActiveSettingsSection]);
-
-  useEffect(() => {
-    if (route.kind !== "settings" || typeof window === "undefined") {
-      return;
-    }
-
-    let animationFrameId = 0;
-    let remainingSyncPasses = showSettingsOverview ? 2 : 1;
-
-    const syncOnNextFrame = () => {
-      animationFrameId = requestAnimationFrame(() => {
-        syncActiveSettingsSection();
-        remainingSyncPasses -= 1;
-        if (remainingSyncPasses > 0) {
-          syncOnNextFrame();
-        }
-      });
-    };
-
-    syncOnNextFrame();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [route.kind, showSettingsOverview, syncActiveSettingsSection]);
+              <section className="panel">
+                <PipelineJSEditor
+                  aiStatus={health?.components?.ai ?? null}
+                  onInventoryChange={setPipelineScriptCount}
+                />
+              </section>
+            </div>
+          );
+        case "inventory":
+          return (
+            <InfoSections
+              profiles={profiles}
+              schedules={schedules}
+              crawlStates={crawlStates}
+              crawlStatesPage={crawlStatesPage}
+              crawlStatesTotal={crawlStatesTotal}
+              crawlStatesPerPage={100}
+              onCrawlStatesPageChange={setCrawlStatesPage}
+              onCreateJob={() => navigate("/jobs/new")}
+              onOpenAutomation={() => navigate("/automation/batches")}
+              onOpenJobs={() => navigate("/jobs")}
+            />
+          );
+        case "operations":
+          return (
+            <div className="settings-route__section-stack">
+              <ProxyPoolStatusPanel
+                health={health}
+                onNavigate={navigate}
+                onRefreshHealth={refreshHealth}
+              />
+              <RetentionStatusPanel
+                health={health}
+                onNavigate={navigate}
+                onRefreshHealth={refreshHealth}
+                onCreateJob={() => navigate("/jobs/new")}
+                onOpenAutomation={() => navigate("/automation/batches")}
+              />
+            </div>
+          );
+      }
+    },
+    [
+      crawlStates,
+      crawlStatesPage,
+      crawlStatesTotal,
+      health,
+      navigate,
+      profiles,
+      refreshHealth,
+      schedules,
+      setCrawlStatesPage,
+    ],
+  );
 
   const jobDetailSignals = useMemo<RouteSignal[]>(() => {
     if (route.kind !== "job-detail") {
@@ -1540,35 +1548,23 @@ function AppShell() {
 
           <div data-tour="settings-workspace" className="settings-route">
             <section
-              id={SETTINGS_SECTION_META.authoring.elementId}
+              id={SETTINGS_SECTION_META[activeSettingsSection].elementId}
               className="settings-route__section"
-              aria-labelledby="settings-route-authoring-title"
+              aria-labelledby={`settings-route-${activeSettingsSection}-title`}
             >
               <div className="settings-route__section-header">
                 <div className="settings-route__section-eyebrow">
-                  {SETTINGS_SECTION_META.authoring.label}
+                  {SETTINGS_SECTION_META[activeSettingsSection].label}
                 </div>
-                <h2 id="settings-route-authoring-title">
-                  {SETTINGS_SECTION_META.authoring.title}
+                <h2 id={`settings-route-${activeSettingsSection}-title`}>
+                  {SETTINGS_SECTION_META[activeSettingsSection].title}
                 </h2>
-                <p>{SETTINGS_SECTION_META.authoring.description}</p>
+                <p>
+                  {SETTINGS_SECTION_META[activeSettingsSection].description}
+                </p>
               </div>
 
-              <div className="settings-route__section-stack">
-                <section className="panel">
-                  <RenderProfileEditor
-                    aiStatus={health?.components?.ai ?? null}
-                    onInventoryChange={setRenderProfileCount}
-                  />
-                </section>
-
-                <section className="panel">
-                  <PipelineJSEditor
-                    aiStatus={health?.components?.ai ?? null}
-                    onInventoryChange={setPipelineScriptCount}
-                  />
-                </section>
-              </div>
+              {renderSettingsSection(activeSettingsSection)}
             </section>
 
             {showSettingsOverview ? (
@@ -1577,66 +1573,6 @@ function AppShell() {
                 onOpenJobs={() => navigate("/jobs")}
               />
             ) : null}
-
-            <section
-              id={SETTINGS_SECTION_META.inventory.elementId}
-              className="settings-route__section"
-              aria-labelledby="settings-route-inventory-title"
-            >
-              <div className="settings-route__section-header">
-                <div className="settings-route__section-eyebrow">
-                  {SETTINGS_SECTION_META.inventory.label}
-                </div>
-                <h2 id="settings-route-inventory-title">
-                  {SETTINGS_SECTION_META.inventory.title}
-                </h2>
-                <p>{SETTINGS_SECTION_META.inventory.description}</p>
-              </div>
-
-              <InfoSections
-                profiles={profiles}
-                schedules={schedules}
-                crawlStates={crawlStates}
-                crawlStatesPage={crawlStatesPage}
-                crawlStatesTotal={crawlStatesTotal}
-                crawlStatesPerPage={100}
-                onCrawlStatesPageChange={setCrawlStatesPage}
-                onCreateJob={() => navigate("/jobs/new")}
-                onOpenAutomation={() => navigate("/automation/batches")}
-                onOpenJobs={() => navigate("/jobs")}
-              />
-            </section>
-
-            <section
-              id={SETTINGS_SECTION_META.operations.elementId}
-              className="settings-route__section"
-              aria-labelledby="settings-route-operations-title"
-            >
-              <div className="settings-route__section-header">
-                <div className="settings-route__section-eyebrow">
-                  {SETTINGS_SECTION_META.operations.label}
-                </div>
-                <h2 id="settings-route-operations-title">
-                  {SETTINGS_SECTION_META.operations.title}
-                </h2>
-                <p>{SETTINGS_SECTION_META.operations.description}</p>
-              </div>
-
-              <div className="settings-route__section-stack">
-                <ProxyPoolStatusPanel
-                  health={health}
-                  onNavigate={navigate}
-                  onRefreshHealth={refreshHealth}
-                />
-                <RetentionStatusPanel
-                  health={health}
-                  onNavigate={navigate}
-                  onRefreshHealth={refreshHealth}
-                  onCreateJob={() => navigate("/jobs/new")}
-                  onOpenAutomation={() => navigate("/automation/batches")}
-                />
-              </div>
-            </section>
           </div>
 
           {routeHelpPanel}
