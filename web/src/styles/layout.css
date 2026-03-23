@@ -317,6 +317,14 @@
   align-content: start;
 }
 
+.job-wizard__guided-flow,
+.job-wizard__sidebar-section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  align-content: start;
+}
+
 .job-wizard__header {
   display: grid;
   gap: 14px;
@@ -562,6 +570,56 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.job-wizard__workspace[data-compact="true"] {
+  gap: 12px;
+}
+
+.job-wizard__workspace[data-compact="true"] .job-wizard__main,
+.job-wizard__workspace[data-compact="true"] .job-wizard__sidebar,
+.job-wizard__workspace[data-compact="true"] .job-wizard__guided-flow,
+.job-wizard__workspace[data-compact="true"] .job-wizard__sidebar-section {
+  gap: 12px;
+}
+
+.job-wizard__workspace[data-compact="true"]
+  .job-wizard__sidebar-section--assistant {
+  order: -1;
+}
+
+.job-wizard__workspace[data-compact="true"] .job-wizard__header-controls {
+  gap: 8px;
+}
+
+.job-wizard__workspace[data-compact="true"] .job-wizard__step-count,
+.job-wizard__workspace[data-compact="true"] .job-wizard__draft-status {
+  font-size: 0.76rem;
+}
+
+.job-wizard__workspace[data-compact="true"] .job-wizard__panel-header {
+  gap: 4px;
+}
+
+.job-wizard__workspace[data-compact="true"] .ai-assistant-panel {
+  top: 8px;
+  max-height: calc(100vh - 16px);
+}
+
+@media (min-width: 1101px) {
+  .job-wizard__workspace[data-compact="true"] .job-wizard__panel--basics {
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+    align-items: start;
+  }
+
+  .job-wizard__workspace[data-compact="true"]
+    .job-wizard__panel--basics
+    .job-wizard__panel-header,
+  .job-wizard__workspace[data-compact="true"]
+    .job-wizard__panel--basics
+    .job-wizard__error-summary {
+    grid-column: 1 / -1;
+  }
 }
 
 .job-workflow-form {
@@ -813,7 +871,7 @@
   }
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1280px) {
   .job-wizard__workspace {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -932,18 +990,6 @@
   .job-wizard__actions-meta {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (min-width: 1101px) and (max-height: 820px) {
-  .job-wizard__panel--basics {
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-    align-items: start;
-  }
-
-  .job-wizard__panel--basics .job-wizard__panel-header,
-  .job-wizard__panel--basics .job-wizard__error-summary {
-    grid-column: 1 / -1;
   }
 }
 

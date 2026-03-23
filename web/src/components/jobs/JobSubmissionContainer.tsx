@@ -11,8 +11,10 @@ import {
   forwardRef,
   lazy,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
+  useState,
   type CSSProperties,
 } from "react";
 import type {
@@ -54,6 +56,41 @@ const ResearchForm = lazy(() =>
 type ScrapeFormRef = import("../../components/ScrapeForm").ScrapeFormRef;
 type CrawlFormRef = import("../../components/CrawlForm").CrawlFormRef;
 type ResearchFormRef = import("../../components/ResearchForm").ResearchFormRef;
+
+const COMPACT_JOB_WIZARD_MAX_HEIGHT = 820;
+
+function readCompactViewport(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.innerHeight <= COMPACT_JOB_WIZARD_MAX_HEIGHT;
+}
+
+function useCompactViewport(): boolean {
+  const [isCompactViewport, setIsCompactViewport] = useState<boolean>(() =>
+    readCompactViewport(),
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const updateViewportDensity = () => {
+      setIsCompactViewport(readCompactViewport());
+    };
+
+    updateViewportDensity();
+    window.addEventListener("resize", updateViewportDensity);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportDensity);
+    };
+  }, []);
+
+  return isCompactViewport;
+}
 
 export interface JobSubmissionContainerRef {
   submitScrape: () => Promise<void>;
@@ -117,6 +154,7 @@ export const JobSubmissionContainer = forwardRef<
   const crawlFormRef = useRef<CrawlFormRef>(null);
   const researchFormRef = useRef<ResearchFormRef>(null);
   const { isOpen: isAssistantOpen, width: assistantWidth } = useAIAssistant();
+  const isCompactViewport = useCompactViewport();
   const profileOptions = profiles as ProfileOption[];
 
   const wizard = useJobWizard({
@@ -204,6 +242,20 @@ export const JobSubmissionContainer = forwardRef<
         ? wizard.localState.crawl.url
         : "";
 
+  const presetsSection =
+    presets && savePreset && onSelectPreset ? (
+      <PresetContainer
+        presets={presets}
+        activeTab={activeTab}
+        savePreset={savePreset}
+        getCurrentConfig={() => wizard.getCurrentConfig(activeTab)}
+        getCurrentUrl={() => currentUrl}
+        onSelectPreset={onSelectPreset}
+        onOpenAssistant={onOpenAssistant}
+        onOpenTemplateAssistant={onOpenTemplateAssistant}
+      />
+    ) : null;
+
   return (
     <section
       id="forms"
@@ -212,6 +264,7 @@ export const JobSubmissionContainer = forwardRef<
     >
       <div
         className="job-wizard__workspace"
+        data-compact={isCompactViewport ? "true" : "false"}
         style={
           {
             "--job-wizard-sidebar-width": `${isAssistantOpen ? Math.max(assistantWidth, 360) : 360}px`,
@@ -253,7 +306,7 @@ export const JobSubmissionContainer = forwardRef<
           </div>
 
           {!wizard.expertMode ? (
-            <>
+            <div className="job-wizard__guided-flow">
               <div data-tour="wizard-steps">
                 <WizardStepper
                   activeStep={wizard.activeStep}
@@ -329,7 +382,7 @@ export const JobSubmissionContainer = forwardRef<
                 }}
                 onResetDraft={() => wizard.clearDraft(activeTab)}
               />
-            </>
+            </div>
           ) : null}
 
           <Suspense
@@ -423,25 +476,20 @@ export const JobSubmissionContainer = forwardRef<
         </div>
 
         <div className="job-wizard__sidebar">
-          {presets && savePreset && onSelectPreset ? (
-            <PresetContainer
-              presets={presets}
-              activeTab={activeTab}
-              savePreset={savePreset}
-              getCurrentConfig={() => wizard.getCurrentConfig(activeTab)}
-              getCurrentUrl={() => currentUrl}
-              onSelectPreset={onSelectPreset}
-              onOpenAssistant={onOpenAssistant}
-              onOpenTemplateAssistant={onOpenTemplateAssistant}
-            />
+          {presetsSection ? (
+            <div className="job-wizard__sidebar-section job-wizard__sidebar-section--presets">
+              {presetsSection}
+            </div>
           ) : null}
 
-          <JobSubmissionAssistantSection
-            activeTab={activeTab}
-            form={formState}
-            localState={wizard.localState}
-            aiStatus={aiStatus}
-          />
+          <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
+            <JobSubmissionAssistantSection
+              activeTab={activeTab}
+              form={formState}
+              localState={wizard.localState}
+              aiStatus={aiStatus}
+            />
+          </div>
         </div>
       </div>
     </section>

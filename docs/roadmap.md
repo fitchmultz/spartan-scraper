@@ -16,13 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. New Job Sticky Action Clearance
-   - Rework `/jobs/new` basics-step spacing so sticky actions, required fields, and the AI rail fit on short laptop heights.
-   - Verify the layout in headed browser screenshots with the AI rail both open and closed.
+1. Finish the remaining Web authoring and dedup error-state sweep
+   - Replace the remaining raw `String(response.error)` paths in `useTemplateBuilder`, `VisualSelectorBuilder`, and `DedupExplorer` with `getApiErrorMessage`-based operator copy.
+   - Scope dedup errors and stale results to the active tab so a failed search, history lookup, or stats refresh cannot pollute the other panels.
 
-2. Web API Error Surface Consistency
-   - Replace remaining raw `String(response.error)`-style handling in non-Settings web panels and hooks with operator-safe copy.
-   - Add only the smallest regressions needed to prevent `[object Object]` or opaque fallback text from reaching operators.
+2. Backfill focused failure-path regressions for authoring and dedup
+   - Add direct coverage for template-save, visual-selector fetch/test, and dedup search/history/stats failures that still rely on manual dogfooding.
+   - Assert operator-visible recovery copy, panel-local failure handling, and draft/result preservation instead of implementation details.
 
 ## Ongoing Constraints
 

@@ -35,6 +35,8 @@ interface MockResearchFormProps {
   setUrls: (value: string) => void;
 }
 
+const DEFAULT_VIEWPORT_HEIGHT = 900;
+
 vi.mock("../../ScrapeForm", async () => {
   const React = await import("react");
   return {
@@ -137,10 +139,15 @@ vi.mock("../../ResearchForm", async () => {
   };
 });
 
-function renderHarness(initialTab: JobType = "scrape") {
+function renderHarness(
+  initialTab: JobType = "scrape",
+  { includePresets = false }: { includePresets?: boolean } = {},
+) {
   const onSubmitScrape = vi.fn();
   const onSubmitCrawl = vi.fn();
   const onSubmitResearch = vi.fn();
+  const savePreset = vi.fn();
+  const onSelectPreset = vi.fn();
 
   function Harness() {
     const formState = useFormState();
@@ -157,6 +164,29 @@ function renderHarness(initialTab: JobType = "scrape") {
           onSubmitResearch={onSubmitResearch}
           loading={false}
           profiles={[]}
+          presets={
+            includePresets
+              ? [
+                  {
+                    id: "preset-scrape-static-page",
+                    name: "Static Page",
+                    description: "Fast HTTP fetch for static HTML content",
+                    icon: "🧪",
+                    jobType: "scrape",
+                    config: { url: "https://example.com" },
+                    resources: {
+                      timeSeconds: 10,
+                      cpu: "low",
+                      memory: "low",
+                    },
+                    useCases: ["Static marketing pages"],
+                    isBuiltIn: true,
+                  },
+                ]
+              : undefined
+          }
+          savePreset={includePresets ? savePreset : undefined}
+          onSelectPreset={includePresets ? onSelectPreset : undefined}
         />
       </AIAssistantProvider>
     );
@@ -170,9 +200,19 @@ function renderHarness(initialTab: JobType = "scrape") {
   };
 }
 
+function setViewportHeight(height: number) {
+  Object.defineProperty(window, "innerHeight", {
+    configurable: true,
+    writable: true,
+    value: height,
+  });
+  window.dispatchEvent(new Event("resize"));
+}
+
 describe("JobSubmissionContainer wizard", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setViewportHeight(DEFAULT_VIEWPORT_HEIGHT);
   });
 
   it("blocks advancement when basics are invalid", async () => {
@@ -249,5 +289,30 @@ describe("JobSubmissionContainer wizard", () => {
     expect(
       container.querySelector('[data-tour="wizard-steps"]'),
     ).not.toBeNull();
+  });
+
+  it("marks the workspace compact on short viewports", () => {
+    setViewportHeight(780);
+    const { container } = renderHarness("scrape", { includePresets: true });
+
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-compact",
+      "true",
+    );
+    expect(
+      screen.getByRole("heading", { name: /scrape presets/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /job submission assistant/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the workspace in standard mode on taller viewports", () => {
+    const { container } = renderHarness("scrape", { includePresets: true });
+
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-compact",
+      "false",
+    );
   });
 });
