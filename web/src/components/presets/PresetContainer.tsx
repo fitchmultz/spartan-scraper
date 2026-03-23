@@ -25,6 +25,7 @@ interface PresetContainerProps {
   onSelectPreset: (preset: JobPreset) => void;
   onOpenAssistant?: () => void;
   onOpenTemplateAssistant?: () => void;
+  compact?: boolean;
 }
 
 export function PresetContainer({
@@ -36,6 +37,7 @@ export function PresetContainer({
   onSelectPreset,
   onOpenAssistant,
   onOpenTemplateAssistant,
+  compact = false,
 }: PresetContainerProps) {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
@@ -73,6 +75,7 @@ export function PresetContainer({
           onOpenAssistant={onOpenAssistant}
           onOpenTemplateAssistant={onOpenTemplateAssistant}
           currentUrl={getCurrentUrl()}
+          compact={compact}
         />
       </div>
 

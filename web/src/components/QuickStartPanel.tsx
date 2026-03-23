@@ -19,6 +19,7 @@ interface QuickStartPanelProps {
   onOpenAssistant?: () => void;
   onOpenTemplateAssistant?: () => void;
   currentUrl?: string;
+  compact?: boolean;
 }
 
 const JOB_TYPE_COPY: Record<
@@ -83,6 +84,7 @@ export function QuickStartPanel({
   onOpenAssistant,
   onOpenTemplateAssistant,
   currentUrl,
+  compact = false,
 }: QuickStartPanelProps) {
   const activePresets = useMemo(
     () => presets.filter((preset) => preset.jobType === activeJobType),
@@ -99,16 +101,16 @@ export function QuickStartPanel({
   const recommendedIds = new Set(recommendedPresets.map((preset) => preset.id));
 
   const activeCopy = JOB_TYPE_COPY[activeJobType];
-  const featuredPresets =
-    recommendedPresets.length > 0
-      ? recommendedPresets
-      : activePresets.slice(0, 2);
+  const featuredPresetLimit = compact ? 1 : 2;
+  const featuredPresets = (
+    recommendedPresets.length > 0 ? recommendedPresets : activePresets
+  ).slice(0, featuredPresetLimit);
   const remainingPresets = activePresets.filter(
     (preset) => !featuredPresets.some((featured) => featured.id === preset.id),
   );
 
   return (
-    <section className="panel job-quickstart">
+    <section className={`panel job-quickstart ${compact ? "is-compact" : ""}`}>
       <div className="job-quickstart__header">
         <div>
           <div className="job-quickstart__eyebrow">Quick Start</div>

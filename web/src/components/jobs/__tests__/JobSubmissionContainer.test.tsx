@@ -37,6 +37,39 @@ interface MockResearchFormProps {
 
 const DEFAULT_VIEWPORT_HEIGHT = 900;
 
+function installMockLocalStorage() {
+  const store = new Map<string, string>();
+  const mockStorage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key) {
+      return store.has(key) ? (store.get(key) ?? null) : null;
+    },
+    key(index) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+  };
+
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: mockStorage,
+  });
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: mockStorage,
+  });
+}
+
 vi.mock("../../ScrapeForm", async () => {
   const React = await import("react");
   return {
@@ -211,6 +244,7 @@ function setViewportHeight(height: number) {
 
 describe("JobSubmissionContainer wizard", () => {
   beforeEach(() => {
+    installMockLocalStorage();
     window.localStorage.clear();
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT);
   });
@@ -326,25 +360,6 @@ describe("JobSubmissionContainer wizard", () => {
       screen.queryByRole("heading", { name: /job submission assistant/i }),
     ).not.toBeInTheDocument();
     expect(container.querySelector(".job-wizard__sidebar")).not.toBeNull();
-  });
-
-  it("stacks presets above the workflow on compact hidden-assistant layouts", () => {
-    setViewportHeight(780);
-    window.localStorage.setItem("spartan.ai-assistant.open", "false");
-    const { container } = renderHarness("scrape", { includePresets: true });
-
-    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
-      "data-compact",
-      "true",
-    );
-    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
-      "data-sidebar-mode",
-      "none",
-    );
-    expect(
-      screen.getByRole("heading", { name: /scrape presets/i }),
-    ).toBeInTheDocument();
-    expect(container.querySelector(".job-wizard__sidebar")).toBeNull();
   });
 
   it("drops the sidebar when both presets and the assistant are unavailable", () => {

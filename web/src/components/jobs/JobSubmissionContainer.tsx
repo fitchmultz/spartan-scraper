@@ -244,8 +244,14 @@ export const JobSubmissionContainer = forwardRef<
         ? wizard.localState.crawl.url
         : "";
 
-  const presetsSection =
-    presets && savePreset && onSelectPreset ? (
+  const canShowPresets = Boolean(presets && savePreset && onSelectPreset);
+  const showAssistantSidebar = isAssistantOpen;
+  const showPresetRailAboveMain =
+    canShowPresets && !showAssistantSidebar && isCompactViewport;
+  const showPresetRailInSidebar = canShowPresets && !showPresetRailAboveMain;
+  let presetsSection = null;
+  if (presets && savePreset && onSelectPreset) {
+    presetsSection = (
       <PresetContainer
         presets={presets}
         activeTab={activeTab}
@@ -255,18 +261,15 @@ export const JobSubmissionContainer = forwardRef<
         onSelectPreset={onSelectPreset}
         onOpenAssistant={onOpenAssistant}
         onOpenTemplateAssistant={onOpenTemplateAssistant}
+        compact={showPresetRailAboveMain}
       />
-    ) : null;
+    );
+  }
   const presetRail = presetsSection ? (
     <div className="job-wizard__sidebar-section job-wizard__sidebar-section--presets">
       {presetsSection}
     </div>
   ) : null;
-  const hasPresetRail = presetRail !== null;
-  const showAssistantSidebar = isAssistantOpen;
-  const showPresetRailAboveMain =
-    hasPresetRail && !showAssistantSidebar && isCompactViewport;
-  const showPresetRailInSidebar = hasPresetRail && !showPresetRailAboveMain;
   const sidebarMode = showAssistantSidebar
     ? "assistant"
     : showPresetRailInSidebar

@@ -17,8 +17,8 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 ## Next
 
 1. Harden the dedup explorer workflow end-to-end
-   - Replace raw transport-shaped error copy with `getApiErrorMessage`, split search/history/stats into panel-local loading-error-result state, and stop one panel's refresh from clobbering another.
-   - Backfill only the direct dedup regressions needed for failure copy, panel-local recovery, and state preservation.
+   - Replace the remaining raw `String(response.error)` paths in `DedupExplorer` with `getApiErrorMessage` and move search, history, and stats onto tab-scoped loading, error, and result state.
+   - Prevent one tab's refresh from clobbering another and backfill only the direct regressions for failure copy, recovery, and state isolation.
 
 2. Extract a shared integration-test harness and realign heavy validation coverage
    - Deduplicate binary build, server and web-preview lifecycle, job polling, and API envelope parsing across `internal/system` and `internal/e2e`.
