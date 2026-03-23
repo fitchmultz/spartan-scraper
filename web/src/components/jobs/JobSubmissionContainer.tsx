@@ -255,6 +255,13 @@ export const JobSubmissionContainer = forwardRef<
         onOpenTemplateAssistant={onOpenTemplateAssistant}
       />
     ) : null;
+  const presetRail = presetsSection ? (
+    <div className="job-wizard__sidebar-section job-wizard__sidebar-section--presets">
+      {presetsSection}
+    </div>
+  ) : null;
+  const showAssistantSidebar = isAssistantOpen;
+  const sidebarWidth = Math.max(assistantWidth, 360);
 
   return (
     <section
@@ -265,10 +272,13 @@ export const JobSubmissionContainer = forwardRef<
       <div
         className="job-wizard__workspace"
         data-compact={isCompactViewport ? "true" : "false"}
+        data-assistant-open={showAssistantSidebar ? "true" : "false"}
         style={
-          {
-            "--job-wizard-sidebar-width": `${isAssistantOpen ? Math.max(assistantWidth, 360) : 360}px`,
-          } as CSSProperties
+          showAssistantSidebar
+            ? ({
+                "--job-wizard-sidebar-width": `${sidebarWidth}px`,
+              } as CSSProperties)
+            : undefined
         }
       >
         <div className="job-wizard__main">
@@ -304,6 +314,8 @@ export const JobSubmissionContainer = forwardRef<
               </span>
             </div>
           </div>
+
+          {!showAssistantSidebar ? presetRail : null}
 
           {!wizard.expertMode ? (
             <div className="job-wizard__guided-flow">
@@ -475,22 +487,20 @@ export const JobSubmissionContainer = forwardRef<
           </Suspense>
         </div>
 
-        <div className="job-wizard__sidebar">
-          {presetsSection ? (
-            <div className="job-wizard__sidebar-section job-wizard__sidebar-section--presets">
-              {presetsSection}
-            </div>
-          ) : null}
+        {showAssistantSidebar ? (
+          <div className="job-wizard__sidebar">
+            {presetRail}
 
-          <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
-            <JobSubmissionAssistantSection
-              activeTab={activeTab}
-              form={formState}
-              localState={wizard.localState}
-              aiStatus={aiStatus}
-            />
+            <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
+              <JobSubmissionAssistantSection
+                activeTab={activeTab}
+                form={formState}
+                localState={wizard.localState}
+                aiStatus={aiStatus}
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </section>
   );

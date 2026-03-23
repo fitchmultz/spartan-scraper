@@ -309,6 +309,10 @@
   align-items: start;
 }
 
+.job-wizard__workspace[data-assistant-open="false"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .job-wizard__main,
 .job-wizard__sidebar {
   min-width: 0;

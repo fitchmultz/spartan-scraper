@@ -16,21 +16,21 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Remove the hidden AI rail footprint from `/jobs/new`
-   - Collapse the hidden assistant affordance so it does not reserve a dedicated sidebar column on short laptop viewports.
-   - Keep presets and sticky actions visible without introducing a new responsive mode.
+1. Normalize template-authoring failure copy
+   - Replace the remaining raw `String(response.error)` fallbacks in `useTemplateBuilder` and `VisualSelectorBuilder` with `getApiErrorMessage`.
+   - Keep save, fetch, and selector-test failures operator-readable and action-oriented.
 
-2. Normalize the remaining template-authoring error copy
-   - Replace the raw `String(response.error)` fallbacks in `useTemplateBuilder` and `VisualSelectorBuilder` with `getApiErrorMessage` copy.
-   - Keep save, fetch, and selector-test failures operator-readable across the template flow.
+2. Scope dedup state by active tab
+   - Keep `DedupExplorer` search, history, and stats errors isolated to the active panel.
+   - Prevent stale results or refresh failures in one tab from mutating the others.
 
-3. Isolate dedup panel state by active tab
-   - Scope dedup errors, stale results, and refresh failures to the active panel in `DedupExplorer`.
-   - Prevent a failed search, history lookup, or stats refresh from polluting the other dedup surfaces.
+3. Backfill focused authoring and dedup regressions
+   - Add only the direct tests needed for template save, visual-selector fetch/test, and dedup search/history/stats failures.
+   - Assert operator-visible recovery and panel-local state preservation instead of implementation details.
 
-4. Backfill focused regressions for authoring and dedup failures
-   - Add only the direct coverage needed for template save, visual-selector fetch/test, and dedup search/history/stats failures.
-   - Assert operator-visible recovery copy, panel-local failure handling, and draft/result preservation instead of implementation details.
+4. Unify long-running validation helpers
+   - Extract one shared helper for spawning and tearing down repo-owned test processes across `internal/e2e`, `internal/system`, and heavy validation paths.
+   - Keep API envelope parsing aligned between PR-safe and heavy validation coverage.
 
 ## Ongoing Constraints
 

@@ -299,12 +299,33 @@ describe("JobSubmissionContainer wizard", () => {
       "data-compact",
       "true",
     );
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-assistant-open",
+      "true",
+    );
     expect(
       screen.getByRole("heading", { name: /scrape presets/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /job submission assistant/i }),
     ).toBeInTheDocument();
+  });
+
+  it("drops the sidebar column when the assistant is hidden", () => {
+    window.localStorage.setItem("spartan.ai-assistant.open", "false");
+    const { container } = renderHarness("scrape", { includePresets: true });
+
+    expect(container.querySelector(".job-wizard__workspace")).toHaveAttribute(
+      "data-assistant-open",
+      "false",
+    );
+    expect(
+      screen.getByRole("heading", { name: /scrape presets/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /job submission assistant/i }),
+    ).not.toBeInTheDocument();
+    expect(container.querySelector(".job-wizard__sidebar")).toBeNull();
   });
 
   it("keeps the workspace in standard mode on taller viewports", () => {
