@@ -6285,16 +6285,6 @@ components:
           maximum: 64
           description: Maximum Hamming distance for content to be considered a duplicate
             (within same crawl)
-        crossJobDedup:
-          type: boolean
-          default: false
-          description: Enable cross-job duplicate detection using content index
-        crossJobDedupThreshold:
-          type: integer
-          default: 3
-          minimum: 0
-          maximum: 64
-          description: Hamming distance threshold for cross-job duplicate detection
     ResearchRequest:
       type: object
       required:

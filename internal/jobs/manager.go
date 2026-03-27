@@ -1,6 +1,10 @@
-// Package jobs provides a job manager for coordinating scraping, crawling, and research tasks.
-// It handles job queuing, worker management, concurrency control, and status tracking
-// using an underlying persistent store.
+/*
+Purpose: Coordinate local scrape, crawl, and research job execution against the persistent store.
+Responsibilities: Own queueing state, worker lifecycle, execution dependencies, and operator-facing job events.
+Scope: Manager construction and lifecycle helpers only; create-time and run-time specifics live in sibling files.
+Usage: Build via `NewManager(...)`, configure optional integrations, then call `Start(...)`.
+Invariants/Assumptions: Manager methods are safe for concurrent use where explicitly locked, and job persistence remains store-backed.
+*/
 package jobs
 
 import (
@@ -11,7 +15,6 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
-	"github.com/fitchmultz/spartan-scraper/internal/dedup"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -46,7 +49,6 @@ type Manager struct {
 	proxyPool         *fetch.ProxyPool
 	aiExtractor       *extract.AIExtractor
 	exportTrigger     ExportTriggerInterface
-	contentIndex      dedup.ContentIndex
 }
 
 // JobEventType represents the type of job lifecycle event.
@@ -412,19 +414,4 @@ func (m *Manager) GetProxyPool() *fetch.ProxyPool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.proxyPool
-}
-
-// SetContentIndex sets the content index for cross-job deduplication.
-// This enables the crawler to detect and report duplicates across different jobs.
-func (m *Manager) SetContentIndex(index dedup.ContentIndex) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.contentIndex = index
-}
-
-// GetContentIndex returns the current content index, or nil if not set.
-func (m *Manager) GetContentIndex() dedup.ContentIndex {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.contentIndex
 }

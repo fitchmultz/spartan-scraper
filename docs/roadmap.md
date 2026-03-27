@@ -16,13 +16,17 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Resolve dedup submission contract drift
-   - Either remove `crossJobDedup` and `crossJobDedupThreshold` from `api/openapi.yaml` and generated clients, or implement them consistently in the API, CLI, Web, and submission request types.
-   - Make the operator-facing dedup path explicit instead of leaving partial contract exposure.
+1. Consolidate browser-runtime request builders in the Web client
+   - Remove the repeated headless/playwright/timeout/extract-merging request shaping from `web/src/lib/form-utils.ts`, `web/src/lib/batch-utils.ts`, and the authoring tools.
+   - Keep one shared browser-runtime serializer for single-job, batch, and authoring requests before more UI refactors.
 
-2. Extract shared browser-request controls across the authoring surfaces
-   - Move the repeated headless/playwright request state and controls from template preview, visual selector, render-profile AI, and pipeline-JS AI flows into one reusable UI/helper layer.
-   - Keep one validation/copy path for engine toggles and one request-shaping path into the API clients.
+2. Reuse shared browser-runtime controls across authoring tools
+   - Replace bespoke headless/playwright state and toggles in template preview, template assistant, visual selector, render-profile AI, pipeline-JS AI, and job-submission assistant with shared state and `BrowserExecutionControls`.
+   - Keep one dependency rule for headless-gated capabilities such as Playwright, screenshots, device emulation, and network interception.
+
+3. Decide whether dedup stays maintenance-only or gets an explicit crawl indexing path
+   - If operators need live dedup data, add one deliberate crawl/indexing contract across API, CLI, Web, and persisted job specs instead of reviving stray flags.
+   - Otherwise keep dedup as a maintenance API and delete any remaining crawl-only cross-job duplicate plumbing.
 
 ## Ongoing Constraints
 

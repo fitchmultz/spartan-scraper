@@ -84,21 +84,19 @@ func persistedSpecFromCreateSpec(spec JobSpec) (int, any, error) {
 		}, nil
 	case model.KindCrawl:
 		return model.JobSpecVersion1, model.CrawlSpecV1{
-			Version:           model.JobSpecVersion1,
-			URL:               spec.URL,
-			MaxDepth:          spec.MaxDepth,
-			MaxPages:          spec.MaxPages,
-			Incremental:       spec.Incremental,
-			SitemapURL:        spec.SitemapURL,
-			SitemapOnly:       spec.SitemapOnly,
-			IncludePatterns:   spec.IncludePatterns,
-			ExcludePatterns:   spec.ExcludePatterns,
-			RespectRobotsTxt:  spec.RespectRobotsTxt,
-			SkipDuplicates:    spec.SkipDuplicates,
-			SimHashThreshold:  spec.SimHashThreshold,
-			CrossJobDedup:     false,
-			CrossJobThreshold: 0,
-			Execution:         exec,
+			Version:          model.JobSpecVersion1,
+			URL:              spec.URL,
+			MaxDepth:         spec.MaxDepth,
+			MaxPages:         spec.MaxPages,
+			Incremental:      spec.Incremental,
+			SitemapURL:       spec.SitemapURL,
+			SitemapOnly:      spec.SitemapOnly,
+			IncludePatterns:  spec.IncludePatterns,
+			ExcludePatterns:  spec.ExcludePatterns,
+			RespectRobotsTxt: spec.RespectRobotsTxt,
+			SkipDuplicates:   spec.SkipDuplicates,
+			SimHashThreshold: spec.SimHashThreshold,
+			Execution:        exec,
 		}, nil
 	case model.KindResearch:
 		return model.JobSpecVersion1, model.ResearchSpecV1{

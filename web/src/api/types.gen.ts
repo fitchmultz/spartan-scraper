@@ -1959,14 +1959,6 @@ export type CrawlRequest = {
      * Maximum Hamming distance for content to be considered a duplicate (within same crawl)
      */
     simHashThreshold?: number;
-    /**
-     * Enable cross-job duplicate detection using content index
-     */
-    crossJobDedup?: boolean;
-    /**
-     * Hamming distance threshold for cross-job duplicate detection
-     */
-    crossJobDedupThreshold?: number;
 };
 
 export type ResearchRequest = {

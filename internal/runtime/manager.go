@@ -81,14 +81,6 @@ func InitJobManager(ctx context.Context, cfg config.Config, st *store.Store) (*j
 		}
 	}
 
-	contentIndex := st.GetContentIndex()
-	if contentIndex != nil {
-		manager.SetContentIndex(contentIndex)
-		slog.Info("content index initialized for cross-job deduplication")
-	} else {
-		slog.Warn("content index not initialized, cross-job deduplication disabled")
-	}
-
 	manager.Start(ctx)
 	return manager, nil
 }

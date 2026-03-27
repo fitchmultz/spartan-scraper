@@ -71,21 +71,19 @@ type ScrapeSpecV1 struct {
 
 // CrawlSpecV1 is the persisted crawl job contract.
 type CrawlSpecV1 struct {
-	Version           int           `json:"version"`
-	URL               string        `json:"url"`
-	MaxDepth          int           `json:"maxDepth"`
-	MaxPages          int           `json:"maxPages"`
-	Incremental       bool          `json:"incremental,omitempty"`
-	SitemapURL        string        `json:"sitemapURL,omitempty"`
-	SitemapOnly       bool          `json:"sitemapOnly,omitempty"`
-	IncludePatterns   []string      `json:"includePatterns,omitempty"`
-	ExcludePatterns   []string      `json:"excludePatterns,omitempty"`
-	RespectRobotsTxt  bool          `json:"respectRobotsTxt,omitempty"`
-	SkipDuplicates    bool          `json:"skipDuplicates,omitempty"`
-	SimHashThreshold  int           `json:"simHashThreshold,omitempty"`
-	CrossJobDedup     bool          `json:"crossJobDedup,omitempty"`
-	CrossJobThreshold int           `json:"crossJobDedupThreshold,omitempty"`
-	Execution         ExecutionSpec `json:"execution"`
+	Version          int           `json:"version"`
+	URL              string        `json:"url"`
+	MaxDepth         int           `json:"maxDepth"`
+	MaxPages         int           `json:"maxPages"`
+	Incremental      bool          `json:"incremental,omitempty"`
+	SitemapURL       string        `json:"sitemapURL,omitempty"`
+	SitemapOnly      bool          `json:"sitemapOnly,omitempty"`
+	IncludePatterns  []string      `json:"includePatterns,omitempty"`
+	ExcludePatterns  []string      `json:"excludePatterns,omitempty"`
+	RespectRobotsTxt bool          `json:"respectRobotsTxt,omitempty"`
+	SkipDuplicates   bool          `json:"skipDuplicates,omitempty"`
+	SimHashThreshold int           `json:"simHashThreshold,omitempty"`
+	Execution        ExecutionSpec `json:"execution"`
 }
 
 // ResearchSpecV1 is the persisted research job contract.

@@ -52,20 +52,18 @@ type scrapeExecutionInput struct {
 }
 
 type crawlExecutionInput struct {
-	Config                 executionConfig
-	URL                    string
-	MaxDepth               int
-	MaxPages               int
-	Incremental            bool
-	SitemapURL             string
-	SitemapOnly            bool
-	IncludePatterns        []string
-	ExcludePatterns        []string
-	RespectRobotsTxt       bool
-	SkipDuplicates         bool
-	SimHashThreshold       int
-	CrossJobDedup          bool
-	CrossJobDedupThreshold int
+	Config           executionConfig
+	URL              string
+	MaxDepth         int
+	MaxPages         int
+	Incremental      bool
+	SitemapURL       string
+	SitemapOnly      bool
+	IncludePatterns  []string
+	ExcludePatterns  []string
+	RespectRobotsTxt bool
+	SkipDuplicates   bool
+	SimHashThreshold int
 }
 
 type researchExecutionInput struct {
@@ -144,20 +142,18 @@ func decodeCrawlExecutionInput(job model.Job, manager *Manager) (crawlExecutionI
 		return crawlExecutionInput{}, apperrors.Validation("persisted crawl job spec is invalid")
 	}
 	input := crawlExecutionInput{
-		Config:                 decodeExecutionConfig(spec.Execution, spec.Execution.RequestID, manager),
-		URL:                    spec.URL,
-		MaxDepth:               spec.MaxDepth,
-		MaxPages:               spec.MaxPages,
-		Incremental:            spec.Incremental,
-		SitemapURL:             spec.SitemapURL,
-		SitemapOnly:            spec.SitemapOnly,
-		IncludePatterns:        spec.IncludePatterns,
-		ExcludePatterns:        spec.ExcludePatterns,
-		RespectRobotsTxt:       spec.RespectRobotsTxt,
-		SkipDuplicates:         spec.SkipDuplicates,
-		SimHashThreshold:       spec.SimHashThreshold,
-		CrossJobDedup:          spec.CrossJobDedup,
-		CrossJobDedupThreshold: spec.CrossJobThreshold,
+		Config:           decodeExecutionConfig(spec.Execution, spec.Execution.RequestID, manager),
+		URL:              spec.URL,
+		MaxDepth:         spec.MaxDepth,
+		MaxPages:         spec.MaxPages,
+		Incremental:      spec.Incremental,
+		SitemapURL:       spec.SitemapURL,
+		SitemapOnly:      spec.SitemapOnly,
+		IncludePatterns:  spec.IncludePatterns,
+		ExcludePatterns:  spec.ExcludePatterns,
+		RespectRobotsTxt: spec.RespectRobotsTxt,
+		SkipDuplicates:   spec.SkipDuplicates,
+		SimHashThreshold: spec.SimHashThreshold,
 	}
 	createSpec := JobSpec{
 		Kind:             model.KindCrawl,
