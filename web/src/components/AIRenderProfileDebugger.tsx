@@ -38,6 +38,7 @@ import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
+import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { useToast } from "./toast";
 
 interface AIRenderProfileDebuggerProps {
@@ -408,41 +409,28 @@ export function AIRenderProfileDebugger({
               <h3 className="mb-3 text-sm font-medium text-slate-200">
                 Baseline page fetch
               </h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="form-label m-0 flex items-center gap-2 text-sm font-normal text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={state.headless}
-                    onChange={(event) =>
-                      setState((prev) => ({
-                        ...prev,
-                        ...updateAIAuthoringHeadlessState(
-                          prev,
-                          event.target.checked,
-                        ),
-                      }))
-                    }
-                    disabled={state.isLoading || state.isSaving}
-                  />
-                  Use headless browser
-                </label>
-                <label className="form-label m-0 flex items-center gap-2 text-sm font-normal text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={state.playwright}
-                    onChange={(event) =>
-                      setState((prev) => ({
-                        ...prev,
-                        ...updateAIAuthoringPlaywrightState(
-                          prev,
-                          event.target.checked,
-                        ),
-                      }))
-                    }
-                    disabled={state.isLoading || state.isSaving}
-                  />
-                  Use Playwright
-                </label>
+              <div className="space-y-3">
+                <BrowserExecutionControls
+                  headless={state.headless}
+                  setHeadless={(value) =>
+                    setState((prev) => ({
+                      ...prev,
+                      ...updateAIAuthoringHeadlessState(prev, value),
+                    }))
+                  }
+                  usePlaywright={state.playwright}
+                  setUsePlaywright={(value) =>
+                    setState((prev) => ({
+                      ...prev,
+                      ...updateAIAuthoringPlaywrightState(prev, value),
+                    }))
+                  }
+                  headlessLabel="Use headless browser"
+                  playwrightLabel="Use Playwright"
+                  helperText="Enable headless to unlock Playwright."
+                  showTimeout={false}
+                  disabled={state.isLoading || state.isSaving}
+                />
                 <label className="form-label m-0 flex items-center gap-2 text-sm font-normal text-slate-300">
                   <input
                     type="checkbox"

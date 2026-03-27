@@ -1,12 +1,25 @@
+/*
+Purpose: Render the shared browser-runtime control cluster used across operator-facing authoring and submission flows.
+Responsibilities: Present consistent headless/Playwright toggles, optional timeout controls, and dependency guidance for headless-gated browser features.
+Scope: UI controls only; call sites own state transitions and any additional runtime toggles such as screenshot context.
+Usage: Mount in forms and modals, wiring the controlled props to local state helpers.
+Invariants/Assumptions: Playwright is always headless-gated, helper text is shown only while headless is off, and timeout controls are optional for surfaces that do not expose them.
+*/
+import { useId } from "react";
+
 interface BrowserExecutionControlsProps {
   headless: boolean;
   setHeadless: (value: boolean) => void;
   usePlaywright: boolean;
   setUsePlaywright: (value: boolean) => void;
-  timeoutSeconds: number;
-  setTimeoutSeconds: (value: number) => void;
+  timeoutSeconds?: number;
+  setTimeoutSeconds?: (value: number) => void;
   timeoutLabel?: string;
   helperText?: string;
+  headlessLabel?: string;
+  playwrightLabel?: string;
+  showTimeout?: boolean;
+  disabled?: boolean;
 }
 
 const DEFAULT_HELPER_TEXT =
@@ -21,6 +34,10 @@ export function BrowserExecutionControls({
   setTimeoutSeconds,
   timeoutLabel = "Timeout (s)",
   helperText = DEFAULT_HELPER_TEXT,
+  headlessLabel = "Headless",
+  playwrightLabel = "Playwright",
+  showTimeout = timeoutSeconds !== undefined && setTimeoutSeconds !== undefined,
+  disabled = false,
 }: BrowserExecutionControlsProps) {
   const helperId = useId();
 
@@ -31,9 +48,10 @@ export function BrowserExecutionControls({
           <input
             type="checkbox"
             checked={headless}
+            disabled={disabled}
             onChange={(event) => setHeadless(event.target.checked)}
           />{" "}
-          Headless
+          {headlessLabel}
         </label>
         <label
           className={`browser-execution-controls__toggle ${!headless ? "is-disabled" : ""}`}
@@ -41,21 +59,26 @@ export function BrowserExecutionControls({
           <input
             type="checkbox"
             checked={usePlaywright}
-            disabled={!headless}
+            disabled={!headless || disabled}
             aria-describedby={!headless ? helperId : undefined}
             onChange={(event) => setUsePlaywright(event.target.checked)}
           />{" "}
-          Playwright
+          {playwrightLabel}
         </label>
-        <label className="browser-execution-controls__timeout">
-          {timeoutLabel}
-          <input
-            type="number"
-            min={5}
-            value={timeoutSeconds}
-            onChange={(event) => setTimeoutSeconds(Number(event.target.value))}
-          />
-        </label>
+        {showTimeout && timeoutSeconds !== undefined && setTimeoutSeconds ? (
+          <label className="browser-execution-controls__timeout">
+            {timeoutLabel}
+            <input
+              type="number"
+              min={5}
+              value={timeoutSeconds}
+              disabled={disabled}
+              onChange={(event) =>
+                setTimeoutSeconds(Number(event.target.value))
+              }
+            />
+          </label>
+        ) : null}
       </div>
       {!headless && (
         <p id={helperId} className="browser-execution-controls__helper">
@@ -65,4 +88,3 @@ export function BrowserExecutionControls({
     </div>
   );
 }
-import { useId } from "react";

@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Reuse shared browser-runtime controls across authoring surfaces
-   - Replace bespoke headless/playwright controls in render-profile generator/debugger, pipeline-JS generator/debugger, template preview, template assistant, visual selector, and job-submission assistant with `BrowserExecutionControls` plus the shared browser-runtime helpers.
-   - Keep one dependency rule for headless-gated capabilities and preserve current request payload shapes.
+1. Reuse shared browser-runtime controls in template, selector, and assistant authoring surfaces
+   - Replace bespoke headless/playwright controls and payload assembly in template preview, template assistant, visual selector, and job-submission assistant with `BrowserExecutionControls` plus the shared browser-runtime helpers.
+   - Keep behavior aligned with the form, batch, and AI authoring modal surfaces.
 
 2. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
    - Remove the remaining `internal/crawl` request/result fields and worker logic that only serve cross-job dedup internals.

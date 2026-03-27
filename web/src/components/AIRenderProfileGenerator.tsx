@@ -39,6 +39,7 @@ import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
 import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
+import { BrowserExecutionControls } from "./BrowserExecutionControls";
 import { useToast } from "./toast";
 
 interface AIRenderProfileGeneratorProps {
@@ -435,41 +436,28 @@ export function AIRenderProfileGenerator({
               disabledReason={aiUnavailableMessage}
             />
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <label className="form-label flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={state.headless}
-                  onChange={(event) =>
-                    setState((prev) => ({
-                      ...prev,
-                      ...updateAIAuthoringHeadlessState(
-                        prev,
-                        event.target.checked,
-                      ),
-                    }))
-                  }
-                  disabled={state.isGenerating}
-                />
-                Fetch headless
-              </label>
-              <label className="form-label flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={state.playwright}
-                  onChange={(event) =>
-                    setState((prev) => ({
-                      ...prev,
-                      ...updateAIAuthoringPlaywrightState(
-                        prev,
-                        event.target.checked,
-                      ),
-                    }))
-                  }
-                  disabled={state.isGenerating}
-                />
-                Use Playwright
-              </label>
+            <div className="space-y-3">
+              <BrowserExecutionControls
+                headless={state.headless}
+                setHeadless={(value) =>
+                  setState((prev) => ({
+                    ...prev,
+                    ...updateAIAuthoringHeadlessState(prev, value),
+                  }))
+                }
+                usePlaywright={state.playwright}
+                setUsePlaywright={(value) =>
+                  setState((prev) => ({
+                    ...prev,
+                    ...updateAIAuthoringPlaywrightState(prev, value),
+                  }))
+                }
+                headlessLabel="Fetch headless"
+                playwrightLabel="Use Playwright"
+                helperText="Enable headless to unlock Playwright."
+                showTimeout={false}
+                disabled={state.isGenerating}
+              />
               <label className="form-label flex items-center gap-2">
                 <input
                   type="checkbox"
