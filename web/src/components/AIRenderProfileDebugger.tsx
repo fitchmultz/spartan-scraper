@@ -21,9 +21,18 @@ import {
 } from "../hooks/useAIAttemptHistory";
 import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toRenderProfileDebugAttempt } from "../lib/ai-authoring-attempts";
+import {
+  buildAIAuthoringBrowserRuntimePayload,
+  createAIAuthoringBrowserRuntimeState,
+  hasAIAuthoringBrowserRuntimeDraft,
+  updateAIAuthoringHeadlessState,
+  updateAIAuthoringPlaywrightState,
+  updateAIAuthoringVisualState,
+  type AIAuthoringBrowserRuntimeState,
+} from "../lib/ai-authoring-browser-runtime";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
-import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
+import type { AttachedAIImage } from "../lib/ai-image-utils";
 import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
@@ -44,13 +53,10 @@ interface AIRenderProfileDebuggerProps {
   onSessionCleared?: () => void;
 }
 
-interface DebugState {
+interface DebugState extends AIAuthoringBrowserRuntimeState {
   url: string;
   instructions: string;
   images: AttachedAIImage[];
-  headless: boolean;
-  playwright: boolean;
-  visual: boolean;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
@@ -61,9 +67,7 @@ function createInitialState(): DebugState {
     url: "",
     instructions: "",
     images: [],
-    headless: false,
-    playwright: false,
-    visual: false,
+    ...createAIAuthoringBrowserRuntimeState(),
     isLoading: false,
     isSaving: false,
     error: null,
@@ -107,9 +111,7 @@ export function AIRenderProfileDebugger({
         state.url.trim() ||
           state.instructions.trim() ||
           state.images.length > 0 ||
-          state.headless ||
-          state.playwright ||
-          state.visual ||
+          hasAIAuthoringBrowserRuntimeDraft(state) ||
           history.attempts.length > 0,
       ),
     [state, history.attempts.length],
@@ -175,14 +177,10 @@ export function AIRenderProfileDebugger({
           ...(requestState.instructions.trim()
             ? { instructions: requestState.instructions.trim() }
             : {}),
-          ...(requestState.images.length > 0
-            ? { images: toAIImagePayloads(requestState.images) }
-            : {}),
-          headless: requestState.headless,
-          ...(requestState.headless
-            ? { playwright: requestState.playwright }
-            : {}),
-          visual: requestState.visual,
+          ...buildAIAuthoringBrowserRuntimePayload(
+            requestState,
+            requestState.images,
+          ),
         },
       });
       if (error) {
@@ -418,11 +416,10 @@ export function AIRenderProfileDebugger({
                     onChange={(event) =>
                       setState((prev) => ({
                         ...prev,
-                        headless: event.target.checked,
-                        playwright: event.target.checked
-                          ? prev.playwright
-                          : false,
-                        visual: event.target.checked ? prev.visual : false,
+                        ...updateAIAuthoringHeadlessState(
+                          prev,
+                          event.target.checked,
+                        ),
                       }))
                     }
                     disabled={state.isLoading || state.isSaving}
@@ -436,8 +433,10 @@ export function AIRenderProfileDebugger({
                     onChange={(event) =>
                       setState((prev) => ({
                         ...prev,
-                        playwright: event.target.checked,
-                        headless: event.target.checked ? true : prev.headless,
+                        ...updateAIAuthoringPlaywrightState(
+                          prev,
+                          event.target.checked,
+                        ),
                       }))
                     }
                     disabled={state.isLoading || state.isSaving}
@@ -451,8 +450,10 @@ export function AIRenderProfileDebugger({
                     onChange={(event) =>
                       setState((prev) => ({
                         ...prev,
-                        visual: event.target.checked,
-                        headless: event.target.checked ? true : prev.headless,
+                        ...updateAIAuthoringVisualState(
+                          prev,
+                          event.target.checked,
+                        ),
                       }))
                     }
                     disabled={state.isLoading || state.isSaving}

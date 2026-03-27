@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Unify authoring-tool browser-runtime state, controls, and request shaping
-   - Replace bespoke headless/playwright state, toggles, and payload assembly in template preview, template assistant, visual selector, render-profile AI, pipeline-JS AI, and job-submission assistant with shared state, `BrowserExecutionControls`, and the shared browser-runtime serializer.
-   - Keep one dependency rule for headless-gated capabilities such as Playwright, screenshots, device emulation, and network interception.
+1. Reuse shared browser-runtime controls across authoring surfaces
+   - Replace bespoke headless/playwright controls in render-profile generator/debugger, pipeline-JS generator/debugger, template preview, template assistant, visual selector, and job-submission assistant with `BrowserExecutionControls` plus the shared browser-runtime helpers.
+   - Keep one dependency rule for headless-gated capabilities and preserve current request payload shapes.
 
 2. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
    - Remove the remaining `internal/crawl` request/result fields and worker logic that only serve cross-job dedup internals.

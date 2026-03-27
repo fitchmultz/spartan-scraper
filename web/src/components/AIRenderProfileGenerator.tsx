@@ -21,10 +21,19 @@ import {
 } from "../hooks/useAIAttemptHistory";
 import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toRenderProfileGenerateAttempt } from "../lib/ai-authoring-attempts";
+import {
+  buildAIAuthoringBrowserRuntimePayload,
+  createAIAuthoringBrowserRuntimeState,
+  hasAIAuthoringBrowserRuntimeDraft,
+  updateAIAuthoringHeadlessState,
+  updateAIAuthoringPlaywrightState,
+  updateAIAuthoringVisualState,
+  type AIAuthoringBrowserRuntimeState,
+} from "../lib/ai-authoring-browser-runtime";
 import { buildManualEditContinuationGuidance } from "../lib/ai-authoring-roundtrip";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
-import { toAIImagePayloads, type AttachedAIImage } from "../lib/ai-image-utils";
+import type { AttachedAIImage } from "../lib/ai-image-utils";
 import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
 import { AICandidateDiffView } from "./AICandidateDiffView";
@@ -42,15 +51,12 @@ interface AIRenderProfileGeneratorProps {
   storageKey?: string;
 }
 
-interface GeneratorState {
+interface GeneratorState extends AIAuthoringBrowserRuntimeState {
   url: string;
   name: string;
   hostPatterns: string;
   instructions: string;
   images: AttachedAIImage[];
-  headless: boolean;
-  playwright: boolean;
-  visual: boolean;
   isGenerating: boolean;
   isSaving: boolean;
   error: string | null;
@@ -62,9 +68,7 @@ const INITIAL_STATE: GeneratorState = {
   hostPatterns: "",
   instructions: "",
   images: [],
-  headless: false,
-  playwright: false,
-  visual: false,
+  ...createAIAuthoringBrowserRuntimeState(),
   isGenerating: false,
   isSaving: false,
   error: null,
@@ -106,9 +110,7 @@ export function AIRenderProfileGenerator({
           state.hostPatterns.trim() ||
           state.instructions.trim() ||
           state.images.length > 0 ||
-          state.headless ||
-          state.playwright ||
-          state.visual ||
+          hasAIAuthoringBrowserRuntimeDraft(state) ||
           history.attempts.length > 0,
       ),
     [state, history.attempts.length],
@@ -177,14 +179,10 @@ export function AIRenderProfileGenerator({
           ...(continuationInstructions
             ? { instructions: continuationInstructions }
             : {}),
-          ...(requestState.images.length > 0
-            ? { images: toAIImagePayloads(requestState.images) }
-            : {}),
-          headless: requestState.headless,
-          ...(requestState.headless
-            ? { playwright: requestState.playwright }
-            : {}),
-          visual: requestState.visual,
+          ...buildAIAuthoringBrowserRuntimePayload(
+            requestState,
+            requestState.images,
+          ),
         },
       });
       if (error) {
@@ -445,8 +443,10 @@ export function AIRenderProfileGenerator({
                   onChange={(event) =>
                     setState((prev) => ({
                       ...prev,
-                      headless: event.target.checked,
-                      ...(event.target.checked ? {} : { playwright: false }),
+                      ...updateAIAuthoringHeadlessState(
+                        prev,
+                        event.target.checked,
+                      ),
                     }))
                   }
                   disabled={state.isGenerating}
@@ -460,8 +460,10 @@ export function AIRenderProfileGenerator({
                   onChange={(event) =>
                     setState((prev) => ({
                       ...prev,
-                      playwright: event.target.checked,
-                      ...(event.target.checked ? { headless: true } : {}),
+                      ...updateAIAuthoringPlaywrightState(
+                        prev,
+                        event.target.checked,
+                      ),
                     }))
                   }
                   disabled={state.isGenerating}
@@ -475,8 +477,10 @@ export function AIRenderProfileGenerator({
                   onChange={(event) =>
                     setState((prev) => ({
                       ...prev,
-                      visual: event.target.checked,
-                      ...(event.target.checked ? { headless: true } : {}),
+                      ...updateAIAuthoringVisualState(
+                        prev,
+                        event.target.checked,
+                      ),
                     }))
                   }
                   disabled={state.isGenerating}
