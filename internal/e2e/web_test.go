@@ -61,11 +61,10 @@ func TestWebPreview(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, cleanup := startProcess(ctx, t, []string{"BROWSER=none"}, filepath.Join(projectRoot, "web"), "pnpm", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", strconv.Itoa(port))
+	_, cleanup := startWebPreview(ctx, t, []string{"BROWSER=none"}, port)
 	defer cleanup()
 
 	client := &http.Client{Timeout: 2 * time.Second}
-	waitForPreview(t, client, port)
 
 	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
 	if err != nil {
@@ -103,9 +102,8 @@ func TestNewJobCompactHiddenAssistantKeepsWorkflowVisible(t *testing.T) {
 		"BROWSER=none",
 		"DEV_API_PROXY_TARGET=http://127.0.0.1:" + strconv.Itoa(backendPort),
 	}
-	_, previewCleanup := startProcess(ctx, t, previewEnv, filepath.Join(projectRoot, "web"), "pnpm", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", strconv.Itoa(previewPort))
+	_, previewCleanup := startWebPreview(ctx, t, previewEnv, previewPort)
 	defer previewCleanup()
-	waitForPreview(t, client, previewPort)
 
 	browserCtx, browserCancel := newHeadlessBrowserContext(t)
 	defer browserCancel()
@@ -163,39 +161,4 @@ func TestNewJobCompactHiddenAssistantKeepsWorkflowVisible(t *testing.T) {
 	if snapshot.Actions.Top >= snapshot.ViewportHeight {
 		t.Fatalf("sticky wizard actions start below the viewport: top=%.1f viewport=%.1f", snapshot.Actions.Top, snapshot.ViewportHeight)
 	}
-}
-
-func newHeadlessBrowserContext(t *testing.T) (context.Context, context.CancelFunc) {
-	t.Helper()
-	allocatorOpts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
-	allocatorOpts = append(allocatorOpts,
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("hide-scrollbars", true),
-		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.WindowSize(1365, 780),
-	)
-	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), allocatorOpts...)
-	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx)
-	ctx, cancelTimeout := context.WithTimeout(browserCtx, 30*time.Second)
-	return ctx, func() {
-		cancelTimeout()
-		cancelBrowser()
-		cancelAlloc()
-	}
-}
-
-func waitForPreview(t *testing.T, client *http.Client, port int) {
-	t.Helper()
-	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
-	for i := 0; i < 50; i++ {
-		resp, err := client.Get(url)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			_ = resp.Body.Close()
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("web preview not reachable on port %d", port)
 }

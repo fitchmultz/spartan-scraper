@@ -16,14 +16,14 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Extract a shared heavy-validation harness and route browser-visible checks through it
-   - Deduplicate binary build, server and web-preview lifecycle, job polling, headless browser setup, and API envelope parsing across `internal/system` and `internal/e2e`.
-   - Pull browser-visible route checks behind the shared heavy harness and local proxy setup instead of open-coding preview/server/browser orchestration per test.
-   - Keep teardown failure-safe, preserve the PR-safe versus heavy-suite split, and eliminate response-shape drift between validation layers.
+1. Resolve dedup surface ownership and cover the chosen path
+   - Keep dedup API-only unless an existing operator route has a clear reason to own the workflow.
+   - If it stays API-only, add direct API/system coverage for the dedup endpoints and stop treating a standalone Web surface as planned work.
+   - If it moves into the Web UI later, land it inside an existing route with route-owned tests instead of reviving a free-floating component.
 
-2. Decide whether dedup inspection should stay API-only or move into an existing operator surface
-   - If operators need a Web UI for dedup workflows, place it inside an existing route with clear ownership instead of reviving an orphan component.
-   - Otherwise keep the current API-only path and avoid more Web churn in this area.
+2. Extract shared browser-request controls across the authoring surfaces
+   - Unify the repeated headless/playwright request state and controls used by template preview, visual selector, render-profile AI, and pipeline-JS AI flows.
+   - Keep one validation and copy path for browser-engine toggles so request payloads and operator guidance stop drifting across surfaces.
 
 ## Ongoing Constraints
 

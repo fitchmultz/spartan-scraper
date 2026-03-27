@@ -20,26 +20,19 @@
 package e2e
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"sync"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/testharness"
 	"github.com/fitchmultz/spartan-scraper/internal/testsite"
 )
 
@@ -53,23 +46,14 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	projectRoot = filepath.Clean(filepath.Join(cwd, "..", ".."))
-	tmpDir, err := os.MkdirTemp("", "spartan-bin-*")
+	binaryPath, cleanup, err := testharness.BuildBinary(projectRoot, "spartan-bin-*")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	spartanPath = filepath.Join(tmpDir, "spartan")
-	build := exec.Command("go", "build", "-o", spartanPath, "./cmd/spartan")
-	build.Dir = projectRoot
-	build.Env = os.Environ()
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	spartanPath = binaryPath
 	code := m.Run()
-	_ = os.RemoveAll(tmpDir)
+	cleanup()
 	os.Exit(code)
 }
 
@@ -159,63 +143,28 @@ func runOK(t *testing.T, env []string, args ...string) {
 
 func run(t *testing.T, env []string, args ...string) error {
 	t.Helper()
-	timeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, spartanPath, args...)
-	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), env...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	t.Logf("Running: %s %s", spartanPath, strings.Join(args, " "))
-	if err := cmd.Run(); err != nil {
-		output := out.String()
-		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("command timed out after %v: %v\n--- OUTPUT ---\n%s\n--------------", timeout, err, lastLines(output, 20))
-		}
-		return fmt.Errorf("command failed: %v\n--- OUTPUT ---\n%s\n--------------", err, output)
-	}
-	return nil
+	return testharness.RunCommand(t, spartanPath, testharness.MergeEnv(env), args...)
 }
 
 func startProcess(ctx context.Context, t *testing.T, env []string, dir string, name string, args ...string) (*exec.Cmd, func()) {
 	t.Helper()
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), env...)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = os.Stderr
+	return testharness.StartProcess(ctx, t, testharness.MergeEnv(env), dir, name, args...)
+}
 
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
+func startWebPreview(ctx context.Context, t *testing.T, env []string, port int) (*exec.Cmd, func()) {
+	t.Helper()
+	return testharness.StartVitePreview(
+		ctx,
+		t,
+		filepath.Join(projectRoot, "web"),
+		testharness.MergeEnv(env),
+		port,
+	)
+}
 
-	t.Logf("Starting process: %s %s in %s", name, strings.Join(args, " "), dir)
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("failed to start process %s %v: %v", name, args, err)
-	}
-
-	var cleanupOnce sync.Once
-	cleanup := func() {
-		cleanupOnce.Do(func() {
-			if cmd.Process == nil {
-				return
-			}
-			if runtime.GOOS != "windows" {
-				// Kill the entire process group
-				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			} else {
-				_ = cmd.Process.Kill()
-			}
-			_ = cmd.Wait()
-		})
-	}
-
-	t.Cleanup(cleanup)
-	return cmd, cleanup
+func newHeadlessBrowserContext(t *testing.T) (context.Context, context.CancelFunc) {
+	t.Helper()
+	return testharness.NewHeadlessBrowserContext(t)
 }
 
 func runUntilContains(t *testing.T, env []string, outPath string, needle string, attempts int, args ...string) {
@@ -247,128 +196,33 @@ func runUntilContains(t *testing.T, env []string, outPath string, needle string,
 	t.Fatalf("verification failed")
 }
 
-func lastLines(s string, n int) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) <= n {
-		return s
-	}
-	return "... (truncated) ...\n" + strings.Join(lines[len(lines)-n:], "\n")
-}
-
 func baseEnv(dataDir string) []string {
-	return []string{
-		"DATA_DIR=" + dataDir,
-		"RATE_LIMIT_QPS=50",
-		"RATE_LIMIT_BURST=100",
-		"MAX_CONCURRENCY=4",
-		"REQUEST_TIMEOUT_SECONDS=15",
-	}
+	return testharness.BaseEnv(dataDir)
 }
 
 func waitForHealth(t *testing.T, client *http.Client, port int) {
 	t.Helper()
-	base := fmt.Sprintf("http://127.0.0.1:%d/healthz", port)
-	for i := 0; i < 50; i++ {
-		resp, err := client.Get(base)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			_ = resp.Body.Close()
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("server not healthy on port %d", port)
+	testharness.WaitForHealth(t, client, port)
 }
 
 func postJob(t *testing.T, client *http.Client, port int, path string, body map[string]interface{}) string {
 	t.Helper()
-	data, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("post job marshal: %v", err)
-	}
-	resp, err := client.Post(fmt.Sprintf("http://127.0.0.1:%d%s", port, path), "application/json", bytes.NewReader(data))
-	if err != nil {
-		t.Fatalf("post job: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		payload, _ := io.ReadAll(resp.Body)
-		t.Fatalf("post job status: %d body=%s", resp.StatusCode, string(payload))
-	}
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("decode job: %v", err)
-	}
-	jobPayload, ok := payload["job"].(map[string]any)
-	if !ok {
-		t.Fatalf("missing job envelope: %#v", payload)
-	}
-	id, _ := jobPayload["id"].(string)
-	if id == "" {
-		t.Fatalf("missing job id")
-	}
-	return id
+	return testharness.PostJob(t, client, port, path, body)
 }
 
 func waitForJob(t *testing.T, client *http.Client, port int, id string) {
 	t.Helper()
-	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs/%s", port, id)
-	for i := 0; i < 100; i++ {
-		resp, err := client.Get(url)
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		var payload map[string]any
-		_ = json.NewDecoder(resp.Body).Decode(&payload)
-		_ = resp.Body.Close()
-		jobPayload, _ := payload["job"].(map[string]any)
-		switch jobPayload["status"] {
-		case "succeeded":
-			return
-		case "failed":
-			t.Fatalf("job %s failed", id)
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("job %s timeout", id)
+	testharness.WaitForJob(t, client, port, id)
 }
 
 func waitForJobs(t *testing.T, client *http.Client, port int, minCount int) {
 	t.Helper()
-	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs", port)
-	for i := 0; i < 100; i++ {
-		resp, err := client.Get(url)
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-		var payload map[string]interface{}
-		_ = json.NewDecoder(resp.Body).Decode(&payload)
-		_ = resp.Body.Close()
-		jobs, _ := payload["jobs"].([]interface{})
-		if len(jobs) >= minCount {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("jobs not scheduled")
+	testharness.WaitForJobs(t, client, port, minCount)
 }
 
 func assertJobResultContains(t *testing.T, client *http.Client, port int, id string, needle string) {
 	t.Helper()
-	url := fmt.Sprintf("http://127.0.0.1:%d/v1/jobs/%s/results", port, id)
-	resp, err := client.Get(url)
-	if err != nil {
-		t.Fatalf("job results: %v", err)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("job results status: %d", resp.StatusCode)
-	}
-	if !strings.Contains(string(body), needle) {
-		t.Fatalf("expected %q in job results", needle)
-	}
+	testharness.AssertJobResultContains(t, client, port, id, needle)
 }
 
 func assertJSONContains(t *testing.T, path, contains string) {
@@ -384,41 +238,15 @@ func assertJSONContains(t *testing.T, path, contains string) {
 
 func assertFileNotEmpty(t *testing.T, path string) {
 	t.Helper()
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("stat %s: %v", path, err)
-	}
-	if info.Size() == 0 {
-		t.Fatalf("empty file %s", path)
-	}
+	testharness.AssertFileNotEmpty(t, path)
 }
 
 func requireLineCount(t *testing.T, path string, min int) {
 	t.Helper()
-	file, err := os.Open(path)
-	if err != nil {
-		t.Fatalf("open %s: %v", path, err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
-	count := 0
-	for scanner.Scan() {
-		if strings.TrimSpace(scanner.Text()) != "" {
-			count++
-		}
-	}
-	if count < min {
-		t.Fatalf("expected at least %d lines in %s, got %d", min, path, count)
-	}
+	testharness.RequireLineCount(t, path, min)
 }
 
 func freePort(t *testing.T) int {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("free port: %v", err)
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port
+	return testharness.FreePort(t)
 }

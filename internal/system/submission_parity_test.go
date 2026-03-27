@@ -5,15 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -23,6 +20,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
+	"github.com/fitchmultz/spartan-scraper/internal/testharness"
 	"github.com/fitchmultz/spartan-scraper/internal/testsite"
 )
 
@@ -579,32 +577,7 @@ const httpMethodPost = "POST"
 
 func postJobPayload(t *testing.T, client *http.Client, port int, path string, body any) string {
 	t.Helper()
-	data, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("post job marshal: %v", err)
-	}
-	resp, err := client.Post(fmt.Sprintf("http://127.0.0.1:%d%s", port, path), "application/json", bytes.NewReader(data))
-	if err != nil {
-		t.Fatalf("post job: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		payload, _ := io.ReadAll(resp.Body)
-		t.Fatalf("post job status: %d body=%s", resp.StatusCode, string(payload))
-	}
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("decode job: %v", err)
-	}
-	jobPayload, ok := payload["job"].(map[string]any)
-	if !ok {
-		t.Fatalf("missing job envelope: %#v", payload)
-	}
-	id, _ := jobPayload["id"].(string)
-	if id == "" {
-		t.Fatalf("missing job id")
-	}
-	return id
+	return testharness.PostJob(t, client, port, path, body)
 }
 
 func parityEnv(overrides []string, extra ...string) []string {
@@ -640,96 +613,15 @@ func parityEnv(overrides []string, extra ...string) []string {
 
 func runWithEnv(t *testing.T, env []string, args ...string) error {
 	t.Helper()
-	timeout := 120 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, systemBinaryPath, args...)
-	cmd.Dir = t.TempDir()
-	cmd.Env = env
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	if err := cmd.Run(); err != nil {
-		output := out.String()
-		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("command timed out after %v: %v\n--- OUTPUT ---\n%s\n--------------", timeout, err, lastLines(output, 20))
-		}
-		return fmt.Errorf("command failed: %v\n--- OUTPUT ---\n%s\n--------------", err, output)
-	}
-	return nil
+	return testharness.RunCommand(t, systemBinaryPath, env, args...)
 }
 
 func startProcessWithEnv(ctx context.Context, t *testing.T, env []string, dir string, name string, args ...string) (*exec.Cmd, func()) {
 	t.Helper()
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Dir = dir
-	cmd.Env = env
-	cmd.Stdout = io.Discard
-	cmd.Stderr = os.Stderr
-
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("failed to start process %s %v: %v", name, args, err)
-	}
-
-	cleanup := func() {
-		if cmd.Process == nil {
-			return
-		}
-		if runtime.GOOS != "windows" {
-			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		} else {
-			_ = cmd.Process.Kill()
-		}
-		_ = cmd.Wait()
-	}
-
-	return cmd, cleanup
+	return testharness.StartProcess(ctx, t, env, dir, name, args...)
 }
 
 func runMCPWithEnv(t *testing.T, env []string, lines []string) string {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, systemBinaryPath, "mcp")
-	cmd.Dir = t.TempDir()
-	cmd.Env = env
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatalf("stdin: %v", err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("stdout: %v", err)
-	}
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start mcp: %v", err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		for _, line := range lines {
-			_, _ = io.WriteString(stdin, line+"\n")
-		}
-	}()
-
-	out, err := io.ReadAll(stdout)
-	if err != nil {
-		t.Fatalf("read stdout: %v", err)
-	}
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("mcp failed: %v", err)
-	}
-	return string(out)
+	return testharness.RunMCP(t, systemBinaryPath, env, lines)
 }
