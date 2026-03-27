@@ -62,14 +62,22 @@ export function updateAIAuthoringVisualState(
   };
 }
 
+export function buildAIAuthoringBrowserRuntimeFields(
+  state: AIAuthoringBrowserRuntimeState,
+) {
+  return {
+    headless: state.headless,
+    ...(state.headless ? { playwright: state.playwright } : {}),
+    visual: state.visual,
+  };
+}
+
 export function buildAIAuthoringBrowserRuntimePayload(
   state: AIAuthoringBrowserRuntimeState,
   images: AttachedAIImage[],
 ) {
   return {
     ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
-    headless: state.headless,
-    ...(state.headless ? { playwright: state.playwright } : {}),
-    visual: state.visual,
+    ...buildAIAuthoringBrowserRuntimeFields(state),
   };
 }

@@ -16,11 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Reuse shared browser-runtime controls in template, selector, and assistant authoring surfaces
-   - Replace bespoke headless/playwright controls and payload assembly in template preview, template assistant, visual selector, and job-submission assistant with `BrowserExecutionControls` plus the shared browser-runtime helpers.
-   - Keep behavior aligned with the form, batch, and AI authoring modal surfaces.
-
-2. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
+1. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
    - Remove the remaining `internal/crawl` request/result fields and worker logic that only serve cross-job dedup internals.
    - If operators later need live dedup indexing, add one deliberate crawl/indexing contract across API, CLI, Web, and persisted job specs instead of reviving stray flags.
 

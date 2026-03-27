@@ -174,6 +174,16 @@ export function mergeAIExtractOptions(
     : undefined;
 }
 
+export function buildHeadlessPlaywrightFields(
+  headless: boolean,
+  usePlaywright: boolean,
+) {
+  return {
+    headless,
+    ...(headless ? { playwright: usePlaywright } : {}),
+  };
+}
+
 export function buildBrowserRuntimeRequestFields(
   headless: boolean,
   usePlaywright: boolean,
@@ -184,8 +194,7 @@ export function buildBrowserRuntimeRequestFields(
   aiExtract?: AiExtractOptions,
 ) {
   return {
-    headless,
-    playwright: headless ? usePlaywright : false,
+    ...buildHeadlessPlaywrightFields(headless, usePlaywright),
     timeoutSeconds,
     authProfile: authProfile || undefined,
     auth,

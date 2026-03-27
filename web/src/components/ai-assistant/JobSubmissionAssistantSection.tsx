@@ -26,6 +26,13 @@ import {
   type JobDraftLocalState,
 } from "../../lib/job-drafts";
 import { getApiBaseUrl } from "../../lib/api-config";
+import {
+  buildAIAuthoringBrowserRuntimeFields,
+  createAIAuthoringBrowserRuntimeState,
+  updateAIAuthoringHeadlessState,
+  updateAIAuthoringPlaywrightState,
+  updateAIAuthoringVisualState,
+} from "../../lib/ai-authoring-browser-runtime";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import {
   toAIImagePayloads,
@@ -33,6 +40,7 @@ import {
 } from "../../lib/ai-image-utils";
 import type { JobType } from "../../types/presets";
 import { AIImageAttachments } from "../AIImageAttachments";
+import { BrowserExecutionControls } from "../BrowserExecutionControls";
 import type { AssistantContext } from "./AIAssistantProvider";
 import { AIAssistantPanel } from "./AIAssistantPanel";
 import { describeAICapability } from "./aiCapability";
@@ -259,11 +267,7 @@ export function JobSubmissionAssistantSection({
             ? { images: toAIImagePayloads(state.images) }
             : {}),
           ...(state.source === "url"
-            ? {
-                headless: state.headless,
-                playwright: state.headless ? state.playwright : false,
-                visual: state.visual,
-              }
+            ? buildAIAuthoringBrowserRuntimeFields(state)
             : {}),
         },
       });
@@ -434,9 +438,7 @@ function JobSubmissionAssistantShell({
                   ...previous,
                   source: "html",
                   error: null,
-                  headless: false,
-                  playwright: false,
-                  visual: false,
+                  ...createAIAuthoringBrowserRuntimeState(),
                 }))
               }
               disabled={state.isLoading}
@@ -596,40 +598,28 @@ function JobSubmissionAssistantShell({
         />
 
         {state.source === "url" ? (
-          <div className="template-assistant-panel__fetch-options">
-            <label className="checkbox-label checkbox-label--small">
-              <input
-                type="checkbox"
-                checked={state.headless}
-                onChange={(event) =>
-                  onChangeState((previous) => ({
-                    ...previous,
-                    headless: event.target.checked,
-                    playwright: event.target.checked
-                      ? previous.playwright
-                      : false,
-                    visual: event.target.checked ? previous.visual : false,
-                  }))
-                }
-                disabled={state.isLoading}
-              />
-              Use headless browser
-            </label>
-
-            <label className="checkbox-label checkbox-label--small">
-              <input
-                type="checkbox"
-                checked={state.playwright}
-                onChange={(event) =>
-                  onChangeState((previous) => ({
-                    ...previous,
-                    playwright: event.target.checked,
-                  }))
-                }
-                disabled={!state.headless || state.isLoading}
-              />
-              Use Playwright
-            </label>
+          <div className="template-assistant-panel__fetch-options space-y-3">
+            <BrowserExecutionControls
+              headless={state.headless}
+              setHeadless={(value) =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  ...updateAIAuthoringHeadlessState(previous, value),
+                }))
+              }
+              usePlaywright={state.playwright}
+              setUsePlaywright={(value) =>
+                onChangeState((previous) => ({
+                  ...previous,
+                  ...updateAIAuthoringPlaywrightState(previous, value),
+                }))
+              }
+              headlessLabel="Use headless browser"
+              playwrightLabel="Use Playwright"
+              helperText="Enable headless to unlock Playwright for AI preview."
+              showTimeout={false}
+              disabled={state.isLoading}
+            />
 
             <label className="checkbox-label checkbox-label--small">
               <input
@@ -638,8 +628,10 @@ function JobSubmissionAssistantShell({
                 onChange={(event) =>
                   onChangeState((previous) => ({
                     ...previous,
-                    visual: event.target.checked,
-                    headless: event.target.checked ? true : previous.headless,
+                    ...updateAIAuthoringVisualState(
+                      previous,
+                      event.target.checked,
+                    ),
                   }))
                 }
                 disabled={state.isLoading}

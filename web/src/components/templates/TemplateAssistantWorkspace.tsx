@@ -19,12 +19,20 @@ import {
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import {
+  buildAIAuthoringBrowserRuntimeFields,
+  createAIAuthoringBrowserRuntimeState,
+  updateAIAuthoringHeadlessState,
+  updateAIAuthoringPlaywrightState,
+  updateAIAuthoringVisualState,
+} from "../../lib/ai-authoring-browser-runtime";
+import {
   toAIImagePayloads,
   type AttachedAIImage,
 } from "../../lib/ai-image-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { describeAICapability, AIUnavailableNotice } from "../ai-assistant";
 import { AIImageAttachments } from "../AIImageAttachments";
+import { BrowserExecutionControls } from "../BrowserExecutionControls";
 
 type AssistantMode = "generate" | "debug";
 type SourceMode = "url" | "html";
@@ -150,11 +158,11 @@ export function TemplateAssistantWorkspace({
             .filter(Boolean),
           ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
           ...(source === "url"
-            ? {
+            ? buildAIAuthoringBrowserRuntimeFields({
                 headless,
-                ...(headless ? { playwright } : {}),
+                playwright,
                 visual,
-              }
+              })
             : {}),
         },
       });
@@ -208,11 +216,11 @@ export function TemplateAssistantWorkspace({
           ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
           ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
           ...(source === "url"
-            ? {
+            ? buildAIAuthoringBrowserRuntimeFields({
                 headless,
-                ...(headless ? { playwright } : {}),
+                playwright,
                 visual,
-              }
+              })
             : {}),
         },
       });
@@ -285,9 +293,10 @@ export function TemplateAssistantWorkspace({
               className={`btn btn--secondary btn--small ${source === "html" ? "is-active" : ""}`}
               onClick={() => {
                 setSource("html");
-                setHeadless(false);
-                setPlaywright(false);
-                setVisual(false);
+                const cleared = createAIAuthoringBrowserRuntimeState();
+                setHeadless(cleared.headless);
+                setPlaywright(cleared.playwright);
+                setVisual(cleared.visual);
                 resetResult();
               }}
               disabled={isWorking}
@@ -405,46 +414,49 @@ export function TemplateAssistantWorkspace({
         />
 
         {source === "url" ? (
-          <div className="template-assistant-panel__fetch-options">
-            <label className="checkbox-label checkbox-label--small">
-              <input
-                type="checkbox"
-                checked={headless}
-                onChange={(event) => {
-                  setHeadless(event.target.checked);
-                  if (!event.target.checked) {
-                    setPlaywright(false);
-                    setVisual(false);
-                  }
-                  resetResult();
-                }}
-                disabled={isWorking}
-              />
-              Use headless browser
-            </label>
-
-            <label className="checkbox-label checkbox-label--small">
-              <input
-                type="checkbox"
-                checked={playwright}
-                onChange={(event) => {
-                  setPlaywright(event.target.checked);
-                  resetResult();
-                }}
-                disabled={!headless || isWorking}
-              />
-              Use Playwright
-            </label>
+          <div className="template-assistant-panel__fetch-options space-y-3">
+            <BrowserExecutionControls
+              headless={headless}
+              setHeadless={(value) => {
+                const next = updateAIAuthoringHeadlessState(
+                  { headless, playwright, visual },
+                  value,
+                );
+                setHeadless(next.headless);
+                setPlaywright(next.playwright);
+                setVisual(next.visual);
+                resetResult();
+              }}
+              usePlaywright={playwright}
+              setUsePlaywright={(value) => {
+                const next = updateAIAuthoringPlaywrightState(
+                  { headless, playwright, visual },
+                  value,
+                );
+                setHeadless(next.headless);
+                setPlaywright(next.playwright);
+                setVisual(next.visual);
+                resetResult();
+              }}
+              headlessLabel="Use headless browser"
+              playwrightLabel="Use Playwright"
+              helperText="Enable headless to unlock Playwright for template authoring."
+              showTimeout={false}
+              disabled={isWorking}
+            />
 
             <label className="checkbox-label checkbox-label--small">
               <input
                 type="checkbox"
                 checked={visual}
                 onChange={(event) => {
-                  setVisual(event.target.checked);
-                  if (event.target.checked) {
-                    setHeadless(true);
-                  }
+                  const next = updateAIAuthoringVisualState(
+                    { headless, playwright, visual },
+                    event.target.checked,
+                  );
+                  setHeadless(next.headless);
+                  setPlaywright(next.playwright);
+                  setVisual(next.visual);
                   resetResult();
                 }}
                 disabled={isWorking}

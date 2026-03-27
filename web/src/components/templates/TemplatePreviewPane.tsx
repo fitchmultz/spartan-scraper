@@ -15,7 +15,9 @@ import {
   type TestSelectorResponse,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { buildHeadlessPlaywrightFields } from "../../lib/form-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { BrowserExecutionControls } from "../BrowserExecutionControls";
 import { ruleKey } from "./templateEditorUtils";
 
 interface PreviewResult {
@@ -81,8 +83,7 @@ export function TemplatePreviewPane({
             body: {
               url: url.trim(),
               selector: rule.selector ?? "",
-              ...(headless ? { headless: true } : {}),
-              ...(playwright ? { playwright: true } : {}),
+              ...buildHeadlessPlaywrightFields(headless, playwright),
             },
           });
 
@@ -144,29 +145,27 @@ export function TemplatePreviewPane({
 
       <div className="template-preview-pane__result-top">
         <div className="template-preview-pane__fetch-options">
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(event) => {
-                setHeadless(event.target.checked);
-                if (!event.target.checked) {
-                  setPlaywright(false);
-                }
-              }}
-              disabled={isRunning}
-            />
-            Use headless browser
-          </label>
-          <label className="checkbox-label checkbox-label--small">
-            <input
-              type="checkbox"
-              checked={playwright}
-              onChange={(event) => setPlaywright(event.target.checked)}
-              disabled={!headless || isRunning}
-            />
-            Use Playwright
-          </label>
+          <BrowserExecutionControls
+            headless={headless}
+            setHeadless={(value) => {
+              setHeadless(value);
+              if (!value) {
+                setPlaywright(false);
+              }
+            }}
+            usePlaywright={playwright}
+            setUsePlaywright={(value) => {
+              setPlaywright(value);
+              if (value) {
+                setHeadless(true);
+              }
+            }}
+            headlessLabel="Use headless browser"
+            playwrightLabel="Use Playwright"
+            helperText="Enable headless to unlock Playwright for selector preview."
+            showTimeout={false}
+            disabled={isRunning}
+          />
         </div>
 
         <button

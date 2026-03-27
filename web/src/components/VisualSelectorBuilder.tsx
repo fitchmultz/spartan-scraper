@@ -19,7 +19,10 @@ import {
   type TestSelectorResponse,
 } from "../api";
 import { useTemplateBuilder } from "../hooks/useTemplateBuilder";
+import { buildHeadlessPlaywrightFields } from "../lib/form-utils";
 import { getApiErrorMessage } from "../lib/api-errors";
+
+import { BrowserExecutionControls } from "./BrowserExecutionControls";
 
 import {
   buildExpandedPaths,
@@ -187,8 +190,7 @@ export function VisualSelectorBuilder({
       const response = await getTemplatePreview({
         query: {
           url,
-          ...(headless ? { headless: true } : {}),
-          ...(playwright ? { playwright: true } : {}),
+          ...buildHeadlessPlaywrightFields(headless, playwright),
         },
       });
       if (response.error) {
@@ -237,8 +239,7 @@ export function VisualSelectorBuilder({
       const request: TestSelectorRequest = {
         url,
         selector: generatedSelector,
-        ...(headless ? { headless: true } : {}),
-        ...(playwright ? { playwright: true } : {}),
+        ...buildHeadlessPlaywrightFields(headless, playwright),
       };
       const response = await testSelector({
         body: request,
@@ -334,24 +335,27 @@ export function VisualSelectorBuilder({
         </div>
 
         <div className="form-row form-row--inline">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={headless}
-              onChange={(e) => setHeadless(e.target.checked)}
-              disabled={fetching}
-            />
-            Use Headless Browser
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={playwright}
-              onChange={(e) => setPlaywright(e.target.checked)}
-              disabled={fetching}
-            />
-            Use Playwright
-          </label>
+          <BrowserExecutionControls
+            headless={headless}
+            setHeadless={(value) => {
+              setHeadless(value);
+              if (!value) {
+                setPlaywright(false);
+              }
+            }}
+            usePlaywright={playwright}
+            setUsePlaywright={(value) => {
+              setPlaywright(value);
+              if (value) {
+                setHeadless(true);
+              }
+            }}
+            headlessLabel="Use Headless Browser"
+            playwrightLabel="Use Playwright"
+            helperText="Enable headless to unlock Playwright for DOM preview."
+            showTimeout={false}
+            disabled={fetching}
+          />
         </div>
 
         {fetchError && <div className="form-error">{fetchError}</div>}
