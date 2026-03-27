@@ -16,13 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Extract shared browser-request controls across the authoring surfaces
+1. Resolve dedup submission contract drift
+   - Either remove `crossJobDedup` and `crossJobDedupThreshold` from `api/openapi.yaml` and generated clients, or implement them consistently in the API, CLI, Web, and submission request types.
+   - Make the operator-facing dedup path explicit instead of leaving partial contract exposure.
+
+2. Extract shared browser-request controls across the authoring surfaces
    - Move the repeated headless/playwright request state and controls from template preview, visual selector, render-profile AI, and pipeline-JS AI flows into one reusable UI/helper layer.
    - Keep one validation/copy path for engine toggles and one request-shaping path into the API clients.
-
-2. Decide whether dedup indexing should stay internal-only or become an operator submission capability
-   - If operators need live dedup data, expose a deliberate crawl submission path for cross-job indexing and cover the request shaping across API, CLI, and Web.
-   - Otherwise keep dedup as a read/maintenance API surface and avoid reintroducing standalone operator UI work around it.
 
 ## Ongoing Constraints
 

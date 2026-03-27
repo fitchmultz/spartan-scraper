@@ -1,32 +1,26 @@
-// Package store provides deduplication-related store methods.
-//
-// This file extends the Store with content deduplication capabilities
-// by integrating with the internal/dedup package.
+/*
+Purpose: Attach dedup content-index lifecycle to each Store instance.
+Responsibilities: Lazily initialize the store-backed dedup index, expose it to callers, and release its resources during store shutdown.
+Scope: Per-store dedup wiring only; query behavior lives in `internal/dedup` and API/runtime consumers live elsewhere.
+Usage: Call `GetContentIndex()` when a store-backed dedup index is needed; shutdown happens through `Store.Close()`.
+Invariants/Assumptions: A Store never shares its dedup index with another Store instance, and dedup state is initialized at most once per Store.
+*/
 package store
 
-import (
-	"github.com/fitchmultz/spartan-scraper/internal/dedup"
-	"sync"
-)
+import "github.com/fitchmultz/spartan-scraper/internal/dedup"
 
-var (
-	contentIndex     dedup.ContentIndex
-	contentIndexOnce sync.Once
-	contentIndexErr  error
-)
-
-// initContentIndex initializes the content index singleton.
+// initContentIndex initializes the content index for this store.
 // This is called lazily on first access to ensure the database is ready.
 func (s *Store) initContentIndex() error {
-	contentIndexOnce.Do(func() {
+	s.contentIndexOnce.Do(func() {
 		sqliteIndex, err := dedup.NewSQLiteIndex(s.db)
 		if err != nil {
-			contentIndexErr = err
+			s.contentIndexErr = err
 			return
 		}
-		contentIndex = sqliteIndex
+		s.contentIndex = sqliteIndex
 	})
-	return contentIndexErr
+	return s.contentIndexErr
 }
 
 // GetContentIndex returns the content index for deduplication operations.
@@ -35,16 +29,17 @@ func (s *Store) GetContentIndex() dedup.ContentIndex {
 	if err := s.initContentIndex(); err != nil {
 		return nil
 	}
-	return contentIndex
+	return s.contentIndex
 }
 
-// CloseContentIndex closes the content index and releases resources.
-// This should be called when the store is closed.
-func (s *Store) CloseContentIndex() error {
-	if contentIndex != nil {
-		if idx, ok := contentIndex.(*dedup.SQLiteIndex); ok {
-			return idx.Close()
-		}
+func (s *Store) closeContentIndex() error {
+	if s.contentIndex == nil {
+		return nil
 	}
-	return nil
+	closer, ok := s.contentIndex.(interface{ Close() error })
+	s.contentIndex = nil
+	if !ok {
+		return nil
+	}
+	return closer.Close()
 }

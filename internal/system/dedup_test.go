@@ -4,7 +4,7 @@
 // - Verify the running server exposes dedup lookup, history, stats, and cleanup behavior against seeded fixture data.
 //
 // Responsibilities:
-// - Seed the shared store's content index with deterministic fixture URLs and hashes.
+// - Seed a fixture store's content index with deterministic fixture URLs and hashes.
 // - Exercise the HTTP dedup endpoints through a live server process.
 // - Confirm delete cleanup updates stats and history as expected.
 //
@@ -130,9 +130,6 @@ func seedDedupIndex(t *testing.T, dataDir string, entries []dedupSeedEntry) {
 		if err := index.Index(context.Background(), entry.jobID, entry.url, entry.simhash); err != nil {
 			t.Fatalf("seed dedup entry: %v", err)
 		}
-	}
-	if err := st.CloseContentIndex(); err != nil {
-		t.Fatalf("close content index after seeding: %v", err)
 	}
 	if err := st.Close(); err != nil {
 		t.Fatalf("close seeded store: %v", err)

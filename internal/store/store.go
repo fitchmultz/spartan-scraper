@@ -1,15 +1,26 @@
-// Package store provides SQLite-backed persistent storage for jobs and crawl states.
-// It handles job CRUD operations, status tracking, and incremental crawling state.
-// It does NOT handle job execution or scheduling.
+/*
+Purpose: Define the long-lived SQLite store handle shared across storage subdomains.
+Responsibilities: Own the database connection, prepared statements, and per-store auxiliary resources such as the dedup content index.
+Scope: Store instance structure only; CRUD, migrations, and feature-specific behavior live in sibling files.
+Usage: Construct via `Open(...)` and pass the returned `*Store` to API, runtime, scheduler, and retention layers.
+Invariants/Assumptions: Each Store owns exactly one database handle and any lazily initialized helpers attached to that handle.
+*/
 package store
 
 import (
 	"database/sql"
+	"sync"
+
+	"github.com/fitchmultz/spartan-scraper/internal/dedup"
 )
 
 type Store struct {
 	db      *sql.DB
 	dataDir string
+
+	contentIndexOnce sync.Once
+	contentIndex     dedup.ContentIndex
+	contentIndexErr  error
 
 	insertJobStmt            *sql.Stmt
 	updateJobStatusStmt      *sql.Stmt

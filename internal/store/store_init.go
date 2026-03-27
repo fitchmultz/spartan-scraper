@@ -23,6 +23,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -382,6 +383,11 @@ func (s *Store) initDependencyTables() error {
 func (s *Store) Close() error {
 	_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 
+	var closeErr error
+	if err := s.closeContentIndex(); err != nil {
+		closeErr = errors.Join(closeErr, err)
+	}
+
 	for _, stmt := range []*sql.Stmt{
 		s.insertJobStmt,
 		s.updateJobStatusStmt,
@@ -405,12 +411,14 @@ func (s *Store) Close() error {
 		}
 	}
 
-	// Close analytics statements
 	if err := s.closeAnalyticsStatements(); err != nil {
-		return err
+		closeErr = errors.Join(closeErr, err)
+	}
+	if err := s.db.Close(); err != nil {
+		closeErr = errors.Join(closeErr, err)
 	}
 
-	return s.db.Close()
+	return closeErr
 }
 
 // Checkpoint checkpoints the WAL file to the main database.
