@@ -16,13 +16,14 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Harden the dedup explorer workflow end-to-end
-   - Replace the remaining raw `String(response.error)` paths in `DedupExplorer` with `getApiErrorMessage` and move search, history, and stats onto tab-scoped loading, error, and result state.
-   - Prevent one tab's refresh from clobbering another and backfill only the direct regressions for failure copy, recovery, and state isolation.
-
-2. Extract a shared integration-test harness and realign heavy validation coverage
-   - Deduplicate binary build, server and web-preview lifecycle, job polling, and API envelope parsing across `internal/system` and `internal/e2e`.
+1. Extract a shared heavy-validation harness and route browser-visible checks through it
+   - Deduplicate binary build, server and web-preview lifecycle, job polling, headless browser setup, and API envelope parsing across `internal/system` and `internal/e2e`.
+   - Pull browser-visible route checks behind the shared heavy harness and local proxy setup instead of open-coding preview/server/browser orchestration per test.
    - Keep teardown failure-safe, preserve the PR-safe versus heavy-suite split, and eliminate response-shape drift between validation layers.
+
+2. Decide whether dedup inspection should stay API-only or move into an existing operator surface
+   - If operators need a Web UI for dedup workflows, place it inside an existing route with clear ownership instead of reviving an orphan component.
+   - Otherwise keep the current API-only path and avoid more Web churn in this area.
 
 ## Ongoing Constraints
 
