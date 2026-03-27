@@ -16,14 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Resolve dedup surface ownership and cover the chosen path
-   - Keep dedup API-only unless an existing operator route has a clear reason to own the workflow.
-   - If it stays API-only, add direct API/system coverage for the dedup endpoints and stop treating a standalone Web surface as planned work.
-   - If it moves into the Web UI later, land it inside an existing route with route-owned tests instead of reviving a free-floating component.
+1. Extract shared browser-request controls across the authoring surfaces
+   - Move the repeated headless/playwright request state and controls from template preview, visual selector, render-profile AI, and pipeline-JS AI flows into one reusable UI/helper layer.
+   - Keep one validation/copy path for engine toggles and one request-shaping path into the API clients.
 
-2. Extract shared browser-request controls across the authoring surfaces
-   - Unify the repeated headless/playwright request state and controls used by template preview, visual selector, render-profile AI, and pipeline-JS AI flows.
-   - Keep one validation and copy path for browser-engine toggles so request payloads and operator guidance stop drifting across surfaces.
+2. Decide whether dedup indexing should stay internal-only or become an operator submission capability
+   - If operators need live dedup data, expose a deliberate crawl submission path for cross-job indexing and cover the request shaping across API, CLI, and Web.
+   - Otherwise keep dedup as a read/maintenance API surface and avoid reintroducing standalone operator UI work around it.
 
 ## Ongoing Constraints
 
