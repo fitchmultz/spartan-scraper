@@ -162,6 +162,37 @@ export function buildPipelineOptions(
   };
 }
 
+export function mergeAIExtractOptions(
+  extract: ExtractOptions | undefined,
+  aiExtract?: AiExtractOptions,
+): ExtractOptions | undefined {
+  return extract || aiExtract
+    ? {
+        ...extract,
+        ai: aiExtract,
+      }
+    : undefined;
+}
+
+export function buildBrowserRuntimeRequestFields(
+  headless: boolean,
+  usePlaywright: boolean,
+  timeoutSeconds: number,
+  authProfile: string | undefined,
+  auth: AuthOptions | undefined,
+  extract: ExtractOptions | undefined,
+  aiExtract?: AiExtractOptions,
+) {
+  return {
+    headless,
+    playwright: headless ? usePlaywright : false,
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
+  };
+}
+
 export function parseUrlList(raw: string): string[] {
   return splitAndTrim(raw, ",");
 }
@@ -423,23 +454,17 @@ export function buildScrapeRequest(
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
 ): ScrapeRequest {
-  // Merge AI options into extract options if provided
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
-
   return {
     url,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile: authProfile || undefined,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     webhook,
@@ -473,24 +498,19 @@ export function buildCrawlRequest(
   networkIntercept?: NetworkInterceptConfig,
   aiExtract?: AiExtractOptions,
 ): CrawlRequest {
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
-
   return {
     url,
     maxDepth,
     maxPages,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile: authProfile || undefined,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     sitemapURL: sitemapURL || undefined,
@@ -525,25 +545,20 @@ export function buildResearchRequest(
   aiExtract?: AiExtractOptions,
   agentic?: ResearchAgenticConfig,
 ): ResearchRequest {
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
-
   return {
     query,
     urls,
     maxDepth,
     maxPages,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile: authProfile || undefined,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
     screenshot,

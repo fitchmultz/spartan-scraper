@@ -23,6 +23,7 @@ import type {
   ScreenshotConfig,
   WebhookConfig,
 } from "../api";
+import { buildBrowserRuntimeRequestFields } from "./form-utils";
 import { splitAndTrim } from "./input-parsing";
 
 /**
@@ -199,22 +200,18 @@ export function buildBatchScrapeRequest(
   aiExtract?: AiExtractOptions,
 ): BatchScrapeRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
 
   return {
     jobs,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -246,24 +243,20 @@ export function buildBatchCrawlRequest(
   aiExtract?: AiExtractOptions,
 ): BatchCrawlRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
 
   return {
     jobs,
     maxDepth,
     maxPages,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -296,25 +289,21 @@ export function buildBatchResearchRequest(
   agentic?: ResearchAgenticConfig,
 ): BatchResearchRequest {
   const jobs: BatchJobRequest[] = urls.map((url) => ({ url }));
-  const mergedExtract: ExtractOptions | undefined =
-    extract || aiExtract
-      ? {
-          ...extract,
-          ai: aiExtract,
-        }
-      : undefined;
 
   return {
     jobs,
     query,
     maxDepth,
     maxPages,
-    headless,
-    playwright: headless ? usePlaywright : false,
-    timeoutSeconds,
-    authProfile,
-    auth,
-    extract: mergedExtract,
+    ...buildBrowserRuntimeRequestFields(
+      headless,
+      usePlaywright,
+      timeoutSeconds,
+      authProfile,
+      auth,
+      extract,
+      aiExtract,
+    ),
     pipeline,
     webhook,
     screenshot,

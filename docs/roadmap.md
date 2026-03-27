@@ -16,17 +16,13 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Consolidate browser-runtime request builders in the Web client
-   - Remove the repeated headless/playwright/timeout/extract-merging request shaping from `web/src/lib/form-utils.ts`, `web/src/lib/batch-utils.ts`, and the authoring tools.
-   - Keep one shared browser-runtime serializer for single-job, batch, and authoring requests before more UI refactors.
-
-2. Reuse shared browser-runtime controls across authoring tools
-   - Replace bespoke headless/playwright state and toggles in template preview, template assistant, visual selector, render-profile AI, pipeline-JS AI, and job-submission assistant with shared state and `BrowserExecutionControls`.
+1. Unify authoring-tool browser-runtime state, controls, and request shaping
+   - Replace bespoke headless/playwright state, toggles, and payload assembly in template preview, template assistant, visual selector, render-profile AI, pipeline-JS AI, and job-submission assistant with shared state, `BrowserExecutionControls`, and the shared browser-runtime serializer.
    - Keep one dependency rule for headless-gated capabilities such as Playwright, screenshots, device emulation, and network interception.
 
-3. Decide whether dedup stays maintenance-only or gets an explicit crawl indexing path
-   - If operators need live dedup data, add one deliberate crawl/indexing contract across API, CLI, Web, and persisted job specs instead of reviving stray flags.
-   - Otherwise keep dedup as a maintenance API and delete any remaining crawl-only cross-job duplicate plumbing.
+2. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
+   - Remove the remaining `internal/crawl` request/result fields and worker logic that only serve cross-job dedup internals.
+   - If operators later need live dedup indexing, add one deliberate crawl/indexing contract across API, CLI, Web, and persisted job specs instead of reviving stray flags.
 
 ## Ongoing Constraints
 

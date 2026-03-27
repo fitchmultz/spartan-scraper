@@ -1,11 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBatchCrawlRequest,
   buildBatchResearchRequest,
   buildBatchScrapeRequest,
 } from "./batch-utils";
 
 describe("batch-utils AI extraction support", () => {
+  it("normalizes browser runtime fields in batch crawl requests", () => {
+    const request = buildBatchCrawlRequest(
+      ["https://example.com"],
+      2,
+      10,
+      false,
+      true,
+      30,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
+
+    expect(request).toMatchObject({
+      headless: false,
+      playwright: false,
+      timeoutSeconds: 30,
+    });
+  });
+
   it("merges AI extraction options into batch scrape extract config", () => {
     const request = buildBatchScrapeRequest(
       ["https://example.com"],
