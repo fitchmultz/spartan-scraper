@@ -22,7 +22,7 @@ import {
 import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toRenderProfileGenerateAttempt } from "../lib/ai-authoring-attempts";
 import {
-  buildAIAuthoringBrowserRuntimePayload,
+  buildAIAuthoringRequestContext,
   createAIAuthoringBrowserRuntimeState,
   hasAIAuthoringBrowserRuntimeDraft,
   updateAIAuthoringHeadlessState,
@@ -180,10 +180,11 @@ export function AIRenderProfileGenerator({
           ...(continuationInstructions
             ? { instructions: continuationInstructions }
             : {}),
-          ...buildAIAuthoringBrowserRuntimePayload(
-            requestState,
-            requestState.images,
-          ),
+          ...buildAIAuthoringRequestContext({
+            source: "runtime",
+            images: requestState.images,
+            state: requestState,
+          }),
         },
       });
       if (error) {

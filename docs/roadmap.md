@@ -16,9 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Merge the remaining AI authoring payload helpers into one helper surface
-   - Collapse `buildAIAuthoringBrowserRuntimePayload` and `buildAIAuthoringRequestContext` behind one exported request-builder shape so render-profile, pipeline-JS, template, and submission assistants stop carrying two near-identical helper concepts.
-   - Keep current request bodies unchanged.
+- No currently queued implementation items.
 
 ## Ongoing Constraints
 

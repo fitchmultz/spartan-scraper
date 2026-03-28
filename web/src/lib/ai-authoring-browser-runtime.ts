@@ -63,28 +63,18 @@ export function updateAIAuthoringVisualState(
   };
 }
 
-function buildAIAuthoringBrowserRuntimeFields(
-  state: AIAuthoringBrowserRuntimeState,
-) {
-  return buildBrowserRuntimeFields({
-    headless: state.headless,
-    playwright: state.playwright,
-    visual: state.visual,
-  });
-}
-
 function buildAIAuthoringImagesPayload(images: AttachedAIImage[]) {
   return images.length > 0 ? { images: toAIImagePayloads(images) } : {};
 }
 
 export function buildAIAuthoringRequestContext(options: {
-  source: "url" | "html";
-  url: string;
+  source: "runtime" | "url" | "html";
+  url?: string;
   html?: string;
   images: AttachedAIImage[];
   state: AIAuthoringBrowserRuntimeState;
 }) {
-  const trimmedURL = options.url.trim();
+  const trimmedURL = options.url?.trim() ?? "";
 
   return {
     ...(options.source === "url" && trimmedURL ? { url: trimmedURL } : {}),
@@ -95,18 +85,12 @@ export function buildAIAuthoringRequestContext(options: {
         }
       : {}),
     ...buildAIAuthoringImagesPayload(options.images),
-    ...(options.source === "url"
-      ? buildAIAuthoringBrowserRuntimeFields(options.state)
+    ...(options.source !== "html"
+      ? buildBrowserRuntimeFields({
+          headless: options.state.headless,
+          playwright: options.state.playwright,
+          visual: options.state.visual,
+        })
       : {}),
-  };
-}
-
-export function buildAIAuthoringBrowserRuntimePayload(
-  state: AIAuthoringBrowserRuntimeState,
-  images: AttachedAIImage[],
-) {
-  return {
-    ...buildAIAuthoringImagesPayload(images),
-    ...buildAIAuthoringBrowserRuntimeFields(state),
   };
 }
