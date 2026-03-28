@@ -34,6 +34,7 @@ import {
   updateAIAuthoringVisualState,
 } from "../../lib/ai-authoring-browser-runtime";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { isValidHttpUrl } from "../../lib/form-utils";
 import type { AttachedAIImage } from "../../lib/ai-image-utils";
 import type { JobType } from "../../types/presets";
 import { AIImageAttachments } from "../AIImageAttachments";
@@ -190,9 +191,7 @@ export function JobSubmissionAssistantSection({
       if (!state.url.trim()) {
         return "URL is required.";
       }
-      try {
-        new URL(state.url.trim());
-      } catch {
+      if (!isValidHttpUrl(state.url)) {
         return "Please enter a valid URL.";
       }
     }

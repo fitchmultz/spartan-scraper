@@ -33,6 +33,7 @@ import {
 import { buildManualEditContinuationGuidance } from "../lib/ai-authoring-roundtrip";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { isValidHttpUrl } from "../lib/form-utils";
 import type { AttachedAIImage } from "../lib/ai-image-utils";
 import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
@@ -130,9 +131,7 @@ export function AIPipelineJSGenerator({
     if (!state.url.trim()) {
       return "URL is required";
     }
-    try {
-      new URL(state.url);
-    } catch {
+    if (!isValidHttpUrl(state.url)) {
       return "Please enter a valid URL";
     }
     return null;

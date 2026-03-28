@@ -322,11 +322,14 @@ export const JobSubmissionContainer = forwardRef<
                 <input
                   type="checkbox"
                   checked={wizard.expertMode}
+                  aria-label="Expert mode"
                   onChange={(event) =>
                     wizard.setExpertMode(event.target.checked)
                   }
                 />
-                <span>{wizard.expertMode ? "Expert mode" : "Guided mode"}</span>
+                <span aria-hidden="true">
+                  {wizard.expertMode ? "Expert mode" : "Guided mode"}
+                </span>
               </label>
               <span className="job-wizard__draft-status">
                 {wizard.draftSavedAt ? "Draft saved" : "Draft active"}

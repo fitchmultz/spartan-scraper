@@ -721,6 +721,15 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+.result-item-summary {
+  color: var(--text);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .result-item-meta {
   font-size: 0.75rem;
   color: var(--muted);

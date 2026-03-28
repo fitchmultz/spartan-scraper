@@ -27,6 +27,7 @@ import {
 } from "../../lib/ai-authoring-browser-runtime";
 import type { AttachedAIImage } from "../../lib/ai-image-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { isValidHttpUrl } from "../../lib/form-utils";
 import { describeAICapability, AIUnavailableNotice } from "../ai-assistant";
 import { AIImageAttachments } from "../AIImageAttachments";
 import { BrowserExecutionControls } from "../BrowserExecutionControls";
@@ -99,9 +100,7 @@ export function TemplateAssistantWorkspace({
       if (!url.trim()) {
         return "Target URL is required.";
       }
-      try {
-        new URL(url.trim());
-      } catch {
+      if (!isValidHttpUrl(url)) {
         return "Please enter a valid URL.";
       }
     }

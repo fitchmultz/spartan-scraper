@@ -90,4 +90,84 @@ describe("ResultsViewer agentic research rendering", () => {
     ).toBeInTheDocument();
     expect(detailRegion.getByText("Round 1")).toBeInTheDocument();
   });
+
+  it("keeps research navigator copy compact and query-led", () => {
+    const longSummary =
+      "This summary starts with a readable thesis about how the product positions enterprise support, but it keeps going with extra detail about migrations, procurement, onboarding, and renewal timing that should stay inside the detail panel instead of dominating the navigator card.";
+    const firstResult: ResearchResultItem = {
+      query: "Vendor support differences",
+      summary: longSummary,
+      confidence: 0.61,
+      evidence: [
+        {
+          url: "https://example.com/support",
+          title: "Support overview",
+          snippet: "Support summary",
+          score: 12,
+        },
+        {
+          url: "https://example.com/pricing",
+          title: "Pricing overview",
+          snippet: "Pricing summary",
+          score: 8,
+        },
+      ],
+      clusters: [
+        {
+          id: "cluster-1",
+          label: "Support",
+          confidence: 0.82,
+          evidence: [],
+        },
+      ],
+      citations: [
+        {
+          canonical: "https://example.com/support",
+        },
+      ],
+    };
+    const selectedResult: ResearchResultItem = {
+      query: "Selected research result",
+      summary: "Stable selected summary",
+      confidence: 0.74,
+      evidence: [],
+      clusters: [],
+      citations: [],
+    };
+
+    render(
+      <ResultsViewer
+        jobId="job-123"
+        jobKind="research"
+        resultItems={[firstResult, selectedResult]}
+        selectedResultIndex={1}
+        setSelectedResultIndex={vi.fn()}
+        resultSummary={selectedResult.summary ?? null}
+        resultConfidence={selectedResult.confidence ?? null}
+        resultEvidence={selectedResult.evidence ?? []}
+        resultClusters={selectedResult.clusters ?? []}
+        resultCitations={selectedResult.citations ?? []}
+        resultAgentic={selectedResult.agentic ?? null}
+        rawResult={JSON.stringify([firstResult, selectedResult])}
+        resultFormat="jsonl"
+        currentPage={1}
+        totalResults={2}
+        resultsPerPage={100}
+        onLoadPage={vi.fn()}
+      />,
+    );
+
+    const navigatorButton = screen.getByRole("button", {
+      name: /Vendor support differences/i,
+    });
+    const navigatorRegion = within(navigatorButton);
+
+    expect(
+      navigatorRegion.getByText(/This summary starts with a readable thesis/i),
+    ).toBeInTheDocument();
+    expect(navigatorRegion.queryByText(longSummary)).not.toBeInTheDocument();
+    expect(
+      navigatorRegion.getByText("2 evidence · 1 clusters · 1 citations"),
+    ).toBeInTheDocument();
+  });
 });

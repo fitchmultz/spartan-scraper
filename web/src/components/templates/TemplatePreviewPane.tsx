@@ -6,7 +6,7 @@
  * Invariants/Assumptions: Preview runs are explicit, selector testing uses the canonical API, and incomplete selector rows should be ignored instead of crashing the workspace.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   testSelector,
@@ -15,7 +15,10 @@ import {
   type TestSelectorResponse,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
-import { buildBrowserRuntimeFields } from "../../lib/form-utils";
+import {
+  buildBrowserRuntimeFields,
+  isValidHttpUrl,
+} from "../../lib/form-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { BrowserExecutionControls } from "../BrowserExecutionControls";
 import { ruleKey } from "./templateEditorUtils";
@@ -51,6 +54,32 @@ export function TemplatePreviewPane({
       ),
     [template.selectors],
   );
+  const previewStateKey = useMemo(
+    () =>
+      JSON.stringify({
+        url: url.trim(),
+        selectors: selectors.map((rule) => ({
+          name: rule.name?.trim() ?? "",
+          selector: rule.selector?.trim() ?? "",
+        })),
+        headless,
+        playwright,
+      }),
+    [url, selectors, headless, playwright],
+  );
+  const previewStateKeyRef = useRef(previewStateKey);
+  const previewRunRef = useRef(0);
+
+  useEffect(() => {
+    if (previewStateKeyRef.current === previewStateKey) {
+      return;
+    }
+    previewStateKeyRef.current = previewStateKey;
+    previewRunRef.current += 1;
+    setIsRunning(false);
+    setResults((previous) => (previous.length === 0 ? previous : []));
+    setError((previous) => (previous === null ? previous : null));
+  }, [previewStateKey]);
 
   const handleRunPreview = async () => {
     if (!url.trim()) {
@@ -58,9 +87,7 @@ export function TemplatePreviewPane({
       return;
     }
 
-    try {
-      new URL(url.trim());
-    } catch {
+    if (!isValidHttpUrl(url)) {
       setError("Please enter a valid preview URL.");
       return;
     }
@@ -72,6 +99,7 @@ export function TemplatePreviewPane({
       return;
     }
 
+    const runID = ++previewRunRef.current;
     setIsRunning(true);
     setError(null);
 
@@ -82,7 +110,7 @@ export function TemplatePreviewPane({
             baseUrl: getApiBaseUrl(),
             body: {
               url: url.trim(),
-              selector: rule.selector ?? "",
+              selector: rule.selector?.trim() ?? "",
               ...buildBrowserRuntimeFields({
                 headless,
                 playwright,
@@ -106,8 +134,14 @@ export function TemplatePreviewPane({
         }),
       );
 
+      if (runID !== previewRunRef.current) {
+        return;
+      }
       setResults(previewResults);
     } catch (requestError) {
+      if (runID !== previewRunRef.current) {
+        return;
+      }
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -115,7 +149,9 @@ export function TemplatePreviewPane({
       );
       setResults([]);
     } finally {
-      setIsRunning(false);
+      if (runID === previewRunRef.current) {
+        setIsRunning(false);
+      }
     }
   };
 

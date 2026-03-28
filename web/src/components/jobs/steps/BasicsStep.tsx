@@ -162,13 +162,15 @@ export function BasicsStep({
             placeholder="pricing model, security posture, roadmap..."
           />
 
-          <label htmlFor="wizard-research-urls">Source URLs</label>
+          <label htmlFor="wizard-research-urls">
+            Source URLs (one per line or comma-separated)
+          </label>
           <textarea
             id="wizard-research-urls"
             rows={4}
             value={researchUrls}
             onChange={(event) => setResearchUrls(event.target.value)}
-            placeholder="https://example.com, https://example.com/docs"
+            placeholder="https://example.com\nhttps://example.com/docs"
           />
 
           <div className="row">

@@ -729,6 +729,17 @@ describe("TemplateManager", () => {
 
     expect(await screen.findByText(/1 match/i)).toBeInTheDocument();
     expect(screen.getByText(/headline/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/preview target url/i), {
+      target: { value: "https://example.com/updated" },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/1 match/i)).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/run preview to inspect current selector matches/i),
+    ).toBeInTheDocument();
   });
 
   it("applies AI-generated templates into the inline workspace", async () => {

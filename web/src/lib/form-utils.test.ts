@@ -13,7 +13,9 @@ import {
   buildCrawlRequest,
   buildResearchAgenticOptions,
   buildResearchRequest,
+  isValidHttpUrl,
   parseAIExtractSchemaText,
+  parseUrlList,
 } from "./form-utils";
 
 describe("pipeline options parsing", () => {
@@ -128,6 +130,19 @@ describe("AI extract helpers", () => {
       },
       fields: ["title", "price"],
     });
+  });
+});
+
+describe("isValidHttpUrl", () => {
+  it("accepts trimmed http and https URLs with hosts", () => {
+    expect(isValidHttpUrl(" https://example.com/path ")).toBe(true);
+    expect(isValidHttpUrl("http://localhost:8741/health")).toBe(true);
+  });
+
+  it("rejects non-http schemes and missing hosts", () => {
+    expect(isValidHttpUrl("ftp://example.com/file.txt")).toBe(false);
+    expect(isValidHttpUrl("https:")).toBe(false);
+    expect(isValidHttpUrl("not-a-url")).toBe(false);
   });
 });
 
@@ -351,6 +366,20 @@ describe("buildResearchAgenticOptions", () => {
       maxRounds: 2,
       maxFollowUpUrls: 4,
     });
+  });
+});
+
+describe("parseUrlList", () => {
+  it("accepts comma-separated and newline-separated URLs", () => {
+    expect(
+      parseUrlList(
+        "https://example.com,\nhttps://example.org\nhttps://example.net",
+      ),
+    ).toEqual([
+      "https://example.com",
+      "https://example.org",
+      "https://example.net",
+    ]);
   });
 });
 

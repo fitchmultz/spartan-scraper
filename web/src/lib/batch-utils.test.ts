@@ -4,9 +4,20 @@ import {
   buildBatchCrawlRequest,
   buildBatchResearchRequest,
   buildBatchScrapeRequest,
+  validateUrls,
 } from "./batch-utils";
 
 describe("batch-utils AI extraction support", () => {
+  it("rejects non-http URLs during batch validation", () => {
+    expect(
+      validateUrls([
+        "https://example.com",
+        "ftp://example.com/file.txt",
+        "https:",
+      ]),
+    ).toEqual(["ftp://example.com/file.txt", "https:"]);
+  });
+
   it("normalizes browser runtime fields in batch crawl requests", () => {
     const request = buildBatchCrawlRequest(
       ["https://example.com"],

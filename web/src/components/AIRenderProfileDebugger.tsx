@@ -32,6 +32,7 @@ import {
 } from "../lib/ai-authoring-browser-runtime";
 import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { isValidHttpUrl } from "../lib/form-utils";
 import type { AttachedAIImage } from "../lib/ai-image-utils";
 import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
 import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
@@ -150,9 +151,7 @@ export function AIRenderProfileDebugger({
       setState((prev) => ({ ...prev, error: "URL is required" }));
       return;
     }
-    try {
-      new URL(state.url);
-    } catch {
+    if (!isValidHttpUrl(state.url)) {
       setState((prev) => ({ ...prev, error: "Please enter a valid URL" }));
       return;
     }

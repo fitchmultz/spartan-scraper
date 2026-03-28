@@ -8,7 +8,7 @@
  * @module VisualSelectorBuilder
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   getTemplatePreview,
@@ -19,7 +19,7 @@ import {
   type TestSelectorResponse,
 } from "../api";
 import { useTemplateBuilder } from "../hooks/useTemplateBuilder";
-import { buildBrowserRuntimeFields } from "../lib/form-utils";
+import { buildBrowserRuntimeFields, isValidHttpUrl } from "../lib/form-utils";
 import { getApiErrorMessage } from "../lib/api-errors";
 
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
@@ -170,26 +170,78 @@ export function VisualSelectorBuilder({
     clearError,
   } = useTemplateBuilder({ initialTemplate, onSave });
 
+  const loadedPageStateKey = `${url.trim()}::${headless}::${playwright}`;
+  const loadedPageStateKeyRef = useRef(loadedPageStateKey);
+  const selectorTestRunRef = useRef(0);
+  const selectorRowKeysRef = useRef(
+    (template.selectors ?? []).map((_, index) => `selector-rule-${index}`),
+  );
+  const nextSelectorRowKeyRef = useRef(selectorRowKeysRef.current.length);
+
+  const invalidateSelectorTest = useCallback(() => {
+    selectorTestRunRef.current += 1;
+    setTesting(false);
+    setTestResults(null);
+  }, []);
+
   // Initialize expanded paths when DOM tree loads
   useEffect(() => {
     setExpandedPaths(buildExpandedPaths(domTree));
   }, [domTree]);
 
+  useEffect(() => {
+    if (loadedPageStateKeyRef.current === loadedPageStateKey) {
+      return;
+    }
+    loadedPageStateKeyRef.current = loadedPageStateKey;
+    setFetchError(null);
+    setDomTree(null);
+    setSelectedNode(null);
+    setGeneratedSelector("");
+    setSearchQuery("");
+    invalidateSelectorTest();
+  }, [invalidateSelectorTest, loadedPageStateKey]);
+
+  useEffect(() => {
+    const selectorCount = template.selectors?.length ?? 0;
+    const keys = selectorRowKeysRef.current;
+    if (keys.length === selectorCount) {
+      return;
+    }
+    if (keys.length < selectorCount) {
+      while (keys.length < selectorCount) {
+        keys.push(`selector-rule-${nextSelectorRowKeyRef.current}`);
+        nextSelectorRowKeyRef.current += 1;
+      }
+      return;
+    }
+    keys.length = selectorCount;
+  }, [template.selectors]);
+
   // Fetch page
   const handleFetch = async () => {
-    if (!url) {
+    const trimmedURL = url.trim();
+    if (!trimmedURL) {
       setFetchError("Please enter a URL");
+      return;
+    }
+    if (!isValidHttpUrl(trimmedURL)) {
+      setFetchError("Please enter a valid URL");
       return;
     }
 
     setFetching(true);
     setFetchError(null);
     setDomTree(null);
+    setSelectedNode(null);
+    setGeneratedSelector("");
+    invalidateSelectorTest();
+    setSearchQuery("");
 
     try {
       const response = await getTemplatePreview({
         query: {
-          url,
+          url: trimmedURL,
           ...buildBrowserRuntimeFields({
             headless,
             playwright,
@@ -212,10 +264,9 @@ export function VisualSelectorBuilder({
   // Handle node selection
   const handleNodeSelect = (node: DomNode) => {
     setSelectedNode(node);
+    invalidateSelectorTest();
     const options = generateSelectorOptions(node);
-    if (options.length > 0) {
-      setGeneratedSelector(options[0]);
-    }
+    setGeneratedSelector(options[0] ?? "");
   };
 
   // Toggle expand
@@ -233,15 +284,18 @@ export function VisualSelectorBuilder({
 
   // Test selector
   const handleTestSelector = async () => {
-    if (!url || !generatedSelector) return;
+    const trimmedURL = url.trim();
+    const trimmedSelector = generatedSelector.trim();
+    if (!trimmedURL || !trimmedSelector) return;
 
+    const runID = ++selectorTestRunRef.current;
     setTesting(true);
     setTestResults(null);
 
     try {
       const request: TestSelectorRequest = {
-        url,
-        selector: generatedSelector,
+        url: trimmedURL,
+        selector: trimmedSelector,
         ...buildBrowserRuntimeFields({
           headless,
           playwright,
@@ -256,30 +310,43 @@ export function VisualSelectorBuilder({
         );
       }
       const data = response.data;
+      if (runID !== selectorTestRunRef.current) {
+        return;
+      }
       setTestResults({
-        selector: data?.selector ?? generatedSelector,
+        selector: data?.selector ?? trimmedSelector,
         matches: data?.matches ?? 0,
         elements: data?.elements ?? [],
         error: data?.error,
       });
     } catch (err) {
+      if (runID !== selectorTestRunRef.current) {
+        return;
+      }
       setTestResults({
-        selector: generatedSelector,
+        selector: trimmedSelector,
         matches: 0,
         elements: [],
         error: getApiErrorMessage(err, "Failed to test selector"),
       });
     } finally {
-      setTesting(false);
+      if (runID === selectorTestRunRef.current) {
+        setTesting(false);
+      }
     }
   };
 
   // Add selector to template
   const handleAddSelector = () => {
-    if (!generatedSelector) return;
+    const trimmedSelector = generatedSelector.trim();
+    if (!trimmedSelector) return;
     clearError();
+    selectorRowKeysRef.current.push(
+      `selector-rule-${nextSelectorRowKeyRef.current}`,
+    );
+    nextSelectorRowKeyRef.current += 1;
     addSelector(
-      createSelectorRule(generatedSelector, template.selectors?.length ?? 0),
+      createSelectorRule(trimmedSelector, template.selectors?.length ?? 0),
     );
   };
 
@@ -412,14 +479,17 @@ export function VisualSelectorBuilder({
                   id="generated-selector"
                   type="text"
                   value={generatedSelector}
-                  onChange={(e) => setGeneratedSelector(e.target.value)}
+                  onChange={(e) => {
+                    setGeneratedSelector(e.target.value);
+                    invalidateSelectorTest();
+                  }}
                   placeholder="CSS selector"
                 />
                 <button
                   type="button"
                   className="btn btn--secondary btn--small"
                   onClick={handleTestSelector}
-                  disabled={testing || !generatedSelector}
+                  disabled={testing || !generatedSelector.trim()}
                 >
                   {testing ? "Testing..." : "Test"}
                 </button>
@@ -427,7 +497,7 @@ export function VisualSelectorBuilder({
                   type="button"
                   className="btn btn--primary btn--small"
                   onClick={handleAddSelector}
-                  disabled={!generatedSelector}
+                  disabled={!generatedSelector.trim()}
                 >
                   Add to Template
                 </button>
@@ -440,7 +510,10 @@ export function VisualSelectorBuilder({
                     key={opt}
                     type="button"
                     className={`selector-option ${generatedSelector === opt ? "active" : ""}`}
-                    onClick={() => setGeneratedSelector(opt)}
+                    onClick={() => {
+                      setGeneratedSelector(opt);
+                      invalidateSelectorTest();
+                    }}
                   >
                     {opt}
                   </button>
@@ -512,7 +585,13 @@ export function VisualSelectorBuilder({
                 </div>
               ) : (
                 template.selectors?.map((rule, index) => (
-                  <div key={rule.name} className="selector-rule">
+                  <div
+                    key={
+                      selectorRowKeysRef.current[index] ??
+                      `selector-rule-${index}`
+                    }
+                    className="selector-rule"
+                  >
                     <input
                       type="text"
                       value={rule.name ?? ""}
@@ -557,7 +636,10 @@ export function VisualSelectorBuilder({
                       <button
                         type="button"
                         className="btn btn--danger btn--small"
-                        onClick={() => removeSelector(index)}
+                        onClick={() => {
+                          selectorRowKeysRef.current.splice(index, 1);
+                          removeSelector(index);
+                        }}
                       >
                         Remove
                       </button>

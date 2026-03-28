@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { useState, type ForwardedRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIAssistantProvider } from "../../ai-assistant";
+import { ToastProvider } from "../../toast";
 import { useFormState } from "../../../hooks/useFormState";
 import { JobSubmissionContainer } from "../JobSubmissionContainer";
 import type { JobType } from "../../../types/presets";
@@ -187,41 +188,43 @@ function renderHarness(
     const [activeTab, setActiveTab] = useState<JobType>(initialTab);
 
     return (
-      <AIAssistantProvider>
-        <JobSubmissionContainer
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          formState={formState}
-          onSubmitScrape={onSubmitScrape}
-          onSubmitCrawl={onSubmitCrawl}
-          onSubmitResearch={onSubmitResearch}
-          loading={false}
-          profiles={[]}
-          presets={
-            includePresets
-              ? [
-                  {
-                    id: "preset-scrape-static-page",
-                    name: "Static Page",
-                    description: "Fast HTTP fetch for static HTML content",
-                    icon: "🧪",
-                    jobType: "scrape",
-                    config: { url: "https://example.com" },
-                    resources: {
-                      timeSeconds: 10,
-                      cpu: "low",
-                      memory: "low",
+      <ToastProvider>
+        <AIAssistantProvider>
+          <JobSubmissionContainer
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            formState={formState}
+            onSubmitScrape={onSubmitScrape}
+            onSubmitCrawl={onSubmitCrawl}
+            onSubmitResearch={onSubmitResearch}
+            loading={false}
+            profiles={[]}
+            presets={
+              includePresets
+                ? [
+                    {
+                      id: "preset-scrape-static-page",
+                      name: "Static Page",
+                      description: "Fast HTTP fetch for static HTML content",
+                      icon: "🧪",
+                      jobType: "scrape",
+                      config: { url: "https://example.com" },
+                      resources: {
+                        timeSeconds: 10,
+                        cpu: "low",
+                        memory: "low",
+                      },
+                      useCases: ["Static marketing pages"],
+                      isBuiltIn: true,
                     },
-                    useCases: ["Static marketing pages"],
-                    isBuiltIn: true,
-                  },
-                ]
-              : undefined
-          }
-          savePreset={includePresets ? savePreset : undefined}
-          onSelectPreset={includePresets ? onSelectPreset : undefined}
-        />
-      </AIAssistantProvider>
+                  ]
+                : undefined
+            }
+            savePreset={includePresets ? savePreset : undefined}
+            onSelectPreset={includePresets ? onSelectPreset : undefined}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>
     );
   }
 
@@ -269,7 +272,7 @@ describe("JobSubmissionContainer wizard", () => {
       "https://example.com",
     );
 
-    await user.click(screen.getByRole("checkbox", { name: /guided mode/i }));
+    await user.click(screen.getByRole("checkbox", { name: /expert mode/i }));
 
     expect(
       (await screen.findAllByDisplayValue("https://example.com"))[0],
@@ -311,6 +314,33 @@ describe("JobSubmissionContainer wizard", () => {
       expect(document.getElementById("wizard-scrape-url")).toHaveValue(
         "https://example.com/docs",
       );
+    });
+  });
+
+  it("restores the saved guided step for a persisted scrape draft", async () => {
+    const view = renderHarness();
+    view.unmount();
+
+    window.localStorage.setItem(
+      "spartan.job-draft.scrape",
+      JSON.stringify({ url: "https://example.com/docs" }),
+    );
+    window.localStorage.setItem(
+      "spartan.job-wizard.scrape",
+      JSON.stringify({
+        activeStep: "runtime",
+        completedSteps: ["basics"],
+      }),
+    );
+
+    renderHarness();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", {
+          name: /choose how the job should execute/i,
+        }),
+      ).toBeInTheDocument();
     });
   });
 

@@ -38,6 +38,7 @@ import {
   buildBatchCrawlRequest,
   buildBatchResearchRequest,
   buildBatchScrapeRequest,
+  validateUrls as findInvalidBatchUrls,
 } from "../lib/batch-utils";
 import {
   MAX_BATCH_SIZE,
@@ -350,15 +351,7 @@ export function BatchForm({
       setUrlError(`Maximum ${MAX_BATCH_SIZE} URLs allowed`);
       return false;
     }
-    // Basic URL validation
-    const invalid = parsedUrls.filter((u) => {
-      try {
-        new URL(u);
-        return false;
-      } catch {
-        return true;
-      }
-    });
+    const invalid = findInvalidBatchUrls(parsedUrls);
     if (invalid.length > 0) {
       setUrlError(`Invalid URLs: ${invalid.slice(0, 3).join(", ")}`);
       return false;
@@ -894,7 +887,8 @@ export function BatchForm({
           disabled={loading || parsedUrls.length === 0 || !isValidBatchSize}
         >
           Submit Batch {activeTab}
-          {parsedUrls.length > 0 && ` (${parsedUrls.length} URLs)`}
+          {parsedUrls.length > 0 &&
+            ` (${parsedUrls.length} URL${parsedUrls.length === 1 ? "" : "s"})`}
         </button>
         <button
           type="button"

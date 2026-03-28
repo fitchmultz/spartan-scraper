@@ -1516,6 +1516,25 @@
   line-height: 1.6;
 }
 
+.results-viewer__source-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.results-viewer__source-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 183, 0, 0.1);
+  border: 1px solid rgba(255, 183, 0, 0.2);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .results-viewer__disclosure {
   border: 1px solid var(--stroke);
   border-radius: 12px;

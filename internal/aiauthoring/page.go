@@ -183,7 +183,7 @@ func applyScriptToRequest(request *fetch.Request, script pipeline.JSTargetScript
 
 func validateHTTPURL(raw string) error {
 	parsedURL, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
 		return apperrors.Validation("invalid URL format")
 	}
 	return nil

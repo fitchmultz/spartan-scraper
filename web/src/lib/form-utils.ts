@@ -186,8 +186,25 @@ export function buildBrowserRuntimeFields(options: {
   };
 }
 
+export function isValidHttpUrl(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      parsed.host.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function parseUrlList(raw: string): string[] {
-  return splitAndTrim(raw, ",");
+  return splitAndTrim(raw, /[\n,]/);
 }
 
 export function buildWebhookConfig(

@@ -83,6 +83,70 @@ function truncateExcerpt(text?: string): string | null {
   return `${normalized.slice(0, 417)}…`;
 }
 
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function getResearchResultTitle(
+  item: ResearchResultItem,
+  index: number,
+): string {
+  return item.query?.trim() || `Research result ${index + 1}`;
+}
+
+function getResearchSummaryPreview(
+  summary?: string | null,
+  maxLength = 180,
+): string | null {
+  const normalized = truncateExcerpt(summary ?? undefined);
+  if (!normalized) {
+    return null;
+  }
+  return truncateText(normalized, maxLength);
+}
+
+function getResearchResultMeta(
+  item: ResearchResultItem,
+  fallback: string,
+): string {
+  const parts: string[] = [];
+
+  if (item.evidence && item.evidence.length > 0) {
+    parts.push(`${item.evidence.length} evidence`);
+  }
+  if (item.clusters && item.clusters.length > 0) {
+    parts.push(`${item.clusters.length} clusters`);
+  }
+  if (item.citations && item.citations.length > 0) {
+    parts.push(`${item.citations.length} citations`);
+  }
+
+  return parts.join(" · ") || fallback;
+}
+
+function getResearchSourceLabels(evidence: EvidenceItem[]): string[] {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+
+  for (const item of evidence) {
+    const label = (item.title || item.url || "").trim();
+    if (!label || seen.has(label)) {
+      continue;
+    }
+    seen.add(label);
+    labels.push(label);
+    if (labels.length >= 3) {
+      break;
+    }
+  }
+
+  return labels;
+}
+
 function hasStructuredSelectedItem(item: ResultItem | null): boolean {
   return (
     !!item &&
@@ -149,6 +213,24 @@ export function ResultsViewer({
         ? truncateExcerpt(selectedItem.text)
         : null,
     [selectedItem],
+  );
+  const selectedResearchSummary =
+    selectedResearchResult?.summary ?? resultSummary ?? null;
+  const selectedResearchEvidence =
+    selectedResearchResult?.evidence ?? resultEvidence;
+  const selectedResearchClusters =
+    selectedResearchResult?.clusters ?? resultClusters;
+  const selectedResearchCitations =
+    selectedResearchResult?.citations ?? resultCitations;
+  const selectedResearchAgentic =
+    selectedResearchResult?.agentic ?? resultAgentic;
+  const selectedResearchPreview = useMemo(
+    () => getResearchSummaryPreview(selectedResearchSummary, 220),
+    [selectedResearchSummary],
+  );
+  const selectedResearchSourceLabels = useMemo(
+    () => getResearchSourceLabels(selectedResearchEvidence),
+    [selectedResearchEvidence],
   );
 
   useEffect(() => {
@@ -263,7 +345,16 @@ export function ResultsViewer({
               Query: {selectedResearchResult.query}
             </div>
           ) : null}
-          {resultSummary ? (
+          {jobKind === "research" ? (
+            selectedResearchPreview ? (
+              <p className="results-viewer__lead">{selectedResearchPreview}</p>
+            ) : (
+              <p className="results-viewer__lead">
+                Start with the query, coverage, and source list, then open the
+                full detail panel when you need the complete synthesis.
+              </p>
+            )
+          ) : resultSummary ? (
             <p className="results-viewer__lead">{resultSummary}</p>
           ) : (
             <p className="results-viewer__lead">
@@ -272,6 +363,15 @@ export function ResultsViewer({
               them.
             </p>
           )}
+          {jobKind === "research" && selectedResearchSourceLabels.length > 0 ? (
+            <div className="results-viewer__source-list">
+              {selectedResearchSourceLabels.map((label) => (
+                <span key={label} className="results-viewer__source-chip">
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="results-viewer__badge-row">
@@ -341,10 +441,18 @@ export function ResultsViewer({
                     ) : (
                       <>
                         <div className="result-item-title">
-                          {item.summary || `Research result ${index + 1}`}
+                          {getResearchResultTitle(item, index)}
                         </div>
+                        {getResearchSummaryPreview(item.summary, 140) ? (
+                          <div className="result-item-summary">
+                            {getResearchSummaryPreview(item.summary, 140)}
+                          </div>
+                        ) : null}
                         <div className="result-item-meta">
-                          {item.query || jobKind || "saved result"}
+                          {getResearchResultMeta(
+                            item,
+                            jobKind || "saved result",
+                          )}
                         </div>
                       </>
                     )}
@@ -454,17 +562,40 @@ export function ResultsViewer({
                   </div>
 
                   <div className="results-viewer__detail-meta">
-                    <span>{resultEvidence.length} evidence items</span>
-                    <span>{resultClusters.length} clusters</span>
-                    <span>{resultCitations.length} citations</span>
+                    <span>
+                      {selectedResearchEvidence.length} evidence items
+                    </span>
+                    <span>{selectedResearchClusters.length} clusters</span>
+                    <span>{selectedResearchCitations.length} citations</span>
                   </div>
 
-                  {selectedResearchResult?.summary ? (
-                    <p className="results-viewer__lead">
-                      {selectedResearchResult.summary}
-                    </p>
-                  ) : resultSummary ? (
-                    <p className="results-viewer__lead">{resultSummary}</p>
+                  {selectedResearchSummary ? (
+                    <div className="results-viewer__detail-section">
+                      <div className="results-viewer__section-label">
+                        Summary
+                      </div>
+                      <p className="results-viewer__lead">
+                        {selectedResearchSummary}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {selectedResearchSourceLabels.length > 0 ? (
+                    <div className="results-viewer__detail-section">
+                      <div className="results-viewer__section-label">
+                        Top sources
+                      </div>
+                      <div className="results-viewer__source-list">
+                        {selectedResearchSourceLabels.map((label) => (
+                          <span
+                            key={label}
+                            className="results-viewer__source-chip"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   ) : null}
 
                   {jobKind === "research" && onOpenResearchAssistant ? (
@@ -482,13 +613,13 @@ export function ResultsViewer({
                   <details className="results-viewer__disclosure">
                     <summary>Research insights</summary>
 
-                    {resultClusters.length > 0 ? (
+                    {selectedResearchClusters.length > 0 ? (
                       <div style={{ marginTop: 12 }}>
                         <div className="results-viewer__section-label">
                           Evidence clusters
                         </div>
                         <div className="job-list">
-                          {resultClusters.map((cluster) => (
+                          {selectedResearchClusters.map((cluster) => (
                             <div key={cluster.id} className="job-item">
                               <div>{cluster.label || cluster.id}</div>
                               <div className="badge running">
@@ -501,13 +632,13 @@ export function ResultsViewer({
                       </div>
                     ) : null}
 
-                    {resultCitations.length > 0 ? (
+                    {selectedResearchCitations.length > 0 ? (
                       <div style={{ marginTop: 12 }}>
                         <div className="results-viewer__section-label">
                           Citations
                         </div>
                         <div className="job-list">
-                          {resultCitations.map((citation) => {
+                          {selectedResearchCitations.map((citation) => {
                             const target =
                               citation.anchor && citation.canonical
                                 ? `${citation.canonical}#${citation.anchor}`
@@ -529,9 +660,9 @@ export function ResultsViewer({
                       </div>
                     ) : null}
 
-                    {resultEvidence.length > 0 ? (
+                    {selectedResearchEvidence.length > 0 ? (
                       <div className="job-list" style={{ marginTop: 12 }}>
-                        {resultEvidence.slice(0, 10).map((item) => (
+                        {selectedResearchEvidence.slice(0, 10).map((item) => (
                           <div
                             key={`${item.url}-${item.score}-${item.clusterId ?? ""}`}
                             className="job-item"
@@ -577,7 +708,7 @@ export function ResultsViewer({
                 </>
               )}
 
-              {resultAgentic ? (
+              {selectedResearchAgentic ? (
                 <details className="results-viewer__disclosure">
                   <summary>Agentic research details</summary>
 
@@ -590,88 +721,93 @@ export function ResultsViewer({
                     }}
                   >
                     <div className="badge running">
-                      Status {resultAgentic.status}
+                      Status {selectedResearchAgentic.status}
                     </div>
-                    {typeof resultAgentic.confidence === "number" ? (
+                    {typeof selectedResearchAgentic.confidence === "number" ? (
                       <div className="badge running">
-                        Confidence {resultAgentic.confidence.toFixed(2)}
+                        Confidence{" "}
+                        {selectedResearchAgentic.confidence.toFixed(2)}
                       </div>
                     ) : null}
-                    {resultAgentic.provider && resultAgentic.model ? (
+                    {selectedResearchAgentic.provider &&
+                    selectedResearchAgentic.model ? (
                       <div className="badge running">
-                        {resultAgentic.provider}/{resultAgentic.model}
+                        {selectedResearchAgentic.provider}/
+                        {selectedResearchAgentic.model}
                       </div>
                     ) : null}
                   </div>
 
-                  {resultAgentic.summary ? (
-                    <p>{resultAgentic.summary}</p>
+                  {selectedResearchAgentic.summary ? (
+                    <p>{selectedResearchAgentic.summary}</p>
                   ) : null}
-                  {resultAgentic.error ? (
+                  {selectedResearchAgentic.error ? (
                     <div style={{ color: "var(--status-failed)" }}>
-                      {resultAgentic.error}
+                      {selectedResearchAgentic.error}
                     </div>
                   ) : null}
 
-                  {resultAgentic.focusAreas?.length ? (
+                  {selectedResearchAgentic.focusAreas?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Focus areas
                       </div>
                       <ul>
-                        {resultAgentic.focusAreas.map((item) => (
+                        {selectedResearchAgentic.focusAreas.map((item) => (
                           <li key={item}>{item}</li>
                         ))}
                       </ul>
                     </div>
                   ) : null}
 
-                  {resultAgentic.keyFindings?.length ? (
+                  {selectedResearchAgentic.keyFindings?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Key findings
                       </div>
                       <ul>
-                        {resultAgentic.keyFindings.map((item) => (
+                        {selectedResearchAgentic.keyFindings.map((item) => (
                           <li key={item}>{item}</li>
                         ))}
                       </ul>
                     </div>
                   ) : null}
 
-                  {resultAgentic.openQuestions?.length ? (
+                  {selectedResearchAgentic.openQuestions?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Open questions
                       </div>
                       <ul>
-                        {resultAgentic.openQuestions.map((item) => (
+                        {selectedResearchAgentic.openQuestions.map((item) => (
                           <li key={item}>{item}</li>
                         ))}
                       </ul>
                     </div>
                   ) : null}
 
-                  {resultAgentic.recommendedNextSteps?.length ? (
+                  {selectedResearchAgentic.recommendedNextSteps?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Recommended next steps
                       </div>
                       <ul>
-                        {resultAgentic.recommendedNextSteps.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
+                        {selectedResearchAgentic.recommendedNextSteps.map(
+                          (item) => (
+                            <li key={item}>{item}</li>
+                          ),
+                        )}
                       </ul>
                     </div>
                   ) : null}
 
-                  {resultAgentic.followUpUrls?.length ? (
+                  {selectedResearchAgentic.followUpUrls?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Follow-up URLs
                       </div>
                       <ul>
-                        {resultAgentic.followUpUrls.map((item) => (
+                        {selectedResearchAgentic.followUpUrls.map((item) => (
                           <li key={item}>
                             <a href={item} target="_blank" rel="noreferrer">
                               {item}
@@ -682,13 +818,13 @@ export function ResultsViewer({
                     </div>
                   ) : null}
 
-                  {resultAgentic.rounds?.length ? (
+                  {selectedResearchAgentic.rounds?.length ? (
                     <div style={{ marginTop: 8 }}>
                       <div className="results-viewer__section-label">
                         Follow-up rounds
                       </div>
                       <div className="job-list">
-                        {resultAgentic.rounds.map((round) => (
+                        {selectedResearchAgentic.rounds.map((round) => (
                           <div key={round.round} className="job-item">
                             <div>Round {round.round}</div>
                             {round.goal ? <div>{round.goal}</div> : null}

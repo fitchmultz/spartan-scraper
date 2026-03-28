@@ -16,7 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- No currently queued implementation items.
+- Split `web/src/App.tsx` into route-local containers/hooks so jobs, templates, automation, and settings changes stop colliding in one application-shell file.
 
 ## Ongoing Constraints
 

@@ -216,14 +216,14 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
             placeholder="pricing model, security posture, roadmap..."
           />
           <label htmlFor="research-urls" style={{ marginTop: 12 }}>
-            Source URLs (comma-separated)
+            Source URLs (one per line or comma-separated)
           </label>
           <textarea
             id="research-urls"
             rows={3}
             value={urls}
             onChange={(event) => setUrls(event.target.value)}
-            placeholder="https://example.com, https://example.com/docs"
+            placeholder="https://example.com\nhttps://example.com/docs"
           />
           <div className="row" style={{ marginTop: 12 }}>
             <label>

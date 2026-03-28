@@ -23,7 +23,11 @@ import type {
   ScreenshotConfig,
   WebhookConfig,
 } from "../api";
-import { buildBrowserRuntimeFields, mergeAIExtractOptions } from "./form-utils";
+import {
+  buildBrowserRuntimeFields,
+  isValidHttpUrl,
+  mergeAIExtractOptions,
+} from "./form-utils";
 import { splitAndTrim } from "./input-parsing";
 
 /**
@@ -38,14 +42,7 @@ export function parseUrlList(input: string): string[] {
  * Returns array of invalid URLs, empty array if all valid
  */
 export function validateUrls(urls: string[]): string[] {
-  return urls.filter((url) => {
-    try {
-      new URL(url);
-      return false;
-    } catch {
-      return true;
-    }
-  });
+  return urls.filter((url) => !isValidHttpUrl(url));
 }
 
 /**

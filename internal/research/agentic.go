@@ -118,7 +118,7 @@ func gatherResearchDocuments(ctx context.Context, req Request, targets []string,
 						URL:     page.URL,
 						Title:   page.Normalized.Title,
 						Snippet: makeEvidenceSnippet(page.Normalized.Text, fields),
-						Score:   scoreText(queryTokens, searchText),
+						Score:   scoreText(queryTokens, searchText) + researchSourcePriorityBoost(target, page.URL),
 						Fields:  fields,
 					},
 					Links: normalizeDocumentLinks(page.URL, page.Normalized.Links),
@@ -172,7 +172,7 @@ func gatherResearchDocuments(ctx context.Context, req Request, targets []string,
 				URL:     res.URL,
 				Title:   res.Normalized.Title,
 				Snippet: makeEvidenceSnippet(res.Normalized.Text, fields),
-				Score:   scoreText(queryTokens, searchText),
+				Score:   scoreText(queryTokens, searchText) + researchSourcePriorityBoost(target, res.URL),
 				Fields:  fields,
 			},
 			Links: normalizeDocumentLinks(res.URL, res.Normalized.Links),
@@ -489,6 +489,37 @@ func normalizeFollowUpURL(baseURL string, raw string) string {
 	}
 	resolved.Fragment = ""
 	return resolved.String()
+}
+
+func researchSourcePriorityBoost(target string, candidate string) float64 {
+	const preferredSourceBoost = 500.0
+	if normalizeResearchSourceURL(target) == normalizeResearchSourceURL(candidate) {
+		return preferredSourceBoost
+	}
+	return 0
+}
+
+func normalizeResearchSourceURL(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return ""
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ""
+	}
+	parsed.Fragment = ""
+	if parsed.Path == "" {
+		parsed.Path = "/"
+	}
+	if parsed.Path != "/" {
+		parsed.Path = strings.TrimRight(parsed.Path, "/")
+	}
+	parsed.RawQuery = ""
+	return parsed.String()
 }
 
 func renderAgenticPlanningHTML(req Request, cfg *model.ResearchAgenticConfig, base Result, docs []researchDocument, candidates []string) string {

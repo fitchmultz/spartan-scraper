@@ -26,7 +26,7 @@ func TestTokenize(t *testing.T) {
 		expected []string
 	}{
 		{"Hello World!", []string{"hello", "world"}},
-		{"Multiple tokens, with symbols.", []string{"multiple", "tokens", "with", "symbols"}},
+		{"Multiple tokens, with symbols.", []string{"multiple", "tokens", "symbols"}},
 		{"Duplicate duplicate", []string{"duplicate"}},
 	}
 

@@ -37,6 +37,12 @@ const STEP_ORDER: WizardStepId[] = [
 
 const JOB_CREATION_MODE_KEY = "spartan.job-creation.mode";
 const JOB_DRAFT_KEY_PREFIX = "spartan.job-draft";
+const JOB_WIZARD_STATE_KEY_PREFIX = "spartan.job-wizard";
+
+interface StoredWizardState {
+  activeStep: WizardStepId;
+  completedSteps: WizardStepId[];
+}
 
 interface UseJobWizardOptions {
   activeTab: JobType;
@@ -45,6 +51,10 @@ interface UseJobWizardOptions {
 
 function getDraftStorageKey(jobType: JobType): string {
   return `${JOB_DRAFT_KEY_PREFIX}.${jobType}`;
+}
+
+function getWizardStateStorageKey(jobType: JobType): string {
+  return `${JOB_WIZARD_STATE_KEY_PREFIX}.${jobType}`;
 }
 
 function readStoredMode(): boolean {
@@ -90,6 +100,64 @@ function clearStoredDraft(jobType: JobType): void {
   }
 
   window.localStorage.removeItem(getDraftStorageKey(jobType));
+}
+
+function readStoredWizardState(jobType: JobType): StoredWizardState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawValue = window.localStorage.getItem(
+    getWizardStateStorageKey(jobType),
+  );
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<StoredWizardState> | null;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const activeStep = STEP_ORDER.includes(parsed.activeStep as WizardStepId)
+      ? (parsed.activeStep as WizardStepId)
+      : "basics";
+    const completedSteps = Array.isArray(parsed.completedSteps)
+      ? parsed.completedSteps.filter((step): step is WizardStepId =>
+          STEP_ORDER.includes(step as WizardStepId),
+        )
+      : [];
+
+    return {
+      activeStep,
+      completedSteps: Array.from(new Set(completedSteps)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredWizardState(
+  jobType: JobType,
+  state: StoredWizardState,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    getWizardStateStorageKey(jobType),
+    JSON.stringify(state),
+  );
+}
+
+function clearStoredWizardState(jobType: JobType): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(getWizardStateStorageKey(jobType));
 }
 
 function updateJobDraftState(
@@ -257,7 +325,13 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
       return nextState;
     });
 
+    const initialWizardState = readStoredWizardState(
+      initialActiveTabRef.current,
+    );
+
     hydrateSharedForm(storedDrafts[initialActiveTabRef.current]);
+    setCompletedSteps(initialWizardState?.completedSteps ?? []);
+    setActiveStepState(initialWizardState?.activeStep ?? "basics");
     setIsInitialized(true);
   }, [hydrateSharedForm]);
 
@@ -278,15 +352,28 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     );
     draftsRef.current[previousTab] = previousConfig;
     writeStoredDraft(previousTab, previousConfig);
+    writeStoredWizardState(previousTab, {
+      activeStep,
+      completedSteps,
+    });
 
     const nextConfig = draftsRef.current[activeTab];
+    const nextWizardState = readStoredWizardState(activeTab);
     hydrateSharedForm(nextConfig);
     setValidationErrors({});
-    setCompletedSteps([]);
-    setActiveStepState("basics");
+    setCompletedSteps(nextWizardState?.completedSteps ?? []);
+    setActiveStepState(nextWizardState?.activeStep ?? "basics");
     setDraftSavedAt(nextConfig ? Date.now() : null);
     previousTabRef.current = activeTab;
-  }, [activeTab, formState, hydrateSharedForm, isInitialized, localState]);
+  }, [
+    activeStep,
+    activeTab,
+    completedSteps,
+    formState,
+    hydrateSharedForm,
+    isInitialized,
+    localState,
+  ]);
 
   useEffect(() => {
     if (!isInitialized) {
@@ -309,15 +396,25 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     }
 
     if (validateStep("basics").length > 0) {
-      setCompletedSteps((previousSteps) => {
-        if (!previousSteps.includes("basics")) {
-          return previousSteps;
-        }
-
-        return previousSteps.filter((step) => step !== "basics");
-      });
+      setCompletedSteps((previousSteps) =>
+        previousSteps.filter((step) => step !== "basics"),
+      );
+      if (activeStep !== "basics") {
+        setActiveStepState("basics");
+      }
     }
-  }, [isInitialized, validateStep]);
+  }, [activeStep, isInitialized, validateStep]);
+
+  useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
+
+    writeStoredWizardState(activeTab, {
+      activeStep,
+      completedSteps,
+    });
+  }, [activeStep, activeTab, completedSteps, isInitialized]);
 
   const updateLocalState = useCallback(
     (
@@ -448,6 +545,7 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     (jobType: JobType = activeTab) => {
       draftsRef.current[jobType] = null;
       clearStoredDraft(jobType);
+      clearStoredWizardState(jobType);
       setLocalState((previousState) =>
         updateJobDraftState(previousState, jobType, null),
       );

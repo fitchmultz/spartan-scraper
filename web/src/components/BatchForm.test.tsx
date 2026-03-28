@@ -187,6 +187,18 @@ describe("BatchForm", () => {
     );
   });
 
+  it("rejects non-http batch URLs before submission", () => {
+    renderBatchForm("ftp://example.com/file.txt");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Submit Batch scrape (1 URL)" }),
+    );
+
+    expect(
+      screen.getByText(/Invalid URLs: ftp:\/\/example.com\/file.txt/),
+    ).toBeInTheDocument();
+  });
+
   it("renders an in-context confirmation with the submitted URLs", () => {
     render(
       <ToastProvider>

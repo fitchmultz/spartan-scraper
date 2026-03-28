@@ -68,7 +68,7 @@ func (s *Server) handleTemplatePreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse query parameters
-	pageURL := r.URL.Query().Get("url")
+	pageURL := strings.TrimSpace(r.URL.Query().Get("url"))
 	if pageURL == "" {
 		writeError(w, r, apperrors.Validation("url parameter is required"))
 		return
@@ -76,7 +76,7 @@ func (s *Server) handleTemplatePreview(w http.ResponseWriter, r *http.Request) {
 
 	// Validate URL
 	parsedURL, err := url.Parse(pageURL)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
 		writeError(w, r, apperrors.Validation("invalid URL format"))
 		return
 	}
@@ -165,6 +165,8 @@ func (s *Server) handleTestSelector(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.URL = strings.TrimSpace(req.URL)
+	req.Selector = strings.TrimSpace(req.Selector)
 	if req.URL == "" {
 		writeError(w, r, apperrors.Validation("url is required"))
 		return
@@ -176,7 +178,7 @@ func (s *Server) handleTestSelector(w http.ResponseWriter, r *http.Request) {
 
 	// Validate URL
 	parsedURL, err := url.Parse(req.URL)
-	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") || parsedURL.Host == "" {
 		writeError(w, r, apperrors.Validation("invalid URL format"))
 		return
 	}
