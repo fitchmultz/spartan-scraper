@@ -174,14 +174,26 @@ export function mergeAIExtractOptions(
     : undefined;
 }
 
+export function buildBrowserRuntimeFields(options: {
+  headless: boolean;
+  playwright: boolean;
+  visual?: boolean;
+}) {
+  return {
+    headless: options.headless,
+    ...(options.headless ? { playwright: options.playwright } : {}),
+    ...(typeof options.visual === "boolean" ? { visual: options.visual } : {}),
+  };
+}
+
 export function buildHeadlessPlaywrightFields(
   headless: boolean,
   usePlaywright: boolean,
 ) {
-  return {
+  return buildBrowserRuntimeFields({
     headless,
-    ...(headless ? { playwright: usePlaywright } : {}),
-  };
+    playwright: usePlaywright,
+  });
 }
 
 export function buildBrowserRuntimeRequestFields(
@@ -194,7 +206,10 @@ export function buildBrowserRuntimeRequestFields(
   aiExtract?: AiExtractOptions,
 ) {
   return {
-    ...buildHeadlessPlaywrightFields(headless, usePlaywright),
+    ...buildBrowserRuntimeFields({
+      headless,
+      playwright: usePlaywright,
+    }),
     timeoutSeconds,
     authProfile: authProfile || undefined,
     auth,

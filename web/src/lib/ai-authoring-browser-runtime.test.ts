@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildAIAuthoringBrowserRuntimePayload,
+  buildAIAuthoringRequestContext,
   createAIAuthoringBrowserRuntimeState,
   updateAIAuthoringHeadlessState,
   updateAIAuthoringPlaywrightState,
@@ -74,6 +75,44 @@ describe("ai-authoring-browser-runtime", () => {
       headless: true,
       playwright: true,
       visual: true,
+    });
+  });
+
+  it("builds shared request context for url and html authoring flows", () => {
+    expect(
+      buildAIAuthoringRequestContext({
+        source: "url",
+        url: " https://example.com ",
+        images: [],
+        state: { headless: true, playwright: false, visual: true },
+      }),
+    ).toEqual({
+      url: "https://example.com",
+      headless: true,
+      playwright: false,
+      visual: true,
+    });
+
+    expect(
+      buildAIAuthoringRequestContext({
+        source: "html",
+        url: " https://example.com ",
+        html: "<main>Hello</main>",
+        images: [
+          {
+            id: "img-1",
+            name: "preview.png",
+            mimeType: "image/png",
+            size: 4,
+            data: "ZmFrZQ==",
+          },
+        ],
+        state: { headless: true, playwright: true, visual: true },
+      }),
+    ).toEqual({
+      url: "https://example.com",
+      html: "<main>Hello</main>",
+      images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
     });
   });
 });

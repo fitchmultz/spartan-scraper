@@ -16,9 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Merge shared headless/playwright field helpers into one browser-runtime utility
-   - Collapse the remaining split between `buildHeadlessPlaywrightFields` and `buildAIAuthoringBrowserRuntimeFields` so authoring and submission surfaces use one browser-runtime serializer.
-   - Keep current request payload shapes and headless-gated behavior unchanged.
+- No currently queued implementation items.
 
 ## Ongoing Constraints
 

@@ -27,17 +27,14 @@ import {
 } from "../../lib/job-drafts";
 import { getApiBaseUrl } from "../../lib/api-config";
 import {
-  buildAIAuthoringBrowserRuntimeFields,
+  buildAIAuthoringRequestContext,
   createAIAuthoringBrowserRuntimeState,
   updateAIAuthoringHeadlessState,
   updateAIAuthoringPlaywrightState,
   updateAIAuthoringVisualState,
 } from "../../lib/ai-authoring-browser-runtime";
 import { getApiErrorMessage } from "../../lib/api-errors";
-import {
-  toAIImagePayloads,
-  type AttachedAIImage,
-} from "../../lib/ai-image-utils";
+import type { AttachedAIImage } from "../../lib/ai-image-utils";
 import type { JobType } from "../../types/presets";
 import { AIImageAttachments } from "../AIImageAttachments";
 import { BrowserExecutionControls } from "../BrowserExecutionControls";
@@ -251,11 +248,13 @@ export function JobSubmissionAssistantSection({
       const response = await aiExtractPreview({
         baseUrl: getApiBaseUrl(),
         body: {
-          ...(state.source === "url" ? { url: state.url.trim() } : {}),
-          ...(state.source === "html" ? { html: state.html } : {}),
-          ...(state.source === "html" && state.url.trim()
-            ? { url: state.url.trim() }
-            : {}),
+          ...buildAIAuthoringRequestContext({
+            source: state.source,
+            url: state.url,
+            html: state.html,
+            images: state.images,
+            state,
+          }),
           mode: state.mode,
           ...(state.mode === "natural_language"
             ? { prompt: state.prompt.trim() }
@@ -263,12 +262,6 @@ export function JobSubmissionAssistantSection({
                 schema: JSON.parse(state.schemaText) as Record<string, unknown>,
               }),
           ...(fields.length > 0 ? { fields } : {}),
-          ...(state.images.length > 0
-            ? { images: toAIImagePayloads(state.images) }
-            : {}),
-          ...(state.source === "url"
-            ? buildAIAuthoringBrowserRuntimeFields(state)
-            : {}),
         },
       });
 

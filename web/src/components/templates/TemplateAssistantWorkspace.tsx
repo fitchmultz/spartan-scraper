@@ -19,16 +19,13 @@ import {
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import {
-  buildAIAuthoringBrowserRuntimeFields,
+  buildAIAuthoringRequestContext,
   createAIAuthoringBrowserRuntimeState,
   updateAIAuthoringHeadlessState,
   updateAIAuthoringPlaywrightState,
   updateAIAuthoringVisualState,
 } from "../../lib/ai-authoring-browser-runtime";
-import {
-  toAIImagePayloads,
-  type AttachedAIImage,
-} from "../../lib/ai-image-utils";
+import type { AttachedAIImage } from "../../lib/ai-image-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { describeAICapability, AIUnavailableNotice } from "../ai-assistant";
 import { AIImageAttachments } from "../AIImageAttachments";
@@ -144,26 +141,18 @@ export function TemplateAssistantWorkspace({
       const response = await aiTemplateGenerate({
         baseUrl: getApiBaseUrl(),
         body: {
-          ...(source === "url" ? { url: url.trim() } : {}),
-          ...(source === "html"
-            ? {
-                ...(url.trim() ? { url: url.trim() } : {}),
-                html,
-              }
-            : {}),
+          ...buildAIAuthoringRequestContext({
+            source,
+            url,
+            html,
+            images,
+            state: { headless, playwright, visual },
+          }),
           description: description.trim(),
           sample_fields: sampleFields
             .split(",")
             .map((field) => field.trim())
             .filter(Boolean),
-          ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
-          ...(source === "url"
-            ? buildAIAuthoringBrowserRuntimeFields({
-                headless,
-                playwright,
-                visual,
-              })
-            : {}),
         },
       });
 
@@ -205,23 +194,15 @@ export function TemplateAssistantWorkspace({
       const response = await aiTemplateDebug({
         baseUrl: getApiBaseUrl(),
         body: {
-          ...(source === "url" ? { url: url.trim() } : {}),
-          ...(source === "html"
-            ? {
-                ...(url.trim() ? { url: url.trim() } : {}),
-                html,
-              }
-            : {}),
+          ...buildAIAuthoringRequestContext({
+            source,
+            url,
+            html,
+            images,
+            state: { headless, playwright, visual },
+          }),
           template: draftTemplate,
           ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
-          ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
-          ...(source === "url"
-            ? buildAIAuthoringBrowserRuntimeFields({
-                headless,
-                playwright,
-                visual,
-              })
-            : {}),
         },
       });
 

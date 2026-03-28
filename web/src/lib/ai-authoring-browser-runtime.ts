@@ -7,6 +7,7 @@
  */
 
 import { toAIImagePayloads, type AttachedAIImage } from "./ai-image-utils";
+import { buildBrowserRuntimeFields } from "./form-utils";
 
 export interface AIAuthoringBrowserRuntimeState {
   headless: boolean;
@@ -62,13 +63,41 @@ export function updateAIAuthoringVisualState(
   };
 }
 
-export function buildAIAuthoringBrowserRuntimeFields(
+function buildAIAuthoringBrowserRuntimeFields(
   state: AIAuthoringBrowserRuntimeState,
 ) {
-  return {
+  return buildBrowserRuntimeFields({
     headless: state.headless,
-    ...(state.headless ? { playwright: state.playwright } : {}),
+    playwright: state.playwright,
     visual: state.visual,
+  });
+}
+
+function buildAIAuthoringImagesPayload(images: AttachedAIImage[]) {
+  return images.length > 0 ? { images: toAIImagePayloads(images) } : {};
+}
+
+export function buildAIAuthoringRequestContext(options: {
+  source: "url" | "html";
+  url: string;
+  html?: string;
+  images: AttachedAIImage[];
+  state: AIAuthoringBrowserRuntimeState;
+}) {
+  const trimmedURL = options.url.trim();
+
+  return {
+    ...(options.source === "url" && trimmedURL ? { url: trimmedURL } : {}),
+    ...(options.source === "html"
+      ? {
+          ...(trimmedURL ? { url: trimmedURL } : {}),
+          ...(typeof options.html === "string" ? { html: options.html } : {}),
+        }
+      : {}),
+    ...buildAIAuthoringImagesPayload(options.images),
+    ...(options.source === "url"
+      ? buildAIAuthoringBrowserRuntimeFields(options.state)
+      : {}),
   };
 }
 
@@ -77,7 +106,7 @@ export function buildAIAuthoringBrowserRuntimePayload(
   images: AttachedAIImage[],
 ) {
   return {
-    ...(images.length > 0 ? { images: toAIImagePayloads(images) } : {}),
+    ...buildAIAuthoringImagesPayload(images),
     ...buildAIAuthoringBrowserRuntimeFields(state),
   };
 }
