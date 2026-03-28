@@ -1,36 +1,13 @@
 /**
- * Spartan Scraper Web UI - Route-aware application shell.
- *
- * Purpose:
- * - Provide the route-based application shell for the local-first operator workbench.
- *
- * Responsibilities:
- * - Route between jobs, templates, automation, and settings views.
- * - Wire shared data hooks, job submission, and result loading.
- * - Keep route-specific surfaces above the fold instead of repeating a shared
- *   marketing-style stack on every route.
- *
- * Scope:
- * - Application shell and cross-page coordination only.
- *
- * Usage:
- * - Rendered once from `main.tsx` as the root React application.
- *
- * Invariants/Assumptions:
- * - Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`,
- *   `/automation`, `/automation/:section`, `/settings`, and `/settings/:section`.
- * - Results detail routes load job results directly from the canonical REST API.
- * - Deleted feature areas stay out of navigation and render tree entirely.
+ * Purpose: Provide the route-based application shell for the local-first operator workbench.
+ * Responsibilities: Parse top-level routes, own global navigation chrome, coordinate shared data hooks, and delegate major route workflows to route-local containers.
+ * Scope: Application shell and cross-route coordination only.
+ * Usage: Rendered once from `main.tsx` as the root React application.
+ * Invariants/Assumptions: Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, `/automation/:section`, `/settings`, and `/settings/:section`, and route-local containers own route framing once selected.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   deleteV1JobsById,
   postV1Crawl,
@@ -40,17 +17,11 @@ import {
   type ResearchRequest,
   type ScrapeRequest,
 } from "./api";
-import { InfoSections } from "./components/InfoSections";
-import { ActionEmptyState } from "./components/ActionEmptyState";
-import { SettingsOverviewPanel } from "./components/SettingsOverviewPanel";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { OnboardingNudge } from "./components/OnboardingNudge";
-import { RouteHelpPanel } from "./components/RouteHelpPanel";
-import { SystemStatusPanel } from "./components/SystemStatusPanel";
-import { AutomationLayout } from "./components/automation/AutomationLayout";
-import { AutomationSubnav } from "./components/automation/AutomationSubnav";
+import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
 import {
   DEFAULT_AUTOMATION_SECTION,
   getAutomationPath,
@@ -58,71 +29,46 @@ import {
   getAutomationSectionFromPath,
   type AutomationSection,
 } from "./components/automation/automationSections";
-import { WatchContainer } from "./components/watches/WatchContainer";
-import { ExportScheduleContainer } from "./components/export-schedules/ExportScheduleContainer";
-import { WebhookDeliveryContainer } from "./components/webhooks/WebhookDeliveryContainer";
-import { RetentionStatusPanel } from "./components/RetentionStatusPanel";
-import { ProxyPoolStatusPanel } from "./components/ProxyPoolStatusPanel";
-import { ChainContainer } from "./components/chains/ChainContainer";
-import { BatchContainer } from "./components/batches/BatchContainer";
-import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
-import { useToast } from "./components/toast";
-import { TemplateManager } from "./components/templates/TemplateManager";
+import type { JobSubmissionContainerRef } from "./components/jobs/JobSubmissionContainer";
 import {
-  JobSubmissionContainer,
-  type JobSubmissionContainerRef,
-} from "./components/jobs/JobSubmissionContainer";
-import { JobMonitoringDashboard } from "./components/jobs/JobMonitoringDashboard";
-import { ResultsContainer } from "./components/results/ResultsContainer";
-import { RenderProfileEditor } from "./components/render-profiles";
-import { PipelineJSEditor } from "./components/pipeline-js/PipelineJSEditor";
-import {
-  AppTopBar,
-  RouteHeader,
-  RouteSignals,
-  type RouteSignal,
-} from "./components/shell/ShellPrimitives";
-import { ThemeToggle } from "./components/ThemeToggle";
-import { ShortcutHint } from "./components/ShortcutHint";
-import { TutorialTooltip } from "./components/TutorialTooltip";
-import { SettingsSubnav } from "./components/settings/SettingsSubnav";
+  AutomationRoute,
+  JobDetailRoute,
+  JobsRoute,
+  NewJobRoute,
+  SettingsRoute,
+  SetupRequiredRoute,
+  TemplatesRoute,
+} from "./components/routes/AppRoutes";
+import { AppTopBar } from "./components/shell/ShellPrimitives";
 import {
   DEFAULT_SETTINGS_SECTION,
   getSettingsPath,
   getSettingsSectionFromPath,
-  SETTINGS_SECTION_META,
   type SettingsSectionId,
 } from "./components/settings/settingsSections";
-import { useKeyboard } from "./hooks/useKeyboard";
+import { ShortcutHint } from "./components/ShortcutHint";
+import { SystemStatusPanel } from "./components/SystemStatusPanel";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { useToast } from "./components/toast";
+import { TutorialTooltip } from "./components/TutorialTooltip";
 import { useAppData } from "./hooks/useAppData";
 import { useFormState } from "./hooks/useFormState";
+import { useKeyboard } from "./hooks/useKeyboard";
+import { useOnboarding } from "./hooks/useOnboarding";
+import { usePresets } from "./hooks/usePresets";
 import { useResultsState } from "./hooks/useResultsState";
 import { useTheme } from "./hooks/useTheme";
-import { usePresets } from "./hooks/usePresets";
-import { useOnboarding } from "./hooks/useOnboarding";
+import { getApiBaseUrl } from "./lib/api-config";
+import { getApiErrorMessage } from "./lib/api-errors";
 import {
   submitCrawlJob,
   submitResearchJob,
   submitScrapeJob,
 } from "./lib/job-actions";
-import { getApiBaseUrl } from "./lib/api-config";
-import { getApiErrorMessage } from "./lib/api-errors";
 import { saveJobsViewState } from "./lib/job-monitoring";
 import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
-import { shouldShowSettingsOverviewPanel } from "./lib/settings-overview";
 import type { JobPreset, JobType } from "./types/presets";
-import type {
-  ExportSchedulePromotionSeed,
-  PromotionDestination,
-  PromotionSeed,
-  TemplatePromotionSeed,
-  WatchPromotionSeed,
-} from "./types/promotion";
-import {
-  buildExportSchedulePromotionSeed,
-  buildTemplatePromotionSeed,
-  buildWatchPromotionSeed,
-} from "./lib/promotion";
+import type { PromotionSeed } from "./types/promotion";
 
 export type RouteKind =
   | "jobs"
@@ -145,11 +91,6 @@ interface NavItem {
   label: string;
   path: string;
   description: string;
-}
-
-interface RouteMeta {
-  title: string;
-  description?: string;
 }
 
 interface AppNavigationState {
@@ -255,15 +196,6 @@ function ErrorBanner({ message }: { message: string | null }) {
   );
 }
 
-function scrollWindowToTop() {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-}
-
 export function App() {
   return (
     <AIAssistantProvider>
@@ -322,7 +254,7 @@ function AppShell() {
     connectionState,
     health,
     setupRequired,
-    detailJob: routeDetailJob,
+    detailJob,
     detailJobLoading,
     detailJobError,
     refreshHealth,
@@ -347,18 +279,12 @@ function AppShell() {
     dismissFirstRunHint,
   } = useOnboarding({ hasStartedWork: jobsTotal > 0 });
 
-  const { selectedJobId, loadResults } = resultsState;
+  const { selectedJobId } = resultsState;
 
   const route = useMemo(() => parseRoute(pathname), [pathname]);
   const routeKey = route.kind as OnboardingRouteKey;
   const showGlobalFirstRunPrompt =
     shouldShowFirstRunHint && route.kind === "jobs";
-  const [renderProfileCount, setRenderProfileCount] = useState<number | null>(
-    null,
-  );
-  const [pipelineScriptCount, setPipelineScriptCount] = useState<number | null>(
-    null,
-  );
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -438,16 +364,6 @@ function AppShell() {
     window.history.replaceState(window.history.state ?? {}, "", canonicalPath);
     setPathname(canonicalPath);
   }, [pathname, route.kind, route.settingsSection]);
-
-  useEffect(() => {
-    if (route.kind === "job-detail" && route.jobId) {
-      void loadResults(route.jobId);
-      void refreshJobDetail(route.jobId);
-      return;
-    }
-
-    clearJobDetail();
-  }, [clearJobDetail, loadResults, refreshJobDetail, route]);
 
   const handleNavigate = useCallback(
     (view: "jobs" | "results" | "forms") => {
@@ -640,12 +556,12 @@ function AppShell() {
           title: "Job canceled",
           description: `Job ${formatShortJobId(jobId)} is no longer running.`,
         });
-      } catch (err) {
+      } catch (error) {
         toast.update(toastId, {
           tone: "error",
           title: "Failed to cancel job",
           description: getApiErrorMessage(
-            err,
+            error,
             "Unable to stop the selected job.",
           ),
         });
@@ -700,12 +616,12 @@ function AppShell() {
           title: "Job deleted",
           description: `Job ${formatShortJobId(jobId)} has been removed.`,
         });
-      } catch (err) {
+      } catch (error) {
         toast.update(toastId, {
           tone: "error",
           title: "Failed to delete job",
           description: getApiErrorMessage(
-            err,
+            error,
             "Unable to delete the selected job.",
           ),
         });
@@ -837,13 +753,6 @@ function AppShell() {
 
   const routePromotionSeed = navigationState.promotionSeed ?? null;
 
-  const detailJob =
-    route.kind === "job-detail"
-      ? routeDetailJob && routeDetailJob.id === route.jobId
-        ? routeDetailJob
-        : (jobs.find((job) => job.id === route.jobId) ?? null)
-      : null;
-
   const clearPromotionSeed = useCallback(() => {
     if (!navigationState.promotionSeed) {
       return;
@@ -853,78 +762,6 @@ function AppShell() {
     window.history.replaceState(nextState, "", window.location.pathname);
     setNavigationState(nextState);
   }, [navigationState.promotionSeed]);
-
-  const navigateToSourceJob = useCallback(
-    (jobId: string) => {
-      navigate(`/jobs/${jobId}`);
-    },
-    [navigate],
-  );
-
-  const handlePromoteJob = useCallback(
-    (
-      destination: PromotionDestination,
-      options?: {
-        preferredExportFormat?: "json" | "jsonl" | "md" | "csv" | "xlsx";
-      },
-    ) => {
-      if (!detailJob || detailJob.status !== "succeeded") {
-        return;
-      }
-
-      let promotionSeed: PromotionSeed;
-      let path = "/templates";
-
-      if (destination === "template") {
-        promotionSeed = buildTemplatePromotionSeed(detailJob);
-        path = "/templates";
-      } else if (destination === "watch") {
-        const watchSeed = buildWatchPromotionSeed(detailJob);
-        if (!watchSeed.eligible) {
-          return;
-        }
-        promotionSeed = watchSeed;
-        path = getAutomationPath("watches");
-      } else {
-        promotionSeed = buildExportSchedulePromotionSeed(
-          detailJob,
-          options?.preferredExportFormat,
-        );
-        path = getAutomationPath("exports");
-      }
-
-      navigate(path, { promotionSeed });
-    },
-    [detailJob, navigate],
-  );
-
-  const templatePromotionSeed =
-    route.kind === "templates" && routePromotionSeed?.kind === "template"
-      ? (routePromotionSeed as TemplatePromotionSeed)
-      : null;
-
-  const activeAutomationSection =
-    route.kind === "automation"
-      ? (route.automationSection ?? DEFAULT_AUTOMATION_SECTION)
-      : DEFAULT_AUTOMATION_SECTION;
-  const activeSettingsSection =
-    route.kind === "settings"
-      ? (route.settingsSection ?? DEFAULT_SETTINGS_SECTION)
-      : DEFAULT_SETTINGS_SECTION;
-  const activeSettingsPath = route.kind === "settings" ? route.path : null;
-
-  const watchPromotionSeed =
-    route.kind === "automation" &&
-    activeAutomationSection === "watches" &&
-    routePromotionSeed?.kind === "watch"
-      ? (routePromotionSeed as WatchPromotionSeed)
-      : null;
-  const exportPromotionSeed =
-    route.kind === "automation" &&
-    activeAutomationSection === "exports" &&
-    routePromotionSeed?.kind === "export-schedule"
-      ? (routePromotionSeed as ExportSchedulePromotionSeed)
-      : null;
 
   const handleTourRouteChange = useCallback(
     (targetRoute: OnboardingRouteKey) => {
@@ -961,238 +798,6 @@ function AppShell() {
     [jobs, navigate, selectedJobId],
   );
 
-  const renderAutomationSection = useCallback(
-    (section: AutomationSection): ReactNode => {
-      switch (section) {
-        case "batches":
-          return (
-            <BatchContainer
-              formState={formState}
-              profiles={profiles}
-              loading={loading}
-            />
-          );
-        case "chains":
-          return <ChainContainer onChainSubmit={refreshJobs} />;
-        case "watches":
-          return (
-            <WatchContainer
-              promotionSeed={watchPromotionSeed}
-              onClearPromotionSeed={clearPromotionSeed}
-              onOpenSourceJob={navigateToSourceJob}
-            />
-          );
-        case "exports":
-          return (
-            <ExportScheduleContainer
-              aiStatus={health?.components?.ai ?? null}
-              promotionSeed={exportPromotionSeed}
-              onClearPromotionSeed={clearPromotionSeed}
-              onOpenSourceJob={navigateToSourceJob}
-            />
-          );
-        case "webhooks":
-          return <WebhookDeliveryContainer />;
-      }
-    },
-    [
-      clearPromotionSeed,
-      exportPromotionSeed,
-      formState,
-      health?.components?.ai,
-      loading,
-      navigateToSourceJob,
-      profiles,
-      refreshJobs,
-      watchPromotionSeed,
-    ],
-  );
-
-  const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
-
-  const routeMeta = useMemo<RouteMeta>(() => {
-    switch (route.kind) {
-      case "jobs":
-        return {
-          title: "Jobs",
-        };
-      case "job-detail":
-        return {
-          title: route.jobId
-            ? `Job ${formatShortJobId(route.jobId)}`
-            : "Results",
-        };
-      case "new-job":
-        return {
-          title: "Create Job",
-        };
-      case "templates":
-        return {
-          title: "Templates",
-        };
-      case "automation":
-        return {
-          title: "Automation",
-        };
-      case "settings":
-        return {
-          title: "Settings",
-        };
-    }
-  }, [route.jobId, route.kind]);
-
-  const showSettingsOverview = useMemo(
-    () =>
-      shouldShowSettingsOverviewPanel({
-        isSettingsRoute: route.kind === "settings",
-        setupRequired,
-        jobsTotal,
-        profilesCount: profiles.length,
-        schedulesCount: schedules.length,
-        crawlStatesTotal,
-        renderProfileCount,
-        pipelineScriptCount,
-        proxyStatus: health?.components?.proxy_pool?.status,
-        retentionStatus: health?.components?.retention?.status,
-      }),
-    [
-      crawlStatesTotal,
-      health?.components?.proxy_pool?.status,
-      health?.components?.retention?.status,
-      jobsTotal,
-      pipelineScriptCount,
-      profiles.length,
-      renderProfileCount,
-      route.kind,
-      schedules.length,
-      setupRequired,
-    ],
-  );
-
-  const scrollToSettingsSection = useCallback(
-    (section: SettingsSectionId) => {
-      if (route.kind !== "settings") {
-        navigate(getSettingsPath(section));
-        return;
-      }
-
-      if (section === activeSettingsSection) {
-        scrollWindowToTop();
-        return;
-      }
-
-      navigate(getSettingsPath(section));
-    },
-    [activeSettingsSection, navigate, route.kind],
-  );
-
-  useEffect(() => {
-    if (activeSettingsPath === null) {
-      return;
-    }
-
-    scrollWindowToTop();
-  }, [activeSettingsPath]);
-
-  const renderSettingsSection = useCallback(
-    (section: SettingsSectionId): ReactNode => {
-      switch (section) {
-        case "authoring":
-          return (
-            <div className="settings-route__section-stack">
-              <section className="panel">
-                <RenderProfileEditor
-                  aiStatus={health?.components?.ai ?? null}
-                  onInventoryChange={setRenderProfileCount}
-                />
-              </section>
-
-              <section className="panel">
-                <PipelineJSEditor
-                  aiStatus={health?.components?.ai ?? null}
-                  onInventoryChange={setPipelineScriptCount}
-                />
-              </section>
-            </div>
-          );
-        case "inventory":
-          return (
-            <InfoSections
-              profiles={profiles}
-              schedules={schedules}
-              crawlStates={crawlStates}
-              crawlStatesPage={crawlStatesPage}
-              crawlStatesTotal={crawlStatesTotal}
-              crawlStatesPerPage={100}
-              onCrawlStatesPageChange={setCrawlStatesPage}
-              onCreateJob={() => navigate("/jobs/new")}
-              onOpenAutomation={() => navigate("/automation/batches")}
-              onOpenJobs={() => navigate("/jobs")}
-            />
-          );
-        case "operations":
-          return (
-            <div className="settings-route__section-stack">
-              <ProxyPoolStatusPanel
-                health={health}
-                onNavigate={navigate}
-                onRefreshHealth={refreshHealth}
-              />
-              <RetentionStatusPanel
-                health={health}
-                onNavigate={navigate}
-                onRefreshHealth={refreshHealth}
-                onCreateJob={() => navigate("/jobs/new")}
-                onOpenAutomation={() => navigate("/automation/batches")}
-              />
-            </div>
-          );
-      }
-    },
-    [
-      crawlStates,
-      crawlStatesPage,
-      crawlStatesTotal,
-      health,
-      navigate,
-      profiles,
-      refreshHealth,
-      schedules,
-      setCrawlStatesPage,
-    ],
-  );
-
-  const jobDetailSignals = useMemo<RouteSignal[]>(() => {
-    if (route.kind !== "job-detail") {
-      return [];
-    }
-
-    return [
-      {
-        label: "Status",
-        value: detailJob?.status ?? "unknown",
-      },
-      {
-        label: "Results",
-        value: resultsState.totalResults,
-      },
-      {
-        label: "Format",
-        value: resultsState.resultFormat.toUpperCase(),
-      },
-      {
-        label: "Connection",
-        value: connectionState,
-      },
-    ];
-  }, [
-    connectionState,
-    detailJob?.status,
-    resultsState.resultFormat,
-    resultsState.totalResults,
-    route.kind,
-  ]);
-
   const handleRouteHelpAction = useCallback(
     (actionId: RouteHelpAction["id"]) => {
       switch (actionId) {
@@ -1205,6 +810,25 @@ function AppShell() {
       }
     },
     [navigate],
+  );
+
+  const routeHelpProps = useMemo(
+    () => ({
+      shortcuts,
+      isMac,
+      onOpenCommandPalette: openCommandPalette,
+      onOpenShortcuts: openHelp,
+      onRestartTour: resetOnboarding,
+      onAction: handleRouteHelpAction,
+    }),
+    [
+      handleRouteHelpAction,
+      isMac,
+      openCommandPalette,
+      openHelp,
+      resetOnboarding,
+      shortcuts,
+    ],
   );
 
   const shellUtilities = (
@@ -1236,17 +860,7 @@ function AppShell() {
     </>
   );
 
-  const routeHelpPanel = (
-    <RouteHelpPanel
-      routeKey={routeKey}
-      shortcuts={shortcuts}
-      isMac={isMac}
-      onOpenCommandPalette={openCommandPalette}
-      onOpenShortcuts={openHelp}
-      onRestartTour={resetOnboarding}
-      onAction={handleRouteHelpAction}
-    />
-  );
+  const activeRouteForNav = route.kind === "job-detail" ? "jobs" : route.kind;
 
   return (
     <div className={`app app--${route.kind}`}>
@@ -1335,251 +949,116 @@ function AppShell() {
         onRefresh={refreshHealth}
       />
 
-      {setupRequired ? (
-        <div className="route-stack">
-          <RouteHeader
-            title="Setup required"
-            description="Spartan is running in guided recovery mode so the issue is visible in-product instead of only in terminal output."
-          />
+      {setupRequired ? <SetupRequiredRoute health={health} /> : null}
 
-          <ActionEmptyState
-            eyebrow="Guided recovery"
-            title={health?.setup?.title ?? "Setup required"}
-            description={
-              health?.setup?.message ??
-              "Resolve the setup issue, then restart the server."
-            }
-          />
-        </div>
+      {!setupRequired && route.kind === "jobs" ? (
+        <JobsRoute
+          jobs={jobs}
+          failedJobs={failedJobs}
+          error={error}
+          loading={loading}
+          statusFilter={jobStatusFilter}
+          currentPage={jobsPage}
+          totalJobs={jobsTotal}
+          connectionState={connectionState}
+          managerStatus={managerStatus}
+          routeHelp={routeHelpProps}
+          onStatusFilterChange={setJobStatusFilter}
+          onViewResults={handleViewResults}
+          onCancel={cancelJob}
+          onDelete={deleteJob}
+          onRefresh={refreshJobs}
+          onCreateJob={() => navigate("/jobs/new")}
+          onPageChange={setJobsPage}
+        />
       ) : null}
 
-      {!setupRequired && route.kind === "jobs" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-          />
+      {!setupRequired && route.kind === "job-detail" && route.jobId ? (
+        <JobDetailRoute
+          jobId={route.jobId}
+          jobs={jobs}
+          routeDetailJob={detailJob}
+          detailJobLoading={detailJobLoading}
+          detailJobError={detailJobError}
+          resultsState={resultsState}
+          connectionState={connectionState}
+          aiStatus={health?.components?.ai ?? null}
+          routeHelp={routeHelpProps}
+          refreshJobDetail={refreshJobDetail}
+          clearJobDetail={clearJobDetail}
+          navigate={navigate}
+        />
+      ) : null}
 
-          <section id="jobs" data-tour="jobs-dashboard">
-            <JobMonitoringDashboard
-              jobs={jobs}
-              failedJobs={failedJobs}
-              error={error}
-              loading={loading}
-              statusFilter={jobStatusFilter}
-              onStatusFilterChange={setJobStatusFilter}
-              onViewResults={handleViewResults}
-              onCancel={cancelJob}
-              onDelete={deleteJob}
-              onRefresh={refreshJobs}
-              onCreateJob={() => navigate("/jobs/new")}
-              currentPage={jobsPage}
-              totalJobs={jobsTotal}
-              jobsPerPage={100}
-              onPageChange={setJobsPage}
-              connectionState={connectionState}
-              managerStatus={managerStatus}
-            />
-          </section>
+      {!setupRequired && route.kind === "new-job" ? (
+        <NewJobRoute
+          activeTab={activeTab}
+          formState={formState}
+          loading={loading}
+          profiles={profiles}
+          presets={presets}
+          jobsTotal={jobsTotal}
+          jobStatusFilter={jobStatusFilter}
+          aiStatus={health?.components?.ai ?? null}
+          routeHelp={routeHelpProps}
+          jobSubmissionRef={jobSubmissionRef}
+          savePreset={savePreset}
+          setActiveTab={setActiveTab}
+          onSubmitScrape={handleSubmitScrape}
+          onSubmitCrawl={handleSubmitCrawl}
+          onSubmitResearch={handleSubmitResearch}
+          onSelectPreset={handleSelectPreset}
+          onOpenAssistant={openJobAssistant}
+          onOpenTemplateAssistant={openTemplateAssistant}
+        />
+      ) : null}
 
-          {routeHelpPanel}
-        </div>
-      )}
+      {!setupRequired && route.kind === "templates" ? (
+        <TemplatesRoute
+          templateNames={templates}
+          promotionSeed={routePromotionSeed}
+          aiStatus={health?.components?.ai ?? null}
+          routeHelp={routeHelpProps}
+          onClearPromotionSeed={clearPromotionSeed}
+          onOpenSourceJob={(jobId) => navigate(`/jobs/${jobId}`)}
+          onTemplatesChanged={() => {
+            void refreshTemplates();
+          }}
+        />
+      ) : null}
 
-      {!setupRequired && route.kind === "job-detail" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-            actions={
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => navigate("/jobs")}
-              >
-                Back to Jobs
-              </button>
-            }
-          />
+      {!setupRequired && route.kind === "automation" ? (
+        <AutomationRoute
+          section={route.automationSection ?? DEFAULT_AUTOMATION_SECTION}
+          promotionSeed={routePromotionSeed}
+          formState={formState}
+          profiles={profiles}
+          loading={loading}
+          aiStatus={health?.components?.ai ?? null}
+          routeHelp={routeHelpProps}
+          onClearPromotionSeed={clearPromotionSeed}
+          navigate={navigate}
+          onRefreshJobs={refreshJobs}
+        />
+      ) : null}
 
-          {detailJobLoading && !detailJob ? (
-            <section className="panel">
-              <div className="loading-placeholder">Loading job details…</div>
-            </section>
-          ) : null}
-
-          {detailJobError && !detailJob ? (
-            <ActionEmptyState
-              eyebrow="Job detail"
-              title="Unable to load this saved job"
-              description={detailJobError}
-              actions={[
-                {
-                  label: "Back to jobs",
-                  onClick: () => navigate("/jobs"),
-                },
-              ]}
-            />
-          ) : null}
-
-          {!detailJobError ? (
-            <>
-              <ResultsContainer
-                resultsState={resultsState}
-                jobs={jobs}
-                currentJob={detailJob}
-                aiStatus={health?.components?.ai ?? null}
-                onPromote={handlePromoteJob}
-              />
-
-              <RouteSignals
-                ariaLabel="Result context"
-                items={jobDetailSignals}
-              />
-
-              {routeHelpPanel}
-            </>
-          ) : null}
-        </div>
-      )}
-
-      {!setupRequired && route.kind === "new-job" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-          />
-
-          <div className="route-stack" data-tour="job-wizard">
-            <JobSubmissionContainer
-              ref={jobSubmissionRef}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formState={formState}
-              aiStatus={health?.components?.ai ?? null}
-              onSubmitScrape={handleSubmitScrape}
-              onSubmitCrawl={handleSubmitCrawl}
-              onSubmitResearch={handleSubmitResearch}
-              loading={loading}
-              profiles={profiles}
-              presets={presets}
-              savePreset={savePreset}
-              onSelectPreset={handleSelectPreset}
-              onOpenAssistant={openJobAssistant}
-              onOpenTemplateAssistant={openTemplateAssistant}
-            />
-          </div>
-
-          {jobsTotal === 0 && jobStatusFilter === "" ? (
-            <ActionEmptyState
-              eyebrow="First run"
-              title="Start with a single page scrape"
-              description="Paste a URL into the form below, keep the defaults, and submit one successful run before moving on to templates or automation."
-            />
-          ) : null}
-
-          {routeHelpPanel}
-        </div>
-      )}
-
-      {!setupRequired && route.kind === "templates" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-          />
-
-          <div data-tour="templates-workspace">
-            <TemplateManager
-              templateNames={templates}
-              aiStatus={health?.components?.ai ?? null}
-              promotionSeed={templatePromotionSeed}
-              onClearPromotionSeed={clearPromotionSeed}
-              onOpenSourceJob={navigateToSourceJob}
-              onTemplatesChanged={() => {
-                void refreshTemplates();
-              }}
-            />
-          </div>
-
-          {routeHelpPanel}
-        </div>
-      )}
-
-      {!setupRequired && route.kind === "automation" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-            subnav={
-              <div data-tour="automation-subnav">
-                <AutomationSubnav
-                  activeSection={activeAutomationSection}
-                  onSectionChange={(section) =>
-                    navigate(getAutomationPath(section))
-                  }
-                />
-              </div>
-            }
-          />
-          <section data-tour="automation-hub">
-            <AutomationLayout
-              activeSection={activeAutomationSection}
-              renderSection={renderAutomationSection}
-            />
-          </section>
-
-          {routeHelpPanel}
-        </div>
-      )}
-
-      {!setupRequired && route.kind === "settings" && (
-        <div className="route-stack">
-          <RouteHeader
-            title={routeMeta.title}
-            description={routeMeta.description}
-            subnav={
-              <SettingsSubnav
-                activeSection={activeSettingsSection}
-                onSectionChange={scrollToSettingsSection}
-              />
-            }
-          />
-
-          <div data-tour="settings-workspace" className="settings-route">
-            <section
-              id={SETTINGS_SECTION_META[activeSettingsSection].elementId}
-              className="settings-route__section"
-              aria-labelledby={`settings-route-${activeSettingsSection}-title`}
-            >
-              <div className="settings-route__section-header">
-                <div className="settings-route__section-eyebrow">
-                  {SETTINGS_SECTION_META[activeSettingsSection].label}
-                </div>
-                <h2 id={`settings-route-${activeSettingsSection}-title`}>
-                  {SETTINGS_SECTION_META[activeSettingsSection].title}
-                </h2>
-                <p>
-                  {SETTINGS_SECTION_META[activeSettingsSection].description}
-                </p>
-              </div>
-
-              {renderSettingsSection(activeSettingsSection)}
-            </section>
-
-            {showSettingsOverview ? (
-              <SettingsOverviewPanel
-                onCreateJob={() => navigate("/jobs/new")}
-                onOpenJobs={() => navigate("/jobs")}
-              />
-            ) : null}
-          </div>
-
-          {routeHelpPanel}
-        </div>
-      )}
-
-      <div className="footer">Spartan Scraper 1.0 local-first workbench.</div>
+      {!setupRequired && route.kind === "settings" ? (
+        <SettingsRoute
+          section={route.settingsSection ?? DEFAULT_SETTINGS_SECTION}
+          path={route.path}
+          health={health}
+          profiles={profiles}
+          schedules={schedules}
+          crawlStates={crawlStates}
+          crawlStatesPage={crawlStatesPage}
+          crawlStatesTotal={crawlStatesTotal}
+          jobsTotal={jobsTotal}
+          routeHelp={routeHelpProps}
+          onNavigate={navigate}
+          onRefreshHealth={refreshHealth}
+          onCrawlStatesPageChange={setCrawlStatesPage}
+        />
+      ) : null}
     </div>
   );
 }

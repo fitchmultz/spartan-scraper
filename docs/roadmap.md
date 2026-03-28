@@ -16,7 +16,10 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Split `web/src/App.tsx` into route-local containers/hooks so jobs, templates, automation, and settings changes stop colliding in one application-shell file.
+- Extract a `useResultsExplorer` hook for reader filters, export flows, and secondary-tool state so job-detail changes stop colliding in `ResultsExplorer.tsx`.
+- Split `web/src/App.tsx` shell-only command-palette, preset handoff, and job-submission orchestration into dedicated hooks so shell chrome can evolve without route-flow churn.
+- Split `useTemplateRouteController.ts` into detail-loading, draft-session, and promotion hooks so template-authoring changes stop colliding in one controller.
+- Consolidate shared browser-authoring form state and runtime validation across template, render-profile, and pipeline-JS authoring surfaces.
 
 ## Ongoing Constraints
 
