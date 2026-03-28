@@ -23,7 +23,7 @@ import type {
   ScreenshotConfig,
   WebhookConfig,
 } from "../api";
-import { buildBrowserRuntimeRequestFields } from "./form-utils";
+import { buildBrowserRuntimeFields, mergeAIExtractOptions } from "./form-utils";
 import { splitAndTrim } from "./input-parsing";
 
 /**
@@ -203,15 +203,14 @@ export function buildBatchScrapeRequest(
 
   return {
     jobs,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -248,15 +247,14 @@ export function buildBatchCrawlRequest(
     jobs,
     maxDepth,
     maxPages,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline,
     incremental: incremental || undefined,
     webhook,
@@ -295,15 +293,14 @@ export function buildBatchResearchRequest(
     query,
     maxDepth,
     maxPages,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline,
     webhook,
     screenshot,

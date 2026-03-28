@@ -186,17 +186,7 @@ export function buildBrowserRuntimeFields(options: {
   };
 }
 
-export function buildHeadlessPlaywrightFields(
-  headless: boolean,
-  usePlaywright: boolean,
-) {
-  return buildBrowserRuntimeFields({
-    headless,
-    playwright: usePlaywright,
-  });
-}
-
-export function buildBrowserRuntimeRequestFields(
+function buildBrowserRuntimeRequestFields(
   headless: boolean,
   usePlaywright: boolean,
   timeoutSeconds: number,

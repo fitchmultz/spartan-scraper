@@ -15,7 +15,7 @@ import {
   type TestSelectorResponse,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
-import { buildHeadlessPlaywrightFields } from "../../lib/form-utils";
+import { buildBrowserRuntimeFields } from "../../lib/form-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { BrowserExecutionControls } from "../BrowserExecutionControls";
 import { ruleKey } from "./templateEditorUtils";
@@ -83,7 +83,10 @@ export function TemplatePreviewPane({
             body: {
               url: url.trim(),
               selector: rule.selector ?? "",
-              ...buildHeadlessPlaywrightFields(headless, playwright),
+              ...buildBrowserRuntimeFields({
+                headless,
+                playwright,
+              }),
             },
           });
 

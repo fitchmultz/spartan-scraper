@@ -19,7 +19,7 @@ import {
   type TestSelectorResponse,
 } from "../api";
 import { useTemplateBuilder } from "../hooks/useTemplateBuilder";
-import { buildHeadlessPlaywrightFields } from "../lib/form-utils";
+import { buildBrowserRuntimeFields } from "../lib/form-utils";
 import { getApiErrorMessage } from "../lib/api-errors";
 
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
@@ -190,7 +190,10 @@ export function VisualSelectorBuilder({
       const response = await getTemplatePreview({
         query: {
           url,
-          ...buildHeadlessPlaywrightFields(headless, playwright),
+          ...buildBrowserRuntimeFields({
+            headless,
+            playwright,
+          }),
         },
       });
       if (response.error) {
@@ -239,7 +242,10 @@ export function VisualSelectorBuilder({
       const request: TestSelectorRequest = {
         url,
         selector: generatedSelector,
-        ...buildHeadlessPlaywrightFields(headless, playwright),
+        ...buildBrowserRuntimeFields({
+          headless,
+          playwright,
+        }),
       };
       const response = await testSelector({
         body: request,
