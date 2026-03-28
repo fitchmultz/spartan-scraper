@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-1. Delete crawl-only cross-job dedup plumbing unless a real indexing surface is approved
-   - Remove the remaining `internal/crawl` request/result fields and worker logic that only serve cross-job dedup internals.
-   - If operators later need live dedup indexing, add one deliberate crawl/indexing contract across API, CLI, Web, and persisted job specs instead of reviving stray flags.
+1. Merge shared headless/playwright field helpers into one browser-runtime utility
+   - Collapse the remaining split between `buildHeadlessPlaywrightFields` and `buildAIAuthoringBrowserRuntimeFields` so authoring and submission surfaces use one browser-runtime serializer.
+   - Keep current request payload shapes and headless-gated behavior unchanged.
 
 ## Ongoing Constraints
 

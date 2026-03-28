@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/fitchmultz/spartan-scraper/internal/dedup"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
@@ -71,13 +70,6 @@ type Request struct {
 	// SimHashThreshold is the maximum Hamming distance for content to be considered a duplicate.
 	// Default is 3. Lower values require more similarity (0 = exact match).
 	SimHashThreshold int
-	// CrossJobDedup enables cross-job duplicate detection using ContentIndex.
-	// When enabled, the crawler queries the ContentIndex before fetching to detect
-	// if similar content has been indexed by previous jobs.
-	CrossJobDedup bool
-	// CrossJobDedupThreshold is the Hamming distance threshold for cross-job duplicate detection.
-	// Default is 3 (near-duplicates).
-	CrossJobDedupThreshold int
 	// ProxyPool for proxy rotation. If nil, no proxy pool is used.
 	ProxyPool *fetch.ProxyPool
 	// WebhookDispatcher is an optional dispatcher for page crawled events.
@@ -89,17 +81,6 @@ type Request struct {
 	WebhookConfig *model.WebhookSpec
 	// AIExtractor for AI-powered extraction. If nil, AI extraction is disabled.
 	AIExtractor *extract.AIExtractor
-	// ContentIndex for cross-job deduplication. If nil, cross-job dedup is disabled.
-	ContentIndex ContentIndex
-}
-
-// ContentIndex provides cross-job content deduplication capabilities.
-// This is a subset of the dedup.ContentIndex interface for crawl's needs.
-type ContentIndex interface {
-	// Index stores a content fingerprint for a URL.
-	Index(ctx context.Context, jobID, url string, simhash uint64) error
-	// FindDuplicates returns URLs with similar content across all jobs.
-	FindDuplicates(ctx context.Context, simhash uint64, threshold int) ([]dedup.DuplicateMatch, error)
 }
 
 // CrawlStateStore defines the interface for persisting and retrieving crawl states.
@@ -110,25 +91,16 @@ type CrawlStateStore interface {
 
 // PageResult represents the scraping result for a single page during a crawl.
 type PageResult struct {
-	URL                string                     `json:"url"`
-	Status             int                        `json:"status"`
-	Title              string                     `json:"title"`
-	Text               string                     `json:"text"`
-	Links              []string                   `json:"links"`
-	Metadata           extract.Result             `json:"metadata"` // Compatibility summary for existing result consumers.
-	Extracted          extract.Extracted          `json:"extracted"`
-	Normalized         extract.NormalizedDocument `json:"normalized"`
-	SimHash            uint64                     `json:"simhash"`                      // Content fingerprint for duplicate detection
-	DuplicateOf        string                     `json:"duplicateOf,omitempty"`        // URL of original page if this is a duplicate (same crawl)
-	CrossJobDuplicates []CrossJobDuplicate        `json:"crossJobDuplicates,omitempty"` // Duplicates found in other jobs
-}
-
-// CrossJobDuplicate represents a duplicate match from a different job.
-type CrossJobDuplicate struct {
-	JobID     string `json:"jobId"`
-	URL       string `json:"url"`
-	Distance  int    `json:"distance"`
-	IndexedAt string `json:"indexedAt"`
+	URL         string                     `json:"url"`
+	Status      int                        `json:"status"`
+	Title       string                     `json:"title"`
+	Text        string                     `json:"text"`
+	Links       []string                   `json:"links"`
+	Metadata    extract.Result             `json:"metadata"` // Compatibility summary for existing result consumers.
+	Extracted   extract.Extracted          `json:"extracted"`
+	Normalized  extract.NormalizedDocument `json:"normalized"`
+	SimHash     uint64                     `json:"simhash"`               // Content fingerprint for duplicate detection
+	DuplicateOf string                     `json:"duplicateOf,omitempty"` // URL of original page if this is a duplicate (same crawl)
 }
 
 // task represents a single crawl task.

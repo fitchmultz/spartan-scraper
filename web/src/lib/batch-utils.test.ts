@@ -28,9 +28,9 @@ describe("batch-utils AI extraction support", () => {
 
     expect(request).toMatchObject({
       headless: false,
-      playwright: false,
       timeoutSeconds: 30,
     });
+    expect(request.playwright).toBeUndefined();
   });
 
   it("merges AI extraction options into batch scrape extract config", () => {

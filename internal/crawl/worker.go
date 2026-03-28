@@ -267,38 +267,6 @@ func processPage(
 		simhashMu.Unlock()
 	}
 
-	// Cross-job deduplication: check against previously indexed content
-	if req.CrossJobDedup && req.ContentIndex != nil && pageSimHash != 0 {
-		matches, err := req.ContentIndex.FindDuplicates(ctx, pageSimHash, req.CrossJobDedupThreshold)
-		if err != nil {
-			slog.Warn("failed to query cross-job duplicates", "url", apperrors.SanitizeURL(item.URL), "error", err)
-		} else if len(matches) > 0 {
-			// Filter out matches from the current job
-			var crossJobMatches []CrossJobDuplicate
-			for _, match := range matches {
-				if match.JobID != req.RequestID {
-					crossJobMatches = append(crossJobMatches, CrossJobDuplicate{
-						JobID:     match.JobID,
-						URL:       match.URL,
-						Distance:  match.Distance,
-						IndexedAt: match.IndexedAt.Format(time.RFC3339),
-					})
-				}
-			}
-			if len(crossJobMatches) > 0 {
-				result.CrossJobDuplicates = crossJobMatches
-				slog.Info("found cross-job duplicates", "url", apperrors.SanitizeURL(item.URL), "count", len(crossJobMatches))
-			}
-		}
-	}
-
-	// Index the content fingerprint for cross-job deduplication
-	if req.ContentIndex != nil && pageSimHash != 0 {
-		if err := req.ContentIndex.Index(ctx, req.RequestID, item.URL, pageSimHash); err != nil {
-			slog.Warn("failed to index content fingerprint", "url", apperrors.SanitizeURL(item.URL), "error", err)
-		}
-	}
-
 	finalResult, err := applyCrawlOutputPipeline(ctx, registry, baseCtx, result)
 	if err != nil {
 		slog.Error("crawl output pipeline failed", "url", apperrors.SanitizeURL(item.URL), "error", err)

@@ -41,9 +41,6 @@ func Run(ctx context.Context, req Request) ([]PageResult, error) {
 	if req.SimHashThreshold < 0 {
 		req.SimHashThreshold = 3 // default threshold
 	}
-	if req.CrossJobDedupThreshold <= 0 {
-		req.CrossJobDedupThreshold = 3 // default threshold
-	}
 
 	registry := req.Registry
 	if registry == nil {
