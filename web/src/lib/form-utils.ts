@@ -186,27 +186,6 @@ export function buildBrowserRuntimeFields(options: {
   };
 }
 
-function buildBrowserRuntimeRequestFields(
-  headless: boolean,
-  usePlaywright: boolean,
-  timeoutSeconds: number,
-  authProfile: string | undefined,
-  auth: AuthOptions | undefined,
-  extract: ExtractOptions | undefined,
-  aiExtract?: AiExtractOptions,
-) {
-  return {
-    ...buildBrowserRuntimeFields({
-      headless,
-      playwright: usePlaywright,
-    }),
-    timeoutSeconds,
-    authProfile: authProfile || undefined,
-    auth,
-    extract: mergeAIExtractOptions(extract, aiExtract),
-  };
-}
-
 export function parseUrlList(raw: string): string[] {
   return splitAndTrim(raw, ",");
 }
@@ -470,15 +449,14 @@ export function buildScrapeRequest(
 ): ScrapeRequest {
   return {
     url,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     webhook,
@@ -516,15 +494,14 @@ export function buildCrawlRequest(
     url,
     maxDepth,
     maxPages,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     incremental: incremental || undefined,
     sitemapURL: sitemapURL || undefined,
@@ -564,15 +541,14 @@ export function buildResearchRequest(
     urls,
     maxDepth,
     maxPages,
-    ...buildBrowserRuntimeRequestFields(
+    ...buildBrowserRuntimeFields({
       headless,
-      usePlaywright,
-      timeoutSeconds,
-      authProfile,
-      auth,
-      extract,
-      aiExtract,
-    ),
+      playwright: usePlaywright,
+    }),
+    timeoutSeconds,
+    authProfile: authProfile || undefined,
+    auth,
+    extract: mergeAIExtractOptions(extract, aiExtract),
     pipeline: buildPipelineOptions(preProcessors, postProcessors, transformers),
     webhook,
     screenshot,
