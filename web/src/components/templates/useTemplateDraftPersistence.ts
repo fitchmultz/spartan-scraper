@@ -1,8 +1,8 @@
 /**
  * Purpose: Own the persisted template workspace draft state and derived draft-session behavior.
- * Responsibilities: Derive the active template draft from session storage, track builder visibility, protect unsaved edits, and expose draft-state mutations without coupling them to save/delete flows.
+ * Responsibilities: Own the session-storage draft state, derive the active template draft, track builder visibility, protect unsaved edits, and expose draft-state mutations without coupling them to save/delete flows.
  * Scope: Template draft persistence and local workspace state only; save/delete/create/duplicate/apply actions stay in `useTemplateMutationActions.ts`.
- * Usage: Called from `useTemplateDraftSession()` after template detail has been resolved.
+ * Usage: `useTemplateRouteController()` reads session state from this module, and `useTemplateDraftSession()` composes the derived draft behavior.
  * Invariants/Assumptions: Session storage is the source of truth for unsaved template drafts, built-in templates stay read-only until duplicated, and draft snapshots are normalized before dirty checks.
  */
 
@@ -16,6 +16,7 @@ import {
 
 import type { Template } from "../../api";
 import { useBeforeUnloadPrompt } from "../../hooks/useBeforeUnloadPrompt";
+import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { deepEqual } from "../../lib/diff-utils";
 import { useToast } from "../toast";
 import {
@@ -29,6 +30,16 @@ import {
   type DraftSource,
   type TemplateWorkspaceDraftSession,
 } from "./templateRouteControllerShared";
+
+const TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY =
+  "spartan.templates.workspace-draft-session";
+
+export function useTemplateDraftSessionState() {
+  return useSessionStorageState<TemplateWorkspaceDraftSession | null>(
+    TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY,
+    null,
+  );
+}
 
 interface UseTemplateDraftPersistenceOptions {
   onClearPromotionSeed?: () => void;

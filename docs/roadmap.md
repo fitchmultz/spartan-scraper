@@ -16,10 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
+- Move selected-draft refresh out of `useTemplateDetailLoader.ts` so template detail loading stops mutating draft-session state.
+- Extract `useTemplateAssistantState` from `useTemplateRouteController.ts` so preview URL and assistant-mode wiring stop colliding with route composition.
 - Extract `useResultsSelectionState` and `useResultsTooling` from `useResultsExplorer.ts` so reader filters/selection stop colliding with export, diff, and transform state.
 - Extract a shared native-authoring workspace controller from `RenderProfileEditor.tsx` and `PipelineJSEditor.tsx` so generator/debugger/native-edit flows stop diverging.
 - Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so global shell behavior stops colliding with route handoff.
-- Move template draft session-storage ownership from `useTemplateRouteController.ts` into `useTemplateDraftPersistence.ts` so the draft persistence hook owns the state it names.
 - Consolidate shared browser-runtime validation and form helpers across template, render-profile, and pipeline-JS authoring surfaces.
 
 ## Ongoing Constraints

@@ -25,9 +25,6 @@ export interface TemplateWorkspaceDraftSession {
   visible: boolean;
 }
 
-export const TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY =
-  "spartan.templates.workspace-draft-session";
-
 export function createTemplateWorkspaceDraftSession(
   template: Template | undefined,
   source: DraftSource,

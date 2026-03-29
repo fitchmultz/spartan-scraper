@@ -10,13 +10,9 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { ComponentStatus, Template } from "../../api";
 import type { TemplatePromotionSeed } from "../../types/promotion";
-import { useSessionStorageState } from "../../hooks/useSessionStorageState";
 import { useAIAssistant, type TemplateAssistantMode } from "../ai-assistant";
-import {
-  isTemplateWorkspaceDraftDirty,
-  TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY,
-  type TemplateWorkspaceDraftSession,
-} from "./templateRouteControllerShared";
+import { isTemplateWorkspaceDraftDirty } from "./templateRouteControllerShared";
+import { useTemplateDraftSessionState } from "./useTemplateDraftPersistence";
 import { useTemplateDetailLoader } from "./useTemplateDetailLoader";
 import { useTemplateDraftSession } from "./useTemplateDraftSession";
 import { useTemplatePromotionState } from "./useTemplatePromotionState";
@@ -41,10 +37,7 @@ export function useTemplateRouteController({
     workspaceDraftSession,
     setWorkspaceDraftSession,
     clearWorkspaceDraftSession,
-  ] = useSessionStorageState<TemplateWorkspaceDraftSession | null>(
-    TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY,
-    null,
-  );
+  ] = useTemplateDraftSessionState();
   const [railTab, setRailTab] = useState<TemplateAssistantMode>("preview");
   const [previewUrl, setPreviewUrl] = useState("");
 
