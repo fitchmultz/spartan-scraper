@@ -16,10 +16,11 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Split `useTemplateDraftSession.ts` into draft-persistence/selection and template-mutation hooks so template-authoring changes stop colliding in one workspace hook.
-- Split `useResultsExplorer.ts` into reader-filter/selection and export/compare/tool hooks so job-detail changes stop colliding in one route hook.
-- Split `web/src/App.tsx` shell-only command-palette, preset handoff, and job-submission orchestration into dedicated hooks so shell chrome can evolve without route-flow churn.
-- Consolidate shared browser-authoring form state and runtime validation across template, render-profile, and pipeline-JS authoring surfaces.
+- Extract `useResultsSelectionState` and `useResultsTooling` from `useResultsExplorer.ts` so reader filters/selection stop colliding with export, diff, and transform state.
+- Extract a shared native-authoring workspace controller from `RenderProfileEditor.tsx` and `PipelineJSEditor.tsx` so generator/debugger/native-edit flows stop diverging.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so global shell behavior stops colliding with route handoff.
+- Move template draft session-storage ownership from `useTemplateRouteController.ts` into `useTemplateDraftPersistence.ts` so the draft persistence hook owns the state it names.
+- Consolidate shared browser-runtime validation and form helpers across template, render-profile, and pipeline-JS authoring surfaces.
 
 ## Ongoing Constraints
 
