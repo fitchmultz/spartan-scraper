@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Extract a `useResultsExplorer` hook for reader filters, export flows, and secondary-tool state so job-detail changes stop colliding in `ResultsExplorer.tsx`.
+- Split `useTemplateDraftSession.ts` into draft-persistence/selection and template-mutation hooks so template-authoring changes stop colliding in one workspace hook.
+- Split `useResultsExplorer.ts` into reader-filter/selection and export/compare/tool hooks so job-detail changes stop colliding in one route hook.
 - Split `web/src/App.tsx` shell-only command-palette, preset handoff, and job-submission orchestration into dedicated hooks so shell chrome can evolve without route-flow churn.
-- Split `useTemplateRouteController.ts` into detail-loading, draft-session, and promotion hooks so template-authoring changes stop colliding in one controller.
 - Consolidate shared browser-authoring form state and runtime validation across template, render-profile, and pipeline-JS authoring surfaces.
 
 ## Ongoing Constraints

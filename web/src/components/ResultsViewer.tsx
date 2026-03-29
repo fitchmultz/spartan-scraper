@@ -1,6 +1,6 @@
 /**
  * Purpose: Render the dominant saved-results reader for a selected job.
- * Responsibilities: Own reader-level selection state wiring, derive the selected crawl/research context, and compose the summary, navigator, and detail sections.
+ * Responsibilities: Own reader-level selection state wiring, derive the selected crawl/research context, and compose the summary, navigator, crawl-detail, and research-detail modules.
  * Scope: Results detail presentation only; search, export, and secondary tools stay outside this component.
  * Usage: Render from `ResultsExplorer` with the currently visible result page and selection state.
  * Invariants/Assumptions: A job ID exists before rendering, `selectedResultIndex` is relative to the provided `resultItems`, and research-only affordances stay hidden for crawl-style results.
@@ -17,14 +17,15 @@ import type {
   ResearchResultItem,
   ResultItem,
 } from "../types";
+import { CrawlResultDetail } from "./results-viewer/CrawlResultDetail";
+import { ResearchResultDetail } from "./results-viewer/ResearchResultDetail";
+import { ResultsNavigator } from "./results-viewer/ResultsNavigator";
+import { ResultsReaderSummaryCard } from "./results-viewer/ResultsReaderSummaryCard";
 import {
   getResearchSourceLabels,
   getResearchSummaryPreview,
-  ResultsDetailPanel,
-  ResultsNavigator,
-  ResultsReaderSummaryCard,
   truncateExcerpt,
-} from "./results-viewer/ResultsReaderSections";
+} from "./results-viewer/resultsReaderShared";
 
 interface ResultsViewerProps {
   jobId: string | null;
@@ -180,21 +181,43 @@ export function ResultsViewer({
           setSelectedResultIndex={setSelectedResultIndex}
         />
 
-        <ResultsDetailPanel
-          jobKind={jobKind}
-          selectedResultIndex={selectedResultIndex}
-          selectedItem={selectedItem}
-          selectedCrawlExcerpt={selectedCrawlExcerpt}
-          selectedResearchResult={selectedResearchResult}
-          selectedResearchSummary={selectedResearchSummary}
-          selectedResearchEvidence={selectedResearchEvidence}
-          selectedResearchClusters={selectedResearchClusters}
-          selectedResearchCitations={selectedResearchCitations}
-          selectedResearchAgentic={selectedResearchAgentic}
-          selectedResearchSourceLabels={selectedResearchSourceLabels}
-          rawResult={rawResult}
-          onOpenResearchAssistant={onOpenResearchAssistant}
-        />
+        <section className="results-viewer__detail">
+          {selectedItem ? (
+            <div className="results-viewer__detail-card">
+              {isCrawlResultItem(selectedItem) ? (
+                <CrawlResultDetail
+                  selectedItem={selectedItem}
+                  selectedCrawlExcerpt={selectedCrawlExcerpt}
+                />
+              ) : (
+                <ResearchResultDetail
+                  jobKind={jobKind}
+                  selectedResultIndex={selectedResultIndex}
+                  selectedResearchResult={selectedResearchResult}
+                  selectedResearchSummary={selectedResearchSummary}
+                  selectedResearchEvidence={selectedResearchEvidence}
+                  selectedResearchClusters={selectedResearchClusters}
+                  selectedResearchCitations={selectedResearchCitations}
+                  selectedResearchAgentic={selectedResearchAgentic}
+                  selectedResearchSourceLabels={selectedResearchSourceLabels}
+                  onOpenResearchAssistant={onOpenResearchAssistant}
+                />
+              )}
+
+              <details className="results-viewer__disclosure">
+                <summary>Raw job output</summary>
+                <pre>{rawResult}</pre>
+              </details>
+            </div>
+          ) : (
+            <div className="results-viewer__empty-detail">
+              <h5>No item selected</h5>
+              <p className="form-help">
+                Pick a result from the navigator to inspect it.
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
