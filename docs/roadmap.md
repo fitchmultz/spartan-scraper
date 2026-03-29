@@ -16,10 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Extract `useResultsSelectionState` and `useResultsTooling` from `useResultsExplorer.ts` so reader filters/selection stop colliding with export, diff, and transform state.
-- Extract a shared native-authoring workspace controller from `RenderProfileEditor.tsx` and `PipelineJSEditor.tsx` so generator/debugger/native-edit flows stop diverging.
-- Consolidate shared browser-runtime validation and form helpers across template, render-profile, and pipeline-JS authoring surfaces.
-- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so global shell behavior stops colliding with route handoff.
+- Extract shared browser-runtime field codecs and validation helpers from `RenderProfileForm.tsx` and `PipelineScriptForm.tsx`, then adopt them in template authoring so host-pattern, selector, numeric, and JSON inputs stop drifting across authoring surfaces.
+- Split `useResultsExplorer.ts` into `useResultsSelectionState` and `useResultsOperationsState`, and move export download helpers into `lib/results`, so reader navigation, compare/export side effects, and assistant shaping stop sharing one route hook.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so navigation history, keyboard events, and submission side effects stop colliding with route rendering.
 
 ## Ongoing Constraints
 
