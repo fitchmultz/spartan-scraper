@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Extract route-agnostic authoring field helpers from `settingsAuthoringForm.tsx`, then adopt them in `TemplateEditorInline.tsx` and `templateEditorUtils.ts` so advanced JSON codecs, validation copy, and draft-status chrome stop drifting between `/settings` and `/templates`.
-- Split `useResultsExplorer.ts` into `useResultsSelectionState` and `useResultsOperationsState`, and move export download and shape helpers into `lib/results`, so reader navigation, compare/export side effects, and assistant shaping stop sharing one route hook.
-- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx`, then move history-state comparison into a route helper so navigation history, keyboard events, and submission side effects stop colliding with route rendering.
+- Finish render-profile draft validation hardening: keep invalid persisted numeric inputs from being silently cleared, surface field-level errors through `RenderProfileForm`, and lock the behavior with shared-helper and editor tests.
+- Finish the template authoring helper cutover: move the remaining template draft parsing, formatting, and validation copy onto `settingsAuthoringForm.tsx`, then delete the duplicate helper logic from `templateEditorUtils.ts` and update the inline editor tests.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx`, then move history-state comparison into a route helper so navigation, keyboard handling, and submission side effects stop colliding with route rendering.
 
 ## Ongoing Constraints
 

@@ -1,5 +1,9 @@
 /**
- * Results loading and direct export utilities for saved job results.
+ * Purpose: Results loading, export, and browser-download utilities for saved job results.
+ * Responsibilities: Build result URLs, load paginated results, trigger server-side exports, and initiate browser file downloads for export content.
+ * Scope: Pure data and DOM-download helpers; no React state or component logic.
+ * Usage: Import from results-explorer hooks and anywhere that needs to load, export, or download job results.
+ * Invariants/Assumptions: Export responses conform to the `ExportOutcomeResponse` API contract; binary content is base64-encoded.
  *
  * @module results
  */
@@ -218,4 +222,41 @@ async function parseErrorResponse(
   }
 
   return text;
+}
+
+/**
+ * Decode a base64 string to an ArrayBuffer for binary Blob construction.
+ */
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let index = 0; index < binaryString.length; index++) {
+    bytes[index] = binaryString.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+/**
+ * Trigger a browser file download for the given content.
+ *
+ * Creates a temporary Blob, appends an anchor element, clicks it, then cleans up.
+ * Supports both text and base64-encoded binary content.
+ */
+export function downloadFile(
+  content: string,
+  filename: string,
+  mimeType: string,
+  isBinary = false,
+): void {
+  const blob = isBinary
+    ? new Blob([base64ToArrayBuffer(content)], { type: mimeType })
+    : new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
