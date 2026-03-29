@@ -24,7 +24,7 @@ export function parseCommaSeparatedList(value: string): string[] {
 }
 
 export function formatOptionalJSON(value: unknown): string {
-  if (!value) {
+  if (value === undefined || value === null) {
     return "";
   }
 
@@ -51,6 +51,21 @@ export function parseOptionalJSON<T>(
   }
 }
 
+export function parseOptionalJSONObject<T extends object>(
+  label: string,
+  value: string,
+): T | undefined {
+  const parsed = parseOptionalJSON<unknown>(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error(`${label} must be a JSON object`);
+  }
+
+  return parsed as T;
+}
+
 export function parseOptionalNumber(value: string): number | undefined {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -68,11 +83,12 @@ export function getSettingsDraftSyncState<TDraft, TValue>(options: {
   buildValue: (draft: TDraft) => TValue;
 }): SettingsDraftSyncState {
   const { draft, initialValue, savedValue, buildValue } = options;
-  const baselineValue = savedValue ?? initialValue;
+  const hasSavedValue = savedValue !== undefined;
+  const baselineValue = hasSavedValue ? savedValue : initialValue;
 
   try {
     return deepEqual(buildValue(draft), baselineValue)
-      ? savedValue
+      ? hasSavedValue
         ? "clean"
         : null
       : "dirty";

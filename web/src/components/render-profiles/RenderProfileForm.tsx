@@ -9,6 +9,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type FormEvent,
@@ -20,7 +21,7 @@ import {
   formatOptionalJSON,
   getSettingsDraftSyncState,
   parseCommaSeparatedList,
-  parseOptionalJSON,
+  parseOptionalJSONObject,
   parseOptionalNumber,
   SettingsDraftForm,
 } from "../settings/settingsAuthoringForm";
@@ -81,9 +82,9 @@ export function toRenderProfileInput(
     name: profile.name,
     hostPatterns: [...profile.hostPatterns],
     forceEngine: profile.forceEngine,
-    preferHeadless: profile.preferHeadless,
-    neverHeadless: profile.neverHeadless,
-    assumeJsHeavy: profile.assumeJsHeavy,
+    preferHeadless: profile.preferHeadless ? true : undefined,
+    neverHeadless: profile.neverHeadless ? true : undefined,
+    assumeJsHeavy: profile.assumeJsHeavy ? true : undefined,
     jsHeavyThreshold: profile.jsHeavyThreshold,
     rateLimitQPS: profile.rateLimitQPS,
     rateLimitBurst: profile.rateLimitBurst,
@@ -127,23 +128,21 @@ export function buildRenderProfileInputFromDraft(
     jsHeavyThreshold: parseOptionalNumber(draft.jsHeavyThresholdInput),
     rateLimitQPS: parseOptionalNumber(draft.rateLimitQPSInput),
     rateLimitBurst: parseOptionalNumber(draft.rateLimitBurstInput),
-    wait: parseOptionalJSON<RenderProfileInput["wait"]>(
+    wait: parseOptionalJSONObject<NonNullable<RenderProfileInput["wait"]>>(
       "Wait configuration",
       draft.waitJSON,
     ),
-    block: parseOptionalJSON<RenderProfileInput["block"]>(
+    block: parseOptionalJSONObject<NonNullable<RenderProfileInput["block"]>>(
       "Block configuration",
       draft.blockJSON,
     ),
-    timeouts: parseOptionalJSON<RenderProfileInput["timeouts"]>(
-      "Timeout configuration",
-      draft.timeoutsJSON,
-    ),
-    screenshot: parseOptionalJSON<RenderProfileInput["screenshot"]>(
-      "Screenshot configuration",
-      draft.screenshotJSON,
-    ),
-    device: parseOptionalJSON<RenderProfileInput["device"]>(
+    timeouts: parseOptionalJSONObject<
+      NonNullable<RenderProfileInput["timeouts"]>
+    >("Timeout configuration", draft.timeoutsJSON),
+    screenshot: parseOptionalJSONObject<
+      NonNullable<RenderProfileInput["screenshot"]>
+    >("Screenshot configuration", draft.screenshotJSON),
+    device: parseOptionalJSONObject<NonNullable<RenderProfileInput["device"]>>(
       "Device configuration",
       draft.deviceJSON,
     ),
@@ -243,9 +242,18 @@ export function RenderProfileForm({
     ],
   );
 
+  const previousDraftRef = useRef(currentDraft);
+
   useEffect(() => {
     onDraftChange?.(currentDraft);
   }, [currentDraft, onDraftChange]);
+
+  useEffect(() => {
+    if (previousDraftRef.current !== currentDraft) {
+      setFormError(null);
+      previousDraftRef.current = currentDraft;
+    }
+  }, [currentDraft]);
 
   const syncState = useMemo(
     () =>

@@ -228,6 +228,83 @@ describe("RenderProfileEditor", () => {
     expect(screen.getByLabelText(/prefer headless/i)).not.toBeChecked();
   });
 
+  it("keeps the generator and debugger modals mutually exclusive", async () => {
+    vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
+      data: {
+        profiles: [
+          {
+            name: "news",
+            hostPatterns: ["example.com"],
+            preferHeadless: true,
+          },
+        ],
+      },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+    vi.mocked(api.aiRenderProfileDebug).mockResolvedValue({
+      data: {
+        issues: ["wait.selector matched no elements"],
+        resolved_goal: {
+          source: "explicit",
+          text: "Use the visible main shell",
+        },
+        suggested_profile: {
+          name: "news",
+          hostPatterns: ["example.com"],
+          preferHeadless: true,
+          wait: { mode: "selector", selector: "main" },
+        },
+        route_id: "route-1",
+        provider: "openai",
+        model: "gpt-5.4",
+      },
+      error: undefined,
+      request: new Request("http://localhost:8741/v1/ai/render-profile-debug"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /generate render profile with ai/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /tune with ai/i }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /tune render profile with ai/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /generate render profile with ai/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /generate with ai/i }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /generate render profile with ai/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /tune render profile with ai/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("warns before replacing a hidden local Settings draft with an AI handoff draft", async () => {
     vi.mocked(api.getV1RenderProfiles).mockResolvedValue({
       data: { profiles: [] },
@@ -372,6 +449,126 @@ describe("RenderProfileEditor", () => {
     expect(onError).toHaveBeenCalledWith("invalid hostPatterns");
   });
 
+  it("clears the local JSON validation error once the draft changes", async () => {
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create profile/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "news" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/wait configuration json/i), {
+      target: { value: "{" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/wait configuration must be valid json/i),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/wait configuration json/i), {
+      target: { value: '{"mode":"selector","selector":"main"}' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/wait configuration must be valid json/i),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("rejects non-object JSON for object-only render profile fields", async () => {
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create profile/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "news" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/wait configuration json/i), {
+      target: { value: "false" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/wait configuration must be a json object/i),
+    ).toBeInTheDocument();
+    expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
+  });
+
+  it("warns honestly when saving succeeds but the inventory refresh fails", async () => {
+    vi.mocked(api.getV1RenderProfiles)
+      .mockResolvedValueOnce({
+        data: { profiles: [] },
+        request: new Request("http://localhost:8741/v1/render-profiles"),
+        response: new Response(),
+      })
+      .mockResolvedValue({
+        data: undefined,
+        error: { error: "refresh failed" },
+        request: new Request("http://localhost:8741/v1/render-profiles"),
+        response: new Response(null, { status: 500 }),
+      });
+    vi.mocked(api.postV1RenderProfiles).mockResolvedValue({
+      data: {
+        name: "news",
+        hostPatterns: ["example.com"],
+      },
+      request: new Request("http://localhost:8741/v1/render-profiles"),
+      response: new Response(),
+    });
+
+    const onError = vi.fn();
+    render(
+      <ToastProvider>
+        <RenderProfileEditor onError={onError} />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /create profile/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "news" },
+    });
+    fireEvent.change(screen.getByLabelText(/host patterns/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    await waitFor(() => {
+      expect(api.postV1RenderProfiles).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: /create new profile/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /saved, but the latest inventory refresh failed/i,
+      ),
+    ).toBeInTheDocument();
+    expect(onError).toHaveBeenCalledWith("refresh failed");
+  });
+
   it("preserves AI history after manual Settings edits and retries from the edited profile", async () => {
     vi.mocked(api.getV1RenderProfiles)
       .mockResolvedValueOnce({
@@ -491,6 +688,7 @@ describe("RenderProfileEditor", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/^name$/i)).toHaveValue("news");
+    expect(screen.getByRole("status")).toHaveTextContent(/in sync with saved/i);
     fireEvent.click(screen.getByLabelText(/prefer headless/i));
     fireEvent.click(screen.getByRole("button", { name: /^update$/i }));
 

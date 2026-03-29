@@ -305,10 +305,10 @@ Proxy pooling and retention are optional too: leave `PROXY_POOL_FILE` unset and 
 Pinned in `.tool-versions`:
 
 - Go `1.26.1`
-- Node `25.8.1`
+- Node `25.8` (any `25.8.x` patch)
 - pnpm `10.32.1`
 
-Use a `.tool-versions`-compatible version manager (for example `mise install`) to provision those exact versions, then run `make verify-toolchain` before build/test work.
+Use a `.tool-versions`-compatible version manager (for example `mise install`) to provision those pinned versions, then run `make verify-toolchain` before build/test work.
 
 ## Local CI
 

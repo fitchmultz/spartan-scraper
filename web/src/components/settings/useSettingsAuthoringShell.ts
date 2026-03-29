@@ -3,7 +3,7 @@
  * Responsibilities: Load Settings inventories, manage AI modal state and draft handoff, coordinate tab-local workspace drafts, and provide shared mutation helpers for reload-backed saves and deletes.
  * Scope: Settings-route authoring control flow only; editor-specific form codecs, inventory row rendering, and API copy stay with each surface.
  * Usage: Called by Settings editors such as render profiles and pipeline JavaScript before rendering the shared Settings authoring shell.
- * Invariants/Assumptions: Each editor owns one local workspace draft session per tab, AI generator/debugger sessions persist through session storage, and inventory mutations should reload the saved list before success is surfaced.
+ * Invariants/Assumptions: Each editor owns one local workspace draft session per tab, AI generator/debugger sessions persist through session storage, and inventory mutations downgrade success to a warning when the follow-up refresh fails.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -150,19 +150,23 @@ export function useSettingsAuthoringShell<
     activateAISession: (source, attemptId) => {
       if (source === "generator") {
         generatorHistory.selectAttempt(attemptId);
+        setIsAIDebuggerOpen(false);
         setIsAIGeneratorOpen(false);
         return;
       }
 
       debuggerHistory.selectAttempt(attemptId);
+      setIsAIGeneratorOpen(false);
       setIsAIDebuggerOpen(false);
     },
     openAISession: (source) => {
       if (source === "generator") {
+        setIsAIDebuggerOpen(false);
         setIsAIGeneratorOpen(true);
         return;
       }
 
+      setIsAIGeneratorOpen(false);
       setIsAIDebuggerOpen(true);
     },
   });
@@ -180,10 +184,12 @@ export function useSettingsAuthoringShell<
       const nextItems = await loadInventoryItems();
       setItems(nextItems);
       onInventoryChange?.(nextItems.length);
+      return null;
     } catch (err) {
       const message = getApiErrorMessage(err, loadErrorMessage);
       setError(message);
       onError?.(message);
+      return message;
     } finally {
       setLoading(false);
     }
@@ -247,6 +253,7 @@ export function useSettingsAuthoringShell<
 
   const openGenerator = useCallback(() => {
     hideWorkspaceDraft();
+    setIsAIDebuggerOpen(false);
     setIsAIGeneratorOpen(true);
   }, [hideWorkspaceDraft]);
 
@@ -267,6 +274,7 @@ export function useSettingsAuthoringShell<
       }
 
       hideWorkspaceDraft();
+      setIsAIGeneratorOpen(false);
 
       if (debuggingItem && debuggingItem.name !== item.name) {
         setDebuggerResetSignal((current) => current + 1);
@@ -302,15 +310,17 @@ export function useSettingsAuthoringShell<
       try {
         setError(null);
         const value = await run();
-        await loadInventory();
+        const refreshError = await loadInventory();
         const successCopy =
           typeof success === "function" ? success(value) : success;
         toast.update(toastId, {
-          tone: "success",
+          tone: refreshError ? "warning" : "success",
           title: successCopy.title,
-          description: successCopy.description,
+          description: refreshError
+            ? `${successCopy.description} Saved, but the latest inventory refresh failed: ${refreshError}`
+            : successCopy.description,
         });
-        return { ok: true as const, value };
+        return { ok: true as const, value, refreshError };
       } catch (err) {
         const message = getApiErrorMessage(err, errorFallback);
         setError(message);

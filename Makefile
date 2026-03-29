@@ -2,7 +2,7 @@
 # Responsibilities: Define reproducible developer workflows, enforce the repo toolchain contract, and centralize shared build/test commands.
 # Scope: Repository-local automation for Go, web, and pi-bridge tasks that must run the same way locally and in CI.
 # Usage: Invoke targets with `make <target>` (for example `make ci`, `make build`, `make verify-toolchain`).
-# Invariants/Assumptions: `.tool-versions` is the authoritative toolchain contract; PATH must resolve the exact pinned Go, Node, and pnpm versions.
+# Invariants/Assumptions: `.tool-versions` is the authoritative toolchain contract; PATH must resolve the pinned Go and pnpm versions, and a Node version on the pinned major.minor line.
 SHELL := /bin/bash
 
 APP_NAME := spartan
@@ -65,9 +65,17 @@ verify-toolchain:
 		echo "verify-toolchain: Go version mismatch" >&2; \
 		status=1; \
 	fi; \
-	if [[ "$$actual_node" != "$$expected_node" ]]; then \
-		echo "verify-toolchain: Node version mismatch" >&2; \
-		status=1; \
+	if [[ "$$expected_node" =~ ^[0-9]+\.[0-9]+$$ ]]; then \
+		actual_node_major_minor="$$(printf '%s\n' "$$actual_node" | awk -F. '{ print $$1 "." $$2 }')"; \
+		if [[ "$$actual_node_major_minor" != "$$expected_node" ]]; then \
+			echo "verify-toolchain: Node version mismatch" >&2; \
+			status=1; \
+		fi; \
+	else \
+		if [[ "$$actual_node" != "$$expected_node" ]]; then \
+			echo "verify-toolchain: Node version mismatch" >&2; \
+			status=1; \
+		fi; \
 	fi; \
 	if [[ "$$actual_pnpm" != "$$expected_pnpm" ]]; then \
 		echo "verify-toolchain: pnpm version mismatch" >&2; \

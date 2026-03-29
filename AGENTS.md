@@ -190,7 +190,7 @@ See `internal/apperrors/README.md` for detailed usage patterns and examples.
 Pinned in `.tool-versions`:
 
 - Go `1.26.1`
-- Node `25.8.1`
+- Node `25.8` (any `25.8.x` patch)
 - pnpm `10.32.1`
 
 ## Commit & Pull Request Guidelines

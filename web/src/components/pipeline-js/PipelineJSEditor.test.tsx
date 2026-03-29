@@ -112,6 +112,44 @@ describe("PipelineJSEditor", () => {
     ).toBeEnabled();
   });
 
+  it("keeps the generator and debugger modals mutually exclusive", async () => {
+    render(
+      <ToastProvider>
+        <PipelineJSEditor />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /generate with ai/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /generate pipeline js with ai/i,
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /tune with ai/i }));
+
+    expect(
+      await screen.findByRole("heading", { name: /tune pipeline js with ai/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /generate pipeline js with ai/i }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /generate with ai/i }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /generate pipeline js with ai/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /tune pipeline js with ai/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("restores a closed native script draft after the Settings editor remounts and lets operators discard it intentionally", async () => {
     const firstRender = render(
       <ToastProvider>

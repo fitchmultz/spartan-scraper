@@ -16,7 +16,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Adopt the shared authoring field helpers from `settingsAuthoringForm.tsx` in template authoring so browser/runtime inputs, validation, and draft-status chrome stop diverging between `/settings` and `/templates`.
+- Extract route-agnostic authoring field helpers from `settingsAuthoringForm.tsx`, then adopt them in `TemplateEditorInline.tsx` and `templateEditorUtils.ts` so advanced JSON codecs, validation copy, and draft-status chrome stop drifting between `/settings` and `/templates`.
 - Split `useResultsExplorer.ts` into `useResultsSelectionState` and `useResultsOperationsState`, and move export download and shape helpers into `lib/results`, so reader navigation, compare/export side effects, and assistant shaping stop sharing one route hook.
 - Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx`, then move history-state comparison into a route helper so navigation history, keyboard events, and submission side effects stop colliding with route rendering.
 
