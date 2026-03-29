@@ -15,7 +15,12 @@ import {
 } from "react";
 
 import type { JsTargetScript, PipelineJsInput } from "../../api";
-import { deepEqual } from "../../lib/diff-utils";
+import {
+  formatCommaSeparatedList,
+  getSettingsDraftSyncState,
+  parseCommaSeparatedList,
+  SettingsDraftForm,
+} from "../settings/settingsAuthoringForm";
 
 export interface ScriptFormDraft {
   formData: PipelineJsInput;
@@ -65,22 +70,16 @@ export function toPipelineJsInput(script: JsTargetScript): PipelineJsInput {
 export function createScriptFormDraft(seed: PipelineJsInput): ScriptFormDraft {
   return {
     formData: seed,
-    hostPatternInput: seed.hostPatterns.join(", "),
-    selectorInput: seed.selectors?.join(", ") || "",
+    hostPatternInput: formatCommaSeparatedList(seed.hostPatterns),
+    selectorInput: formatCommaSeparatedList(seed.selectors),
   };
 }
 
 export function buildPipelineJsInputFromDraft(
   draft: ScriptFormDraft,
 ): PipelineJsInput {
-  const hostPatterns = draft.hostPatternInput
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const selectors = draft.selectorInput
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const hostPatterns = parseCommaSeparatedList(draft.hostPatternInput);
+  const selectors = parseCommaSeparatedList(draft.selectorInput);
 
   return {
     ...draft.formData,
@@ -94,7 +93,13 @@ export function isScriptDraftDirty(
   draft: ScriptFormDraft,
   initialValue: PipelineJsInput,
 ): boolean {
-  return !deepEqual(buildPipelineJsInputFromDraft(draft), initialValue);
+  return (
+    getSettingsDraftSyncState({
+      draft,
+      initialValue,
+      buildValue: buildPipelineJsInputFromDraft,
+    }) === "dirty"
+  );
 }
 
 export function PipelineScriptForm({
@@ -143,14 +148,16 @@ export function PipelineScriptForm({
     onDraftChange?.(currentDraft);
   }, [currentDraft, onDraftChange]);
 
-  const syncState = useMemo<"clean" | "dirty" | null>(() => {
-    const baselineValue = savedValue ?? seed;
-    return deepEqual(buildPipelineJsInputFromDraft(currentDraft), baselineValue)
-      ? savedValue
-        ? "clean"
-        : null
-      : "dirty";
-  }, [currentDraft, savedValue, seed]);
+  const syncState = useMemo(
+    () =>
+      getSettingsDraftSyncState({
+        draft: currentDraft,
+        initialValue: seed,
+        savedValue,
+        buildValue: buildPipelineJsInputFromDraft,
+      }),
+    [currentDraft, savedValue, seed],
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -158,34 +165,17 @@ export function PipelineScriptForm({
   };
 
   return (
-    <form
+    <SettingsDraftForm
+      title={title ?? (script ? "Edit Script" : "Create New Script")}
+      syncState={syncState}
+      contextNotice={contextNotice}
+      cancelLabel={cancelLabel}
+      discardLabel={discardLabel}
+      submitLabel={submitLabel ?? (script ? "Update" : "Create")}
       onSubmit={handleSubmit}
-      className="space-y-4 rounded border bg-gray-50 p-4"
+      onCancel={onCancel}
+      onDiscard={onDiscard}
     >
-      <h3 className="font-medium">
-        {title ?? (script ? "Edit Script" : "Create New Script")}
-      </h3>
-
-      {syncState ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`rounded-md border px-3 py-2 text-sm ${
-            syncState === "dirty"
-              ? "border-amber-300 bg-amber-50 text-amber-900"
-              : "border-emerald-300 bg-emerald-50 text-emerald-900"
-          }`}
-        >
-          {syncState === "dirty" ? "Unsaved changes" : "In sync with saved"}
-        </div>
-      ) : null}
-
-      {contextNotice ? (
-        <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
-          {contextNotice}
-        </div>
-      ) : null}
-
       <div>
         <label htmlFor="script-name" className="mb-1 block text-sm font-medium">
           Name
@@ -313,31 +303,6 @@ export function PipelineScriptForm({
           CSS selectors to wait for before considering page loaded
         </p>
       </div>
-
-      <div className="flex justify-end space-x-2">
-        {onDiscard ? (
-          <button
-            type="button"
-            onClick={onDiscard}
-            className="rounded border px-4 py-2 hover:bg-gray-100"
-          >
-            {discardLabel}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border px-4 py-2 hover:bg-gray-100"
-        >
-          {cancelLabel}
-        </button>
-        <button
-          type="submit"
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          {submitLabel ?? (script ? "Update" : "Create")}
-        </button>
-      </div>
-    </form>
+    </SettingsDraftForm>
   );
 }

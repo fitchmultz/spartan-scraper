@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Extract shared browser-runtime field codecs and validation helpers from `RenderProfileForm.tsx` and `PipelineScriptForm.tsx`, then adopt them in template authoring so host-pattern, selector, numeric, and JSON inputs stop drifting across authoring surfaces.
-- Split `useResultsExplorer.ts` into `useResultsSelectionState` and `useResultsOperationsState`, and move export download helpers into `lib/results`, so reader navigation, compare/export side effects, and assistant shaping stop sharing one route hook.
-- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so navigation history, keyboard events, and submission side effects stop colliding with route rendering.
+- Adopt the shared authoring field helpers from `settingsAuthoringForm.tsx` in template authoring so browser/runtime inputs, validation, and draft-status chrome stop diverging between `/settings` and `/templates`.
+- Split `useResultsExplorer.ts` into `useResultsSelectionState` and `useResultsOperationsState`, and move export download and shape helpers into `lib/results`, so reader navigation, compare/export side effects, and assistant shaping stop sharing one route hook.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx`, then move history-state comparison into a route helper so navigation history, keyboard events, and submission side effects stop colliding with route rendering.
 
 ## Ongoing Constraints
 

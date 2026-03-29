@@ -15,7 +15,15 @@ import {
 } from "react";
 
 import type { RenderProfile, RenderProfileInput } from "../../api";
-import { deepEqual } from "../../lib/diff-utils";
+import {
+  formatCommaSeparatedList,
+  formatOptionalJSON,
+  getSettingsDraftSyncState,
+  parseCommaSeparatedList,
+  parseOptionalJSON,
+  parseOptionalNumber,
+  SettingsDraftForm,
+} from "../settings/settingsAuthoringForm";
 
 export interface ProfileFormDraft {
   formData: RenderProfileInput;
@@ -87,64 +95,27 @@ export function toRenderProfileInput(
   };
 }
 
-function stringifyOptionalJSON(value: unknown): string {
-  if (!value) {
-    return "";
-  }
-  return JSON.stringify(value, null, 2);
-}
-
-function parseOptionalJSON<T>(label: string, value: string): T | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch (error) {
-    throw new Error(
-      `${label} must be valid JSON${
-        error instanceof Error && error.message ? `: ${error.message}` : ""
-      }`,
-    );
-  }
-}
-
-function parseOptionalNumber(value: string): number | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
 export function createProfileFormDraft(
   seed: RenderProfileInput,
 ): ProfileFormDraft {
   return {
     formData: seed,
-    hostPatternInput: seed.hostPatterns.join(", "),
+    hostPatternInput: formatCommaSeparatedList(seed.hostPatterns),
     jsHeavyThresholdInput: seed.jsHeavyThreshold?.toString() || "",
     rateLimitQPSInput: seed.rateLimitQPS?.toString() || "",
     rateLimitBurstInput: seed.rateLimitBurst?.toString() || "",
-    waitJSON: stringifyOptionalJSON(seed.wait),
-    blockJSON: stringifyOptionalJSON(seed.block),
-    timeoutsJSON: stringifyOptionalJSON(seed.timeouts),
-    screenshotJSON: stringifyOptionalJSON(seed.screenshot),
-    deviceJSON: stringifyOptionalJSON(seed.device),
+    waitJSON: formatOptionalJSON(seed.wait),
+    blockJSON: formatOptionalJSON(seed.block),
+    timeoutsJSON: formatOptionalJSON(seed.timeouts),
+    screenshotJSON: formatOptionalJSON(seed.screenshot),
+    deviceJSON: formatOptionalJSON(seed.device),
   };
 }
 
 export function buildRenderProfileInputFromDraft(
   draft: ProfileFormDraft,
 ): RenderProfileInput {
-  const hostPatterns = draft.hostPatternInput
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const hostPatterns = parseCommaSeparatedList(draft.hostPatternInput);
 
   return {
     ...draft.formData,
@@ -183,11 +154,13 @@ export function isProfileDraftDirty(
   draft: ProfileFormDraft,
   initialValue: RenderProfileInput,
 ): boolean {
-  try {
-    return !deepEqual(buildRenderProfileInputFromDraft(draft), initialValue);
-  } catch {
-    return true;
-  }
+  return (
+    getSettingsDraftSyncState({
+      draft,
+      initialValue,
+      buildValue: buildRenderProfileInputFromDraft,
+    }) === "dirty"
+  );
 }
 
 export function RenderProfileForm({
@@ -274,22 +247,16 @@ export function RenderProfileForm({
     onDraftChange?.(currentDraft);
   }, [currentDraft, onDraftChange]);
 
-  const syncState = useMemo<"clean" | "dirty" | null>(() => {
-    const baselineValue = savedValue ?? seed;
-
-    try {
-      return deepEqual(
-        buildRenderProfileInputFromDraft(currentDraft),
-        baselineValue,
-      )
-        ? savedValue
-          ? "clean"
-          : null
-        : "dirty";
-    } catch {
-      return "dirty";
-    }
-  }, [currentDraft, savedValue, seed]);
+  const syncState = useMemo(
+    () =>
+      getSettingsDraftSyncState({
+        draft: currentDraft,
+        initialValue: seed,
+        savedValue,
+        buildValue: buildRenderProfileInputFromDraft,
+      }),
+    [currentDraft, savedValue, seed],
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -305,40 +272,18 @@ export function RenderProfileForm({
   };
 
   return (
-    <form
+    <SettingsDraftForm
+      title={title ?? (profile ? "Edit Profile" : "Create New Profile")}
+      syncState={syncState}
+      contextNotice={contextNotice}
+      error={formError}
+      cancelLabel={cancelLabel}
+      discardLabel={discardLabel}
+      submitLabel={submitLabel ?? (profile ? "Update" : "Create")}
       onSubmit={handleSubmit}
-      className="space-y-4 rounded border bg-gray-50 p-4"
+      onCancel={onCancel}
+      onDiscard={onDiscard}
     >
-      <h3 className="font-medium">
-        {title ?? (profile ? "Edit Profile" : "Create New Profile")}
-      </h3>
-
-      {syncState ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`rounded-md border px-3 py-2 text-sm ${
-            syncState === "dirty"
-              ? "border-amber-300 bg-amber-50 text-amber-900"
-              : "border-emerald-300 bg-emerald-50 text-emerald-900"
-          }`}
-        >
-          {syncState === "dirty" ? "Unsaved changes" : "In sync with saved"}
-        </div>
-      ) : null}
-
-      {contextNotice ? (
-        <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">
-          {contextNotice}
-        </div>
-      ) : null}
-
-      {formError ? (
-        <div className="error" role="alert">
-          {formError}
-        </div>
-      ) : null}
-
       <div>
         <label
           htmlFor="profile-name"
@@ -552,32 +497,7 @@ export function RenderProfileForm({
         placeholder={`{\n  "name": "iPhone 14 Pro",\n  "viewportWidth": 393,\n  "viewportHeight": 852,\n  "deviceScaleFactor": 3,\n  "isMobile": true\n}`}
         helpText="Optional device emulation. Leave blank to omit."
       />
-
-      <div className="flex justify-end space-x-2">
-        {onDiscard ? (
-          <button
-            type="button"
-            onClick={onDiscard}
-            className="rounded border px-4 py-2 hover:bg-gray-100"
-          >
-            {discardLabel}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border px-4 py-2 hover:bg-gray-100"
-        >
-          {cancelLabel}
-        </button>
-        <button
-          type="submit"
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          {submitLabel ?? (profile ? "Update" : "Create")}
-        </button>
-      </div>
-    </form>
+    </SettingsDraftForm>
   );
 }
 
