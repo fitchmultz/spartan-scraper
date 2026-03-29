@@ -24,6 +24,7 @@ import {
   type TemplateDraftState,
 } from "./templateEditorUtils";
 import type { DraftSource } from "./templateRouteControllerShared";
+import type { TemplateDraftReplacementRequest } from "./templateDraftGuardrails";
 
 interface UseTemplateMutationActionsOptions {
   onTemplatesChanged: () => void;
@@ -38,10 +39,9 @@ interface UseTemplateMutationActionsOptions {
   activeDraft: TemplateDraftState;
   activeDraftSource: DraftSource;
   activeOriginalName: string | null;
-  confirmReplaceCurrentDraft: (options?: {
-    title?: string;
-    reason?: string;
-  }) => Promise<boolean>;
+  confirmReplaceCurrentDraft: (
+    request?: TemplateDraftReplacementRequest,
+  ) => Promise<boolean>;
   loadDraft: (
     template: Template | undefined,
     source: DraftSource,
@@ -254,13 +254,7 @@ export function useTemplateMutationActions({
   ]);
 
   const handleStartCreate = useCallback(async () => {
-    if (
-      !(await confirmReplaceCurrentDraft({
-        title: "Replace the current template draft?",
-        reason:
-          "This starts a new local template draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
-      }))
-    ) {
+    if (!(await confirmReplaceCurrentDraft("create"))) {
       return;
     }
 
@@ -279,13 +273,7 @@ export function useTemplateMutationActions({
     if (!selectedTemplateData) {
       return;
     }
-    if (
-      !(await confirmReplaceCurrentDraft({
-        title: "Replace the current template draft?",
-        reason:
-          "This duplicates another saved template into the workspace and discards the edits you have not saved yet. Keep the current draft if you still need it.",
-      }))
-    ) {
+    if (!(await confirmReplaceCurrentDraft("duplicate"))) {
       return;
     }
 
@@ -318,13 +306,7 @@ export function useTemplateMutationActions({
         return;
       }
 
-      if (
-        !(await confirmReplaceCurrentDraft({
-          title: "Replace the current template draft?",
-          reason:
-            "This opens another saved template and discards the edits you have not saved yet. Keep the current draft if you still need it.",
-        }))
-      ) {
+      if (!(await confirmReplaceCurrentDraft("switch-template"))) {
         return;
       }
 
@@ -349,13 +331,7 @@ export function useTemplateMutationActions({
 
   const handleApplyTemplate = useCallback(
     async (template: Template, source: DraftSource) => {
-      if (
-        !(await confirmReplaceCurrentDraft({
-          title: "Replace the current template draft?",
-          reason:
-            "This applies another template to the workspace and discards the edits you have not saved yet. Keep the current draft if you still need it.",
-        }))
-      ) {
+      if (!(await confirmReplaceCurrentDraft("apply-template"))) {
         return;
       }
 

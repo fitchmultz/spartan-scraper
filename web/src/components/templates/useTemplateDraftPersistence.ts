@@ -31,6 +31,12 @@ import {
   type DraftSource,
   type TemplateWorkspaceDraftSession,
 } from "./templateRouteControllerShared";
+import {
+  resolveTemplateDraftDiscardPrompt,
+  resolveTemplateDraftReplacementPrompt,
+  type TemplateDraftPromptOverride,
+  type TemplateDraftReplacementRequest,
+} from "./templateDraftGuardrails";
 
 const TEMPLATE_WORKSPACE_DRAFT_SESSION_KEY =
   "spartan.templates.workspace-draft-session";
@@ -127,16 +133,15 @@ export function useTemplateDraftPersistence({
   }, [selectedName, selectedTemplateData, setWorkspaceDraftSession]);
 
   const confirmReplaceCurrentDraft = useCallback(
-    async (options?: { title?: string; reason?: string }) => {
+    async (request?: TemplateDraftReplacementRequest) => {
       if (!workspaceDraftSession || !isDirty) {
         return true;
       }
 
+      const prompt = resolveTemplateDraftReplacementPrompt(request);
       return toast.confirm({
-        title: options?.title ?? "Replace the current template draft?",
-        description:
-          options?.reason ??
-          "This opens another local template draft and discards the edits you have not saved yet. Keep the current draft if you still need it.",
+        title: prompt.title,
+        description: prompt.description,
         confirmLabel: "Discard draft",
         cancelLabel: "Keep draft",
         tone: "warning",
@@ -146,18 +151,15 @@ export function useTemplateDraftPersistence({
   );
 
   const discardWorkspaceDraft = useCallback(
-    async (options?: { title?: string; reason?: string }) => {
+    async (options?: TemplateDraftPromptOverride) => {
       if (!workspaceDraftSession) {
         return true;
       }
 
+      const prompt = resolveTemplateDraftDiscardPrompt(isDirty, options);
       const confirmed = await toast.confirm({
-        title: options?.title ?? "Discard the local template draft?",
-        description:
-          options?.reason ??
-          (isDirty
-            ? "This removes the in-progress template draft. Your unsaved edits will be lost."
-            : "This removes the current local template draft from this tab."),
+        title: prompt.title,
+        description: prompt.description,
         confirmLabel: "Discard draft",
         cancelLabel: "Keep draft",
         tone: "warning",

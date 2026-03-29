@@ -16,11 +16,10 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Extract `useTemplateAssistantState` from `useTemplateRouteController.ts` so preview URL and assistant-mode wiring stop colliding with route composition.
 - Extract `useResultsSelectionState` and `useResultsTooling` from `useResultsExplorer.ts` so reader filters/selection stop colliding with export, diff, and transform state.
 - Extract a shared native-authoring workspace controller from `RenderProfileEditor.tsx` and `PipelineJSEditor.tsx` so generator/debugger/native-edit flows stop diverging.
-- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so global shell behavior stops colliding with route handoff.
 - Consolidate shared browser-runtime validation and form helpers across template, render-profile, and pipeline-JS authoring surfaces.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` so global shell behavior stops colliding with route handoff.
 
 ## Ongoing Constraints
 

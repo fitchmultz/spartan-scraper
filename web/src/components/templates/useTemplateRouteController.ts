@@ -6,12 +6,12 @@
  * Invariants/Assumptions: The composed controller remains the only route-facing API for the Templates surface, and assistant actions never auto-save without an explicit workspace command.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { ComponentStatus, Template } from "../../api";
 import type { TemplatePromotionSeed } from "../../types/promotion";
-import { useAIAssistant, type TemplateAssistantMode } from "../ai-assistant";
 import { isTemplateWorkspaceDraftDirty } from "./templateRouteControllerShared";
+import { useTemplateAssistantState } from "./useTemplateAssistantState";
 import { useTemplateDraftSessionState } from "./useTemplateDraftPersistence";
 import { useTemplateDetailLoader } from "./useTemplateDetailLoader";
 import { useTemplateDraftSession } from "./useTemplateDraftSession";
@@ -32,14 +32,11 @@ export function useTemplateRouteController({
   promotionSeed = null,
   onClearPromotionSeed,
 }: TemplateRouteControllerOptions) {
-  const aiAssistant = useAIAssistant();
   const [
     workspaceDraftSession,
     setWorkspaceDraftSession,
     clearWorkspaceDraftSession,
   ] = useTemplateDraftSessionState();
-  const [railTab, setRailTab] = useState<TemplateAssistantMode>("preview");
-  const [previewUrl, setPreviewUrl] = useState("");
 
   const detailLoader = useTemplateDetailLoader({
     templateNames,
@@ -62,6 +59,13 @@ export function useTemplateRouteController({
     clearWorkspaceDraftSession,
   });
 
+  const assistantState = useTemplateAssistantState({
+    draftTemplate: draftSession.draftTemplate,
+    activeDraftSource: draftSession.activeDraftSource,
+    readOnly: draftSession.readOnly,
+    setIsBuilderOpen: draftSession.setIsBuilderOpen,
+  });
+
   useTemplatePromotionState({
     promotionSeed,
     confirmReplaceCurrentDraft: draftSession.confirmReplaceCurrentDraft,
@@ -70,30 +74,11 @@ export function useTemplateRouteController({
     preventAutoSelect: detailLoader.preventAutoSelect,
     setDetailError: detailLoader.setDetailError,
     setIsLoadingDetail: detailLoader.setIsLoadingDetail,
-    setPreviewUrl,
-    setRailTab,
+    setPreviewUrl: assistantState.setPreviewUrl,
+    setRailTab: assistantState.setRailTab,
     setSelectedName: detailLoader.setSelectedName,
     setSelectedTemplate: detailLoader.setSelectedTemplate,
   });
-
-  const openAssistantMode = useCallback(
-    (mode: TemplateAssistantMode) => {
-      setRailTab(mode);
-      draftSession.setIsBuilderOpen(false);
-      aiAssistant.open({
-        surface: "templates",
-        templateName: draftSession.draftTemplate.name || undefined,
-        templateSnapshot: draftSession.draftTemplate as Record<string, unknown>,
-        selectedUrl: previewUrl || undefined,
-      });
-    },
-    [
-      aiAssistant,
-      draftSession.draftTemplate,
-      draftSession.setIsBuilderOpen,
-      previewUrl,
-    ],
-  );
 
   const editorTitle =
     draftSession.activeDraftSource === "create"
@@ -112,7 +97,7 @@ export function useTemplateRouteController({
         onStartCreate: () => {
           void draftSession.handleStartCreate();
         },
-        onOpenAssistant: () => openAssistantMode("generate"),
+        onOpenAssistant: () => assistantState.openAssistantMode("generate"),
         onOpenVisualBuilder: () => draftSession.setIsBuilderOpen(true),
       },
       libraryProps: {
@@ -147,8 +132,8 @@ export function useTemplateRouteController({
         isSaving: draftSession.isSaving,
         saveError: draftSession.saveError,
         saveNotice: draftSession.saveNotice,
-        onOpenPreview: () => openAssistantMode("preview"),
-        onOpenAssistant: () => openAssistantMode("debug"),
+        onOpenPreview: () => assistantState.openAssistantMode("preview"),
+        onOpenAssistant: () => assistantState.openAssistantMode("debug"),
         onStartDuplicate: () => {
           void draftSession.handleStartDuplicate();
         },
@@ -171,20 +156,16 @@ export function useTemplateRouteController({
         onBuilderCancel: () => draftSession.setIsBuilderOpen(false),
       },
       assistantProps: {
-        railTab,
+        railTab: assistantState.railTab,
         draftTemplate: draftSession.draftTemplate,
-        previewUrl,
+        previewUrl: assistantState.previewUrl,
         aiStatus,
-        onModeChange: setRailTab,
-        onPreviewUrlChange: setPreviewUrl,
+        onModeChange: assistantState.setRailTab,
+        onPreviewUrlChange: assistantState.setPreviewUrl,
         onApplyTemplate: (template: Template) => {
           void draftSession.handleApplyTemplate(
             template,
-            railTab === "generate"
-              ? "create"
-              : draftSession.readOnly
-                ? "duplicate"
-                : draftSession.activeDraftSource,
+            assistantState.applyTemplateSource,
           );
         },
       },
@@ -222,11 +203,9 @@ export function useTemplateRouteController({
       draftSession.setIsBuilderOpen,
       draftSession.updateDraft,
       editorTitle,
+      assistantState,
       onClearPromotionSeed,
-      openAssistantMode,
-      previewUrl,
       promotionSeed,
-      railTab,
       templateNames,
     ],
   );

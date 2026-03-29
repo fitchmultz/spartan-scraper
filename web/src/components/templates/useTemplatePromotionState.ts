@@ -12,13 +12,13 @@ import type { Template, TemplateDetail } from "../../api";
 import type { TemplatePromotionSeed } from "../../types/promotion";
 import type { TemplateAssistantMode } from "../ai-assistant";
 import type { DraftSource } from "./templateRouteControllerShared";
+import type { TemplateDraftReplacementRequest } from "./templateDraftGuardrails";
 
 interface UseTemplatePromotionStateOptions {
   promotionSeed?: TemplatePromotionSeed | null;
-  confirmReplaceCurrentDraft: (options?: {
-    title?: string;
-    reason?: string;
-  }) => Promise<boolean>;
+  confirmReplaceCurrentDraft: (
+    request?: TemplateDraftReplacementRequest,
+  ) => Promise<boolean>;
   fetchTemplateDetail: (name: string) => Promise<{
     detail: TemplateDetail | null;
     error: string | null;
@@ -70,11 +70,7 @@ export function useTemplatePromotionState({
     let cancelled = false;
 
     const applyPromotionSeed = async () => {
-      const confirmed = await confirmReplaceCurrentDraft({
-        title: "Replace the current template draft?",
-        reason:
-          "This verified-job draft will replace the current local template draft. Keep the current draft if you still need those unsaved edits.",
-      });
+      const confirmed = await confirmReplaceCurrentDraft("promotion");
       if (!confirmed) {
         return;
       }
