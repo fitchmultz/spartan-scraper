@@ -1,13 +1,14 @@
 /**
  * Purpose: Own the persisted template workspace draft state and derived draft-session behavior.
- * Responsibilities: Own the session-storage draft state, derive the active template draft, track builder visibility, protect unsaved edits, and expose draft-state mutations without coupling them to save/delete flows.
+ * Responsibilities: Own the session-storage draft state, derive the active template draft, refresh clean selected drafts from authoritative template detail, track builder visibility, protect unsaved edits, and expose draft-state mutations without coupling them to save/delete flows.
  * Scope: Template draft persistence and local workspace state only; save/delete/create/duplicate/apply actions stay in `useTemplateMutationActions.ts`.
  * Usage: `useTemplateRouteController()` reads session state from this module, and `useTemplateDraftSession()` composes the derived draft behavior.
- * Invariants/Assumptions: Session storage is the source of truth for unsaved template drafts, built-in templates stay read-only until duplicated, and draft snapshots are normalized before dirty checks.
+ * Invariants/Assumptions: Session storage is the source of truth for unsaved template drafts, built-in templates stay read-only until duplicated, and only clean selected drafts refresh from authoritative template detail.
  */
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -97,6 +98,33 @@ export function useTemplateDraftPersistence({
   );
 
   useBeforeUnloadPrompt(isDirty);
+
+  useEffect(() => {
+    if (!selectedTemplateData || !selectedName) {
+      return;
+    }
+
+    setWorkspaceDraftSession((current) => {
+      if (
+        !current ||
+        current.source !== "selected" ||
+        current.originalName !== selectedTemplateData.name ||
+        isTemplateWorkspaceDraftDirty(current)
+      ) {
+        return current;
+      }
+
+      return createTemplateWorkspaceDraftSession(
+        selectedTemplateData,
+        "selected",
+        {
+          originalName: selectedTemplateData.name,
+          selectedName,
+          visible: current.visible,
+        },
+      );
+    });
+  }, [selectedName, selectedTemplateData, setWorkspaceDraftSession]);
 
   const confirmReplaceCurrentDraft = useCallback(
     async (options?: { title?: string; reason?: string }) => {

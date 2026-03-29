@@ -43,8 +43,8 @@ export function useTemplateRouteController({
 
   const detailLoader = useTemplateDetailLoader({
     templateNames,
-    workspaceDraftSession,
-    setWorkspaceDraftSession,
+    initialSelectedName: workspaceDraftSession?.selectedName ?? null,
+    hasInitialDraftSession: workspaceDraftSession !== null,
   });
 
   const draftSession = useTemplateDraftSession({

@@ -1,36 +1,22 @@
 /**
  * Purpose: Own template-library selection and detail loading for the Templates route.
- * Responsibilities: Track the selected template, load detail on demand, keep the library auto-selection rules stable, and refresh selected draft snapshots when the authoritative saved template changes.
- * Scope: Template-detail selection/loading only; workspace draft actions and promotion handling stay in sibling hooks.
+ * Responsibilities: Track the selected template, load detail on demand, and keep the library auto-selection rules stable without mutating workspace draft state.
+ * Scope: Template-detail selection/loading only; workspace draft refresh, draft actions, and promotion handling stay in sibling hooks.
  * Usage: Called from `useTemplateRouteController()` before composing draft-session and promotion behavior.
- * Invariants/Assumptions: Saved template detail is fetched from the API on demand, built-in status is derived from template detail when available, and untouched selected drafts refresh from authoritative template detail.
+ * Invariants/Assumptions: Saved template detail is fetched from the API on demand, built-in status is derived from template detail when available, and loading template detail never rewrites the local workspace draft by itself.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getTemplate, type TemplateDetail } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { BUILT_IN_TEMPLATE_NAMES } from "./templateEditorUtils";
-import {
-  createTemplateWorkspaceDraftSession,
-  isTemplateWorkspaceDraftDirty,
-  type TemplateWorkspaceDraftSession,
-} from "./templateRouteControllerShared";
 
 interface UseTemplateDetailLoaderOptions {
   templateNames: string[];
-  workspaceDraftSession: TemplateWorkspaceDraftSession | null;
-  setWorkspaceDraftSession: Dispatch<
-    SetStateAction<TemplateWorkspaceDraftSession | null>
-  >;
+  initialSelectedName: string | null;
+  hasInitialDraftSession: boolean;
 }
 
 interface FetchTemplateDetailResult {
@@ -40,18 +26,18 @@ interface FetchTemplateDetailResult {
 
 export function useTemplateDetailLoader({
   templateNames,
-  workspaceDraftSession,
-  setWorkspaceDraftSession,
+  initialSelectedName,
+  hasInitialDraftSession,
 }: UseTemplateDetailLoaderOptions) {
   const [selectedName, setSelectedName] = useState<string | null>(
-    () => workspaceDraftSession?.selectedName ?? templateNames[0] ?? null,
+    () => initialSelectedName ?? templateNames[0] ?? null,
   );
   const [selectedTemplate, setSelectedTemplate] =
     useState<TemplateDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [shouldAutoSelectFirst, setShouldAutoSelectFirst] = useState(
-    () => workspaceDraftSession === null,
+    () => !hasInitialDraftSession,
   );
 
   const selectedTemplateData = selectedTemplate?.template ?? null;
@@ -62,33 +48,6 @@ export function useTemplateDetailLoader({
           selectedName as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
         )
       : false);
-
-  const syncSelectedDraft = useCallback(
-    (detail: TemplateDetail | null, name: string) => {
-      setSelectedTemplate(detail);
-      setWorkspaceDraftSession((current) => {
-        if (
-          !current ||
-          current.source !== "selected" ||
-          current.originalName !== detail?.template?.name ||
-          isTemplateWorkspaceDraftDirty(current)
-        ) {
-          return current;
-        }
-
-        return createTemplateWorkspaceDraftSession(
-          detail?.template,
-          "selected",
-          {
-            originalName: detail?.template?.name,
-            selectedName: name,
-            visible: current.visible,
-          },
-        );
-      });
-    },
-    [setWorkspaceDraftSession],
-  );
 
   const fetchTemplateDetail = useCallback(
     async (name: string): Promise<FetchTemplateDetailResult> => {
@@ -166,7 +125,7 @@ export function useTemplateDetailLoader({
         return;
       }
 
-      syncSelectedDraft(detail, selectedName);
+      setSelectedTemplate(detail);
       setIsLoadingDetail(false);
     };
 
@@ -175,7 +134,7 @@ export function useTemplateDetailLoader({
     return () => {
       cancelled = true;
     };
-  }, [fetchTemplateDetail, selectedName, syncSelectedDraft]);
+  }, [fetchTemplateDetail, selectedName]);
 
   return useMemo(
     () => ({
@@ -191,7 +150,6 @@ export function useTemplateDetailLoader({
       setIsLoadingDetail,
       setSelectedName,
       setSelectedTemplate,
-      syncSelectedDraft,
     }),
     [
       detailError,
@@ -202,7 +160,6 @@ export function useTemplateDetailLoader({
       selectedName,
       selectedTemplate,
       selectedTemplateData,
-      syncSelectedDraft,
     ],
   );
 }
