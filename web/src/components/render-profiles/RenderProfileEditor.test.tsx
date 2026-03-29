@@ -514,6 +514,102 @@ describe("RenderProfileEditor", () => {
     expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
   });
 
+  it("rejects persisted js-heavy threshold values outside the allowed range", async () => {
+    window.sessionStorage.setItem(
+      "spartan.render-profile.workspace-draft-session",
+      JSON.stringify({
+        source: "native",
+        attemptId: null,
+        mode: "create",
+        originalName: null,
+        initialValue: {
+          name: "",
+          hostPatterns: [],
+        },
+        draft: {
+          formData: {
+            name: "news",
+            hostPatterns: [],
+          },
+          hostPatternInput: "example.com",
+          jsHeavyThresholdInput: "1.5",
+          rateLimitQPSInput: "2",
+          rateLimitBurstInput: "",
+          waitJSON: "",
+          blockJSON: "",
+          timeoutsJSON: "",
+          screenshotJSON: "",
+          deviceJSON: "",
+        },
+        visible: true,
+      }),
+    );
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    await screen.findByRole("heading", { name: /create new profile/i });
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/js-heavy threshold must be between 0 and 1/i),
+    ).toBeInTheDocument();
+    const jsHeavyThresholdInput = screen.getByLabelText(/js-heavy threshold/i);
+    expect(jsHeavyThresholdInput).toHaveAttribute("aria-invalid", "true");
+    expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
+  });
+
+  it("rejects persisted fractional rate limit qps values at the field level", async () => {
+    window.sessionStorage.setItem(
+      "spartan.render-profile.workspace-draft-session",
+      JSON.stringify({
+        source: "native",
+        attemptId: null,
+        mode: "create",
+        originalName: null,
+        initialValue: {
+          name: "",
+          hostPatterns: [],
+        },
+        draft: {
+          formData: {
+            name: "news",
+            hostPatterns: [],
+          },
+          hostPatternInput: "example.com",
+          jsHeavyThresholdInput: "0.5",
+          rateLimitQPSInput: "2.5",
+          rateLimitBurstInput: "",
+          waitJSON: "",
+          blockJSON: "",
+          timeoutsJSON: "",
+          screenshotJSON: "",
+          deviceJSON: "",
+        },
+        visible: true,
+      }),
+    );
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    await screen.findByRole("heading", { name: /create new profile/i });
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/rate limit qps must be a whole number/i),
+    ).toBeInTheDocument();
+    const rateLimitQpsInput = screen.getByLabelText(/rate limit qps/i);
+    expect(rateLimitQpsInput).toHaveAttribute("aria-invalid", "true");
+    expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
+  });
+
   it("warns honestly when saving succeeds but the inventory refresh fails", async () => {
     vi.mocked(api.getV1RenderProfiles)
       .mockResolvedValueOnce({

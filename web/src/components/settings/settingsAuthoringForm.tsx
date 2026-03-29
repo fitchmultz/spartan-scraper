@@ -66,14 +66,21 @@ export function parseOptionalJSONObject<T extends object>(
   return parsed as T;
 }
 
-export function parseOptionalNumber(value: string): number | undefined {
+export function parseOptionalNumber(
+  label: string,
+  value: string,
+): number | undefined {
   const trimmed = value.trim();
   if (!trimmed) {
     return undefined;
   }
 
   const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a valid number`);
+  }
+
+  return parsed;
 }
 
 export function getSettingsDraftSyncState<TDraft, TValue>(options: {

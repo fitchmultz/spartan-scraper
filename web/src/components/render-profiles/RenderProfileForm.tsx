@@ -3,7 +3,7 @@
  * Responsibilities: Own render-profile draft field state, convert between form inputs and API payloads, surface validation errors, and notify the parent editor when the working draft changes.
  * Scope: Render-profile authoring fields only; inventory loading, AI handoff, and persistence stay with the parent Settings editor.
  * Usage: Mounted by `RenderProfileEditor` for native and AI-backed Settings drafts.
- * Invariants/Assumptions: Name locking is handled by props, optional JSON sections may be blank, and invalid JSON should block submit with a field-level error.
+ * Invariants/Assumptions: Name locking is handled by props, optional JSON sections may be blank, and invalid structured, ranged, or integer-only numeric draft input should block submit with a field-level error.
  */
 
 import {
@@ -113,10 +113,60 @@ export function createProfileFormDraft(
   };
 }
 
+function parseOptionalFractionInRange(
+  label: string,
+  value: string,
+  min: number,
+  max: number,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed < min || parsed > max) {
+    throw new Error(`${label} must be between ${min} and ${max}`);
+  }
+  return parsed;
+}
+
+function parseOptionalNonNegativeInteger(
+  label: string,
+  value: string,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${label} must be a whole number`);
+  }
+  if (parsed < 0) {
+    throw new Error(`${label} must be non-negative`);
+  }
+  return parsed;
+}
+
 export function buildRenderProfileInputFromDraft(
   draft: ProfileFormDraft,
 ): RenderProfileInput {
   const hostPatterns = parseCommaSeparatedList(draft.hostPatternInput);
+
+  const jsHeavyThreshold = parseOptionalFractionInRange(
+    "JS-Heavy Threshold",
+    draft.jsHeavyThresholdInput,
+    0,
+    1,
+  );
+
+  const rateLimitQPS = parseOptionalNonNegativeInteger(
+    "Rate Limit QPS",
+    draft.rateLimitQPSInput,
+  );
+
+  const rateLimitBurst = parseOptionalNonNegativeInteger(
+    "Rate Limit Burst",
+    draft.rateLimitBurstInput,
+  );
 
   return {
     ...draft.formData,
@@ -125,9 +175,9 @@ export function buildRenderProfileInputFromDraft(
     preferHeadless: draft.formData.preferHeadless ? true : undefined,
     neverHeadless: draft.formData.neverHeadless ? true : undefined,
     assumeJsHeavy: draft.formData.assumeJsHeavy ? true : undefined,
-    jsHeavyThreshold: parseOptionalNumber(draft.jsHeavyThresholdInput),
-    rateLimitQPS: parseOptionalNumber(draft.rateLimitQPSInput),
-    rateLimitBurst: parseOptionalNumber(draft.rateLimitBurstInput),
+    jsHeavyThreshold,
+    rateLimitQPS,
+    rateLimitBurst,
     wait: parseOptionalJSONObject<NonNullable<RenderProfileInput["wait"]>>(
       "Wait configuration",
       draft.waitJSON,
@@ -159,6 +209,40 @@ export function isProfileDraftDirty(
       initialValue,
       buildValue: buildRenderProfileInputFromDraft,
     }) === "dirty"
+  );
+}
+
+const PROFILE_FIELD_ERROR_LABELS = [
+  "JS-Heavy Threshold",
+  "Rate Limit QPS",
+  "Rate Limit Burst",
+  "Wait configuration",
+  "Block configuration",
+  "Timeout configuration",
+  "Screenshot configuration",
+  "Device configuration",
+] as const;
+
+type ProfileFieldErrorLabel = (typeof PROFILE_FIELD_ERROR_LABELS)[number];
+
+function getProfileFieldError(
+  error: string | null,
+  label: ProfileFieldErrorLabel,
+): string | null {
+  if (!error || !error.startsWith(`${label} `)) {
+    return null;
+  }
+
+  return error;
+}
+
+function isProfileFieldError(error: string | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  return PROFILE_FIELD_ERROR_LABELS.some((label) =>
+    error.startsWith(`${label} `),
   );
 }
 
@@ -214,6 +298,27 @@ export function RenderProfileForm({
   );
   const [deviceJSON, setDeviceJSON] = useState(seedDraft.deviceJSON);
   const [formError, setFormError] = useState<string | null>(null);
+  const jsHeavyThresholdError = getProfileFieldError(
+    formError,
+    "JS-Heavy Threshold",
+  );
+  const rateLimitQpsError = getProfileFieldError(formError, "Rate Limit QPS");
+  const rateLimitBurstError = getProfileFieldError(
+    formError,
+    "Rate Limit Burst",
+  );
+  const waitError = getProfileFieldError(formError, "Wait configuration");
+  const blockError = getProfileFieldError(formError, "Block configuration");
+  const timeoutsError = getProfileFieldError(
+    formError,
+    "Timeout configuration",
+  );
+  const screenshotError = getProfileFieldError(
+    formError,
+    "Screenshot configuration",
+  );
+  const deviceError = getProfileFieldError(formError, "Device configuration");
+  const topLevelError = isProfileFieldError(formError) ? null : formError;
 
   const currentDraft = useMemo<ProfileFormDraft>(
     () => ({
@@ -284,7 +389,7 @@ export function RenderProfileForm({
       title={title ?? (profile ? "Edit Profile" : "Create New Profile")}
       syncState={syncState}
       contextNotice={contextNotice}
-      error={formError}
+      error={topLevelError}
       cancelLabel={cancelLabel}
       discardLabel={discardLabel}
       submitLabel={submitLabel ?? (profile ? "Update" : "Create")}
@@ -415,14 +520,25 @@ export function RenderProfileForm({
           <input
             id="js-heavy-threshold"
             type="number"
-            min="0"
-            max="1"
             step="0.01"
             value={jsHeavyThresholdInput}
             onChange={(event) => setJsHeavyThresholdInput(event.target.value)}
             className="w-full rounded border px-3 py-2"
             placeholder="0.50"
+            aria-invalid={Boolean(jsHeavyThresholdError)}
+            aria-describedby={
+              jsHeavyThresholdError ? "js-heavy-threshold-error" : undefined
+            }
           />
+          {jsHeavyThresholdError ? (
+            <p
+              id="js-heavy-threshold-error"
+              className="mt-1 text-xs text-red-600"
+              role="alert"
+            >
+              {jsHeavyThresholdError}
+            </p>
+          ) : null}
         </div>
         <div>
           <label
@@ -434,13 +550,25 @@ export function RenderProfileForm({
           <input
             id="rate-limit-qps"
             type="number"
-            min="0"
-            step="0.1"
+            step="1"
             value={rateLimitQPSInput}
             onChange={(event) => setRateLimitQPSInput(event.target.value)}
             className="w-full rounded border px-3 py-2"
             placeholder="0 = global default"
+            aria-invalid={Boolean(rateLimitQpsError)}
+            aria-describedby={
+              rateLimitQpsError ? "rate-limit-qps-error" : undefined
+            }
           />
+          {rateLimitQpsError ? (
+            <p
+              id="rate-limit-qps-error"
+              className="mt-1 text-xs text-red-600"
+              role="alert"
+            >
+              {rateLimitQpsError}
+            </p>
+          ) : null}
         </div>
         <div>
           <label
@@ -452,13 +580,25 @@ export function RenderProfileForm({
           <input
             id="rate-limit-burst"
             type="number"
-            min="0"
             step="1"
             value={rateLimitBurstInput}
             onChange={(event) => setRateLimitBurstInput(event.target.value)}
             className="w-full rounded border px-3 py-2"
             placeholder="0 = global default"
+            aria-invalid={Boolean(rateLimitBurstError)}
+            aria-describedby={
+              rateLimitBurstError ? "rate-limit-burst-error" : undefined
+            }
           />
+          {rateLimitBurstError ? (
+            <p
+              id="rate-limit-burst-error"
+              className="mt-1 text-xs text-red-600"
+              role="alert"
+            >
+              {rateLimitBurstError}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -468,6 +608,7 @@ export function RenderProfileForm({
           label="Wait configuration JSON"
           value={waitJSON}
           onChange={setWaitJSON}
+          error={waitError}
           placeholder={`{\n  "mode": "selector",\n  "selector": "main"\n}`}
           helpText="Optional advanced wait configuration. Leave blank to omit."
         />
@@ -476,6 +617,7 @@ export function RenderProfileForm({
           label="Block configuration JSON"
           value={blockJSON}
           onChange={setBlockJSON}
+          error={blockError}
           placeholder={`{\n  "resourceTypes": ["image", "font"],\n  "urlPatterns": ["*.tracker.com/*"]\n}`}
           helpText="Optional request blocking rules. Leave blank to omit."
         />
@@ -484,6 +626,7 @@ export function RenderProfileForm({
           label="Timeout configuration JSON"
           value={timeoutsJSON}
           onChange={setTimeoutsJSON}
+          error={timeoutsError}
           placeholder={`{\n  "maxRenderMs": 30000,\n  "navigationMs": 15000\n}`}
           helpText="Optional per-profile timeout overrides. Leave blank to omit."
         />
@@ -492,6 +635,7 @@ export function RenderProfileForm({
           label="Screenshot configuration JSON"
           value={screenshotJSON}
           onChange={setScreenshotJSON}
+          error={screenshotError}
           placeholder={`{\n  "enabled": true,\n  "fullPage": true,\n  "format": "png"\n}`}
           helpText="Optional screenshot capture defaults. Leave blank to omit."
         />
@@ -502,6 +646,7 @@ export function RenderProfileForm({
         label="Device configuration JSON"
         value={deviceJSON}
         onChange={setDeviceJSON}
+        error={deviceError}
         placeholder={`{\n  "name": "iPhone 14 Pro",\n  "viewportWidth": 393,\n  "viewportHeight": 852,\n  "deviceScaleFactor": 3,\n  "isMobile": true\n}`}
         helpText="Optional device emulation. Leave blank to omit."
       />
@@ -516,6 +661,7 @@ interface JSONTextareaProps {
   onChange: (value: string) => void;
   placeholder: string;
   helpText: string;
+  error?: string | null;
 }
 
 function JSONTextarea({
@@ -525,6 +671,7 @@ function JSONTextarea({
   onChange,
   placeholder,
   helpText,
+  error,
 }: JSONTextareaProps) {
   return (
     <div>
@@ -538,7 +685,18 @@ function JSONTextarea({
         placeholder={placeholder}
         className="w-full rounded border px-3 py-2 font-mono text-sm"
         rows={8}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
+      {error ? (
+        <p
+          id={`${id}-error`}
+          className="mt-1 text-xs text-red-600"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
       <p className="mt-1 text-xs text-gray-500">{helpText}</p>
     </div>
   );

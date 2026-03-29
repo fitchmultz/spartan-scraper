@@ -12,6 +12,7 @@ import {
   formatOptionalJSON,
   getSettingsDraftSyncState,
   parseOptionalJSONObject,
+  parseOptionalNumber,
 } from "./settingsAuthoringForm";
 
 describe("settingsAuthoringForm helpers", () => {
@@ -38,6 +39,13 @@ describe("settingsAuthoringForm helpers", () => {
     ).toThrow("Wait configuration must be a JSON object");
     expect(() => parseOptionalJSONObject("Wait configuration", "[]")).toThrow(
       "Wait configuration must be a JSON object",
+    );
+  });
+
+  it("rejects invalid optional numeric input instead of silently clearing it", () => {
+    expect(parseOptionalNumber("Rate Limit QPS", "  ")).toBeUndefined();
+    expect(() => parseOptionalNumber("Rate Limit QPS", "abc")).toThrow(
+      "Rate Limit QPS must be a valid number",
     );
   });
 });
