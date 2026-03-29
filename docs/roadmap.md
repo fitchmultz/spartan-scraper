@@ -16,9 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-- Finish render-profile draft validation hardening: keep invalid persisted numeric inputs from being silently cleared, surface field-level errors through `RenderProfileForm`, and lock the behavior with shared-helper and editor tests.
-- Finish the template authoring helper cutover: move the remaining template draft parsing, formatting, and validation copy onto `settingsAuthoringForm.tsx`, then delete the duplicate helper logic from `templateEditorUtils.ts` and update the inline editor tests.
-- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx`, then move history-state comparison into a route helper so navigation, keyboard handling, and submission side effects stop colliding with route rendering.
+- Commit the render-profile numeric validation hardening (uncommitted: `parseOptionalNumber` now throws, `RenderProfileForm` wires label errors, editor test covers invalid draft). Surface any remaining field-level errors through `RenderProfileForm` and add shared-helper tests if the uncommitted coverage gaps show them.
+- Move the remaining template draft parsing, formatting, and validation copy onto `settingsAuthoringForm.tsx`, delete the duplicate helper logic from `templateEditorUtils.ts`, and update the inline editor tests.
+- Extract `useAppShellRouting`, `useJobSubmissionActions`, and `useShellShortcuts` from `web/src/App.tsx` (1064 lines), then move history-state comparison into a route helper so navigation, keyboard handling, and submission side effects stop colliding with route rendering.
 
 ## Ongoing Constraints
 
