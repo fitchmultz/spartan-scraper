@@ -16,15 +16,9 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### RP-2: Consolidate template JSON codecs onto shared authoring helpers
-
-Move template draft JSON parsing/formatting onto `settingsAuthoringForm.tsx`; keep the template-specific snapshot/payload helpers in `templateEditorUtils.ts` for now.
-
-Files: `web/src/components/templates/templateEditorUtils.ts`, `web/src/components/settings/settingsAuthoringForm.tsx`, template consumer files
-
 ### RP-3: Prune `templateEditorUtils.ts` after the codec cutover
 
-Delete dead exports after RP-2 and fold any remaining helpers into the owning template components.
+Delete any remaining dead exports and fold the surviving helpers into the owning template components.
 
 Files: `web/src/components/templates/templateEditorUtils.ts`, template workspace files
 

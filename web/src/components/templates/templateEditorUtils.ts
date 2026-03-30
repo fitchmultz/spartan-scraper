@@ -1,6 +1,6 @@
 /**
  * Purpose: Centralize draft conversion and validation helpers for the Templates workspace.
- * Responsibilities: Create editable selector drafts, build save payloads, format advanced JSON blocks, and describe saved templates.
+ * Responsibilities: Create editable selector drafts, build save payloads, reuse shared optional JSON codecs, and describe saved templates.
  * Scope: Template-editor state helpers only; network requests and route orchestration stay in workspace components.
  * Usage: Imported by template workspace components to keep draft handling consistent across inline editing, preview, AI assistance, and builder handoffs.
  * Invariants/Assumptions: Template names are required for persistence, meaningful selector rows need both a field name and CSS selector, and invalid advanced JSON should only block save flows.
@@ -15,6 +15,10 @@ import type {
   Template,
   TemplateDetail,
 } from "../../api";
+import {
+  formatOptionalJSON,
+  parseOptionalJSON,
+} from "../settings/settingsAuthoringForm";
 
 export const BUILT_IN_TEMPLATE_NAMES = [
   "article",
@@ -30,11 +34,6 @@ const EMPTY_SELECTOR: SelectorRule = {
   all: false,
   required: false,
 };
-
-export interface JsonParseResult<T> {
-  data?: T;
-  error?: string;
-}
 
 export interface SelectorDraft {
   id: string;
@@ -84,9 +83,9 @@ export function buildDraftFromTemplate(
     selectors: template?.selectors?.length
       ? template.selectors.map((selector) => createSelectorDraft(selector))
       : [createSelectorDraft()],
-    jsonldText: formatJSON(template?.jsonld),
-    regexText: formatJSON(template?.regex),
-    normalizeText: formatJSON(template?.normalize),
+    jsonldText: formatOptionalJSON(template?.jsonld),
+    regexText: formatOptionalJSON(template?.regex),
+    normalizeText: formatOptionalJSON(template?.normalize),
   };
 }
 
@@ -101,41 +100,41 @@ export function describeTemplate(detail: TemplateDetail | null) {
   return `${selectors} selector${selectors === 1 ? "" : "s"} · ${jsonld} JSON-LD · ${regex} regex`;
 }
 
-export function parseJSONInput<T>(
-  label: string,
-  value: string,
-): JsonParseResult<T> {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return {};
-  }
-
-  try {
-    return { data: JSON.parse(trimmed) as T };
-  } catch (error) {
-    return {
-      error: `${label} must be valid JSON: ${error instanceof Error ? error.message : "Invalid JSON"}`,
-    };
-  }
-}
-
-export function formatJSON(value: unknown) {
-  return value ? JSON.stringify(value, null, 2) : "";
-}
-
 export function buildTemplateSnapshot(draft: TemplateDraftState): Template {
-  const jsonldResult = parseJSONInput<JsonldRule[]>(
-    "JSON-LD rules",
-    draft.jsonldText,
-  );
-  const regexResult = parseJSONInput<RegexRule[]>(
-    "Regex rules",
-    draft.regexText,
-  );
-  const normalizeResult = parseJSONInput<NormalizeSpec>(
-    "Normalization settings",
-    draft.normalizeText,
-  );
+  let jsonld: JsonldRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "JSON-LD rules",
+      draft.jsonldText,
+    );
+    jsonld =
+      parsed && Array.isArray(parsed) ? (parsed as JsonldRule[]) : undefined;
+  } catch {
+    jsonld = undefined;
+  }
+
+  let regex: RegexRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>("Regex rules", draft.regexText);
+    regex =
+      parsed && Array.isArray(parsed) ? (parsed as RegexRule[]) : undefined;
+  } catch {
+    regex = undefined;
+  }
+
+  let normalize: NormalizeSpec | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "Normalization settings",
+      draft.normalizeText,
+    );
+    normalize =
+      parsed && !Array.isArray(parsed) && typeof parsed === "object"
+        ? (parsed as NormalizeSpec)
+        : undefined;
+  } catch {
+    normalize = undefined;
+  }
 
   return {
     name: draft.name.trim(),
@@ -146,11 +145,9 @@ export function buildTemplateSnapshot(draft: TemplateDraftState): Template {
       attr: rule.attr?.trim() || "text",
       join: rule.join?.trim() || undefined,
     })),
-    ...(Array.isArray(jsonldResult.data) ? { jsonld: jsonldResult.data } : {}),
-    ...(Array.isArray(regexResult.data) ? { regex: regexResult.data } : {}),
-    ...(normalizeResult.data && !Array.isArray(normalizeResult.data)
-      ? { normalize: normalizeResult.data }
-      : {}),
+    ...(jsonld ? { jsonld } : {}),
+    ...(regex ? { regex } : {}),
+    ...(normalize ? { normalize } : {}),
   };
 }
 
@@ -185,50 +182,72 @@ export function buildTemplatePayload(draft: TemplateDraftState): {
     return { error: "Each selector rule needs a CSS selector." };
   }
 
-  const jsonldResult = parseJSONInput<JsonldRule[]>(
-    "JSON-LD rules",
-    draft.jsonldText,
-  );
-  if (jsonldResult.error) {
-    return { error: jsonldResult.error };
-  }
-  if (jsonldResult.data && !Array.isArray(jsonldResult.data)) {
-    return { error: "JSON-LD rules must be a JSON array." };
-  }
-
-  const regexResult = parseJSONInput<RegexRule[]>(
-    "Regex rules",
-    draft.regexText,
-  );
-  if (regexResult.error) {
-    return { error: regexResult.error };
-  }
-  if (regexResult.data && !Array.isArray(regexResult.data)) {
-    return { error: "Regex rules must be a JSON array." };
+  let jsonld: JsonldRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "JSON-LD rules",
+      draft.jsonldText,
+    );
+    if (parsed && !Array.isArray(parsed)) {
+      return { error: "JSON-LD rules must be a JSON array." };
+    }
+    jsonld =
+      parsed && Array.isArray(parsed) ? (parsed as JsonldRule[]) : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "JSON-LD rules must be valid JSON.",
+    };
   }
 
-  const normalizeResult = parseJSONInput<NormalizeSpec>(
-    "Normalization settings",
-    draft.normalizeText,
-  );
-  if (normalizeResult.error) {
-    return { error: normalizeResult.error };
+  let regex: RegexRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>("Regex rules", draft.regexText);
+    if (parsed && !Array.isArray(parsed)) {
+      return { error: "Regex rules must be a JSON array." };
+    }
+    regex =
+      parsed && Array.isArray(parsed) ? (parsed as RegexRule[]) : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Regex rules must be valid JSON.",
+    };
   }
-  if (
-    normalizeResult.data &&
-    (Array.isArray(normalizeResult.data) ||
-      typeof normalizeResult.data !== "object")
-  ) {
-    return { error: "Normalization settings must be a JSON object." };
+
+  let normalize: NormalizeSpec | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "Normalization settings",
+      draft.normalizeText,
+    );
+    if (parsed && (Array.isArray(parsed) || typeof parsed !== "object")) {
+      return { error: "Normalization settings must be a JSON object." };
+    }
+    normalize =
+      parsed && !Array.isArray(parsed) && typeof parsed === "object"
+        ? (parsed as NormalizeSpec)
+        : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Normalization settings must be valid JSON.",
+    };
   }
 
   return {
     payload: {
       name: trimmedName,
       selectors,
-      ...(jsonldResult.data ? { jsonld: jsonldResult.data } : {}),
-      ...(regexResult.data ? { regex: regexResult.data } : {}),
-      ...(normalizeResult.data ? { normalize: normalizeResult.data } : {}),
+      ...(jsonld ? { jsonld } : {}),
+      ...(regex ? { regex } : {}),
+      ...(normalize ? { normalize } : {}),
     },
   };
 }

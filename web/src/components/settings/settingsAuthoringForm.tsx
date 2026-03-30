@@ -2,7 +2,7 @@
  * Purpose: Share Settings authoring field codecs and draft-form chrome across browser-runtime editors.
  * Responsibilities: Normalize comma-list and optional JSON field codecs; compute draft sync state; and render the shared draft status, context notice, validation error, and action row chrome.
  * Scope: Settings authoring helpers only; editor-specific field layouts and API payload schemas stay with each authoring form.
- * Usage: Imported by render-profile and pipeline-script forms to keep browser-runtime authoring behavior aligned.
+ * Usage: Imported by render-profile, pipeline-script, and template workspace helpers to keep browser-runtime authoring behavior aligned.
  * Invariants/Assumptions: Invalid codec parsing should mark the draft dirty, blank optional fields resolve to undefined, and shared form chrome preserves the existing Settings editor semantics.
  */
 
