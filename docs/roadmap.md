@@ -16,12 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### App-2: Extract `useJobSubmissionActions` from `App.tsx`
-
-Move job submission, cancel/delete, pending preset/submission state, and supporting effects into the hook.
-
-Files: `web/src/hooks/useJobSubmissionActions.ts`, `web/src/App.tsx`
-
 ### App-3: Extract `useShellShortcuts` from `App.tsx`
 
 Move keyboard navigation, assistant openers, route-help wiring, and onboarding handlers into the hook.

@@ -6,24 +6,14 @@
  * Invariants/Assumptions: Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, `/automation/:section`, `/settings`, and `/settings/:section`, and route-local containers own route framing once selected.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import {
-  deleteV1JobsById,
-  postV1Crawl,
-  postV1Research,
-  postV1Scrape,
-  type CrawlRequest,
-  type ResearchRequest,
-  type ScrapeRequest,
-} from "./api";
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { OnboardingNudge } from "./components/OnboardingNudge";
 import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
 import { DEFAULT_AUTOMATION_SECTION } from "./components/automation/automationSections";
-import type { JobSubmissionContainerRef } from "./components/jobs/JobSubmissionContainer";
 import {
   AutomationRoute,
   JobDetailRoute,
@@ -51,16 +41,10 @@ import { usePresets } from "./hooks/usePresets";
 import { useResultsState } from "./hooks/useResultsState";
 import { useTheme } from "./hooks/useTheme";
 import { type RouteKind, useAppShellRouting } from "./hooks/useAppShellRouting";
+import { useJobSubmissionActions } from "./hooks/useJobSubmissionActions";
 import { getApiBaseUrl } from "./lib/api-config";
-import { getApiErrorMessage } from "./lib/api-errors";
-import {
-  submitCrawlJob,
-  submitResearchJob,
-  submitScrapeJob,
-} from "./lib/job-actions";
 import { saveJobsViewState } from "./lib/job-monitoring";
 import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
-import type { JobPreset, JobType } from "./types/presets";
 
 interface NavItem {
   kind: Exclude<RouteKind, "job-detail">;
@@ -105,14 +89,6 @@ const NAV_ITEMS = [
   },
 ] as const satisfies readonly NavItem[];
 
-function formatShortJobId(id: string): string {
-  if (id.length <= 14) {
-    return id;
-  }
-
-  return `${id.slice(0, 8)}…${id.slice(-4)}`;
-}
-
 function ErrorBanner({ message }: { message: string | null }) {
   if (!message) {
     return null;
@@ -143,13 +119,6 @@ function AppShell() {
   const { presets, savePreset } = usePresets();
   const { route, navigate, routePromotionSeed, clearPromotionSeed } =
     useAppShellRouting();
-  const [activeTab, setActiveTab] = useState<JobType>("scrape");
-  const [pendingPreset, setPendingPreset] = useState<JobPreset | null>(null);
-  const [pendingSubmission, setPendingSubmission] = useState<JobType | null>(
-    null,
-  );
-  const jobSubmissionRef = useRef<JobSubmissionContainerRef>(null);
-
   const {
     isCommandPaletteOpen,
     isHelpOpen,
@@ -208,6 +177,26 @@ function AppShell() {
   const routeKey = route.kind as OnboardingRouteKey;
   const showGlobalFirstRunPrompt =
     shouldShowFirstRunHint && route.kind === "jobs";
+
+  const {
+    activeTab,
+    setActiveTab,
+    jobSubmissionRef,
+    handleSelectPreset,
+    handleSubmitForm,
+    handleSubmitScrape,
+    handleSubmitCrawl,
+    handleSubmitResearch,
+    cancelJob,
+    deleteJob,
+  } = useJobSubmissionActions({
+    navigate,
+    routeKind: route.kind,
+    refreshJobs,
+    selectedJobId,
+    toast,
+    getApiBaseUrl,
+  });
 
   const persistJobsViewState = useCallback(() => {
     if (typeof window === "undefined") {
@@ -271,221 +260,6 @@ function AppShell() {
     };
   }, [handleNavigate]);
 
-  const handleSubmitScrape = useCallback(
-    async (request: ScrapeRequest) => {
-      const toastId = toast.show({
-        tone: "loading",
-        title: "Submitting scrape job",
-        description:
-          "Queueing your scrape request and refreshing the Jobs view.",
-      });
-
-      const result = await submitScrapeJob(postV1Scrape, {
-        request,
-        setLoading: () => {},
-        setError: () => {},
-        refreshJobs,
-        getApiBaseUrl,
-      });
-
-      if (result.status === "error") {
-        toast.update(toastId, {
-          tone: "error",
-          title: "Scrape job failed",
-          description: result.message,
-        });
-        return;
-      }
-
-      jobSubmissionRef.current?.clearDraft("scrape");
-      toast.update(toastId, {
-        tone: "success",
-        title: "Scrape job queued",
-        description: "The new run is now visible from Jobs.",
-      });
-      navigate("/jobs");
-    },
-    [navigate, refreshJobs, toast],
-  );
-
-  const handleSubmitCrawl = useCallback(
-    async (request: CrawlRequest) => {
-      const toastId = toast.show({
-        tone: "loading",
-        title: "Submitting crawl job",
-        description:
-          "Queueing your crawl request and refreshing the Jobs view.",
-      });
-
-      const result = await submitCrawlJob(postV1Crawl, {
-        request,
-        setLoading: () => {},
-        setError: () => {},
-        refreshJobs,
-        getApiBaseUrl,
-      });
-
-      if (result.status === "error") {
-        toast.update(toastId, {
-          tone: "error",
-          title: "Crawl job failed",
-          description: result.message,
-        });
-        return;
-      }
-
-      jobSubmissionRef.current?.clearDraft("crawl");
-      toast.update(toastId, {
-        tone: "success",
-        title: "Crawl job queued",
-        description: "The crawl is now visible from Jobs.",
-      });
-      navigate("/jobs");
-    },
-    [navigate, refreshJobs, toast],
-  );
-
-  const handleSubmitResearch = useCallback(
-    async (request: ResearchRequest) => {
-      const toastId = toast.show({
-        tone: "loading",
-        title: "Submitting research job",
-        description:
-          "Queueing your research request and refreshing the Jobs view.",
-      });
-
-      const result = await submitResearchJob(postV1Research, {
-        request,
-        setLoading: () => {},
-        setError: () => {},
-        refreshJobs,
-        getApiBaseUrl,
-      });
-
-      if (result.status === "error") {
-        toast.update(toastId, {
-          tone: "error",
-          title: "Research job failed",
-          description: result.message,
-        });
-        return;
-      }
-
-      jobSubmissionRef.current?.clearDraft("research");
-      toast.update(toastId, {
-        tone: "success",
-        title: "Research job queued",
-        description: "The research run is now visible from Jobs.",
-      });
-      navigate("/jobs");
-    },
-    [navigate, refreshJobs, toast],
-  );
-
-  const cancelJob = useCallback(
-    async (jobId: string) => {
-      const toastId = toast.show({
-        tone: "loading",
-        title: `Canceling job ${formatShortJobId(jobId)}`,
-        description: "Requesting a graceful stop for the active run.",
-      });
-
-      try {
-        const { error: apiError } = await deleteV1JobsById({
-          baseUrl: getApiBaseUrl(),
-          path: { id: jobId },
-        });
-        if (apiError) {
-          toast.update(toastId, {
-            tone: "error",
-            title: "Failed to cancel job",
-            description: getApiErrorMessage(
-              apiError,
-              "Unable to stop the selected job.",
-            ),
-          });
-          return;
-        }
-        await refreshJobs();
-        toast.update(toastId, {
-          tone: "success",
-          title: "Job canceled",
-          description: `Job ${formatShortJobId(jobId)} is no longer running.`,
-        });
-      } catch (error) {
-        toast.update(toastId, {
-          tone: "error",
-          title: "Failed to cancel job",
-          description: getApiErrorMessage(
-            error,
-            "Unable to stop the selected job.",
-          ),
-        });
-      }
-    },
-    [refreshJobs, toast],
-  );
-
-  const deleteJob = useCallback(
-    async (jobId: string) => {
-      const confirmed = await toast.confirm({
-        title: "Delete this job permanently?",
-        description:
-          "This removes the saved run and its local artifacts. This action cannot be undone.",
-        confirmLabel: "Delete job",
-        cancelLabel: "Keep job",
-        tone: "error",
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      const toastId = toast.show({
-        tone: "loading",
-        title: `Deleting job ${formatShortJobId(jobId)}`,
-        description: "Removing the saved run from local storage.",
-      });
-
-      try {
-        const { error: apiError } = await deleteV1JobsById({
-          baseUrl: getApiBaseUrl(),
-          path: { id: jobId },
-          query: { force: true },
-        });
-        if (apiError) {
-          toast.update(toastId, {
-            tone: "error",
-            title: "Failed to delete job",
-            description: getApiErrorMessage(
-              apiError,
-              "Unable to delete the selected job.",
-            ),
-          });
-          return;
-        }
-        await refreshJobs();
-        if (selectedJobId === jobId) {
-          navigate("/jobs");
-        }
-        toast.update(toastId, {
-          tone: "success",
-          title: "Job deleted",
-          description: `Job ${formatShortJobId(jobId)} has been removed.`,
-        });
-      } catch (error) {
-        toast.update(toastId, {
-          tone: "error",
-          title: "Failed to delete job",
-          description: getApiErrorMessage(
-            error,
-            "Unable to delete the selected job.",
-          ),
-        });
-      }
-    },
-    [navigate, refreshJobs, selectedJobId, toast],
-  );
-
   const handleViewResults = useCallback(
     (jobId: string, _format: string, _page: number) => {
       if (route.kind === "jobs") {
@@ -499,35 +273,11 @@ function AppShell() {
 
   const activeJob = jobs.find((job) => job.status === "running");
 
-  const handleSelectPreset = useCallback(
-    (preset: JobPreset) => {
-      navigate("/jobs/new");
-      setActiveTab(preset.jobType);
-      setPendingPreset(preset);
-    },
-    [navigate],
-  );
-
-  useEffect(() => {
-    if (!pendingPreset || route.kind !== "new-job") {
-      return;
-    }
-    if (pendingPreset.jobType !== activeTab) {
-      return;
-    }
-
-    jobSubmissionRef.current?.applyPreset(
-      pendingPreset.config,
-      pendingPreset.jobType,
-    );
-    setPendingPreset(null);
-  }, [activeTab, pendingPreset, route.kind]);
-
-  const getCurrentConfig = useCallback(() => {
+  const getCurrentConfig = () => {
     return jobSubmissionRef.current?.getCurrentConfig() ?? {};
-  }, []);
+  };
 
-  const getCurrentUrl = useCallback(() => {
+  const getCurrentUrl = () => {
     switch (activeTab) {
       case "scrape":
         return jobSubmissionRef.current?.getScrapeUrl() ?? "";
@@ -536,9 +286,9 @@ function AppShell() {
       default:
         return "";
     }
-  }, [activeTab]);
+  };
 
-  const openJobAssistant = useCallback(() => {
+  const openJobAssistant = () => {
     const currentConfig = getCurrentConfig();
 
     navigate("/jobs/new");
@@ -558,15 +308,9 @@ function AppShell() {
       templateName: formState.extractTemplate || undefined,
       formSnapshot: currentConfig as Record<string, unknown>,
     });
-  }, [
-    activeTab,
-    aiAssistant,
-    formState.extractTemplate,
-    getCurrentConfig,
-    navigate,
-  ]);
+  };
 
-  const openTemplateAssistant = useCallback(() => {
+  const openTemplateAssistant = () => {
     navigate("/templates");
     aiAssistant.open({
       surface: "templates",
@@ -574,38 +318,7 @@ function AppShell() {
       templateSnapshot: undefined,
       selectedUrl: getCurrentUrl() || undefined,
     });
-  }, [aiAssistant, getCurrentUrl, navigate]);
-
-  const handleSubmitForm = useCallback(
-    async (formType: "scrape" | "crawl" | "research") => {
-      navigate("/jobs/new");
-      setActiveTab(formType);
-      setPendingSubmission(formType);
-    },
-    [navigate],
-  );
-
-  useEffect(() => {
-    if (!pendingSubmission || route.kind !== "new-job") {
-      return;
-    }
-    if (pendingSubmission !== activeTab) {
-      return;
-    }
-
-    const submit = async () => {
-      if (pendingSubmission === "scrape") {
-        await jobSubmissionRef.current?.submitScrape();
-      } else if (pendingSubmission === "crawl") {
-        await jobSubmissionRef.current?.submitCrawl();
-      } else {
-        await jobSubmissionRef.current?.submitResearch();
-      }
-      setPendingSubmission(null);
-    };
-
-    void submit();
-  }, [activeTab, pendingSubmission, route.kind]);
+  };
 
   const handleTourRouteChange = useCallback(
     (targetRoute: OnboardingRouteKey) => {
