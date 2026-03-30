@@ -398,7 +398,8 @@ vi.mock("../../components/jobs/JobSubmissionContainer", async () => {
   };
 });
 
-import { App, normalizePath, parseRoute } from "../../App";
+import { App } from "../../App";
+import { normalizePath, parseRoute } from "../../hooks/useAppShellRouting";
 import { getApiBaseUrl } from "../../lib/api-config";
 
 function createJob(id: string, overrides: Partial<JobEntry> = {}): JobEntry {
@@ -575,6 +576,10 @@ describe("FreshStartOperatorFlow", () => {
         disconnect() {}
       },
     );
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
 
     hoisted.inventory.renderProfiles = 0;
     hoisted.inventory.pipelineScripts = 0;
@@ -932,6 +937,32 @@ describe("FreshStartOperatorFlow", () => {
     expect(screen.getByTestId("automation-active-section")).toHaveTextContent(
       "webhooks",
     );
+  });
+
+  it("reopens the command palette with a fresh search input", async () => {
+    const user = userEvent.setup();
+
+    keyboardState.isCommandPaletteOpen = true;
+    const rendered = renderAppAt("/jobs");
+
+    await user.type(screen.getByLabelText("Search commands"), "template");
+    expect(screen.getByLabelText("Search commands")).toHaveValue("template");
+
+    keyboardState.isCommandPaletteOpen = false;
+    rendered.rerender(<App />);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: /command palette/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    keyboardState.isCommandPaletteOpen = true;
+    rendered.rerender(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Search commands")).toHaveValue("");
+    });
   });
 
   it("submits the first job from the New Job route, redirects to Jobs, and shows the new run", async () => {

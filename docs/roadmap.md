@@ -16,18 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### EU-6: Replace diff recomputation with an explicit action
-
-Expose `runDiff()` and call it from compare-selection and diff-tool entry points instead of relying on a reactive effect.
-
-Files: `web/src/components/results-explorer/useResultsOperationsState.ts`
-
-### App-1: Extract `useAppShellRouting` from `App.tsx`
-
-Move pathname/history state, route parsing, navigation helpers, popstate handling, canonical path enforcement, and promotion-seed state into the hook.
-
-Files: `web/src/hooks/useAppShellRouting.ts`, `web/src/App.tsx`
-
 ### App-2: Extract `useJobSubmissionActions` from `App.tsx`
 
 Move job submission, cancel/delete, pending preset/submission state, and supporting effects into the hook.
