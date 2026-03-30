@@ -13,9 +13,9 @@
     "format": "biome format . --write",
     "type-check": "tsc --noEmit",
     "generate": "openapi-ts -i ../api/openapi.yaml -o src/api",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test": "vitest --config ./vitest.config.ts",
+    "test:ui": "vitest --config ./vitest.config.ts --ui",
+    "test:coverage": "vitest --config ./vitest.config.ts --coverage"
   },
   "dependencies": {
     "cmdk": "^1.1.1",

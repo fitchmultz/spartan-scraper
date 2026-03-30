@@ -14,14 +14,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Put meaningful operator-facing product work ahead of maintenance, cleanup, and policy reminders.
 - Treat focused failure-path dogfooding as acceptance criteria for major operator workflow cutovers, not as a standalone roadmap epic.
 
-## Next
-
-### TEST-1: Standardize the Vitest localStorage harness
-
-Put the localStorage file path behind a repo-owned Vitest entrypoint so direct web runs are warning-free and match CI.
-
-Files: `Makefile`, `web/package.json`, `web/vitest.config.ts`
-
 ## Ongoing Constraints
 
 - Keep the TUI scope frozen as a lightweight local inspector unless a future roadmap item explicitly justifies re-investing in it as a first-class surface.

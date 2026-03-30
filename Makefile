@@ -138,7 +138,7 @@ test-ci: verify-toolchain
 	node $(CURDIR)/scripts/strip_openapi_todos.test.mjs
 	node $(CURDIR)/scripts/public_audit.test.mjs
 	cd $(PI_BRIDGE_DIR) && pnpm test
-	cd $(WEB_DIR) && CI=1 NODE_OPTIONS=--localstorage-file=.vitest-localstorage pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
+	cd $(WEB_DIR) && CI=1 pnpm run test -- --run --maxWorkers=$(CI_VITEST_MAX_WORKERS)
 
 generate: verify-toolchain
 	cd $(WEB_DIR) && pnpm exec openapi-ts -i ../api/openapi.yaml -o src/api
