@@ -6,14 +6,13 @@
  * Invariants/Assumptions: Supported routes are `/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, `/automation/:section`, `/settings`, and `/settings/:section`, and route-local containers own route framing once selected.
  */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback } from "react";
 
 import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcutsHelp";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { OnboardingNudge } from "./components/OnboardingNudge";
 import { AIAssistantProvider, useAIAssistant } from "./components/ai-assistant";
-import { DEFAULT_AUTOMATION_SECTION } from "./components/automation/automationSections";
 import {
   AutomationRoute,
   JobDetailRoute,
@@ -23,6 +22,7 @@ import {
   SetupRequiredRoute,
   TemplatesRoute,
 } from "./components/routes/AppRoutes";
+import { DEFAULT_AUTOMATION_SECTION } from "./components/automation/automationSections";
 import { AppTopBar } from "./components/shell/ShellPrimitives";
 import {
   DEFAULT_SETTINGS_SECTION,
@@ -42,9 +42,10 @@ import { useResultsState } from "./hooks/useResultsState";
 import { useTheme } from "./hooks/useTheme";
 import { type RouteKind, useAppShellRouting } from "./hooks/useAppShellRouting";
 import { useJobSubmissionActions } from "./hooks/useJobSubmissionActions";
+import { useShellShortcuts } from "./hooks/useShellShortcuts";
 import { getApiBaseUrl } from "./lib/api-config";
 import { saveJobsViewState } from "./lib/job-monitoring";
-import type { OnboardingRouteKey, RouteHelpAction } from "./lib/onboarding";
+import type { OnboardingRouteKey } from "./lib/onboarding";
 
 interface NavItem {
   kind: Exclude<RouteKind, "job-detail">;
@@ -210,55 +211,27 @@ function AppShell() {
     });
   }, [jobStatusFilter, jobsPage]);
 
-  const handleNavigate = useCallback(
-    (view: "jobs" | "results" | "forms") => {
-      if (view === "forms") {
-        navigate("/jobs/new");
-        return;
-      }
-
-      if (view === "results" && selectedJobId) {
-        if (route.kind === "jobs") {
-          persistJobsViewState();
-        }
-        navigate(`/jobs/${selectedJobId}`);
-        return;
-      }
-
-      navigate("/jobs");
-    },
-    [navigate, persistJobsViewState, route.kind, selectedJobId],
-  );
-
-  const handlePaletteNavigate = useCallback(
-    (path: string) => {
-      if (route.kind === "jobs" && path.startsWith("/jobs/")) {
-        persistJobsViewState();
-      }
-      navigate(path);
-    },
-    [navigate, persistJobsViewState, route.kind],
-  );
-
-  useEffect(() => {
-    const handleKeyboardNavigate = (event: CustomEvent) => {
-      const { destination } = event.detail;
-      if (destination === "navigateJobs") handleNavigate("jobs");
-      if (destination === "navigateResults") handleNavigate("results");
-      if (destination === "navigateForms") handleNavigate("forms");
-    };
-
-    window.addEventListener(
-      "keyboard-navigate",
-      handleKeyboardNavigate as EventListener,
-    );
-    return () => {
-      window.removeEventListener(
-        "keyboard-navigate",
-        handleKeyboardNavigate as EventListener,
-      );
-    };
-  }, [handleNavigate]);
+  const {
+    openJobAssistant,
+    openTemplateAssistant,
+    handleTourRouteChange,
+    routeHelpProps,
+  } = useShellShortcuts({
+    navigate,
+    persistJobsViewState,
+    routeKind: route.kind,
+    selectedJobId,
+    jobs,
+    activeTab,
+    extractTemplate: formState.extractTemplate,
+    jobSubmissionRef,
+    openAssistant: aiAssistant.open,
+    shortcuts,
+    isMac,
+    openCommandPalette,
+    openHelp,
+    resetOnboarding,
+  });
 
   const handleViewResults = useCallback(
     (jobId: string, _format: string, _page: number) => {
@@ -271,123 +244,17 @@ function AppShell() {
     [navigate, persistJobsViewState, route.kind],
   );
 
+  const handlePaletteNavigate = useCallback(
+    (path: string) => {
+      if (route.kind === "jobs" && path.startsWith("/jobs/")) {
+        persistJobsViewState();
+      }
+      navigate(path);
+    },
+    [navigate, persistJobsViewState, route.kind],
+  );
+
   const activeJob = jobs.find((job) => job.status === "running");
-
-  const getCurrentConfig = () => {
-    return jobSubmissionRef.current?.getCurrentConfig() ?? {};
-  };
-
-  const getCurrentUrl = () => {
-    switch (activeTab) {
-      case "scrape":
-        return jobSubmissionRef.current?.getScrapeUrl() ?? "";
-      case "crawl":
-        return jobSubmissionRef.current?.getCrawlUrl() ?? "";
-      default:
-        return "";
-    }
-  };
-
-  const openJobAssistant = () => {
-    const currentConfig = getCurrentConfig();
-
-    navigate("/jobs/new");
-    aiAssistant.open({
-      surface: "job-submission",
-      jobType: activeTab,
-      url:
-        activeTab === "scrape"
-          ? jobSubmissionRef.current?.getScrapeUrl()
-          : activeTab === "crawl"
-            ? jobSubmissionRef.current?.getCrawlUrl()
-            : undefined,
-      query:
-        activeTab === "research"
-          ? (currentConfig.query as string | undefined)
-          : undefined,
-      templateName: formState.extractTemplate || undefined,
-      formSnapshot: currentConfig as Record<string, unknown>,
-    });
-  };
-
-  const openTemplateAssistant = () => {
-    navigate("/templates");
-    aiAssistant.open({
-      surface: "templates",
-      templateName: undefined,
-      templateSnapshot: undefined,
-      selectedUrl: getCurrentUrl() || undefined,
-    });
-  };
-
-  const handleTourRouteChange = useCallback(
-    (targetRoute: OnboardingRouteKey) => {
-      switch (targetRoute) {
-        case "jobs":
-          navigate("/jobs");
-          return;
-        case "new-job":
-          navigate("/jobs/new");
-          return;
-        case "job-detail": {
-          const targetJobId =
-            selectedJobId ??
-            jobs.find((job) => job.status === "succeeded")?.id ??
-            jobs[0]?.id;
-          if (targetJobId) {
-            navigate(`/jobs/${targetJobId}`);
-            return;
-          }
-          navigate("/jobs");
-          return;
-        }
-        case "templates":
-          navigate("/templates");
-          return;
-        case "automation":
-          navigate("/automation/batches");
-          return;
-        case "settings":
-          navigate(getSettingsPath(DEFAULT_SETTINGS_SECTION));
-          return;
-      }
-    },
-    [jobs, navigate, selectedJobId],
-  );
-
-  const handleRouteHelpAction = useCallback(
-    (actionId: RouteHelpAction["id"]) => {
-      switch (actionId) {
-        case "create-job":
-          navigate("/jobs/new");
-          return;
-        case "open-jobs":
-          navigate("/jobs");
-          return;
-      }
-    },
-    [navigate],
-  );
-
-  const routeHelpProps = useMemo(
-    () => ({
-      shortcuts,
-      isMac,
-      onOpenCommandPalette: openCommandPalette,
-      onOpenShortcuts: openHelp,
-      onRestartTour: resetOnboarding,
-      onAction: handleRouteHelpAction,
-    }),
-    [
-      handleRouteHelpAction,
-      isMac,
-      openCommandPalette,
-      openHelp,
-      resetOnboarding,
-      shortcuts,
-    ],
-  );
-
   const shellUtilities = (
     <>
       <button

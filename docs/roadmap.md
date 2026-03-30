@@ -16,12 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### App-3: Extract `useShellShortcuts` from `App.tsx`
-
-Move keyboard navigation, assistant openers, route-help wiring, and onboarding handlers into the hook.
-
-Files: `web/src/hooks/useShellShortcuts.ts`, `web/src/App.tsx`
-
 ### TEST-1: Standardize the Vitest localStorage harness
 
 Put the localStorage file path behind a repo-owned Vitest entrypoint so direct web runs are warning-free and match CI.
