@@ -6,7 +6,7 @@
  * Invariants/Assumptions: filteredSourceIndexes stays aligned with filteredResultItems; tree state is only meaningful for crawl-type results.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { buildUrlTree, type TreeNode } from "../../lib/tree-utils";
 import type { CrawlResultItem, EvidenceItem, ResultItem } from "../../types";
@@ -28,6 +28,31 @@ export interface UseResultsSelectionStateOptions {
   totalResults: number;
 }
 
+function resolveTreeExpandedIds(
+  treeNodes: TreeNode[],
+  treeExpandedIds: Set<string>,
+  treeNodeIds: Set<string>,
+): Set<string> {
+  if (treeNodes.length === 0) {
+    return treeExpandedIds;
+  }
+
+  if (treeExpandedIds.size === 0) {
+    return buildDefaultExpandedTreeIds(treeNodes);
+  }
+
+  const resolvedTreeExpandedIds = new Set<string>();
+  treeExpandedIds.forEach((id) => {
+    if (treeNodeIds.has(id)) {
+      resolvedTreeExpandedIds.add(id);
+    }
+  });
+
+  return resolvedTreeExpandedIds.size > 0
+    ? resolvedTreeExpandedIds
+    : buildDefaultExpandedTreeIds(treeNodes);
+}
+
 export function useResultsSelectionState({
   resultItems,
   selectedResultIndex,
@@ -38,7 +63,7 @@ export function useResultsSelectionState({
 }: UseResultsSelectionStateOptions) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [treeExpandedIds, setTreeExpandedIds] = useState<Set<string>>(
+  const [treeExpandedIdsState, setTreeExpandedIds] = useState<Set<string>>(
     new Set(),
   );
   const [treeSelectedId, setTreeSelectedId] = useState<string | null>(null);
@@ -58,11 +83,12 @@ export function useResultsSelectionState({
     return buildUrlTree(crawlItems);
   }, [resultItems]);
 
-  useEffect(() => {
-    if (treeNodes.length > 0 && treeExpandedIds.size === 0) {
-      setTreeExpandedIds(buildDefaultExpandedTreeIds(treeNodes));
-    }
-  }, [treeNodes, treeExpandedIds.size]);
+  const treeNodeIds = useMemo(() => collectTreeNodeIds(treeNodes), [treeNodes]);
+
+  const treeExpandedIds = useMemo(
+    () => resolveTreeExpandedIds(treeNodes, treeExpandedIdsState, treeNodeIds),
+    [treeNodeIds, treeExpandedIdsState, treeNodes],
+  );
 
   const filteredResultItems = useMemo(
     () => filterResultItems(resultItems, searchQuery, statusFilter),
@@ -80,19 +106,21 @@ export function useResultsSelectionState({
     [filteredResultItems, resultItems],
   );
 
-  useEffect(() => {
+  const activeResultIndex = useMemo(() => {
     if (filteredSourceIndexes.length === 0) {
-      return;
+      return selectedResultIndex;
     }
 
-    if (!filteredSourceIndexes.includes(selectedResultIndex)) {
-      setSelectedResultIndex(filteredSourceIndexes[0]);
-    }
-  }, [filteredSourceIndexes, selectedResultIndex, setSelectedResultIndex]);
+    const firstVisibleSourceIndex =
+      filteredSourceIndexes[0] ?? selectedResultIndex;
+    return filteredSourceIndexes.includes(selectedResultIndex)
+      ? selectedResultIndex
+      : firstVisibleSourceIndex;
+  }, [filteredSourceIndexes, selectedResultIndex]);
 
   const visibleSelectedIndex = Math.max(
     0,
-    filteredSourceIndexes.indexOf(selectedResultIndex),
+    filteredSourceIndexes.indexOf(activeResultIndex),
   );
 
   const setSelectedVisibleResultIndex = (visibleIndex: number) => {
@@ -142,6 +170,7 @@ export function useResultsSelectionState({
   };
 
   return {
+    activeResultIndex,
     clearReaderFilters,
     collapseAllTreeNodes,
     expandAllTreeNodes,

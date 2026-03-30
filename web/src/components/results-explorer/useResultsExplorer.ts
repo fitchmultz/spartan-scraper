@@ -7,6 +7,7 @@
  */
 
 import type { EvidenceItem, Job, ResultItem } from "../../types";
+import { isResearchResultItem } from "../../lib/form-utils";
 import { useResultsOperationsState } from "./useResultsOperationsState";
 import { useResultsSelectionState } from "./useResultsSelectionState";
 
@@ -33,8 +34,17 @@ export function useResultsExplorer(options: UseResultsExplorerOptions) {
     jobType: options.jobType,
     totalResults: options.totalResults,
   });
+  const activeResultItem =
+    options.resultItems[selection.activeResultIndex] ?? null;
+  const activeResultSummary =
+    activeResultItem && isResearchResultItem(activeResultItem)
+      ? (activeResultItem.summary ?? null)
+      : null;
+
   const operations = useResultsOperationsState({
     ...options,
+    selectedResultIndex: selection.activeResultIndex,
+    resultSummary: activeResultSummary,
     filteredResultItems: selection.filteredResultItems,
     searchQuery: selection.searchQuery,
     statusFilter: selection.statusFilter,

@@ -6,7 +6,7 @@
  * Invariants/Assumptions: `loadResults()` is the only authoritative fetch path, selection must stay within the currently loaded result page, and the route defaults to paginated `jsonl` inspection.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { loadResults as loadResultsUtil } from "../lib/results";
 import type {
   AgenticResearchItem,
@@ -39,33 +39,51 @@ export interface ResultsActions {
   setSelectedResultIndex: (index: number) => void;
 }
 
-function resetSelectedResultState(
-  setResultSummary: (value: string | null) => void,
-  setResultConfidence: (value: number | null) => void,
-  setResultEvidence: (value: EvidenceItem[]) => void,
-  setResultClusters: (value: ClusterItem[]) => void,
-  setResultCitations: (value: CitationItem[]) => void,
-  setResultAgentic: (value: AgenticResearchItem | null) => void,
-) {
-  setResultSummary(null);
-  setResultConfidence(null);
-  setResultEvidence([]);
-  setResultClusters([]);
-  setResultCitations([]);
-  setResultAgentic(null);
+interface SelectedResultSnapshot {
+  resultSummary: string | null;
+  resultConfidence: number | null;
+  resultEvidence: EvidenceItem[];
+  resultClusters: ClusterItem[];
+  resultCitations: CitationItem[];
+  resultAgentic: AgenticResearchItem | null;
+}
+
+function clampSelectedResultIndex(index: number, itemCount: number): number {
+  if (itemCount <= 0) {
+    return 0;
+  }
+
+  return Math.min(Math.max(index, 0), itemCount - 1);
+}
+
+function deriveSelectedResultSnapshot(
+  item: ResultItem | null | undefined,
+): SelectedResultSnapshot {
+  if (!item || !("summary" in item)) {
+    return {
+      resultSummary: null,
+      resultConfidence: null,
+      resultEvidence: [],
+      resultClusters: [],
+      resultCitations: [],
+      resultAgentic: null,
+    };
+  }
+
+  return {
+    resultSummary: (item as { summary?: string }).summary ?? null,
+    resultConfidence: (item as { confidence?: number }).confidence ?? null,
+    resultEvidence: (item as { evidence?: EvidenceItem[] }).evidence ?? [],
+    resultClusters: (item as { clusters?: ClusterItem[] }).clusters ?? [],
+    resultCitations: (item as { citations?: CitationItem[] }).citations ?? [],
+    resultAgentic: (item as { agentic?: AgenticResearchItem }).agentic ?? null,
+  };
 }
 
 export function useResultsState(): ResultsState & ResultsActions {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [resultItems, setResultItems] = useState<ResultItem[]>([]);
-  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
-  const [resultSummary, setResultSummary] = useState<string | null>(null);
-  const [resultConfidence, setResultConfidence] = useState<number | null>(null);
-  const [resultEvidence, setResultEvidence] = useState<EvidenceItem[]>([]);
-  const [resultClusters, setResultClusters] = useState<ClusterItem[]>([]);
-  const [resultCitations, setResultCitations] = useState<CitationItem[]>([]);
-  const [resultAgentic, setResultAgentic] =
-    useState<AgenticResearchItem | null>(null);
+  const [selectedResultIndexState, setSelectedResultIndex] = useState(0);
   const [rawResult, setRawResult] = useState<string | null>(null);
   const [resultFormat, setResultFormat] = useState<string>("jsonl");
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,14 +98,6 @@ export function useResultsState(): ResultsState & ResultsActions {
       setResultItems([]);
       setRawResult(null);
       setTotalResults(0);
-      resetSelectedResultState(
-        setResultSummary,
-        setResultConfidence,
-        setResultEvidence,
-        setResultClusters,
-        setResultCitations,
-        setResultAgentic,
-      );
 
       const result = await loadResultsUtil(
         jobId,
@@ -116,63 +126,20 @@ export function useResultsState(): ResultsState & ResultsActions {
     [],
   );
 
-  useEffect(() => {
-    if (resultItems.length === 0) {
-      resetSelectedResultState(
-        setResultSummary,
-        setResultConfidence,
-        setResultEvidence,
-        setResultClusters,
-        setResultCitations,
-        setResultAgentic,
-      );
-      return;
-    }
-
-    const clampedIndex = Math.min(
-      Math.max(selectedResultIndex, 0),
-      resultItems.length - 1,
-    );
-    if (clampedIndex !== selectedResultIndex) {
-      setSelectedResultIndex(clampedIndex);
-      return;
-    }
-
-    const item = resultItems[clampedIndex];
-    if (item && "summary" in item) {
-      setResultSummary((item as { summary?: string }).summary ?? null);
-      setResultConfidence((item as { confidence?: number }).confidence ?? null);
-      setResultEvidence((item as { evidence?: EvidenceItem[] }).evidence ?? []);
-      setResultClusters((item as { clusters?: ClusterItem[] }).clusters ?? []);
-      setResultCitations(
-        (item as { citations?: CitationItem[] }).citations ?? [],
-      );
-      setResultAgentic(
-        (item as { agentic?: AgenticResearchItem }).agentic ?? null,
-      );
-      return;
-    }
-
-    resetSelectedResultState(
-      setResultSummary,
-      setResultConfidence,
-      setResultEvidence,
-      setResultClusters,
-      setResultCitations,
-      setResultAgentic,
-    );
-  }, [resultItems, selectedResultIndex]);
+  const selectedResultIndex = clampSelectedResultIndex(
+    selectedResultIndexState,
+    resultItems.length,
+  );
+  const selectedResultSnapshot = useMemo(
+    () => deriveSelectedResultSnapshot(resultItems[selectedResultIndex]),
+    [resultItems, selectedResultIndex],
+  );
 
   return {
     selectedJobId,
     resultItems,
     selectedResultIndex,
-    resultSummary,
-    resultConfidence,
-    resultEvidence,
-    resultClusters,
-    resultCitations,
-    resultAgentic,
+    ...selectedResultSnapshot,
     rawResult,
     resultFormat,
     currentPage,

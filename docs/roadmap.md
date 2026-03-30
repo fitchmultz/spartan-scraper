@@ -16,18 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### RP-3: Prune `templateEditorUtils.ts` after the codec cutover
-
-Delete any remaining dead exports and fold the surviving helpers into the owning template components.
-
-Files: `web/src/components/templates/templateEditorUtils.ts`, template workspace files
-
-### EU-1: Remove render-derived state from results and visual-selector components
-
-Derive preview state during render or reset the owning subtree when the loaded page identity changes.
-
-Files: `web/src/components/VisualSelectorBuilder.tsx`, `web/src/components/results-explorer/useResultsSelectionState.ts`, `web/src/hooks/useResultsState.ts`
-
 ### EU-5: Replace storage-load mount effects with `useState` initializers
 
 Load stored keyboard shortcuts, theme, presets, and last-submitted batch notice in initializers instead of mount effects.

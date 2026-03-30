@@ -7,6 +7,7 @@
  */
 
 import type { ComponentStatus } from "../api";
+import { isResearchResultItem } from "../lib/form-utils";
 import type {
   AgenticResearchItem,
   CitationItem,
@@ -93,6 +94,12 @@ export function ResultsExplorer({
     resultFormat,
     totalResults,
   });
+
+  const activeResultItem = resultItems[explorer.activeResultIndex] ?? null;
+  const activeResultSummary =
+    activeResultItem && isResearchResultItem(activeResultItem)
+      ? (activeResultItem.summary ?? null)
+      : null;
 
   if (!jobId) {
     return null;
@@ -283,9 +290,9 @@ export function ResultsExplorer({
           jobType={jobType}
           resultFormat={resultFormat}
           aiStatus={aiStatus}
-          selectedResultIndex={selectedResultIndex}
-          resultSummary={resultSummary}
-          selectedResult={resultItems[selectedResultIndex] ?? null}
+          selectedResultIndex={explorer.activeResultIndex}
+          resultSummary={activeResultSummary}
+          selectedResult={activeResultItem}
           mode={explorer.assistantMode}
           onModeChange={explorer.setAssistantMode}
           shapeFormat={explorer.shapeExportFormat}

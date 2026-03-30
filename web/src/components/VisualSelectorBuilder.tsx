@@ -37,6 +37,16 @@ interface VisualSelectorBuilderProps {
   onCancel: () => void;
 }
 
+interface VisualSelectorPreviewPanelProps {
+  url: string;
+  setUrl: (value: string) => void;
+  headless: boolean;
+  setHeadless: (value: boolean) => void;
+  playwright: boolean;
+  setPlaywright: (value: boolean) => void;
+  onAddSelector: (selector: string) => void;
+}
+
 // DOM Tree Node Component
 interface DOMTreeNodeProps {
   node: DomNode;
@@ -133,15 +143,16 @@ function DOMTreeNode({
   );
 }
 
-export function VisualSelectorBuilder({
-  initialTemplate,
-  onSave,
-  onCancel,
-}: VisualSelectorBuilderProps) {
+function VisualSelectorPreviewPanel({
+  url,
+  setUrl,
+  headless,
+  setHeadless,
+  playwright,
+  setPlaywright,
+  onAddSelector,
+}: VisualSelectorPreviewPanelProps) {
   // URL/Fetch state
-  const [url, setUrl] = useState("");
-  const [headless, setHeadless] = useState(false);
-  const [playwright, setPlaywright] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -158,25 +169,8 @@ export function VisualSelectorBuilder({
     null,
   );
 
-  const {
-    template,
-    updateTemplate,
-    addSelector,
-    updateSelector,
-    removeSelector,
-    saveTemplate,
-    isSaving,
-    error: saveError,
-    clearError,
-  } = useTemplateBuilder({ initialTemplate, onSave });
-
-  const loadedPageStateKey = `${url.trim()}::${headless}::${playwright}`;
-  const loadedPageStateKeyRef = useRef(loadedPageStateKey);
+  const fetchRunRef = useRef(0);
   const selectorTestRunRef = useRef(0);
-  const selectorRowKeysRef = useRef(
-    (template.selectors ?? []).map((_, index) => `selector-rule-${index}`),
-  );
-  const nextSelectorRowKeyRef = useRef(selectorRowKeysRef.current.length);
 
   const invalidateSelectorTest = useCallback(() => {
     selectorTestRunRef.current += 1;
@@ -188,35 +182,6 @@ export function VisualSelectorBuilder({
   useEffect(() => {
     setExpandedPaths(buildExpandedPaths(domTree));
   }, [domTree]);
-
-  useEffect(() => {
-    if (loadedPageStateKeyRef.current === loadedPageStateKey) {
-      return;
-    }
-    loadedPageStateKeyRef.current = loadedPageStateKey;
-    setFetchError(null);
-    setDomTree(null);
-    setSelectedNode(null);
-    setGeneratedSelector("");
-    setSearchQuery("");
-    invalidateSelectorTest();
-  }, [invalidateSelectorTest, loadedPageStateKey]);
-
-  useEffect(() => {
-    const selectorCount = template.selectors?.length ?? 0;
-    const keys = selectorRowKeysRef.current;
-    if (keys.length === selectorCount) {
-      return;
-    }
-    if (keys.length < selectorCount) {
-      while (keys.length < selectorCount) {
-        keys.push(`selector-rule-${nextSelectorRowKeyRef.current}`);
-        nextSelectorRowKeyRef.current += 1;
-      }
-      return;
-    }
-    keys.length = selectorCount;
-  }, [template.selectors]);
 
   // Fetch page
   const handleFetch = async () => {
@@ -230,6 +195,7 @@ export function VisualSelectorBuilder({
       return;
     }
 
+    const runID = ++fetchRunRef.current;
     setFetching(true);
     setFetchError(null);
     setDomTree(null);
@@ -253,11 +219,19 @@ export function VisualSelectorBuilder({
           getApiErrorMessage(response.error, "Failed to fetch page"),
         );
       }
+      if (runID !== fetchRunRef.current) {
+        return;
+      }
       setDomTree(response.data?.dom_tree ?? null);
     } catch (err) {
+      if (runID !== fetchRunRef.current) {
+        return;
+      }
       setFetchError(getApiErrorMessage(err, "Failed to fetch page"));
     } finally {
-      setFetching(false);
+      if (runID === fetchRunRef.current) {
+        setFetching(false);
+      }
     }
   };
 
@@ -340,45 +314,11 @@ export function VisualSelectorBuilder({
   const handleAddSelector = () => {
     const trimmedSelector = generatedSelector.trim();
     if (!trimmedSelector) return;
-    clearError();
-    selectorRowKeysRef.current.push(
-      `selector-rule-${nextSelectorRowKeyRef.current}`,
-    );
-    nextSelectorRowKeyRef.current += 1;
-    addSelector(
-      createSelectorRule(trimmedSelector, template.selectors?.length ?? 0),
-    );
-  };
-
-  // Save template
-  const handleSave = async () => {
-    await saveTemplate();
+    onAddSelector(trimmedSelector);
   };
 
   return (
-    <div className="visual-selector-builder">
-      <div className="visual-selector-builder__header">
-        <h3>Visual Selector Builder</h3>
-        <div className="visual-selector-builder__actions">
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={onCancel}
-            disabled={isSaving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={handleSave}
-            disabled={isSaving || (template.selectors?.length ?? 0) === 0}
-          >
-            {isSaving ? "Saving..." : "Save Template"}
-          </button>
-        </div>
-      </div>
-
+    <>
       {/* URL Input Section */}
       <div className="visual-selector-builder__url-section">
         <div className="form-row">
@@ -558,100 +498,216 @@ export function VisualSelectorBuilder({
               </div>
             </div>
           )}
-
-          {/* Template Configuration */}
-          <div className="selector-builder-section">
-            <label htmlFor="template-name">Template Configuration</label>
-            <input
-              id="template-name"
-              type="text"
-              value={template.name ?? ""}
-              onChange={(e) => updateTemplate({ name: e.target.value })}
-              placeholder="Template name"
-              className="template-name-input"
-            />
-
-            {/* Selector Rules Table */}
-            <div className="selector-rules">
-              <div className="selector-rules__header">
-                <span>Field</span>
-                <span>Selector</span>
-                <span>Attr</span>
-                <span>Actions</span>
-              </div>
-              {(template.selectors?.length ?? 0) === 0 ? (
-                <div className="selector-rules__empty">
-                  No selectors added yet. Select an element from the DOM tree.
-                </div>
-              ) : (
-                template.selectors?.map((rule, index) => (
-                  <div
-                    key={
-                      selectorRowKeysRef.current[index] ??
-                      `selector-rule-${index}`
-                    }
-                    className="selector-rule"
-                  >
-                    <input
-                      type="text"
-                      value={rule.name ?? ""}
-                      onChange={(e) =>
-                        updateSelector(index, { name: e.target.value })
-                      }
-                      placeholder="Field name"
-                    />
-                    <input
-                      type="text"
-                      value={rule.selector ?? ""}
-                      onChange={(e) =>
-                        updateSelector(index, { selector: e.target.value })
-                      }
-                      placeholder="CSS selector"
-                    />
-                    <select
-                      value={rule.attr ?? "text"}
-                      onChange={(e) =>
-                        updateSelector(index, { attr: e.target.value })
-                      }
-                    >
-                      <option value="text">text</option>
-                      <option value="content">content</option>
-                      <option value="href">href</option>
-                      <option value="src">src</option>
-                      <option value="alt">alt</option>
-                      <option value="title">title</option>
-                      <option value="value">value</option>
-                    </select>
-                    <div className="selector-rule__actions">
-                      <label className="checkbox-label checkbox-label--small">
-                        <input
-                          type="checkbox"
-                          checked={rule.trim ?? true}
-                          onChange={(e) =>
-                            updateSelector(index, { trim: e.target.checked })
-                          }
-                        />
-                        Trim
-                      </label>
-                      <button
-                        type="button"
-                        className="btn btn--danger btn--small"
-                        onClick={() => {
-                          selectorRowKeysRef.current.splice(index, 1);
-                          removeSelector(index);
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {saveError && <div className="form-error">{saveError}</div>}
         </div>
+      </div>
+    </>
+  );
+}
+
+export function VisualSelectorBuilder({
+  initialTemplate,
+  onSave,
+  onCancel,
+}: VisualSelectorBuilderProps) {
+  const [url, setUrl] = useState("");
+  const [headless, setHeadless] = useState(false);
+  const [playwright, setPlaywright] = useState(false);
+
+  const {
+    template,
+    updateTemplate,
+    addSelector,
+    updateSelector,
+    removeSelector,
+    saveTemplate,
+    isSaving,
+    error: saveError,
+    clearError,
+  } = useTemplateBuilder({ initialTemplate, onSave });
+
+  const selectorRowKeysRef = useRef(
+    (template.selectors ?? []).map((_, index) => `selector-rule-${index}`),
+  );
+  const nextSelectorRowKeyRef = useRef(selectorRowKeysRef.current.length);
+
+  const loadedPageStateKey = `${url.trim()}::${headless}::${playwright}`;
+
+  useEffect(() => {
+    const selectorCount = template.selectors?.length ?? 0;
+    const keys = selectorRowKeysRef.current;
+    if (keys.length === selectorCount) {
+      return;
+    }
+    if (keys.length < selectorCount) {
+      while (keys.length < selectorCount) {
+        keys.push(`selector-rule-${nextSelectorRowKeyRef.current}`);
+        nextSelectorRowKeyRef.current += 1;
+      }
+      return;
+    }
+    keys.length = selectorCount;
+  }, [template.selectors]);
+
+  const handleAddSelector = useCallback(
+    (selector: string) => {
+      const trimmedSelector = selector.trim();
+      if (!trimmedSelector) {
+        return;
+      }
+
+      clearError();
+      selectorRowKeysRef.current.push(
+        `selector-rule-${nextSelectorRowKeyRef.current}`,
+      );
+      nextSelectorRowKeyRef.current += 1;
+      addSelector(
+        createSelectorRule(trimmedSelector, template.selectors?.length ?? 0),
+      );
+    },
+    [addSelector, clearError, template.selectors?.length],
+  );
+
+  const handleSave = async () => {
+    await saveTemplate();
+  };
+
+  return (
+    <div className="visual-selector-builder">
+      <div className="visual-selector-builder__header">
+        <h3>Visual Selector Builder</h3>
+        <div className="visual-selector-builder__actions">
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={onCancel}
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={handleSave}
+            disabled={isSaving || (template.selectors?.length ?? 0) === 0}
+          >
+            {isSaving ? "Saving..." : "Save Template"}
+          </button>
+        </div>
+      </div>
+
+      <VisualSelectorPreviewPanel
+        key={loadedPageStateKey}
+        url={url}
+        setUrl={setUrl}
+        headless={headless}
+        setHeadless={(value) => {
+          setHeadless(value);
+          if (!value) {
+            setPlaywright(false);
+          }
+        }}
+        playwright={playwright}
+        setPlaywright={(value) => {
+          setPlaywright(value);
+          if (value) {
+            setHeadless(true);
+          }
+        }}
+        onAddSelector={handleAddSelector}
+      />
+
+      <div className="visual-selector-builder__panel">
+        <h4>Template Configuration</h4>
+        <div className="selector-builder-section">
+          <label htmlFor="template-name">Template Name</label>
+          <input
+            id="template-name"
+            type="text"
+            value={template.name ?? ""}
+            onChange={(e) => updateTemplate({ name: e.target.value })}
+            placeholder="Template name"
+            className="template-name-input"
+          />
+
+          <div className="selector-rules">
+            <div className="selector-rules__header">
+              <span>Field</span>
+              <span>Selector</span>
+              <span>Attr</span>
+              <span>Actions</span>
+            </div>
+            {(template.selectors?.length ?? 0) === 0 ? (
+              <div className="selector-rules__empty">
+                No selectors added yet. Select an element from the DOM tree.
+              </div>
+            ) : (
+              template.selectors?.map((rule, index) => (
+                <div
+                  key={
+                    selectorRowKeysRef.current[index] ??
+                    `selector-rule-${index}`
+                  }
+                  className="selector-rule"
+                >
+                  <input
+                    type="text"
+                    value={rule.name ?? ""}
+                    onChange={(e) =>
+                      updateSelector(index, { name: e.target.value })
+                    }
+                    placeholder="Field name"
+                  />
+                  <input
+                    type="text"
+                    value={rule.selector ?? ""}
+                    onChange={(e) =>
+                      updateSelector(index, { selector: e.target.value })
+                    }
+                    placeholder="CSS selector"
+                  />
+                  <select
+                    value={rule.attr ?? "text"}
+                    onChange={(e) =>
+                      updateSelector(index, { attr: e.target.value })
+                    }
+                  >
+                    <option value="text">text</option>
+                    <option value="content">content</option>
+                    <option value="href">href</option>
+                    <option value="src">src</option>
+                    <option value="alt">alt</option>
+                    <option value="title">title</option>
+                    <option value="value">value</option>
+                  </select>
+                  <div className="selector-rule__actions">
+                    <label className="checkbox-label checkbox-label--small">
+                      <input
+                        type="checkbox"
+                        checked={rule.trim ?? true}
+                        onChange={(e) =>
+                          updateSelector(index, { trim: e.target.checked })
+                        }
+                      />
+                      Trim
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn--danger btn--small"
+                      onClick={() => {
+                        selectorRowKeysRef.current.splice(index, 1);
+                        removeSelector(index);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {saveError && <div className="form-error">{saveError}</div>}
       </div>
     </div>
   );
