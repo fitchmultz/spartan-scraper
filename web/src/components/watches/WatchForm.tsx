@@ -1,16 +1,9 @@
 /**
- * WatchForm Component
- *
- * Renders the create/edit form for watches in a modal dialog.
- * Includes all form fields: URL, selector, interval, diff format,
- * extraction settings, screenshot configuration, and webhook settings.
- *
- * This component does NOT handle:
- * - API calls for saving watches (parent handles via onSubmit)
- * - Form state management (controlled via props)
- * - Modal visibility state
- *
- * @module components/watches/WatchForm
+ * Purpose: Render the create/edit form for watches in a modal dialog.
+ * Responsibilities: Keep watch draft fields controlled, preserve string-backed numeric draft text until submit, and render inline promotion context and form errors.
+ * Scope: Watch route form presentation only; API calls, form state management, and modal visibility stay in the parent manager.
+ * Usage: Mounted by `WatchManager` for create/edit and promotion-seeded watch drafts.
+ * Invariants/Assumptions: String-backed numeric draft fields remain visible as raw text until submit-time parsing, intervalSeconds stays numeric in local state, and promotion seeds may prefill the form.
  */
 
 import type { WatchFormProps } from "../../types/watch";
@@ -232,8 +225,8 @@ export function WatchForm({
               </label>
               <input
                 id="watch-min-size"
-                type="number"
-                min={0}
+                type="text"
+                inputMode="numeric"
                 value={formData.minChangeSize}
                 onChange={(e) => onChange({ minChangeSize: e.target.value })}
                 placeholder="0"
@@ -374,10 +367,8 @@ export function WatchForm({
                   </label>
                   <input
                     id="visual-threshold"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.05}
+                    type="text"
+                    inputMode="decimal"
                     value={formData.visualDiffThreshold}
                     onChange={(e) =>
                       onChange({ visualDiffThreshold: e.target.value })

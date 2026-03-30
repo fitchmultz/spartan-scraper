@@ -6,7 +6,13 @@
  * Invariants/Assumptions: Persisted watch history is the source of truth for detailed post-check inspection.
  */
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -167,10 +173,12 @@ describe("WatchManager", () => {
     expect(screen.queryByText("Loading watches")).not.toBeInTheDocument();
   });
 
-  it("opens a promotion-seeded watch draft with source context", async () => {
+  it("opens a promotion-seeded watch draft with source context and preserves numeric draft text", async () => {
+    const props = createProps({ watches: [] });
+
     render(
       <WatchManager
-        {...createProps({ watches: [] })}
+        {...props}
         onOpenSourceJob={vi.fn()}
         promotionSeed={{
           kind: "watch",
@@ -194,7 +202,7 @@ describe("WatchManager", () => {
             headless: true,
             usePlaywright: true,
             extractMode: "",
-            minChangeSize: "",
+            minChangeSize: "abc",
             ignorePatterns: "",
             screenshotEnabled: true,
             screenshotFullPage: true,
@@ -218,10 +226,19 @@ describe("WatchManager", () => {
     expect(
       screen.getByDisplayValue("https://example.com/pricing"),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/min change size/i)).toHaveValue("abc");
+    expect(screen.getByLabelText(/diff threshold/i)).toHaveValue("0.1");
     expect(screen.getByText(/open source job/i)).toBeInTheDocument();
     expect(
       screen.getByText(/authentication settings are not carried into watches/i),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^create watch$/i }));
+
+    expect(
+      await screen.findByText(/min change size must be a valid number/i),
+    ).toBeInTheDocument();
+    expect(props.onCreate).not.toHaveBeenCalled();
   });
 
   it("shows never checked instead of rendering Go zero timestamps", () => {

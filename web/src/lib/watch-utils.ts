@@ -1,15 +1,9 @@
 /**
- * Watch Utilities Module
- *
- * Provides helper functions for watch-related operations including formatting,
- * data transformation between API types and form data, and default value generation.
- *
- * This module does NOT handle:
- * - React state management or hooks
- * - API calls or network operations
- * - UI rendering or component logic
- *
- * @module lib/watch-utils
+ * Purpose: Centralize watch-related formatting, draft-to-input conversion, and artifact helpers.
+ * Responsibilities: Build default and edit form data, parse string-backed numeric draft fields into API numbers, and resolve watch artifact metadata and URLs.
+ * Scope: Watch form and artifact helpers only; React state and network calls stay elsewhere.
+ * Usage: Imported by watch forms, hooks, and managers that need canonical watch form conversion.
+ * Invariants/Assumptions: Empty optional strings stay omitted, numeric draft fields are validated at submit time, and artifact downloads use browser-safe API paths.
  */
 
 import type { Watch, WatchArtifact, WatchInput } from "../api";
@@ -75,6 +69,55 @@ export function watchToFormData(watch: Watch): WatchFormData {
   };
 }
 
+function parseOptionalNumber(label: string, value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a valid number`);
+  }
+
+  return parsed;
+}
+
+function parseOptionalNonNegativeInteger(
+  label: string,
+  value: string,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${label} must be a whole number`);
+  }
+  if (parsed < 0) {
+    throw new Error(`${label} must be non-negative`);
+  }
+
+  return parsed;
+}
+
+function parseOptionalNumberInRange(
+  label: string,
+  value: string,
+  min: number,
+  max: number,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed < min || parsed > max) {
+    throw new Error(`${label} must be between ${min} and ${max}`);
+  }
+
+  return parsed;
+}
+
 /**
  * Convert WatchFormData to WatchInput for API submission
  * Only includes fields that have values set
@@ -95,8 +138,15 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
 
   if (data.selector) input.selector = data.selector;
   if (data.extractMode) input.extractMode = data.extractMode;
-  if (data.minChangeSize)
-    input.minChangeSize = parseInt(data.minChangeSize, 10);
+
+  const minChangeSize = parseOptionalNonNegativeInteger(
+    "Min Change Size",
+    data.minChangeSize,
+  );
+  if (minChangeSize !== undefined) {
+    input.minChangeSize = minChangeSize;
+  }
+
   input.ignorePatterns = parseOptionalList(data.ignorePatterns, "\n");
   if (data.webhookUrl && data.notifyOnChange) {
     input.webhookConfig = {
@@ -110,8 +160,15 @@ export function formDataToWatchInput(data: WatchFormData): WatchInput {
       fullPage: data.screenshotFullPage,
       format: data.screenshotFormat,
     };
-    if (data.visualDiffThreshold) {
-      input.visualDiffThreshold = parseFloat(data.visualDiffThreshold);
+
+    const visualDiffThreshold = parseOptionalNumberInRange(
+      "Diff Threshold",
+      data.visualDiffThreshold,
+      0,
+      1,
+    );
+    if (visualDiffThreshold !== undefined) {
+      input.visualDiffThreshold = visualDiffThreshold;
     }
   }
 
