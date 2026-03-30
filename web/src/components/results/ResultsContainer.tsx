@@ -80,6 +80,7 @@ export function ResultsContainer({
         }
       >
         <ResultsExplorer
+          key={selectedJobId ?? "none"}
           jobId={selectedJobId}
           resultItems={resultItems}
           selectedResultIndex={selectedResultIndex}

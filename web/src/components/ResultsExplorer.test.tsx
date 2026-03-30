@@ -6,8 +6,9 @@
  * Invariants/Assumptions: The primary reader always renders, secondary tools stay hidden until explicitly opened, and export uses the saved-job endpoint.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Job, ResultItem } from "../types";
@@ -184,6 +185,95 @@ describe("ResultsExplorer", () => {
       screen.getByText(/Secondary tool: Compare runs/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Compare with:/i)).toBeInTheDocument();
+  });
+
+  it("runs comparison explicitly when the compare job changes and the diff tool is reopened", async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+
+    await user.click(screen.getByRole("button", { name: "Tools" }));
+    await user.click(screen.getByRole("button", { name: /Compare runs/i }));
+
+    expect(loadResultsMock).not.toHaveBeenCalled();
+
+    await user.selectOptions(screen.getByLabelText(/Compare with:/i), "job-2");
+
+    await waitFor(() => expect(loadResultsMock).toHaveBeenCalledTimes(2));
+    expect(loadResultsMock).toHaveBeenNthCalledWith(
+      1,
+      "job-1",
+      "jsonl",
+      1,
+      1000,
+    );
+    expect(loadResultsMock).toHaveBeenNthCalledWith(
+      2,
+      "job-2",
+      "jsonl",
+      1,
+      1000,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Hide tool/i }));
+    await user.click(screen.getByRole("button", { name: /Compare runs/i }));
+
+    await waitFor(() => expect(loadResultsMock).toHaveBeenCalledTimes(4));
+  });
+
+  it("resets the assistant instructions when the selected result changes", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => setSelectedResultIndex((index) => index + 1)}
+          >
+            Next result
+          </button>
+          <AIAssistantProvider>
+            <ResultsExplorer
+              jobId="job-1"
+              resultItems={items}
+              selectedResultIndex={selectedResultIndex}
+              setSelectedResultIndex={setSelectedResultIndex}
+              resultSummary={null}
+              resultConfidence={null}
+              resultEvidence={[]}
+              resultClusters={[]}
+              resultCitations={[]}
+              resultAgentic={null}
+              rawResult={JSON.stringify(items)}
+              resultFormat="jsonl"
+              currentPage={1}
+              totalResults={12}
+              resultsPerPage={100}
+              onLoadPage={vi.fn()}
+              availableJobs={jobs}
+              currentJob={jobs[0]}
+              jobType="crawl"
+              onPromote={vi.fn()}
+            />
+          </AIAssistantProvider>
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    await user.type(screen.getByLabelText("Instructions"), "Extract the title");
+    expect(screen.getByLabelText("Instructions")).toHaveValue(
+      "Extract the title",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next result" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Instructions")).toHaveValue("");
+    });
   });
 
   it("uses a guided export flow with scope guidance", async () => {

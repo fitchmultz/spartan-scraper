@@ -6,7 +6,7 @@
  * Invariants/Assumptions: A selected job ID exists before export/compare actions run; assistant actions only open through explicit operator commands.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ExportInspection, ExportShapeConfig } from "../../api";
 import {
@@ -155,21 +155,42 @@ export function useResultsOperationsState({
     }
   }, [shapeConfigText]);
 
-  useEffect(() => {
-    if (!jobId || !compareJobId || activeTool !== "diff") {
-      setDiffResult(null);
-      return;
-    }
+  const diffRequestSeqRef = useRef(0);
 
-    const computeDiff = async () => {
+  useEffect(
+    () => () => {
+      diffRequestSeqRef.current += 1;
+    },
+    [],
+  );
+
+  const runDiff = useCallback(
+    async (nextCompareJobId?: string | null) => {
+      const targetCompareJobId =
+        nextCompareJobId === undefined ? compareJobId : nextCompareJobId;
+
+      if (!jobId || !targetCompareJobId) {
+        diffRequestSeqRef.current += 1;
+        setDiffResult(null);
+        setDiffError(null);
+        setDiffLoading(false);
+        return;
+      }
+
+      const requestSeq = ++diffRequestSeqRef.current;
       setDiffLoading(true);
       setDiffError(null);
+      setDiffResult(null);
 
       try {
         const [baseResult, compareResult] = await Promise.all([
           loadResults(jobId, "jsonl", 1, 1000),
-          loadResults(compareJobId, "jsonl", 1, 1000),
+          loadResults(targetCompareJobId, "jsonl", 1, 1000),
         ]);
+
+        if (requestSeq !== diffRequestSeqRef.current) {
+          return;
+        }
 
         if (baseResult.error) {
           setDiffError(`Base job error: ${baseResult.error}`);
@@ -185,6 +206,9 @@ export function useResultsOperationsState({
         const compareData = (compareResult.data || []) as ResultItem[];
         setDiffResult(diffResults(baseData, compareData));
       } catch (error) {
+        if (requestSeq !== diffRequestSeqRef.current) {
+          return;
+        }
         setDiffError(
           getApiErrorMessage(
             error,
@@ -192,12 +216,13 @@ export function useResultsOperationsState({
           ),
         );
       } finally {
-        setDiffLoading(false);
+        if (requestSeq === diffRequestSeqRef.current) {
+          setDiffLoading(false);
+        }
       }
-    };
-
-    void computeDiff();
-  }, [activeTool, compareJobId, jobId]);
+    },
+    [compareJobId, jobId],
+  );
 
   const handleDirectExport = async (format: ExportFormat) => {
     if (!jobId) {
@@ -377,6 +402,7 @@ export function useResultsOperationsState({
     diffError,
     diffLoading,
     diffResult,
+    runDiff,
     exportError,
     exportOptions,
     handleDirectExport,

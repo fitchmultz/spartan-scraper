@@ -17,6 +17,7 @@ import type {
   ResultItem,
 } from "../types";
 import type { PromotionDestination } from "../types/promotion";
+import type { SecondaryToolId } from "./results-explorer/resultsExplorerUtils";
 import { ResultsViewer } from "./ResultsViewer";
 import { JobPromotionPanel } from "./promotion/JobPromotionPanel";
 import {
@@ -101,6 +102,18 @@ export function ResultsExplorer({
       ? (activeResultItem.summary ?? null)
       : null;
 
+  const handleSelectSecondaryTool = (tool: SecondaryToolId) => {
+    explorer.setActiveTool(tool);
+    if (tool === "diff") {
+      void explorer.runDiff();
+    }
+  };
+
+  const handleCompareJobIdChange = (jobID: string | null) => {
+    explorer.setCompareJobId(jobID);
+    void explorer.runDiff(jobID);
+  };
+
   if (!jobId) {
     return null;
   }
@@ -182,7 +195,7 @@ export function ResultsExplorer({
             <SecondaryToolsDrawer
               tools={explorer.secondaryTools}
               activeTool={explorer.activeTool}
-              onSelectTool={explorer.setActiveTool}
+              onSelectTool={handleSelectSecondaryTool}
               onClose={() => explorer.setIsToolsOpen(false)}
             />
           ) : null}
@@ -265,7 +278,7 @@ export function ResultsExplorer({
             onCollapseAllTreeNodes={explorer.collapseAllTreeNodes}
             onTreeSelect={explorer.handleTreeSelect}
             onTreeToggle={explorer.handleTreeToggle}
-            onChangeCompareJobID={explorer.setCompareJobId}
+            onChangeCompareJobID={handleCompareJobIdChange}
             onSelectEvidenceUrl={explorer.setSelectedEvidenceUrl}
             onSelectClusterId={explorer.setSelectedClusterId}
             onTransformApply={(format, expression, language) => {
