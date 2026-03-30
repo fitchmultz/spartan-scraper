@@ -230,7 +230,7 @@ describe("useBatches helpers", () => {
 });
 
 describe("useBatches authoritative loading", () => {
-  it("restores the last submitted batch from localStorage", async () => {
+  it("restores the last submitted batch from localStorage", () => {
     localStorage.setItem(
       "spartan_last_submitted_batch",
       JSON.stringify({
@@ -243,13 +243,11 @@ describe("useBatches authoritative loading", () => {
 
     const { result } = renderHook(() => useBatches());
 
-    await waitFor(() => {
-      expect(result.current.lastSubmittedBatch).toEqual({
-        batchId: "batch-persisted-1",
-        kind: "scrape",
-        submittedUrls: ["https://example.com", "https://example.org"],
-        submittedAt: "2026-03-05T10:00:05.000Z",
-      });
+    expect(result.current.lastSubmittedBatch).toEqual({
+      batchId: "batch-persisted-1",
+      kind: "scrape",
+      submittedUrls: ["https://example.com", "https://example.org"],
+      submittedAt: "2026-03-05T10:00:05.000Z",
     });
   });
 

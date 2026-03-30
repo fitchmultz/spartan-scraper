@@ -357,6 +357,20 @@ export function mapBatchResponse(response: BatchResponse): BatchEntry {
   };
 }
 
+function readStoredLastSubmittedBatch(): BatchSubmissionRecord | null {
+  try {
+    const stored = localStorage.getItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as unknown;
+    return normalizeStoredBatchSubmission(parsed);
+  } catch {
+    return null;
+  }
+}
+
 type BatchSubmitter<TRequest> = (params: {
   baseUrl: string;
   body: TRequest;
@@ -366,7 +380,9 @@ export function useBatches() {
   const [batches, setBatches] = useState<BatchEntry[]>([]);
   const [batchJobs, setBatchJobs] = useState<Map<string, Job[]>>(new Map());
   const [lastSubmittedBatch, setLastSubmittedBatch] =
-    useState<BatchSubmissionRecord | null>(null);
+    useState<BatchSubmissionRecord | null>(() =>
+      readStoredLastSubmittedBatch(),
+    );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -393,20 +409,6 @@ export function useBatches() {
     },
     [],
   );
-
-  const loadLastSubmittedBatch = useCallback(() => {
-    try {
-      const stored = localStorage.getItem(LAST_SUBMITTED_BATCH_STORAGE_KEY);
-      if (!stored) {
-        return;
-      }
-
-      const parsed = JSON.parse(stored) as unknown;
-      setLastSubmittedBatch(normalizeStoredBatchSubmission(parsed));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
 
   const clearLastSubmittedBatch = useCallback(() => {
     setLastSubmittedBatch(null);
@@ -639,10 +641,6 @@ export function useBatches() {
     initializedRef.current = true;
     void refreshBatches(0);
   }, [refreshBatches]);
-
-  useEffect(() => {
-    loadLastSubmittedBatch();
-  }, [loadLastSubmittedBatch]);
 
   useEffect(() => {
     if (intervalRef.current) {

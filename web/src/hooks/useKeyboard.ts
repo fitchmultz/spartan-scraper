@@ -1,11 +1,9 @@
 /**
- * Keyboard Shortcuts Management Hook
- *
- * Manages global keyboard shortcuts with localStorage persistence for user preferences.
- * Provides a command palette trigger, form submission shortcuts, navigation, and help.
- * Normalizes shortcuts across platforms (Mac/Windows/Linux).
- *
- * @module useKeyboard
+ * Purpose: Manage global keyboard shortcuts and modal toggles for the web shell.
+ * Responsibilities: Load persisted shortcut overrides, bind keydown listeners, and expose command palette/help controls.
+ * Scope: Client-side keyboard shortcut state and event handling only.
+ * Usage: Call `useKeyboard()` from shell containers that need shortcut state and handlers.
+ * Invariants/Assumptions: Shortcut persistence must fail open, sequence shortcuts stay local to the current tab, and inputs suppress non-modifier shortcuts.
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -207,21 +205,16 @@ function matchesShortcut(
  */
 export function useKeyboard(): KeyboardState {
   const isMac = useMemo(() => isMacPlatform(), []);
-  const [shortcuts, setShortcuts] = useState<ShortcutConfig>(DEFAULT_SHORTCUTS);
+  const [shortcuts, setShortcuts] = useState<ShortcutConfig>(() => {
+    const stored = getStoredShortcuts();
+    return stored ? { ...DEFAULT_SHORTCUTS, ...stored } : DEFAULT_SHORTCUTS;
+  });
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Sequence shortcut state (for "g j" style shortcuts)
   const sequenceBuffer = useRef<string>("");
   const sequenceTimeout = useRef<number | null>(null);
-
-  // Load stored shortcuts on mount
-  useEffect(() => {
-    const stored = getStoredShortcuts();
-    if (stored) {
-      setShortcuts((prev) => ({ ...prev, ...stored }));
-    }
-  }, []);
 
   // Persist shortcuts when they change
   useEffect(() => {

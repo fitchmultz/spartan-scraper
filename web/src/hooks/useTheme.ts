@@ -1,11 +1,9 @@
 /**
- * Theme Management Hook
- *
- * Manages application theme state with localStorage persistence and
- * system preference detection. Provides theme toggle functionality
- * and automatic sync with OS-level color scheme preferences.
- *
- * @module useTheme
+ * Purpose: Manage application theme state for the web shell.
+ * Responsibilities: Hydrate persisted theme preferences, track system color-scheme changes, and keep the document root in sync.
+ * Scope: Client-side theme preference state only.
+ * Usage: Call `useTheme()` from shell containers that need theme state and toggles.
+ * Invariants/Assumptions: Theme persistence must fail open, system mode follows the current OS preference, and document attributes are updated from resolved theme state.
  */
 
 import { useState, useEffect, useCallback, useEffectEvent } from "react";
@@ -112,32 +110,21 @@ function applyThemeToDocument(resolvedTheme: ResolvedTheme): void {
  * ```
  */
 export function useTheme(): UseThemeReturn {
-  const [theme, setThemeState] = useState<Theme>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [theme, setThemeState] = useState<Theme>(
+    () => getStoredTheme() ?? "system",
+  );
+  const [systemPreference, setSystemPreference] = useState<ResolvedTheme>(() =>
+    getSystemPreference(),
+  );
+  const resolvedTheme: ResolvedTheme =
+    theme === "system" ? systemPreference : theme;
 
-  // Apply theme to document and update resolved theme
-  const applyTheme = useCallback((newTheme: Theme) => {
-    const resolved = newTheme === "system" ? getSystemPreference() : newTheme;
-    setResolvedTheme(resolved);
-    applyThemeToDocument(resolved);
-  }, []);
-
-  // Initialize theme from storage on mount
   useEffect(() => {
-    const stored = getStoredTheme();
-    if (stored) {
-      setThemeState(stored);
-      applyTheme(stored);
-    } else {
-      // Default to system preference
-      applyTheme("system");
-    }
-  }, [applyTheme]);
+    applyThemeToDocument(resolvedTheme);
+  }, [resolvedTheme]);
 
   const handleSystemPreferenceChange = useEffectEvent(() => {
-    if (theme === "system") {
-      applyTheme("system");
-    }
+    setSystemPreference(getSystemPreference());
   });
 
   // Listen for system preference changes
@@ -154,14 +141,13 @@ export function useTheme(): UseThemeReturn {
   /**
    * Explicitly set the theme.
    */
-  const setTheme = useCallback(
-    (newTheme: Theme) => {
-      setThemeState(newTheme);
-      storeTheme(newTheme);
-      applyTheme(newTheme);
-    },
-    [applyTheme],
-  );
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+    storeTheme(newTheme);
+    if (newTheme === "system") {
+      setSystemPreference(getSystemPreference());
+    }
+  }, []);
 
   /**
    * Toggle between light and dark themes.

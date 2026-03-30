@@ -1,11 +1,9 @@
 /**
- * Presets Hook
- *
- * Custom React hook for managing job presets with localStorage persistence.
- * Merges built-in presets with user-saved custom presets, providing CRUD
- * operations for custom preset management.
- *
- * @module hooks/usePresets
+ * Purpose: Manage built-in and custom job presets for the web UI.
+ * Responsibilities: Hydrate persisted custom presets, merge them with built-ins, and expose CRUD/query helpers.
+ * Scope: Client-side preset state and localStorage persistence only.
+ * Usage: Call `usePresets()` from the job submission surfaces that need preset lookup or editing.
+ * Invariants/Assumptions: Stored preset payloads may be absent or malformed, and persistence must fail open.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -59,6 +57,24 @@ function isValidPreset(obj: unknown): obj is JobPreset {
   return true;
 }
 
+function readStoredCustomPresets(): JobPreset[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isValidPreset);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Hook return type definition
  */
@@ -90,34 +106,18 @@ export interface UsePresetsReturn {
  * @returns Object containing presets and preset management functions
  */
 export function usePresets(): UsePresetsReturn {
-  const [customPresets, setCustomPresets] = useState<JobPreset[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load custom presets from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown[];
-        const valid = parsed.filter(isValidPreset) as JobPreset[];
-        setCustomPresets(valid);
-      }
-    } catch {
-      // Ignore localStorage errors (e.g., quota exceeded, disabled)
-    }
-    setIsLoaded(true);
-  }, []);
+  const [customPresets, setCustomPresets] = useState<JobPreset[]>(() =>
+    readStoredCustomPresets(),
+  );
 
   // Save custom presets to localStorage when they change
   useEffect(() => {
-    if (!isLoaded) return;
-
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(customPresets));
     } catch {
       // Ignore localStorage errors
     }
-  }, [customPresets, isLoaded]);
+  }, [customPresets]);
 
   // All presets (built-in + custom)
   const presets = useMemo<JobPreset[]>(

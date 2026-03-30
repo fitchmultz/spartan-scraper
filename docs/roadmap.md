@@ -16,12 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### EU-5: Replace storage-load mount effects with `useState` initializers
-
-Load stored keyboard shortcuts, theme, presets, and last-submitted batch notice in initializers instead of mount effects.
-
-Files: `web/src/hooks/useKeyboard.ts`, `web/src/hooks/useTheme.ts`, `web/src/hooks/usePresets.ts`, `web/src/hooks/useBatches.ts`
-
 ### EU-2: Remove prop-change reset effects from shell assistants
 
 Key or clear the owning component for `CommandPalette`, `JobSubmissionAssistantSection`, and `ResultsAssistantSection`.
