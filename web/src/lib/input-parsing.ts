@@ -2,12 +2,13 @@
  * Input parsing utilities for shared form and text processing.
  *
  * Purpose:
- * - Eliminate repeated ad-hoc splitting and trimming logic across the web app.
+ * - Eliminate repeated ad-hoc splitting, trimming, and numeric validation logic
+ *   across the web app.
  *
  * Responsibilities:
  * - Split delimited text into trimmed token arrays.
+ * - Parse optional numeric inputs with consistent validation.
  * - Convert optional text blobs into list and map structures.
- * - Preserve empty-input semantics consistently for API request builders.
  *
  * Scope:
  * - Stateless parsing helpers for form libraries and components.
@@ -33,6 +34,70 @@ export function splitAndTrim(
     .split(separator)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function parseOptionalNumber(
+  label: string,
+  value: string,
+): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a valid number`);
+  }
+
+  return parsed;
+}
+
+export function parseOptionalWholeNumber(
+  label: string,
+  value: string,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${label} must be a whole number`);
+  }
+
+  return parsed;
+}
+
+export function parseOptionalNonNegativeInteger(
+  label: string,
+  value: string,
+): number | undefined {
+  const parsed = parseOptionalWholeNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed < 0) {
+    throw new Error(`${label} must be non-negative`);
+  }
+
+  return parsed;
+}
+
+export function parseOptionalNumberInRange(
+  label: string,
+  value: string,
+  min: number,
+  max: number,
+): number | undefined {
+  const parsed = parseOptionalNumber(label, value);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (parsed < min || parsed > max) {
+    throw new Error(`${label} must be between ${min} and ${max}`);
+  }
+
+  return parsed;
 }
 
 export function parseOptionalList(

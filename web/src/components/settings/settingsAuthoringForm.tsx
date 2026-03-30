@@ -1,6 +1,6 @@
 /**
  * Purpose: Share Settings authoring field codecs and draft-form chrome across browser-runtime editors.
- * Responsibilities: Normalize comma-list, optional number, and optional JSON field codecs; compute draft sync state; and render the shared draft status, context notice, validation error, and action row chrome.
+ * Responsibilities: Normalize comma-list and optional JSON field codecs; compute draft sync state; and render the shared draft status, context notice, validation error, and action row chrome.
  * Scope: Settings authoring helpers only; editor-specific field layouts and API payload schemas stay with each authoring form.
  * Usage: Imported by render-profile and pipeline-script forms to keep browser-runtime authoring behavior aligned.
  * Invariants/Assumptions: Invalid codec parsing should mark the draft dirty, blank optional fields resolve to undefined, and shared form chrome preserves the existing Settings editor semantics.
@@ -64,23 +64,6 @@ export function parseOptionalJSONObject<T extends object>(
   }
 
   return parsed as T;
-}
-
-export function parseOptionalNumber(
-  label: string,
-  value: string,
-): number | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`${label} must be a valid number`);
-  }
-
-  return parsed;
 }
 
 export function getSettingsDraftSyncState<TDraft, TValue>(options: {

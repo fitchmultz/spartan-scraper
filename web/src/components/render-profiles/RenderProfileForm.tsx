@@ -17,12 +17,15 @@ import {
 
 import type { RenderProfile, RenderProfileInput } from "../../api";
 import {
+  parseOptionalNonNegativeInteger,
+  parseOptionalNumberInRange,
+} from "../../lib/input-parsing";
+import {
   formatCommaSeparatedList,
   formatOptionalJSON,
   getSettingsDraftSyncState,
   parseCommaSeparatedList,
   parseOptionalJSONObject,
-  parseOptionalNumber,
   SettingsDraftForm,
 } from "../settings/settingsAuthoringForm";
 
@@ -113,45 +116,12 @@ export function createProfileFormDraft(
   };
 }
 
-function parseOptionalFractionInRange(
-  label: string,
-  value: string,
-  min: number,
-  max: number,
-): number | undefined {
-  const parsed = parseOptionalNumber(label, value);
-  if (parsed === undefined) {
-    return undefined;
-  }
-  if (parsed < min || parsed > max) {
-    throw new Error(`${label} must be between ${min} and ${max}`);
-  }
-  return parsed;
-}
-
-function parseOptionalNonNegativeInteger(
-  label: string,
-  value: string,
-): number | undefined {
-  const parsed = parseOptionalNumber(label, value);
-  if (parsed === undefined) {
-    return undefined;
-  }
-  if (!Number.isInteger(parsed)) {
-    throw new Error(`${label} must be a whole number`);
-  }
-  if (parsed < 0) {
-    throw new Error(`${label} must be non-negative`);
-  }
-  return parsed;
-}
-
 export function buildRenderProfileInputFromDraft(
   draft: ProfileFormDraft,
 ): RenderProfileInput {
   const hostPatterns = parseCommaSeparatedList(draft.hostPatternInput);
 
-  const jsHeavyThreshold = parseOptionalFractionInRange(
+  const jsHeavyThreshold = parseOptionalNumberInRange(
     "JS-Heavy Threshold",
     draft.jsHeavyThresholdInput,
     0,

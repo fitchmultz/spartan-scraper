@@ -8,7 +8,11 @@
 
 import type { Watch, WatchArtifact, WatchInput } from "../api";
 import { buildApiUrl } from "./api-config";
-import { parseOptionalList } from "./input-parsing";
+import {
+  parseOptionalList,
+  parseOptionalNonNegativeInteger,
+  parseOptionalNumberInRange,
+} from "./input-parsing";
 import type { WatchFormData } from "../types/watch";
 
 /**
@@ -67,55 +71,6 @@ export function watchToFormData(watch: Watch): WatchFormData {
       ? JSON.stringify(watch.jobTrigger.request, null, 2)
       : "",
   };
-}
-
-function parseOptionalNumber(label: string, value: string): number | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`${label} must be a valid number`);
-  }
-
-  return parsed;
-}
-
-function parseOptionalNonNegativeInteger(
-  label: string,
-  value: string,
-): number | undefined {
-  const parsed = parseOptionalNumber(label, value);
-  if (parsed === undefined) {
-    return undefined;
-  }
-  if (!Number.isInteger(parsed)) {
-    throw new Error(`${label} must be a whole number`);
-  }
-  if (parsed < 0) {
-    throw new Error(`${label} must be non-negative`);
-  }
-
-  return parsed;
-}
-
-function parseOptionalNumberInRange(
-  label: string,
-  value: string,
-  min: number,
-  max: number,
-): number | undefined {
-  const parsed = parseOptionalNumber(label, value);
-  if (parsed === undefined) {
-    return undefined;
-  }
-  if (parsed < min || parsed > max) {
-    throw new Error(`${label} must be between ${min} and ${max}`);
-  }
-
-  return parsed;
 }
 
 /**
