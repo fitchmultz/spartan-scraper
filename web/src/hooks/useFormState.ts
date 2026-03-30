@@ -6,7 +6,7 @@
  * Invariants/Assumptions: The controller is the canonical source for shared runtime/extraction fields, Playwright cannot remain enabled when headless execution is off, and presets may partially overlay the current state.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { PresetConfig } from "../types/presets";
 
 const DEFAULT_HEADERS = "";
@@ -193,11 +193,18 @@ export function useFormState(): FormController {
   const [state, setState] = useState<FormState>(INITIAL_STATE);
 
   const setHeadless = useCallback((value: boolean) => {
-    setState((prev) => ({ ...prev, headless: value }));
+    setState((prev) => ({
+      ...prev,
+      headless: value,
+      usePlaywright: value ? prev.usePlaywright : false,
+    }));
   }, []);
 
   const setUsePlaywright = useCallback((value: boolean) => {
-    setState((prev) => ({ ...prev, usePlaywright: value }));
+    setState((prev) => ({
+      ...prev,
+      usePlaywright: prev.headless ? value : false,
+    }));
   }, []);
 
   const setTimeoutSeconds = useCallback((value: number) => {
@@ -407,151 +414,159 @@ export function useFormState(): FormController {
     setState((prev) => ({ ...prev, interceptMaxEntries: value }));
   }, []);
 
-  useEffect(() => {
-    if (!state.headless && state.usePlaywright) {
-      setState((prev) => ({ ...prev, usePlaywright: false }));
-    }
-  }, [state.headless, state.usePlaywright]);
-
   const applyPreset = useCallback((config: PresetConfig) => {
-    setState((prev) => ({
-      ...prev,
-      ...(config.headless !== undefined && { headless: config.headless }),
-      ...(config.usePlaywright !== undefined && {
-        usePlaywright: config.usePlaywright,
-      }),
-      ...(config.timeoutSeconds !== undefined && {
-        timeoutSeconds: config.timeoutSeconds,
-      }),
-      ...(config.authProfile !== undefined && {
-        authProfile: config.authProfile,
-      }),
-      ...(config.authBasic !== undefined && { authBasic: config.authBasic }),
-      ...(config.headersRaw !== undefined && { headersRaw: config.headersRaw }),
-      ...(config.cookiesRaw !== undefined && { cookiesRaw: config.cookiesRaw }),
-      ...(config.queryRaw !== undefined && { queryRaw: config.queryRaw }),
-      ...(config.proxyUrl !== undefined && { proxyUrl: config.proxyUrl }),
-      ...(config.proxyUsername !== undefined && {
-        proxyUsername: config.proxyUsername,
-      }),
-      ...(config.proxyPassword !== undefined && {
-        proxyPassword: config.proxyPassword,
-      }),
-      ...(config.proxyRegion !== undefined && {
-        proxyRegion: config.proxyRegion,
-      }),
-      ...(config.proxyRequiredTags !== undefined && {
-        proxyRequiredTags: config.proxyRequiredTags,
-      }),
-      ...(config.proxyExcludeProxyIds !== undefined && {
-        proxyExcludeProxyIds: config.proxyExcludeProxyIds,
-      }),
-      ...(config.loginUrl !== undefined && { loginUrl: config.loginUrl }),
-      ...(config.loginUserSelector !== undefined && {
-        loginUserSelector: config.loginUserSelector,
-      }),
-      ...(config.loginPassSelector !== undefined && {
-        loginPassSelector: config.loginPassSelector,
-      }),
-      ...(config.loginSubmitSelector !== undefined && {
-        loginSubmitSelector: config.loginSubmitSelector,
-      }),
-      ...(config.loginUser !== undefined && { loginUser: config.loginUser }),
-      ...(config.loginPass !== undefined && { loginPass: config.loginPass }),
-      ...(config.extractTemplate !== undefined && {
-        extractTemplate: config.extractTemplate,
-      }),
-      ...(config.extractValidate !== undefined && {
-        extractValidate: config.extractValidate,
-      }),
-      ...(config.aiExtractEnabled !== undefined && {
-        aiExtractEnabled: config.aiExtractEnabled,
-      }),
-      ...(config.aiExtractMode !== undefined && {
-        aiExtractMode: config.aiExtractMode,
-      }),
-      ...(config.aiExtractPrompt !== undefined && {
-        aiExtractPrompt: config.aiExtractPrompt,
-      }),
-      ...(config.aiExtractSchema !== undefined && {
-        aiExtractSchema: config.aiExtractSchema,
-      }),
-      ...(config.aiExtractFields !== undefined && {
-        aiExtractFields: config.aiExtractFields,
-      }),
-      ...(config.agenticResearchEnabled !== undefined && {
-        agenticResearchEnabled: config.agenticResearchEnabled,
-      }),
-      ...(config.agenticResearchInstructions !== undefined && {
-        agenticResearchInstructions: config.agenticResearchInstructions,
-      }),
-      ...(config.agenticResearchMaxRounds !== undefined && {
-        agenticResearchMaxRounds: config.agenticResearchMaxRounds,
-      }),
-      ...(config.agenticResearchMaxFollowUpUrls !== undefined && {
-        agenticResearchMaxFollowUpUrls: config.agenticResearchMaxFollowUpUrls,
-      }),
-      ...(config.preProcessors !== undefined && {
-        preProcessors: config.preProcessors,
-      }),
-      ...(config.postProcessors !== undefined && {
-        postProcessors: config.postProcessors,
-      }),
-      ...(config.transformers !== undefined && {
-        transformers: config.transformers,
-      }),
-      ...(config.incremental !== undefined && {
-        incremental: config.incremental,
-      }),
-      ...(config.maxDepth !== undefined && { maxDepth: config.maxDepth }),
-      ...(config.maxPages !== undefined && { maxPages: config.maxPages }),
-      ...(config.webhookUrl !== undefined && { webhookUrl: config.webhookUrl }),
-      ...(config.webhookEvents !== undefined && {
-        webhookEvents: config.webhookEvents,
-      }),
-      ...(config.webhookSecret !== undefined && {
-        webhookSecret: config.webhookSecret,
-      }),
-      ...(config.screenshotEnabled !== undefined && {
-        screenshotEnabled: config.screenshotEnabled,
-      }),
-      ...(config.screenshotFullPage !== undefined && {
-        screenshotFullPage: config.screenshotFullPage,
-      }),
-      ...(config.screenshotFormat !== undefined && {
-        screenshotFormat: config.screenshotFormat,
-      }),
-      ...(config.screenshotQuality !== undefined && {
-        screenshotQuality: config.screenshotQuality,
-      }),
-      ...(config.screenshotWidth !== undefined && {
-        screenshotWidth: config.screenshotWidth,
-      }),
-      ...(config.screenshotHeight !== undefined && {
-        screenshotHeight: config.screenshotHeight,
-      }),
-      ...(config.interceptEnabled !== undefined && {
-        interceptEnabled: config.interceptEnabled,
-      }),
-      ...(config.interceptURLPatterns !== undefined && {
-        interceptURLPatterns: config.interceptURLPatterns,
-      }),
-      ...(config.interceptResourceTypes !== undefined && {
-        interceptResourceTypes: config.interceptResourceTypes,
-      }),
-      ...(config.interceptCaptureRequestBody !== undefined && {
-        interceptCaptureRequestBody: config.interceptCaptureRequestBody,
-      }),
-      ...(config.interceptCaptureResponseBody !== undefined && {
-        interceptCaptureResponseBody: config.interceptCaptureResponseBody,
-      }),
-      ...(config.interceptMaxBodySize !== undefined && {
-        interceptMaxBodySize: config.interceptMaxBodySize,
-      }),
-      ...(config.interceptMaxEntries !== undefined && {
-        interceptMaxEntries: config.interceptMaxEntries,
-      }),
-    }));
+    setState((prev) => {
+      const nextHeadless =
+        config.headless !== undefined ? config.headless : prev.headless;
+      const nextUsePlaywright = nextHeadless
+        ? config.usePlaywright !== undefined
+          ? config.usePlaywright
+          : prev.usePlaywright
+        : false;
+
+      return {
+        ...prev,
+        headless: nextHeadless,
+        usePlaywright: nextUsePlaywright,
+        ...(config.timeoutSeconds !== undefined && {
+          timeoutSeconds: config.timeoutSeconds,
+        }),
+        ...(config.authProfile !== undefined && {
+          authProfile: config.authProfile,
+        }),
+        ...(config.authBasic !== undefined && { authBasic: config.authBasic }),
+        ...(config.headersRaw !== undefined && {
+          headersRaw: config.headersRaw,
+        }),
+        ...(config.cookiesRaw !== undefined && {
+          cookiesRaw: config.cookiesRaw,
+        }),
+        ...(config.queryRaw !== undefined && { queryRaw: config.queryRaw }),
+        ...(config.proxyUrl !== undefined && { proxyUrl: config.proxyUrl }),
+        ...(config.proxyUsername !== undefined && {
+          proxyUsername: config.proxyUsername,
+        }),
+        ...(config.proxyPassword !== undefined && {
+          proxyPassword: config.proxyPassword,
+        }),
+        ...(config.proxyRegion !== undefined && {
+          proxyRegion: config.proxyRegion,
+        }),
+        ...(config.proxyRequiredTags !== undefined && {
+          proxyRequiredTags: config.proxyRequiredTags,
+        }),
+        ...(config.proxyExcludeProxyIds !== undefined && {
+          proxyExcludeProxyIds: config.proxyExcludeProxyIds,
+        }),
+        ...(config.loginUrl !== undefined && { loginUrl: config.loginUrl }),
+        ...(config.loginUserSelector !== undefined && {
+          loginUserSelector: config.loginUserSelector,
+        }),
+        ...(config.loginPassSelector !== undefined && {
+          loginPassSelector: config.loginPassSelector,
+        }),
+        ...(config.loginSubmitSelector !== undefined && {
+          loginSubmitSelector: config.loginSubmitSelector,
+        }),
+        ...(config.loginUser !== undefined && { loginUser: config.loginUser }),
+        ...(config.loginPass !== undefined && { loginPass: config.loginPass }),
+        ...(config.extractTemplate !== undefined && {
+          extractTemplate: config.extractTemplate,
+        }),
+        ...(config.extractValidate !== undefined && {
+          extractValidate: config.extractValidate,
+        }),
+        ...(config.aiExtractEnabled !== undefined && {
+          aiExtractEnabled: config.aiExtractEnabled,
+        }),
+        ...(config.aiExtractMode !== undefined && {
+          aiExtractMode: config.aiExtractMode,
+        }),
+        ...(config.aiExtractPrompt !== undefined && {
+          aiExtractPrompt: config.aiExtractPrompt,
+        }),
+        ...(config.aiExtractSchema !== undefined && {
+          aiExtractSchema: config.aiExtractSchema,
+        }),
+        ...(config.aiExtractFields !== undefined && {
+          aiExtractFields: config.aiExtractFields,
+        }),
+        ...(config.agenticResearchEnabled !== undefined && {
+          agenticResearchEnabled: config.agenticResearchEnabled,
+        }),
+        ...(config.agenticResearchInstructions !== undefined && {
+          agenticResearchInstructions: config.agenticResearchInstructions,
+        }),
+        ...(config.agenticResearchMaxRounds !== undefined && {
+          agenticResearchMaxRounds: config.agenticResearchMaxRounds,
+        }),
+        ...(config.agenticResearchMaxFollowUpUrls !== undefined && {
+          agenticResearchMaxFollowUpUrls: config.agenticResearchMaxFollowUpUrls,
+        }),
+        ...(config.preProcessors !== undefined && {
+          preProcessors: config.preProcessors,
+        }),
+        ...(config.postProcessors !== undefined && {
+          postProcessors: config.postProcessors,
+        }),
+        ...(config.transformers !== undefined && {
+          transformers: config.transformers,
+        }),
+        ...(config.incremental !== undefined && {
+          incremental: config.incremental,
+        }),
+        ...(config.maxDepth !== undefined && { maxDepth: config.maxDepth }),
+        ...(config.maxPages !== undefined && { maxPages: config.maxPages }),
+        ...(config.webhookUrl !== undefined && {
+          webhookUrl: config.webhookUrl,
+        }),
+        ...(config.webhookEvents !== undefined && {
+          webhookEvents: config.webhookEvents,
+        }),
+        ...(config.webhookSecret !== undefined && {
+          webhookSecret: config.webhookSecret,
+        }),
+        ...(config.screenshotEnabled !== undefined && {
+          screenshotEnabled: config.screenshotEnabled,
+        }),
+        ...(config.screenshotFullPage !== undefined && {
+          screenshotFullPage: config.screenshotFullPage,
+        }),
+        ...(config.screenshotFormat !== undefined && {
+          screenshotFormat: config.screenshotFormat,
+        }),
+        ...(config.screenshotQuality !== undefined && {
+          screenshotQuality: config.screenshotQuality,
+        }),
+        ...(config.screenshotWidth !== undefined && {
+          screenshotWidth: config.screenshotWidth,
+        }),
+        ...(config.screenshotHeight !== undefined && {
+          screenshotHeight: config.screenshotHeight,
+        }),
+        ...(config.interceptEnabled !== undefined && {
+          interceptEnabled: config.interceptEnabled,
+        }),
+        ...(config.interceptURLPatterns !== undefined && {
+          interceptURLPatterns: config.interceptURLPatterns,
+        }),
+        ...(config.interceptResourceTypes !== undefined && {
+          interceptResourceTypes: config.interceptResourceTypes,
+        }),
+        ...(config.interceptCaptureRequestBody !== undefined && {
+          interceptCaptureRequestBody: config.interceptCaptureRequestBody,
+        }),
+        ...(config.interceptCaptureResponseBody !== undefined && {
+          interceptCaptureResponseBody: config.interceptCaptureResponseBody,
+        }),
+        ...(config.interceptMaxBodySize !== undefined && {
+          interceptMaxBodySize: config.interceptMaxBodySize,
+        }),
+        ...(config.interceptMaxEntries !== undefined && {
+          interceptMaxEntries: config.interceptMaxEntries,
+        }),
+      };
+    });
   }, []);
 
   const reset = useCallback(() => {

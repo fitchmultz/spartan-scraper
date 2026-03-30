@@ -16,18 +16,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next
 
-### EU-2: Remove prop-change reset effects from shell assistants
-
-Key or clear the owning component for `CommandPalette`, `JobSubmissionAssistantSection`, and `ResultsAssistantSection`.
-
-Files: `web/src/components/CommandPalette.tsx`, `web/src/components/ai-assistant/JobSubmissionAssistantSection.tsx`, `web/src/components/ai-assistant/ResultsAssistantSection.tsx`
-
-### EU-3: Fold self-resetting effects into their setters or reducers
-
-Remove the `usePlaywright` reset in `useFormState` and the render-profile draft-error reset in `RenderProfileForm` by handling the state transition at the source.
-
-Files: `web/src/hooks/useFormState.ts`, `web/src/components/render-profiles/RenderProfileForm.tsx`
-
 ### EU-6: Replace diff recomputation with an explicit action
 
 Expose `runDiff()` and call it from compare-selection and diff-tool entry points instead of relying on a reactive effect.

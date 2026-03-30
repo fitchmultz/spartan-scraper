@@ -7,12 +7,13 @@
  */
 
 import {
+  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type ReactNode,
   type FormEvent,
+  type ReactNode,
+  type SetStateAction,
 } from "react";
 
 import type { RenderProfile, RenderProfileInput } from "../../api";
@@ -57,6 +58,23 @@ interface RenderProfileFormProps {
   onSubmit: (input: RenderProfileInput) => void;
   onCancel: () => void;
   onDiscard?: () => void;
+}
+
+function useStateWithErrorReset<T>(
+  initialValue: T,
+  clearError: () => void,
+): [T, (next: SetStateAction<T>) => void] {
+  const [value, setValue] = useState(initialValue);
+
+  const setValueAndClearError = useCallback(
+    (next: SetStateAction<T>) => {
+      setValue(next);
+      clearError();
+    },
+    [clearError],
+  );
+
+  return [value, setValueAndClearError];
 }
 
 export function createEmptyRenderProfileInput(): RenderProfileInput {
@@ -245,29 +263,49 @@ export function RenderProfileForm({
     [draft, seed],
   );
 
-  const [formData, setFormData] = useState<RenderProfileInput>(
-    seedDraft.formData,
-  );
-  const [hostPatternInput, setHostPatternInput] = useState(
-    seedDraft.hostPatternInput,
-  );
-  const [jsHeavyThresholdInput, setJsHeavyThresholdInput] = useState(
-    seedDraft.jsHeavyThresholdInput,
-  );
-  const [rateLimitQPSInput, setRateLimitQPSInput] = useState(
-    seedDraft.rateLimitQPSInput,
-  );
-  const [rateLimitBurstInput, setRateLimitBurstInput] = useState(
-    seedDraft.rateLimitBurstInput,
-  );
-  const [waitJSON, setWaitJSON] = useState(seedDraft.waitJSON);
-  const [blockJSON, setBlockJSON] = useState(seedDraft.blockJSON);
-  const [timeoutsJSON, setTimeoutsJSON] = useState(seedDraft.timeoutsJSON);
-  const [screenshotJSON, setScreenshotJSON] = useState(
-    seedDraft.screenshotJSON,
-  );
-  const [deviceJSON, setDeviceJSON] = useState(seedDraft.deviceJSON);
   const [formError, setFormError] = useState<string | null>(null);
+  const clearFormError = useCallback(() => {
+    setFormError(null);
+  }, []);
+
+  const [formData, setFormData] = useStateWithErrorReset(
+    seedDraft.formData,
+    clearFormError,
+  );
+  const [hostPatternInput, setHostPatternInput] = useStateWithErrorReset(
+    seedDraft.hostPatternInput,
+    clearFormError,
+  );
+  const [jsHeavyThresholdInput, setJsHeavyThresholdInput] =
+    useStateWithErrorReset(seedDraft.jsHeavyThresholdInput, clearFormError);
+  const [rateLimitQPSInput, setRateLimitQPSInput] = useStateWithErrorReset(
+    seedDraft.rateLimitQPSInput,
+    clearFormError,
+  );
+  const [rateLimitBurstInput, setRateLimitBurstInput] = useStateWithErrorReset(
+    seedDraft.rateLimitBurstInput,
+    clearFormError,
+  );
+  const [waitJSON, setWaitJSON] = useStateWithErrorReset(
+    seedDraft.waitJSON,
+    clearFormError,
+  );
+  const [blockJSON, setBlockJSON] = useStateWithErrorReset(
+    seedDraft.blockJSON,
+    clearFormError,
+  );
+  const [timeoutsJSON, setTimeoutsJSON] = useStateWithErrorReset(
+    seedDraft.timeoutsJSON,
+    clearFormError,
+  );
+  const [screenshotJSON, setScreenshotJSON] = useStateWithErrorReset(
+    seedDraft.screenshotJSON,
+    clearFormError,
+  );
+  const [deviceJSON, setDeviceJSON] = useStateWithErrorReset(
+    seedDraft.deviceJSON,
+    clearFormError,
+  );
   const jsHeavyThresholdError = getProfileFieldError(
     formError,
     "JS-Heavy Threshold",
@@ -317,18 +355,9 @@ export function RenderProfileForm({
     ],
   );
 
-  const previousDraftRef = useRef(currentDraft);
-
   useEffect(() => {
     onDraftChange?.(currentDraft);
   }, [currentDraft, onDraftChange]);
-
-  useEffect(() => {
-    if (previousDraftRef.current !== currentDraft) {
-      setFormError(null);
-      previousDraftRef.current = currentDraft;
-    }
-  }, [currentDraft]);
 
   const syncState = useMemo(
     () =>
