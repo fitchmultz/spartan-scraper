@@ -3,7 +3,7 @@
  * Responsibilities: Own render-profile draft field state, convert between form inputs and API payloads, surface validation errors, and notify the parent editor when the working draft changes.
  * Scope: Render-profile authoring fields only; inventory loading, AI handoff, and persistence stay with the parent Settings editor.
  * Usage: Mounted by `RenderProfileEditor` for native and AI-backed Settings drafts.
- * Invariants/Assumptions: Name locking is handled by props, optional JSON sections may be blank, and invalid structured, ranged, or integer-only numeric draft input should block submit with a field-level error.
+ * Invariants/Assumptions: Name locking is handled by props, optional JSON sections may be blank, and invalid structured, ranged, or integer-only numeric draft input should remain visible and block submit with a field-level error.
  */
 
 import {
@@ -519,8 +519,8 @@ export function RenderProfileForm({
           </label>
           <input
             id="js-heavy-threshold"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={jsHeavyThresholdInput}
             onChange={(event) => setJsHeavyThresholdInput(event.target.value)}
             className="w-full rounded border px-3 py-2"
@@ -549,8 +549,8 @@ export function RenderProfileForm({
           </label>
           <input
             id="rate-limit-qps"
-            type="number"
-            step="1"
+            type="text"
+            inputMode="numeric"
             value={rateLimitQPSInput}
             onChange={(event) => setRateLimitQPSInput(event.target.value)}
             className="w-full rounded border px-3 py-2"
@@ -579,8 +579,8 @@ export function RenderProfileForm({
           </label>
           <input
             id="rate-limit-burst"
-            type="number"
-            step="1"
+            type="text"
+            inputMode="numeric"
             value={rateLimitBurstInput}
             onChange={(event) => setRateLimitBurstInput(event.target.value)}
             className="w-full rounded border px-3 py-2"

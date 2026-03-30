@@ -610,6 +610,58 @@ describe("RenderProfileEditor", () => {
     expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
   });
 
+  it("keeps invalid persisted numeric draft text visible and blocks submit inline", async () => {
+    window.sessionStorage.setItem(
+      "spartan.render-profile.workspace-draft-session",
+      JSON.stringify({
+        source: "native",
+        attemptId: null,
+        mode: "create",
+        originalName: null,
+        initialValue: {
+          name: "",
+          hostPatterns: [],
+        },
+        draft: {
+          formData: {
+            name: "news",
+            hostPatterns: [],
+          },
+          hostPatternInput: "example.com",
+          jsHeavyThresholdInput: "0.5",
+          rateLimitQPSInput: "abc",
+          rateLimitBurstInput: "",
+          waitJSON: "",
+          blockJSON: "",
+          timeoutsJSON: "",
+          screenshotJSON: "",
+          deviceJSON: "",
+        },
+        visible: true,
+      }),
+    );
+
+    render(
+      <ToastProvider>
+        <RenderProfileEditor />
+      </ToastProvider>,
+    );
+
+    await screen.findByRole("heading", { name: /create new profile/i });
+    expect(screen.getByLabelText(/rate limit qps/i)).toHaveValue("abc");
+
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/rate limit qps must be a valid number/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/rate limit qps/i)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(api.postV1RenderProfiles).not.toHaveBeenCalled();
+  });
+
   it("warns honestly when saving succeeds but the inventory refresh fails", async () => {
     vi.mocked(api.getV1RenderProfiles)
       .mockResolvedValueOnce({
