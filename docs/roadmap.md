@@ -25,6 +25,5 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
 
-- **Split oversized Web route and form state containers into smaller tested units.** Break `web/src/components/export-schedules/ExportScheduleForm.tsx`, `web/src/components/BatchForm.tsx`, `web/src/components/routes/AppRoutes.tsx`, and `web/src/hooks/useAppData.ts` into smaller tested subcomponents/hooks.
 - **Close the highest-value reliability and coverage gaps in operator orchestration code.** Fix silent response-body read failures in `internal/cli/batch/api.go`, replace scattered frontend `console.error` handling with a shared reporting path, add focused tests for currently untested hotspots like `web/src/components/routes/AppRoutes.tsx`, `web/src/hooks/useAppData.ts`, and `web/src/lib/diff-utils.ts`, and finish the missing purpose headers on the remaining tracked code files.
 - **Reject invalid export-schedule local destinations at authoring time across API/Web/CLI/MCP.** Push the new `DATA_DIR/exports` local-destination policy into schedule validation and operator guidance so invalid paths fail on create/update instead of waiting for the first triggered export.

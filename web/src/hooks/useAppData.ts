@@ -7,110 +7,46 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import type { HealthResponse, MetricsResponse } from "../api";
 import {
-  getV1Jobs,
-  getV1JobsById,
-  getV1JobsFailures,
-  getHealthz,
-  getMetrics,
-  listTemplates,
-  listCrawlStates,
-  getV1AuthProfiles,
-  getV1Schedules,
-  type CrawlState,
-  type HealthResponse,
-  type MetricsResponse,
-} from "../api";
-import { getApiBaseUrl } from "../lib/api-config";
+  getWebSocketUrl,
+  loadCrawlStates,
+  loadHealth,
+  loadJobDetail,
+  loadJobFailures,
+  loadJobs,
+  loadMetrics,
+  loadProfiles,
+  loadSchedules,
+  loadTemplates,
+  POLL_INTERVAL,
+} from "./app-data/api";
+import type {
+  AppDataActions,
+  AppDataState,
+  JobStatusFilter,
+  ManagerStatus,
+  Profile,
+  Schedule,
+} from "./app-data/types";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { useWebSocket, type WSMessage } from "./useWebSocket";
 
+export type {
+  AppDataActions,
+  AppDataState,
+  JobStatusFilter,
+  ManagerStatus,
+  Profile,
+  Schedule,
+} from "./app-data/types";
+
 type JobEntry = import("../types").JobEntry;
-export type JobStatusFilter =
-  | ""
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceled";
+type CrawlState = import("../api").CrawlState;
 
-export interface ManagerStatus {
-  queued: number;
-  active: number;
-}
-
-export interface Profile {
-  name: string;
-  parents: string[];
-}
-
-export interface Schedule {
-  id: string;
-  kind: string;
-  intervalSeconds: number;
-  nextRun: string;
-}
-
-export interface AppDataState {
-  jobs: JobEntry[];
-  failedJobs: JobEntry[];
-  jobStatusFilter: JobStatusFilter;
-  profiles: Profile[];
-  schedules: Schedule[];
-  templates: string[];
-  crawlStates: CrawlState[];
-  managerStatus: ManagerStatus | null;
-  metrics: MetricsResponse | null;
-  jobsTotal: number;
-  jobsPage: number;
-  crawlStatesTotal: number;
-  crawlStatesPage: number;
-  error: string | null;
-  loading: boolean;
-  connectionState: "connected" | "disconnected" | "reconnecting" | "polling";
-  health: HealthResponse | null;
-  setupRequired: boolean;
-  detailJob: JobEntry | null;
-  detailJobLoading: boolean;
-  detailJobError: string | null;
-}
-
-export interface AppDataActions {
-  refreshJobs: (page?: number) => Promise<void>;
-  refreshJobFailures: () => Promise<void>;
-  refreshProfiles: () => Promise<void>;
-  refreshSchedules: () => Promise<void>;
-  refreshTemplates: () => Promise<void>;
-  refreshCrawlStates: (page?: number) => Promise<void>;
-  refreshHealth: () => Promise<HealthResponse | null>;
-  refreshJobDetail: (jobId: string) => Promise<JobEntry | null>;
-  clearJobDetail: () => void;
-  setJobsPage: (page: number) => void;
-  setCrawlStatesPage: (page: number) => void;
-  setJobStatusFilter: (status: JobStatusFilter) => void;
-}
-
-const JOBS_PER_PAGE = 100;
-const FAILED_JOBS_PER_PAGE = 10;
-const CRAWL_STATES_PER_PAGE = 100;
-const POLL_INTERVAL = 4000;
-
-function getWebSocketUrl(): string {
-  const baseUrl = getApiBaseUrl();
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-
-  if (!baseUrl) {
-    return `${protocol}//${window.location.host}/v1/ws`;
-  }
-
-  if (baseUrl.startsWith("http://")) {
-    return `${baseUrl.replace("http://", "ws://")}/v1/ws`;
-  }
-  if (baseUrl.startsWith("https://")) {
-    return `${baseUrl.replace("https://", "wss://")}/v1/ws`;
-  }
-
-  return `${protocol}//${baseUrl}/v1/ws`;
+function reportAppDataBackgroundError(scope: string, error: unknown) {
+  console.error(`Failed to fetch ${scope}:`, error);
 }
 
 export function useAppData(): AppDataState & AppDataActions {
@@ -143,31 +79,9 @@ export function useAppData(): AppDataState & AppDataActions {
     async (page = jobsPage) => {
       setLoading(true);
       try {
-        const {
-          data,
-          response,
-          error: apiError,
-        } = await getV1Jobs({
-          baseUrl: getApiBaseUrl(),
-          query: {
-            limit: JOBS_PER_PAGE,
-            offset: (page - 1) * JOBS_PER_PAGE,
-            ...(jobStatusFilter ? { status: jobStatusFilter } : {}),
-          },
-        });
-        if (apiError) {
-          setError(getApiErrorMessage(apiError, "Failed to fetch jobs."));
-          return;
-        }
-        setJobs(data?.jobs ?? []);
-        if (typeof data?.total === "number") {
-          setJobsTotal(data.total);
-        } else {
-          const total = response.headers.get("X-Total-Count");
-          if (total) {
-            setJobsTotal(parseInt(total, 10));
-          }
-        }
+        const nextJobs = await loadJobs({ page, jobStatusFilter });
+        setJobs(nextJobs.jobs);
+        setJobsTotal(nextJobs.total);
         setError(null);
       } catch (err) {
         setError(getApiErrorMessage(err, "Failed to fetch jobs."));
@@ -187,18 +101,7 @@ export function useAppData(): AppDataState & AppDataActions {
 
     setDetailJobLoading(true);
     try {
-      const { data, error: apiError } = await getV1JobsById({
-        baseUrl: getApiBaseUrl(),
-        path: { id: jobId },
-      });
-      if (apiError) {
-        const message = getApiErrorMessage(apiError, "Failed to load job.");
-        setDetailJobError(message);
-        setDetailJob(null);
-        return null;
-      }
-
-      const nextJob = data?.job ?? null;
+      const nextJob = await loadJobDetail(jobId);
       setDetailJob(nextJob);
       setDetailJobError(null);
       return nextJob;
@@ -220,114 +123,52 @@ export function useAppData(): AppDataState & AppDataActions {
 
   const refreshJobFailures = useCallback(async () => {
     try {
-      const { data, error: apiError } = await getV1JobsFailures({
-        baseUrl: getApiBaseUrl(),
-        query: {
-          limit: FAILED_JOBS_PER_PAGE,
-          offset: 0,
-        },
-      });
-      if (apiError) {
-        console.error("Failed to fetch job failures:", apiError);
-        return;
-      }
-      setFailedJobs(data?.jobs ?? []);
+      setFailedJobs(await loadJobFailures());
     } catch (err) {
-      console.error("Failed to fetch job failures:", err);
+      reportAppDataBackgroundError("job failures", err);
     }
   }, []);
 
   const refreshMetrics = useCallback(async () => {
     try {
-      const { data, error: apiError } = await getMetrics({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch metrics:", apiError);
-        return;
-      }
-      setMetrics(data ?? null);
+      setMetrics(await loadMetrics());
     } catch (err) {
-      console.error("Failed to fetch metrics:", err);
+      reportAppDataBackgroundError("metrics", err);
     }
   }, []);
 
   const refreshProfiles = useCallback(async () => {
     try {
-      const { data, error: apiError } = await getV1AuthProfiles({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch profiles:", apiError);
-        return;
-      }
-      const profileList = (data?.profiles ?? [])
-        .filter((p) => p.name !== undefined)
-        .map((p) => ({
-          name: p.name as string,
-          parents: p.parents || [],
-        }));
-      setProfiles(profileList);
+      setProfiles(await loadProfiles());
     } catch (err) {
-      console.error("Failed to fetch profiles:", err);
+      reportAppDataBackgroundError("profiles", err);
     }
   }, []);
 
   const refreshSchedules = useCallback(async () => {
     try {
-      const { data, error: apiError } = await getV1Schedules({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch schedules:", apiError);
-        return;
-      }
-      setSchedules(data?.schedules || []);
+      setSchedules(await loadSchedules());
     } catch (err) {
-      console.error("Failed to fetch schedules:", err);
+      reportAppDataBackgroundError("schedules", err);
     }
   }, []);
 
   const refreshTemplates = useCallback(async () => {
     try {
-      const { data, error: apiError } = await listTemplates({
-        baseUrl: getApiBaseUrl(),
-      });
-      if (apiError) {
-        console.error("Failed to fetch templates:", apiError);
-        return;
-      }
-      setTemplates(data?.templates || []);
+      setTemplates(await loadTemplates());
     } catch (err) {
-      console.error("Failed to fetch templates:", err);
+      reportAppDataBackgroundError("templates", err);
     }
   }, []);
 
   const refreshCrawlStates = useCallback(
     async (page = crawlStatesPage) => {
       try {
-        const {
-          data,
-          response,
-          error: apiError,
-        } = await listCrawlStates({
-          baseUrl: getApiBaseUrl(),
-          query: {
-            limit: CRAWL_STATES_PER_PAGE,
-            offset: (page - 1) * CRAWL_STATES_PER_PAGE,
-          },
-        });
-        if (apiError) {
-          console.error("Failed to fetch crawl states:", apiError);
-          return;
-        }
-        setCrawlStates(data?.crawlStates || []);
-        const total = response.headers.get("X-Total-Count");
-        if (total) {
-          setCrawlStatesTotal(parseInt(total, 10));
-        }
+        const nextState = await loadCrawlStates(page);
+        setCrawlStates(nextState.crawlStates);
+        setCrawlStatesTotal(nextState.total);
       } catch (err) {
-        console.error("Failed to fetch crawl states:", err);
+        reportAppDataBackgroundError("crawl states", err);
       }
     },
     [crawlStatesPage],
@@ -336,35 +177,12 @@ export function useAppData(): AppDataState & AppDataActions {
   const refreshHealth =
     useCallback(async (): Promise<HealthResponse | null> => {
       try {
-        const { data, error: apiError } = await getHealthz({
-          baseUrl: getApiBaseUrl(),
-        });
-
-        if (apiError) {
-          setError(
-            getApiErrorMessage(apiError, "Failed to fetch system status."),
-          );
-          setHealthLoaded(true);
-          return null;
-        }
-
-        const nextHealth = data ?? null;
-        setHealth(nextHealth);
-
-        const queueDetails = nextHealth?.components?.queue?.details;
-        if (queueDetails && typeof queueDetails === "object") {
-          const queued =
-            typeof queueDetails.queued === "number" ? queueDetails.queued : 0;
-          const active =
-            typeof queueDetails.active === "number" ? queueDetails.active : 0;
-          setManagerStatus({ queued, active });
-        } else {
-          setManagerStatus(null);
-        }
-
+        const nextHealth = await loadHealth();
+        setHealth(nextHealth.health);
+        setManagerStatus(nextHealth.managerStatus);
         setError(null);
         setHealthLoaded(true);
-        return nextHealth;
+        return nextHealth.health;
       } catch (err) {
         setError(getApiErrorMessage(err, "Failed to fetch system status."));
         setHealthLoaded(true);
@@ -378,8 +196,8 @@ export function useAppData(): AppDataState & AppDataActions {
   }, []);
 
   const handleWebSocketMessage = useCallback(
-    (msg: WSMessage) => {
-      switch (msg.type) {
+    (message: WSMessage) => {
+      switch (message.type) {
         case "job_created":
         case "job_started":
         case "job_status_changed":
@@ -394,7 +212,7 @@ export function useAppData(): AppDataState & AppDataActions {
           ]);
           break;
         case "manager_status": {
-          const payload = msg.payload as {
+          const payload = message.payload as {
             queuedJobs: number;
             activeJobs: number;
           };
@@ -405,7 +223,7 @@ export function useAppData(): AppDataState & AppDataActions {
           break;
         }
         case "metrics": {
-          const payload = msg.payload as MetricsResponse;
+          const payload = message.payload as MetricsResponse;
           setMetrics(payload);
           break;
         }
