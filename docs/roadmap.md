@@ -21,6 +21,12 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Treat Web UI product-grade workflow improvements as higher priority than maintenance-only work and parity-only work until the primary operator journeys feel coherent, legible, and fast.
 - No backwards-compatibility shims are required for the Web UI cutover. Prefer the cleaner immediate product model when redesign choices conflict.
 
-## Next Follow-up Work
+## Audit-Derived Follow-up Work (2026-03-30)
 
-- No queued follow-up items right now. Pull the next product-grade slice from fresh dogfood or spec work before extending this roadmap.
+Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
+
+- **Break the biggest Go control-plane monoliths into typed registries and focused packages.** Cut `internal/mcp/handlers.go`, `internal/cli/ai/ai.go`, and `internal/config/config.go` into feature-scoped handlers/loaders so tool dispatch, CLI parsing, and config domains stop sharing single giant switch files.
+- **Harden cancellation and shutdown boundaries for async webhook/export/job side effects.** Remove `context.Background()` fire-and-forget delivery from `internal/api/job_export.go`, `internal/watch/watch.go`, and `internal/jobs/job_run.go`, then thread lifecycle-aware contexts through scheduler and webhook paths so shutdown, cancellation, and retry behavior become deterministic.
+- **Tighten output-path and file-permission policy for exported/operator-generated artifacts.** Rework `internal/scheduler/export_trigger.go`, `internal/cli/manage/export.go`, and `internal/cli/ai/ai.go` so automated exports and AI outputs default to private permissions, validate destination roots, and avoid arbitrary world-readable writes.
+- **Collapse duplicated Web AI authoring surfaces and split oversized route/form state containers.** Extract shared modal/session logic from `web/src/components/AIRenderProfileGenerator.tsx`, `AIPipelineJSGenerator.tsx`, `AIRenderProfileDebugger.tsx`, and `AIPipelineJSDebugger.tsx`, and break `web/src/components/export-schedules/ExportScheduleForm.tsx`, `web/src/components/BatchForm.tsx`, `web/src/components/routes/AppRoutes.tsx`, and `web/src/hooks/useAppData.ts` into smaller tested subcomponents/hooks.
+- **Close the highest-value reliability and coverage gaps in operator orchestration code.** Fix silent response-body read failures in `internal/cli/batch/api.go`, replace scattered frontend `console.error` handling with a shared reporting path, add focused tests for currently untested hotspots like `web/src/components/routes/AppRoutes.tsx`, `web/src/hooks/useAppData.ts`, and `web/src/lib/diff-utils.ts`, and finish the missing purpose headers on the remaining tracked code files.
