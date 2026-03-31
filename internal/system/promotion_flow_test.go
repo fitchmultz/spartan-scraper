@@ -228,7 +228,7 @@ func TestPromotionFlowEndToEndHTTPAPI(t *testing.T) {
 	}
 	assertJobDetailUnchanged(t, baseline, fetchJobDetail(t, client, port, jobID))
 
-	exportPath := filepath.Join(t.TempDir(), "promotion-export-{job_id}.json")
+	exportPath := filepath.Join(dataDir, "exports", "promotion-export-{job_id}.json")
 	scheduleID := postExportSchedule(t, client, port, map[string]any{
 		"name": "promoted-export-" + jobID,
 		"filters": map[string]any{

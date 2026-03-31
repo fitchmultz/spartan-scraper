@@ -29,6 +29,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,7 @@ func TestExportTriggerExportAppliesConfiguredTransform(t *testing.T) {
 	if !strings.Contains(content, "title,url") || strings.Contains(content, "status") {
 		t.Fatalf("unexpected transformed export content: %s", content)
 	}
+	assertPrivateExportMode(t, outputPath)
 
 	records, total, err := history.GetBySchedule(schedule.ID, 10, 0)
 	if err != nil {
@@ -87,6 +89,40 @@ func TestExportTriggerExportAppliesConfiguredTransform(t *testing.T) {
 	}
 	if total != 1 || len(records) != 1 || records[0].Status != "succeeded" {
 		t.Fatalf("unexpected export history: %#v total=%d", records, total)
+	}
+}
+
+func TestExportTriggerRejectsLocalDestinationOutsideExportsRoot(t *testing.T) {
+	dataDir := t.TempDir()
+	store := NewExportStorage(dataDir)
+	history := NewExportHistoryStore(dataDir)
+	trigger := NewExportTrigger(dataDir, store, history, nil, nil)
+
+	job := writeResultJob(t, dataDir, "job-outside-root", model.KindScrape, `{"title":"Example Domain"}`)
+	schedule := &ExportSchedule{
+		ID:      "schedule-outside-root",
+		Name:    "Outside Root",
+		Enabled: true,
+		Filters: ExportFilters{JobKinds: []string{"scrape"}},
+		Export: ExportConfig{
+			Format:          "json",
+			DestinationType: "local",
+			LocalPath:       "jobs/{job_id}/override.json",
+			PathTemplate:    "jobs/{job_id}/override.json",
+		},
+		Retry: DefaultRetryConfig(),
+	}
+
+	err := trigger.Export(context.Background(), &job, schedule)
+	if err == nil || !strings.Contains(err.Error(), "automated export destination must stay within") {
+		t.Fatalf("expected exports-root validation error, got %v", err)
+	}
+	records, total, err := history.GetBySchedule(schedule.ID, 10, 0)
+	if err != nil {
+		t.Fatalf("GetBySchedule() failed: %v", err)
+	}
+	if total != 0 || len(records) != 0 {
+		t.Fatalf("expected no history records for rejected destination, got total=%d records=%#v", total, records)
 	}
 }
 
@@ -330,6 +366,20 @@ func decodeReceivedExportWebhook(r *http.Request) (receivedExportWebhook, error)
 		}
 	}
 	return result, nil
+}
+
+func assertPrivateExportMode(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat export file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("export file permissions = %o, want %o", got, 0o600)
+	}
 }
 
 func writeResultJob(t *testing.T, dataDir, jobID string, kind model.Kind, result string) model.Job {

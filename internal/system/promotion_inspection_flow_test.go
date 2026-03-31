@@ -225,7 +225,7 @@ func TestPromotionFlowPostSaveInspectionHTTPAPI(t *testing.T) {
 		}
 	}
 
-	exportPath := filepath.Join(t.TempDir(), "promotion-inspection-export.json")
+	exportPath := filepath.Join(dataDir, "exports", "promotion-inspection-export.json")
 	scheduleID := postExportSchedule(t, client, port, map[string]any{
 		"name": "promotion-inspection-export-" + sourceJobID,
 		"filters": map[string]any{

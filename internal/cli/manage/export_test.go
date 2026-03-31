@@ -1,3 +1,22 @@
+// Package manage provides regression coverage for direct export CLI workflows.
+//
+// Purpose:
+// - Verify direct exports resolve seeded config, persist outcomes, and enforce output-file policy.
+//
+// Responsibilities:
+// - Exercise schedule-seeded and shape-file exports.
+// - Confirm history and inspect flows reopen persisted export outcomes.
+// - Guard output-root validation and private file-permission behavior.
+//
+// Scope:
+// - `spartan export` command behavior only.
+//
+// Usage:
+// - Run with `go test ./internal/cli/manage`.
+//
+// Invariants/Assumptions:
+// - Direct exports may only write inside the current working directory.
+// - Export artifacts should be created with private file permissions on Unix platforms.
 package manage
 
 import (
@@ -5,6 +24,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +38,7 @@ import (
 
 func TestRunExportWithScheduleSeed(t *testing.T) {
 	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
 	cfg := config.Config{DataDir: tmpDir}
 	jobID := writeExportTestJob(t, tmpDir, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Example"}`)
 
@@ -56,6 +77,7 @@ func TestRunExportWithScheduleSeed(t *testing.T) {
 
 func TestRunExportWithShapeFile(t *testing.T) {
 	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
 	cfg := config.Config{DataDir: tmpDir}
 	jobID := writeExportTestJob(t, tmpDir, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Example","normalized":{"fields":{"price":{"values":["$10"]}}}}`)
 
@@ -73,6 +95,22 @@ func TestRunExportWithShapeFile(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "Example") || !strings.Contains(string(data), "$10") {
 		t.Fatalf("unexpected shaped markdown: %s", data)
+	}
+	assertPrivateFileMode(t, outPath)
+}
+
+func TestRunExportRejectsOutputOutsideWorkingDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	cfg := config.Config{DataDir: tmpDir}
+	jobID := writeExportTestJob(t, tmpDir, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Example"}`)
+
+	outsidePath := filepath.Join(t.TempDir(), "escape.json")
+	if code := RunExport(context.Background(), cfg, []string{"--job-id", jobID, "--format", "json", "--out", outsidePath}); code == 0 {
+		t.Fatal("expected output-root validation failure")
+	}
+	if _, err := os.Stat(outsidePath); !os.IsNotExist(err) {
+		t.Fatalf("expected no output file, got err=%v", err)
 	}
 }
 
@@ -93,6 +131,7 @@ func TestRunExportRejectsShapeAndTransform(t *testing.T) {
 
 func TestRunExportInspectAndHistory(t *testing.T) {
 	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
 	cfg := config.Config{DataDir: tmpDir}
 	jobID := writeExportTestJob(t, tmpDir, model.KindScrape, `{"url":"https://example.com","status":200,"title":"Example"}`)
 	outPath := filepath.Join(tmpDir, "out", "results.json")
@@ -155,6 +194,20 @@ func writeExportTestJob(t *testing.T, dataDir string, kind model.Kind, resultCon
 		t.Fatalf("create job: %v", err)
 	}
 	return jobID
+}
+
+func assertPrivateFileMode(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat output file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("output file permissions = %o, want %o", got, 0o600)
+	}
 }
 
 func captureStdout(t *testing.T, fn func()) string {

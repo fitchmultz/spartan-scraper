@@ -35,6 +35,7 @@ import (
 
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
@@ -247,11 +248,16 @@ func (et *ExportTrigger) matchSchedule(job *model.Job, schedule *ExportSchedule)
 
 // executeExport performs the actual export.
 func (et *ExportTrigger) executeExport(ctx context.Context, job *model.Job, schedule *ExportSchedule) error {
+	destination, err := et.destinationForSchedule(job, schedule)
+	if err != nil {
+		return err
+	}
+
 	record, err := et.historyStore.CreateRecord(CreateRecordInput{
 		ScheduleID:  schedule.ID,
 		JobID:       job.ID,
 		Trigger:     exporter.OutcomeTriggerSchedule,
-		Destination: et.destinationForSchedule(job, schedule),
+		Destination: destination,
 		Request:     resultExportConfigForSchedule(schedule),
 	})
 	if err != nil {
@@ -305,11 +311,11 @@ func (et *ExportTrigger) exportToLocal(ctx context.Context, job *model.Job, sche
 
 	outputPath := record.Destination
 	if outputPath == "" {
-		outputPath = et.destinationForSchedule(job, schedule)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to create export directory", err)
+		var err error
+		outputPath, err = et.destinationForSchedule(job, schedule)
+		if err != nil {
+			return err
+		}
 	}
 
 	resultData, err := et.readJobResults(job)
@@ -321,8 +327,8 @@ func (et *ExportTrigger) exportToLocal(ctx context.Context, job *model.Job, sche
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(outputPath, rendered.Content, 0o644); err != nil {
-		return apperrors.Wrap(apperrors.KindInternal, "failed to write export file", err)
+	if _, err := fsutil.WritePrivateFileWithinRoot(filepath.Join(et.dataDir, "exports"), outputPath, rendered.Content); err != nil {
+		return err
 	}
 
 	return et.historyStore.MarkSuccess(record.ID, rendered)
@@ -406,10 +412,10 @@ func resultExportConfigForSchedule(schedule *ExportSchedule) exporter.ResultExpo
 	})
 }
 
-func (et *ExportTrigger) destinationForSchedule(job *model.Job, schedule *ExportSchedule) string {
+func (et *ExportTrigger) destinationForSchedule(job *model.Job, schedule *ExportSchedule) (string, error) {
 	switch schedule.Export.DestinationType {
 	case "webhook":
-		return strings.TrimSpace(schedule.Export.WebhookURL)
+		return strings.TrimSpace(schedule.Export.WebhookURL), nil
 	default:
 		pathTemplate := schedule.Export.PathTemplate
 		if pathTemplate == "" {
@@ -419,10 +425,22 @@ func (et *ExportTrigger) destinationForSchedule(job *model.Job, schedule *Export
 			pathTemplate = "exports/{kind}/{job_id}.{format}"
 		}
 		outputPath := exporter.RenderPathTemplate(pathTemplate, *job, schedule.Export.Format)
-		if !filepath.IsAbs(outputPath) {
-			outputPath = filepath.Join(et.dataDir, outputPath)
+		resolvedPath, err := fsutil.ResolvePathWithinRoot(et.dataDir, outputPath)
+		if err != nil {
+			return "", err
 		}
-		return outputPath
+		exportsRoot, err := fsutil.ResolvePathWithinRoot(et.dataDir, "exports")
+		if err != nil {
+			return "", apperrors.Wrap(apperrors.KindInternal, "failed to resolve automated export root", err)
+		}
+		rel, err := filepath.Rel(exportsRoot, resolvedPath)
+		if err != nil {
+			return "", apperrors.Wrap(apperrors.KindInternal, "failed to validate automated export destination", err)
+		}
+		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return "", apperrors.Permission(fmt.Sprintf("automated export destination must stay within %s", exportsRoot))
+		}
+		return resolvedPath, nil
 	}
 }
 

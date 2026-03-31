@@ -33,6 +33,7 @@ import (
 	commoncli "github.com/fitchmultz/spartan-scraper/internal/cli/common"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 	"github.com/fitchmultz/spartan-scraper/internal/store"
 )
@@ -41,7 +42,7 @@ func RunExport(ctx context.Context, cfg config.Config, args []string) int {
 	fs := flag.NewFlagSet("export", flag.ExitOnError)
 	jobID := fs.String("job-id", "", "Job id to export")
 	format := fs.String("format", "", "Output format: jsonl|json|md|csv|xlsx (defaults to jsonl or seeded schedule format)")
-	out := fs.String("out", "", "Output file (defaults to ./exports/<job>.<format>)")
+	out := fs.String("out", "", "Output file under the current working directory (defaults to ./exports/<job>.<format>)")
 	scheduleID := fs.String("schedule-id", "", "Seed format/shape/transform from an existing export schedule")
 	shapeFile := fs.String("shape-file", "", "Path to an export shape JSON file")
 	transformFile := fs.String("transform-file", "", "Path to a result transform JSON file")
@@ -117,11 +118,21 @@ Options:
 	if outPath == "" {
 		outPath = filepath.Join("exports", exporter.ResultExportFilename(job, exportConfig))
 	}
+	displayOutPath := filepath.Clean(outPath)
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if _, err := fsutil.ResolvePathWithinRoot(cwd, displayOutPath); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 
 	record, err := historyStore.CreateRecord(scheduler.CreateRecordInput{
 		JobID:       job.ID,
 		Trigger:     exporter.OutcomeTriggerCLI,
-		Destination: outPath,
+		Destination: displayOutPath,
 		Request:     exportConfig,
 	})
 	if err != nil {
@@ -141,11 +152,7 @@ Options:
 		return printCLIOutcome(historyStore, record.ID, *jsonOut, 1)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-		_ = historyStore.MarkFailed(record.ID, err)
-		return printCLIOutcome(historyStore, record.ID, *jsonOut, 1)
-	}
-	if err := os.WriteFile(outPath, rendered.Content, 0o644); err != nil {
+	if _, err := fsutil.WritePrivateFileWithinRoot(cwd, displayOutPath, rendered.Content); err != nil {
 		_ = historyStore.MarkFailed(record.ID, err)
 		return printCLIOutcome(historyStore, record.ID, *jsonOut, 1)
 	}

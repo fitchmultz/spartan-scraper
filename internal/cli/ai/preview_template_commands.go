@@ -42,7 +42,7 @@ func runPreview(ctx context.Context, runner authoringRunner, args []string) int 
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai preview [options]
@@ -125,7 +125,7 @@ func runTemplateGenerate(ctx context.Context, runner authoringRunner, args []str
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai template [options]
@@ -188,7 +188,7 @@ func runTemplateDebug(ctx context.Context, cfg config.Config, runner authoringRu
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai template-debug [options]

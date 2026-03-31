@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -168,6 +169,20 @@ func captureOutput(t *testing.T, target **os.File, fn func() int) (int, string) 
 	return code, buf.String()
 }
 
+func assertPrivateJSONOutputMode(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat json output: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("json output permissions = %o, want %o", got, 0o600)
+	}
+}
+
 func TestRunPreviewRequiresURLOrHTML(t *testing.T) {
 	runner := &fakeAuthoringRunner{previewErr: errors.New("url or html is required")}
 	withFakeRunner(t, runner)
@@ -252,6 +267,7 @@ func TestRunTemplateReadsHTMLFileAndWritesOutputFile(t *testing.T) {
 	}
 	withFakeRunner(t, runner)
 	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
 	htmlPath := filepath.Join(tmpDir, "page.html")
 	if err := os.WriteFile(htmlPath, []byte("<html><h1>Example</h1></html>"), 0o644); err != nil {
 		t.Fatalf("write html file: %v", err)
@@ -279,6 +295,34 @@ func TestRunTemplateReadsHTMLFileAndWritesOutputFile(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"name": "product-template"`) {
 		t.Fatalf("unexpected output file contents: %s", string(data))
+	}
+	assertPrivateJSONOutputMode(t, outPath)
+}
+
+func TestRunTemplateRejectsOutputOutsideWorkingDir(t *testing.T) {
+	runner := &fakeAuthoringRunner{
+		templateResult: aiauthoring.TemplateResult{
+			Template: extract.Template{Name: "product-template", Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}}},
+		},
+	}
+	withFakeRunner(t, runner)
+
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	htmlPath := filepath.Join(tmpDir, "page.html")
+	if err := os.WriteFile(htmlPath, []byte("<html><h1>Example</h1></html>"), 0o644); err != nil {
+		t.Fatalf("write html file: %v", err)
+	}
+	outsidePath := filepath.Join(t.TempDir(), "template.json")
+
+	code, stderr := captureOutput(t, &os.Stderr, func() int {
+		return RunAI(context.Background(), config.Config{}, []string{"template", "--html-file", htmlPath, "--description", "Extract title", "--out", outsidePath})
+	})
+	if code == 0 {
+		t.Fatalf("expected output-root validation failure stderr=%s", stderr)
+	}
+	if _, err := os.Stat(outsidePath); !os.IsNotExist(err) {
+		t.Fatalf("expected no output file, got err=%v", err)
 	}
 }
 

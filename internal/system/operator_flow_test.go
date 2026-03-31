@@ -81,8 +81,9 @@ func TestOperatorFlowFreshStartToDailyUse(t *testing.T) {
 		t.Fatalf("GET /v1/jobs did not include first job %s", firstJobID)
 	}
 
-	exportPath := filepath.Join(t.TempDir(), "first-job.md")
-	runOK(t, env, "export", "--job-id", firstJobID, "--format", "md", "--out", exportPath)
+	exportDir := t.TempDir()
+	exportPath := filepath.Join(exportDir, "first-job.md")
+	runOKInDir(t, exportDir, env, "export", "--job-id", firstJobID, "--format", "md", "--out", exportPath)
 	assertFileNotEmpty(t, exportPath)
 
 	wsConn, _, _, err := ws.Dial(context.Background(), fmt.Sprintf("ws://127.0.0.1:%d/v1/ws", port))

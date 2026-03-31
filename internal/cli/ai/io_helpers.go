@@ -32,6 +32,7 @@ import (
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 	"github.com/fitchmultz/spartan-scraper/internal/extract"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
+	"github.com/fitchmultz/spartan-scraper/internal/fsutil"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/pipeline"
 	"github.com/fitchmultz/spartan-scraper/internal/research"
@@ -459,5 +460,10 @@ func writeJSONResult(v interface{}, outPath string) error {
 		_, err = os.Stdout.Write(data)
 		return err
 	}
-	return os.WriteFile(outPath, data, 0o644)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	_, err = fsutil.WritePrivateFileWithinRoot(cwd, filepath.Clean(strings.TrimSpace(outPath)), data)
+	return err
 }

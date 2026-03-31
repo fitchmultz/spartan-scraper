@@ -31,7 +31,7 @@ func runResearchRefine(ctx context.Context, cfg config.Config, runner authoringR
 	jobID := fs.String("job-id", "", "Research job ID to refine from the local data directory")
 	resultFile := fs.String("result-file", "", "Path to a research result JSON, single-item JSON array, or single-result JSONL file")
 	instructions := fs.String("instructions", "", "Optional rewrite guidance for the refinement")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai research-refine [options]
@@ -78,7 +78,7 @@ func runExportShape(ctx context.Context, cfg config.Config, runner authoringRunn
 	scheduleID := fs.String("schedule-id", "", "Existing export schedule ID to tune")
 	shapeFile := fs.String("shape-file", "", "Path to an existing export shape JSON file")
 	instructions := fs.String("instructions", "", "Optional guidance for the export shape")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai export-shape [options]
@@ -129,7 +129,7 @@ func runTransform(ctx context.Context, cfg config.Config, runner authoringRunner
 	language := fs.String("language", "", "Preferred transform language: jmespath|jsonata")
 	expression := fs.String("expression", "", "Current transform expression to tune")
 	instructions := fs.String("instructions", "", "Optional guidance for the transform")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai transform [options]

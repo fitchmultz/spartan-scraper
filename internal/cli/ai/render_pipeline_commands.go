@@ -38,7 +38,7 @@ func runRenderProfile(ctx context.Context, runner authoringRunner, args []string
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai render-profile [options]
@@ -92,7 +92,7 @@ func runPipelineJS(ctx context.Context, runner authoringRunner, args []string) i
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the URL")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai pipeline-js [options]
@@ -146,7 +146,7 @@ func runRenderProfileDebug(ctx context.Context, cfg config.Config, runner author
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai render-profile-debug [options]
@@ -205,7 +205,7 @@ func runPipelineJSDebug(ctx context.Context, cfg config.Config, runner authoring
 	visual := fs.Bool("visual", false, "Capture a screenshot and include visual context when fetching the baseline page")
 	var imageFiles commoncli.StringSliceFlag
 	fs.Var(&imageFiles, "image-file", "Reference image file to attach as visual context (repeatable)")
-	out := fs.String("out", "", "Write the JSON response to a file instead of stdout")
+	out := fs.String("out", "", "Write the JSON response to a private file under the current working directory instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage:
   spartan ai pipeline-js-debug [options]

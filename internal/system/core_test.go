@@ -157,8 +157,9 @@ func TestScheduleExportAndWebSocketCoreFlow(t *testing.T) {
 		t.Fatalf("missing websocket job_completed event for %s", jobID)
 	}
 
-	exportPath := filepath.Join(t.TempDir(), "result.md")
-	runOK(t, env, "export", "--job-id", jobID, "--format", "md", "--out", exportPath)
+	exportDir := t.TempDir()
+	exportPath := filepath.Join(exportDir, "result.md")
+	runOKInDir(t, exportDir, env, "export", "--job-id", jobID, "--format", "md", "--out", exportPath)
 	assertFileNotEmpty(t, exportPath)
 
 	postSchedule(t, client, port, map[string]any{
@@ -204,6 +205,13 @@ func baseEnv(dataDir string) []string {
 func runOK(t *testing.T, env []string, args ...string) {
 	t.Helper()
 	if err := run(t, env, args...); err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
+func runOKInDir(t *testing.T, dir string, env []string, args ...string) {
+	t.Helper()
+	if err := testharness.RunCommandInDir(t, systemBinaryPath, dir, testharness.MergeEnv(env), args...); err != nil {
 		t.Fatalf("%v", err)
 	}
 }
