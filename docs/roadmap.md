@@ -25,7 +25,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
 
-- **Split the remaining Go control-plane monoliths into focused command/config loaders.** Cut `internal/cli/ai/ai.go` into feature-scoped subcommand handlers and shared input/output helpers so bounded AI workflows stop sharing one giant CLI parser file.
 - **Break `internal/config/config.go` into focused loader and validation modules.** Separate server, rate-limit, retention, circuit-breaker, and AI config parsing so startup config domains stop sharing one oversized environment loader.
 - **Harden cancellation and shutdown boundaries for async webhook/export/job side effects.** Remove `context.Background()` fire-and-forget delivery from `internal/api/job_export.go`, `internal/watch/watch.go`, and `internal/jobs/job_run.go`, then thread lifecycle-aware contexts through scheduler and webhook paths so shutdown, cancellation, and retry behavior become deterministic.
 - **Tighten output-path and file-permission policy for exported/operator-generated artifacts.** Rework `internal/scheduler/export_trigger.go`, `internal/cli/manage/export.go`, and `internal/cli/ai/ai.go` so automated exports and AI outputs default to private permissions, validate destination roots, and avoid arbitrary world-readable writes.
