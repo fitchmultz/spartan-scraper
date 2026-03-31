@@ -1,25 +1,25 @@
 // Package watch provides content change monitoring functionality.
 //
-// This file is responsible for:
-// - Executing watch checks against URLs
-// - Fetching and extracting content
-// - Computing content hashes and detecting changes
-// - Capturing screenshots and detecting visual changes
-// - Persisting deterministic watch-owned screenshot artifacts
-// - Generating diffs (text and visual) when changes occur
-// - Updating crawl states with snapshots
-// - Dispatching webhooks on content/visual changes
+// Purpose:
+// - Execute watch checks, detect content and visual changes, and persist the resulting watch state.
 //
-// This file does NOT handle:
-// - Scheduling (scheduler.go handles this)
-// - Storage of watch configs (storage.go handles this)
-// - Diff generation details (diff package handles this)
+// Responsibilities:
+// - Fetch and extract watched content.
+// - Compute content and visual hashes, diffs, and artifact snapshots.
+// - Update crawl-state history for changed watches.
+// - Submit optional follow-up jobs and deliver watch webhooks through the active lifecycle context.
 //
-// Invariants:
-// - All fetches respect rate limiting
-// - Content snapshots are stored on change detection
-// - Screenshots are captured when enabled for visual change detection
-// - Webhooks are dispatched asynchronously
+// Scope:
+// - Per-watch execution only; scheduling and configuration persistence live in sibling files.
+//
+// Usage:
+// - Called by the watch scheduler or one-shot watch commands.
+//
+// Invariants/Assumptions:
+// - All fetches respect rate limiting.
+// - Content snapshots are stored on change detection.
+// - Screenshots are captured when enabled for visual change detection.
+// - Watch webhooks must not outlive the caller-provided lifecycle context.
 package watch
 
 import (
@@ -34,6 +34,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/andybalholm/cascadia"
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/diff"
 	"github.com/fitchmultz/spartan-scraper/internal/fetch"
@@ -238,10 +239,10 @@ func (w *Watcher) Check(ctx context.Context, watch *Watch) (*WatchCheckResult, e
 	// Dispatch webhook if configured
 	if watch.NotifyOnChange && w.dispatcher != nil && watch.WebhookConfig != nil {
 		if contentChanged {
-			w.dispatchWebhook(watch, result, webhook.EventContentChanged)
+			w.dispatchWebhook(ctx, watch, result, webhook.EventContentChanged)
 		}
 		if visualChanged {
-			w.dispatchWebhook(watch, result, webhook.EventVisualChanged)
+			w.dispatchWebhook(ctx, watch, result, webhook.EventVisualChanged)
 		}
 	}
 
@@ -338,7 +339,7 @@ func (w *Watcher) triggerJobs(ctx context.Context, watch *Watch) ([]string, erro
 }
 
 // dispatchWebhook sends a webhook notification for a content or visual change.
-func (w *Watcher) dispatchWebhook(watch *Watch, result *WatchCheckResult, eventType webhook.EventType) {
+func (w *Watcher) dispatchWebhook(ctx context.Context, watch *Watch, result *WatchCheckResult, eventType webhook.EventType) {
 	if watch.WebhookConfig == nil || watch.WebhookConfig.URL == "" {
 		return
 	}
@@ -363,7 +364,13 @@ func (w *Watcher) dispatchWebhook(watch *Watch, result *WatchCheckResult, eventT
 		secret = watch.WebhookConfig.Secret
 	}
 
-	w.dispatcher.Dispatch(context.Background(), watch.WebhookConfig.URL, payload, secret)
+	if err := w.dispatcher.Deliver(ctx, watch.WebhookConfig.URL, payload, secret); err != nil {
+		slog.Warn("watch webhook delivery failed",
+			"watchID", watch.ID,
+			"eventType", eventType,
+			"url", webhook.SanitizeURL(watch.WebhookConfig.URL),
+			"error", apperrors.SafeMessage(err))
+	}
 }
 
 // generateEventID generates a unique event ID.

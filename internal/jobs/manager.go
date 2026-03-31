@@ -42,6 +42,9 @@ type Manager struct {
 	wg                sync.WaitGroup
 	activeJobs        map[string]context.CancelFunc
 	mu                sync.Mutex
+	runtimeCtx        context.Context
+	runtimeCancel     context.CancelFunc
+	runtimeMu         sync.RWMutex
 	eventSubscribers  []chan<- JobEvent
 	subscribersMu     sync.RWMutex
 	metricsCallback   func(duration time.Duration, success bool, fetcherType, url string)
@@ -111,7 +114,38 @@ func NewManager(store *store.Store, dataDir, userAgent string, requestTimeout ti
 		jsRegistry:       jsRegistry,
 		templateRegistry: templateRegistry,
 		activeJobs:       make(map[string]context.CancelFunc),
+		runtimeCtx:       context.Background(),
 	}
+}
+
+func (m *Manager) setRuntimeContext(ctx context.Context) {
+	baseCtx := context.Background()
+	if ctx != nil {
+		baseCtx = context.WithoutCancel(ctx)
+	}
+	runtimeCtx, cancel := context.WithCancel(baseCtx)
+
+	m.runtimeMu.Lock()
+	if m.runtimeCancel != nil {
+		m.runtimeCancel()
+	}
+	m.runtimeCtx = runtimeCtx
+	m.runtimeCancel = cancel
+	m.runtimeMu.Unlock()
+}
+
+func (m *Manager) runtimeContext() context.Context {
+	m.runtimeMu.RLock()
+	ctx := m.runtimeCtx
+	m.runtimeMu.RUnlock()
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
+
+func (m *Manager) sideEffectContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(m.runtimeContext(), timeout)
 }
 
 // createLimiter creates a HostLimiter with optional circuit breaker and adaptive rate limiting.
@@ -166,6 +200,7 @@ func (m *Manager) recoverQueuedJobs(ctx context.Context) error {
 // During shutdown, queued jobs are drained and executed with a fresh context
 // to avoid running jobs with a canceled context.
 func (m *Manager) Start(ctx context.Context) {
+	m.setRuntimeContext(ctx)
 	slog.Info("starting job manager", "concurrency", m.maxConcurrency)
 
 	// Recover any queued jobs from previous runs
@@ -242,6 +277,12 @@ func (m *Manager) Start(ctx context.Context) {
 // Wait blocks until all active workers have finished processing.
 func (m *Manager) Wait() {
 	m.wg.Wait()
+	m.runtimeMu.Lock()
+	if m.runtimeCancel != nil {
+		m.runtimeCancel()
+		m.runtimeCancel = nil
+	}
+	m.runtimeMu.Unlock()
 }
 
 // Enqueue adds a job to the processing queue. It returns an error if the queue is full.
@@ -282,8 +323,8 @@ func (m *Manager) UnsubscribeFromEvents(ch chan<- JobEvent) {
 }
 
 // publishEvent broadcasts a job event to all subscribers.
-// Non-blocking: slow subscribers will miss events.
-// Also dispatches webhooks if configured for the job.
+// Slow subscribers still miss events, while job-owned side effects stay bound to
+// the manager lifecycle context.
 func (m *Manager) publishEvent(event JobEvent) {
 	m.subscribersMu.RLock()
 	defer m.subscribersMu.RUnlock()
@@ -343,7 +384,13 @@ func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookSpec) {
 		payload.ResultURL = "/v1/jobs/" + event.Job.ID + "/results"
 	}
 
-	m.webhookDispatcher.Dispatch(context.Background(), cfg.URL, payload, cfg.Secret)
+	if err := m.webhookDispatcher.Deliver(m.runtimeContext(), cfg.URL, payload, cfg.Secret); err != nil {
+		slog.Warn("job webhook delivery failed",
+			"jobID", event.Job.ID,
+			"eventType", eventType,
+			"url", webhook.SanitizeURL(cfg.URL),
+			"error", apperrors.SafeMessage(err))
+	}
 }
 
 // SetWebhookDispatcher sets the webhook dispatcher for the manager.

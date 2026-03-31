@@ -51,6 +51,7 @@ func TestHandleJobExportDispatchesMultipartExportWebhook(t *testing.T) {
 	}, deliveryStore)
 
 	received := make(chan apiExportWebhookRequest, 1)
+	const receiverDelay = 100 * time.Millisecond
 	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		request, err := decodeAPIExportWebhookRequest(r)
 		if err != nil {
@@ -58,6 +59,7 @@ func TestHandleJobExportDispatchesMultipartExportWebhook(t *testing.T) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		time.Sleep(receiverDelay)
 		select {
 		case received <- request:
 		default:
@@ -73,7 +75,11 @@ func TestHandleJobExportDispatchesMultipartExportWebhook(t *testing.T) {
 	body := `{"format":"csv","transform":{"expression":"{title: title}","language":"jmespath"}}`
 	req := newJSONExportRequest(http.MethodPost, fmt.Sprintf("/v1/jobs/%s/export", jobID), body)
 	rr := httptest.NewRecorder()
+	started := time.Now()
 	srv.Routes().ServeHTTP(rr, req)
+	if elapsed := time.Since(started); elapsed < receiverDelay {
+		t.Fatalf("expected export handler to wait at least %v for webhook delivery, took %v", receiverDelay, elapsed)
+	}
 
 	response := decodeExportOutcomeResponse(t, rr)
 	if response.Export.Status != "succeeded" {

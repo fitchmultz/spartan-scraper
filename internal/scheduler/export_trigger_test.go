@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
+	"github.com/fitchmultz/spartan-scraper/internal/jobs"
 	"github.com/fitchmultz/spartan-scraper/internal/model"
 	"github.com/fitchmultz/spartan-scraper/internal/webhook"
 )
@@ -231,6 +232,56 @@ func TestExportTriggerWebhookExportDeliversViaDispatcher(t *testing.T) {
 	}
 	if len(deliveries) != 1 || deliveries[0].Status != webhook.DeliveryStatusDelivered {
 		t.Fatalf("unexpected delivery records: %#v", deliveries)
+	}
+}
+
+func TestExportTriggerStopCancelsPendingRetry(t *testing.T) {
+	dataDir := t.TempDir()
+	store := NewExportStorage(dataDir)
+	history := NewExportHistoryStore(dataDir)
+	trigger := NewExportTrigger(dataDir, store, history, nil, nil)
+	if err := trigger.Start(); err != nil {
+		t.Fatalf("Start() failed: %v", err)
+	}
+
+	schedule := &ExportSchedule{
+		ID:      "schedule-stop-cancel",
+		Name:    "Webhook Export",
+		Enabled: true,
+		Filters: ExportFilters{JobKinds: []string{"scrape"}, JobStatus: []string{"succeeded"}},
+		Export: ExportConfig{
+			Format:          "json",
+			DestinationType: "webhook",
+			WebhookURL:      "https://example.com/webhook",
+		},
+		Retry: ExportRetryConfig{MaxRetries: 1, BaseDelayMs: 5000},
+	}
+	trigger.AddSchedule(schedule)
+
+	job := writeResultJob(t, dataDir, "job-stop-cancel", model.KindScrape, `{"title":"Example Domain"}`)
+	trigger.HandleJobEvent(jobs.JobEvent{Type: jobs.JobEventCompleted, Job: job})
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		records, total, err := history.GetBySchedule(schedule.ID, 10, 0)
+		if err != nil {
+			t.Fatalf("GetBySchedule() failed: %v", err)
+		}
+		if total == 1 && len(records) == 1 && records[0].RetryCount == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for retry scheduling, got total=%d records=%#v", total, records)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	started := time.Now()
+	if err := trigger.Stop(); err != nil {
+		t.Fatalf("Stop() failed: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("expected Stop() to cancel pending retry promptly, took %v", elapsed)
 	}
 }
 

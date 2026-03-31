@@ -1,23 +1,25 @@
 // Package jobs provides job execution lifecycle management.
-// This file contains the core job execution logic that dispatches to scrape, crawl,
-// or research packages based on job kind.
+//
+// Purpose:
+// - Execute persisted scrape, crawl, and research jobs against the manager runtime lifecycle.
 //
 // Responsibilities:
-// - Managing job status transitions (queued → running → succeeded/failed/canceled)
-// - Creating result directories and files
-// - Executing jobs with appropriate context and cancellation handling
-// - Writing results to JSONL output files
+// - Manage job status transitions (queued → running → succeeded/failed/canceled).
+// - Create result directories and files securely before execution.
+// - Run job kinds with cancellation-aware contexts and persist JSONL outputs.
+// - Propagate dependency failures and publish terminal side effects without detached background work.
 //
-// This file does NOT:
-// - Create jobs (see job_create.go)
-// - Implement scraping/crawling/research logic (delegated to respective packages)
-// - Handle job queueing or scheduling (managed by Manager's worker pool)
+// Scope:
+// - Core per-job execution only; creation, queueing, and dependency graph assembly live in sibling files.
 //
-// Invariants:
-// - Job status updates are retried with background context on primary context cancellation
-// - Result directories are created securely before writing
-// - Active jobs are tracked for cancellation support
-// - All errors are sanitized via apperrors before storage
+// Usage:
+// - Invoked by Manager workers while processing enqueued jobs.
+//
+// Invariants/Assumptions:
+// - Status recovery and dependency-failure propagation stay bound to the manager lifecycle context.
+// - Result directories are created securely before writing.
+// - Active jobs are tracked for cancellation support.
+// - All stored error text is sanitized via apperrors.
 
 package jobs
 
@@ -56,17 +58,24 @@ func getJobRequestID(job model.Job) string {
 }
 
 func (m *Manager) updateStatusWithTimeout(jobID string, status model.Status, err error, timeout time.Duration) {
-	updateCtx, cancelUpdate := context.WithTimeout(context.Background(), timeout)
+	updateCtx, cancelUpdate := m.sideEffectContext(timeout)
+	defer cancelUpdate()
+
 	errorMsg := apperrors.SafeMessage(err)
 	if updateErr := m.store.UpdateStatus(updateCtx, jobID, status, errorMsg); updateErr != nil {
 		slog.Error("failed to update job status", "jobID", jobID, "status", status, "error", updateErr)
 	}
-	cancelUpdate()
+}
+
+func (m *Manager) propagateFailureWithTimeout(failedJob model.Job) {
+	ctx, cancel := m.sideEffectContext(2 * time.Second)
+	defer cancel()
+	m.propagateFailure(ctx, failedJob)
 }
 
 // updateStatusWithEvent updates job status and publishes an event.
 func (m *Manager) updateStatusWithEvent(job model.Job, prevStatus model.Status, status model.Status, errMsg string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := m.sideEffectContext(2 * time.Second)
 	defer cancel()
 
 	if updateErr := m.store.UpdateStatus(ctx, job.ID, status, errMsg); updateErr != nil {
@@ -128,9 +137,9 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 	job.StartedAt = &startedAt
 
 	if err := m.store.UpdateStatus(ctx, job.ID, model.StatusRunning, ""); err != nil {
-		// If primary context is canceled, retry with background context
+		// If primary context is canceled, retry with the manager lifecycle context.
 		if ctx.Err() != nil {
-			updateCtx, cancelUpdate := context.WithTimeout(context.Background(), 2*time.Second)
+			updateCtx, cancelUpdate := m.sideEffectContext(2 * time.Second)
 			err = m.store.UpdateStatus(updateCtx, job.ID, model.StatusRunning, "")
 			cancelUpdate()
 		}
@@ -179,7 +188,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			slog.Error("invalid scrape job configuration", "jobID", job.ID, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		job.SelectedEngine = selectedEngineForConfig(input.Config)
@@ -218,12 +227,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during scrape", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
-				m.propagateFailure(context.Background(), job)
+				m.propagateFailureWithTimeout(job)
 				return nil
 			}
 			slog.Error("scrape job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		payload, err := json.Marshal(result)
@@ -240,7 +249,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			slog.Error("invalid crawl job configuration", "jobID", job.ID, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		job.SelectedEngine = selectedEngineForConfig(input.Config)
@@ -295,12 +304,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during crawl", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
-				m.propagateFailure(context.Background(), job)
+				m.propagateFailureWithTimeout(job)
 				return nil
 			}
 			slog.Error("crawl job failed", "jobID", job.ID, "url", apperrors.SanitizeURL(input.URL), "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		for _, item := range results {
@@ -319,7 +328,7 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 		if err != nil {
 			slog.Error("invalid research job configuration", "jobID", job.ID, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		job.SelectedEngine = selectedEngineForConfig(input.Config)
@@ -358,12 +367,12 @@ func (m *Manager) run(ctx context.Context, job model.Job) error {
 			if jobCtx.Err() != nil {
 				slog.Info("job canceled during research", "jobID", job.ID)
 				m.updateStatusWithEvent(job, model.StatusRunning, model.StatusCanceled, "canceled by user")
-				m.propagateFailure(context.Background(), job)
+				m.propagateFailureWithTimeout(job)
 				return nil
 			}
 			slog.Error("research job failed", "jobID", job.ID, "query", input.Query, "error", err)
 			m.updateStatusWithEvent(job, model.StatusRunning, model.StatusFailed, apperrors.SafeMessage(err))
-			m.propagateFailure(context.Background(), job)
+			m.propagateFailureWithTimeout(job)
 			return err
 		}
 		payload, err := json.Marshal(result)

@@ -1,23 +1,25 @@
 // Package scheduler provides event-driven export triggering functionality.
 //
-// This file is responsible for:
-// - Listening for job completion events from the jobs manager
-// - Matching jobs against export schedule filters
-// - Executing exports to configured destinations
-// - Managing retry logic with exponential backoff
-// - Preventing duplicate exports via history tracking
+// Purpose:
+// - React to terminal job events and execute matching automated export schedules.
 //
-// This file does NOT handle:
-// - Schedule persistence (export_storage.go handles that)
-// - Export validation (export_validation.go handles that)
-// - History tracking (export_history.go handles that)
+// Responsibilities:
+// - Listen for completed job events from the jobs manager.
+// - Match jobs against export schedule filters and deduplicate scheduled exports.
+// - Execute local and webhook exports, including retry handling.
+// - Keep in-flight export work bound to the export-trigger lifecycle.
 //
-// Invariants:
-// - ExportTrigger must be started before it will process events
-// - Events are processed asynchronously via a buffered channel
-// - Duplicate detection prevents exporting the same job twice for a schedule
-// - Failed exports are retried with exponential backoff
-// - Export execution runs in goroutines to avoid blocking event processing
+// Scope:
+// - Event-driven export execution only; schedule persistence, validation, and history storage live in sibling files.
+//
+// Usage:
+// - Started by the server runtime after schedule storage is initialized.
+//
+// Invariants/Assumptions:
+// - ExportTrigger must be started before it will process events.
+// - Events are processed asynchronously via a buffered channel.
+// - Duplicate detection prevents exporting the same job twice for a schedule.
+// - Failed exports are retried with exponential backoff until the trigger lifecycle stops.
 package scheduler
 
 import (
@@ -48,13 +50,17 @@ type ExportTrigger struct {
 	webhookDispatcher *webhook.Dispatcher
 	dataDir           string
 
-	eventCh chan jobs.JobEvent
-	stopCh  chan struct{}
-	wg      sync.WaitGroup
+	eventCh  chan jobs.JobEvent
+	stopCh   chan struct{}
+	stopOnce sync.Once
+	wg       sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // NewExportTrigger creates a new export trigger.
 func NewExportTrigger(dataDir string, store *ExportStorage, historyStore *ExportHistoryStore, jobManager *jobs.Manager, webhookDispatcher *webhook.Dispatcher) *ExportTrigger {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ExportTrigger{
 		schedules:         make(map[string]*ExportSchedule),
 		store:             store,
@@ -64,6 +70,8 @@ func NewExportTrigger(dataDir string, store *ExportStorage, historyStore *Export
 		dataDir:           dataDir,
 		eventCh:           make(chan jobs.JobEvent, 128),
 		stopCh:            make(chan struct{}),
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 }
 
@@ -92,7 +100,12 @@ func (et *ExportTrigger) Start() error {
 
 // Stop halts the export trigger.
 func (et *ExportTrigger) Stop() error {
-	close(et.stopCh)
+	et.stopOnce.Do(func() {
+		close(et.stopCh)
+		if et.cancel != nil {
+			et.cancel()
+		}
+	})
 	et.wg.Wait()
 	slog.Info("export trigger stopped")
 	return nil
@@ -164,7 +177,7 @@ func (et *ExportTrigger) handleJobEvent(event jobs.JobEvent) {
 			et.wg.Add(1)
 			go func(s *ExportSchedule, job model.Job) {
 				defer et.wg.Done()
-				if err := et.executeExport(context.Background(), &job, s); err != nil {
+				if err := et.executeExport(et.ctx, &job, s); err != nil {
 					slog.Error("export execution failed",
 						"scheduleID", s.ID,
 						"jobID", job.ID,

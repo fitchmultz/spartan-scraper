@@ -21,8 +21,8 @@
 package api
 
 import (
-	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -204,5 +204,10 @@ func (s *Server) dispatchExportCompletedWebhook(job model.Job, webhookCfg *model
 		RecordCount:  rendered.RecordCount,
 		ExportSize:   rendered.Size,
 	}
-	s.webhookDispatcher.DispatchExport(context.Background(), webhookCfg.URL, payload, rendered.Content, webhookCfg.Secret)
+	if err := s.webhookDispatcher.DeliverExport(s.ctx, webhookCfg.URL, payload, rendered.Content, webhookCfg.Secret); err != nil {
+		slog.Warn("direct export webhook delivery failed",
+			"jobID", job.ID,
+			"url", webhook.SanitizeURL(webhookCfg.URL),
+			"error", apperrors.SafeMessage(err))
+	}
 }
