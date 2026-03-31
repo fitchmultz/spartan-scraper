@@ -45,8 +45,17 @@ function createFakeModelRegistry(options: {
     find(provider: string, model: string) {
       return options.models[`${provider}/${model}`];
     },
-    async getApiKey(model: FakeModel) {
-      return apiKeys[model.provider];
+    hasConfiguredAuth(model: FakeModel) {
+      return Boolean(apiKeys[model.provider]);
+    },
+    async getApiKeyAndHeaders(model: FakeModel) {
+      const apiKey = apiKeys[model.provider];
+      return apiKey
+        ? { ok: true as const, apiKey }
+        : {
+            ok: false as const,
+            error: `no auth configured for provider ${model.provider}`,
+          };
     },
     getError() {
       return options.loadError;
@@ -119,7 +128,7 @@ function createExtractBackend(content: AssistantMessage["content"]) {
 }
 
 test("ModelRegistry resolves preferred default pi model IDs", () => {
-  const registry = new ModelRegistry(AuthStorage.inMemory());
+  const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
   assert.ok(registry.find("kimi-coding", "k2p5"));
   assert.ok(registry.find("zai", "glm-5"));
   assert.ok(registry.find("openai-codex", "gpt-5.4"));
@@ -1006,7 +1015,7 @@ test("extract sends screenshot context as multimodal user content", async () => 
 });
 
 test("modelSupportsImages matches current verified model capabilities", () => {
-  const registry = new ModelRegistry(AuthStorage.inMemory());
+  const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
   const openai = registry.find("openai", "gpt-5.4");
   const zai = registry.find("zai", "glm-5");
   assert.ok(openai);

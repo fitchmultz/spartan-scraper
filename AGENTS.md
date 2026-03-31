@@ -191,7 +191,7 @@ Pinned in `.tool-versions`:
 
 - Go `1.26.1`
 - Node `25.8` (any `25.8.x` patch)
-- pnpm `10.32.1`
+- pnpm `10.33.0`
 
 ## Commit & Pull Request Guidelines
 

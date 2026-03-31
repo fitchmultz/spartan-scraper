@@ -89,7 +89,8 @@ export class SDKBackend {
   ) {
     this.authStorage =
       deps.modelRegistry?.authStorage ?? deps.authStorage ?? AuthStorage.create();
-    this.modelRegistry = deps.modelRegistry ?? new ModelRegistry(this.authStorage);
+    this.modelRegistry =
+      deps.modelRegistry ?? ModelRegistry.create(this.authStorage);
     this.completeFn = deps.completeFn ?? complete;
   }
 
@@ -140,6 +141,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -180,6 +182,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -220,6 +223,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -260,6 +264,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -299,6 +304,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -338,6 +344,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -377,6 +384,7 @@ export class SDKBackend {
           }),
           {
             apiKey: selection.apiKey,
+            headers: selection.headers,
             maxTokens: 4096,
             temperature: 0,
           },
@@ -411,7 +419,7 @@ export class SDKBackend {
         };
       }
 
-      const authConfigured = this.authStorage.hasAuth(provider);
+      const authConfigured = this.modelRegistry.hasConfiguredAuth(selectedModel);
       if (!authConfigured) {
         return {
           route_id: routeId,
@@ -455,11 +463,11 @@ export class SDKBackend {
     if (requirements.requiresImage && !modelSupportsImages(selectedModel)) {
       throw new Error(`model ${routeId} does not support image input`);
     }
-    const apiKey = await this.modelRegistry.getApiKey(selectedModel);
-    if (!apiKey) {
-      throw new Error(`no auth available for provider ${provider}`);
+    const auth = await this.modelRegistry.getApiKeyAndHeaders(selectedModel);
+    if (!auth.ok) {
+      throw new Error(auth.error || `no auth available for provider ${provider}`);
     }
-    return { model: selectedModel, apiKey };
+    return { model: selectedModel, apiKey: auth.apiKey, headers: auth.headers };
   }
 
   private buildContext(input: {

@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0-rc1",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@10.33.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,20 +21,20 @@
     "cmdk": "^1.1.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-joyride": "^2.9.3"
+    "react-joyride": "^3.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
-    "@hey-api/openapi-ts": "^0.94.2",
+    "@biomejs/biome": "^2.4.10",
+    "@hey-api/openapi-ts": "^0.94.5",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "jsdom": "^29.0.0",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.0"
+    "jsdom": "^29.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
+    "vitest": "^4.1.2"
   }
 }

@@ -191,7 +191,7 @@ func (f *ChromedpFetcher) doFetch(parentCtx context.Context, req Request, prof R
 	}
 	if len(blockedPatterns) > 0 {
 		slog.Debug("blocking resources", "url", apperrors.SanitizeURL(req.URL), "patterns", blockedPatterns)
-		actions = append(actions, network.SetBlockedURLs(blockedPatterns))
+		actions = append(actions, network.SetBlockedURLs().WithURLPatterns(toCDPBlockPatterns(blockedPatterns)))
 	}
 
 	// Run initial setup
@@ -475,6 +475,25 @@ func (f *ChromedpFetcher) waitForStability(ctx context.Context, policy RenderWai
 		}
 	}
 	return nil
+}
+
+func toCDPBlockPatterns(patterns []string) []*network.BlockPattern {
+	blockPatterns := make([]*network.BlockPattern, 0, len(patterns))
+	for _, pattern := range patterns {
+		trimmed := strings.TrimSpace(pattern)
+		if trimmed == "" {
+			continue
+		}
+		cdpPattern := strings.ReplaceAll(trimmed, "**", "*")
+		if !strings.Contains(cdpPattern, "://") {
+			if !strings.HasPrefix(cdpPattern, "/") {
+				cdpPattern = "/" + cdpPattern
+			}
+			cdpPattern = "*://*" + cdpPattern
+		}
+		blockPatterns = append(blockPatterns, &network.BlockPattern{URLPattern: cdpPattern, Block: true})
+	}
+	return blockPatterns
 }
 
 func appendChromedpCIFlags(opts []chromedp.ExecAllocatorOption) []chromedp.ExecAllocatorOption {

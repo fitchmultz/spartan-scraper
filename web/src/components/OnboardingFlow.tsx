@@ -7,11 +7,13 @@
  */
 
 import { useEffect, useMemo } from "react";
-import Joyride, {
+import {
   ACTIONS,
   EVENTS,
+  Joyride,
   STATUS,
-  type CallBackProps,
+  type EventData,
+  type Options,
   type Step,
   type Styles,
 } from "react-joyride";
@@ -31,15 +33,20 @@ export interface OnboardingFlowProps {
   onRouteChange?: (route: OnboardingRouteKey) => void;
 }
 
+const joyrideOptions: Partial<Options> = {
+  arrowColor: "var(--panel, #1a1a24)",
+  backgroundColor: "var(--panel, #1a1a24)",
+  blockTargetInteraction: true,
+  buttons: ["back", "skip", "close", "primary"],
+  overlayClickAction: "close",
+  overlayColor: "rgba(0, 0, 0, 0.7)",
+  primaryColor: "var(--accent, #ffb700)",
+  showProgress: true,
+  textColor: "var(--text, #fff)",
+  zIndex: 1100,
+};
+
 const joyrideStyles: Partial<Styles> = {
-  options: {
-    arrowColor: "var(--panel, #1a1a24)",
-    backgroundColor: "var(--panel, #1a1a24)",
-    overlayColor: "rgba(0, 0, 0, 0.7)",
-    primaryColor: "var(--accent, #ffb700)",
-    textColor: "var(--text, #fff)",
-    zIndex: 1100,
-  },
   tooltip: {
     backgroundColor: "var(--panel, #1a1a24)",
     border: "1px solid var(--stroke, rgba(255,255,255,0.1))",
@@ -99,7 +106,7 @@ export function OnboardingFlow({
     onRouteChange?.(activeStep.route);
   }, [currentRoute, currentStep, isRunning, onRouteChange]);
 
-  const handleCallback = (data: CallBackProps) => {
+  const handleCallback = (data: EventData) => {
     const { action, index, status, type } = data;
     const isTerminal = status === STATUS.FINISHED || status === STATUS.SKIPPED;
     const isStepEvent =
@@ -142,11 +149,8 @@ export function OnboardingFlow({
       run={isRunning}
       stepIndex={currentStep}
       continuous
-      showProgress
-      showSkipButton
       scrollToFirstStep
-      disableOverlayClose={false}
-      spotlightClicks={false}
+      options={joyrideOptions}
       styles={joyrideStyles}
       locale={{
         back: "Back",
@@ -156,7 +160,7 @@ export function OnboardingFlow({
         skip: "Skip tour",
         open: "Open",
       }}
-      callback={handleCallback}
+      onEvent={handleCallback}
     />
   );
 }

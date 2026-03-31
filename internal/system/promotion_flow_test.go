@@ -228,7 +228,7 @@ func TestPromotionFlowEndToEndHTTPAPI(t *testing.T) {
 	}
 	assertJobDetailUnchanged(t, baseline, fetchJobDetail(t, client, port, jobID))
 
-	exportPath := filepath.Join(dataDir, "exports", "promotion-export-{job_id}.json")
+	exportTemplate := filepath.Join("exports", "promotion-export-{job_id}.json")
 	scheduleID := postExportSchedule(t, client, port, map[string]any{
 		"name": "promoted-export-" + jobID,
 		"filters": map[string]any{
@@ -239,7 +239,7 @@ func TestPromotionFlowEndToEndHTTPAPI(t *testing.T) {
 		"export": map[string]any{
 			"format":           "json",
 			"destination_type": "local",
-			"local_path":       exportPath,
+			"local_path":       exportTemplate,
 		},
 	})
 	_, scheduleBody := fetchJSON(t, client,
@@ -266,8 +266,8 @@ func TestPromotionFlowEndToEndHTTPAPI(t *testing.T) {
 	if stringAt(t, exportConfig, "destination_type") != "local" {
 		t.Fatalf("schedule destination_type = %q, want local", stringAt(t, exportConfig, "destination_type"))
 	}
-	if stringAt(t, exportConfig, "local_path") != exportPath {
-		t.Fatalf("schedule local_path = %q, want %q", stringAt(t, exportConfig, "local_path"), exportPath)
+	if stringAt(t, exportConfig, "local_path") != exportTemplate {
+		t.Fatalf("schedule local_path = %q, want %q", stringAt(t, exportConfig, "local_path"), exportTemplate)
 	}
 	assertJobDetailUnchanged(t, baseline, fetchJobDetail(t, client, port, jobID))
 

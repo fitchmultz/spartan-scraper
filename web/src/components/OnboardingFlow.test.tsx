@@ -8,7 +8,7 @@
 
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Joyride, { ACTIONS, EVENTS, STATUS } from "react-joyride";
+import { ACTIONS, EVENTS, Joyride, STATUS } from "react-joyride";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { ONBOARDING_TOTAL_STEPS } from "../lib/onboarding";
 
@@ -16,7 +16,7 @@ vi.mock("react-joyride", () => {
   const JoyrideMock = vi.fn(() => null);
 
   return {
-    default: JoyrideMock,
+    Joyride: JoyrideMock,
     ACTIONS: {
       PREV: "prev",
       NEXT: "next",
@@ -25,7 +25,7 @@ vi.mock("react-joyride", () => {
     },
     EVENTS: {
       STEP_AFTER: "step:after",
-      TARGET_NOT_FOUND: "target:not_found",
+      TARGET_NOT_FOUND: "error:target_not_found",
     },
     STATUS: {
       FINISHED: "finished",
@@ -41,7 +41,7 @@ function getJoyrideProps() {
   }
 
   return firstCall[0] as unknown as {
-    callback: (data: {
+    onEvent: (data: {
       action: string;
       index: number;
       status: string;
@@ -98,10 +98,10 @@ describe("OnboardingFlow", () => {
       />,
     );
 
-    const { callback } = getJoyrideProps();
+    const { onEvent } = getJoyrideProps();
 
     act(() => {
-      callback({
+      onEvent({
         action: ACTIONS.NEXT,
         index: 1,
         status: "running",
@@ -127,10 +127,10 @@ describe("OnboardingFlow", () => {
       />,
     );
 
-    const { callback } = getJoyrideProps();
+    const { onEvent } = getJoyrideProps();
 
     act(() => {
-      callback({
+      onEvent({
         action: ACTIONS.NEXT,
         index: ONBOARDING_TOTAL_STEPS - 1,
         status: STATUS.FINISHED,
@@ -141,7 +141,7 @@ describe("OnboardingFlow", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
 
     act(() => {
-      callback({
+      onEvent({
         action: ACTIONS.SKIP,
         index: 1,
         status: STATUS.SKIPPED,
