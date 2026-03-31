@@ -6,7 +6,6 @@
  * Invariants/Assumptions: Generated scripts are never auto-saved, image attachments stay request-scoped, closing preserves the current tab-scoped session until operators explicitly reset or discard it, and save always targets the selected attempt.
  */
 
-import { useMemo } from "react";
 import {
   aiPipelineJsGenerate,
   postV1PipelineJs,
@@ -14,12 +13,10 @@ import {
   type ComponentStatus,
   type JsTargetScript,
 } from "../api";
-import {
-  useAIAttemptHistory,
-  type AIAttempt,
-  type AIAttemptHistoryController,
+import type {
+  AIAttempt,
+  AIAttemptHistoryController,
 } from "../hooks/useAIAttemptHistory";
-import { useSessionStorageState } from "../hooks/useSessionStorageState";
 import { toPipelineJsGenerateAttempt } from "../lib/ai-authoring-attempts";
 import {
   buildAIAuthoringRequestContext,
@@ -35,13 +32,13 @@ import { getApiBaseUrl } from "../lib/api-config";
 import { getApiErrorMessage } from "../lib/api-errors";
 import { isValidHttpUrl } from "../lib/form-utils";
 import type { AttachedAIImage } from "../lib/ai-image-utils";
-import { AIAttemptHistoryList } from "./AIAttemptHistoryList";
-import { AIAuthoringAttemptPanel } from "./AIAuthoringAttemptPanel";
-import { AICandidateDiffView } from "./AICandidateDiffView";
 import { AIImageAttachments } from "./AIImageAttachments";
-import { AIUnavailableNotice, describeAICapability } from "./ai-assistant";
+import { describeAICapability } from "./ai-assistant";
 import { BrowserExecutionControls } from "./BrowserExecutionControls";
-import { useToast } from "./toast";
+import { AIAuthoringAttemptComparison } from "./ai-authoring/AIAuthoringAttemptComparison";
+import { AIAuthoringModalShell } from "./ai-authoring/AIAuthoringModalShell";
+import { AIAuthoringSessionFooter } from "./ai-authoring/AIAuthoringSessionFooter";
+import { useAIAuthoringSession } from "./ai-authoring/useAIAuthoringSession";
 
 interface AIPipelineJSGeneratorProps {
   isOpen: boolean;
@@ -85,15 +82,39 @@ export function AIPipelineJSGenerator({
   onEditInSettings,
   storageKey,
 }: AIPipelineJSGeneratorProps) {
-  const toast = useToast();
-  const [state, setState, clearState] = useSessionStorageState<GeneratorState>(
-    storageKey ?? null,
-    INITIAL_STATE,
-  );
-  const ownedHistory = useAIAttemptHistory<JsTargetScript>(
-    storageKey ? { storageKey: `${storageKey}.history` } : undefined,
-  );
-  const history = providedHistory ?? ownedHistory;
+  const {
+    state,
+    setState,
+    history,
+    activeAttempt,
+    hasSessionDraft,
+    clearSession,
+    resetSession,
+    discardSession,
+  } = useAIAuthoringSession<JsTargetScript, GeneratorState>({
+    storageKey,
+    initialState: INITIAL_STATE,
+    providedHistory,
+    hasSessionDraft: (currentState, attemptCount) =>
+      Boolean(
+        currentState.url.trim() ||
+          currentState.name.trim() ||
+          currentState.hostPatterns.trim() ||
+          currentState.instructions.trim() ||
+          currentState.images.length > 0 ||
+          hasAIAuthoringBrowserRuntimeDraft(currentState) ||
+          attemptCount > 0,
+      ),
+    clearError: (currentState) => ({
+      ...currentState,
+      error: null,
+    }),
+    resetDescription:
+      "This clears the generated attempt history and selected candidate, but keeps the current URL, instructions, browser options, and uploaded images so you can start a fresh pass without re-entering them.",
+    discardDescription:
+      "This removes the in-progress AI request draft, selected candidate, attempt history, and uploaded images from this browser tab.",
+    onClose,
+  });
 
   const aiCapability = describeAICapability(
     aiStatus,
@@ -101,31 +122,6 @@ export function AIPipelineJSGenerator({
   );
   const aiUnavailable = aiCapability.unavailable;
   const aiUnavailableMessage = aiCapability.message;
-  const activeAttempt = history.activeAttempt;
-  const baselineAttempt = history.baselineAttempt;
-  const latestAttempt = history.latestAttempt;
-  const hasSessionDraft = useMemo(
-    () =>
-      Boolean(
-        state.url.trim() ||
-          state.name.trim() ||
-          state.hostPatterns.trim() ||
-          state.instructions.trim() ||
-          state.images.length > 0 ||
-          hasAIAuthoringBrowserRuntimeDraft(state) ||
-          history.attempts.length > 0,
-      ),
-    [state, history.attempts.length],
-  );
-
-  const clearSession = () => {
-    clearState();
-    history.reset();
-  };
-
-  const handleClose = () => {
-    onClose();
-  };
 
   const validateInputs = () => {
     if (!state.url.trim()) {
@@ -221,49 +217,6 @@ export function AIPipelineJSGenerator({
     void handleGenerate();
   };
 
-  const handleResetSession = async () => {
-    const confirmed = await toast.confirm({
-      title: "Reset this AI session?",
-      description:
-        "This clears the generated attempt history and selected candidate, but keeps the current URL, instructions, browser options, and uploaded images so you can start a fresh pass without re-entering them.",
-      confirmLabel: "Reset session",
-      cancelLabel: "Keep session",
-      tone: "warning",
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    history.reset();
-    setState((prev) => ({
-      ...prev,
-      error: null,
-    }));
-  };
-
-  const handleDiscardSession = async () => {
-    if (!hasSessionDraft) {
-      clearSession();
-      onClose();
-      return;
-    }
-
-    const confirmed = await toast.confirm({
-      title: "Discard this AI session?",
-      description:
-        "This removes the in-progress AI request draft, selected candidate, attempt history, and uploaded images from this browser tab.",
-      confirmLabel: "Discard session",
-      cancelLabel: "Keep session",
-      tone: "warning",
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    clearSession();
-    onClose();
-  };
-
   const handleSave = async () => {
     if (!activeAttempt?.artifact) {
       return;
@@ -300,335 +253,203 @@ export function AIPipelineJSGenerator({
   }
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: modal overlay pattern
-    // biome-ignore lint/a11y/useKeyWithClickEvents: handled via close controls
-    <div className="modal-overlay" onClick={handleClose}>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: modal content container */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: modal content container */}
-      <div
-        className="modal-content modal-content--large"
-        onClick={(event) => event.stopPropagation()}
+    <AIAuthoringModalShell
+      title="Generate Pipeline JS with AI"
+      titleIcon="✨"
+      onClose={onClose}
+      aiUnavailableMessage={aiUnavailableMessage}
+      sessionNotice={
+        hasSessionDraft
+          ? "Close keeps this AI session available in the current browser tab. Reset session keeps the request inputs but clears generated attempts. Discard session removes everything."
+          : null
+      }
+      footer={
+        <AIAuthoringSessionFooter
+          onClose={onClose}
+          hasSessionDraft={hasSessionDraft}
+          hasAttempts={history.attempts.length > 0}
+          onDiscardSession={() => void discardSession()}
+          onResetSession={() => void resetSession()}
+          onRetry={handleRetry}
+          onSave={() => void handleSave()}
+          onRun={() => void handleGenerate()}
+          discardDisabled={state.isGenerating || state.isSaving}
+          resetDisabled={state.isGenerating || state.isSaving}
+          retryDisabled={state.isGenerating || state.isSaving || aiUnavailable}
+          saveDisabled={
+            state.isGenerating ||
+            state.isSaving ||
+            aiUnavailable ||
+            !activeAttempt?.artifact
+          }
+          runDisabled={state.isGenerating || aiUnavailable}
+          actionTitle={aiUnavailableMessage ?? undefined}
+          runLabel="Generate Script"
+          runningLabel="Generating..."
+          retryLabel="Retry with changes"
+          retryingLabel="Retrying..."
+          saveLabel="Save selected script"
+          savingLabel="Saving..."
+          isRunning={state.isGenerating}
+          isSaving={state.isSaving}
+        />
+      }
+    >
+      <fieldset
+        disabled={state.isGenerating || state.isSaving || aiUnavailable}
+        style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
       >
-        <div className="modal-header">
-          <h2 className="modal-title">
-            <span className="mr-2 text-purple-400">✨</span>
-            Generate Pipeline JS with AI
-          </h2>
-          <button
-            type="button"
-            className="modal-close"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
+        <div className="form-group">
+          <label htmlFor="ai-pipeline-js-url" className="form-label">
+            Target URL <span className="required">*</span>
+          </label>
+          <input
+            id="ai-pipeline-js-url"
+            type="url"
+            className="form-input"
+            value={state.url}
+            onChange={(event) =>
+              setState((prev) => ({ ...prev, url: event.target.value }))
+            }
+            placeholder="https://example.com/app"
+            disabled={state.isGenerating}
+          />
         </div>
 
-        <div className="modal-body space-y-4">
-          {aiUnavailableMessage ? (
-            <AIUnavailableNotice message={aiUnavailableMessage} />
-          ) : null}
-
-          {hasSessionDraft ? (
-            <div className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
-              Close keeps this AI session available in the current browser tab.
-              Reset session keeps the request inputs but clears generated
-              attempts. Discard session removes everything.
-            </div>
-          ) : null}
-
-          <fieldset
-            disabled={state.isGenerating || state.isSaving || aiUnavailable}
-            style={{ border: 0, margin: 0, minInlineSize: 0, padding: 0 }}
-          >
-            <div className="form-group">
-              <label htmlFor="ai-pipeline-js-url" className="form-label">
-                Target URL <span className="required">*</span>
-              </label>
-              <input
-                id="ai-pipeline-js-url"
-                type="url"
-                className="form-input"
-                value={state.url}
-                onChange={(event) =>
-                  setState((prev) => ({ ...prev, url: event.target.value }))
-                }
-                placeholder="https://example.com/app"
-                disabled={state.isGenerating}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="form-group">
-                <label htmlFor="ai-pipeline-js-name" className="form-label">
-                  Script Name
-                </label>
-                <input
-                  id="ai-pipeline-js-name"
-                  type="text"
-                  className="form-input"
-                  value={state.name}
-                  onChange={(event) =>
-                    setState((prev) => ({ ...prev, name: event.target.value }))
-                  }
-                  placeholder="example-app"
-                  disabled={state.isGenerating}
-                />
-              </div>
-              <div className="form-group">
-                <label
-                  htmlFor="ai-pipeline-js-host-patterns"
-                  className="form-label"
-                >
-                  Host Patterns
-                </label>
-                <input
-                  id="ai-pipeline-js-host-patterns"
-                  type="text"
-                  className="form-input"
-                  value={state.hostPatterns}
-                  onChange={(event) =>
-                    setState((prev) => ({
-                      ...prev,
-                      hostPatterns: event.target.value,
-                    }))
-                  }
-                  placeholder="example.com, *.example.com"
-                  disabled={state.isGenerating}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label
-                htmlFor="ai-pipeline-js-instructions"
-                className="form-label"
-              >
-                Instructions
-              </label>
-              <textarea
-                id="ai-pipeline-js-instructions"
-                className="form-textarea"
-                value={state.instructions}
-                onChange={(event) =>
-                  setState((prev) => ({
-                    ...prev,
-                    instructions: event.target.value,
-                  }))
-                }
-                rows={4}
-                placeholder="Optional. Describe what the script should wait for or automate. If left blank, Spartan will derive a goal from the page URL and fetch signals."
-                disabled={state.isGenerating}
-              />
-            </div>
-
-            {activeAttempt?.manualEdit.edited ? (
-              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-                Retry will continue from Attempt {activeAttempt.ordinal}'s
-                manually edited script instead of starting from scratch.
-              </div>
-            ) : null}
-
-            <AIImageAttachments
-              images={state.images}
-              onChange={(images) => setState((prev) => ({ ...prev, images }))}
-              disabled={state.isGenerating || state.isSaving || aiUnavailable}
-              disabledReason={aiUnavailableMessage}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="form-group">
+            <label htmlFor="ai-pipeline-js-name" className="form-label">
+              Script Name
+            </label>
+            <input
+              id="ai-pipeline-js-name"
+              type="text"
+              className="form-input"
+              value={state.name}
+              onChange={(event) =>
+                setState((prev) => ({ ...prev, name: event.target.value }))
+              }
+              placeholder="example-app"
+              disabled={state.isGenerating}
             />
-
-            <div className="space-y-3">
-              <BrowserExecutionControls
-                headless={state.headless}
-                setHeadless={(value) =>
-                  setState((prev) => ({
-                    ...prev,
-                    ...updateAIAuthoringHeadlessState(prev, value),
-                  }))
-                }
-                usePlaywright={state.playwright}
-                setUsePlaywright={(value) =>
-                  setState((prev) => ({
-                    ...prev,
-                    ...updateAIAuthoringPlaywrightState(prev, value),
-                  }))
-                }
-                headlessLabel="Fetch headless"
-                playwrightLabel="Use Playwright"
-                helperText="Enable headless to unlock Playwright."
-                showTimeout={false}
-                disabled={state.isGenerating}
-              />
-              <label className="form-label flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={state.visual}
-                  onChange={(event) =>
-                    setState((prev) => ({
-                      ...prev,
-                      ...updateAIAuthoringVisualState(
-                        prev,
-                        event.target.checked,
-                      ),
-                    }))
-                  }
-                  disabled={state.isGenerating}
-                />
-                Include screenshot context
-              </label>
-            </div>
-
-            {state.error ? (
-              <div className="error" role="alert">
-                {state.error}
-              </div>
-            ) : null}
-
-            <AIAttemptHistoryList
-              attempts={history.attempts}
-              activeAttemptId={history.activeAttemptId}
-              baselineAttemptId={history.baselineAttemptId}
-              onSelectAttempt={history.selectAttempt}
-              onSelectBaseline={history.selectBaseline}
-              onRestoreGuidance={(attempt) =>
+          </div>
+          <div className="form-group">
+            <label
+              htmlFor="ai-pipeline-js-host-patterns"
+              className="form-label"
+            >
+              Host Patterns
+            </label>
+            <input
+              id="ai-pipeline-js-host-patterns"
+              type="text"
+              className="form-input"
+              value={state.hostPatterns}
+              onChange={(event) =>
                 setState((prev) => ({
                   ...prev,
-                  instructions: attempt.guidanceText || prev.instructions,
-                  error: null,
+                  hostPatterns: event.target.value,
                 }))
               }
-              onEditInSettings={onEditInSettings}
+              placeholder="example.com, *.example.com"
+              disabled={state.isGenerating}
             />
-
-            {baselineAttempt ? (
-              <AIAuthoringAttemptPanel
-                key={baselineAttempt.id}
-                label={`Comparison baseline · Attempt ${baselineAttempt.ordinal}`}
-                routeId={baselineAttempt.routeId}
-                provider={baselineAttempt.provider}
-                model={baselineAttempt.model}
-                visualContextUsed={baselineAttempt.visualContextUsed}
-                resolvedGoal={baselineAttempt.resolvedGoal}
-                explanation={baselineAttempt.explanation}
-                rawResponse={baselineAttempt.rawResponse}
-                manualEdit={baselineAttempt.manualEdit}
-                muted
-              >
-                {baselineAttempt.artifact ? (
-                  <AICandidateDiffView
-                    artifactKind="pipeline-js"
-                    selectedArtifact={baselineAttempt.artifact}
-                    selectedLabel={`Attempt ${baselineAttempt.ordinal}`}
-                  />
-                ) : (
-                  <div className="text-sm text-slate-400">
-                    No pipeline JS artifact was returned for this attempt.
-                  </div>
-                )}
-              </AIAuthoringAttemptPanel>
-            ) : null}
-
-            {activeAttempt ? (
-              <AIAuthoringAttemptPanel
-                key={activeAttempt.id}
-                label={`${activeAttempt.id === latestAttempt?.id ? "Latest" : "Selected"} candidate · Attempt ${activeAttempt.ordinal}`}
-                routeId={activeAttempt.routeId}
-                provider={activeAttempt.provider}
-                model={activeAttempt.model}
-                visualContextUsed={activeAttempt.visualContextUsed}
-                resolvedGoal={activeAttempt.resolvedGoal}
-                explanation={activeAttempt.explanation}
-                rawResponse={activeAttempt.rawResponse}
-                manualEdit={activeAttempt.manualEdit}
-              >
-                {activeAttempt.artifact ? (
-                  <AICandidateDiffView
-                    artifactKind="pipeline-js"
-                    baselineArtifact={baselineAttempt?.artifact ?? null}
-                    selectedArtifact={activeAttempt.artifact}
-                    baselineLabel={
-                      baselineAttempt
-                        ? `Attempt ${baselineAttempt.ordinal}`
-                        : "Comparison baseline"
-                    }
-                    selectedLabel={`Attempt ${activeAttempt.ordinal}`}
-                  />
-                ) : (
-                  <div className="text-sm text-slate-400">
-                    No pipeline JS artifact was returned for this attempt.
-                  </div>
-                )}
-              </AIAuthoringAttemptPanel>
-            ) : null}
-          </fieldset>
-
-          <div className="modal-footer gap-3">
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={handleClose}
-            >
-              Close
-            </button>
-            {hasSessionDraft ? (
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => void handleDiscardSession()}
-                disabled={state.isGenerating || state.isSaving}
-              >
-                Discard session
-              </button>
-            ) : null}
-            {history.attempts.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => void handleResetSession()}
-                  disabled={state.isGenerating || state.isSaving}
-                >
-                  Reset session
-                </button>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={handleRetry}
-                  disabled={
-                    state.isGenerating || state.isSaving || aiUnavailable
-                  }
-                  title={aiUnavailableMessage ?? undefined}
-                >
-                  {state.isGenerating ? "Retrying..." : "Retry with changes"}
-                </button>
-                <button
-                  type="button"
-                  className="button-primary"
-                  onClick={handleSave}
-                  disabled={
-                    state.isGenerating ||
-                    state.isSaving ||
-                    aiUnavailable ||
-                    !activeAttempt?.artifact
-                  }
-                  title={aiUnavailableMessage ?? undefined}
-                >
-                  {state.isSaving ? "Saving..." : "Save selected script"}
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="button-primary"
-                onClick={() => void handleGenerate()}
-                disabled={state.isGenerating || aiUnavailable}
-                title={aiUnavailableMessage ?? undefined}
-              >
-                {state.isGenerating ? "Generating..." : "Generate Script"}
-              </button>
-            )}
           </div>
         </div>
-      </div>
-    </div>
+
+        <div className="form-group">
+          <label htmlFor="ai-pipeline-js-instructions" className="form-label">
+            Instructions
+          </label>
+          <textarea
+            id="ai-pipeline-js-instructions"
+            className="form-textarea"
+            value={state.instructions}
+            onChange={(event) =>
+              setState((prev) => ({
+                ...prev,
+                instructions: event.target.value,
+              }))
+            }
+            rows={4}
+            placeholder="Optional. Describe what the script should wait for or automate. If left blank, Spartan will derive a goal from the page URL and fetch signals."
+            disabled={state.isGenerating}
+          />
+        </div>
+
+        {activeAttempt?.manualEdit.edited ? (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            Retry will continue from Attempt {activeAttempt.ordinal}'s manually
+            edited script instead of starting from scratch.
+          </div>
+        ) : null}
+
+        <AIImageAttachments
+          images={state.images}
+          onChange={(images) => setState((prev) => ({ ...prev, images }))}
+          disabled={state.isGenerating || state.isSaving || aiUnavailable}
+          disabledReason={aiUnavailableMessage}
+        />
+
+        <div className="space-y-3">
+          <BrowserExecutionControls
+            headless={state.headless}
+            setHeadless={(value) =>
+              setState((prev) => ({
+                ...prev,
+                ...updateAIAuthoringHeadlessState(prev, value),
+              }))
+            }
+            usePlaywright={state.playwright}
+            setUsePlaywright={(value) =>
+              setState((prev) => ({
+                ...prev,
+                ...updateAIAuthoringPlaywrightState(prev, value),
+              }))
+            }
+            headlessLabel="Fetch headless"
+            playwrightLabel="Use Playwright"
+            helperText="Enable headless to unlock Playwright."
+            showTimeout={false}
+            disabled={state.isGenerating}
+          />
+          <label className="form-label flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={state.visual}
+              onChange={(event) =>
+                setState((prev) => ({
+                  ...prev,
+                  ...updateAIAuthoringVisualState(prev, event.target.checked),
+                }))
+              }
+              disabled={state.isGenerating}
+            />
+            Include screenshot context
+          </label>
+        </div>
+
+        {state.error ? (
+          <div className="error" role="alert">
+            {state.error}
+          </div>
+        ) : null}
+
+        <AIAuthoringAttemptComparison
+          history={history}
+          artifactKind="pipeline-js"
+          emptyBaselineMessage="No pipeline JS artifact was returned for this attempt."
+          emptySelectedMessage="No pipeline JS artifact was returned for this attempt."
+          onRestoreGuidance={(attempt) =>
+            setState((prev) => ({
+              ...prev,
+              instructions: attempt.guidanceText || prev.instructions,
+              error: null,
+            }))
+          }
+          onEditInSettings={onEditInSettings}
+        />
+      </fieldset>
+    </AIAuthoringModalShell>
   );
 }
