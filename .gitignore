@@ -37,5 +37,6 @@
 /web/openapi-ts-error-*.log
 /web/.vitest-localstorage*
 output/
+dogfood-output/
 .playwright-cli/
 .data-dogfood/
